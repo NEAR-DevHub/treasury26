@@ -2,8 +2,8 @@
 //!
 //! The feature ships disabled for every treasury. A DAO turns it on from Settings → Developer,
 //! which reveals the Request Templates section in the app. Reading the flag only needs DAO
-//! membership; flipping it is gated on the same on-chain `ChangePolicy` permission that gates
-//! authoring a template, so a privileged member opts the whole treasury in. The flag lives on
+//! membership; flipping it is gated on the on-chain `ChangePolicy` (admin) permission — the same
+//! gate as deleting a template — so a privileged member opts the whole treasury in. The flag lives on
 //! `monitored_accounts` (the per-treasury record `proposal_templates` already references).
 
 use axum::{
@@ -57,7 +57,7 @@ pub async fn get_custom_requests_setting(
 }
 
 /// `PUT /api/treasury/{dao_id}/custom-requests` — enable or disable the feature for this treasury.
-/// Gated on `ChangePolicy`, matching template authoring. The treasury row is ensured through the
+/// Gated on `ChangePolicy` (admin), matching template deletion. The treasury row is ensured through the
 /// canonical `register_or_refresh_monitored_account` registrar (not a bare upsert) so it goes
 /// through the same `.sputnik-dao.near` suffix gate as every other treasury, then the flag is set.
 pub async fn set_custom_requests_setting(

@@ -220,9 +220,9 @@ pub async fn seed_policy_member(pool: &sqlx::PgPool, dao_id: &str, account_id: &
 }
 
 /// Seed a full-admin ("council") policy member: a wildcard `*:*` role. Under the action-only
-/// permission matcher this satisfies every gate — `AddProposal` (author templates, flip the
-/// custom-requests flag) and `ChangePolicy` (delete templates) alike — so it stands in for anyone
-/// allowed to do all template management. Requestor-only access is exercised separately.
+/// permission matcher this satisfies every gate — `AddProposal` (author templates) and
+/// `ChangePolicy` (delete templates, flip the custom-requests feature flag) alike — so it stands in
+/// for anyone allowed to do all template management. Requestor-only access is exercised separately.
 #[cfg(test)]
 pub async fn seed_change_policy_member(
     state: &std::sync::Arc<AppState>,

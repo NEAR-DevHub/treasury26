@@ -6,13 +6,15 @@
  * Closes the view-level gaps the sidebar-only check left open, mirroring the nt-be gates:
  *  - #1026: direct URL while Custom Requests is disabled in Settings → Developer.
  *  - #1027: guests / signed-out / non-member viewers reaching the create/authoring UI.
- *  - list/authoring visibility: Requestors (can propose) and admins may see the list and author
- *    templates (#1046); only they reach create/edit (`requireAuthor`). Delete is admin-only and is a
- *    dialog on the index, not a route, so it isn't guarded here.
+ *  - list/authoring visibility (#1046): anyone who can author (`AddProposal` — Requestors, incl.
+ *    transfer-only, and admins) or file (`canPropose`) may see the list; only authors reach
+ *    create/edit (`requireAuthor`). Note authoring (`AddProposal`) is broader than filing a template
+ *    request (`call:AddProposal`) — a transfer-only requestor can author but not file. Delete is
+ *    admin-only and is a dialog on the index, not a route, so it isn't guarded here.
  *
  * The feature flag already narrows to a signed-in member of a non-guest treasury; on top of that we
- * require `canAccess` (== can author: propose or admin). Writes stay enforced server-side; this
- * aligns the UI so no one lands on a page they can't act on.
+ * require `canAccess` (`canAuthor || canPropose`). Writes stay enforced server-side; this aligns the
+ * UI so no one lands on a page they can't act on.
  */
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -43,7 +45,7 @@ export function CustomTemplatesGuard({
     } = useCustomTemplatesAccess();
 
     const settled = !treasuryLoading && !flagLoading && !accessLoading;
-    // May view the subtree at all (feature on + can author == propose or admin).
+    // May view the subtree at all (feature on + canAccess, i.e. canAuthor || canPropose).
     const canView = !!enabled && canAccess;
     const allowed = canView && (!requireAuthor || canAuthor);
 
