@@ -130,6 +130,7 @@ jobs:
         TRANSFER_HINTS_BASE_URL: http://127.0.0.1:18552/fastnear-hints
         NEARDATA_BASE_URL: http://127.0.0.1:18552/neardata
         INTENTS_EXPLORER_API_URL: http://127.0.0.1:18552/intents-explorer/api/v0
+        FASTNEAR_API_BASE_URL: http://127.0.0.1:18552/fastnear-api
       run: cargo test --lib --bins
 
     - name: Build binary for integration tests
@@ -144,6 +145,7 @@ jobs:
         TRANSFER_HINTS_BASE_URL: http://127.0.0.1:18552/fastnear-hints
         NEARDATA_BASE_URL: http://127.0.0.1:18552/neardata
         INTENTS_EXPLORER_API_URL: http://127.0.0.1:18552/intents-explorer/api/v0
+        FASTNEAR_API_BASE_URL: http://127.0.0.1:18552/fastnear-api
       run: cargo test --tests
 
     - name: Show RPC proxy logs
