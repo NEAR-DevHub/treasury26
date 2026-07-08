@@ -354,7 +354,11 @@ export function TreasuryOnboardingPage({
         setIsCheckingHandle(true);
         try {
             const result = await checkHandleUnused(fullAccountId);
-            if (!result?.unused) {
+            if (result === null) {
+                toast.error(t("creationFailed"));
+                return false;
+            }
+            if (!result.unused) {
                 form.setError("accountName", {
                     message: tValidation("accountTaken"),
                 });
