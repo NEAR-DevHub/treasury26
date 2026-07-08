@@ -131,6 +131,10 @@ jobs:
         NEARDATA_BASE_URL: http://127.0.0.1:18552/neardata
         INTENTS_EXPLORER_API_URL: http://127.0.0.1:18552/intents-explorer/api/v0
         FASTNEAR_API_BASE_URL: http://127.0.0.1:18552/fastnear-api
+        # `enabled` only when the real FastNear secret is present (internal
+        # PRs / main). On fork PRs the secret is empty -> `disabled`, so the
+        # live-endpoint parity canary skips instead of failing on a dummy key.
+        FASTNEAR_LIVE_TESTS: ${{ secrets.FASTNEAR_API_KEY != '' && 'enabled' || 'disabled' }}
       run: cargo test --lib --bins
 
     - name: Build binary for integration tests
@@ -146,6 +150,10 @@ jobs:
         NEARDATA_BASE_URL: http://127.0.0.1:18552/neardata
         INTENTS_EXPLORER_API_URL: http://127.0.0.1:18552/intents-explorer/api/v0
         FASTNEAR_API_BASE_URL: http://127.0.0.1:18552/fastnear-api
+        # `enabled` only when the real FastNear secret is present (internal
+        # PRs / main). On fork PRs the secret is empty -> `disabled`, so the
+        # live-endpoint parity canary skips instead of failing on a dummy key.
+        FASTNEAR_LIVE_TESTS: ${{ secrets.FASTNEAR_API_KEY != '' && 'enabled' || 'disabled' }}
       run: cargo test --tests
 
     - name: Show RPC proxy logs

@@ -119,6 +119,17 @@ async fn all_endpoints_dead_returns_error() {
 /// result for the SAME request via the real near-api client path.
 #[tokio::test]
 async fn parity_across_production_endpoints() {
+    // Hits real production RPC providers (incl. authed FastNEAR) to check they
+    // agree — a live-infrastructure canary, not a test of our own code. Skip
+    // where a real authed key / live network isn't available (fork PR CI).
+    if !common::live_production_tests_enabled() {
+        eprintln!(
+            "skipping parity_across_production_endpoints: live production endpoints \
+             require a real FASTNEAR_API_KEY (unavailable on fork PRs)"
+        );
+        return;
+    }
+
     let fastnear_key = common::get_fastnear_api_key();
 
     let endpoints: Vec<(&str, RPCEndpoint)> = vec![
