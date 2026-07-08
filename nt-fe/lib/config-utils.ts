@@ -271,20 +271,21 @@ export function isRequestor(
 }
 
 /**
- * Whether the account holds the DAO's admin / policy-management capability. Used to gate the
- * admin-only template action (delete) and the custom-requests feature flag.
+ * Mirror of nt-be's `role_has_action_permission` + role-membership check: whether `accountId` is in
+ * a role holding a permission whose ACTION segment equals `action` or the wildcard `*`. nt-be matches
+ * on the action segment ONLY (ignoring the proposal-kind segment), so any FE gate that shadows an
+ * nt-be `verify_can_perform_action(dao, action)` call must match the same way — otherwise the UI
+ * shows an action the backend 403s (or hides one it allows).
  *
- * This mirrors nt-be's `role_has_action_permission(role, "ChangePolicy")` EXACTLY, so the UI never
- * shows an action the backend will 403. nt-be matches on the *action* segment only, so this is true
- * when the account is in a role holding a permission whose action is `ChangePolicy` or the wildcard
- * `*`. For real SputnikDAO policies that means a wildcard-action role — `policy:*`, `config:*`,
- * `*:*` — i.e. governance; a Requestor's `call:AddProposal` (action `AddProposal`) does NOT match.
- * (`ChangePolicy` is a proposal *kind*, not an action — the only strings that carry it are synthetic
- * `*:ChangePolicy` fixtures or a wildcard action.)
+ * `action` is either a real SputnikDAO action (`AddProposal`, `VoteApprove`, …) or the proposal-kind
+ * label nt-be passes as a gate name (e.g. `ChangePolicy`). Note `ChangePolicy` is a proposal *kind*,
+ * not an action, so it only matches wildcard-action roles (`policy:*`, `config:*`, `*:*`) or the
+ * synthetic `*:ChangePolicy` fixture — i.e. governance, never a plain Requestor.
  */
-export function canChangePolicy(
+export function hasActionPermission(
     policy: Policy | null | undefined,
     accountId: string,
+    action: string,
 ): boolean {
     if (!policy || !accountId) return false;
 
@@ -292,8 +293,20 @@ export function canChangePolicy(
         (role) =>
             checkRoleMembership(role.kind, accountId) &&
             role.permissions.some((permission) => {
-                const action = permission.split(":")[1];
-                return action === "ChangePolicy" || action === "*";
+                const permissionAction = permission.split(":")[1];
+                return permissionAction === action || permissionAction === "*";
             }),
     );
+}
+
+/**
+ * Whether the account holds the DAO's admin / policy-management capability — nt-be gates the
+ * admin-only template action (delete) and the custom-requests feature flag on the `ChangePolicy`
+ * action, so this mirrors that gate exactly.
+ */
+export function canChangePolicy(
+    policy: Policy | null | undefined,
+    accountId: string,
+): boolean {
+    return hasActionPermission(policy, accountId, "ChangePolicy");
 }

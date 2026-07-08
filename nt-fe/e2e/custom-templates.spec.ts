@@ -72,22 +72,23 @@ const BARE_MEMBER_POLICY = {
     ],
 };
 
-/** An admin (ChangePolicy): can author AND delete templates, but cannot file one (no
- * `call:AddProposal`). */
+/** A real admin/governance role (wildcard-action `config:*`/`policy:*`, as trezu's create.rs emits):
+ * can author AND delete templates, but cannot file one (no `call:AddProposal`). */
 const MANAGER_ONLY_POLICY = {
     ...TREASURY_POLICY,
     roles: [
         {
             name: "managers",
             kind: { Group: [ACCOUNT_ID] },
-            permissions: ["*:ChangePolicy"],
+            permissions: ["config:*", "policy:*"],
             vote_policy: {},
         },
     ],
 };
 
-/** A transfer-only Requestor — templates build a FunctionCall, so `transfer:AddProposal` can't file
- * one; this member should get NO templates access at all. */
+/** A transfer-only Requestor. nt-be gates authoring on the `AddProposal` action, which
+ * `transfer:AddProposal` satisfies, so they CAN author templates — but filing builds a FunctionCall
+ * that needs `call:AddProposal`, which they lack, so Create Request stays disabled. */
 const TRANSFER_ONLY_POLICY = {
     ...TREASURY_POLICY,
     roles: [
@@ -589,24 +590,36 @@ test.describe("Custom Templates — access gates", () => {
         await expect(
             page.getByRole("button", { name: "Add New" }),
         ).toBeEnabled();
-        // ...and the ⋮ menu exposes the admin-only Delete...
+        // ...but can't file a FunctionCall template → Create Request shown disabled, not hidden.
+        // Assert this BEFORE opening the ⋮ menu — an open Radix menu makes the row content
+        // aria-hidden, which would hide the button from the role query.
+        await expect(
+            page.getByRole("button", { name: "Create Request" }),
+        ).toBeDisabled();
+        // ...and the ⋮ menu exposes the admin-only Delete, enabled.
         await page.getByRole("button", { name: "Template actions" }).click();
         await expect(
             page.getByRole("menuitem", { name: "Delete", exact: true }),
         ).toBeVisible();
-        // ...but can't file a FunctionCall template → Create Request shown disabled, not hidden.
+    });
+
+    test("transfer-only requestor: can author (mirrors nt-be AddProposal) but Create Request disabled", async ({
+        page,
+    }) => {
+        // transfer:AddProposal satisfies nt-be's AddProposal authoring gate, so the list + authoring
+        // are available; but it can't file the FunctionCall a template builds (needs call:AddProposal).
+        await setupMocks(page, [template()], { policy: TRANSFER_ONLY_POLICY });
+        await page.goto(`/${TREASURY_ID}/custom-templates`);
+
+        await expect(page.getByText("Set Greeting")).toBeVisible({
+            timeout: 15000,
+        });
+        await expect(
+            page.getByRole("button", { name: "Add New" }),
+        ).toBeEnabled();
         await expect(
             page.getByRole("button", { name: "Create Request" }),
         ).toBeDisabled();
-    });
-
-    test("transfer-only requestor has no templates access → dashboard", async ({
-        page,
-    }) => {
-        // transfer:AddProposal can't file a FunctionCall template, so it grants no access.
-        await setupMocks(page, [template()], { policy: TRANSFER_ONLY_POLICY });
-        await page.goto(`/${TREASURY_ID}/custom-templates`);
-        await page.waitForURL(/\/dashboard$/, { timeout: 15000 });
     });
 
     test("sole member of a real trezu DAO (Requestor+Admin+Approver) has full access (#1046 regression)", async ({
