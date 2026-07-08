@@ -50,6 +50,27 @@ claims); the goldsky drain reports partial progress on a mid-drain failure
 tracked in a private `apalis_migrations` schema so they never collide with
 the app's own `_sqlx_migrations`.
 
+## Error reporting (Sentry)
+
+Each worker carries apalis's own `SentryLayer` (feature `sentry`, sharing
+the same `sentry-core` as the app's `sentry` crate, so it uses the global
+hub initialised in `observability.rs`). Per task it:
+
+- opens a Sentry performance transaction (APM), and
+- on failure, `capture_error`s the actual error with the `queue`, task id,
+  and attempt as Sentry context — better grouping and filtering than a
+  formatted log line.
+
+It's layered *outside* `retry`/`catch_panic`, so a failure is reported
+**once** — after all retries, and including panics (which `catch_panic`
+turns into errors). To avoid double-reporting, the per-task tracing layer
+logs failures at `WARN` instead of the default `ERROR` (a single retried
+cycle is a warning); that keeps the generic `tracing → Sentry` bridge from
+emitting a second event for the same failure. `SentryLayer` is a no-op when
+`SENTRY_DSN` is unset. Worker-level errors (a worker exiting / being
+restarted by the monitor) are still logged at `ERROR` and reach Sentry via
+that bridge.
+
 ## Web UI
 
 The apalis-board (UI + its REST API at `/api/v1`) is served on the main

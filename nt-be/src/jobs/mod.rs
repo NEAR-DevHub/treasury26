@@ -22,6 +22,8 @@ use std::sync::Arc;
 
 use apalis::layers::WorkerBuilderExt;
 use apalis::layers::retry::RetryPolicy;
+use apalis::layers::sentry::SentryLayer;
+use apalis::layers::tracing::{DefaultOnFailure, TraceLayer};
 use apalis::prelude::*;
 use apalis_core::backend::TaskSink;
 use apalis_core::backend::pipe::PipeExt;
@@ -219,7 +221,21 @@ macro_rules! register_cron_worker {
                 .data(state.clone())
                 .retry(RetryPolicy::retries(TASK_RETRIES))
                 .catch_panic()
-                .enable_tracing()
+                // apalis's Sentry integration, layered *outside* retry so it
+                // captures the final failure once (after retries, and after
+                // catch_panic has converted any panic to an error) with the
+                // task's queue / id / attempt as Sentry context, plus a
+                // per-task performance transaction. No-op when Sentry is off.
+                .layer(SentryLayer::new())
+                // Trace failures at WARN, not the default ERROR: a single
+                // failed cycle is retried and is a warning, and this keeps the
+                // tracing→Sentry bridge (ERROR→event) from emitting a *second*
+                // event for the same failure the SentryLayer already captured.
+                // Persistent failures still surface via Sentry + the board.
+                .layer(
+                    TraceLayer::new()
+                        .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
+                )
                 .concurrency(1)
                 .build($handler)
         })
