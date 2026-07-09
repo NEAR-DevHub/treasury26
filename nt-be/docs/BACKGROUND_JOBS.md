@@ -31,7 +31,12 @@ returning a plain `404` (the board only owns `/api/v1`).
 |---|---|---|---|
 | account-maintenance | every 60s | MAINTENANCE_INTERVAL_SECONDS | gated by DISABLE_BALANCE_MONITORING |
 | confidential-poll | every 300s | CONFIDENTIAL_POLL_INTERVAL_SECONDS | gated by DISABLE_BALANCE_MONITORING |
-| price-sync | every 60s | — | |
+| price-sync | every 60s | — | syncs DeFiLlama prices into `historical_prices` |
+| token-price-ingest | every 60s | — | refreshes `tokens` and 5-minute `token_prices` from Chaindefuser |
+| public-history-scheduler | every 2s | — | enqueues public latest/backfill page jobs; latest enqueue skipped without GOLDSKY_DATABASE_URL |
+| public-silver-projection | every 5s | — | gated by NEARBLOCKS_API_KEY |
+| public-gold-projection | every 5s | — | gated by NEARBLOCKS_API_KEY |
+| public-proposal-reconciliation | every 10min | — | gated by NEARBLOCKS_API_KEY |
 | confidential-history-ingest | every 10s | — | |
 | confidential-snapshots | hourly | — | |
 | confidential-gold-reconciliation | daily + startup task | — | |

@@ -142,10 +142,10 @@ async fn create_and_approve_proposal(
     client: &reqwest::Client,
 ) -> String {
     // Create proposal
-    Transaction::construct(ACCOUNT_ID.parse().unwrap(), DAO_ID.parse().unwrap())
+    let _ = Transaction::construct(ACCOUNT_ID.parse().unwrap(), DAO_ID.parse().unwrap())
         .add_action(Action::FunctionCall(Box::new(FunctionCallAction {
             method_name: "add_proposal".to_string(),
-            args: serde_json::to_vec(&proposal).unwrap().into(),
+            args: serde_json::to_vec(&proposal).unwrap(),
             gas: NearGas::from_tgas(100),
             deposit: NearToken::from_yoctonear(0),
         })))
@@ -213,8 +213,7 @@ async fn create_and_approve_proposal(
             args: serde_json::to_vec(&json!({
                 "id": proposal_id, "action": "VoteApprove", "proposal": kind,
             }))
-            .unwrap()
-            .into(),
+            .unwrap(),
             gas: NearGas::from_tgas(300),
             deposit: NearToken::from_yoctonear(0),
         })))
@@ -240,19 +239,18 @@ fn extract_mpc_signature(result_debug: &str) -> Option<Vec<u8>> {
             .find(|c: char| !c.is_alphanumeric() && c != '+' && c != '/' && c != '=')
             .unwrap_or(rest.len());
         let b64_value = &rest[..end];
-        if let Ok(decoded) = BASE64.decode(b64_value) {
-            if let Ok(sig_json) = serde_json::from_slice::<Value>(&decoded) {
-                if sig_json.get("scheme").is_some() {
-                    return Some(
-                        sig_json["signature"]
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .map(|v| v.as_u64().unwrap() as u8)
-                            .collect(),
-                    );
-                }
-            }
+        if let Ok(decoded) = BASE64.decode(b64_value)
+            && let Ok(sig_json) = serde_json::from_slice::<Value>(&decoded)
+            && sig_json.get("scheme").is_some()
+        {
+            return Some(
+                sig_json["signature"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| v.as_u64().unwrap() as u8)
+                    .collect(),
+            );
         }
     }
     None
@@ -442,7 +440,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     borsh::to_writer(&mut bytes, &nep413_payload)?;
     use sha2::Digest;
     let hash = sha2::Sha256::digest(&bytes);
-    let hash_hex = hex::encode(&hash);
+    let hash_hex = hex::encode(hash);
     println!("NEP-413 hash: {}", hash_hex);
 
     let proposal = json!({

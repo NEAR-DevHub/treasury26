@@ -191,12 +191,14 @@ mod tests {
         dotenvy::from_filename(".env").ok();
         dotenvy::from_filename(".env.test").ok();
 
-        let mut env_vars = EnvVars::default();
-        env_vars.oneclick_api_url = "https://1click.chaindefuser.com".to_string();
-        env_vars.oneclick_jwt_token = std::env::var("ONECLICK_JWT_TOKEN").ok();
-        env_vars.oneclick_app_fee_bps = Some(35);
-        env_vars.oneclick_app_fee_recipient = Some("trezu.sputnik-dao.near".to_string());
-        env_vars.oneclick_referral = Some("trezu".to_string());
+        let env_vars = EnvVars {
+            oneclick_api_url: "https://1click.chaindefuser.com".to_string(),
+            oneclick_jwt_token: std::env::var("ONECLICK_JWT_TOKEN").ok(),
+            oneclick_app_fee_bps: Some(35),
+            oneclick_app_fee_recipient: Some("trezu.sputnik-dao.near".to_string()),
+            oneclick_referral: Some("trezu".to_string()),
+            ..Default::default()
+        };
 
         let db_pool = sqlx::postgres::PgPool::connect_lazy(&env_vars.database_url)
             .expect("Failed to create lazy pool");

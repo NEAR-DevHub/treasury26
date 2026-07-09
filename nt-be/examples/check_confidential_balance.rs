@@ -6,7 +6,6 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 use serde_json::{Value, json};
 
 const ACCOUNT_ID: &str = "petersalomonsendev.near";
-const DAO_ID: &str = "petersalomonsendev.sputnik-dao.near";
 
 fn oneclick_url() -> String {
     std::env::var("ONECLICK_API_URL")

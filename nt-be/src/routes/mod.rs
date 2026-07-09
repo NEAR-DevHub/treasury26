@@ -78,6 +78,7 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/public/dashboard/aum",
             get(handlers::public_dashboard::get_public_dashboard_aum),
         )
+        .route("/api/app-events", get(handlers::events::app_events))
         // Balance changes endpoint
         .route(
             "/api/balance-changes",

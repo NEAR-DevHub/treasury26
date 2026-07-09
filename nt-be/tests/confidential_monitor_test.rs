@@ -200,11 +200,7 @@ async fn handle_confidential_outgoing_external_payment(pool: PgPool) {
 
     let (amount, counterparty, token_id, method_name, raw_data) = row;
     assert_eq!(token_id, "intents.near:nep141:wrap.near");
-    assert!(
-        amount < BigDecimal::from(0),
-        "outgoing leg must be negative, got {}",
-        amount
-    );
+    assert!(amount < 0, "outgoing leg must be negative, got {}", amount);
     assert_eq!(
         counterparty, EXTERNAL_RECIPIENT,
         "payment counterparty should be the quote recipient"

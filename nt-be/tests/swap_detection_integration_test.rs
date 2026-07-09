@@ -243,7 +243,7 @@ async fn test_swap_detection_for_usdc_to_usdt_swap(pool: PgPool) -> sqlx::Result
         swap.received_token_id
     );
     assert!(
-        swap.received_amount > bigdecimal::BigDecimal::from(0),
+        swap.received_amount > 0,
         "Received amount should be positive, got: {}",
         swap.received_amount
     );

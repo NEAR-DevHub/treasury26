@@ -50,10 +50,17 @@ fn escape_html(value: &str) -> String {
 fn service_label(service: &str) -> &'static str {
     match service {
         "backend" => "Backend API",
+        "bridge-rpc" => "Bridge RPC",
         "exchange" => "Exchange quotes",
         "near-intents" => "NEAR Intents",
         "near-protocol" => "NEAR Protocol status",
         "near-rpc" => "NEAR RPC",
+        "fastnear" => "FastNear",
+        "goldsky" => "Goldsky DB",
+        "defillama" => "DeFiLlama",
+        "nearblocks" => "NearBlocks",
+        "intents-explorer" => "Intents Explorer",
+        "neardata" => "Neardata",
         _ => "Unknown service",
     }
 }
@@ -61,9 +68,17 @@ fn service_label(service: &str) -> &'static str {
 fn health_check_name(service: &str) -> &'static str {
     match service {
         "backend" => "backend.database",
+        "bridge-rpc" => "bridge-rpc.supported-tokens",
         "exchange" => "exchange.quote",
         "near-protocol" => "near-protocol.status-page",
         "near-rpc" => "near-rpc.status",
+        "near-intents" => "near-intents.status",
+        "fastnear" => "fastnear.api",
+        "goldsky" => "goldsky.database",
+        "defillama" => "defillama.prices",
+        "nearblocks" => "nearblocks.api",
+        "intents-explorer" => "intents-explorer.api",
+        "neardata" => "neardata.api",
         _ => "unknown",
     }
 }

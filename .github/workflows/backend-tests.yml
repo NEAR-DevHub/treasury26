@@ -61,12 +61,25 @@ jobs:
 
     - name: Create .env file
       working-directory: nt-be
+      # Fork PRs get no secrets, so both keys are empty here. Two different
+      # reasons that's fine:
+      #  - FASTNEAR_API_KEY: FastNear's public endpoints (api.fastnear.com,
+      #    transfers.main.fastnear.com) accept an *empty* bearer as anonymous
+      #    (only an *invalid* key 401s), so the live-hitting integration tests
+      #    still work keyless. The one authed-only check
+      #    (parity_across_production_endpoints) is gated off via
+      #    FASTNEAR_LIVE_TESTS below.
+      #  - INTENTS_EXPLORER_API_KEY: the intents-explorer calls are replayed
+      #    from the offline rpc_cache_proxy (keyed by request, not auth), but
+      #    swap detection is skipped when the key is empty
+      #    (env parsing `.filter(|s| !s.is_empty())`), so fall back to a dummy
+      #    non-empty value to exercise that path against the fixtures.
       run: |
         cat > .env << EOF
         DATABASE_URL=postgres://treasury_test:test_password@localhost:5433/treasury_test_db
         PORT=3000
         FASTNEAR_API_KEY=${{ secrets.FASTNEAR_API_KEY }}
-        INTENTS_EXPLORER_API_KEY=${{ secrets.INTENTS_EXPLORER_API_KEY }}
+        INTENTS_EXPLORER_API_KEY=${{ secrets.INTENTS_EXPLORER_API_KEY || 'ci-fixture-key' }}
         JWT_SECRET=test-jwt-secret-for-ci-testing
         EOF
 
@@ -119,6 +132,10 @@ jobs:
         TRANSFER_HINTS_BASE_URL: http://127.0.0.1:18552/fastnear-hints
         NEARDATA_BASE_URL: http://127.0.0.1:18552/neardata
         INTENTS_EXPLORER_API_URL: http://127.0.0.1:18552/intents-explorer/api/v0
+        # `enabled` only when the real FastNear secret is present (internal
+        # PRs / main). On fork PRs the secret is empty -> `disabled`, so the
+        # live-endpoint parity canary skips instead of failing on a dummy key.
+        FASTNEAR_LIVE_TESTS: ${{ secrets.FASTNEAR_API_KEY != '' && 'enabled' || 'disabled' }}
       run: cargo test --lib --bins
 
     - name: Build binary for integration tests
@@ -133,6 +150,10 @@ jobs:
         TRANSFER_HINTS_BASE_URL: http://127.0.0.1:18552/fastnear-hints
         NEARDATA_BASE_URL: http://127.0.0.1:18552/neardata
         INTENTS_EXPLORER_API_URL: http://127.0.0.1:18552/intents-explorer/api/v0
+        # `enabled` only when the real FastNear secret is present (internal
+        # PRs / main). On fork PRs the secret is empty -> `disabled`, so the
+        # live-endpoint parity canary skips instead of failing on a dummy key.
+        FASTNEAR_LIVE_TESTS: ${{ secrets.FASTNEAR_API_KEY != '' && 'enabled' || 'disabled' }}
       run: cargo test --tests
 
     - name: Show RPC proxy logs

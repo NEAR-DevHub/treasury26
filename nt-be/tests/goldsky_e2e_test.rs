@@ -22,6 +22,7 @@ use std::time::Instant;
 use tower::ServiceExt;
 
 /// Balance change record — fields we inspect in the API response.
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BalanceChangeRecord {
@@ -40,6 +41,7 @@ struct BalanceChangeRecord {
 }
 
 /// Reference record from production (api.trezu.app) for hard assertions.
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ReferenceRecord {
@@ -58,6 +60,7 @@ struct RecentActivityResponse {
     total: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RecentActivityItem {
@@ -69,6 +72,7 @@ struct RecentActivityItem {
     method_name: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SwapInfo {
@@ -573,7 +577,7 @@ async fn test_goldsky_maintenance_webassemblymusic(pool: PgPool) {
     nt_be::observability::init_tracing();
 
     let account_id = "webassemblymusic-treasury.sputnik-dao.near";
-    let network = common::create_archival_network();
+    let _network = common::create_archival_network();
 
     let total_start = Instant::now();
 
