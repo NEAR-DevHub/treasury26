@@ -895,7 +895,7 @@ export default function ExportActivityPage() {
                                                     >
                                                         <Button
                                                             variant="outline"
-                                                            className="w-full justify-between bg-muted! dark:bg-muted! border-0! shadow-none! hover:bg-general-tertiary! dark:hover:bg-general-tertiary! font-normal"
+                                                            className="w-full justify-between bg-muted! dark:bg-muted! hover:bg-general-tertiary! dark:hover:bg-general-tertiary! font-normal"
                                                         >
                                                             <div className="flex items-center gap-2 min-w-0 flex-1">
                                                                 <Coins className="w-4 h-4 shrink-0" />
@@ -986,7 +986,7 @@ export default function ExportActivityPage() {
                                                     >
                                                         <Button
                                                             variant="outline"
-                                                            className="w-full justify-between bg-muted! dark:bg-muted! border-0! shadow-none! hover:bg-general-tertiary! dark:hover:bg-general-tertiary! font-normal"
+                                                            className="w-full justify-between bg-muted! dark:bg-muted! hover:bg-general-tertiary! dark:hover:bg-general-tertiary! font-normal"
                                                         >
                                                             <span className="truncate flex-1 text-left">
                                                                 {getSelectedTypesLabel()}

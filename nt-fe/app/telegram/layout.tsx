@@ -8,6 +8,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/toaster";
+import { WarningsProvider } from "@/components/warnings-provider";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -62,9 +63,11 @@ export default async function TelegramLayout({
             >
                 <NextIntlClientProvider locale={locale} messages={messages}>
                     <QueryProvider>
-                        <NearInitializer />
-                        <AuthProvider>{children}</AuthProvider>
-                        <Toaster />
+                        <WarningsProvider>
+                            <NearInitializer />
+                            <AuthProvider>{children}</AuthProvider>
+                            <Toaster />
+                        </WarningsProvider>
                     </QueryProvider>
                 </NextIntlClientProvider>
             </body>

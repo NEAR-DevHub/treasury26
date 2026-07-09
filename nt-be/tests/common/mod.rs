@@ -80,6 +80,18 @@ pub fn get_fastnear_api_key() -> String {
     std::env::var("FASTNEAR_API_KEY").expect("FASTNEAR_API_KEY must be set in .env")
 }
 
+/// Whether tests that hit *live* production endpoints directly (not via the
+/// offline RPC cache proxy) may run. These verify external-infrastructure
+/// behavior — e.g. cross-provider RPC parity — so they need real network
+/// access and a real authenticated FastNear key, neither of which fork PRs
+/// have (secrets aren't shared with forks). CI sets `FASTNEAR_LIVE_TESTS` to
+/// `disabled` when the real secret is absent; everywhere else (local dev,
+/// internal CI with the secret) it defaults to enabled.
+pub fn live_production_tests_enabled() -> bool {
+    load_test_env();
+    std::env::var("FASTNEAR_LIVE_TESTS").as_deref() != Ok("disabled")
+}
+
 /// Build a test AppState whose primary `network` is the archival endpoint.
 ///
 /// Most integration tests replay historical blocks that the current-head RPC

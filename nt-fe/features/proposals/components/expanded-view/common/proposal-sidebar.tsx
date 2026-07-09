@@ -21,6 +21,7 @@ import { StepIcon } from "@/components/step-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";
 import { SlotWarning } from "@/components/warning-message";
+import type { PaymentRequestData } from "@/features/proposals/types/index";
 import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import {
@@ -43,6 +44,7 @@ import {
 } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
+import { isNearComPaymentRoute } from "@/lib/intents-network";
 import Big from "@/lib/big";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
@@ -330,6 +332,7 @@ export function ProposalSidebar({
     // Confidential metadata is backend-enriched and nested under mapped.data.
     let depositAddress: string | undefined;
     let isConfidentialPayment = false;
+    let confidentialPaymentData: PaymentRequestData | undefined;
     let confidentialProposalCreatedAt: Date | undefined;
     let confidentialExecutedAt: Date | undefined;
     if (isExchangeProposal || isPaymentProposal || isConfidentialRequest) {
@@ -345,6 +348,10 @@ export function ProposalSidebar({
                 );
                 const mapped = confidentialData?.mapped;
                 isConfidentialPayment = mapped?.type === "payment";
+                if (isConfidentialPayment) {
+                    confidentialPaymentData =
+                        mapped?.data as PaymentRequestData;
+                }
                 depositAddress = mapped?.data?.depositAddress;
             } else {
                 depositAddress = (data as any)?.depositAddress;
@@ -402,9 +409,16 @@ export function ProposalSidebar({
     // still processing — there is no finalized transaction to link to yet.
     const hideTransactionLink =
         isConfidentialRequestProposal && isSwapProcessing;
-    // Confidential exchanges link to NEAR Blocks; other intents-routed
-    // proposals use the NEAR Intents explorer (masked for confidential).
-    const useNearblocksLink = !hasDepositAddress || isConfidentialExchange;
+    // Confidential exchanges and near.com confidential payments link to NEAR
+    // Blocks; other intents-routed proposals use the NEAR Intents explorer
+    // (masked for confidential).
+    const isConfidentialNearComPayment =
+        isConfidentialPayment &&
+        isNearComPaymentRoute(confidentialPaymentData ?? {});
+    const useNearblocksLink =
+        !hasDepositAddress ||
+        isConfidentialExchange ||
+        isConfidentialNearComPayment;
     // Receipt button visibility rules:
     // - Proposal must be executed and of a receipt-eligible kind.
     // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
@@ -543,9 +557,10 @@ export function ProposalSidebar({
                         </Button>
                     )}
                     {/* Transaction link. Hidden for confidential requests while
-                        the swap is still processing. Confidential exchanges link
-                        to NEAR Blocks; other intents-routed proposals use the
-                        NEAR Intents explorer (masked for confidential). */}
+                        the swap is still processing. Confidential exchanges and
+                        near.com confidential payments link to NEAR Blocks; other
+                        intents-routed proposals use the NEAR Intents explorer
+                        (masked for confidential). */}
                     {hideTransactionLink ? null : useNearblocksLink ? (
                         transaction && (
                             <Link

@@ -18,11 +18,19 @@ case $ARCH in
         ;;
 esac
 
-# Download and extract near-sandbox if not present
+# Download and extract near-sandbox if not present.
+# Downloaded at runtime from S3, so make the fetch resilient to transient
+# network/5xx failures: without --fail/--retry a single hiccup exits 1, and
+# since this init program is startretries=1/autorestart=false in
+# supervisord.conf that failure is permanent and cascades (near node never
+# starts -> treasury-api can't reach RPC -> panic loop). Download to a file
+# first (not `curl | tar`) so a partial stream can't corrupt the extract.
 if [ ! -f /usr/local/bin/near-sandbox ]; then
     echo "Downloading near-sandbox for $ARCH..."
     TEMP_DIR=$(mktemp -d)
-    curl -L "$SANDBOX_URL" | tar -xz -C "$TEMP_DIR"
+    curl -fL --retry 5 --retry-delay 3 --retry-all-errors \
+        -o "$TEMP_DIR/near-sandbox.tar.gz" "$SANDBOX_URL"
+    tar -xz -C "$TEMP_DIR" -f "$TEMP_DIR/near-sandbox.tar.gz"
     # Handle nested directory structure (e.g., Linux-x86_64/near-sandbox)
     find "$TEMP_DIR" -name "near-sandbox" -type f -exec mv {} /usr/local/bin/near-sandbox \;
     chmod +x /usr/local/bin/near-sandbox

@@ -8,7 +8,21 @@ import { cn } from "@/lib/utils";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+/** Strips border/shadow/ring from triggers — especially when a Button is passed via `asChild`. */
+const dropdownMenuTriggerClassName =
+    "outline-none border-0! shadow-none! focus-visible:border-0! focus-visible:ring-0! focus-visible:ring-offset-0! data-[state=open]:border-0! data-[state=open]:ring-0!";
+
+const DropdownMenuTrigger = React.forwardRef<
+    React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+    React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+    <DropdownMenuPrimitive.Trigger
+        ref={ref}
+        className={cn(dropdownMenuTriggerClassName, className)}
+        {...props}
+    />
+));
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
@@ -186,6 +200,7 @@ DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 
 export {
     DropdownMenu,
+    dropdownMenuTriggerClassName,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
