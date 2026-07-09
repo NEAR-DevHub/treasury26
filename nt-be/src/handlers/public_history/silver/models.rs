@@ -133,6 +133,13 @@ impl PublicAsset {
         }
     }
 
+    pub fn nep245(token_id: impl Into<String>) -> Self {
+        Self {
+            token_standard: PublicTokenStandard::Nep245,
+            token_id: token_id.into(),
+        }
+    }
+
     pub fn token_standard(&self) -> PublicTokenStandard {
         self.token_standard
     }

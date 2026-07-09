@@ -6,6 +6,7 @@ use super::models::{
     PublicTransferDirection, PublicTransferLegKind,
 };
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
+use crate::services::token_prices::canonicalize_token_id;
 
 fn proposal_link(row: &BronzePublicHistoryRow) -> Option<ProposalLink> {
     Some(ProposalLink {
@@ -113,6 +114,11 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         PublicTransferDirection::Internal
     };
     let amount = PublicAmount::from_raw(delta.abs(), decimals);
+    let asset = if row.contract_account_id.as_deref() == Some("v2_1.omni.hot.tg") {
+        PublicAsset::nep245(canonical_hot_omni_token_id(&token_id))
+    } else {
+        PublicAsset::intents(token_id)
+    };
 
     Ok(Some(NormalizedTransferLeg {
         account_id: row.account_id.clone(),
@@ -124,13 +130,24 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         receipt_id: row.receipt_id.clone(),
         block_height: row.block_height,
         block_time: row.block_time,
-        asset: PublicAsset::intents(token_id),
+        asset,
         direction,
         counterparty: row.involved_account_id.clone(),
         amount,
         leg_kind: kind,
         raw_payload: row.raw_payload.clone(),
     }))
+}
+
+fn canonical_hot_omni_token_id(token_id: &str) -> String {
+    if token_id.starts_with("nep245:")
+        || token_id.starts_with("nep141:")
+        || token_id.starts_with("intents.near:")
+        || token_id.starts_with("v2_1.omni.hot.tg:")
+    {
+        return canonicalize_token_id(token_id);
+    }
+    canonicalize_token_id(&format!("v2_1.omni.hot.tg:{token_id}"))
 }
 
 fn normalize_receipt(
@@ -290,6 +307,36 @@ mod tests {
             "intents.near:nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
         );
         assert_eq!(leg.amount.amount, BigDecimal::from_str("0.1").unwrap());
+    }
+
+    #[test]
+    fn hot_omni_mt_asset_is_canonical_nep245() {
+        let mut row = base_row(PublicHistorySource::NearblocksMt);
+        row.contract_account_id = Some("v2_1.omni.hot.tg".to_string());
+        row.token_id = Some("56_2CMMyVTGZkeyNZTSvS5sarzfir6g".to_string());
+
+        let leg = normalize_bronze_row(&row)
+            .expect("normalization should succeed")
+            .expect("mt row should create a leg");
+
+        assert_eq!(leg.asset.token_standard(), PublicTokenStandard::Nep245);
+        assert_eq!(
+            leg.asset.token_id(),
+            "nep245:v2_1.omni.hot.tg:56_2CMMyVTGZkeyNZTSvS5sarzfir6g"
+        );
+    }
+
+    #[test]
+    fn hot_omni_native_asset_suffix_is_canonical_nep245() {
+        let mut row = base_row(PublicHistorySource::NearblocksMt);
+        row.contract_account_id = Some("v2_1.omni.hot.tg".to_string());
+        row.token_id = Some("1117_".to_string());
+
+        let leg = normalize_bronze_row(&row)
+            .expect("normalization should succeed")
+            .expect("mt row should create a leg");
+
+        assert_eq!(leg.asset.token_id(), "nep245:v2_1.omni.hot.tg:1117_");
     }
 
     #[test]

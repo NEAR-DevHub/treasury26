@@ -14,6 +14,7 @@ use sqlx::PgPool;
 use std::collections::HashMap;
 
 use super::price_provider::PriceProvider;
+use super::token_prices::canonicalize_token_id;
 use crate::constants::intents_tokens::{get_defuse_to_unified_map, get_defuse_tokens_map};
 
 /// Price lookup service that combines caching with price providers
@@ -356,19 +357,9 @@ pub fn token_id_to_unified_asset_id(token_id: &str) -> Option<String> {
     None
 }
 
-/// Normalize token_id to the lookup key format used in tokens.json
-///
-/// For intents tokens, strips the "intents.near:" prefix.
-/// For direct token contracts, returns as-is (will be searched in the map).
+/// Normalize token_id to the lookup key format used in tokens.json.
 fn normalize_token_id(token_id: &str) -> String {
-    // Handle intents.near: prefix (works for both nep141 and nep245)
-    // "intents.near:nep141:btc.omft.near" -> "nep141:btc.omft.near"
-    // "intents.near:nep245:v2_1.omni.hot.tg:..." -> "nep245:v2_1.omni.hot.tg:..."
-    if let Some(stripped) = token_id.strip_prefix("intents.near:") {
-        return stripped.to_string();
-    }
-
-    token_id.to_string()
+    canonicalize_token_id(token_id)
 }
 
 /// Find the unifiedAssetId for a given defuseAssetId by searching tokens.json
@@ -468,6 +459,18 @@ mod tests {
     }
 
     #[test]
+    fn test_token_id_to_unified_asset_id_hot_omni_public_alias() {
+        assert_eq!(
+            token_id_to_unified_asset_id("intents.near:56_2CMMyVTGZkeyNZTSvS5sarzfir6g"),
+            Some("usdt".to_string())
+        );
+        assert_eq!(
+            token_id_to_unified_asset_id("intents.near:137_qiStmoQJDQPTebaPjgx5VBxZv6L"),
+            Some("usdc".to_string())
+        );
+    }
+
+    #[test]
     fn test_token_id_to_unified_asset_id_unknown_token() {
         // Unknown tokens should return None
         assert_eq!(token_id_to_unified_asset_id("arizcredits.near"), None);
@@ -488,8 +491,12 @@ mod tests {
             ),
             "nep245:v2_1.omni.hot.tg:137_qiStmoQJDQPTebaPjgx5VBxZv6L"
         );
+        assert_eq!(
+            normalize_token_id("intents.near:137_qiStmoQJDQPTebaPjgx5VBxZv6L"),
+            "nep245:v2_1.omni.hot.tg:137_qiStmoQJDQPTebaPjgx5VBxZv6L"
+        );
         // Direct NEAR token contracts - pass through unchanged
-        assert_eq!(normalize_token_id("wrap.near"), "wrap.near");
+        assert_eq!(normalize_token_id("wrap.near"), "nep141:wrap.near");
         // Already normalized tokens pass through
         assert_eq!(
             normalize_token_id("nep141:btc.omft.near"),

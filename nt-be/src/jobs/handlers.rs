@@ -74,7 +74,6 @@ pub async fn token_price_backfill(
 }
 
 /// Fills `balance_changes.usd_value` from the `token_prices` series.
-
 pub async fn balance_changes_usd_backfill(
     _t: Tick,
     state: Data<Arc<AppState>>,
