@@ -318,18 +318,20 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         handlers::token_price_backfill
     );
 
-    if !state.env_vars.disable_balance_changes_usd_backfill {
-        spawn_cron_worker!(
-            queues,
-            state,
-            "balance-changes-usd-backfill",
-            schedule_every_secs(env_secs(
-                "BALANCE_CHANGES_USD_BACKFILL_INTERVAL_SECONDS",
-                3600
-            )),
-            handlers::balance_changes_usd_backfill
-        );
-    }
+    // Skipping this becuase balance_changs table will be depreceated and we will only use gold projections
+
+    // if !state.env_vars.disable_balance_changes_usd_backfill {
+    //     spawn_cron_worker!(
+    //         queues,
+    //         state,
+    //         "balance-changes-usd-backfill",
+    //         schedule_every_secs(env_secs(
+    //             "BALANCE_CHANGES_USD_BACKFILL_INTERVAL_SECONDS",
+    //             3600
+    //         )),
+    //         handlers::balance_changes_usd_backfill
+    //     );
+    // }
 
     if !state.env_vars.disable_gold_public_usd_backfill {
         spawn_cron_worker!(
