@@ -21,6 +21,7 @@ pub struct PublicWarning {
     pub situation: Option<String>,
     #[sqlx(rename = "user_message")]
     pub message: Option<String>,
+    pub use_custom_message: bool,
     pub show_from: Option<chrono::DateTime<chrono::Utc>>,
     pub starts_at: Option<chrono::DateTime<chrono::Utc>>,
     pub ends_at: Option<chrono::DateTime<chrono::Utc>>,

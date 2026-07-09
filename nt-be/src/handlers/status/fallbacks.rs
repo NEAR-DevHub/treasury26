@@ -631,6 +631,8 @@ pub struct StatusIncident {
     pub telegram_message_id: Option<i32>,
     pub fallback_activated_at: Option<DateTime<Utc>>,
     pub warning_slot_id: Option<i32>,
+    pub consecutive_failures: i32,
+    pub consecutive_successes: i32,
 }
 
 #[cfg(test)]

@@ -63,7 +63,10 @@
       font-weight: 600;
     }
     button.secondary, .btn.secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    button:hover:not(:disabled), .btn:hover:not(:disabled) { filter: brightness(1.08); }
+    button.secondary:hover:not(:disabled), .btn.secondary:hover:not(:disabled) { background: var(--border); }
     button.danger { background: var(--red); color: #fff; }
+    button.danger:hover:not(:disabled) { filter: brightness(1.1); }
     .cards { display: grid; gap: 0.75rem; }
     .card {
       border: 1px solid var(--border);
@@ -80,6 +83,16 @@
     .card-header .actions button { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
     .card-message { margin: 0.5rem 0 0; padding: 0.45rem 0.7rem; background: var(--bg); border-radius: 6px; font-size: 0.88rem; line-height: 1.4; }
     .card-note { margin: 0.35rem 0 0; font-size: 0.8rem; color: var(--muted); font-style: italic; }
+    .card-where { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+    .slot-chip {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
     .card-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; margin-top: 0.5rem; font-size: 0.8rem; color: var(--muted); }
     .warnings-bar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); margin-bottom: 0.75rem; }
     .subtabs { display: flex; gap: 0; }
@@ -344,7 +357,6 @@
       gap: 0.5rem;
       margin-top: 0.35rem;
     }
-    .audit-edit-btn { font-size: 0.78rem; padding: 0.25rem 0.55rem; }
     .audit-raw { margin-top: 0.15rem; width: 100%; }
     .audit-raw summary {
       cursor: pointer;
@@ -951,6 +963,63 @@
       );
     }
 
+    function isCustomCopyEnabled() {
+      return Boolean(document.getElementById('f-use-custom-copy')?.checked);
+    }
+
+    function setMessageFieldsDisabled(disabled) {
+      ['f-shown-text', 'f-tooltip-text', 'f-heading', 'f-paragraph'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.disabled = disabled;
+      });
+    }
+
+    function setMessageFieldPlaceholders(catalogRaw) {
+      const { primary, secondary } = parseStoredMessage(catalogRaw || '');
+      const shown = document.getElementById('f-shown-text');
+      const tooltip = document.getElementById('f-tooltip-text');
+      const heading = document.getElementById('f-heading');
+      const paragraph = document.getElementById('f-paragraph');
+      if (shown) shown.placeholder = primary || 'Short text next to the token or network field';
+      if (tooltip) tooltip.placeholder = secondary || 'Extra detail shown on hover';
+      if (heading) heading.placeholder = primary || 'Bold heading in the banner';
+      if (paragraph) paragraph.placeholder = secondary || 'Body text shown below the heading';
+    }
+
+    /** Sync disabled state, placeholders, and catalog preview for Use custom copy. */
+    function syncCustomCopyMode({ clearOnEnable = false } = {}) {
+      const checkbox = document.getElementById('f-use-custom-copy');
+      const hint = document.getElementById('message-policy-hint');
+      if (!checkbox) return;
+
+      const custom = checkbox.checked;
+      const st = currentFormState();
+      const catalog = generateMessagesFromCatalog(st) || '';
+
+      setMessageFieldsDisabled(!custom);
+      setMessageFieldPlaceholders(catalog);
+
+      if (custom) {
+        if (clearOnEnable) clearMessageFields();
+        if (hint) {
+          hint.textContent =
+            'Custom copy is shown as-is in the app (English only — translations are skipped). Catalog text is shown as a placeholder suggestion.';
+        }
+      } else {
+        if (catalog) setMessageFields(catalog);
+        else clearMessageFields();
+        if (hint) {
+          hint.textContent =
+            'Showing the legal-approved template (read-only). The app uses the translated default. Check “Use custom copy” to write your own message.';
+        }
+      }
+    }
+
+    function onCustomCopyToggle() {
+      syncCustomCopyMode({ clearOnEnable: isCustomCopyEnabled() });
+      updatePreview();
+    }
+
     // ─── BRIDGE TOKENS & SEARCHABLE SELECT ───────────────────────────────────
     async function loadBridgeTokens() {
       if (bridgeAssets.length > 0) return;
@@ -1340,6 +1409,98 @@
       );
     }
 
+    /** Collapse groupId members into one list entry (DB still has one row per slot). */
+    function groupWarningsForList(warnings, allWarnings) {
+      const groups = [];
+      const seenGroupIds = new Set();
+      const pickPrimary = (members) => {
+        const prefer = [
+          'app',
+          'action.create-proposal',
+          'payments',
+          'exchange',
+          'deposit',
+          ...ACTION_SLOT_VALUES,
+          'login',
+        ];
+        for (const slot of prefer) {
+          const hit = members.find(m => m.slot === slot);
+          if (hit) return hit;
+        }
+        return members[0];
+      };
+      for (const w of warnings) {
+        if (w.groupId) {
+          if (seenGroupIds.has(w.groupId)) continue;
+          seenGroupIds.add(w.groupId);
+          // Prefer full-group membership for chips/count; fall back to filtered set.
+          const members = (allWarnings || warnings).filter(x => x.groupId === w.groupId);
+          groups.push({ primary: pickPrimary(members), members });
+        } else {
+          groups.push({ primary: w, members: [w] });
+        }
+      }
+      return groups;
+    }
+
+    function renderWarningCard({ primary: w, members }) {
+      const sitLabel = findSituation(w.situation)?.label || w.situation || 'Warning';
+      const isGroup = members.length > 1;
+      const slotOrder = [
+        'app', 'payments', 'exchange', 'deposit',
+        ...ACTION_SLOT_VALUES, 'login',
+      ];
+      const sortedMembers = isGroup
+        ? [...members].sort((a, b) => {
+            const ai = slotOrder.indexOf(a.slot);
+            const bi = slotOrder.indexOf(b.slot);
+            return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+          })
+        : members;
+      const slotParts = isGroup
+        ? sortedMembers.map(m => slotLabel(m.slot)).filter(Boolean)
+        : [slotLabel(w.slot), tokenLabel(w.token), networkLabel(w.network)].filter(Boolean);
+      const whereLine = slotParts.length
+        ? `<div class="card-where">${slotParts.map(s => `<span class="slot-chip">${escapeHtml(s)}</span>`).join('')}</div>`
+        : '';
+      const title = escapeHtml(sitLabel);
+      const scheduleInfo = w.startsAt || w.showFrom
+        ? `${w.showFrom ? 'Shows ' + fmtDate(w.showFrom) : ''}${w.startsAt ? (w.showFrom ? ' · ' : '') + 'Starts ' + fmtDate(w.startsAt) : ''}${w.endsAt ? ' → Ends ' + fmtDate(w.endsAt) : ''}`
+        : null;
+      const linkedInfo = w.linkedService
+        ? `<span style="color:var(--accent)">⟵ ${escapeHtml(w.linkedService)}${w.linkedPostId ? ' #' + escapeHtml(w.linkedPostId) : ''}</span>`
+        : '';
+      const groupInfo = isGroup
+        ? `<span title="Editing or deleting affects all ${members.length} grouped warnings">⛓ grouped (${members.length})</span>`
+        : '';
+      // Prefer a shared message; fall back to the primary row's copy.
+      const message = members.map(m => m.userMessage).find(Boolean) || w.userMessage;
+      const note = members.map(m => m.internalNote).find(n => n && !String(n).startsWith('Auto:'))
+        || members.map(m => m.internalNote).find(Boolean)
+        || w.internalNote;
+
+      return `
+          <article class="card ${w.response || 'notice'}">
+            <div class="card-header">
+              <h3>${title}</h3>
+              <div class="actions">
+                <button class="secondary" data-action="edit-warning" data-id="${w.id}">Edit</button>
+                <button class="danger" data-action="delete-warning" data-id="${w.id}">Delete</button>
+              </div>
+            </div>
+            ${whereLine}
+            ${message ? `<div class="card-message">${escapeHtml(message)}</div>` : ''}
+            ${note ? `<div class="card-note">${escapeHtml(note)}</div>` : ''}
+            <div class="card-footer">
+              <span>Response: ${axisLabel(w.response)} · Severity: ${axisLabel(w.severity)}</span>
+              ${scheduleInfo ? `<span>${scheduleInfo}</span>` : ''}
+              ${linkedInfo}
+              ${groupInfo}
+              <span>by ${escapeHtml(w.updatedBy || '—')} · ${fmtDate(w.updatedAt)}</span>
+            </div>
+          </article>`;
+    }
+
     function renderWarnings(warnings) {
       document.getElementById('warnings-loading').classList.add('hidden');
 
@@ -1347,15 +1508,18 @@
       const live = warnings.filter(w => warningIsLive(w, now));
       const upcoming = warnings.filter(w => !warningIsLive(w, now) && w.showFrom && new Date(w.showFrom) > now);
 
-      document.getElementById('count-live').textContent = live.length;
-      document.getElementById('count-scheduled').textContent = upcoming.length;
+      const liveGroups = groupWarningsForList(live, warnings);
+      const upcomingGroups = groupWarningsForList(upcoming, warnings);
 
-      const filtered = activeSubtab === 'live' ? live : upcoming;
+      document.getElementById('count-live').textContent = liveGroups.length;
+      document.getElementById('count-scheduled').textContent = upcomingGroups.length;
+
+      const filteredGroups = activeSubtab === 'live' ? liveGroups : upcomingGroups;
 
       const list = document.getElementById('warnings-list');
       const empty = document.getElementById('warnings-empty');
 
-      if (filtered.length === 0) {
+      if (filteredGroups.length === 0) {
         list.classList.add('hidden');
         list.innerHTML = '';
         empty.textContent = activeSubtab === 'live'
@@ -1365,39 +1529,7 @@
       } else {
         empty.classList.add('hidden');
         list.classList.remove('hidden');
-        list.innerHTML = filtered.map(w => {
-          const scope = [findSituation(w.situation)?.label || w.situation, slotLabel(w.slot), tokenLabel(w.token), networkLabel(w.network)].filter(Boolean).join(' › ');
-          const scheduleInfo = w.startsAt || w.showFrom
-            ? `${w.showFrom ? 'Shows ' + fmtDate(w.showFrom) : ''}${w.startsAt ? (w.showFrom ? ' · ' : '') + 'Starts ' + fmtDate(w.startsAt) : ''}${w.endsAt ? ' → Ends ' + fmtDate(w.endsAt) : ''}`
-            : null;
-          const linkedInfo = w.linkedService
-            ? `<span style="color:var(--accent)">⟵ ${escapeHtml(w.linkedService)}${w.linkedPostId ? ' #' + escapeHtml(w.linkedPostId) : ''}</span>`
-            : '';
-          const groupSize = w.groupId ? warnings.filter(x => x.groupId === w.groupId).length : 0;
-          const groupInfo = groupSize > 1
-            ? `<span title="Editing or deleting affects all ${groupSize} grouped warnings">⛓ grouped (${groupSize})</span>`
-            : '';
-          return `
-          <article class="card ${w.response || 'notice'}">
-            <div class="card-header">
-              <h3>${escapeHtml(scope)}</h3>
-              <div class="actions">
-                <button class="secondary" data-action="edit-warning" data-id="${w.id}">Edit</button>
-                <button class="secondary" data-action="duplicate-warning" data-id="${w.id}">Duplicate</button>
-                <button class="danger" data-action="delete-warning" data-id="${w.id}">Delete</button>
-              </div>
-            </div>
-            ${w.userMessage ? `<div class="card-message">${escapeHtml(w.userMessage)}</div>` : ''}
-            ${w.internalNote ? `<div class="card-note">${escapeHtml(w.internalNote)}</div>` : ''}
-            <div class="card-footer">
-              <span>Response: ${axisLabel(w.response)} · Severity: ${axisLabel(w.severity)}</span>
-              ${scheduleInfo ? `<span>${scheduleInfo}</span>` : ''}
-              ${linkedInfo}
-              ${groupInfo}
-              <span>by ${escapeHtml(w.updatedBy || '—')} · ${fmtDate(w.updatedAt)}</span>
-            </div>
-          </article>`;
-        }).join('');
+        list.innerHTML = filteredGroups.map(renderWarningCard).join('');
       }
     }
 
@@ -1463,6 +1595,7 @@
         response: sit?.response || 'notice',
         severity: sit?.severity || 'high',
         userMessage: waitlist ? '' : getMessageFromForm().trim(),
+        useCustomMessage: waitlist ? false : isCustomCopyEnabled(),
         situation: situationId,
         internalNote: formFieldValue('f-note'),
         showFrom: optionalUtcField('f-show-from'),
@@ -1623,21 +1756,21 @@
           <div id="schedule-fields" style="${w?.showFrom || w?.startsAt ? '' : 'display:none'}">
             <div class="row">
               <div>
-                <label>Show in UI from (UTC)</label>
-                <input type="datetime-local" id="f-show-from" value="${toUTCInput(w?.showFrom)}">
-                <p class="hint">When the warning appears to users. Leave empty to show immediately when activated.</p>
+                <label>Show in UI from (UTC) *</label>
+                <input type="datetime-local" id="f-show-from" value="${toUTCInput(w?.showFrom)}" required>
+                <p class="hint">When the warning appears to users. Required for scheduled warnings.</p>
               </div>
               <div>
-                <label>Event starts (UTC)</label>
-                <input type="datetime-local" id="f-starts-at" value="${toUTCInput(w?.startsAt)}">
-                <p class="hint">When the maintenance/event actually begins.</p>
+                <label>Event starts (UTC) *</label>
+                <input type="datetime-local" id="f-starts-at" value="${toUTCInput(w?.startsAt)}" required>
+                <p class="hint">When the maintenance/event actually begins. Must be on or after Show from.</p>
               </div>
             </div>
             <div class="row" style="margin-top:0.5rem">
               <div>
-                <label>Event ends (UTC)</label>
-                <input type="datetime-local" id="f-ends-at" value="${toUTCInput(w?.endsAt)}">
-                <p class="hint">Auto-closes the warning at this time.</p>
+                <label>Event ends (UTC) *</label>
+                <input type="datetime-local" id="f-ends-at" value="${toUTCInput(w?.endsAt)}" required>
+                <p class="hint">Auto-closes the warning at this time. Must be after Event starts.</p>
               </div>
               <div></div>
             </div>
@@ -1669,6 +1802,13 @@
 
         <div class="form-section ${isWaitlist ? 'hidden' : ''}" id="message-section">
           <div class="form-section-label">Message</div>
+          <label class="toggle" style="margin-top:0.25rem">
+            <input type="checkbox" id="f-use-custom-copy" ${w?.useCustomMessage ? 'checked' : ''}>
+            <span>Use custom copy</span>
+          </label>
+          <p class="hint" id="message-policy-hint" style="margin-top:0.5rem">
+            Showing the legal-approved template (read-only). The app uses the translated default. Check “Use custom copy” to write your own message.
+          </p>
 
           <div id="message-tooltip-mode" class="${tokenSelected ? '' : 'hidden'}">
             <label for="f-shown-text">Shown text</label>
@@ -1697,10 +1837,12 @@
 
         <div class="form-section ${placement === 'app' ? '' : 'hidden'}" id="also-block-login-section">
           <label class="toggle">
-            <input type="checkbox" id="f-also-block-login" ${(placement === 'app' && warningsCache.some(x => x.slot === 'login')) ? 'checked' : ''}>
+            <input type="checkbox" id="f-also-block-login" ${(placement === 'app' && groupSlots.has('login')) ? 'checked' : ''} ${isEdit ? 'disabled' : ''}>
             <span>Also pause login for all wallets</span>
           </label>
-          <p class="hint">Creates a separate login warning so new users can't sign in while the app is in this state.</p>
+          <p class="hint">${isEdit
+            ? 'Login pairing cannot be changed while editing. Delete and re-create if needed.'
+            : 'Creates a grouped login warning so new users can\'t sign in while the app is in this state. Deleting the app warning also removes the login warning.'}</p>
         </div>
 
         <div id="form-error" class="form-error hidden"></div>
@@ -1717,14 +1859,41 @@
         setSearchableSelectDisabled('f-token', true);
         setSearchableSelectDisabled('f-network', true);
       }
-      if (w?.userMessage) setMessageFields(w.userMessage);
-      else applyTemplate();
+      if (isCustomCopyEnabled() && w?.userMessage) {
+        setMessageFields(w.userMessage);
+        syncCustomCopyMode();
+      } else {
+        applyTemplate();
+      }
       updateMessageFieldsVisibility();
       await syncLinkedServiceSelects(w?.linkedService || '', w?.linkedPostId || '');
+      syncScheduleDateBounds();
       updatePreview();
     }
 
     // ─── FORM EVENT HANDLERS ──────────────────────────────────────────────────
+    /** Keep datetime-local min/max in sync so invalid ranges are greyed out in the picker. */
+    function syncScheduleDateBounds() {
+      const showEl = document.getElementById('f-show-from');
+      const startEl = document.getElementById('f-starts-at');
+      const endEl = document.getElementById('f-ends-at');
+      if (!showEl || !startEl || !endEl) return;
+
+      const show = showEl.value;
+      const start = startEl.value;
+      const end = endEl.value;
+
+      // starts ≥ showFrom; ends > starts (min = start so same minute is the floor;
+      // save validation still requires strictly after).
+      startEl.min = show || '';
+      startEl.max = end || '';
+      endEl.min = start || show || '';
+      endEl.removeAttribute('max');
+      // showFrom can be any time (incl. same-day past UTC); cap at start/end if set.
+      showEl.removeAttribute('min');
+      showEl.max = start || end || '';
+    }
+
     function toggleActiveSchedule() {
       const isNow = document.querySelector('input[name="timing"][value="now"]').checked;
       const fields = document.getElementById('schedule-fields');
@@ -1734,6 +1903,7 @@
         document.getElementById('f-starts-at').value = '';
         document.getElementById('f-ends-at').value = '';
       }
+      syncScheduleDateBounds();
       updatePreview();
     }
 
@@ -1756,15 +1926,9 @@
       };
     }
 
-    function applyTemplate(preserveManual = false) {
-      const st = currentFormState();
+    function applyTemplate() {
       updateMessageFieldsVisibility();
-      const generated = generateMessagesFromCatalog(st);
-      if (generated) {
-        setMessageFields(generated);
-      } else if (!preserveManual) {
-        clearMessageFields();
-      }
+      syncCustomCopyMode();
       updatePreview();
     }
 
@@ -1822,7 +1986,9 @@
         return;
       }
 
-      const rawDetail = getMessageFromForm();
+      const rawDetail = isCustomCopyEnabled()
+        ? (getMessageFromForm() || generateMessagesFromCatalog(st) || '')
+        : (generateMessagesFromCatalog(st) || getMessageFromForm());
       const action = actionWord(st.slot);
       const tooltipMode = messageUsesTooltipMode(st.slot, st.token, st.network);
       const scheduleText = scheduleTextFromForm();
@@ -2001,6 +2167,7 @@
       }
 
       applyTemplate();
+      syncScheduleDateBounds();
       updatePreview();
     }
 
@@ -2104,13 +2271,6 @@
       await openWarningForm(w);
     }
 
-    async function duplicateWarning(id) {
-      const w = warningsCache.find(x => x.id === id);
-      if (!w) return;
-      // Open as a new warning with all fields pre-filled (id and groupId cleared).
-      await openWarningForm({ ...w, id: null, groupId: null });
-    }
-
     async function saveWarning(id, btnEl) {
       clearFormError();
       const body = buildSaveBody();
@@ -2152,42 +2312,83 @@
           }
         }
 
+        if (body.useCustomMessage && !body.userMessage?.trim()) {
+          showFormError('Custom copy is enabled — enter a message, or uncheck Use custom copy.');
+          return;
+        }
+
+        const isScheduled = document.querySelector('input[name="timing"][value="scheduled"]').checked;
+        if (isScheduled) {
+          if (!body.showFrom || !body.startsAt || !body.endsAt) {
+            showFormError('Scheduled warnings require Show from, Event starts, and Event ends.');
+            return;
+          }
+        }
+
         if (body.startsAt && body.endsAt && new Date(body.endsAt) <= new Date(body.startsAt)) {
           showFormError('"Event ends" must be after "Event starts".');
           return;
         }
 
-        // Existing group members, when editing a feature warning that belongs to a group.
-        // Grouping only spans the feature slots (the virtual 'features' entry); the
-        // app/login pairing below is handled separately because their messages differ.
+        if (body.showFrom && body.startsAt && new Date(body.startsAt) < new Date(body.showFrom)) {
+          showFormError('"Event starts" must be on or after "Show in UI from".');
+          return;
+        }
+
+        // Existing group members when editing a warning that belongs to a group
+        // (feature multi-slot or app+login pairing).
         const editedWarning = editId ? warningsCache.find(x => x.id === editId) : null;
         const existingGroupId = editedWarning?.groupId || null;
         const groupMembers = existingGroupId
           ? warningsCache.filter(x => x.groupId === existingGroupId)
           : (editedWarning ? [editedWarning] : []);
 
-        // Editing a warning that is part of a real group applies to every member.
-        if (groupMembers.length > 1 &&
-            !confirm(`This warning is part of a group of ${groupMembers.length} (${groupMembers.map(m => m.slot).join(', ')}). Changes will apply to all of them. Continue?`)) {
-          return;
-        }
+        const alsoBlockLogin = document.getElementById('f-also-block-login');
+        const wantLogin = slot === 'app' && alsoBlockLogin && alsoBlockLogin.checked;
+        // Include login in the group when pairing with an app warning.
+        const allSlots = wantLogin && !slotsToCreate.includes('login')
+          ? [...slotsToCreate, 'login']
+          : [...slotsToCreate];
 
         // A shared group id is needed whenever this save touches more than one slot.
-        const groupId = slotsToCreate.length > 1
+        const groupId = allSlots.length > 1
           ? (existingGroupId || newGroupId())
-          : null;
+          : (wantLogin ? (existingGroupId || newGroupId()) : null);
 
-        for (const s of slotsToCreate) {
+        for (const s of allSlots) {
           const st = currentFormState();
           st.effectiveSlot = s;
           st.slot = s;
-          const slotMessage = generateMessagesFromCatalog(st) || body.userMessage;
-          const payload = { ...body, slot: s, userMessage: slotMessage, groupId: groupId || '' };
+          const catalogMessage = generateMessagesFromCatalog(st) || '';
+          const formMessage = (body.userMessage || '').trim();
+          // Custom copy: same admin text for every slot. Otherwise store the
+          // per-slot catalog template so the app can translate it.
+          const slotMessage = body.useCustomMessage
+            ? formMessage
+            : (catalogMessage || formMessage);
+          let payload = {
+            ...body,
+            slot: s,
+            userMessage: slotMessage,
+            useCustomMessage: Boolean(body.useCustomMessage),
+            groupId: groupId || '',
+          };
+          if (s === 'login') {
+            payload = {
+              ...payload,
+              situation: 'wallet_login_unavailable',
+              response: 'paused',
+              severity: 'high',
+              internalNote: body.internalNote ? `Auto: ${body.internalNote}` : 'Auto-created with app-wide warning',
+              userMessage: '',
+              useCustomMessage: false,
+            };
+          }
           const member = groupMembers.find(m => m.slot === s);
           let targetId = member?.id;
           // Editing a single warning always updates that row, even if slot lookup fails
           // (e.g. virtual 'features' form vs stored transaction slot).
-          if (!targetId && editId && slotsToCreate.length === 1) {
+          if (!targetId && editId && allSlots.length === 1) {
             targetId = editId;
           }
           if (!targetId) {
@@ -2200,33 +2401,11 @@
           }
         }
 
-        // Remove group members whose feature slot is no longer selected.
+        // Remove group members whose slot is no longer selected (features deselected
+        // or "Also pause login" unchecked).
         for (const m of groupMembers) {
-          if (!slotsToCreate.includes(m.slot)) {
+          if (!allSlots.includes(m.slot)) {
             await api(`/internal/api/warnings/${m.id}`, { method: 'DELETE' });
-          }
-        }
-
-        // "Also pause login" stays a separate (ungrouped) login warning, since its
-        // message/severity are derived rather than shared with the app warning.
-        const alsoBlockLogin = document.getElementById('f-also-block-login');
-        if (slot === 'app' && alsoBlockLogin && alsoBlockLogin.checked) {
-          const loginBody = {
-            slot: 'login',
-            situation: 'wallet_login_unavailable',
-            isActive: body.isActive,
-            response: 'paused',
-            severity: 'high',
-            internalNote: body.internalNote ? `Auto: ${body.internalNote}` : 'Auto-created with app-wide warning',
-            showFrom: body.showFrom,
-            startsAt: body.startsAt,
-            endsAt: body.endsAt,
-          };
-          const existingLogin = warningsCache.find(x => x.slot === 'login');
-          if (existingLogin) {
-            await api(`/internal/api/warnings/${existingLogin.id}`, { method: 'PUT', body: JSON.stringify(loginBody) });
-          } else {
-            await api('/internal/api/warnings', { method: 'POST', body: JSON.stringify(loginBody) });
           }
         }
 
@@ -2251,13 +2430,10 @@
       const groupMembers = target?.groupId
         ? warningsCache.filter(x => x.groupId === target.groupId)
         : [];
-      let idsToDelete = [id];
-      if (groupMembers.length > 1) {
-        if (!confirm(`This warning is part of a group of ${groupMembers.length} (${groupMembers.map(m => m.slot).join(', ')}). Delete all of them?`)) return;
-        idsToDelete = groupMembers.map(m => m.id);
-      } else if (!confirm('Delete this warning?')) {
-        return;
-      }
+      if (!confirm('Delete this warning?')) return;
+      const idsToDelete = groupMembers.length > 1
+        ? groupMembers.map(m => m.id)
+        : [id];
       try {
         for (const wid of idsToDelete) {
           await api(`/internal/api/warnings/${wid}`, { method: 'DELETE' });
@@ -2437,6 +2613,11 @@
       return 'updated';
     }
 
+    function auditRawJsonHtml(payload) {
+      if (payload == null) return '';
+      return `<details class="audit-raw"><summary>Show raw JSON</summary><pre class="changes">${escapeHtml(JSON.stringify(payload, null, 2))}</pre></details>`;
+    }
+
     function formatAuditEntry(entry) {
       const headline = auditActionHeadline(entry);
       const actionClass = auditActionClass(entry);
@@ -2450,15 +2631,6 @@
           ).join('')}</div>`
         : '';
 
-      const warningId = auditWarningId(entry);
-      const editBtn = warningId != null && entry.action !== 'deleted'
-        ? `<button type="button" class="secondary audit-edit-btn" data-action="edit-warning" data-id="${warningId}">Edit warning</button>`
-        : '';
-
-      const rawJson = entry.changes
-        ? `<details class="audit-raw"><summary>Show raw JSON</summary><pre class="changes">${escapeHtml(JSON.stringify(entry.changes, null, 2))}</pre></details>`
-        : '';
-
       return `
         <article class="card audit-card ${actionClass}">
           <div class="audit-card-header">
@@ -2468,18 +2640,169 @@
           <div class="audit-actor meta">${actorLine}</div>
           ${metaHtml}
           <div class="audit-card-footer">
-            ${editBtn}
-            ${rawJson}
+            ${auditRawJsonHtml(entry.changes ?? { id: entry.id, action: entry.action })}
           </div>
         </article>
       `;
     }
 
+    /** Collapse same-group audit rows created in the same burst into one card. */
+    function groupAuditEntries(entries) {
+      const groups = [];
+      const used = new Set();
+      const GROUP_WINDOW_MS = 5000;
+
+      const entryGroupKey = (entry) => {
+        const gid = entry.changes?.group_id || entry.changes?.groupId;
+        if (gid) return `gid:${gid}`;
+        // Fallback for older rows that never stamped group_id: cluster by
+        // actor + action + second so a multi-slot save still collapses.
+        const t = new Date(entry.createdAt).getTime();
+        const bucket = Math.floor(t / GROUP_WINDOW_MS);
+        return `burst:${entry.action}|${entry.changedBy}|${bucket}`;
+      };
+
+      const slotsLookGrouped = (members) => {
+        if (members.length < 2) return false;
+        const slots = members.map(m => m.changes?.slot).filter(Boolean);
+        if (slots.length < 2) return false;
+        const allActions = slots.every(s => ACTION_SLOT_VALUES.includes(s));
+        const allFeatures = slots.every(s =>
+          TRANSACTION_SLOT_OPTIONS.some(o => o.value === s)
+        );
+        const appLogin = slots.includes('app') && slots.includes('login') && slots.length <= 2;
+        return allActions || allFeatures || appLogin;
+      };
+
+      for (let i = 0; i < entries.length; i++) {
+        if (used.has(i)) continue;
+        const entry = entries[i];
+        const key = entryGroupKey(entry);
+        const members = [entry];
+        used.add(i);
+
+        if (key.startsWith('gid:') || key.startsWith('burst:')) {
+          for (let j = i + 1; j < entries.length; j++) {
+            if (used.has(j)) continue;
+            if (entryGroupKey(entries[j]) !== key) continue;
+            if (entries[j].action !== entry.action) continue;
+            if (entries[j].changedBy !== entry.changedBy) continue;
+            members.push(entries[j]);
+            used.add(j);
+          }
+        }
+
+        // Burst heuristic only collapses when slots look like a real group.
+        if (key.startsWith('burst:') && !slotsLookGrouped(members)) {
+          for (const m of members) {
+            groups.push({ primary: m, members: [m] });
+          }
+          continue;
+        }
+
+        groups.push({ primary: entry, members });
+      }
+      return groups;
+    }
+
+    function formatGroupedAuditEntry({ primary, members }) {
+      if (members.length === 1) return formatAuditEntry(primary);
+
+      const actionClass = auditActionClass(primary);
+      const actionLabel = AUDIT_ACTION_LABELS[primary.action] || primary.action;
+      const actor = primary.changedBy === 'system' ? 'system' : primary.changedBy;
+      const actorLine = `${escapeHtml(actor)} · ${escapeHtml(auditChannel(primary))} · ${fmtDate(primary.createdAt)}`;
+
+      const sit = primary.changes?.situation
+        || members.map(m => m.changes?.situation).find(Boolean);
+      const sitLabel = sit ? (findSituation(sit)?.label || sit) : null;
+
+      const slotOrder = [
+        'app', 'payments', 'exchange', 'deposit',
+        ...ACTION_SLOT_VALUES, 'login',
+      ];
+      const slots = [...new Set(members.map(m => m.changes?.slot).filter(Boolean))]
+        .sort((a, b) => {
+          const ai = slotOrder.indexOf(a);
+          const bi = slotOrder.indexOf(b);
+          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        });
+
+      const headline = sitLabel
+        ? `${actionLabel} · ${sitLabel}`
+        : `${actionLabel} · ${members.length} slots`;
+
+      const whereLine = slots.length
+        ? `<div class="card-where">${slots.map(s => `<span class="slot-chip">${escapeHtml(slotLabel(s))}</span>`).join('')}</div>`
+        : '';
+
+      // Prefer shared fields from the primary; skip per-slot noise.
+      const c = primary.changes || {};
+      const lines = [];
+      if (c.response) lines.push(['Response', c.response]);
+      if (c.severity) lines.push(['Severity', c.severity]);
+      if (sit) lines.push(['Situation', sit]);
+      const heading = warningHeadingFromMessage(
+        members.map(m => m.changes?.user_message).find(Boolean)
+      );
+      if (heading) lines.push(['Message', heading]);
+      lines.push(['Grouped', `${members.length} slots`]);
+
+      const metaHtml = lines.length
+        ? `<div class="audit-meta">${lines.map(([label, value]) =>
+            `<span><b>${escapeHtml(label)}:</b> ${escapeHtml(value)}</span>`
+          ).join('')}</div>`
+        : '';
+
+      const rawPayload = members.map(m => ({
+        id: m.id,
+        warningId: auditWarningId(m),
+        action: m.action,
+        changes: m.changes ?? null,
+      }));
+
+      return `
+        <article class="card audit-card ${actionClass}">
+          <div class="audit-card-header">
+            <h3>${escapeHtml(headline)}</h3>
+            <span class="audit-action-tag">${escapeHtml(actionLabel)}</span>
+          </div>
+          <div class="audit-actor meta">${actorLine}</div>
+          ${whereLine}
+          ${metaHtml}
+          <div class="audit-card-footer">
+            ${auditRawJsonHtml(rawPayload)}
+          </div>
+        </article>
+      `;
+    }
+
+    function updateAuditPagination(data, shownCards) {
+      const total = data.total || 0;
+      const maxPage = Math.max(1, Math.ceil(total / auditLimit));
+      if (auditPage > maxPage) auditPage = maxPage;
+      const prevBtn = document.getElementById('btn-audit-prev');
+      const nextBtn = document.getElementById('btn-audit-next');
+      if (prevBtn) prevBtn.disabled = auditPage <= 1;
+      if (nextBtn) nextBtn.disabled = auditPage >= maxPage || total === 0;
+
+      const page = Math.min(data.page || auditPage, maxPage);
+      const eventsOnPage = (data.entries || []).length;
+      // "25 of 64" was easy to misread as progress. Prefer page-of-pages + totals.
+      let info = total === 0
+        ? 'No events'
+        : `Page ${page} of ${maxPage} · ${total} event${total === 1 ? '' : 's'} total`;
+      if (total > 0 && shownCards != null && shownCards < eventsOnPage) {
+        info += ` · ${shownCards} shown`;
+      }
+      document.getElementById('audit-page-info').textContent = info;
+    }
+
     function renderAudit(data) {
       const list = document.getElementById('audit-list');
-      document.getElementById('audit-page-info').textContent =
-        `Page ${data.page} · ${data.entries.length} of ${data.total}`;
-      list.innerHTML = data.entries.map(formatAuditEntry).join('') || '<p class="meta">No audit entries yet.</p>';
+      const groups = groupAuditEntries(data.entries || []);
+      updateAuditPagination(data, groups.length);
+      list.innerHTML = groups.map(formatGroupedAuditEntry).join('') || '<p class="meta">No audit entries yet.</p>';
     }
 
     async function loadAudit() {
@@ -2501,7 +2824,6 @@
         case 'save-warning':   saveWarning(id, btn); break;
         case 'edit-warning':   editWarning(id); break;
         case 'delete-warning': deleteWarning(id); break;
-        case 'duplicate-warning': duplicateWarning(id); break;
       }
     });
 
@@ -2511,6 +2833,7 @@
       const t = e.target;
       if (t.id === 'f-situation')          { onSituationChange(); return; }
       if (t.id === 'f-placement')          { onPlacementChange(); return; }
+      if (t.id === 'f-use-custom-copy')    { onCustomCopyToggle(); return; }
       if (t.id === 'f-wallet')             { applyTemplate(); return; }
       if (t.id === 'f-request-type')       { applyTemplate(); return; }
       if (t.id === 'f-linked-service')     { onLinkedServiceChange(); return; }
@@ -2522,6 +2845,8 @@
     // Delegated input: live preview on datetime/text fields.
     document.getElementById('warning-form-shell').addEventListener('input', (e) => {
       formDirty = true;
+      const SCHEDULE_IDS = new Set(['f-show-from', 'f-starts-at', 'f-ends-at']);
+      if (SCHEDULE_IDS.has(e.target.id)) syncScheduleDateBounds();
       const PREVIEW_IDS = new Set(['f-show-from','f-starts-at','f-ends-at','f-heading','f-paragraph','f-shown-text','f-tooltip-text']);
       if (PREVIEW_IDS.has(e.target.id)) updatePreview();
     });
@@ -2552,8 +2877,15 @@
     document.getElementById('btn-new-warning').addEventListener('click', () => openWarningForm());
     document.getElementById('btn-refresh-warnings').addEventListener('click', loadWarnings);
     document.getElementById('btn-refresh-audit').addEventListener('click', loadAudit);
-    document.getElementById('btn-audit-prev').addEventListener('click', () => { if (auditPage > 1) { auditPage--; loadAudit(); } });
-    document.getElementById('btn-audit-next').addEventListener('click', () => { auditPage++; loadAudit(); });
+    document.getElementById('btn-audit-prev').addEventListener('click', () => {
+      if (auditPage > 1) { auditPage--; loadAudit(); }
+    });
+    document.getElementById('btn-audit-next').addEventListener('click', () => {
+      const nextBtn = document.getElementById('btn-audit-next');
+      if (nextBtn && nextBtn.disabled) return;
+      auditPage++;
+      loadAudit();
+    });
 
     loadWarnings();
     // Bridge tokens load on demand when opening Add/Edit (token/network pickers).

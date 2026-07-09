@@ -9,9 +9,7 @@ import {
     DialogFooter,
 } from "@/components/modal";
 import { ButtonWithTooltip } from "@/components/button-with-tooltip";
-import { WarningMessage } from "@/components/warning-message";
 import { NEARN_IO_ACCOUNT } from "../../constants";
-import { useSlotBlock } from "@/hooks/use-warnings";
 
 interface Member {
     accountId: string;
@@ -38,8 +36,6 @@ export function DeleteConfirmationModal({
     const t = useTranslations("members.removeDialog");
     const tCommon = useTranslations("common");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { blocked: proposalBlocked, message: proposalBlockedMessage } =
-        useSlotBlock("action.create-proposal");
 
     const handleConfirm = async () => {
         setIsSubmitting(true);
@@ -96,20 +92,8 @@ export function DeleteConfirmationModal({
                             onClick={handleConfirm}
                             variant="destructive"
                             className="w-full"
-                            disabled={
-                                isSubmitting ||
-                                !!validationError ||
-                                proposalBlocked
-                            }
-                            tooltipMessage={
-                                validationError ??
-                                (proposalBlocked && proposalBlockedMessage ? (
-                                    <WarningMessage
-                                        variant="tooltip"
-                                        message={proposalBlockedMessage}
-                                    />
-                                ) : undefined)
-                            }
+                            disabled={isSubmitting || !!validationError}
+                            tooltipMessage={validationError}
                         >
                             {isSubmitting
                                 ? t("creatingProposal")

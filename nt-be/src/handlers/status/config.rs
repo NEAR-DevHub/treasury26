@@ -20,6 +20,11 @@ pub struct OhDearHealthConfig {
     pub neardata_probe_block_height: u64,
 }
 
+/// Consecutive unhealthy checks before sending a Telegram ops alert (~3 min at 60s).
+pub const ALERT_AFTER_FAILURES: i32 = 3;
+/// Consecutive healthy checks before closing an incident (~2 min at 60s).
+pub const RECOVER_AFTER_SUCCESSES: i32 = 2;
+
 impl Default for OhDearHealthConfig {
     fn default() -> Self {
         Self {

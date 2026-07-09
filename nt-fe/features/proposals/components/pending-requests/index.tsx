@@ -7,7 +7,8 @@ import {
 import { PageCard } from "@/components/card";
 import { NumberBadge } from "@/components/number-badge";
 import { SlotWarning } from "@/components/warning-message";
-import { useProposalApproveBlock } from "@/hooks/use-warnings";
+import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
+import { stripMessageForTooltip } from "@/lib/warnings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
@@ -91,9 +92,26 @@ export function PendingRequestItem({
     );
     const { accountId } = useNear();
     const isUserVoter = !!proposal.votes[accountId ?? ""];
+    // Approving payment/exchange proposals is blocked while that feature has a
+    // critical warning. Rejection is never blocked by feature pauses.
     const approveBlock = useProposalApproveBlock([proposal]);
     const approveBlocked = approveBlock.anyBlocked;
     const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
+    // Approve and reject are independent slots (same pattern as proposal sidebar).
+    const approveSlot = useSlotBlock("action.approve");
+    const rejectSlot = useSlotBlock("action.reject");
+    // One banner covers the vote actions: approve copy takes precedence.
+    const voteBannerSlot = approveSlot.blocked
+        ? "action.approve"
+        : rejectSlot.blocked
+          ? "action.reject"
+          : null;
+    // SlotWarning is shown inline, so a button tooltip is only the fallback for
+    // an app-wide block (nothing on the card explains why the button is disabled).
+    const approveBlockIsAppLevel =
+        approveSlot.blocked && approveSlot.warning?.slot !== "action.approve";
+    const rejectBlockIsAppLevel =
+        rejectSlot.blocked && rejectSlot.warning?.slot !== "action.reject";
     const title = useMemo(() => {
         if (type === "Confidential Request") {
             return extractConfidentialRequestData(proposal, treasuryId).title;
@@ -128,18 +146,26 @@ export function PendingRequestItem({
                                     insufficientBalanceInfo
                                 }
                             />
-                            {approveBlocked && approveBlockedWarning?.slot && (
-                                <SlotWarning
-                                    slot={approveBlockedWarning.slot}
-                                    token={
-                                        approveBlockedWarning.token ?? undefined
-                                    }
-                                    network={
-                                        approveBlockedWarning.network ??
-                                        undefined
-                                    }
-                                />
+                            {/* Vote action paused (approve / reject) — single banner */}
+                            {voteBannerSlot && (
+                                <SlotWarning slot={voteBannerSlot} />
                             )}
+                            {/* Feature-maintenance warning — approval paused, rejection still works */}
+                            {!voteBannerSlot &&
+                                approveBlocked &&
+                                approveBlockedWarning?.slot && (
+                                    <SlotWarning
+                                        slot={approveBlockedWarning.slot}
+                                        token={
+                                            approveBlockedWarning.token ??
+                                            undefined
+                                        }
+                                        network={
+                                            approveBlockedWarning.network ??
+                                            undefined
+                                        }
+                                    />
+                                )}
                             <div className="flex gap-3 w-full sm:invisible sm:group-hover:visible transition-opacity duration-300 ease-in-out">
                                 <AuthButtonWithProposal
                                     proposalKind={proposal.kind}
@@ -149,10 +175,16 @@ export function PendingRequestItem({
                                         e.preventDefault();
                                         onVote("Reject");
                                     }}
+                                    disabled={isUserVoter || rejectSlot.blocked}
                                     tooltip={
-                                        isUserVoter ? noVoteMessage : undefined
+                                        rejectBlockIsAppLevel
+                                            ? stripMessageForTooltip(
+                                                  rejectSlot.message,
+                                              )
+                                            : isUserVoter
+                                              ? noVoteMessage
+                                              : undefined
                                     }
-                                    disabled={isUserVoter}
                                 >
                                     <X className="size-3.5" />
                                     {tActions("reject")}
@@ -184,11 +216,19 @@ export function PendingRequestItem({
                                             e.preventDefault();
                                             onVote("Approve");
                                         }}
-                                        disabled={isUserVoter || approveBlocked}
+                                        disabled={
+                                            isUserVoter ||
+                                            approveBlocked ||
+                                            approveSlot.blocked
+                                        }
                                         tooltip={
-                                            isUserVoter
-                                                ? noVoteMessage
-                                                : undefined
+                                            approveBlockIsAppLevel
+                                                ? stripMessageForTooltip(
+                                                      approveSlot.message,
+                                                  )
+                                                : isUserVoter
+                                                  ? noVoteMessage
+                                                  : undefined
                                         }
                                     >
                                         <Check className="size-3.5" />

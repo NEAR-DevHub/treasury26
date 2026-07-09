@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { useSlotBlock } from "@/hooks/use-warnings";
 import {
     getApproversAndThreshold,
     hasPermission,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/config-utils";
 import type { ProposalKind } from "@/lib/proposals-api";
 import { cn } from "@/lib/utils";
+import { stripMessageForTooltip } from "@/lib/warnings";
 import { useNear } from "@/stores/near-store";
 import { Button } from "./button";
 import { Tooltip } from "./tooltip";
@@ -81,6 +83,12 @@ export function AuthButton({
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const { data: subscription } = useSubscription(treasuryId);
+    const isCreateProposalAction = permissionAction === "AddProposal";
+    const {
+        blocked: createProposalBlocked,
+        message: createProposalBlockedMessage,
+    } = useSlotBlock("action.create-proposal");
+    const proposalBlocked = isCreateProposalAction && createProposalBlocked;
     const hasAccess = useMemo(() => {
         if (!accountId) return false;
         if (permissionKind === "any") return isAnyMember(policy, accountId);
@@ -120,6 +128,20 @@ export function AuthButton({
     if (!hasSponsoredTransactions) {
         return (
             <ErrorMessage message={t("noSponsoredTransactions")} {...props}>
+                {children}
+            </ErrorMessage>
+        );
+    }
+
+    if (proposalBlocked) {
+        return (
+            <ErrorMessage
+                message={
+                    stripMessageForTooltip(createProposalBlockedMessage) ||
+                    t("noPermission")
+                }
+                {...props}
+            >
                 {children}
             </ErrorMessage>
         );
