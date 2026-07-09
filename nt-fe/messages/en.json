@@ -1703,8 +1703,8 @@
         "incompatible": "Incompatible",
         "comingSoon": "Coming Soon",
         "forMembersOnly": "For Members Only",
-        "nearComDescription": "Confidential network of near.com and trezu",
-        "nearDescription": "Network for public withdrawal"
+        "nearComDescription": "Network for confidential trezu",
+        "nearDescription": "Network for public withdrawal and near.com wallet"
     },
     "addressBookTable": {
         "emptyTitle": "No recipients yet",

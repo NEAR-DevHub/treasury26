@@ -772,7 +772,7 @@ export async function getStakingValidatorDetails(
 export interface ProfileData {
     name?: string;
     addressBookName?: string;
-    image?: string;
+    image?: string | { url?: string; ipfs_cid?: string; ipfsCid?: string };
     backgroundImage?: string;
     description?: string;
     linktree?: any;

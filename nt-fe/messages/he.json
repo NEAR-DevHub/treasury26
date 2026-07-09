@@ -1703,8 +1703,8 @@
         "incompatible": "לא תואם",
         "comingSoon": "בקרוב",
         "forMembersOnly": "לחברים בלבד",
-        "nearComDescription": "רשת סודית עבור near.com ו-Trezu",
-        "nearDescription": "רשת למשיכה ציבורית"
+        "nearComDescription": "רשת עבור trezu חסוי",
+        "nearDescription": "רשת למשיכה ציבורית וארנק near.com"
     },
     "addressBookTable": {
         "emptyTitle": "אין נמענים עדיין",

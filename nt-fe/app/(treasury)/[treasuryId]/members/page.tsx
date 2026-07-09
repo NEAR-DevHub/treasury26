@@ -1180,7 +1180,7 @@ export default function MembersPage() {
                                             balanceCheck={{
                                                 withProposalBond: true,
                                             }}
-                                            variant="outline-destructive"
+                                            variant="ghost"
                                             size="icon"
                                             onClick={() => {
                                                 setMemberToDelete(member);
@@ -1202,7 +1202,7 @@ export default function MembersPage() {
                                                 },
                                             }}
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="size-4 text-destructive" />
                                         </AuthButton>
                                     </div>
                                 </TableCell>

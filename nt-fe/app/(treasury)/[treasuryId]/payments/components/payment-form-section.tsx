@@ -23,7 +23,7 @@ import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/
 import { useChains, ChainInfo } from "@/features/address-book/chains";
 import { NetworkList } from "@/components/network-list";
 import { Button } from "@/components/button";
-import { UserWithData } from "@/components/user";
+import { User } from "@/components/user";
 import { FormField } from "@/components/ui/form";
 import { type SectionRule } from "@/lib/section-rules";
 import {
@@ -361,9 +361,9 @@ export function PaymentFormSection<
                 {selectedContact ? (
                     <div className="flex items-center pt-1 pr-20">
                         <div className="flex flex-col gap-1 min-w-0">
-                            <UserWithData
+                            <User
+                                accountId={selectedContact.address}
                                 name={selectedContact.name}
-                                address={selectedContact.address}
                                 useAddressBook
                                 size="md"
                                 withLink={false}
@@ -523,9 +523,9 @@ export function PaymentFormSection<
                         .filter(Boolean) as ChainInfo[];
                     return (
                         <div className="flex items-center justify-between w-full gap-2">
-                            <UserWithData
+                            <User
+                                accountId={entry.address}
                                 name={entry.name}
-                                address={entry.address}
                                 useAddressBook
                                 size="sm"
                                 withLink={false}

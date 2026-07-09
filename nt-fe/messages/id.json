@@ -1703,8 +1703,8 @@
         "incompatible": "Tidak Kompatibel",
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
-        "nearComDescription": "Jaringan rahasia untuk near.com dan trezu",
-        "nearDescription": "Jaringan untuk penarikan publik"
+        "nearComDescription": "Jaringan untuk trezu rahasia",
+        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",
