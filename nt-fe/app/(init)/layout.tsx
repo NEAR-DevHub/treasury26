@@ -5,7 +5,7 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getLocaleDirection } from "@/i18n/config";
 import "../globals.css";
 import { GleapWidget } from "@/components/gleap-widget";
-import { GoogleAnalytics } from "@/components/google-analytics";
+import { GoogleTagManager } from "@/components/google-tag-manager";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/toaster";
@@ -86,7 +86,7 @@ export default async function RootLayout({
                             <WarningsProvider>
                                 {children}
                                 <Toaster />
-                                <GoogleAnalytics />
+                                <GoogleTagManager />
                             </WarningsProvider>
                         </QueryProvider>
                         <GleapWidget />

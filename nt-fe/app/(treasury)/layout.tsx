@@ -6,7 +6,7 @@ import { getLocaleDirection } from "@/i18n/config";
 import "../globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { GleapWidget } from "@/components/gleap-widget";
-import { GoogleAnalytics } from "@/components/google-analytics";
+import { GoogleTagManager } from "@/components/google-tag-manager";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -93,7 +93,7 @@ export default async function RootLayout({
                                 </AuthProvider>
                             </WarningsProvider>
                             <Toaster />
-                            <GoogleAnalytics />
+                            <GoogleTagManager />
                         </QueryProvider>
                         <GleapWidget />
                     </ThemeProvider>
