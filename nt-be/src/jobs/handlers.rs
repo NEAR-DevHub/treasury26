@@ -74,16 +74,17 @@ pub async fn token_price_backfill(
 }
 
 /// Fills `balance_changes.usd_value` from the `token_prices` series.
-pub async fn balance_changes_usd_backfill(
-    _t: Tick,
-    state: Data<Arc<AppState>>,
-) -> Result<String, BoxDynError> {
-    let backfill = crate::services::BalanceChangesUsdBackfill::new(
-        state.db_pool.clone(),
-        Arc::clone(&state.token_price_service),
-    );
-    Ok(backfill.run().await?.to_string())
-}
+/// Skipping this becuase balance_changs table will be depreceated and we will only use gold projections
+// pub async fn balance_changes_usd_backfill(
+//     _t: Tick,
+//     state: Data<Arc<AppState>>,
+// ) -> Result<String, BoxDynError> {
+//     let backfill = crate::services::BalanceChangesUsdBackfill::new(
+//         state.db_pool.clone(),
+//         Arc::clone(&state.token_price_service),
+//     );
+//     Ok(backfill.run().await?.to_string())
+// }
 
 /// Fills NULL `amount_in_usd`/`amount_out_usd` on public gold events.
 pub async fn gold_public_usd_backfill(
