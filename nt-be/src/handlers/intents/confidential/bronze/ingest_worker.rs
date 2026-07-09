@@ -479,6 +479,9 @@ pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: 
                         stats.rows_deleted,
                         stats.errors_written
                     );
+                    if stats.rows_projected > 0 || stats.rows_deleted > 0 {
+                        state.publish_treasury_projection_updated(account_id.to_string());
+                    }
                 }
                 Err(e) => {
                     tracing::warn!("gold projection failed for {}: {}", account_id, e);
@@ -642,6 +645,9 @@ pub async fn tick_confidential_history_scheduler(
                 stats.rows_deleted,
                 stats.errors_written
             );
+            for account_id in stats.changed_accounts {
+                state.publish_treasury_projection_updated(account_id);
+            }
         }
         Ok(_) => {}
         Err(e) => {

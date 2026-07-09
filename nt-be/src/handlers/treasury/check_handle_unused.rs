@@ -39,8 +39,15 @@ pub async fn check_handle_unused(
         .await
     {
         Ok(_) => Ok(Json(CheckHandleUnusedResponse { unused: false })),
-        Err(e) => Ok(Json(CheckHandleUnusedResponse {
-            unused: dbg!(e.to_string()).contains("UnknownAccount"),
-        })),
+        Err(e) => {
+            if e.to_string().contains("UnknownAccount") {
+                Ok(Json(CheckHandleUnusedResponse { unused: true }))
+            } else {
+                Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to check treasury handle: {e}"),
+                ))
+            }
+        }
     }
 }

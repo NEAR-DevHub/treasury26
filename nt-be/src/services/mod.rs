@@ -4,6 +4,7 @@ pub mod coingecko;
 pub mod dao_sync;
 pub mod defillama;
 pub mod ft_lockup_scheduler;
+pub mod goldsky_cursor;
 pub mod monitored_accounts;
 pub mod platform_metrics;
 pub mod price_lookup;
@@ -12,6 +13,7 @@ pub mod price_sync;
 pub mod public_dashboard;
 pub mod sponsor_alerts;
 pub mod testing_accounts;
+pub mod token_prices;
 pub mod usd_value_backfill;
 
 pub use coingecko::CoinGeckoClient;
@@ -34,4 +36,5 @@ pub use public_dashboard::{
 };
 pub use sponsor_alerts::run_sponsor_monitor_cycle;
 pub use testing_accounts::{mark_testing_if_needed, should_mark_testing};
+pub use token_prices::{TokenPriceIngestor, TokenPriceService, spawn_token_price_ingest_worker};
 pub use usd_value_backfill::{backfill_batch, run_usd_value_backfill_service};

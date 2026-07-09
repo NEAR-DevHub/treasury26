@@ -586,7 +586,7 @@ mod tests {
             ledger.get("nep141:usdt.near"),
             Some(&BigDecimal::from_str("7.5").unwrap())
         );
-        assert!(ledger.get("nep141:wrap.near").is_none());
+        assert!(!ledger.contains_key("nep141:wrap.near"));
     }
 
     #[test]
@@ -843,7 +843,7 @@ mod tests {
             projected.is_none(),
             "uncorrected zero-net same-asset deposit should be skipped"
         );
-        assert!(ledger.get("nep141:wrap.near").is_none());
+        assert!(!ledger.contains_key("nep141:wrap.near"));
     }
 
     #[test]

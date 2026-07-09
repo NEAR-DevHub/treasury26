@@ -75,6 +75,7 @@ async fn insert_dao_with_telegram(pool: &PgPool) {
 
 /// Insert a balance_changes row with a given method_name and amount.
 /// Returns the inserted id.
+#[allow(clippy::too_many_arguments)]
 async fn insert_balance_change(
     pool: &PgPool,
     block_height: i64,

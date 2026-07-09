@@ -1,11 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Sidebar } from "@/components/sidebar";
-import { useResponsiveSidebar } from "@/stores/sidebar-store";
-import { PrimaryColorProvider } from "@/components/primary-color-provider";
 import { LoadingScreen } from "@/components/loading-screen";
+import { PrimaryColorProvider } from "@/components/primary-color-provider";
+import { Sidebar } from "@/components/sidebar";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
+import { AppEventsProvider } from "./app-events-provider";
 
 export function TreasuryLayoutClient({
     children,
@@ -28,6 +29,7 @@ export function TreasuryLayoutClient({
     if (isStandaloneReceiptView) {
         return (
             <div className="h-dvh overflow-y-auto bg-muted print:h-auto print:overflow-visible print:bg-white">
+                <AppEventsProvider scope={{ treasuryId }} />
                 <PrimaryColorProvider treasuryId={treasuryId} />
                 {children}
             </div>
@@ -35,6 +37,7 @@ export function TreasuryLayoutClient({
     }
     return (
         <div className="flex h-dvh lg:h-screen overflow-hidden">
+            <AppEventsProvider scope={{ treasuryId }} />
             <PrimaryColorProvider treasuryId={treasuryId} />
             <Sidebar
                 isOpen={isSidebarOpen}

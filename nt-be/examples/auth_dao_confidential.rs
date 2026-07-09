@@ -96,10 +96,10 @@ async fn create_and_approve_proposal(
     proposal: Value,
     client: &reqwest::Client,
 ) -> String {
-    Transaction::construct(account_id.parse().unwrap(), dao_id.parse().unwrap())
+    let _ = Transaction::construct(account_id.parse().unwrap(), dao_id.parse().unwrap())
         .add_action(Action::FunctionCall(Box::new(FunctionCallAction {
             method_name: "add_proposal".to_string(),
-            args: serde_json::to_vec(&proposal).unwrap().into(),
+            args: serde_json::to_vec(&proposal).unwrap(),
             gas: NearGas::from_tgas(100),
             deposit: NearToken::from_yoctonear(0),
         })))
@@ -164,8 +164,7 @@ async fn create_and_approve_proposal(
             args: serde_json::to_vec(&json!({
                 "id": proposal_id, "action": "VoteApprove", "proposal": kind,
             }))
-            .unwrap()
-            .into(),
+            .unwrap(),
             gas: NearGas::from_tgas(300),
             deposit: NearToken::from_yoctonear(0),
         })))
@@ -270,7 +269,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     borsh::to_writer(&mut bytes, &payload).unwrap();
     use sha2::Digest;
     let hash = sha2::Sha256::digest(&bytes);
-    let hash_hex = hex::encode(&hash);
+    let hash_hex = hex::encode(hash);
     println!("NEP-413 hash: {}", hash_hex);
 
     // Build v1.signer sign proposal

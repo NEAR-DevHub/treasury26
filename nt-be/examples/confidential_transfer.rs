@@ -106,6 +106,7 @@ fn build_nonce(salt: &[u8; 4], deadline: &chrono::DateTime<chrono::Utc>) -> [u8;
     nonce
 }
 
+#[allow(dead_code)]
 fn sign_nep413(
     secret_key_str: &str,
     message: &str,
@@ -134,10 +135,10 @@ async fn create_and_approve_proposal(
     proposal: Value,
     client: &reqwest::Client,
 ) -> String {
-    Transaction::construct(ACCOUNT_ID.parse().unwrap(), DAO_ID.parse().unwrap())
+    let _ = Transaction::construct(ACCOUNT_ID.parse().unwrap(), DAO_ID.parse().unwrap())
         .add_action(Action::FunctionCall(Box::new(FunctionCallAction {
             method_name: "add_proposal".to_string(),
-            args: serde_json::to_vec(&proposal).unwrap().into(),
+            args: serde_json::to_vec(&proposal).unwrap(),
             gas: NearGas::from_tgas(100),
             deposit: NearToken::from_yoctonear(0),
         })))
@@ -202,8 +203,7 @@ async fn create_and_approve_proposal(
             args: serde_json::to_vec(&json!({
                 "id": proposal_id, "action": "VoteApprove", "proposal": kind,
             }))
-            .unwrap()
-            .into(),
+            .unwrap(),
             gas: NearGas::from_tgas(300),
             deposit: NearToken::from_yoctonear(0),
         })))
@@ -228,19 +228,18 @@ fn extract_mpc_signature(result_debug: &str) -> Option<Vec<u8>> {
             .find(|c: char| !c.is_alphanumeric() && c != '+' && c != '/' && c != '=')
             .unwrap_or(rest.len());
         let b64_value = &rest[..end];
-        if let Ok(decoded) = BASE64.decode(b64_value) {
-            if let Ok(sig_json) = serde_json::from_slice::<Value>(&decoded) {
-                if sig_json.get("scheme").is_some() {
-                    return Some(
-                        sig_json["signature"]
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .map(|v| v.as_u64().unwrap() as u8)
-                            .collect(),
-                    );
-                }
-            }
+        if let Ok(decoded) = BASE64.decode(b64_value)
+            && let Ok(sig_json) = serde_json::from_slice::<Value>(&decoded)
+            && sig_json.get("scheme").is_some()
+        {
+            return Some(
+                sig_json["signature"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|v| v.as_u64().unwrap() as u8)
+                    .collect(),
+            );
         }
     }
     None
@@ -291,7 +290,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     borsh::to_writer(&mut borsh_bytes, &nep413_payload)?;
     use sha2::Digest;
     let auth_hash = sha2::Sha256::digest(&borsh_bytes);
-    let auth_hash_hex = hex::encode(&auth_hash);
+    let auth_hash_hex = hex::encode(auth_hash);
 
     // Create MPC signing proposal for DAO auth
     let auth_proposal = json!({
@@ -464,7 +463,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut intent_bytes = PREFIX.to_le_bytes().to_vec();
     borsh::to_writer(&mut intent_bytes, &intent_payload)?;
     let intent_hash = sha2::Sha256::digest(&intent_bytes);
-    let intent_hash_hex = hex::encode(&intent_hash);
+    let intent_hash_hex = hex::encode(intent_hash);
     println!("NEP-413 hash: {}", intent_hash_hex);
 
     let proposal = json!({

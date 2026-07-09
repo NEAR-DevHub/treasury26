@@ -1,6 +1,7 @@
 use near_account_id::AccountIdRef;
 use near_api::NearToken;
 
+pub mod external_apis;
 pub mod intents_chains;
 pub mod intents_tokens;
 pub mod near_ft_whitelist;

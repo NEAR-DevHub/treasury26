@@ -378,12 +378,12 @@ mod tests {
         assert_eq!(fee, 35_00);
 
         // Pro plan: 0.10% exchange fee
-        let fee = calculate_exchange_fee(PlanType::Pro, 10_000_00); // $10k
+        let fee = calculate_exchange_fee(PlanType::Pro, 1_000_000); // $10k
         // Fee: 10_000_00 * 10 / 10_000 = 1000 cents = $10
         assert_eq!(fee, 10_00);
 
         // Enterprise: 0% exchange fee
-        let fee = calculate_exchange_fee(PlanType::Enterprise, 10_000_00);
+        let fee = calculate_exchange_fee(PlanType::Enterprise, 1_000_000);
         assert_eq!(fee, 0);
     }
 
@@ -461,20 +461,20 @@ mod tests {
 
     #[test]
     fn test_volume_limit() {
-        assert_eq!(get_volume_limit(PlanType::Free), Some(25_000_00));
-        assert_eq!(get_volume_limit(PlanType::Plus), Some(500_000_00));
-        assert_eq!(get_volume_limit(PlanType::Pro), Some(1_000_000_00));
+        assert_eq!(get_volume_limit(PlanType::Free), Some(2_500_000));
+        assert_eq!(get_volume_limit(PlanType::Plus), Some(50_000_000));
+        assert_eq!(get_volume_limit(PlanType::Pro), Some(100_000_000));
         assert_eq!(get_volume_limit(PlanType::Enterprise), None); // Unlimited
     }
 
     #[test]
     fn test_is_over_volume_limit() {
         // Free plan: $25k limit
-        assert!(!is_over_volume_limit(PlanType::Free, 20_000_00)); // $20k
-        assert!(is_over_volume_limit(PlanType::Free, 30_000_00)); // $30k
+        assert!(!is_over_volume_limit(PlanType::Free, 2_000_000)); // $20k
+        assert!(is_over_volume_limit(PlanType::Free, 3_000_000)); // $30k
 
         // Enterprise: never over limit
-        assert!(!is_over_volume_limit(PlanType::Enterprise, 999_999_999_00));
+        assert!(!is_over_volume_limit(PlanType::Enterprise, 99_999_999_900));
     }
 
     #[test]

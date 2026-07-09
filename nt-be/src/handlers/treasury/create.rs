@@ -354,7 +354,7 @@ enum ExistingDaoState {
 }
 
 /// Fetch a DAO's current sputnik policy.
-async fn fetch_dao_policy(
+pub(crate) async fn fetch_dao_policy(
     state: &AppState,
     treasury: &AccountId,
 ) -> Result<serde_json::Value, String> {
@@ -368,7 +368,7 @@ async fn fetch_dao_policy(
 }
 
 /// Collect all member account IDs across every `Group` role in a policy.
-fn policy_group_members(policy: &serde_json::Value) -> HashSet<String> {
+pub(crate) fn policy_group_members(policy: &serde_json::Value) -> HashSet<String> {
     let mut members = HashSet::new();
     if let Some(roles) = policy.get("roles").and_then(|r| r.as_array()) {
         for role in roles {
@@ -388,6 +388,25 @@ fn policy_group_members(policy: &serde_json::Value) -> HashSet<String> {
     members
 }
 
+/// Classify an existing DAO from its on-chain policy members.
+///
+/// The backend sponsor must not appear in the final user policy. While the
+/// sponsor is still a member, the DAO is treated as an incomplete confidential
+/// setup we own and can resume.
+fn classify_from_policy_members(
+    members: &HashSet<String>,
+    signer_id: &str,
+    expected_members: &HashSet<String>,
+) -> ExistingDaoState {
+    if members.contains(signer_id) {
+        return ExistingDaoState::OursIncomplete;
+    }
+    if !expected_members.is_empty() && expected_members.is_subset(members) {
+        return ExistingDaoState::AlreadyOwnedByUser;
+    }
+    ExistingDaoState::Taken
+}
+
 /// Determine whether the treasury account already exists and, if so, whether
 /// it's a resumable half-created DAO we own, an already-finished one, or a
 /// name taken by someone else.
@@ -405,19 +424,13 @@ async fn classify_treasury_account(
         Err(e) if e.to_string().contains("UnknownAccount") => Ok(ExistingDaoState::Absent),
         Err(e) => Err(format!("Failed to check treasury account: {e}")),
         Ok(_) => {
-            // Account exists — inspect its DAO policy to decide ownership.
             let policy = fetch_dao_policy(state, treasury).await?;
             let members = policy_group_members(&policy);
-            if members.contains(signer_id) {
-                // Backend signer still controls the DAO → sponsor-only policy,
-                // confidential setup never finished. Resume it.
-                Ok(ExistingDaoState::OursIncomplete)
-            } else if !expected_members.is_empty() && expected_members.is_subset(&members) {
-                // Ownership already handed to the user's members.
-                Ok(ExistingDaoState::AlreadyOwnedByUser)
-            } else {
-                Ok(ExistingDaoState::Taken)
-            }
+            Ok(classify_from_policy_members(
+                &members,
+                signer_id,
+                expected_members,
+            ))
         }
     }
 }
@@ -666,10 +679,18 @@ async fn run_creation_inner(
 
     // ── Confidential setup (idempotent per-step) ───────────────────────
     // Skip entirely if ownership already transferred to the user (finished).
+    // Fresh creates skip per-step pre-checks; resumes probe on-chain state first.
     if is_confidential && existing != ExistingDaoState::AlreadyOwnedByUser {
-        confidential_setup::setup_confidential_treasury(state, &treasury, user_policy, Some(tx))
-            .await
-            .map_err(|(_, msg)| error_event(msg))?;
+        let resume = !did_create;
+        confidential_setup::setup_confidential_treasury(
+            state,
+            &treasury,
+            user_policy,
+            Some(tx),
+            resume,
+        )
+        .await
+        .map_err(|(_, msg)| error_event(msg))?;
     }
 
     let should_mark = should_mark_testing(
@@ -690,6 +711,20 @@ async fn run_creation_inner(
                 should_mark
             }
         };
+
+    // Confirm the user's members are on-chain before we declare success. Without
+    // this, a failed ChangePolicy vote could still reach `Ok(())` and delete the
+    // incomplete row, leaving a sponsor-only DAO with no sweeper recovery.
+    let final_state =
+        classify_treasury_account(state, &treasury, state.signer_id.as_str(), &payload_members)
+            .await
+            .map_err(error_event)?;
+
+    if final_state != ExistingDaoState::AlreadyOwnedByUser {
+        return Err(error_event(format!(
+            "Treasury creation incomplete ({final_state:?}): user members are not yet on-chain"
+        )));
+    }
 
     // ── Finalize ───────────────────────────────────────────────────────
     send_progress(tx, "finalizing", "in_progress").await;
@@ -774,6 +809,23 @@ mod tests {
             MAX_CREATION_ATTEMPTS,
             "connection timed out"
         ));
+    }
+
+    #[test]
+    fn classify_from_policy_members_requires_sponsor_removed() {
+        let sponsor = "sponsor.near";
+        let user = "alice.near";
+        let sponsor_only = HashSet::from([sponsor.to_string()]);
+        let user_members = HashSet::from([user.to_string()]);
+
+        assert_eq!(
+            classify_from_policy_members(&sponsor_only, sponsor, &user_members),
+            ExistingDaoState::OursIncomplete
+        );
+        assert_eq!(
+            classify_from_policy_members(&user_members, sponsor, &user_members),
+            ExistingDaoState::AlreadyOwnedByUser
+        );
     }
 
     #[test]

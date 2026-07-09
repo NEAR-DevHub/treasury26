@@ -26,7 +26,9 @@ use urlencoding::encode;
 use crate::config::get_plan_config;
 use crate::handlers::balance_changes::query_builder::{
     BalanceChangeFilters, FROM_ACCOUNT_EXPR, RELAYER_ACCOUNT, TO_ACCOUNT_EXPR, build_count_query,
+    build_where_conditions,
 };
+use crate::handlers::balance_changes::{confidential_list, public_list};
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, get_balance_changes_internal};
@@ -124,6 +126,10 @@ pub async fn get_balance_chart(
 ) -> Result<Json<ChartResponse>, (StatusCode, String)> {
     user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
+    let is_confidential =
+        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str())
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
@@ -135,7 +141,9 @@ pub async fn get_balance_chart(
     .flatten() // unwrap Option<Option<DateTime>> from fetch_optional
     .flatten(); // unwrap Option<DateTime> from nullable column
 
-    // Load prior balances (most recent balance_after for each token before start_time)
+    // Load prior balances (most recent balance_after for each token before start_time).
+    // Public chart reads are temporarily kept on legacy `balance_changes`; activity/export
+    // still route through the public gold adapter.
     let prior_balances = load_prior_balances(
         &state.db_pool,
         params.account_id.as_str(),
@@ -168,68 +176,80 @@ pub async fn get_balance_chart(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let query = BalanceChangesQuery {
-        account_id: params.account_id.clone(),
-        limit: None,
-        offset: None,
-        start_time: Some(params.start_time.to_rfc3339()),
-        end_time: Some(params.end_time.to_rfc3339()),
-        token_ids: params.token_ids.clone(),
-        exclude_token_ids: None,
-        transaction_types: None, // Include all transaction types for balance chart
-        min_amount: None,
-        max_amount: None,
-        tx_hash: None,
-        from_accounts: None,
-        from_accounts_not: None,
-        to_accounts: None,
-        to_accounts_not: None,
-        include_metadata: Some(false), // Chart doesn't need metadata
-        include_prices: Some(true),    // Chart needs prices for USD values
-        include_chain_metadata: Some(false), // Chart doesn't need chain metadata
-        exclude_near_dust: false,
-        exclude_swaps_from_direction: false, // Balance chart: include swaps
-    };
+    let changes: Vec<BalanceChange> = if is_confidential {
+        let query = BalanceChangesQuery {
+            account_id: params.account_id.clone(),
+            limit: None,
+            offset: None,
+            start_time: Some(params.start_time.to_rfc3339()),
+            end_time: Some(params.end_time.to_rfc3339()),
+            token_ids: params.token_ids.clone(),
+            exclude_token_ids: None,
+            transaction_types: None, // Include all transaction types for balance chart
+            min_amount: None,
+            max_amount: None,
+            tx_hash: None,
+            from_accounts: None,
+            from_accounts_not: None,
+            to_accounts: None,
+            to_accounts_not: None,
+            include_metadata: Some(false), // Chart doesn't need metadata
+            include_prices: Some(true),    // Chart needs prices for USD values
+            include_chain_metadata: Some(false), // Chart doesn't need chain metadata
+            exclude_near_dust: false,
+            exclude_swaps_from_direction: false, // Balance chart: include swaps
+        };
 
-    let enriched_changes = get_balance_changes_internal(&state, &query)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        let enriched_changes = get_balance_changes_internal(&state, &query)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Convert EnrichedBalanceChange back to BalanceChange for calculate_snapshots.
-    // IMPORTANT: restore the original staking token_id (staking:<pool>) instead of
-    // the display-transformed "near". The staking remapping in get_balance_changes_internal
-    // is for UI display only; mixing staking rows under "near" corrupts the snapshot
-    // logic because staking balance_after values (~0.001) are picked up instead of the
-    // real NEAR balance when staking block_heights are higher than real NEAR changes.
-    let changes: Vec<BalanceChange> = enriched_changes
-        .into_iter()
-        .map(|change| {
-            let token_id = if change.action_kind.as_deref() == Some("StakingReward") {
-                // counterparty was set to the pool address by the remapping; reconstruct
-                // the original staking:<pool> token_id so calculate_snapshots keeps these
-                // in a separate series from real NEAR.
-                if let Some(ref pool) = change.counterparty {
-                    format!("staking:{}", pool)
+        // Convert EnrichedBalanceChange back to BalanceChange for calculate_snapshots.
+        // IMPORTANT: restore the original staking token_id (staking:<pool>) instead of
+        // the display-transformed "near". The staking remapping in get_balance_changes_internal
+        // is for UI display only; mixing staking rows under "near" corrupts the snapshot
+        // logic because staking balance_after values (~0.001) are picked up instead of the
+        // real NEAR balance when staking block_heights are higher than real NEAR changes.
+        enriched_changes
+            .into_iter()
+            .map(|change| {
+                let token_id = if change.action_kind.as_deref() == Some("StakingReward") {
+                    // counterparty was set to the pool address by the remapping; reconstruct
+                    // the original staking:<pool> token_id so calculate_snapshots keeps these
+                    // in a separate series from real NEAR.
+                    if let Some(ref pool) = change.counterparty {
+                        format!("staking:{}", pool)
+                    } else {
+                        change.token_id
+                    }
                 } else {
                     change.token_id
+                };
+                BalanceChange {
+                    block_height: change.block_height,
+                    block_time: change.block_time,
+                    token_id,
+                    token_symbol: None, // Not needed for chart calculations
+                    counterparty: change.counterparty.unwrap_or_default(),
+                    amount: change.amount,
+                    balance_before: change.balance_before,
+                    balance_after: change.balance_after,
+                    transaction_hashes: change.transaction_hashes,
+                    receipt_id: change.receipt_id,
                 }
-            } else {
-                change.token_id
-            };
-            BalanceChange {
-                block_height: change.block_height,
-                block_time: change.block_time,
-                token_id,
-                token_symbol: None, // Not needed for chart calculations
-                counterparty: change.counterparty.unwrap_or_default(),
-                amount: change.amount,
-                balance_before: change.balance_before,
-                balance_after: change.balance_after,
-                transaction_hashes: change.transaction_hashes,
-                receipt_id: change.receipt_id,
-            }
-        })
-        .collect();
+            })
+            .collect()
+    } else {
+        load_legacy_chart_balance_changes(
+            &state.db_pool,
+            &params.account_id,
+            params.start_time,
+            params.end_time,
+            params.token_ids.as_ref(),
+        )
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    };
 
     // Calculate snapshots at each interval
     let mut snapshots = calculate_snapshots(
@@ -550,6 +570,90 @@ async fn load_prior_balances(
     };
 
     Ok(result)
+}
+
+#[derive(Debug, FromRow)]
+struct LegacyChartBalanceChangeRow {
+    block_height: i64,
+    block_time: DateTime<Utc>,
+    token_id: String,
+    counterparty: String,
+    amount: BigDecimal,
+    balance_before: BigDecimal,
+    balance_after: BigDecimal,
+    transaction_hashes: Vec<String>,
+    receipt_id: Vec<String>,
+}
+
+async fn load_legacy_chart_balance_changes(
+    pool: &PgPool,
+    account_id: &AccountId,
+    start_time: DateTime<Utc>,
+    end_time: DateTime<Utc>,
+    token_ids: Option<&Vec<String>>,
+) -> Result<Vec<BalanceChange>, sqlx::Error> {
+    let filters = BalanceChangeFilters {
+        account_id: account_id.clone(),
+        date_cutoff: None,
+        start_date: Some(start_time),
+        end_date: Some(end_time),
+        token_ids: token_ids.cloned(),
+        exclude_token_ids: None,
+        transaction_types: None,
+        min_amount: None,
+        max_amount: None,
+        transaction_hash_query: None,
+        from_accounts: None,
+        from_accounts_not: None,
+        to_accounts: None,
+        to_accounts_not: None,
+        exclude_near_dust: false,
+        exclude_swaps_from_direction: false,
+    };
+    let (conditions, _) = build_where_conditions(&filters);
+    let query = format!(
+        r#"
+        SELECT
+            block_height,
+            block_time,
+            token_id,
+            COALESCE(counterparty, '') AS counterparty,
+            amount,
+            balance_before,
+            balance_after,
+            transaction_hashes,
+            receipt_id
+        FROM balance_changes
+        WHERE {}
+        ORDER BY block_height DESC
+        "#,
+        conditions.join(" AND ")
+    );
+
+    let mut query = sqlx::query_as::<_, LegacyChartBalanceChangeRow>(&query)
+        .bind(account_id.as_str())
+        .bind(start_time)
+        .bind(end_time);
+    if let Some(tokens) = token_ids {
+        query = query.bind(tokens);
+    }
+
+    let rows = query.fetch_all(pool).await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| BalanceChange {
+            block_height: row.block_height,
+            block_time: row.block_time,
+            token_id: row.token_id,
+            token_symbol: None,
+            counterparty: row.counterparty,
+            amount: row.amount,
+            balance_before: row.balance_before,
+            balance_after: row.balance_after,
+            transaction_hashes: row.transaction_hashes,
+            receipt_id: row.receipt_id,
+        })
+        .collect())
 }
 
 /// Load balance changes from database
@@ -1512,6 +1616,15 @@ pub async fn get_recent_activity(
 
     let limit = params.limit.unwrap_or(10).min(100);
     let offset = params.offset.unwrap_or(0);
+    let is_confidential =
+        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str())
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": e.to_string() })),
+                )
+            })?;
 
     // Get account plan info and calculate date cutoff
     let account_plan = get_account_plan_info(&state.db_pool, params.account_id.as_str())
@@ -1662,7 +1775,37 @@ pub async fn get_recent_activity(
         count_query = count_query.bind(to_accounts_not);
     }
 
-    let total: i64 = count_query.fetch_one(&state.db_pool).await.unwrap_or(0);
+    let total: i64 = if is_confidential {
+        count_query.fetch_one(&state.db_pool).await.unwrap_or(0)
+    } else {
+        let count_query = BalanceChangesQuery {
+            account_id: params.account_id.clone(),
+            limit: None,
+            offset: None,
+            start_time: count_date_cutoff_str
+                .clone()
+                .or_else(|| start_date.map(|s| s.to_string())),
+            end_time: end_date.map(|s| s.to_string()),
+            token_ids: token_ids.clone(),
+            exclude_token_ids: exclude_token_ids.clone(),
+            transaction_types: transaction_types_for_query.clone(),
+            min_amount: None,
+            max_amount: None,
+            tx_hash: params.tx_hash.clone(),
+            from_accounts: params.from_account.clone(),
+            from_accounts_not: params.from_account_not.clone(),
+            to_accounts: params.to_account.clone(),
+            to_accounts_not: params.to_account_not.clone(),
+            include_metadata: Some(false),
+            include_prices: Some(false),
+            include_chain_metadata: Some(false),
+            exclude_near_dust: true,
+            exclude_swaps_from_direction: true,
+        };
+        public_list::count_balance_change_legs(&state.db_pool, &count_query)
+            .await
+            .unwrap_or(0)
+    };
 
     // If min_usd_value filter is specified, we need to fetch more records and filter them
     // because we can't filter by USD value in the database (prices come from API)

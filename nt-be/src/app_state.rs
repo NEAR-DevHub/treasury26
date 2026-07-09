@@ -3,18 +3,28 @@ use chrono::{DateTime, Utc};
 use near_api::{AccountId, NetworkConfig, RPCEndpoint, Signer};
 use sqlx::PgPool;
 use std::{sync::Arc, time::Duration};
+use tokio::sync::broadcast;
 
 use crate::{
+    events::{AppEvent, EVENT_BUS_CAPACITY},
     handlers::balance_changes::transfer_hints::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
     },
-    services::{DeFiLlamaClient, PriceLookupService},
+    handlers::public_history::bronze::NearblocksPriority,
+    services::{DeFiLlamaClient, PriceLookupService, TokenPriceService},
     utils::{
         cache::{Cache, CacheKey, CacheTier},
         env::EnvVars,
+        priority_rate_gate::PriorityRateGate,
+        rate_limiter::RateLimiter,
         telegram::TelegramClient,
     },
 };
+
+/// Sustained NearBlocks request ceiling (per minute) shared by every NearBlocks
+/// caller. Kept under the plan's 190/min hard limit to leave headroom for the
+/// on-demand v1 call sites; the daily/monthly budget is enforced separately.
+const NEARBLOCKS_MAX_PER_MINUTE: u32 = 10;
 
 /// Per-endpoint RPC retries before near-api fails over to the next endpoint
 /// (near-api's default is 5). Bumped so transient RPC hiccups are absorbed
@@ -60,6 +70,11 @@ fn default_mainnet_archival_endpoints(fastnear_api_key: &str) -> Vec<RPCEndpoint
 
 pub struct AppState {
     pub http_client: reqwest::Client,
+    /// Priority admission gate over the shared NearBlocks budget. Every NearBlocks
+    /// caller draws on one per-minute ceiling; latest (user-facing) requests
+    /// preempt backfill (bulk) requests for the next permit. Replaces the raw
+    /// limiter so the priority ordering can't be bypassed at the one acquire site.
+    pub nearblocks_gate: PriorityRateGate<NearblocksPriority>,
     pub cache: Cache,
     pub signer: Arc<Signer>,
     pub bulk_payment_signer: Arc<Signer>,
@@ -69,6 +84,9 @@ pub struct AppState {
     pub env_vars: EnvVars,
     pub db_pool: PgPool,
     pub price_service: PriceLookupService<DeFiLlamaClient>,
+    /// Centralized token registry + minute-level USD prices, fed by the
+    /// token price ingest worker. Latest-price reads are in-memory.
+    pub token_price_service: Arc<TokenPriceService>,
     pub bulk_payment_contract_id: AccountId,
     pub telegram_client: TelegramClient,
     /// Optional transfer hint service for accelerated balance change detection
@@ -80,6 +98,7 @@ pub struct AppState {
     /// Used by the enrichment worker to read indexed_dao_outcomes.
     /// None if GOLDSKY_DATABASE_URL is not configured.
     pub goldsky_pool: Option<PgPool>,
+    pub event_tx: broadcast::Sender<AppEvent>,
     /// Wakes the treasury creation sweeper immediately (instead of waiting for
     /// its next poll tick) when an attempt fails, so a half-created treasury is
     /// retried within moments rather than seconds.
@@ -313,6 +332,8 @@ impl AppStateBuilder {
             .price_service
             .unwrap_or_else(|| PriceLookupService::without_provider(db_pool.clone()));
 
+        let token_price_service = Arc::new(TokenPriceService::new(db_pool.clone()));
+
         // Use bulk payment contract from env or default
         let bulk_payment_contract_id = self
             .bulk_payment_contract_id
@@ -366,8 +387,24 @@ impl AppStateBuilder {
             None
         };
 
+        // Build the shared NearBlocks limiter, wrap it in the priority gate, and
+        // spawn the gate's driver here so no AppState can exist without a running
+        // driver (a gate whose driver isn't running would fail open → unlimited
+        // NearBlocks calls). build() is always awaited inside a tokio runtime.
+        let nearblocks_limiter = RateLimiter::per_minute(
+            "nearblocks",
+            NEARBLOCKS_MAX_PER_MINUTE,
+            NEARBLOCKS_MAX_PER_MINUTE,
+        );
+        let (nearblocks_gate, nearblocks_gate_driver) =
+            PriorityRateGate::<NearblocksPriority>::new(nearblocks_limiter);
+        tokio::spawn(nearblocks_gate_driver.run());
+
+        let (event_tx, _) = broadcast::channel(EVENT_BUS_CAPACITY);
+
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
+            nearblocks_gate,
             cache: self.cache.unwrap_or_default(),
             signer,
             bulk_payment_signer,
@@ -378,10 +415,12 @@ impl AppStateBuilder {
             env_vars,
             db_pool,
             price_service,
+            token_price_service,
             bulk_payment_contract_id,
             transfer_hint_service,
             neardata_client,
             goldsky_pool,
+            event_tx,
             creation_sweep_notify: Arc::new(tokio::sync::Notify::new()),
         })
     }
@@ -394,6 +433,16 @@ impl Default for AppStateBuilder {
 }
 
 impl AppState {
+    pub fn publish_treasury_projection_updated(&self, account_id: String) {
+        let event = AppEvent::treasury_projection_updated(account_id);
+        if let Err(e) = self.event_tx.send(event) {
+            tracing::debug!(
+                account_id = %e.0.account_id,
+                "no active SSE subscribers for treasury projection update"
+            );
+        }
+    }
+
     /// Create a new builder for constructing AppState
     ///
     /// # Example

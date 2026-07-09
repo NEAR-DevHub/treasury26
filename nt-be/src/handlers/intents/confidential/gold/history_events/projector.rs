@@ -160,6 +160,9 @@ pub async fn project_confidential_gold_for_dirty_daos(
                 stats.accounts_skipped_locked += 1;
             }
             Ok(dao_stats) => {
+                if dao_stats.rows_projected > 0 || dao_stats.rows_deleted > 0 {
+                    stats.changed_accounts.push(dao_id.clone());
+                }
                 stats.accounts_projected += 1;
                 stats.rows_projected += dao_stats.rows_projected;
                 stats.rows_deleted += dao_stats.rows_deleted;

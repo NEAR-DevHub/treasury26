@@ -16,6 +16,8 @@ pub struct OhDearHealthConfig {
     pub exchange_deadline_hours: i64,
     pub exchange_slippage_tolerance: u16,
     pub exchange_quote_waiting_time_ms: u64,
+    pub fastnear_probe_account_id: String,
+    pub neardata_probe_block_height: u64,
 }
 
 impl Default for OhDearHealthConfig {
@@ -37,6 +39,8 @@ impl Default for OhDearHealthConfig {
             exchange_deadline_hours: 24,
             exchange_slippage_tolerance: 100,
             exchange_quote_waiting_time_ms: 3000,
+            fastnear_probe_account_id: "trezu.sputnik-dao.near".to_string(),
+            neardata_probe_block_height: 100_000_000,
         }
     }
 }
