@@ -236,16 +236,79 @@ fn leg_kind(leg: &SilverTransferLegRow) -> Result<PublicTransferLegKind, String>
 
 /// Native NEAR movements that are relayer/protocol noise, never real
 /// treasury activity: proposal-storage top-ups & bonds fronted by the
-/// sponsor, and gas-fee rewards credited by `system`. Hidden from the
-/// public history feed to match `balance_changes`.
+/// sponsor, the initial DAO creation funding receipt, and gas-fee rewards
+/// credited by `system`. Hidden from the public history feed to match
+/// `balance_changes`.
 fn is_noise_native_movement(leg: &SilverTransferLegRow, relayer_account: &str) -> bool {
     if leg.token_standard != "native" {
         return false;
+    }
+    if is_treasury_creation_native_deposit(leg, relayer_account) {
+        return true;
     }
     matches!(
         leg.counterparty.as_deref(),
         Some(cp) if cp == relayer_account || cp == SYSTEM_ACCOUNT
     )
+}
+
+fn receipt_field<'a>(receipt: &'a Value, key: &str) -> Option<&'a str> {
+    receipt.get(key).and_then(Value::as_str)
+}
+
+fn receipt_field_matches(receipt: &Value, key: &str, expected: &str) -> bool {
+    receipt_field(receipt, key) == Some(expected)
+}
+
+fn receipt_has_action(receipt: &Value, action: &str, method: Option<&str>) -> bool {
+    receipt
+        .get("actions")
+        .and_then(Value::as_array)
+        .is_some_and(|actions| {
+            actions.iter().any(|entry| {
+                let action_matches = entry
+                    .get("action")
+                    .and_then(Value::as_str)
+                    .is_some_and(|actual| actual.eq_ignore_ascii_case(action));
+                let method_matches = method.is_none_or(|expected| {
+                    entry
+                        .get("method")
+                        .and_then(Value::as_str)
+                        .is_some_and(|actual| actual.eq_ignore_ascii_case(expected))
+                });
+                action_matches && method_matches
+            })
+        })
+}
+
+fn receipt_signer_is_relayer_if_present(receipt: &Value, relayer_account: &str) -> bool {
+    ["signer_id", "signer_account_id"]
+        .iter()
+        .find_map(|key| receipt_field(receipt, key))
+        .is_none_or(|signer| signer == relayer_account)
+}
+
+fn is_treasury_creation_native_deposit(leg: &SilverTransferLegRow, relayer_account: &str) -> bool {
+    if leg.direction != PublicTransferDirection::Incoming.as_str() {
+        return false;
+    }
+    let Some(receipt) = leg.raw_payload.get("receipt") else {
+        return false;
+    };
+    if !receipt_signer_is_relayer_if_present(receipt, relayer_account) {
+        return false;
+    }
+    if !receipt_field_matches(receipt, "receiver_account_id", &leg.account_id)
+        || !receipt_field_matches(receipt, "predecessor_account_id", "sputnik-dao.near")
+    {
+        return false;
+    }
+
+    receipt_has_action(receipt, "CREATE_ACCOUNT", None)
+        && receipt_has_action(receipt, "TRANSFER", None)
+        && (receipt_has_action(receipt, "USE_GLOBAL_CONTRACT", None)
+            || receipt_has_action(receipt, "DEPLOY_CONTRACT", None))
+        && receipt_has_action(receipt, "FUNCTION_CALL", Some("new"))
 }
 
 fn is_projectable_transfer(
@@ -1001,6 +1064,87 @@ mod tests {
         let row = leg("native", Some(TEST_RELAYER_ACCOUNT), "1.1");
         assert!(is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
         assert!(!is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
+    }
+
+    #[test]
+    fn treasury_creation_deposit_from_relayer_is_noise() {
+        let mut row = leg("native", Some("sputnik-dao.near"), "0.09");
+        row.account_id = "newtestbyqa.sputnik-dao.near".to_string();
+        row.raw_payload = serde_json::json!({
+            "receipt": {
+                "actions": [
+                    { "action": "CREATE_ACCOUNT", "method": null },
+                    { "action": "TRANSFER", "method": null },
+                    { "action": "USE_GLOBAL_CONTRACT", "method": null },
+                    { "action": "FUNCTION_CALL", "method": "new" }
+                ],
+                "actions_agg": {
+                    "deposit": "90000000000000000000000"
+                },
+                "predecessor_account_id": "sputnik-dao.near",
+                "receiver_account_id": "newtestbyqa.sputnik-dao.near",
+                "signer_id": TEST_RELAYER_ACCOUNT
+            },
+            "action_index": 1,
+            "action": null
+        });
+
+        assert!(is_treasury_creation_native_deposit(
+            &row,
+            TEST_RELAYER_ACCOUNT
+        ));
+        assert!(is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+        assert!(!is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
+    }
+
+    #[test]
+    fn treasury_creation_shape_without_signer_field_is_noise() {
+        let mut row = leg("native", Some("sputnik-dao.near"), "0.09");
+        row.account_id = "newtestbyqa.sputnik-dao.near".to_string();
+        row.raw_payload = serde_json::json!({
+            "receipt": {
+                "actions": [
+                    { "action": "CREATE_ACCOUNT", "method": null },
+                    { "action": "TRANSFER", "method": null },
+                    { "action": "USE_GLOBAL_CONTRACT", "method": null },
+                    { "action": "FUNCTION_CALL", "method": "new" }
+                ],
+                "predecessor_account_id": "sputnik-dao.near",
+                "receiver_account_id": "newtestbyqa.sputnik-dao.near"
+            }
+        });
+
+        assert!(is_treasury_creation_native_deposit(
+            &row,
+            TEST_RELAYER_ACCOUNT
+        ));
+        assert!(is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+    }
+
+    #[test]
+    fn treasury_creation_deposit_from_other_signer_is_kept() {
+        let mut row = leg("native", Some("sputnik-dao.near"), "0.09");
+        row.account_id = "newtestbyqa.sputnik-dao.near".to_string();
+        row.raw_payload = serde_json::json!({
+            "receipt": {
+                "actions": [
+                    { "action": "CREATE_ACCOUNT", "method": null },
+                    { "action": "TRANSFER", "method": null },
+                    { "action": "USE_GLOBAL_CONTRACT", "method": null },
+                    { "action": "FUNCTION_CALL", "method": "new" }
+                ],
+                "predecessor_account_id": "sputnik-dao.near",
+                "receiver_account_id": "newtestbyqa.sputnik-dao.near",
+                "signer_id": "alice.near"
+            }
+        });
+
+        assert!(!is_treasury_creation_native_deposit(
+            &row,
+            TEST_RELAYER_ACCOUNT
+        ));
+        assert!(!is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
+        assert!(is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
     #[test]
