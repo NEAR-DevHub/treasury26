@@ -16,11 +16,67 @@ async fn ensure_pro_plan(pool: &sqlx::PgPool) {
             plan_type = 'pro', 
             export_credits = 10, 
             batch_payment_credits = 100, 
-            gas_covered_transactions = 2000",
+            gas_covered_transactions = 2000,
+            is_confidential_account = false",
     )
     .execute(pool)
     .await
     .expect("Failed to ensure Pro plan for test account");
+}
+
+async fn clear_public_history_test_data(pool: &sqlx::PgPool) {
+    const ACCOUNT_ID: &str = "webassemblymusic-treasury.sputnik-dao.near";
+
+    sqlx::query("DELETE FROM gold_public_history_projection_errors WHERE dao_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear gold public projection errors");
+    sqlx::query("DELETE FROM gold_public_history_events WHERE dao_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear gold public history events");
+    sqlx::query("DELETE FROM gold_public_history_cursors WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear gold public history cursors");
+    sqlx::query("DELETE FROM silver_public_history_projection_errors WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear silver public projection errors");
+    sqlx::query("DELETE FROM silver_public_transfer_legs WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear silver public transfer legs");
+    sqlx::query("DELETE FROM silver_public_history_cursors WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear silver public history cursors");
+    sqlx::query("DELETE FROM bronze_public_history_events WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear bronze public history events");
+    sqlx::query("DELETE FROM bronze_public_history_cursors WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear bronze public history cursors");
+    sqlx::query("DELETE FROM public_history_backfill_usage WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear public history backfill usage");
+    sqlx::query("DELETE FROM dao_proposals WHERE dao_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("Failed to clear public DAO proposals");
 }
 
 /// Load webassemblymusic-treasury test data from SQL dump files
@@ -43,6 +99,7 @@ async fn load_test_data() {
         .execute(&pool)
         .await
         .expect("Failed to clear historical_prices test data");
+    clear_public_history_test_data(&pool).await;
 
     // Check if balance_changes data is already loaded
     let existing_count: i64 = sqlx::query_scalar(

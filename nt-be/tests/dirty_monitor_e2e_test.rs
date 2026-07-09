@@ -134,12 +134,7 @@ async fn test_maintenance_detects_payments(pool: PgPool) -> sqlx::Result<()> {
         BASELINE_BLOCK as u64,
     )
     .await
-    .map_err(|e| {
-        sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
     println!("Seeded NEAR snapshot for {} via RPC", TREASURY_ACCOUNT);
 
     // Seed remaining token snapshots (data from https://api.trezu.app/api/balance-changes)
@@ -166,8 +161,8 @@ async fn test_maintenance_detects_payments(pool: PgPool) -> sqlx::Result<()> {
         .bind(&zero)
         .bind(&balance)
         .bind(&balance)
-        .bind(&Vec::<String>::new())
-        .bind(&Vec::<String>::new())
+        .bind(Vec::<String>::new())
+        .bind(Vec::<String>::new())
         .bind("SNAPSHOT")
         .bind(json!({}))
         .bind(json!({}))
@@ -237,12 +232,7 @@ async fn test_maintenance_detects_payments(pool: PgPool) -> sqlx::Result<()> {
         None,
     )
     .await
-    .map_err(|e| {
-        sqlx::Error::Io(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            e.to_string(),
-        ))
-    })?;
+    .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
     let duration = start.elapsed();
 
     println!("Gap filling filled {} gaps in {:?}", gaps_filled, duration);

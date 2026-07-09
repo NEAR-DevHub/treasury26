@@ -7,6 +7,7 @@
 //! 2. Authenticate with 1Click API using the MPC signature
 //! 3. Submit ChangePolicy proposal (user's real config) → vote
 
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use base64::Engine;
@@ -15,7 +16,7 @@ use reqwest::StatusCode;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
 
-use super::create::{ProgressEvent, send_progress};
+use super::create::{ProgressEvent, fetch_dao_policy, policy_group_members, send_progress};
 use crate::AppState;
 use crate::constants::INTENTS_CONTRACT_ID;
 use crate::handlers::intents::confidential::prepare_auth::{
@@ -29,12 +30,30 @@ use crate::observability::sanitize_sensitive_json_value;
 /// The treasury must have been created with `state.signer_id` as the sole
 /// Admin+Approver member (threshold=1) so this function can submit and
 /// immediately approve proposals.
+///
+/// When `resume` is false (fresh creation this run), skip on-chain/DB
+/// idempotency probes and execute each step directly. When true (sweeper /
+/// in-session recovery), check whether each step already completed before
+/// submitting transactions.
 pub async fn setup_confidential_treasury(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
     target_policy: Value,
     progress: Option<&mpsc::Sender<ProgressEvent>>,
+    resume: bool,
 ) -> Result<(), (StatusCode, String)> {
+    if resume {
+        tracing::info!(
+            "Confidential setup: resuming {} — checking each step before acting",
+            treasury_id
+        );
+    } else {
+        tracing::info!(
+            "Confidential setup: fresh DAO {} — running steps without pre-checks",
+            treasury_id
+        );
+    }
+
     // ── Add Public Key to intents.near (idempotent) ─────────────────────
     if let Some(tx) = progress {
         send_progress(tx, "adding_public_key", "in_progress").await;
@@ -43,7 +62,13 @@ pub async fn setup_confidential_treasury(
     let treasury_id_public_key =
         fetch_mpc_public_key(state, treasury_id.as_str(), treasury_id.as_str()).await?;
 
-    if intents_has_public_key(state, treasury_id, &treasury_id_public_key).await? {
+    let public_key_already_registered = if resume {
+        intents_has_public_key(state, treasury_id, &treasury_id_public_key).await?
+    } else {
+        false
+    };
+
+    if public_key_already_registered {
         tracing::info!(
             "Confidential setup: public key already registered for {}, skipping add",
             treasury_id
@@ -85,7 +110,13 @@ pub async fn setup_confidential_treasury(
         send_progress(tx, "authenticating", "in_progress").await;
     }
 
-    if has_valid_confidential_token(&state.db_pool, treasury_id).await {
+    let already_authenticated = if resume {
+        has_valid_confidential_token(&state.db_pool, treasury_id).await
+    } else {
+        false
+    };
+
+    if already_authenticated {
         tracing::info!(
             "Confidential setup: {} already authenticated with 1Click, skipping auth",
             treasury_id
@@ -161,25 +192,66 @@ pub async fn setup_confidential_treasury(
         send_progress(tx, "setting_policy", "in_progress").await;
     }
 
-    let change_policy_proposal = json!({
-        "proposal": {
-            "description": "Set treasury policy to user configuration",
-            "kind": {
-                "ChangePolicy": {
-                    "policy": target_policy,
+    let expected_members = policy_group_members(&target_policy);
+    let policy_already_applied = if resume {
+        tracing::info!(
+            treasury = %treasury_id,
+            expected_members = ?expected_members,
+            "Confidential setup: checking whether user policy is already on-chain"
+        );
+        user_policy_applied(state, treasury_id, &expected_members).await?
+    } else {
+        false
+    };
+
+    if policy_already_applied {
+        tracing::info!(
+            "Confidential setup: policy already reflects user config for {}, skipping ChangePolicy",
+            treasury_id
+        );
+    } else {
+        let change_policy_proposal = json!({
+            "proposal": {
+                "description": "Set treasury policy to user configuration",
+                "kind": {
+                    "ChangePolicy": {
+                        "policy": target_policy,
+                    }
                 }
             }
-        }
-    });
+        });
 
-    let (policy_proposal_id, _) =
-        submit_and_approve_proposal(state, treasury_id, change_policy_proposal).await?;
+        let (policy_proposal_id, _) =
+            submit_and_approve_proposal(state, treasury_id, change_policy_proposal).await?;
 
-    tracing::info!(
-        "Confidential setup: policy proposal #{} approved for {}",
-        policy_proposal_id,
-        treasury_id
-    );
+        tracing::info!(
+            "Confidential setup: policy proposal #{} approved for {}",
+            policy_proposal_id,
+            treasury_id
+        );
+    }
+
+    // On resume, verify on-chain policy after a possibly skipped ChangePolicy.
+    // On a fresh run we just submitted ChangePolicy (or it failed with Err above).
+    if resume && !user_policy_applied(state, treasury_id, &expected_members).await? {
+        tracing::error!(
+            treasury = %treasury_id,
+            expected_members = ?expected_members,
+            "ChangePolicy finished but user members are still not on-chain policy"
+        );
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "ChangePolicy did not apply user members to on-chain policy".to_string(),
+        ));
+    }
+
+    if resume {
+        tracing::info!(
+            treasury = %treasury_id,
+            expected_members = ?expected_members,
+            "Confidential setup: user policy verified on-chain"
+        );
+    }
 
     if let Some(tx) = progress {
         send_progress(tx, "setting_policy", "completed").await;
@@ -528,6 +600,28 @@ async fn has_valid_confidential_token(pool: &sqlx::PgPool, treasury_id: &Account
     .unwrap_or(false)
 }
 
+/// Short label for logs, e.g. `ChangePolicy` or `FunctionCall:intents.near::add_public_key`.
+fn proposal_kind_summary(kind: &Value) -> String {
+    if kind.get("ChangePolicy").is_some() {
+        return "ChangePolicy".to_string();
+    }
+    if let Some(fc) = kind.get("FunctionCall") {
+        let receiver = fc
+            .get("receiver_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("?");
+        let method = fc
+            .get("actions")
+            .and_then(|a| a.as_array())
+            .and_then(|a| a.first())
+            .and_then(|a| a.get("method_name"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("?");
+        return format!("FunctionCall:{receiver}::{method}");
+    }
+    "unknown".to_string()
+}
+
 /// Submit a proposal and immediately approve it.
 ///
 /// Returns `(proposal_id, vote_result_debug)`. The debug string can be
@@ -540,61 +634,92 @@ async fn submit_and_approve_proposal(
     treasury_id: &AccountId,
     proposal: Value,
 ) -> Result<(u64, String), (StatusCode, String)> {
-    // Submit proposal
-    near_api::Contract(treasury_id.clone())
+    let kind_summary = proposal
+        .get("proposal")
+        .and_then(|p| p.get("kind"))
+        .map(proposal_kind_summary)
+        .unwrap_or_else(|| "unknown".to_string());
+
+    // Submit proposal — the contract returns the new proposal id as the
+    // function return value (JSON-encoded u64). Use that directly instead of
+    // `get_last_proposal_id - 1`, which races when RPC reads lag behind writes.
+    let add_outcome = near_api::Contract(treasury_id.clone())
         .call_function("add_proposal", proposal)
         .transaction()
         .gas(NearGas::from_tgas(100))
         .with_signer(state.signer_id.clone(), state.signer.clone())
-        .wait_until(near_openapi_types::TxExecutionStatus::ExecutedOptimistic)
         .send_to(&state.network)
         .await
         .map_err(|e| {
+            tracing::error!(
+                treasury = %treasury_id,
+                kind = %kind_summary,
+                "add_proposal failed: {e}"
+            );
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to submit proposal: {}", e),
             )
-        })?
-        .into_result()
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Proposal submission failed: {}", e),
-            )
         })?;
 
-    // Get the proposal ID (last_id - 1)
-    let last_id: u64 = Contract(treasury_id.clone())
-        .call_function("get_last_proposal_id", ())
-        .read_only::<u64>()
-        .fetch_from(&state.network)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to get last proposal ID: {}", e),
-            )
-        })?
-        .data;
-    let proposal_id = last_id - 1;
+    let add_success = add_outcome.into_result().map_err(|e| {
+        tracing::error!(
+            treasury = %treasury_id,
+            kind = %kind_summary,
+            "add_proposal on-chain execution failed: {e}"
+        );
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Proposal submission failed: {}", e),
+        )
+    })?;
 
-    // Fetch the proposal to get its kind (required by act_proposal)
+    let proposal_id: u64 = add_success.json().map_err(|e| {
+        tracing::error!(
+            treasury = %treasury_id,
+            kind = %kind_summary,
+            "failed to decode add_proposal return value as u64: {e}"
+        );
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!(
+                "Failed to parse proposal id from add_proposal return value: {}",
+                e
+            ),
+        )
+    })?;
+
+    approve_existing_proposal(state, treasury_id, proposal_id).await
+}
+
+/// Vote to approve an existing proposal and wait for execution to finish.
+async fn approve_existing_proposal(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+    proposal_id: u64,
+) -> Result<(u64, String), (StatusCode, String)> {
     let proposal_data: Value = Contract(treasury_id.clone())
         .call_function("get_proposal", json!({"id": proposal_id}))
         .read_only::<Value>()
         .fetch_from(&state.network)
         .await
         .map_err(|e| {
+            tracing::error!(
+                treasury = %treasury_id,
+                proposal_id,
+                "get_proposal failed before vote: {e}"
+            );
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to fetch proposal #{}: {}", proposal_id, e),
             )
         })?
         .data;
-    let kind = &proposal_data["kind"];
 
-    // Vote to approve
-    let result = near_api::Contract(treasury_id.clone())
+    let kind = proposal_data["kind"].clone();
+    let kind_summary = proposal_kind_summary(&kind);
+
+    let vote_outcome = near_api::Contract(treasury_id.clone())
         .call_function(
             "act_proposal",
             json!({
@@ -610,13 +735,51 @@ async fn submit_and_approve_proposal(
         .send_to(&state.network)
         .await
         .map_err(|e| {
+            tracing::error!(
+                treasury = %treasury_id,
+                proposal_id,
+                kind = %kind_summary,
+                "act_proposal failed: {e}"
+            );
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Failed to vote on proposal #{}: {}", proposal_id, e),
             )
         })?;
 
-    Ok((proposal_id, format!("{:?}", result)))
+    let vote_debug = format!("{:?}", vote_outcome);
+    vote_outcome.into_result().map_err(|e| {
+        tracing::error!(
+            treasury = %treasury_id,
+            proposal_id,
+            kind = %kind_summary,
+            "act_proposal on-chain execution failed: {e}"
+        );
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Proposal #{} vote failed: {}", proposal_id, e),
+        )
+    })?;
+
+    Ok((proposal_id, vote_debug))
+}
+
+/// Whether the on-chain policy reflects the user's config: all intended members
+/// are present and the backend sponsor no longer controls the DAO.
+async fn user_policy_applied(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+    expected_members: &HashSet<String>,
+) -> Result<bool, (StatusCode, String)> {
+    if expected_members.is_empty() {
+        return Ok(false);
+    }
+    let policy = fetch_dao_policy(state, treasury_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+    let members = policy_group_members(&policy);
+    let sponsor_removed = !members.contains(state.signer_id.as_str());
+    Ok(sponsor_removed && expected_members.is_subset(&members))
 }
 
 /// Authenticate the DAO with the 1Click API using an MPC signature.

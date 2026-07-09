@@ -1,5 +1,8 @@
+#![allow(dead_code)]
+
 use near_api::{NetworkConfig, RPCEndpoint, Signer};
 use nt_be::AppState;
+use std::net::TcpListener;
 use std::process::{Child, Command};
 use std::sync::{Arc, Once};
 use std::time::Duration;
@@ -144,10 +147,23 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         None
     };
 
+    // Drop the driver so the gate fails open (no rate limiting in tests, matching
+    // the old effectively-unlimited test limiter) without spawning a background task.
+    let (nearblocks_gate, _) = nt_be::utils::priority_rate_gate::PriorityRateGate::<
+        nt_be::handlers::public_history::bronze::NearblocksPriority,
+    >::new(nt_be::utils::rate_limiter::RateLimiter::per_minute(
+        "nearblocks-test",
+        10_000,
+        10_000,
+    ));
+
+    let (event_tx, _) = tokio::sync::broadcast::channel(nt_be::events::EVENT_BUS_CAPACITY);
+
     AppState {
         cache: nt_be::utils::cache::Cache::new(),
         telegram_client: nt_be::utils::telegram::TelegramClient::default(),
         http_client,
+        nearblocks_gate,
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         bulk_payment_signer: Signer::from_secret_key(env_vars.bulk_payment_signer.clone())
@@ -157,11 +173,13 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         archival_network,
         bulk_payment_contract_id: env_vars.bulk_payment_contract_id.clone(),
         env_vars,
+        token_price_service: Arc::new(nt_be::services::TokenPriceService::new(db_pool.clone())),
         db_pool,
         price_service,
         transfer_hint_service: transfer_hint_service.map(Arc::new),
         neardata_client: None,
         goldsky_pool: None,
+        event_tx,
         creation_sweep_notify: Arc::new(tokio::sync::Notify::new()),
     }
 }
@@ -237,6 +255,15 @@ pub struct TestServer {
     _mock_server: Option<MockServer>,
 }
 
+fn available_local_port() -> u16 {
+    let listener =
+        TcpListener::bind("127.0.0.1:0").expect("Failed to bind ephemeral local test port");
+    listener
+        .local_addr()
+        .expect("Failed to read local test port")
+        .port()
+}
+
 impl TestServer {
     /// Start the test server with a mock DeFiLlama server for deterministic tests
     pub async fn start() -> Self {
@@ -248,12 +275,13 @@ impl TestServer {
         // Start mock DeFiLlama server
         let mock_server = start_mock_defillama_server().await;
         let mock_uri = mock_server.uri();
+        let port = available_local_port();
 
         // Start the pre-built server binary directly (not `cargo run`) to avoid
         // blocking on the cargo build lock when called from within `cargo test`.
         // Clear proxy env vars so the server uses real RPC endpoints (not the test proxy).
         let mut process = Command::new(env!("CARGO_BIN_EXE_nt-be"))
-            .env("PORT", "3001")
+            .env("PORT", port.to_string())
             .env("RUST_LOG", "info")
             .env("MONITOR_INTERVAL_SECONDS", "0") // Disable background monitoring
             .env("DATABASE_URL", &db_url) // Override with test database
@@ -263,6 +291,8 @@ impl TestServer {
             )
             .env("SIGNER_ID", "sandbox")
             .env("DEFILLAMA_API_BASE_URL", &mock_uri) // Point to mock server
+            .env("GOLDSKY_DATABASE_URL", "")
+            .env("NEARBLOCKS_API_KEY", "")
             .env_remove("NEAR_RPC_URL")
             .env_remove("NEAR_ARCHIVAL_RPC_URL")
             .env_remove("TRANSFER_HINTS_BASE_URL")
@@ -270,8 +300,6 @@ impl TestServer {
             .env_remove("INTENTS_EXPLORER_API_URL")
             .spawn()
             .expect("Failed to start server");
-
-        let port = 3001;
 
         // Wait for server to be ready
         let client = reqwest::Client::new();
@@ -314,9 +342,10 @@ impl TestServer {
         // Start mock DeFiLlama server
         let mock_server = start_mock_defillama_server().await;
         let mock_uri = mock_server.uri();
+        let port = available_local_port();
 
         let mut process = Command::new(env!("CARGO_BIN_EXE_nt-be"))
-            .env("PORT", "3001")
+            .env("PORT", port.to_string())
             .env("RUST_LOG", "info")
             .env("DATABASE_URL", &db_url)
             .env("GOLDSKY_DATABASE_URL", goldsky_database_url)
@@ -338,8 +367,6 @@ impl TestServer {
             .env_remove("INTENTS_EXPLORER_API_URL")
             .spawn()
             .expect("Failed to start server");
-
-        let port = 3001;
 
         let client = reqwest::Client::new();
         for attempt in 0..60 {

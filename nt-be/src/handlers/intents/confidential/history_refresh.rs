@@ -167,9 +167,11 @@ pub async fn refresh_confidential_history(
 
     run_account_history_full_drain(&state, account_ref, CONFIDENTIAL_HISTORY_TRIGGER_LIMIT).await?;
 
-    project_confidential_gold_for_dao(&state.db_pool, request.account_id.as_str())
+    let mut projection_changed = false;
+    let stats = project_confidential_gold_for_dao(&state.db_pool, request.account_id.as_str())
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    projection_changed |= stats.rows_projected > 0 || stats.rows_deleted > 0;
 
     let corrections_written = if confidential_deposit_corrections_enabled() {
         ConfidentialDepositCorrector::reconcile_dao(&state.db_pool, request.account_id.as_str())
@@ -180,9 +182,14 @@ pub async fn refresh_confidential_history(
     };
 
     if corrections_written > 0 {
-        project_confidential_gold_for_dao(&state.db_pool, request.account_id.as_str())
+        let stats = project_confidential_gold_for_dao(&state.db_pool, request.account_id.as_str())
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        projection_changed |= stats.rows_projected > 0 || stats.rows_deleted > 0;
+    }
+
+    if projection_changed {
+        state.publish_treasury_projection_updated(request.account_id.to_string());
     }
 
     snapshot_confidential_dao_balances(&state, request.account_id.as_str()).await;

@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use apalis::prelude::*;
 use apalis_cron::Tick;
+use tokio::sync::{Mutex, OnceCell};
 
 use crate::AppState;
 
@@ -55,6 +56,39 @@ pub async fn price_sync(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, 
     Ok(summary)
 }
 
+/// Ingests the Chaindefuser token registry into `tokens` + `token_prices`.
+pub async fn token_price_ingest(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    static INGESTOR: OnceCell<Mutex<crate::services::TokenPriceIngestor>> = OnceCell::const_new();
+
+    let ingestor = INGESTOR
+        .get_or_init(|| async {
+            Mutex::new(crate::services::TokenPriceIngestor::new(
+                state.http_client.clone(),
+                state.db_pool.clone(),
+                Arc::clone(&state.token_price_service),
+            ))
+        })
+        .await;
+
+    let mut ingestor = ingestor.lock().await;
+    let summary = ingestor.tick_result().await?;
+
+    if summary.upstream_unchanged {
+        return Ok("tokens API unchanged".to_string());
+    }
+
+    Ok(format!(
+        "tokens={} sampled={} price_rows={} snapshot_tokens={}",
+        summary.tokens_seen,
+        summary.sampled_prices,
+        summary.price_rows_written,
+        summary.snapshot_tokens
+    ))
+}
+
 /// Confidential history (bronze) ingest scheduler tick.
 pub async fn confidential_history_ingest(
     _t: Tick,
@@ -69,6 +103,85 @@ pub async fn confidential_history_ingest(
     Ok(format!(
         "seen={} processed={} failed={}",
         result.accounts_seen, result.accounts_processed, result.accounts_failed
+    ))
+}
+
+/// Public history bronze scheduler: Goldsky latest refresh enqueue + backfill seeding.
+pub async fn public_history_scheduler(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::bronze::jobs::run_public_history_scheduler_cycle(&state)
+            .await?;
+    Ok(format!(
+        "latest_enqueued={} backfill_enqueued={}",
+        stats.latest_enqueued, stats.backfill_enqueued
+    ))
+}
+
+/// Public history silver projection for dirty accounts.
+pub async fn public_silver_projection(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::silver::worker::project_public_silver_for_dirty_accounts(
+            &state.db_pool,
+        )
+        .await?;
+    Ok(format!(
+        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={}",
+        stats.accounts_seen,
+        stats.accounts_projected,
+        stats.accounts_skipped_locked,
+        stats.accounts_failed,
+        stats.rows_projected,
+        stats.rows_deleted,
+        stats.errors_written
+    ))
+}
+
+/// Public history gold projection for dirty accounts.
+pub async fn public_gold_projection(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::gold::projector::project_public_gold_for_dirty_accounts(
+            &state.db_pool,
+            &state.token_price_service,
+            state.signer_id.as_str(),
+        )
+        .await?;
+    let changed = stats.changed_accounts.len();
+    for account_id in stats.changed_accounts {
+        state.publish_treasury_projection_updated(account_id);
+    }
+    Ok(format!(
+        "seen={} projected={} skipped_locked={} failed={} changed={} rows_projected={} rows_deleted={} errors={}",
+        stats.accounts_seen,
+        stats.accounts_projected,
+        stats.accounts_skipped_locked,
+        stats.accounts_failed,
+        changed,
+        stats.rows_projected,
+        stats.rows_deleted,
+        stats.errors_written
+    ))
+}
+
+/// Reconciles stale public DAO proposal statuses.
+pub async fn public_proposal_reconciliation(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::proposals::reconciler::reconcile_stale_proposals(&state)
+            .await?;
+    Ok(format!(
+        "claimed={} updated={} fetch_failed={}",
+        stats.claimed, stats.updated, stats.fetch_failed
     ))
 }
 
@@ -90,7 +203,7 @@ pub async fn confidential_gold_reconciliation(
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
     crate::handlers::intents::confidential::gold::reconciliation_worker::run_reconciliation_pass(
-        &state.db_pool,
+        &state,
         "scheduled",
     )
     .await;

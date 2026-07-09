@@ -15,6 +15,7 @@
 //! run once at startup (reconciliation, monthly reset, dashboard, FT
 //! lockup) get a task pushed at boot in addition to their cron schedule.
 
+pub mod context;
 pub mod handlers;
 
 use std::str::FromStr;
@@ -335,6 +336,49 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         );
     }
 
+    if state.env_vars.nearblocks_api_key.is_some() {
+        crate::handlers::public_history::bronze::jobs::start_public_history_queue_workers(
+            state.clone(),
+        )
+        .await
+        .expect("failed to start public history queue workers");
+
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-history-scheduler",
+            schedule_every_secs(2),
+            handlers::public_history_scheduler
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-silver-projection",
+            schedule_every_secs(5),
+            handlers::public_silver_projection
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-gold-projection",
+            schedule_every_secs(5),
+            handlers::public_gold_projection
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-proposal-reconciliation",
+            schedule_every_secs(600),
+            handlers::public_proposal_reconciliation
+        );
+    } else {
+        tracing::warn!("public history workers disabled: NEARBLOCKS_API_KEY missing");
+    }
+
     monitor = register_cron_worker!(
         monitor,
         queues,
@@ -342,6 +386,15 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         "price-sync",
         schedule_every_secs(60),
         handlers::price_sync
+    );
+
+    monitor = register_cron_worker!(
+        monitor,
+        queues,
+        state,
+        "token-price-ingest",
+        schedule_every_secs(60),
+        handlers::token_price_ingest
     );
 
     monitor = register_cron_worker!(

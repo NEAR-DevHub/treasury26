@@ -12,6 +12,7 @@ pub mod gap_detector;
 pub mod gap_filler;
 pub mod goldsky_enrichment;
 pub mod history;
+pub mod public_list;
 pub mod query_builder;
 pub mod staking_rewards;
 pub mod swap_detector;
