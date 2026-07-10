@@ -2018,11 +2018,8 @@ pub async fn get_recent_activity(
 
             // Filter by minimum USD value if specified
             if let Some(min_usd) = params.min_usd_value {
-                if let Some(usd_value) = value_usd {
-                    if usd_value < min_usd {
-                        return None;
-                    }
-                } else {
+                let usd_value = value_usd?;
+                if usd_value < min_usd {
                     return None;
                 }
             }
