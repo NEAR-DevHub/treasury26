@@ -422,7 +422,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     // }
 
     if !state.env_vars.disable_gold_public_usd_backfill {
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "gold-public-usd-backfill",
@@ -432,7 +433,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     }
 
     if !state.env_vars.disable_gold_confidential_usd_backfill {
-        spawn_cron_worker!(
+        monitor = register_cron_worker!(
+            monitor,
             queues,
             state,
             "gold-confidential-usd-backfill",
@@ -444,7 +446,8 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         );
     }
 
-    spawn_cron_worker!(
+    monitor = register_cron_worker!(
+        monitor,
         queues,
         state,
         "confidential-history-ingest",
