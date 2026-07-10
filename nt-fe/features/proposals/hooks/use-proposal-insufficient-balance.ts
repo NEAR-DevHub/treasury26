@@ -53,7 +53,6 @@ export function useProposalInsufficientBalance(
                 hasInsufficientBalance: true,
                 tokenId: funding.tokenId,
                 type: "no-asset",
-                // Deposit only helps when the shortfall is liquid NEAR.
                 showDeposit: true,
             };
         }
