@@ -773,6 +773,8 @@
             "noAsset": "This request can't be approved because the required token is not available in the treasury.",
             "bond": "This request can't be approved because the treasury has insufficient <token>{symbol}</token> balance. Add <token>{amount} {symbol}</token> to cover proposal bond costs.",
             "continue": "This request can't be approved because the treasury has insufficient <token>{symbol}</token> balance. Add <token>{amount} {symbol}</token> to continue.",
+            "staked": "This request can't be approved because there isn't enough staked <token>{symbol}</token>. Need <token>{amount} {symbol}</token> more staked in this pool.",
+            "readyToWithdraw": "This request can't be approved because there isn't enough <token>{symbol}</token> ready to withdraw. Need <token>{amount} {symbol}</token> more available to withdraw from this pool.",
             "modalTitle": "Insufficient NEAR Balance",
             "modalBodyVote": "You don't have enough NEAR tokens in your wallet to cast this vote. Voting requires a minimum balance of <amount>{required} NEAR</amount>. Please add NEAR to your wallet and try again.",
             "modalBodyProposal": "You don't have enough NEAR tokens in your wallet to create this request. Creating a request requires a minimum balance of <amount>{required} NEAR</amount>. Please add NEAR to your wallet and try again.",

@@ -773,6 +773,8 @@
             "noAsset": "Yêu cầu này không thể được phê duyệt vì token cần thiết không có sẵn trong ngân quỹ.",
             "bond": "Yêu cầu này không thể được phê duyệt vì ngân quỹ không đủ số dư <token>{symbol}</token>. Hãy thêm <token>{amount} {symbol}</token> để chi trả phí bond đề xuất.",
             "continue": "Yêu cầu này không thể được phê duyệt vì ngân quỹ không đủ số dư <token>{symbol}</token>. Hãy thêm <token>{amount} {symbol}</token> để tiếp tục.",
+            "staked": "Yêu cầu này không thể được phê duyệt vì không đủ <token>{symbol}</token> đã stake. Cần thêm <token>{amount} {symbol}</token> đã stake trong pool này.",
+            "readyToWithdraw": "Yêu cầu này không thể được phê duyệt vì không đủ <token>{symbol}</token> sẵn sàng rút. Cần thêm <token>{amount} {symbol}</token> có thể rút từ pool này.",
             "modalTitle": "Số dư NEAR không đủ",
             "modalBodyVote": "Bạn không có đủ token NEAR trong ví để bỏ phiếu này. Việc bỏ phiếu yêu cầu số dư tối thiểu là <amount>{required} NEAR</amount>. Vui lòng thêm NEAR vào ví và thử lại.",
             "modalBodyProposal": "Bạn không có đủ token NEAR trong ví để tạo yêu cầu này. Việc tạo yêu cầu cần số dư tối thiểu là <amount>{required} NEAR</amount>. Vui lòng thêm NEAR vào ví và thử lại.",

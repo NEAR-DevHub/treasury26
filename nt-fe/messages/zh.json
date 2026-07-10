@@ -773,6 +773,8 @@
             "noAsset": "由于金库中没有所需代币,此请求无法被批准。",
             "bond": "由于金库的 <token>{symbol}</token> 余额不足,此请求无法被批准。请添加 <token>{amount} {symbol}</token> 以支付提案保证金。",
             "continue": "由于金库的 <token>{symbol}</token> 余额不足,此请求无法被批准。请添加 <token>{amount} {symbol}</token> 以继续。",
+            "staked": "由于质押的 <token>{symbol}</token> 不足，此请求无法被批准。此矿池还需要质押 <token>{amount} {symbol}</token>。",
+            "readyToWithdraw": "由于可提取的 <token>{symbol}</token> 不足，此请求无法被批准。此矿池还需要 <token>{amount} {symbol}</token> 可提取余额。",
             "modalTitle": "NEAR 余额不足",
             "modalBodyVote": "您钱包中的 NEAR 代币不足以投票。投票需要至少 <amount>{required} NEAR</amount> 的余额。请向钱包中添加 NEAR 后再试。",
             "modalBodyProposal": "您钱包中的 NEAR 代币不足以创建此请求。创建请求需要至少 <amount>{required} NEAR</amount> 的余额。请向钱包中添加 NEAR 后再试。",

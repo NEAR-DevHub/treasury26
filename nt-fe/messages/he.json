@@ -773,6 +773,8 @@
             "noAsset": "לא ניתן לאשר בקשה זו מכיוון שהטוקן הנדרש אינו זמין באוצר.",
             "bond": "לא ניתן לאשר בקשה זו מכיוון שלאוצר יש יתרת <token>{symbol}</token> לא מספקת. הוסף <token>{amount} {symbol}</token> כדי לכסות את עלויות הערבון להצעה.",
             "continue": "לא ניתן לאשר בקשה זו מכיוון שלאוצר יש יתרת <token>{symbol}</token> לא מספקת. הוסף <token>{amount} {symbol}</token> כדי להמשיך.",
+            "staked": "לא ניתן לאשר בקשה זו מכיוון שאין מספיק <token>{symbol}</token> בסטייקינג. נדרשים עוד <token>{amount} {symbol}</token> בסטייקינג במאגר זה.",
+            "readyToWithdraw": "לא ניתן לאשר בקשה זו מכיוון שאין מספיק <token>{symbol}</token> מוכן למשיכה. נדרשים עוד <token>{amount} {symbol}</token> זמינים למשיכה ממאגר זה.",
             "modalTitle": "יתרת NEAR לא מספקת",
             "modalBodyVote": "אין לך מספיק טוקני NEAR בארנק שלך כדי להצביע. הצבעה דורשת יתרה מינימלית של <amount>{required} NEAR</amount>. אנא הוסף NEAR לארנק שלך ונסה שוב.",
             "modalBodyProposal": "אין לך מספיק טוקני NEAR בארנק שלך כדי ליצור בקשה זו. יצירת בקשה דורשת יתרה מינימלית של <amount>{required} NEAR</amount>. אנא הוסף NEAR לארנק שלך ונסה שוב.",

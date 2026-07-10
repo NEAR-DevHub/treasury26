@@ -773,6 +773,8 @@
             "noAsset": "Esta solicitação não pode ser aprovada porque o token necessário não está disponível na tesouraria.",
             "bond": "Esta solicitação não pode ser aprovada porque a tesouraria tem saldo insuficiente de <token>{symbol}</token>. Adicione <token>{amount} {symbol}</token> para cobrir os custos do bond da proposta.",
             "continue": "Esta solicitação não pode ser aprovada porque a tesouraria tem saldo insuficiente de <token>{symbol}</token>. Adicione <token>{amount} {symbol}</token> para continuar.",
+            "staked": "Esta solicitação não pode ser aprovada porque não há <token>{symbol}</token> suficiente em staking. É necessário mais <token>{amount} {symbol}</token> em staking neste pool.",
+            "readyToWithdraw": "Esta solicitação não pode ser aprovada porque não há <token>{symbol}</token> suficiente pronto para retirada. É necessário mais <token>{amount} {symbol}</token> disponível para retirar deste pool.",
             "modalTitle": "Saldo insuficiente de NEAR",
             "modalBodyVote": "Você não tem NEAR suficiente na sua carteira para registrar este voto. Votar requer um saldo mínimo de <amount>{required} NEAR</amount>. Por favor, adicione NEAR à sua carteira e tente novamente.",
             "modalBodyProposal": "Você não tem NEAR suficiente na sua carteira para criar esta solicitação. Criar uma solicitação requer um saldo mínimo de <amount>{required} NEAR</amount>. Por favor, adicione NEAR à sua carteira e tente novamente.",

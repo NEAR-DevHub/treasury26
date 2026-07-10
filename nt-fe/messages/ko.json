@@ -773,6 +773,8 @@
             "noAsset": "필요한 토큰이 트레저리에 없으므로 이 요청을 승인할 수 없습니다.",
             "bond": "트레저리의 <token>{symbol}</token> 잔액이 부족하여 이 요청을 승인할 수 없습니다. 제안 본드 비용을 충당하기 위해 <token>{amount} {symbol}</token>을(를) 추가하세요.",
             "continue": "트레저리의 <token>{symbol}</token> 잔액이 부족하여 이 요청을 승인할 수 없습니다. 계속하려면 <token>{amount} {symbol}</token>을(를) 추가하세요.",
+            "staked": "스테이킹된 <token>{symbol}</token>이(가) 부족하여 이 요청을 승인할 수 없습니다. 이 풀에 <token>{amount} {symbol}</token>을(를) 더 스테이킹해야 합니다.",
+            "readyToWithdraw": "출금 준비된 <token>{symbol}</token>이(가) 부족하여 이 요청을 승인할 수 없습니다. 이 풀에서 출금 가능한 <token>{amount} {symbol}</token>이(가) 더 필요합니다.",
             "modalTitle": "NEAR 잔액 부족",
             "modalBodyVote": "이 투표를 하기에 지갑의 NEAR 토큰이 부족합니다. 투표하려면 최소 <amount>{required} NEAR</amount>의 잔액이 필요합니다. 지갑에 NEAR를 추가하고 다시 시도해 주세요.",
             "modalBodyProposal": "이 요청을 생성하기에 지갑의 NEAR 토큰이 부족합니다. 요청을 생성하려면 최소 <amount>{required} NEAR</amount>의 잔액이 필요합니다. 지갑에 NEAR를 추가하고 다시 시도해 주세요.",

@@ -773,6 +773,8 @@
             "noAsset": "Permintaan ini tidak dapat disetujui karena token yang diperlukan tidak tersedia di treasury.",
             "bond": "Permintaan ini tidak dapat disetujui karena treasury memiliki saldo <token>{symbol}</token> yang tidak mencukupi. Tambahkan <token>{amount} {symbol}</token> untuk menutupi biaya bond usulan.",
             "continue": "Permintaan ini tidak dapat disetujui karena treasury memiliki saldo <token>{symbol}</token> yang tidak mencukupi. Tambahkan <token>{amount} {symbol}</token> untuk melanjutkan.",
+            "staked": "Permintaan ini tidak dapat disetujui karena <token>{symbol}</token> yang di-staking tidak mencukupi. Diperlukan <token>{amount} {symbol}</token> lagi yang di-staking di pool ini.",
+            "readyToWithdraw": "Permintaan ini tidak dapat disetujui karena <token>{symbol}</token> yang siap ditarik tidak mencukupi. Diperlukan <token>{amount} {symbol}</token> lagi yang tersedia untuk ditarik dari pool ini.",
             "modalTitle": "Saldo NEAR Tidak Mencukupi",
             "modalBodyVote": "Anda tidak memiliki cukup token NEAR di dompet Anda untuk memberikan suara ini. Pemungutan suara memerlukan saldo minimum <amount>{required} NEAR</amount>. Silakan tambahkan NEAR ke dompet Anda dan coba lagi.",
             "modalBodyProposal": "Anda tidak memiliki cukup token NEAR di dompet Anda untuk membuat permintaan ini. Membuat permintaan memerlukan saldo minimum <amount>{required} NEAR</amount>. Silakan tambahkan NEAR ke dompet Anda dan coba lagi.",

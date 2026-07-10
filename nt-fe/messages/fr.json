@@ -773,6 +773,8 @@
             "noAsset": "Cette demande ne peut pas être approuvée car le token requis n'est pas disponible dans la trésorerie.",
             "bond": "Cette demande ne peut pas être approuvée car la trésorerie a un solde <token>{symbol}</token> insuffisant. Ajoutez <token>{amount} {symbol}</token> pour couvrir les frais de caution de la proposition.",
             "continue": "Cette demande ne peut pas être approuvée car la trésorerie a un solde <token>{symbol}</token> insuffisant. Ajoutez <token>{amount} {symbol}</token> pour continuer.",
+            "staked": "Cette demande ne peut pas être approuvée car il n'y a pas assez de <token>{symbol}</token> staké. Il faut <token>{amount} {symbol}</token> de plus stakés dans ce pool.",
+            "readyToWithdraw": "Cette demande ne peut pas être approuvée car il n'y a pas assez de <token>{symbol}</token> prêt à retirer. Il faut <token>{amount} {symbol}</token> de plus disponibles au retrait dans ce pool.",
             "modalTitle": "Solde NEAR insuffisant",
             "modalBodyVote": "Vous n'avez pas assez de tokens NEAR dans votre portefeuille pour soumettre ce vote. Le vote nécessite un solde minimum de <amount>{required} NEAR</amount>. Veuillez ajouter du NEAR à votre portefeuille et réessayer.",
             "modalBodyProposal": "Vous n'avez pas assez de tokens NEAR dans votre portefeuille pour créer cette demande. Créer une demande nécessite un solde minimum de <amount>{required} NEAR</amount>. Veuillez ajouter du NEAR à votre portefeuille et réessayer.",

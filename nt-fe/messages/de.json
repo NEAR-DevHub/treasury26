@@ -773,6 +773,8 @@
             "noAsset": "Diese Anfrage kann nicht genehmigt werden, da das erforderliche Token in der Treasury nicht verfügbar ist.",
             "bond": "Diese Anfrage kann nicht genehmigt werden, da die Treasury unzureichendes <token>{symbol}</token>-Guthaben hat. Fügen Sie <token>{amount} {symbol}</token> hinzu, um die Vorschlagskaution zu decken.",
             "continue": "Diese Anfrage kann nicht genehmigt werden, da die Treasury unzureichendes <token>{symbol}</token>-Guthaben hat. Fügen Sie <token>{amount} {symbol}</token> hinzu, um fortzufahren.",
+            "staked": "Diese Anfrage kann nicht genehmigt werden, da nicht genug gestaktes <token>{symbol}</token> vorhanden ist. Es werden zusätzlich <token>{amount} {symbol}</token> in diesem Pool benötigt.",
+            "readyToWithdraw": "Diese Anfrage kann nicht genehmigt werden, da nicht genug <token>{symbol}</token> zum Abheben bereitsteht. Es werden zusätzlich <token>{amount} {symbol}</token> in diesem Pool zum Abheben benötigt.",
             "modalTitle": "Unzureichendes NEAR-Guthaben",
             "modalBodyVote": "Sie haben nicht genügend NEAR-Token in Ihrer Wallet, um diese Stimme abzugeben. Für die Abstimmung ist ein Mindestguthaben von <amount>{required} NEAR</amount> erforderlich. Bitte fügen Sie NEAR zu Ihrer Wallet hinzu und versuchen Sie es erneut.",
             "modalBodyProposal": "Sie haben nicht genügend NEAR-Token in Ihrer Wallet, um diese Anfrage zu erstellen. Für das Erstellen einer Anfrage ist ein Mindestguthaben von <amount>{required} NEAR</amount> erforderlich. Bitte fügen Sie NEAR zu Ihrer Wallet hinzu und versuchen Sie es erneut.",

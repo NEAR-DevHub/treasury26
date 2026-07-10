@@ -189,7 +189,9 @@ export function PendingRequestItem({
                                     <X className="size-3.5" />
                                     {tActions("reject")}
                                 </AuthButtonWithProposal>
-                                {insufficientBalanceInfo.hasInsufficientBalance ? (
+                                {insufficientBalanceInfo.hasInsufficientBalance &&
+                                insufficientBalanceInfo.showDeposit !==
+                                    false ? (
                                     <span className="w-full">
                                         <Button
                                             variant="default"
@@ -219,7 +221,8 @@ export function PendingRequestItem({
                                         disabled={
                                             isUserVoter ||
                                             approveBlocked ||
-                                            approveSlot.blocked
+                                            approveSlot.blocked ||
+                                            insufficientBalanceInfo.hasInsufficientBalance
                                         }
                                         tooltip={
                                             approveBlockIsAppLevel

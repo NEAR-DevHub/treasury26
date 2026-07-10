@@ -773,6 +773,8 @@
             "noAsset": "Bu talep onaylanamaz çünkü gerekli token hazinede mevcut değil.",
             "bond": "Bu talep onaylanamaz çünkü hazinenin <token>{symbol}</token> bakiyesi yetersiz. Öneri teminat maliyetlerini karşılamak için <token>{amount} {symbol}</token> ekleyin.",
             "continue": "Bu talep onaylanamaz çünkü hazinenin <token>{symbol}</token> bakiyesi yetersiz. Devam etmek için <token>{amount} {symbol}</token> ekleyin.",
+            "staked": "Bu talep onaylanamaz çünkü yeterli stake edilmiş <token>{symbol}</token> yok. Bu havuzda <token>{amount} {symbol}</token> daha stake edilmiş bakiyeye ihtiyaç var.",
+            "readyToWithdraw": "Bu talep onaylanamaz çünkü çekmeye hazır yeterli <token>{symbol}</token> yok. Bu havuzdan çekilebilir <token>{amount} {symbol}</token> daha gerekli.",
             "modalTitle": "Yetersiz NEAR Bakiyesi",
             "modalBodyVote": "Bu oyu kullanmak için cüzdanınızda yeterli NEAR token'ı yok. Oy kullanmak en az <amount>{required} NEAR</amount> bakiye gerektirir. Lütfen cüzdanınıza NEAR ekleyin ve tekrar deneyin.",
             "modalBodyProposal": "Bu talebi oluşturmak için cüzdanınızda yeterli NEAR token'ı yok. Talep oluşturmak en az <amount>{required} NEAR</amount> bakiye gerektirir. Lütfen cüzdanınıza NEAR ekleyin ve tekrar deneyin.",

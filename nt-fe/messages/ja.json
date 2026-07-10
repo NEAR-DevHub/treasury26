@@ -773,6 +773,8 @@
             "noAsset": "必要なトークンがトレジャリーにないため、このリクエストは承認できません。",
             "bond": "トレジャリーの<token>{symbol}</token>残高が不足しているため、このリクエストは承認できません。提案ボンドを賄うために<token>{amount} {symbol}</token>を追加してください。",
             "continue": "トレジャリーの<token>{symbol}</token>残高が不足しているため、このリクエストは承認できません。続行するには<token>{amount} {symbol}</token>を追加してください。",
+            "staked": "ステーキング中の<token>{symbol}</token>が不足しているため、このリクエストは承認できません。このプールでさらに<token>{amount} {symbol}</token>のステーキングが必要です。",
+            "readyToWithdraw": "出金可能な<token>{symbol}</token>が不足しているため、このリクエストは承認できません。このプールからさらに<token>{amount} {symbol}</token>の出金可能残高が必要です。",
             "modalTitle": "NEAR残高が不足しています",
             "modalBodyVote": "ウォレットにこの投票を行うのに十分なNEARがありません。投票には最低<amount>{required} NEAR</amount>の残高が必要です。ウォレットにNEARを追加してから、もう一度お試しください。",
             "modalBodyProposal": "ウォレットにこのリクエストを作成するのに十分なNEARがありません。リクエスト作成には最低<amount>{required} NEAR</amount>の残高が必要です。ウォレットにNEARを追加してから、もう一度お試しください。",
