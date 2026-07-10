@@ -1703,8 +1703,8 @@
         "incompatible": "Incompatível",
         "comingSoon": "Em breve",
         "forMembersOnly": "Apenas para membros",
-        "nearComDescription": "Rede confidencial da near.com e trezu",
-        "nearDescription": "Rede para saque público"
+        "nearComDescription": "Rede para trezu confidencial",
+        "nearDescription": "Rede para saque público e carteira near.com"
     },
     "addressBookTable": {
         "emptyTitle": "Nenhum destinatário ainda",

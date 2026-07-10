@@ -187,10 +187,12 @@ export function RecipientNetworkSelect({
         return [];
     }, [bridgeAssetMatch, isConfidential, t, token]);
 
-    const availableOptions = useMemo(
-        () => [nearComOption, ...tokenNetworkOptions],
-        [nearComOption, tokenNetworkOptions],
-    );
+    const availableOptions = useMemo(() => {
+        const options = isConfidential
+            ? [...tokenNetworkOptions, nearComOption]
+            : tokenNetworkOptions;
+        return [...options].sort((a, b) => a.name.localeCompare(b.name));
+    }, [isConfidential, nearComOption, tokenNetworkOptions]);
 
     const selectedOption = useMemo(() => {
         if (!value) return null;

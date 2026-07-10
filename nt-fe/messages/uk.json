@@ -1703,8 +1703,8 @@
         "incompatible": "Несумісні",
         "comingSoon": "Скоро",
         "forMembersOnly": "Лише для учасників",
-        "nearComDescription": "Конфіденційна мережа near.com і trezu",
-        "nearDescription": "Мережа для публічного виведення"
+        "nearComDescription": "Мережа для конфіденційного trezu",
+        "nearDescription": "Мережа для публічного виведення та гаманця near.com"
     },
     "addressBookTable": {
         "emptyTitle": "Ще немає одержувачів",
