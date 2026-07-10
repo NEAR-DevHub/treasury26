@@ -1121,7 +1121,8 @@
         "awaitingDescription": "Die Aktivierungsanfrage wurde erstellt. Sobald genügend Treasury-Mitglieder zustimmen, wird der vertrauliche Zugriffsschlüssel registriert und Massenzahlungen werden automatisch freigeschaltet.",
         "awaitingHint": "Nach der Genehmigung ist nichts weiter nötig — diese Seite aktualisiert sich automatisch.",
         "proposalCreated": "Aktivierungsanfrage erstellt — warten auf Genehmigungen",
-        "activationFailed": "Aktivierung der Massenzahlungen konnte nicht gestartet werden"
+        "activationFailed": "Aktivierung der Massenzahlungen konnte nicht gestartet werden",
+        "errorTitle": "Aktivierungsstatus konnte nicht geladen werden"
     },
     "bulkPaymentCredits": {
         "title": "Sammelzahlungen",

@@ -1121,7 +1121,8 @@
         "awaitingDescription": "Etkinleştirme talebi oluşturuldu. Yeterli hazine üyesi onayladığında gizli erişim anahtarı kaydedilir ve toplu ödemeler otomatik olarak açılır.",
         "awaitingHint": "Onaydan sonra başka bir işlem gerekmez — bu sayfa otomatik olarak güncellenir.",
         "proposalCreated": "Etkinleştirme talebi oluşturuldu — onaylar bekleniyor",
-        "activationFailed": "Toplu ödeme etkinleştirmesi başlatılamadı"
+        "activationFailed": "Toplu ödeme etkinleştirmesi başlatılamadı",
+        "errorTitle": "Etkinleştirme durumu yüklenemedi"
     },
     "bulkPaymentCredits": {
         "title": "Toplu Ödemeler",

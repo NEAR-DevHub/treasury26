@@ -304,6 +304,7 @@ pub fn derive_bulk_subaccount_id(
 ///    on intents.near.
 /// 4. Authenticate with 1Click using sub as `signer_id` + DAO's pubkey + extracted sig.
 /// 5. Store JWT in `bulk_payment_*` columns on `monitored_accounts`.
+///
 /// Make sure the DAO's bulk-payment subaccount exists and is bootstrapped.
 /// Idempotent: skips the factory call when the subaccount already reports a
 /// bootstrap status, and (re)uses `bootstrap`'s Ready state otherwise.

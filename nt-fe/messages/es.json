@@ -1121,7 +1121,8 @@
         "awaitingDescription": "La solicitud de activación ha sido creada. Cuando suficientes miembros la aprueben, la clave de acceso confidencial quedará registrada y los pagos masivos se desbloquearán automáticamente.",
         "awaitingHint": "No se requiere ninguna acción tras la aprobación — esta página se actualiza automáticamente.",
         "proposalCreated": "Solicitud de activación creada — esperando aprobaciones",
-        "activationFailed": "No se pudo iniciar la activación de pagos masivos"
+        "activationFailed": "No se pudo iniciar la activación de pagos masivos",
+        "errorTitle": "No se pudo cargar el estado de activación"
     },
     "bulkPaymentCredits": {
         "title": "Pagos masivos",

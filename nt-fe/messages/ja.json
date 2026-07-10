@@ -1121,7 +1121,8 @@
         "awaitingDescription": "有効化リクエストが作成されました。十分なメンバーが承認すると、機密アクセスキーが登録され、一括支払いが自動的に利用可能になります。",
         "awaitingHint": "承認後の操作は不要です — このページは自動的に更新されます。",
         "proposalCreated": "有効化リクエストを作成しました — メンバーの承認待ちです",
-        "activationFailed": "一括支払いの有効化を開始できませんでした"
+        "activationFailed": "一括支払いの有効化を開始できませんでした",
+        "errorTitle": "アクティベーション状況を読み込めませんでした"
     },
     "bulkPaymentCredits": {
         "title": "一括支払い",

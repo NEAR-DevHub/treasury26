@@ -203,41 +203,29 @@ function Step1({
                         }
                     />
                     <div className="flex items-center gap-2">
-                        {isConfidential ? (
+                        {/* Bulk payments are available for confidential
+                            treasuries too: the bulk-payment page guides
+                            through one-time activation when the confidential
+                            bulk access key isn't registered yet. */}
+                        <Link href={`/${treasuryId}/payments/bulk-payment`}>
                             <Button
-                                variant="outline"
+                                variant="ghost"
                                 size={isMobile ? "icon" : "default"}
-                                className="flex items-center gap-2"
+                                className="flex items-center gap-2 border-2"
                                 id="payments-bulk-btn"
-                                disabled
-                                tooltipContent={tPay("comingSoon")}
+                                onClick={() => {
+                                    trackEvent("bulk-payments-click", {
+                                        source: "payments_page",
+                                        treasury_id: treasuryId ?? "",
+                                    });
+                                }}
                             >
                                 <ArrowDownToLine className="w-4 h-4" />
                                 <span className="hidden md:block">
                                     {tPay("bulkPayments")}
                                 </span>
                             </Button>
-                        ) : (
-                            <Link href={`/${treasuryId}/payments/bulk-payment`}>
-                                <Button
-                                    variant="ghost"
-                                    size={isMobile ? "icon" : "default"}
-                                    className="flex items-center gap-2 border-2"
-                                    id="payments-bulk-btn"
-                                    onClick={() => {
-                                        trackEvent("bulk-payments-click", {
-                                            source: "payments_page",
-                                            treasury_id: treasuryId ?? "",
-                                        });
-                                    }}
-                                >
-                                    <ArrowDownToLine className="w-4 h-4" />
-                                    <span className="hidden md:block">
-                                        {tPay("bulkPayments")}
-                                    </span>
-                                </Button>
-                            </Link>
-                        )}
+                        </Link>
                         <PendingButton
                             id="payments-pending-btn"
                             types={["Payments"]}

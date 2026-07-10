@@ -507,12 +507,11 @@ export default function BulkPaymentPage() {
 
     // Existing confidential treasuries must register the confidential bulk
     // access key first (one round of multisig approvals) — show the
-    // activation flow instead of the payment form until it's done.
-    if (
-        isConfidential &&
-        !bulkActivation.isLoading &&
-        !bulkActivation.isActive
-    ) {
+    // activation flow instead of the payment form until it's confirmed
+    // active. Gate on `!isActive` (not `!isLoading`) so we never expose the
+    // payment form before the status resolves; the card itself renders the
+    // loading / error / awaiting / intro sub-states.
+    if (isConfidential && !bulkActivation.isActive) {
         return (
             <PageComponentLayout
                 title={pageTitle}

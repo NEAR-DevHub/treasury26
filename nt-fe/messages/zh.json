@@ -2418,5 +2418,20 @@
             "min": "{label}不得小于 {min}",
             "max": "{label}不得大于 {max}"
         }
+    },
+    "bulkActivation": {
+        "introTitle": "激活批量支付",
+        "introDescription": "此保密金库需要一次性激活才能发送批量支付：注册其保密批量访问密钥需要金库成员进行一轮批准。",
+        "failedDescription": "上一次激活尝试已过期或失败。请重新开始——将创建新的批准请求。",
+        "startButton": "开始激活",
+        "retryButton": "重试激活",
+        "preparing": "正在准备激活…",
+        "approvalNote": "这将创建一个批准请求。当足够多的成员批准后，批量支付将自动解锁。",
+        "awaitingTitle": "等待批准",
+        "awaitingDescription": "激活请求已创建。当足够多的金库成员批准后，保密批量访问密钥将被注册，批量支付将自动解锁。",
+        "awaitingHint": "批准后无需进一步操作——此页面会自动更新。",
+        "proposalCreated": "已创建激活请求——等待成员批准",
+        "activationFailed": "无法启动批量支付激活",
+        "errorTitle": "无法加载激活状态"
     }
 }

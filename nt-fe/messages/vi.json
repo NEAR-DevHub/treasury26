@@ -2418,5 +2418,20 @@
             "min": "{label} phải lớn hơn hoặc bằng {min}",
             "max": "{label} phải nhỏ hơn hoặc bằng {max}"
         }
+    },
+    "bulkActivation": {
+        "introTitle": "Kích hoạt thanh toán hàng loạt",
+        "introDescription": "Kho bạc bảo mật này cần kích hoạt một lần để gửi thanh toán hàng loạt: việc đăng ký khóa truy cập hàng loạt bảo mật cần một vòng phê duyệt từ các thành viên kho bạc.",
+        "failedDescription": "Lần kích hoạt trước đã hết hạn hoặc thất bại. Hãy bắt đầu lại — một yêu cầu phê duyệt mới sẽ được tạo.",
+        "startButton": "Bắt đầu kích hoạt",
+        "retryButton": "Thử kích hoạt lại",
+        "preparing": "Đang chuẩn bị kích hoạt…",
+        "approvalNote": "Thao tác này tạo một yêu cầu phê duyệt. Thanh toán hàng loạt sẽ tự động mở khóa khi đủ thành viên phê duyệt.",
+        "awaitingTitle": "Đang chờ phê duyệt",
+        "awaitingDescription": "Yêu cầu kích hoạt đã được tạo. Khi đủ thành viên kho bạc phê duyệt, khóa truy cập hàng loạt bảo mật sẽ được đăng ký và thanh toán hàng loạt tự động mở khóa.",
+        "awaitingHint": "Không cần thao tác thêm sau khi phê duyệt — trang này tự động cập nhật.",
+        "proposalCreated": "Đã tạo yêu cầu kích hoạt — đang chờ thành viên phê duyệt",
+        "activationFailed": "Không thể bắt đầu kích hoạt thanh toán hàng loạt",
+        "errorTitle": "Không thể tải trạng thái kích hoạt"
     }
 }

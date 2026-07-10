@@ -1121,7 +1121,8 @@
         "awaitingDescription": "A solicitação de ativação foi criada. Quando membros suficientes aprovarem, a chave de acesso confidencial será registrada e os pagamentos em massa serão desbloqueados automaticamente.",
         "awaitingHint": "Nenhuma ação necessária após a aprovação — esta página é atualizada automaticamente.",
         "proposalCreated": "Solicitação de ativação criada — aguardando aprovações",
-        "activationFailed": "Falha ao iniciar a ativação de pagamentos em massa"
+        "activationFailed": "Falha ao iniciar a ativação de pagamentos em massa",
+        "errorTitle": "Não foi possível carregar o status de ativação"
     },
     "bulkPaymentCredits": {
         "title": "Pagamentos em massa",

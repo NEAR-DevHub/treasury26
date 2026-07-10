@@ -44,6 +44,7 @@ export function useBulkActivation() {
         bulkAccountId: statusQuery.data?.bulkAccountId,
         pendingPayloadHash: statusQuery.data?.pendingPayloadHash,
         isLoading: statusQuery.isLoading,
+        isError: statusQuery.isError,
         isActive: statusQuery.data?.status === "active",
         refetch: statusQuery.refetch,
         prepare: prepareMutation,

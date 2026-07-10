@@ -1,10 +1,17 @@
 "use client";
 
-import { CheckCircle2, ShieldCheck, Users } from "lucide-react";
+import {
+    AlertTriangle,
+    CheckCircle2,
+    Loader2,
+    ShieldCheck,
+    Users,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 import { CreateRequestButton } from "@/components/create-request-button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
@@ -23,14 +30,49 @@ import { useBulkActivation } from "../hooks/use-bulk-activation";
  */
 export function BulkActivationCard() {
     const t = useTranslations("bulkActivation");
+    const tCommon = useTranslations("common");
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const { createProposal } = useNear();
-    const { status, isLoading, prepare, refetch } = useBulkActivation();
+    const { status, isLoading, isError, prepare, refetch } =
+        useBulkActivation();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    if (isLoading || !status || status === "active") {
+    // Already activated → the parent page renders the payment form instead.
+    if (status === "active") {
         return null;
+    }
+
+    // Still loading (or the query is briefly disabled while `treasuryId`
+    // settles): show a spinner rather than an empty page.
+    if (isLoading || (!status && !isError)) {
+        return (
+            <Card className="mx-auto w-full max-w-xl">
+                <CardContent className="text-muted-foreground flex items-center justify-center p-8">
+                    <Loader2 className="size-6 animate-spin" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    // Status query errored and we have nothing to show: surface the error with
+    // a retry instead of stranding the user on a blank page (React Query keeps
+    // `isLoading` false once it has errored).
+    if (!status) {
+        return (
+            <Card className="mx-auto w-full max-w-xl">
+                <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+                    <AlertTriangle className="text-destructive size-10" />
+                    <h3 className="text-lg font-semibold">{t("errorTitle")}</h3>
+                    <p className="text-muted-foreground text-sm">
+                        {tCommon("tryAgain")}
+                    </p>
+                    <Button variant="outline" onClick={() => refetch()}>
+                        {tCommon("retry")}
+                    </Button>
+                </CardContent>
+            </Card>
+        );
     }
 
     const awaitingApproval = status === "awaiting_approval";

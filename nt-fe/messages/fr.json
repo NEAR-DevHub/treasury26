@@ -1121,7 +1121,8 @@
         "awaitingDescription": "La demande d'activation a été créée. Dès que suffisamment de membres l'approuvent, la clé d'accès confidentielle est enregistrée et les paiements groupés se débloquent automatiquement.",
         "awaitingHint": "Aucune action requise après approbation — cette page se met à jour automatiquement.",
         "proposalCreated": "Demande d'activation créée — en attente d'approbations",
-        "activationFailed": "Impossible de démarrer l'activation des paiements groupés"
+        "activationFailed": "Impossible de démarrer l'activation des paiements groupés",
+        "errorTitle": "Impossible de charger le statut d'activation"
     },
     "bulkPaymentCredits": {
         "title": "Paiements groupés",

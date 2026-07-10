@@ -118,10 +118,16 @@ async fn load_bulk_token_state(
 /// GET /api/confidential-intents/bulk-payment/activation?daoId=…
 pub async fn get_bulk_activation_status(
     State(state): State<Arc<AppState>>,
-    _auth_user: AuthUser,
+    auth_user: AuthUser,
     Query(query): Query<ActivationStatusQuery>,
 ) -> Result<Json<BulkActivationStatus>, (StatusCode, String)> {
     let dao_id = parse_dao_id(&query.dao_id)?;
+    // Don't leak activation/monitoring state to non-members. Read-only, so a
+    // plain membership check (not AddProposal) — matches the other
+    // confidential GET endpoints (history refresh, snapshot chart).
+    auth_user
+        .verify_member_if_confidential(&state.db_pool, &dao_id)
+        .await?;
     let bulk_account_id =
         derive_bulk_subaccount_id(&dao_id, &state.bulk_payment_contract_id)?.to_string();
 

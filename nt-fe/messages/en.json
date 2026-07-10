@@ -1121,7 +1121,8 @@
         "awaitingDescription": "The activation request has been created. Once enough treasury members approve it, the confidential bulk access key is registered and bulk payments unlock automatically.",
         "awaitingHint": "No further action needed after approval — this page updates automatically.",
         "proposalCreated": "Activation request created — waiting for member approvals",
-        "activationFailed": "Failed to start bulk payment activation"
+        "activationFailed": "Failed to start bulk payment activation",
+        "errorTitle": "Couldn't load activation status"
     },
     "bulkPaymentCredits": {
         "title": "Bulk Payments",

@@ -1121,7 +1121,8 @@
         "awaitingDescription": "Permintaan aktivasi telah dibuat. Setelah cukup anggota menyetujuinya, kunci akses rahasia terdaftar dan pembayaran massal terbuka otomatis.",
         "awaitingHint": "Tidak ada tindakan lain setelah persetujuan — halaman ini diperbarui otomatis.",
         "proposalCreated": "Permintaan aktivasi dibuat — menunggu persetujuan anggota",
-        "activationFailed": "Gagal memulai aktivasi pembayaran massal"
+        "activationFailed": "Gagal memulai aktivasi pembayaran massal",
+        "errorTitle": "Tidak dapat memuat status aktivasi"
     },
     "bulkPaymentCredits": {
         "title": "Pembayaran Massal",
