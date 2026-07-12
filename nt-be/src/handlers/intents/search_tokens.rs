@@ -67,7 +67,7 @@ fn search_token_in(
     let contract_id_clean = intents_token_contract_id.map(|c| c.replace("nep141:", ""));
 
     // Search through all unified tokens
-    for (_, unified_token) in tokens_map.iter() {
+    for unified_token in tokens_map.values() {
         // Search through grouped tokens
         for base_token in &unified_token.grouped_tokens {
             // Check if symbol or name matches
@@ -177,7 +177,7 @@ fn search_token_out(query: &str, destination_network: Option<&str>) -> Option<To
     let tokens_map = get_tokens_map();
 
     // Search through all unified tokens
-    for (_, unified_token) in tokens_map.iter() {
+    for unified_token in tokens_map.values() {
         // Search through grouped tokens
         for base_token in &unified_token.grouped_tokens {
             // Check if symbol or name matches
