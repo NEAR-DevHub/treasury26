@@ -703,7 +703,6 @@ async fn board_api_guard(
 /// every board route (API, UI, and static assets).
 pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
     use apalis_board::axum::framework::{ApiBuilder, RegisterRoute};
-    use apalis_board::axum::sse::TracingBroadcaster;
     use apalis_board::axum::ui::ServeUI;
 
     let mut api = ApiBuilder::new(Router::new());
@@ -715,14 +714,10 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
     // `events` feature, on by default) whose handler extracts an
     // `Extension<Arc<Mutex<TracingBroadcaster>>>`. Without it, opening the
     // dashboard 500s with "Missing request extension … TracingBroadcaster".
-    // Provide the broadcaster so the endpoint serves a valid stream.
-    //
-    // We deliberately do NOT install the paired `TracingSubscriber` log layer:
-    // it JSON-serializes every tracing event on the hot logging path (even
-    // with no dashboard connected) and re-parses it per event. So the live-log
-    // pane stays empty while the queue/task/worker views — the ones we use —
-    // work fully, at zero logging overhead.
-    let broadcaster = TracingBroadcaster::create();
+    // Supply the process-wide broadcaster that the tracing subscriber writes
+    // to (see `observability::LOG_BROADCASTER`), so the dashboard's live-log
+    // pane streams the app's logs.
+    let broadcaster = crate::observability::LOG_BROADCASTER.clone();
 
     Router::new()
         .nest("/api/v1", api.build())
