@@ -703,6 +703,7 @@ async fn board_api_guard(
 /// every board route (API, UI, and static assets).
 pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
     use apalis_board::axum::framework::{ApiBuilder, RegisterRoute};
+    use apalis_board::axum::sse::TracingBroadcaster;
     use apalis_board::axum::ui::ServeUI;
 
     let mut api = ApiBuilder::new(Router::new());
@@ -710,9 +711,23 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
         api = api.register(store.clone());
     }
 
+    // The board registers an `/api/v1/events` SSE route (apalis-board's
+    // `events` feature, on by default) whose handler extracts an
+    // `Extension<Arc<Mutex<TracingBroadcaster>>>`. Without it, opening the
+    // dashboard 500s with "Missing request extension … TracingBroadcaster".
+    // Provide the broadcaster so the endpoint serves a valid stream.
+    //
+    // We deliberately do NOT install the paired `TracingSubscriber` log layer:
+    // it JSON-serializes every tracing event on the hot logging path (even
+    // with no dashboard connected) and re-parses it per event. So the live-log
+    // pane stays empty while the queue/task/worker views — the ones we use —
+    // work fully, at zero logging overhead.
+    let broadcaster = TracingBroadcaster::create();
+
     Router::new()
         .nest("/api/v1", api.build())
         .fallback_service(ServeUI::new())
+        .layer(axum::Extension(broadcaster))
         // Auth gates every board route. Applied inside the guard so that an
         // unknown public `/api/*` path 404s without an auth challenge.
         .layer(axum::middleware::from_fn_with_state(
