@@ -1122,7 +1122,9 @@
         "awaitingHint": "No further action needed after approval — this page updates automatically.",
         "proposalCreated": "Activation request created — waiting for member approvals",
         "activationFailed": "Failed to start bulk payment activation",
-        "errorTitle": "Couldn't load activation status"
+        "errorTitle": "Couldn't load activation status",
+        "noPermissionNote": "You don't have permission to start activation. Ask a treasury member with proposal permissions to activate bulk payments.",
+        "awaitingApproverHint": "Treasury members with approval rights need to approve the pending request to finish activation."
     },
     "bulkPaymentCredits": {
         "title": "Bulk Payments",

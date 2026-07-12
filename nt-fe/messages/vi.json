@@ -2432,6 +2432,8 @@
         "awaitingHint": "Không cần thao tác thêm sau khi phê duyệt — trang này tự động cập nhật.",
         "proposalCreated": "Đã tạo yêu cầu kích hoạt — đang chờ thành viên phê duyệt",
         "activationFailed": "Không thể bắt đầu kích hoạt thanh toán hàng loạt",
-        "errorTitle": "Không thể tải trạng thái kích hoạt"
+        "errorTitle": "Không thể tải trạng thái kích hoạt",
+        "noPermissionNote": "Bạn không có quyền bắt đầu kích hoạt. Hãy nhờ một thành viên kho bạc có quyền đề xuất kích hoạt thanh toán hàng loạt.",
+        "awaitingApproverHint": "Các thành viên kho bạc có quyền phê duyệt cần phê duyệt yêu cầu đang chờ để hoàn tất kích hoạt."
     }
 }

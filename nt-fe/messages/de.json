@@ -1122,7 +1122,9 @@
         "awaitingHint": "Nach der Genehmigung ist nichts weiter nötig — diese Seite aktualisiert sich automatisch.",
         "proposalCreated": "Aktivierungsanfrage erstellt — warten auf Genehmigungen",
         "activationFailed": "Aktivierung der Massenzahlungen konnte nicht gestartet werden",
-        "errorTitle": "Aktivierungsstatus konnte nicht geladen werden"
+        "errorTitle": "Aktivierungsstatus konnte nicht geladen werden",
+        "noPermissionNote": "Sie haben keine Berechtigung, die Aktivierung zu starten. Bitten Sie ein Mitglied der Schatzkammer mit Antragsberechtigung, Massenzahlungen zu aktivieren.",
+        "awaitingApproverHint": "Mitglieder der Schatzkammer mit Genehmigungsrechten müssen den ausstehenden Antrag genehmigen, um die Aktivierung abzuschließen."
     },
     "bulkPaymentCredits": {
         "title": "Sammelzahlungen",

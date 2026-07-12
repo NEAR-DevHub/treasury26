@@ -8,13 +8,14 @@ import {
     Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { hasPermission } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
 import { useBulkActivation } from "../hooks/use-bulk-activation";
 
@@ -33,10 +34,23 @@ export function BulkActivationCard() {
     const tCommon = useTranslations("common");
     const { treasuryId } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
-    const { createProposal } = useNear();
+    const { createProposal, accountId } = useNear();
     const { status, isLoading, isError, prepare, refetch } =
         useBulkActivation();
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Only members with proposal rights can start activation (it creates a
+    // proposal). Others — approvers, viewers — need to know they can't kick
+    // it off themselves, rather than facing a bare disabled button.
+    const canPropose = useMemo(
+        () =>
+            Boolean(
+                policy &&
+                    accountId &&
+                    hasPermission(policy, accountId, "call", "AddProposal"),
+            ),
+        [policy, accountId],
+    );
 
     // Already activated → the parent page renders the payment form instead.
     if (status === "active") {
@@ -125,6 +139,9 @@ export function BulkActivationCard() {
                             <CheckCircle2 className="size-4" />
                             {t("awaitingHint")}
                         </div>
+                        <p className="text-muted-foreground text-xs">
+                            {t("awaitingApproverHint")}
+                        </p>
                     </>
                 ) : (
                     <>
@@ -137,20 +154,30 @@ export function BulkActivationCard() {
                                 ? t("failedDescription")
                                 : t("introDescription")}
                         </p>
-                        <CreateRequestButton
-                            permissions={[
-                                { kind: "call", action: "AddProposal" },
-                            ]}
-                            onClick={startActivation}
-                            isSubmitting={isSubmitting}
-                            idleMessage={
-                                failed ? t("retryButton") : t("startButton")
-                            }
-                            loadingMessage={t("preparing")}
-                        />
-                        <p className="text-muted-foreground text-xs">
-                            {t("approvalNote")}
-                        </p>
+                        {canPropose ? (
+                            <>
+                                <CreateRequestButton
+                                    permissions={[
+                                        { kind: "call", action: "AddProposal" },
+                                    ]}
+                                    onClick={startActivation}
+                                    isSubmitting={isSubmitting}
+                                    idleMessage={
+                                        failed
+                                            ? t("retryButton")
+                                            : t("startButton")
+                                    }
+                                    loadingMessage={t("preparing")}
+                                />
+                                <p className="text-muted-foreground text-xs">
+                                    {t("approvalNote")}
+                                </p>
+                            </>
+                        ) : (
+                            <p className="text-muted-foreground text-sm">
+                                {t("noPermissionNote")}
+                            </p>
+                        )}
                     </>
                 )}
             </CardContent>

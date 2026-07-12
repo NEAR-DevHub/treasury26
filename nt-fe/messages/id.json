@@ -1122,7 +1122,9 @@
         "awaitingHint": "Tidak ada tindakan lain setelah persetujuan — halaman ini diperbarui otomatis.",
         "proposalCreated": "Permintaan aktivasi dibuat — menunggu persetujuan anggota",
         "activationFailed": "Gagal memulai aktivasi pembayaran massal",
-        "errorTitle": "Tidak dapat memuat status aktivasi"
+        "errorTitle": "Tidak dapat memuat status aktivasi",
+        "noPermissionNote": "Anda tidak memiliki izin untuk memulai aktivasi. Minta anggota treasury dengan izin proposal untuk mengaktifkan pembayaran massal.",
+        "awaitingApproverHint": "Anggota treasury dengan izin persetujuan harus menyetujui permintaan yang tertunda untuk menyelesaikan aktivasi."
     },
     "bulkPaymentCredits": {
         "title": "Pembayaran Massal",

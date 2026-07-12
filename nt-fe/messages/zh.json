@@ -2432,6 +2432,8 @@
         "awaitingHint": "批准后无需进一步操作——此页面会自动更新。",
         "proposalCreated": "已创建激活请求——等待成员批准",
         "activationFailed": "无法启动批量支付激活",
-        "errorTitle": "无法加载激活状态"
+        "errorTitle": "无法加载激活状态",
+        "noPermissionNote": "您没有权限启动激活。请让具有提案权限的金库成员激活批量支付。",
+        "awaitingApproverHint": "拥有批准权限的金库成员需要批准待处理的请求以完成激活。"
     }
 }
