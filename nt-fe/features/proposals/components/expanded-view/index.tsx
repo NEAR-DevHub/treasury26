@@ -26,7 +26,21 @@ import {
     VestingData,
     SwapRequestData,
     BatchPaymentRequestData,
+    BountyData,
+    FactoryInfoUpdateData,
+    MembersData,
+    SetStakingContractData,
+    UpgradeData,
+    VoteData,
 } from "../../types/index";
+import {
+    BountyExpanded,
+    FactoryInfoUpdateExpanded,
+    MembersExpanded,
+    SetStakingContractExpanded,
+    UpgradeExpanded,
+    VoteExpanded,
+} from "./governance-expanded";
 import { ConfidentialRequestExpanded } from "./confidential-request-expanded";
 import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
 import { useNear } from "@/stores/near-store";
@@ -104,6 +118,30 @@ function ExpandedViewInternal({
         case "Exchange": {
             const swapData = data as SwapRequestData;
             return <SwapExpanded data={swapData} isExecuted={isExecuted} />;
+        }
+        case "Members": {
+            const membersData = data as MembersData;
+            return <MembersExpanded data={membersData} />;
+        }
+        case "Upgrade": {
+            const upgradeData = data as UpgradeData;
+            return <UpgradeExpanded data={upgradeData} />;
+        }
+        case "Set Staking Contract": {
+            const setStakingContractData = data as SetStakingContractData;
+            return <SetStakingContractExpanded data={setStakingContractData} />;
+        }
+        case "Bounty": {
+            const bountyData = data as BountyData;
+            return <BountyExpanded data={bountyData} />;
+        }
+        case "Vote": {
+            const voteData = data as VoteData;
+            return <VoteExpanded data={voteData} />;
+        }
+        case "Factory Info Update": {
+            const factoryInfoUpdateData = data as FactoryInfoUpdateData;
+            return <FactoryInfoUpdateExpanded data={factoryInfoUpdateData} />;
         }
         default:
             return (
