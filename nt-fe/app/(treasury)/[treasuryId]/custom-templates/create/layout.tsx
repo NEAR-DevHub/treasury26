@@ -1,12 +1,13 @@
 import { CustomTemplatesGuard } from "../guard";
 
-/** Authoring a template requires ChangePolicy — gate the create route on top of the subtree guard. */
+/** Authoring a template needs AddProposal (Requestors + admins, #1046) — gate the create route on
+ * top of the subtree guard. */
 export default function CreateTemplateLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     return (
-        <CustomTemplatesGuard requireManage>{children}</CustomTemplatesGuard>
+        <CustomTemplatesGuard requireAuthor>{children}</CustomTemplatesGuard>
     );
 }

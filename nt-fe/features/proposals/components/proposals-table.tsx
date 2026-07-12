@@ -491,7 +491,7 @@ export function ProposalsTable({
     const isLastRowExpanded =
         tableRows.length > 0 && tableRows[tableRows.length - 1].getIsExpanded();
     const shouldApplyContainerBottomPadding =
-        tableRows.length > 1 && (Boolean(onPageChange) || !isLastRowExpanded);
+        totalPages > 1 && (Boolean(onPageChange) || !isLastRowExpanded);
     const selectedCount = table.getFilteredSelectedRowModel().rows.length;
     const selectedProposals = table
         .getFilteredSelectedRowModel()

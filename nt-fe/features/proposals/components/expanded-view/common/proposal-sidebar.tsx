@@ -692,7 +692,8 @@ export function ProposalSidebar({
                         <X className="h-4 w-4 mr-2" />
                         {t("reject")}
                     </AuthButtonWithProposal>
-                    {insufficientBalanceInfo.hasInsufficientBalance ? (
+                    {insufficientBalanceInfo.hasInsufficientBalance &&
+                    insufficientBalanceInfo.showDeposit !== false ? (
                         <span className="w-full">
                             <Button
                                 variant="default"
@@ -719,7 +720,8 @@ export function ProposalSidebar({
                                 isUserVoter ||
                                 isCheckingVotingDurationImpact ||
                                 approveBlocked ||
-                                approveSlot.blocked
+                                approveSlot.blocked ||
+                                insufficientBalanceInfo.hasInsufficientBalance
                             }
                             tooltip={
                                 approveBlockIsAppLevel

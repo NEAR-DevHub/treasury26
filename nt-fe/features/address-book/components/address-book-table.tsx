@@ -11,7 +11,7 @@ import {
 } from "@/components/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { NetworkList } from "@/components/network-list";
-import { User, UserWithData } from "@/components/user";
+import { User } from "@/components/user";
 import { FormattedDate } from "@/components/formatted-date";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/empty-state";
@@ -151,10 +151,10 @@ export function AddressBookTable({
 
                                     {/* Recipient */}
                                     <TableCell>
-                                        <UserWithData
+                                        <User
+                                            accountId={entry.address}
                                             name={entry.name}
                                             withLink={false}
-                                            address={entry.address}
                                             useAddressBook
                                             size="md"
                                             withHoverCard

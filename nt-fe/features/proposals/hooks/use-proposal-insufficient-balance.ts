@@ -1,28 +1,29 @@
 "use client";
 
 import { useMemo } from "react";
-import Big from "@/lib/big";
 import { Proposal } from "@/lib/proposals-api";
 import { useAssets } from "@/hooks/use-assets";
-import { getProposalRequiredFunds } from "../utils/proposal-utils";
 import { formatBalance } from "@/lib/utils";
-import { availableBalance } from "@/lib/balance";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import {
+    getProposalFundingAvailability,
+    isFundingInsufficient,
+} from "../utils/proposal-funding";
 
 export interface InsufficientBalanceInfo {
     hasInsufficientBalance: boolean;
     tokenId?: string;
     tokenSymbol?: string;
-    type?: "bond" | "balance" | "no-asset";
+    /** liquid treasury shortfall → deposit; staked/readyToWithdraw → no deposit */
+    type?: "bond" | "balance" | "no-asset" | "staked" | "readyToWithdraw";
     tokenNetwork?: string;
     differenceDisplay?: string;
+    /** Whether the UI should offer a Deposit CTA (only for liquid shortfalls). */
+    showDeposit?: boolean;
 }
 
 /**
- * Hook to check if a proposal requires more funds than available in treasury
- * @param proposal The proposal to check
- * @param treasuryId The treasury ID to fetch balance for
- * @returns Object with insufficient balance info and loading state
+ * Hook to check if a proposal requires more funds than available.
+ * Staking proposals check staked / ready-to-withdraw balances instead of liquid treasury.
  */
 export function useProposalInsufficientBalance(
     proposal: Proposal | null | undefined,
@@ -31,50 +32,52 @@ export function useProposalInsufficientBalance(
     data: InsufficientBalanceInfo;
     isLoading: boolean;
 } {
-    const requiredFunds = useMemo(() => {
-        if (!proposal) return null;
-        return getProposalRequiredFunds(proposal, treasuryId ?? undefined);
-    }, [proposal]);
-
     const { data: assets, isLoading: isAssetsLoading } = useAssets(treasuryId);
 
     const insufficientBalanceInfo = useMemo((): InsufficientBalanceInfo => {
-        if (assets && requiredFunds) {
-            const token = assets.tokens.find(
-                (t) =>
-                    t.contractId === requiredFunds.tokenId ||
-                    (requiredFunds.tokenId.toLowerCase() === NEAR_NETWORK_ID &&
-                        t.contractId == null &&
-                        t.residency === "Near"),
-            );
-            if (!token) {
-                return {
-                    hasInsufficientBalance: true,
-                    tokenId: requiredFunds.tokenId,
-                    type: "no-asset",
-                };
-            }
-
-            const requiredBig = Big(requiredFunds.amount || "0");
-            const availableBig = availableBalance(token.balance);
-
-            if (requiredBig.gt(availableBig)) {
-                return {
-                    hasInsufficientBalance: true,
-                    tokenId: requiredFunds.tokenId,
-                    tokenSymbol: token.symbol,
-                    type: "balance",
-                    tokenNetwork: token.network,
-                    differenceDisplay: formatBalance(
-                        requiredBig.sub(availableBig).toString(),
-                        token.decimals || 24,
-                    ),
-                };
-            }
+        if (!assets || !proposal) {
+            return { hasInsufficientBalance: false };
         }
 
-        return { hasInsufficientBalance: false };
-    }, [requiredFunds, assets]);
+        const funding = getProposalFundingAvailability(
+            proposal,
+            assets.tokens,
+            treasuryId ?? undefined,
+        );
+        if (!funding || !isFundingInsufficient(funding)) {
+            return { hasInsufficientBalance: false };
+        }
+
+        if (funding.kind === "no-asset") {
+            return {
+                hasInsufficientBalance: true,
+                tokenId: funding.tokenId,
+                type: "no-asset",
+                showDeposit: true,
+            };
+        }
+
+        const type =
+            funding.kind === "staked"
+                ? "staked"
+                : funding.kind === "readyToWithdraw"
+                  ? "readyToWithdraw"
+                  : "balance";
+
+        return {
+            hasInsufficientBalance: true,
+            tokenId: funding.tokenId,
+            tokenSymbol: funding.tokenSymbol,
+            type,
+            tokenNetwork: funding.tokenNetwork,
+            differenceDisplay: formatBalance(
+                funding.required.sub(funding.available).toString(),
+                funding.decimals,
+            ),
+            // Unstake/withdraw shortfalls can't be fixed by depositing.
+            showDeposit: type === "balance",
+        };
+    }, [proposal, assets, treasuryId]);
 
     return {
         data: insufficientBalanceInfo,

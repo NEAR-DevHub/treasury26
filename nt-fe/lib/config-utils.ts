@@ -271,16 +271,42 @@ export function isRequestor(
 }
 
 /**
- * Whether the account may change the DAO policy. This is the permission the backend requires for
- * authoring/managing proposal templates (create/edit/pin/delete) — nt-be gates those writes on the
- * `ChangePolicy` action, and the app's canonical permission string for it is `proposal:ChangePolicy`
- * (council roles carry `*:*`). Use it to hide authoring UI from members who can't perform the write.
+ * Mirror of nt-be's `role_has_action_permission` + role-membership check: whether `accountId` is in
+ * a role holding a permission whose ACTION segment equals `action` or the wildcard `*`. nt-be matches
+ * on the action segment ONLY (ignoring the proposal-kind segment), so any FE gate that shadows an
+ * nt-be `verify_can_perform_action(dao, action)` call must match the same way — otherwise the UI
+ * shows an action the backend 403s (or hides one it allows).
+ *
+ * `action` is either a real SputnikDAO action (`AddProposal`, `VoteApprove`, …) or the proposal-kind
+ * label nt-be passes as a gate name (e.g. `ChangePolicy`). Note `ChangePolicy` is a proposal *kind*,
+ * not an action, so it only matches wildcard-action roles (`policy:*`, `config:*`, `*:*`) or the
+ * synthetic `*:ChangePolicy` fixture — i.e. governance, never a plain Requestor.
+ */
+export function hasActionPermission(
+    policy: Policy | null | undefined,
+    accountId: string,
+    action: string,
+): boolean {
+    if (!policy || !accountId) return false;
+
+    return policy.roles.some(
+        (role) =>
+            checkRoleMembership(role.kind, accountId) &&
+            role.permissions.some((permission) => {
+                const permissionAction = permission.split(":")[1];
+                return permissionAction === action || permissionAction === "*";
+            }),
+    );
+}
+
+/**
+ * Whether the account holds the DAO's admin / policy-management capability — nt-be gates the
+ * admin-only template action (delete) and the custom-requests feature flag on the `ChangePolicy`
+ * action, so this mirrors that gate exactly.
  */
 export function canChangePolicy(
     policy: Policy | null | undefined,
     accountId: string,
 ): boolean {
-    if (!policy || !accountId) return false;
-
-    return hasPermission(policy, accountId, "proposal", "ChangePolicy");
+    return hasActionPermission(policy, accountId, "ChangePolicy");
 }

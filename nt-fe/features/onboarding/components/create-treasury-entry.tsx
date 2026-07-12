@@ -146,6 +146,24 @@ function WaitlistActionButton({
     );
 }
 
+function AlreadyHaveTreasurySignIn({ onSignIn }: { onSignIn: () => void }) {
+    const t = useTranslations("createTreasury");
+
+    return (
+        <p className="text-center text-sm">
+            {t("alreadyHaveTreasuryLabel")}{" "}
+            <Button
+                type="button"
+                variant="unstyled"
+                className="h-auto p-0 underline"
+                onClick={onSignIn}
+            >
+                {t("signInLabel")}
+            </Button>
+        </p>
+    );
+}
+
 export function TreasuryOnboardingPage({
     initialScreen = "create",
 }: {
@@ -560,6 +578,12 @@ export function TreasuryOnboardingPage({
         return <LoadingScreen />;
     }
 
+    const openSignIn = () => {
+        setForceStayOnCreatePage(false);
+        setLoginScreenSource("sign-in");
+        setShowLoginScreen(true);
+    };
+
     const createFormBody = (
         <>
             <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-10">
@@ -730,21 +754,7 @@ export function TreasuryOnboardingPage({
                     </Form>
                 </PageCard>
                 {!accountId && (
-                    <p className="text-center text-sm">
-                        {t("alreadyHaveTreasuryLabel")}{" "}
-                        <Button
-                            type="button"
-                            variant="unstyled"
-                            className="h-auto p-0 underline"
-                            onClick={() => {
-                                setForceStayOnCreatePage(false);
-                                setLoginScreenSource("sign-in");
-                                setShowLoginScreen(true);
-                            }}
-                        >
-                            {t("signInLabel")}
-                        </Button>
-                    </p>
+                    <AlreadyHaveTreasurySignIn onSignIn={openSignIn} />
                 )}
             </div>
         </>
@@ -900,6 +910,7 @@ export function TreasuryOnboardingPage({
                     </WaitlistInner>
                 )}
             </PageCard>
+            {!accountId && <AlreadyHaveTreasurySignIn onSignIn={openSignIn} />}
         </div>
     );
 
@@ -924,10 +935,10 @@ export function TreasuryOnboardingPage({
                     logo={headerLogo}
                     mainClassName="pt-1"
                 >
-                    {showWaitlist || isTreasuryCreationBlocked
-                        ? waitlistBody
-                        : showLoginScreen
-                          ? loginScreenBody
+                    {showLoginScreen
+                        ? loginScreenBody
+                        : showWaitlist || isTreasuryCreationBlocked
+                          ? waitlistBody
                           : createFormBody}
                 </PageComponentLayout>
             </>
@@ -953,10 +964,10 @@ export function TreasuryOnboardingPage({
                 treasuryId={createdTreasuryId}
                 onClose={() => setProgressOpen(false)}
             />
-            {showWaitlist || isTreasuryCreationBlocked
-                ? waitlistBody
-                : showLoginScreen
-                  ? loginScreenBody
+            {showLoginScreen
+                ? loginScreenBody
+                : showWaitlist || isTreasuryCreationBlocked
+                  ? waitlistBody
                   : createFormBody}
         </PageComponentLayout>
     );

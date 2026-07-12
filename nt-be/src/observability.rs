@@ -1,9 +1,18 @@
+use apalis_board::axum::sse::{TracingBroadcaster, TracingSubscriber};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::Value;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::Level;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+
+/// Shared log broadcaster feeding the apalis-board dashboard's live-log SSE
+/// pane. Created once: the tracing layer below writes every event to it, and
+/// `jobs::board_router` serves it as the `/api/v1/events` extension. Cheap
+/// when no dashboard client is connected (the broadcaster fans out to zero
+/// receivers).
+pub static LOG_BROADCASTER: Lazy<Arc<Mutex<TracingBroadcaster>>> =
+    Lazy::new(TracingBroadcaster::create);
 
 const REDACTED: &str = "[REDACTED]";
 const MAX_SANITIZED_TEXT_LEN: usize = 1024;
@@ -78,6 +87,7 @@ fn init_tracing_subscriber(enable_sentry: bool) {
                 .with(env_filter)
                 .with(fmt_layer)
                 .with(sentry_layer)
+                .with(TracingSubscriber::new(&LOG_BROADCASTER).layer())
                 .try_init();
         }
         LogFormat::Pretty => {
@@ -91,6 +101,7 @@ fn init_tracing_subscriber(enable_sentry: bool) {
                 .with(env_filter)
                 .with(fmt_layer)
                 .with(sentry_layer)
+                .with(TracingSubscriber::new(&LOG_BROADCASTER).layer())
                 .try_init();
         }
     }
