@@ -79,15 +79,23 @@ fn parse_dao_id(dao_id: &str) -> Result<AccountId, (StatusCode, String)> {
     })
 }
 
-/// Confirms the account is a monitored confidential treasury; returns
-/// whether the bulk-payment JWT is already stored.
+/// Whether the bulk-payment JWT is already stored for this treasury (i.e. bulk
+/// payments are active).
+///
+/// Keyed only on the token's presence. It deliberately does NOT require the
+/// monitored row to exist or `is_confidential_account` to be set: those lag
+/// behind (a freshly created treasury may not be flagged/synced yet, or the
+/// creation-time bulk setup stored the token before the flag was set), and
+/// hard-erroring there made the status endpoint 4xx and blocked the bulk
+/// payment form even when activation had actually completed. The caller
+/// already gates on confidential membership.
 async fn load_bulk_token_state(
     state: &AppState,
     dao_id: &str,
 ) -> Result<bool, (StatusCode, String)> {
-    let row: Option<(bool, Option<String>)> = sqlx::query_as(
+    let token: Option<Option<String>> = sqlx::query_scalar(
         r#"
-        SELECT is_confidential_account, bulk_payment_access_token
+        SELECT bulk_payment_access_token
         FROM monitored_accounts
         WHERE account_id = $1
         "#,
@@ -102,17 +110,7 @@ async fn load_bulk_token_state(
         )
     })?;
 
-    match row {
-        Some((true, token)) => Ok(token.is_some()),
-        Some((false, _)) => Err((
-            StatusCode::BAD_REQUEST,
-            format!("{} is not a confidential treasury", dao_id),
-        )),
-        None => Err((
-            StatusCode::NOT_FOUND,
-            format!("Treasury {} not found", dao_id),
-        )),
-    }
+    Ok(token.flatten().is_some())
 }
 
 /// Whether the activation proposal for `payload_hash` still exists on-chain
