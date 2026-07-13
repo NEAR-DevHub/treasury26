@@ -252,7 +252,7 @@ impl TokenPriceService {
 /// - bare multi-token ids (`v2_1.omni.hot.tg:<chain>_<asset>`) gain `nep245:`
 /// - bare NEP-141 contract ids (`wrap.near`, balance_changes) gain `nep141:`
 pub fn canonicalize_token_id(raw: &str) -> String {
-    if raw == "near" {
+    if raw == "near" || raw.starts_with("staking:") {
         return "nep141:wrap.near".to_string();
     }
     if let Some(stripped) = raw.strip_prefix("intents.near:") {
