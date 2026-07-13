@@ -2054,6 +2054,7 @@
         "investors": "{count, plural, one {Yatırımcı} other {Yatırımcılar}}",
         "poolBreakdown": "Havuz Dökümü",
         "unlockedToken": "Kilitsiz Token",
+        "lockedToken": "Kilitli Token",
         "lockupStakingPool": "Lockup staking havuzu",
         "exchange": "Takas",
         "send": "Gönder",

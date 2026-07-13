@@ -386,7 +386,7 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
     };
 
     let check_name = check.name.as_str();
-    let unhealthy = oh_dear::is_unhealthy_status(&check.status);
+    let unhealthy = oh_dear::is_unhealthy_for_monitor(service, &check.status);
 
     if unhealthy {
         let status = incident_status(&check.status);

@@ -343,7 +343,7 @@ export function formatUserDate(
         }
 
         const formatter = new Intl.DateTimeFormat("en-US", formatOptions);
-        return formatter.format(dateObj).replace("GMT", "UTC");
+        return normalizeUtcTimezoneLabel(formatter.format(dateObj));
     } catch (error) {
         console.error("Error formatting date with Intl:", error);
 
@@ -361,7 +361,7 @@ export function formatUserDate(
             const offsetHours = Math.abs(Math.floor(timezoneOffset / 60));
             const offsetMinutes = Math.abs(timezoneOffset % 60);
 
-            let timezoneStr = "UTC";
+            let timezoneStr = "UTC+00:00";
             if (timezoneOffset !== 0) {
                 const sign = timezoneOffset > 0 ? "-" : "+";
                 timezoneStr = `UTC${sign}${offsetHours}${offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""}`;
@@ -369,9 +369,15 @@ export function formatUserDate(
             formattedDate += ` ${timezoneStr}`;
         }
 
-        // return formattedDate;
-        return dateObj.toUTCString().replace("GMT", "UTC");
+        return formattedDate;
     }
+}
+
+/** Prefer UTC+00:00 over bare GMT/UTC so zero-offset times show an explicit offset. */
+function normalizeUtcTimezoneLabel(formatted: string): string {
+    return formatted
+        .replace("GMT", "UTC")
+        .replace(/\bUTC\b(?![+-])/, "UTC+00:00");
 }
 
 export function formatGas(gas: string): string {

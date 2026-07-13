@@ -2037,6 +2037,7 @@
         "investors": "{count, plural, one {Інвестор} few {Інвестори} many {Інвесторів} other {Інвесторів}}",
         "poolBreakdown": "Розбивка за пулами",
         "unlockedToken": "Розблокований токен",
+        "lockedToken": "Заблокований токен",
         "lockupStakingPool": "Пул стейкінгу лок-апу",
         "exchange": "Обміняти",
         "send": "Надіслати",

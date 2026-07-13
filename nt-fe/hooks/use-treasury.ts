@@ -40,9 +40,15 @@ export function useTreasury() {
         useTreasuryConfig(shouldLoadGuestConfig ? treasuryId : null);
 
     // A treasury can be in the list because user saved it, but still be a guest.
+    // Logged-out viewers are always guests. While guest config is loading after
+    // logout/cache clear, treat as guest so member-only UI/API paths don't flash.
     const isGuestTreasury =
         !!treasuryId &&
-        (currentTreasury ? !currentTreasury.isMember : !!guestTreasuryConfig);
+        (currentTreasury
+            ? !currentTreasury.isMember
+            : !accountId ||
+              !!guestTreasuryConfig ||
+              (shouldLoadGuestConfig && isLoadingGuestConfig));
     const isLoading =
         isInitializing ||
         (accountId ? isLoadingTreasuries : false) ||

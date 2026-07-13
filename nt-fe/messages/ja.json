@@ -2054,6 +2054,7 @@
         "investors": "{count, plural, other {投資家}}",
         "poolBreakdown": "プール内訳",
         "unlockedToken": "アンロック済みトークン",
+        "lockedToken": "ロック済みトークン",
         "lockupStakingPool": "ロックアップステーキングプール",
         "exchange": "交換",
         "send": "送金",

@@ -2054,6 +2054,7 @@
         "investors": "{count, plural, one {משקיע} two {משקיעים} many {משקיעים} other {משקיעים}}",
         "poolBreakdown": "פירוט מאגר",
         "unlockedToken": "טוקן לא נעול",
+        "lockedToken": "טוקן נעול",
         "lockupStakingPool": "מאגר סטייקינג של נעילה",
         "exchange": "החלפה",
         "send": "שליחה",

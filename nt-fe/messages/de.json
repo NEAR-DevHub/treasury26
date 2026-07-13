@@ -2054,6 +2054,7 @@
         "investors": "{count, plural, one {Investor} other {Investoren}}",
         "poolBreakdown": "Pool-Aufschlüsselung",
         "unlockedToken": "Entsperrtes Token",
+        "lockedToken": "Gesperrtes Token",
         "lockupStakingPool": "Lockup-Staking-Pool",
         "exchange": "Tauschen",
         "send": "Senden",

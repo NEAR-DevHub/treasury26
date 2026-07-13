@@ -2037,6 +2037,7 @@
         "investors": "{count, plural, other {Nhà đầu tư}}",
         "poolBreakdown": "Phân tích Pool",
         "unlockedToken": "Token đã mở khóa",
+        "lockedToken": "Token đã khóa",
         "lockupStakingPool": "Pool staking lockup",
         "exchange": "Trao đổi",
         "send": "Gửi",

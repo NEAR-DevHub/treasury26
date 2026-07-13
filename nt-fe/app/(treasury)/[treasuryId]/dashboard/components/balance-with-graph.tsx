@@ -18,6 +18,7 @@ import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
+import { ScrollContainer } from "@/components/scroll-container";
 import { Tooltip } from "@/components/tooltip";
 import {
     DropdownMenu,
@@ -666,45 +667,52 @@ export default function BalanceWithGraph({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                     align="end"
-                                    className="max-h-[300px] min-w-[140px] overflow-y-auto"
+                                    className="min-w-[140px] p-0"
                                 >
-                                    <DropdownMenuItem
-                                        onSelect={() => setSelectedToken("all")}
-                                        className="flex items-center justify-between gap-2"
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <Coins className="size-4" />
-                                            <span>{t("allTokens")}</span>
-                                        </span>
-                                        {selectedToken === "all" && (
-                                            <Check className="size-4" />
-                                        )}
-                                    </DropdownMenuItem>
-                                    {groupedTokens.map((group) => (
+                                    <ScrollContainer className="max-h-[300px] p-1">
                                         <DropdownMenuItem
-                                            key={group.symbol}
                                             onSelect={() =>
-                                                setSelectedToken(group.symbol)
+                                                setSelectedToken("all")
                                             }
                                             className="flex items-center justify-between gap-2"
                                         >
                                             <span className="flex items-center gap-2">
-                                                {group.icon && (
-                                                    <img
-                                                        src={group.icon}
-                                                        alt={group.symbol}
-                                                        width={16}
-                                                        height={16}
-                                                        className="rounded-full"
-                                                    />
-                                                )}
-                                                <span>{group.symbol}</span>
+                                                <Coins className="size-4" />
+                                                <span>{t("allTokens")}</span>
                                             </span>
-                                            {selectedToken === group.symbol && (
+                                            {selectedToken === "all" && (
                                                 <Check className="size-4" />
                                             )}
                                         </DropdownMenuItem>
-                                    ))}
+                                        {groupedTokens.map((group) => (
+                                            <DropdownMenuItem
+                                                key={group.symbol}
+                                                onSelect={() =>
+                                                    setSelectedToken(
+                                                        group.symbol,
+                                                    )
+                                                }
+                                                className="flex items-center justify-between gap-2"
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    {group.icon && (
+                                                        <img
+                                                            src={group.icon}
+                                                            alt={group.symbol}
+                                                            width={16}
+                                                            height={16}
+                                                            className="rounded-full"
+                                                        />
+                                                    )}
+                                                    <span>{group.symbol}</span>
+                                                </span>
+                                                {selectedToken ===
+                                                    group.symbol && (
+                                                    <Check className="size-4" />
+                                                )}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </ScrollContainer>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             <DropdownMenu>

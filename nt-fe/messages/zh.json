@@ -2037,6 +2037,7 @@
         "investors": "{count, plural, other {投资者}}",
         "poolBreakdown": "矿池明细",
         "unlockedToken": "已解锁代币",
+        "lockedToken": "已锁定代币",
         "lockupStakingPool": "锁仓质押池",
         "exchange": "兑换",
         "send": "发送",

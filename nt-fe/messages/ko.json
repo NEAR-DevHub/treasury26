@@ -2054,6 +2054,7 @@
         "investors": "{count, plural, other {투자자}}",
         "poolBreakdown": "풀 세부 내역",
         "unlockedToken": "잠금 해제된 토큰",
+        "lockedToken": "잠긴 토큰",
         "lockupStakingPool": "락업 스테이킹 풀",
         "exchange": "교환",
         "send": "보내기",

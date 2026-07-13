@@ -10,6 +10,7 @@ import {
     DialogTitle,
 } from "@/components/modal";
 import { Button } from "@/components/button";
+import { ScrollContainer } from "@/components/scroll-container";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useNear } from "@/stores/near-store";
@@ -60,7 +61,7 @@ export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="flex-1 min-h-0 overflow-y-auto -mx-3 px-3">
+                <ScrollContainer className="flex-1 min-h-0 -mx-3 px-3">
                     {isReturningUser ? (
                         <DialogDescription asChild>
                             <div className="space-y-3 text-sm">
@@ -116,7 +117,7 @@ export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
                             </div>
                         </DialogDescription>
                     )}
-                </div>
+                </ScrollContainer>
 
                 <DialogFooter className="flex-col gap-3 items-stretch sm:flex-col  pt-0">
                     <div className="flex items-start gap-3">
