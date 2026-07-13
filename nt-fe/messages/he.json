@@ -1975,7 +1975,7 @@
     "activityLabels": {
         "exchangePending": "החלפה ממתינה",
         "exchangeRequest": "בקשת החלפה",
-        "exchangeFulfillment": "מילוי החלפה",
+        "exchangeFulfillment": "החלפה",
         "stakingRewards": "תגמולי סטייקינג",
         "proposalAction": "פעולת הצעה",
         "deposit": "הפקדת {symbol}",

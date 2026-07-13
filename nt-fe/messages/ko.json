@@ -1975,7 +1975,7 @@
     "activityLabels": {
         "exchangePending": "교환 대기 중",
         "exchangeRequest": "교환 요청",
-        "exchangeFulfillment": "교환 이행",
+        "exchangeFulfillment": "교환",
         "stakingRewards": "스테이킹 보상",
         "proposalAction": "제안 작업",
         "deposit": "{symbol} 입금",

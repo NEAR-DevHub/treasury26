@@ -1975,7 +1975,7 @@
     "activityLabels": {
         "exchangePending": "Pertukaran Tertunda",
         "exchangeRequest": "Permintaan Pertukaran",
-        "exchangeFulfillment": "Pemenuhan Pertukaran",
+        "exchangeFulfillment": "Pertukaran",
         "stakingRewards": "Imbalan Staking",
         "proposalAction": "Tindakan Usulan",
         "deposit": "Deposit {symbol}",

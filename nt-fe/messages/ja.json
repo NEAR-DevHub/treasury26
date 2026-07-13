@@ -1975,7 +1975,7 @@
     "activityLabels": {
         "exchangePending": "交換保留中",
         "exchangeRequest": "交換リクエスト",
-        "exchangeFulfillment": "交換完了",
+        "exchangeFulfillment": "交換",
         "stakingRewards": "ステーキング報酬",
         "proposalAction": "提案アクション",
         "deposit": "{symbol}を入金",

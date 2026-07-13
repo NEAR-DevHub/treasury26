@@ -1,27 +1,26 @@
-import { useTranslations } from "next-intl";
-import { useLocale } from "next-intl";
-import { Amount } from "../amount";
-import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { SwapRequestData } from "../../types/index";
-import {
-    formatCurrency,
-    formatBalance,
-    formatDurationSeconds,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
-import Big from "@/lib/big";
 import { Address } from "@/components/address";
-import { Rate } from "@/components/rate";
-import { useToken, useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
-import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
 import { FormattedDate } from "@/components/formatted-date";
+import { InfoDisplay, type InfoItem } from "@/components/info-display";
+import { Rate } from "@/components/rate";
+import { Skeleton } from "@/components/ui/skeleton";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
+import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
+import { useSearchIntentsTokens, useToken } from "@/hooks/use-treasury-queries";
+import Big from "@/lib/big";
 import {
     calculateExchangeFeeAmount,
     EXCHANGE_FEE_PERCENTAGE,
 } from "@/lib/exchange-fee";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+    formatBalance,
+    formatCurrency,
+    formatDurationSeconds,
+    formatTokenDisplayAmount,
+} from "@/lib/utils";
+import type { SwapRequestData } from "../../types/index";
+import { Amount } from "../amount";
 
 interface SwapExpandedProps {
     data: SwapRequestData;
@@ -134,13 +133,14 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
                     tokenIn={finalTokenInId}
                     tokenOut={finalTokenOutId}
                     amountIn={Big(data.amountIn)}
+                    amountInUsd={data.amountInUsd}
                     amountOutWithDecimals={data.amountOut}
                 />
             ),
         },
     ];
 
-    let expandableItems: InfoItem[] = [];
+    const expandableItems: InfoItem[] = [];
 
     if (data.slippage) {
         expandableItems.push({
@@ -257,7 +257,7 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
         },
     ];
 
-    let expandableItems: InfoItem[] = [];
+    const expandableItems: InfoItem[] = [];
 
     if (data.slippage) {
         expandableItems.push({

@@ -1975,7 +1975,7 @@
     "activityLabels": {
         "exchangePending": "Takas Beklemede",
         "exchangeRequest": "Takas Talebi",
-        "exchangeFulfillment": "Takas Gerçekleştirme",
+        "exchangeFulfillment": "Takas",
         "stakingRewards": "Staking Ödülleri",
         "proposalAction": "Öneri Eylemi",
         "deposit": "{symbol} Yatırma",

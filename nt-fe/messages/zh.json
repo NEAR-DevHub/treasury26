@@ -1958,7 +1958,7 @@
     "activityLabels": {
         "exchangePending": "兑换待处理",
         "exchangeRequest": "兑换请求",
-        "exchangeFulfillment": "兑换完成",
+        "exchangeFulfillment": "兑换",
         "stakingRewards": "质押奖励",
         "proposalAction": "提案操作",
         "deposit": "存入 {symbol}",

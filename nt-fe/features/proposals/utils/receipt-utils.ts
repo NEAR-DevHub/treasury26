@@ -1,15 +1,15 @@
 import type {
-    Proposal,
-    SwapStatus,
-    SwapStatusResponse,
-} from "@/lib/proposals-api";
-import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
-import type {
     BatchPaymentRequestData,
     ConfidentialRequestData,
     PaymentRequestData,
     SwapRequestData,
 } from "@/features/proposals/types/index";
+import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
+import type {
+    Proposal,
+    SwapStatus,
+    SwapStatusResponse,
+} from "@/lib/proposals-api";
 
 export interface ReceiptProposalData {
     variant: "payment" | "exchange";
@@ -19,6 +19,8 @@ export interface ReceiptProposalData {
     receiverAddress?: string;
     sourceAmountRaw?: string;
     destinationAmountWithDecimals?: string;
+    sourceAmountUsd?: number | null;
+    destinationAmountUsd?: number | null;
 }
 
 export function isReceiptEligibleProposalKind(proposalKind?: string): boolean {
@@ -58,6 +60,8 @@ function toPaymentReceiptData(data: PaymentRequestData): ReceiptProposalData {
         receiverAddress: data.receiver,
         sourceAmountRaw: data.amount,
         destinationAmountWithDecimals: undefined,
+        sourceAmountUsd: data.usdValue,
+        destinationAmountUsd: data.usdValue,
     };
 }
 
@@ -73,6 +77,8 @@ function toExchangeReceiptData(
         receiverAddress: treasuryId,
         sourceAmountRaw: data.amountIn,
         destinationAmountWithDecimals: data.amountOut,
+        sourceAmountUsd: data.amountInUsd,
+        destinationAmountUsd: data.amountOutUsd,
     };
 }
 

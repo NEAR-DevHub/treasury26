@@ -1975,7 +1975,7 @@
     "activityLabels": {
         "exchangePending": "Tausch ausstehend",
         "exchangeRequest": "Tauschanfrage",
-        "exchangeFulfillment": "Tauschabwicklung",
+        "exchangeFulfillment": "Tausch",
         "stakingRewards": "Staking-Belohnungen",
         "proposalAction": "Vorschlagsaktion",
         "deposit": "{symbol} einzahlen",

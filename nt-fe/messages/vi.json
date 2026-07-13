@@ -1958,7 +1958,7 @@
     "activityLabels": {
         "exchangePending": "Trao đổi đang chờ",
         "exchangeRequest": "Yêu cầu trao đổi",
-        "exchangeFulfillment": "Hoàn tất trao đổi",
+        "exchangeFulfillment": "Trao đổi",
         "stakingRewards": "Phần thưởng Staking",
         "proposalAction": "Hành động đề xuất",
         "deposit": "Nạp {symbol}",

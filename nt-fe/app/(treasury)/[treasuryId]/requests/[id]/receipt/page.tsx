@@ -1,25 +1,40 @@
 "use client";
 
-import { use, useEffect, useMemo, useRef } from "react";
-import { redirect, useSearchParams } from "next/navigation";
 import { FileText } from "lucide-react";
-import QRCode from "react-qr-code";
+import { redirect, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import Logo from "@/components/icons/logo";
-import { PageCard } from "@/components/card";
+import { use, useEffect, useMemo, useRef } from "react";
+import QRCode from "react-qr-code";
 import { Button } from "@/components/button";
-import { CopyButton } from "@/components/copy-button";
-import { Pill } from "@/components/pill";
+import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
+import { CopyButton } from "@/components/copy-button";
+import Logo from "@/components/icons/logo";
+import { Pill } from "@/components/pill";
+import { NetworkIconDisplay } from "@/components/token-display";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LANDING_PAGE } from "@/constants/config";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { StatusPill } from "@/features/proposals/components/proposal-status-pill";
+import type { BatchPaymentRequestData } from "@/features/proposals/types/index";
+import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
+import {
+    getProposalStatus,
+    getProposalUIKind,
+} from "@/features/proposals/utils/proposal-utils";
+import {
+    extractReceiptProposalData,
+    getProposalExecutedDate,
+    isReceiptEligibleProposalKind,
+} from "@/features/proposals/utils/receipt-utils";
+import { useCachedProposalSubmissionTime } from "@/hooks/use-cached-proposal-submission-time";
 import {
     useProposal,
     useProposalTransaction,
-    useSwapStatus,
     useQuoteByDepositAddress,
+    useSwapStatus,
     useTokenPriceAtTimestamp,
 } from "@/hooks/use-proposals";
-import { useCachedProposalSubmissionTime } from "@/hooks/use-cached-proposal-submission-time";
 import { useTreasury } from "@/hooks/use-treasury";
 import {
     useBatchPayment,
@@ -27,45 +42,30 @@ import {
     useTreasuryPolicy,
 } from "@/hooks/use-treasury-queries";
 import {
-    getProposalStatus,
-    getProposalUIKind,
-} from "@/features/proposals/utils/proposal-utils";
-import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
-import {
-    extractReceiptProposalData,
-    getProposalExecutedDate,
-    isReceiptEligibleProposalKind,
-} from "@/features/proposals/utils/receipt-utils";
-import { NetworkIconDisplay } from "@/components/token-display";
-import {
-    isNearComPaymentRoute,
     getNearComChainIcons,
+    isNearComPaymentRoute,
 } from "@/lib/intents-network";
-import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { StatusPill } from "@/features/proposals/components/proposal-status-pill";
-import {
-    ReceiptSenderSection,
-    ReceiptTokenAmountRow,
-} from "./components/receipt-shared";
-import { getTokenDisplayFields } from "./utils/token-display";
-import {
-    buildReceiptAmountModel,
-    buildTokenReceiptInfo,
-    type AsyncValue,
-    type TokenReceiptInfo,
-} from "./utils/receipt-models";
-import {
-    formatBalance,
-    formatTokenDisplayAmount,
-    formatUserDate,
-    cn,
-} from "@/lib/utils";
 import {
     recordReceiptMetric,
     type SwapQuoteResponse,
 } from "@/lib/proposals-api";
-import type { BatchPaymentRequestData } from "@/features/proposals/types/index";
-import { LANDING_PAGE } from "@/constants/config";
+import {
+    cn,
+    formatBalance,
+    formatTokenDisplayAmount,
+    formatUserDate,
+} from "@/lib/utils";
+import {
+    ReceiptSenderSection,
+    ReceiptTokenAmountRow,
+} from "./components/receipt-shared";
+import {
+    type AsyncValue,
+    buildReceiptAmountModel,
+    buildTokenReceiptInfo,
+    type TokenReceiptInfo,
+} from "./utils/receipt-models";
+import { getTokenDisplayFields } from "./utils/token-display";
 
 interface RequestReceiptPageProps {
     params: Promise<{
@@ -733,6 +733,12 @@ export default function RequestReceiptPage({
     const sourceAmountRaw = receiptProposalData?.sourceAmountRaw;
     const destinationAmountWithDecimals =
         receiptProposalData?.destinationAmountWithDecimals;
+    const receiptSourceAmountUsd = receiptProposalData?.sourceAmountUsd;
+    const receiptDestinationAmountUsd =
+        receiptProposalData?.destinationAmountUsd;
+    const hasExplicitReceiptUsd =
+        receiptSourceAmountUsd !== undefined ||
+        receiptDestinationAmountUsd !== undefined;
     const isExecutableReceipt = status === "Executed";
     const shouldUseSwapExecutionDate = isExecutableReceipt && !!depositAddress;
 
@@ -773,7 +779,8 @@ export default function RequestReceiptPage({
     const shouldFetchQuoteByDepositAddress =
         isSingleReceiptProposal &&
         !!depositAddress &&
-        !isConfidentialRequestProposal;
+        !isConfidentialRequestProposal &&
+        !hasExplicitReceiptUsd;
     const {
         data: quoteByDepositAddress,
         isLoading: isLoadingQuoteByDepositAddress,
@@ -899,12 +906,14 @@ export default function RequestReceiptPage({
                     amountDecimal: sourceAmountDecimal,
                     amountDisplay:
                         formatTokenDisplayAmount(sourceAmountDecimal),
+                    amountUsd: receiptSourceAmountUsd,
                     symbol: sourceToken?.symbol ?? "",
                     tokenPrice: sourceToken?.price ?? null,
                     historicalPriceUsd: sourceHistoricalPrice?.priceUsd ?? null,
                 },
                 destinationToken: {
                     amountDecimal: destinationAmountWithDecimals,
+                    amountUsd: receiptDestinationAmountUsd,
                     symbol: destinationToken?.symbol ?? "",
                     tokenPrice: destinationToken?.price ?? null,
                     historicalPriceUsd:
@@ -916,6 +925,8 @@ export default function RequestReceiptPage({
             effectiveQuote,
             sourceAmountDecimal,
             destinationAmountWithDecimals,
+            receiptSourceAmountUsd,
+            receiptDestinationAmountUsd,
             hasDepositAddress,
             sourceHistoricalPrice?.priceUsd,
             destinationHistoricalPrice?.priceUsd,
@@ -923,6 +934,7 @@ export default function RequestReceiptPage({
             destinationToken?.price,
             sourceToken?.symbol,
             destinationToken?.symbol,
+            isSingleReceiptProposal,
         ],
     );
     const isTransactionDateLoading =
@@ -931,12 +943,14 @@ export default function RequestReceiptPage({
         (shouldUseSwapExecutionDate
             ? isLoadingSwapStatus
             : isLoadingTransaction);
-    const isRateLoading = hasDepositAddress
-        ? isSingleReceiptProposal &&
-          !isConfidentialRequestProposal &&
-          isLoadingQuoteByDepositAddress
-        : isLoadingSourceHistoricalPrice ||
-          (isExchangeProposal && isLoadingDestinationHistoricalPrice);
+    const isRateLoading = hasExplicitReceiptUsd
+        ? false
+        : hasDepositAddress
+          ? isSingleReceiptProposal &&
+            !isConfidentialRequestProposal &&
+            isLoadingQuoteByDepositAddress
+          : isLoadingSourceHistoricalPrice ||
+            (isExchangeProposal && isLoadingDestinationHistoricalPrice);
     const executedTimeValue = transactionDate
         ? formatUserDate(transactionDate, {
               timezone: "UTC",

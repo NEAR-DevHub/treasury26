@@ -1975,7 +1975,7 @@
     "activityLabels": {
         "exchangePending": "Troca pendente",
         "exchangeRequest": "Solicitação de troca",
-        "exchangeFulfillment": "Conclusão da troca",
+        "exchangeFulfillment": "Troca",
         "stakingRewards": "Recompensas de staking",
         "proposalAction": "Ação da proposta",
         "deposit": "Depósito de {symbol}",

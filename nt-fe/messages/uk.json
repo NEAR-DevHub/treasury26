@@ -1958,7 +1958,7 @@
     "activityLabels": {
         "exchangePending": "Очікує обмін",
         "exchangeRequest": "Запит на обмін",
-        "exchangeFulfillment": "Виконання обміну",
+        "exchangeFulfillment": "Обмін",
         "stakingRewards": "Винагороди стейкінгу",
         "proposalAction": "Дія пропозиції",
         "deposit": "Поповнення {symbol}",
