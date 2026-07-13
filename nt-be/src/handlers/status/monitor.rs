@@ -5,6 +5,7 @@ use serde_json::json;
 use crate::{
     AppState,
     handlers::status::{
+        config::{ALERT_AFTER_FAILURES, RECOVER_AFTER_SUCCESSES},
         fallbacks::{
             self, POST_TO_APP_CALLBACK_PREFIX, StatusIncident, admin_page_url, oh_dear_status_url,
         },
@@ -13,6 +14,12 @@ use crate::{
     },
     handlers::warnings::db,
 };
+
+const INCIDENT_COLUMNS: &str = r#"
+    id, service, check_name, status, first_failed_at, last_failed_at,
+    recovered_at, telegram_message_id, fallback_activated_at, warning_slot_id,
+    consecutive_failures, consecutive_successes
+"#;
 
 fn incident_status(status: &OhDearStatus) -> &'static str {
     match status {
@@ -27,15 +34,13 @@ async fn load_active_incident(
     service: &str,
     check_name: &str,
 ) -> Result<Option<StatusIncident>, sqlx::Error> {
-    sqlx::query_as::<_, StatusIncident>(
+    sqlx::query_as::<_, StatusIncident>(&format!(
         r#"
-        SELECT
-            id, service, check_name, status, first_failed_at, last_failed_at,
-            recovered_at, telegram_message_id, fallback_activated_at, warning_slot_id
+        SELECT {INCIDENT_COLUMNS}
         FROM status_incidents
         WHERE service = $1 AND check_name = $2 AND recovered_at IS NULL
-        "#,
-    )
+        "#
+    ))
     .bind(service)
     .bind(check_name)
     .fetch_optional(pool)
@@ -48,10 +53,12 @@ async fn open_incident(
     check_name: &str,
     status: &str,
 ) -> Result<StatusIncident, sqlx::Error> {
-    sqlx::query_as::<_, StatusIncident>(
+    sqlx::query_as::<_, StatusIncident>(&format!(
         r#"
-        INSERT INTO status_incidents (service, check_name, status)
-        VALUES ($1, $2, $3)
+        INSERT INTO status_incidents (
+            service, check_name, status, consecutive_failures, consecutive_successes
+        )
+        VALUES ($1, $2, $3, 1, 0)
         ON CONFLICT (service, check_name) DO UPDATE SET
             status = EXCLUDED.status,
             first_failed_at = CASE
@@ -71,12 +78,15 @@ async fn open_incident(
             warning_slot_id = CASE
                 WHEN status_incidents.recovered_at IS NOT NULL THEN NULL
                 ELSE status_incidents.warning_slot_id
-            END
-        RETURNING
-            id, service, check_name, status, first_failed_at, last_failed_at,
-            recovered_at, telegram_message_id, fallback_activated_at, warning_slot_id
-        "#,
-    )
+            END,
+            consecutive_failures = CASE
+                WHEN status_incidents.recovered_at IS NOT NULL THEN 1
+                ELSE status_incidents.consecutive_failures + 1
+            END,
+            consecutive_successes = 0
+        RETURNING {INCIDENT_COLUMNS}
+        "#
+    ))
     .bind(service)
     .bind(check_name)
     .bind(status)
@@ -84,23 +94,44 @@ async fn open_incident(
     .await
 }
 
-async fn touch_incident(
+async fn touch_incident_failure(
     pool: &sqlx::PgPool,
     incident_id: i32,
     status: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+) -> Result<StatusIncident, sqlx::Error> {
+    sqlx::query_as::<_, StatusIncident>(&format!(
         r#"
         UPDATE status_incidents
-        SET status = $2, last_failed_at = NOW()
+        SET status = $2,
+            last_failed_at = NOW(),
+            consecutive_failures = consecutive_failures + 1,
+            consecutive_successes = 0
         WHERE id = $1
-        "#,
-    )
+        RETURNING {INCIDENT_COLUMNS}
+        "#
+    ))
     .bind(incident_id)
     .bind(status)
-    .execute(pool)
-    .await?;
-    Ok(())
+    .fetch_one(pool)
+    .await
+}
+
+async fn touch_incident_success(
+    pool: &sqlx::PgPool,
+    incident_id: i32,
+) -> Result<StatusIncident, sqlx::Error> {
+    sqlx::query_as::<_, StatusIncident>(&format!(
+        r#"
+        UPDATE status_incidents
+        SET consecutive_successes = consecutive_successes + 1,
+            consecutive_failures = 0
+        WHERE id = $1
+        RETURNING {INCIDENT_COLUMNS}
+        "#
+    ))
+    .bind(incident_id)
+    .fetch_one(pool)
+    .await
 }
 
 async fn set_incident_telegram_message(
@@ -117,10 +148,18 @@ async fn set_incident_telegram_message(
 }
 
 async fn recover_incident(pool: &sqlx::PgPool, incident_id: i32) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE status_incidents SET recovered_at = NOW() WHERE id = $1")
-        .bind(incident_id)
-        .execute(pool)
-        .await?;
+    sqlx::query(
+        r#"
+        UPDATE status_incidents
+        SET recovered_at = NOW(),
+            consecutive_failures = 0,
+            consecutive_successes = 0
+        WHERE id = $1
+        "#,
+    )
+    .bind(incident_id)
+    .execute(pool)
+    .await?;
     Ok(())
 }
 
@@ -361,14 +400,16 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
 
         let incident = match incident {
             Some(existing) => {
-                if let Err(e) = touch_incident(&state.db_pool, existing.id, status).await {
-                    tracing::error!(
-                        "[status-monitor] Failed to update incident {}: {e}",
-                        existing.id
-                    );
-                    return;
+                match touch_incident_failure(&state.db_pool, existing.id, status).await {
+                    Ok(updated) => updated,
+                    Err(e) => {
+                        tracing::error!(
+                            "[status-monitor] Failed to update incident {}: {e}",
+                            existing.id
+                        );
+                        return;
+                    }
                 }
-                existing
             }
             None => match open_incident(&state.db_pool, service, check_name, status).await {
                 Ok(incident) => incident,
@@ -379,7 +420,10 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
             },
         };
 
-        if incident.telegram_message_id.is_none() {
+        // Wait for consecutive failures before notifying (filters brief blips).
+        if incident.telegram_message_id.is_none()
+            && incident.consecutive_failures >= ALERT_AFTER_FAILURES
+        {
             let text = notifications::format_health_check_alert(
                 service,
                 check_name,
@@ -403,7 +447,8 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
             {
                 Ok(message_id) if message_id > 0 => {
                     tracing::info!(
-                        "[status-monitor] Sent ops alert for {service} (telegram message {message_id})"
+                        "[status-monitor] Sent ops alert for {service} after {} failures (telegram message {message_id})",
+                        incident.consecutive_failures
                     );
                     if let Err(e) =
                         set_incident_telegram_message(&state.db_pool, incident.id, message_id).await
@@ -432,6 +477,27 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
         let Some(incident) = incident else {
             return;
         };
+
+        let incident = match touch_incident_success(&state.db_pool, incident.id).await {
+            Ok(updated) => updated,
+            Err(e) => {
+                tracing::error!(
+                    "[status-monitor] Failed to record success for incident {}: {e}",
+                    incident.id
+                );
+                return;
+            }
+        };
+
+        // Require consecutive successes before recovering (stops alert↔recover flaps).
+        if incident.consecutive_successes < RECOVER_AFTER_SUCCESSES {
+            tracing::debug!(
+                "[status-monitor] {service} healthy ({}/{} consecutive); holding incident open",
+                incident.consecutive_successes,
+                RECOVER_AFTER_SUCCESSES
+            );
+            return;
+        }
 
         if let Err(e) = recover_incident(&state.db_pool, incident.id).await {
             tracing::error!(

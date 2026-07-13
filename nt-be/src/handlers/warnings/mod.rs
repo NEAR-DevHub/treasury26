@@ -13,6 +13,7 @@ pub const ACTIVE_WARNINGS_SQL: &str = r#"
         response,
         severity,
         user_message,
+        use_custom_message,
         situation,
         show_from,
         starts_at,

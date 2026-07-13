@@ -350,6 +350,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
                 handlers::intents::confidential::bulk_payment_prepare::bulk_payment_prepare,
             ),
         )
+        .route(
+            "/api/confidential-intents/bulk-payment/activation",
+            get(handlers::intents::confidential::bulk_activation::get_bulk_activation_status),
+        )
+        .route(
+            "/api/confidential-intents/bulk-payment/activation/prepare",
+            post(handlers::intents::confidential::bulk_activation::prepare_bulk_activation),
+        )
         // Proxy endpoints - catch-all for external API
         .route(
             "/api/proxy/{*path}",

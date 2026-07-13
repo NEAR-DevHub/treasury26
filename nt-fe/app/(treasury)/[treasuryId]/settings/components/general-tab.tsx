@@ -80,7 +80,7 @@ export function GeneralTab() {
         defaultValues: {
             displayName: "",
             accountName: "",
-            primaryColor: "#3B82F6",
+            primaryColor: "",
             logo: null,
         },
     });
@@ -91,7 +91,8 @@ export function GeneralTab() {
             const treasuryData = {
                 displayName: config?.name || "",
                 accountName: treasuryId || "",
-                primaryColor: config.metadata?.primaryColor || "#3B82F6",
+                // Keep empty when unset so we don't invent a color in the proposal payload
+                primaryColor: config.metadata?.primaryColor || "",
                 logo: config.metadata?.flagLogo || null,
             };
             form.reset(treasuryData);
@@ -108,10 +109,19 @@ export function GeneralTab() {
         try {
             const proposalBond = policy?.proposal_bond || "0";
 
-            const metadata = {
-                primaryColor: data.primaryColor,
+            // ChangeConfig replaces the entire metadata blob. Preserve the
+            // on-chain primaryColor unless the user actually picked a new one,
+            // and never invent a default color for logo-only updates.
+            const metadata: Record<string, string | null> = {
                 flagLogo: data.logo,
             };
+
+            const existingColor = config.metadata?.primaryColor;
+            if (data.primaryColor && data.primaryColor !== existingColor) {
+                metadata.primaryColor = data.primaryColor;
+            } else if (existingColor) {
+                metadata.primaryColor = existingColor;
+            }
 
             const description = {
                 title: t("proposalDescriptionTitle"),

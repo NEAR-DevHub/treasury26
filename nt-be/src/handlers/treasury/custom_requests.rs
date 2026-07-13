@@ -2,8 +2,8 @@
 //!
 //! The feature ships disabled for every treasury. A DAO turns it on from Settings → Developer,
 //! which reveals the Request Templates section in the app. Reading the flag only needs DAO
-//! membership; flipping it is gated on the same on-chain `ChangePolicy` permission that gates
-//! authoring a template, so a privileged member opts the whole treasury in. The flag lives on
+//! membership; flipping it is gated on the on-chain `ChangePolicy` (admin) permission — the same
+//! gate as deleting a template — so a privileged member opts the whole treasury in. The flag lives on
 //! `monitored_accounts` (the per-treasury record `proposal_templates` already references).
 
 use axum::{
@@ -57,7 +57,7 @@ pub async fn get_custom_requests_setting(
 }
 
 /// `PUT /api/treasury/{dao_id}/custom-requests` — enable or disable the feature for this treasury.
-/// Gated on `ChangePolicy`, matching template authoring. The treasury row is ensured through the
+/// Gated on `ChangePolicy` (admin), matching template deletion. The treasury row is ensured through the
 /// canonical `register_or_refresh_monitored_account` registrar (not a bare upsert) so it goes
 /// through the same `.sputnik-dao.near` suffix gate as every other treasury, then the flag is set.
 pub async fn set_custom_requests_setting(
@@ -104,7 +104,7 @@ mod tests {
         config::{PlanType, get_initial_credits},
         routes::create_routes,
         utils::test_utils::{
-            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_change_policy_member,
+            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_full_admin_member,
             seed_policy_member, seed_treasury_policy, send, test_state,
         },
     };
@@ -140,7 +140,7 @@ mod tests {
     async fn test_enable_then_disable_round_trips(pool: PgPool) {
         let state = test_state(pool.clone());
         let app = create_routes(state.clone());
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         // ENABLE -> 200, and a follow-up GET reflects it.

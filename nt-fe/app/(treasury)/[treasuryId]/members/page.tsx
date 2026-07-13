@@ -137,6 +137,7 @@ export default function MembersPage() {
     const t = useTranslations("pages.members");
     const tMembers = useTranslations("members");
     const tAccountInput = useTranslations("accountInput");
+    const tMemberValidation = useTranslations("memberValidation");
     const { treasuryId } = useTreasury();
     const { data: policy, isLoading } = useTreasuryPolicy(treasuryId || "");
     const { accountId } = useNear();
@@ -175,6 +176,15 @@ export default function MembersPage() {
         if (!pendingProposals?.proposals) return false;
         return pendingProposals.proposals.length > 0;
     }, [pendingProposals]);
+
+    // Block member actions until policy + pending-request status are known.
+    // Otherwise a reload can briefly treat "no data yet" as "no pending request".
+    const isMemberDataReady = !isLoading && pendingProposals !== undefined;
+    const isMemberActionsDisabled =
+        !isMemberDataReady || hasPendingMemberRequest;
+    const memberActionsDisabledReason = hasPendingMemberRequest
+        ? tMemberValidation("pendingRequest")
+        : undefined;
 
     // Check if user has permission to add members
     const canAddMember = useMemo(() => {
@@ -357,6 +367,7 @@ export default function MembersPage() {
         if (
             memberParam &&
             canAddMember &&
+            !isMemberActionsDisabled &&
             !isAddMemberModalOpen &&
             availableRoles.length > 0 &&
             !hasProcessedUrlParams.current
@@ -398,6 +409,7 @@ export default function MembersPage() {
     }, [
         searchParams,
         canAddMember,
+        isMemberActionsDisabled,
         isAddMemberModalOpen,
         form,
         availableRoles,
@@ -603,7 +615,7 @@ export default function MembersPage() {
     };
 
     const handleAddMembersSubmit = async () => {
-        if (!policy || !treasuryId) return;
+        if (!policy || !treasuryId || isMemberActionsDisabled) return;
 
         const data = form.getValues();
 
@@ -814,7 +826,7 @@ export default function MembersPage() {
     const handleEditMembersSubmit = async (
         membersData: Array<{ accountId: string; roles: string[] }>,
     ) => {
-        if (!policy || !treasuryId) return;
+        if (!policy || !treasuryId || isMemberActionsDisabled) return;
 
         try {
             const membersList = membersData.map((m) => ({
@@ -873,7 +885,7 @@ export default function MembersPage() {
 
     // Handle delete members submission
     const handleDeleteMembersSubmit = async () => {
-        if (!policy || !treasuryId) return;
+        if (!policy || !treasuryId || isMemberActionsDisabled) return;
 
         try {
             const membersToRemove =
@@ -924,6 +936,7 @@ export default function MembersPage() {
     };
 
     const handleOpenAddMemberModal = useCallback(() => {
+        if (isMemberActionsDisabled) return;
         setCurrentModalMode("add");
         setMembersBeingEdited([]);
         form.reset({
@@ -931,10 +944,11 @@ export default function MembersPage() {
         });
         trackEvent("member-add-modal-opened", { treasury_id: treasuryId });
         setIsAddMemberModalOpen(true);
-    }, [form, treasuryId]);
+    }, [form, treasuryId, isMemberActionsDisabled]);
 
     const handleEditMember = useCallback(
         (member: Member) => {
+            if (isMemberActionsDisabled) return;
             setCurrentModalMode("edit");
             setMembersBeingEdited([member.accountId]);
             // Store original member data for comparison
@@ -947,11 +961,12 @@ export default function MembersPage() {
             });
             setIsEditRolesModalOpen(true);
         },
-        [form],
+        [form, isMemberActionsDisabled],
     );
 
     // Handle bulk edit
     const handleBulkEdit = useCallback(() => {
+        if (isMemberActionsDisabled) return;
         const membersToEdit = existingMembers.filter((m) =>
             selectedMembers.includes(m.accountId),
         );
@@ -971,12 +986,13 @@ export default function MembersPage() {
             })),
         });
         setIsEditRolesModalOpen(true);
-    }, [existingMembers, selectedMembers, form]);
+    }, [existingMembers, selectedMembers, form, isMemberActionsDisabled]);
 
     // Handle bulk delete
     const handleBulkDelete = useCallback(() => {
+        if (isMemberActionsDisabled) return;
         setIsDeleteModalOpen(true);
-    }, []);
+    }, [isMemberActionsDisabled]);
 
     // Handle checkbox toggle
     const handleToggleMember = useCallback((accountId: string) => {
@@ -1157,15 +1173,22 @@ export default function MembersPage() {
                                                 handleEditMember(member)
                                             }
                                             disabled={
-                                                hasPendingMemberRequest ||
+                                                isMemberActionsDisabled ||
                                                 !editValidation.canModify
                                             }
                                             className="h-8 w-8"
-                                            tooltip={editValidation.reason}
+                                            tooltip={
+                                                memberActionsDisabledReason ||
+                                                editValidation.reason
+                                            }
                                             tooltipProps={{
                                                 disabled:
-                                                    editValidation.canModify ||
-                                                    !editValidation.reason ||
+                                                    (!isMemberActionsDisabled &&
+                                                        editValidation.canModify) ||
+                                                    !(
+                                                        memberActionsDisabledReason ||
+                                                        editValidation.reason
+                                                    ) ||
                                                     !canAddMember,
                                                 contentProps: {
                                                     className: "max-w-[280px]",
@@ -1183,19 +1206,28 @@ export default function MembersPage() {
                                             variant="ghost"
                                             size="icon"
                                             onClick={() => {
+                                                if (isMemberActionsDisabled)
+                                                    return;
                                                 setMemberToDelete(member);
                                                 setIsDeleteModalOpen(true);
                                             }}
                                             disabled={
-                                                hasPendingMemberRequest ||
+                                                isMemberActionsDisabled ||
                                                 !deleteValidation.canModify
                                             }
                                             className="h-8 w-8"
-                                            tooltip={deleteValidation.reason}
+                                            tooltip={
+                                                memberActionsDisabledReason ||
+                                                deleteValidation.reason
+                                            }
                                             tooltipProps={{
                                                 disabled:
-                                                    deleteValidation.canModify ||
-                                                    !deleteValidation.reason ||
+                                                    (!isMemberActionsDisabled &&
+                                                        deleteValidation.canModify) ||
+                                                    !(
+                                                        memberActionsDisabledReason ||
+                                                        deleteValidation.reason
+                                                    ) ||
                                                     !canAddMember,
                                                 contentProps: {
                                                     className: "max-w-[280px]",
@@ -1303,24 +1335,21 @@ export default function MembersPage() {
                             />
 
                             {/* Add New Member Button */}
-                            {isLoading ? (
-                                <div className="h-9 w-9 sm:w-auto sm:h-9 bg-muted rounded-lg animate-pulse" />
-                            ) : (
-                                <AuthButton
-                                    permissionKind="policy"
-                                    permissionAction="AddProposal"
-                                    balanceCheck={{ withProposalBond: true }}
-                                    onClick={handleOpenAddMemberModal}
-                                    disabled={hasPendingMemberRequest}
-                                    size={isMobile ? "icon" : "default"}
-                                    className="size-9 sm:w-auto"
-                                >
-                                    <Plus className="size-4" />
-                                    <span className="hidden sm:inline">
-                                        {tMembers("addNewMember")}
-                                    </span>
-                                </AuthButton>
-                            )}
+                            <AuthButton
+                                permissionKind="policy"
+                                permissionAction="AddProposal"
+                                balanceCheck={{ withProposalBond: true }}
+                                onClick={handleOpenAddMemberModal}
+                                disabled={isMemberActionsDisabled}
+                                tooltip={memberActionsDisabledReason}
+                                size={isMobile ? "icon" : "default"}
+                                className="size-9 sm:w-auto"
+                            >
+                                <Plus className="size-4" />
+                                <span className="hidden sm:inline">
+                                    {tMembers("addNewMember")}
+                                </span>
+                            </AuthButton>
                         </div>
                     </div>
                 )}
@@ -1335,10 +1364,17 @@ export default function MembersPage() {
                         </span>
                         <div className="flex items-center gap-2 w-fit">
                             <Tooltip
-                                content={bulkDeleteValidation.reason}
+                                content={
+                                    memberActionsDisabledReason ||
+                                    bulkDeleteValidation.reason
+                                }
                                 disabled={
-                                    bulkDeleteValidation.canModify ||
-                                    !bulkDeleteValidation.reason ||
+                                    (!isMemberActionsDisabled &&
+                                        bulkDeleteValidation.canModify) ||
+                                    !(
+                                        memberActionsDisabledReason ||
+                                        bulkDeleteValidation.reason
+                                    ) ||
                                     !canAddMember // Only show validation tooltip if user has permission
                                 }
                                 contentProps={{ className: "max-w-[280px]" }}
@@ -1354,7 +1390,7 @@ export default function MembersPage() {
                                         size={isMobile ? "icon" : "sm"}
                                         onClick={handleBulkDelete}
                                         disabled={
-                                            hasPendingMemberRequest ||
+                                            isMemberActionsDisabled ||
                                             !bulkDeleteValidation.canModify
                                         }
                                         className="size-9 sm:w-auto"
@@ -1374,7 +1410,8 @@ export default function MembersPage() {
                                     variant="outline"
                                     size={isMobile ? "icon" : "sm"}
                                     onClick={handleBulkEdit}
-                                    disabled={hasPendingMemberRequest}
+                                    disabled={isMemberActionsDisabled}
+                                    tooltip={memberActionsDisabledReason}
                                     className="size-9 sm:w-auto"
                                 >
                                     <Pencil className="w-4 h-4 mr-1" />

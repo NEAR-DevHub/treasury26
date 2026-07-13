@@ -10,14 +10,28 @@ import { extractProposalData } from "../../utils/proposal-extractors";
 import {
     PaymentRequestData,
     BatchPaymentRequestData,
+    BountyData,
     ConfidentialRequestData,
+    FactoryInfoUpdateData,
     FunctionCallData,
+    MembersData,
+    SetStakingContractData,
     StakingData,
+    UpgradeData,
     VestingData,
+    VoteData,
     SwapRequestData,
     UnknownData,
 } from "../../types/index";
 import { ConfidentialRequestCell } from "./confidential-request-cell";
+import {
+    BountyCell,
+    FactoryInfoUpdateCell,
+    MembersCell,
+    SetStakingContractCell,
+    UpgradeCell,
+    VoteCell,
+} from "./governance-cell";
 import { ChangeConfigCell } from "./change-config-cell";
 import { useTreasury } from "@/hooks/use-treasury";
 import { SubtitleSuffixContext } from "./title-subtitle-cell";
@@ -148,6 +162,40 @@ function TransactionCellSwitch({
                     data={swapData}
                     timestamp={timestamp}
                     textOnly={textOnly}
+                />
+            );
+        }
+        case "Members": {
+            const membersData = data as MembersData;
+            return <MembersCell data={membersData} timestamp={timestamp} />;
+        }
+        case "Upgrade": {
+            const upgradeData = data as UpgradeData;
+            return <UpgradeCell data={upgradeData} timestamp={timestamp} />;
+        }
+        case "Set Staking Contract": {
+            const setStakingContractData = data as SetStakingContractData;
+            return (
+                <SetStakingContractCell
+                    data={setStakingContractData}
+                    timestamp={timestamp}
+                />
+            );
+        }
+        case "Bounty": {
+            const bountyData = data as BountyData;
+            return <BountyCell data={bountyData} timestamp={timestamp} />;
+        }
+        case "Vote": {
+            const voteData = data as VoteData;
+            return <VoteCell data={voteData} timestamp={timestamp} />;
+        }
+        case "Factory Info Update": {
+            const factoryInfoUpdateData = data as FactoryInfoUpdateData;
+            return (
+                <FactoryInfoUpdateCell
+                    data={factoryInfoUpdateData}
+                    timestamp={timestamp}
                 />
             );
         }

@@ -33,6 +33,8 @@ import {
 } from "../components/recipient-network-select";
 import type { SectionRule } from "@/lib/section-rules";
 import { buildConfidentialBulkProposal } from "@/features/confidential/utils/bulk-proposal-builder";
+import { BulkActivationCard } from "@/features/confidential/components/bulk-activation-card";
+import { useBulkActivation } from "@/features/confidential/hooks/use-bulk-activation";
 import { BulkPaymentToast } from "../components/bulk-payment-toast";
 import {
     EditPaymentStep,
@@ -62,6 +64,7 @@ export default function BulkPaymentPage() {
     const router = useRouter();
     const queryClient = useQueryClient();
     const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
+    const bulkActivation = useBulkActivation();
     const pageTitle = isConfidential ? t("confidentialTitle") : t("title");
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
@@ -501,6 +504,23 @@ export default function BulkPaymentPage() {
             setIsSubmittingProposal(false);
         }
     };
+
+    // Existing confidential treasuries must register the confidential bulk
+    // access key first (one round of multisig approvals) — show the
+    // activation flow instead of the payment form until it's confirmed
+    // active. Gate on `!isActive` (not `!isLoading`) so we never expose the
+    // payment form before the status resolves; the card itself renders the
+    // loading / error / awaiting / intro sub-states.
+    if (isConfidential && !bulkActivation.isActive) {
+        return (
+            <PageComponentLayout
+                title={pageTitle}
+                description={t("description")}
+            >
+                <BulkActivationCard />
+            </PageComponentLayout>
+        );
+    }
 
     // Editing a single payment
     if (editingIndex !== null && step === 2 && selectedToken) {
