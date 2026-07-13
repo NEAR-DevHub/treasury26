@@ -1,0 +1,53 @@
+-- Apalis can lock retryable Failed rows again (attempts < max_attempts).
+-- The old public history inflight index ignored those rows, allowing the
+-- scheduler to insert a duplicate Pending job for the same job_key. When
+-- Apalis later retried the Failed row, its status update could collide with
+-- the duplicate active row and stop the public-history worker. Exhaust only
+-- duplicate retryable Failed rows, then make the index match Apalis retry
+-- eligibility.
+WITH ranked_public_history_jobs AS (
+    SELECT
+        id,
+        ROW_NUMBER() OVER (
+            PARTITION BY job_type, metadata->>'job_key'
+            ORDER BY
+                CASE
+                    WHEN status IN ('Pending', 'Queued', 'Running') THEN 0
+                    ELSE 1
+                END,
+                run_at DESC,
+                id DESC
+        ) AS rank
+    FROM apalis.jobs
+    WHERE job_type IN ('public_history_latest', 'public_history_backfill')
+      AND metadata ? 'job_key'
+      AND (
+          status IN ('Pending', 'Queued', 'Running')
+          OR (status = 'Failed' AND attempts < max_attempts)
+      )
+)
+UPDATE apalis.jobs jobs
+SET
+    attempts = jobs.max_attempts,
+    done_at = COALESCE(jobs.done_at, NOW()),
+    last_error = CONCAT_WS(
+        E'\n',
+        jobs.last_error,
+        'Retryable duplicate exhausted by public history inflight index migration.'
+    )
+FROM ranked_public_history_jobs ranked
+WHERE jobs.id = ranked.id
+  AND ranked.rank > 1
+  AND jobs.status = 'Failed'
+  AND jobs.attempts < jobs.max_attempts;
+
+DROP INDEX IF EXISTS apalis.idx_public_history_jobs_inflight_key;
+
+CREATE UNIQUE INDEX idx_public_history_jobs_inflight_key
+ON apalis.jobs (job_type, ((metadata->>'job_key')))
+WHERE job_type IN ('public_history_latest', 'public_history_backfill')
+  AND (
+      status IN ('Pending', 'Queued', 'Running')
+      OR (status = 'Failed' AND attempts < max_attempts)
+  )
+  AND metadata ? 'job_key';
