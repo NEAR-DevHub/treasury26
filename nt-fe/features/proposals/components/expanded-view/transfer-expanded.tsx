@@ -97,7 +97,10 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
     const shouldShowDestinationNetworkSkeleton =
         shouldFetchDestinationToken && isLoadingDestinationToken;
     const shouldLoadQuoteUsd =
-        isExecuted && !!data.depositAddress && !data.quoteAmountInUsd;
+        data.usdValue !== null &&
+        isExecuted &&
+        !!data.depositAddress &&
+        !data.quoteAmountInUsd;
     const { data: quoteByDepositAddress } = useQuoteByDepositAddress(
         data.depositAddress || null,
         undefined,
@@ -106,7 +109,9 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
     const amountUsdFromQuote =
         data.quoteAmountInUsd ?? quoteByDepositAddress?.amountInUsd;
     const amountUsdOverride =
-        amountUsdFromQuote && !Number.isNaN(Number(amountUsdFromQuote))
+        data.usdValue !== null &&
+        amountUsdFromQuote &&
+        !Number.isNaN(Number(amountUsdFromQuote))
             ? formatCurrencyWithSubCent(Number(amountUsdFromQuote))
             : null;
 

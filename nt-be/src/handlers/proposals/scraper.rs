@@ -93,6 +93,9 @@ pub struct Proposal {
     /// Contains quote_metadata, status, and correlation_id from confidential_intents table.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub confidential_metadata: Option<Value>,
+    /// Populated by the backend for public payment/exchange proposals from gold history.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub public_metadata: Option<Value>,
 }
 
 /// Extract the payload_hash from a proposal's `kind` JSON if it's a v1.signer signing proposal.

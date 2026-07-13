@@ -242,6 +242,10 @@ export function extractPaymentRequestData(
     if (!destinationAssetId && tokenId === NEAR_NETWORK_ID && !depositAddress) {
         destinationAssetId = NEAR_NETWORK_ID;
     }
+    const goldAmountOutUsd = parseUsdValue(
+        proposal.public_metadata?.gold_metadata?.amount_out_usd,
+    );
+
     return {
         tokenId,
         amount,
@@ -253,6 +257,7 @@ export function extractPaymentRequestData(
         networkFee,
         destinationAssetId,
         nearFt: isTransferKind || undefined,
+        usdValue: goldAmountOutUsd,
     };
 }
 
@@ -553,6 +558,12 @@ export function extractExchangeRequestData(
         depositAddress = args.receiver_id || "";
         tokenIn = "";
     }
+    const goldAmountInUsd = parseUsdValue(
+        proposal.public_metadata?.gold_metadata?.amount_in_usd,
+    );
+    const goldAmountOutUsd = parseUsdValue(
+        proposal.public_metadata?.gold_metadata?.amount_out_usd,
+    );
 
     return {
         source: "exchange",
@@ -563,7 +574,9 @@ export function extractExchangeRequestData(
         tokenOutAddress, // NEW: for new proposals with addresses
         intentsTokenContractId,
         amountIn,
+        amountInUsd: goldAmountInUsd,
         amountOut,
+        amountOutUsd: goldAmountOutUsd,
         destinationNetwork, // LEGACY: for old proposals
         sourceNetwork: NEAR_NETWORK_ID,
         quoteSignature,

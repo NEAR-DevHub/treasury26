@@ -280,6 +280,17 @@ export interface Proposal {
             }>;
         };
     };
+    /** Populated by backend for public payment/exchange proposals */
+    public_metadata?: {
+        proposal_created_at?: string | null;
+        proposal_executed_at?: string | null;
+        gold_metadata?: {
+            amount_in_usd?: string | null;
+            amount_out_usd?: string | null;
+            usd_change?: string | null;
+            transaction_type?: "sent" | "exchange" | string;
+        };
+    };
 }
 
 export interface ProposalsResponse {

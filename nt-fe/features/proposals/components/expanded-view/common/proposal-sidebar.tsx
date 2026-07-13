@@ -335,6 +335,8 @@ export function ProposalSidebar({
     let confidentialPaymentData: PaymentRequestData | undefined;
     let confidentialProposalCreatedAt: Date | undefined;
     let confidentialExecutedAt: Date | undefined;
+    let publicProposalCreatedAt: Date | undefined;
+    let publicExecutedAt: Date | undefined;
     if (isExchangeProposal || isPaymentProposal || isConfidentialRequest) {
         try {
             const { data } = extractProposalData(proposal, treasuryId);
@@ -355,6 +357,13 @@ export function ProposalSidebar({
                 depositAddress = mapped?.data?.depositAddress;
             } else {
                 depositAddress = (data as any)?.depositAddress;
+                publicProposalCreatedAt = parseOptionalDate(
+                    proposal.public_metadata?.proposal_created_at,
+                );
+                publicExecutedAt =
+                    parseOptionalDate(
+                        proposal.public_metadata?.proposal_executed_at,
+                    ) ?? publicProposalCreatedAt;
             }
         } catch (e) {}
     }
@@ -455,12 +464,14 @@ export function ProposalSidebar({
         default:
             timestamp =
                 confidentialExecutedAt ??
+                publicExecutedAt ??
                 getProposalExecutedDate(swapStatus, transaction) ??
                 undefined;
             break;
     }
     const createdAt =
         confidentialProposalCreatedAt ??
+        publicProposalCreatedAt ??
         new Date(nanosToMs(proposal.submission_time));
 
     const isLastApprovingVote = () => {
