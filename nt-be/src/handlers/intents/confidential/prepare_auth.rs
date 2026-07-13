@@ -187,15 +187,20 @@ pub(crate) async fn build_auth_proposal(
 }
 
 /// Thin wrapper: build an auth proposal for the DAO's bulk-payment subaccount.
-/// DAO signs as proposal predecessor (path = "") while the JWT is issued for the sub.
+/// The JWT is issued for the sub (`signer_id`), but the multisig signs with the
+/// DAO's own key — `path = dao_id`, the same key `bootstrap` registered under
+/// the sub on intents.near. (Signing with `path = ""` derives a different key
+/// that isn't registered for the sub, so 1Click rejects the auth and no JWT is
+/// stored — the bug this fixes.)
 pub(crate) async fn build_bulk_payment_auth_proposal(
     state: &Arc<AppState>,
     bulk_sub_id: &str,
+    dao_id: &str,
 ) -> Result<(serde_json::Value, serde_json::Value), (StatusCode, String)> {
     build_auth_proposal_with_signer(
         state,
         bulk_sub_id,
-        "",
+        dao_id,
         "Authenticate bulk-payment subaccount for confidential intents",
     )
     .await

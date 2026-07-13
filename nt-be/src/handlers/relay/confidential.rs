@@ -437,16 +437,13 @@ pub async fn try_auto_submit_intent(
         }
     };
 
-    // Fetch the DAO's derived MPC public key from v1.signer. Bulk-payment
-    // auth proposals sign with an empty path (the JWT is issued for the
-    // subaccount; the DAO signs as predecessor); everything else uses the
-    // DAO self path.
-    let mpc_path = if intent_type == "bulk_auth" {
-        ""
-    } else {
-        treasury_id
-    };
-    let mpc_public_key = match fetch_mpc_public_key(state, treasury_id, mpc_path).await {
+    // Fetch the DAO's derived MPC public key from v1.signer. Both `auth` and
+    // `bulk_auth` sign with the DAO self path (`dao_id`): that's the key
+    // `bootstrap` registered under the bulk subaccount on intents.near, so it's
+    // the one 1Click must verify against — the JWT is still issued for the sub
+    // via the auth message's `signer_id`. (Fetching the empty-path key here
+    // gave 1Click the wrong key and the bulk JWT was never issued/stored.)
+    let mpc_public_key = match fetch_mpc_public_key(state, treasury_id, treasury_id).await {
         Ok(key) => key,
         Err(e) => {
             tracing::error!(

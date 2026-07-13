@@ -372,9 +372,10 @@ async fn setup_bulk_payment_subaccount(
 ) -> Result<(), (StatusCode, String)> {
     let (sub_id, dao_mpc_public_key) = ensure_bulk_subaccount(state, treasury_id).await?;
 
-    // 3. Build + submit auth proposal (DAO signs, JWT issued for sub).
+    // 3. Build + submit auth proposal (DAO signs with its own key/path, JWT
+    //    issued for sub).
     let (auth_proposal, auth_payload) =
-        build_bulk_payment_auth_proposal(state, sub_id.as_str()).await?;
+        build_bulk_payment_auth_proposal(state, sub_id.as_str(), treasury_id.as_str()).await?;
 
     let (proposal_id, vote_result_debug) =
         submit_and_approve_proposal(state, treasury_id, auth_proposal).await?;

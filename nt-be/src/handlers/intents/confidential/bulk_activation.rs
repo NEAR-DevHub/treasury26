@@ -261,7 +261,7 @@ pub async fn prepare_bulk_activation(
 
     // 2. Build the auth proposal the multisig must approve.
     let (proposal, auth_payload) =
-        build_bulk_payment_auth_proposal(&state, sub_id.as_str()).await?;
+        build_bulk_payment_auth_proposal(&state, sub_id.as_str(), dao_id.as_str()).await?;
     let payload_hash = compute_nep413_hash(&auth_payload).ok_or_else(|| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
