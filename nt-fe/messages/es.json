@@ -1144,7 +1144,9 @@
         "activationFailed": "No se pudo iniciar la activación de pagos masivos",
         "errorTitle": "No se pudo cargar el estado de activación",
         "noPermissionNote": "No tienes permiso para iniciar la activación. Pide a un miembro de la tesorería con permisos de propuesta que active los pagos masivos.",
-        "awaitingApproverHint": "Los miembros de la tesorería con permisos de aprobación deben aprobar la solicitud pendiente para completar la activación."
+        "awaitingApproverHint": "Los miembros de la tesorería con permisos de aprobación deben aprobar la solicitud pendiente para completar la activación.",
+        "awaitingStuckHint": "¿No apareció la solicitud de la billetera o no se creó la solicitud? Vuelve a crearla: esto reemplaza el intento anterior.",
+        "restartButton": "Volver a crear la solicitud"
     },
     "bulkPaymentCredits": {
         "title": "Pagos masivos",

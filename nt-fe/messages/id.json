@@ -1144,7 +1144,9 @@
         "activationFailed": "Gagal memulai aktivasi pembayaran massal",
         "errorTitle": "Tidak dapat memuat status aktivasi",
         "noPermissionNote": "Anda tidak memiliki izin untuk memulai aktivasi. Minta anggota treasury dengan izin proposal untuk mengaktifkan pembayaran massal.",
-        "awaitingApproverHint": "Anggota treasury dengan izin persetujuan harus menyetujui permintaan yang tertunda untuk menyelesaikan aktivasi."
+        "awaitingApproverHint": "Anggota treasury dengan izin persetujuan harus menyetujui permintaan yang tertunda untuk menyelesaikan aktivasi.",
+        "awaitingStuckHint": "Tidak mendapat permintaan dompet, atau permintaan tidak dibuat? Buat ulang — ini menggantikan percobaan sebelumnya.",
+        "restartButton": "Buat ulang permintaan"
     },
     "bulkPaymentCredits": {
         "title": "Pembayaran Massal",

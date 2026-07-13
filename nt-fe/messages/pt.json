@@ -1144,7 +1144,9 @@
         "activationFailed": "Falha ao iniciar a ativação de pagamentos em massa",
         "errorTitle": "Não foi possível carregar o status de ativação",
         "noPermissionNote": "Você não tem permissão para iniciar a ativação. Peça a um membro da tesouraria com permissão de proposta para ativar os pagamentos em massa.",
-        "awaitingApproverHint": "Membros da tesouraria com permissão de aprovação precisam aprovar a solicitação pendente para concluir a ativação."
+        "awaitingApproverHint": "Membros da tesouraria com permissão de aprovação precisam aprovar a solicitação pendente para concluir a ativação.",
+        "awaitingStuckHint": "Não recebeu a solicitação da carteira ou o pedido não foi criado? Crie novamente — isto substitui a tentativa anterior.",
+        "restartButton": "Recriar solicitação"
     },
     "bulkPaymentCredits": {
         "title": "Pagamentos em massa",
