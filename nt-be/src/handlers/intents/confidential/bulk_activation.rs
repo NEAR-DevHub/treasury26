@@ -115,6 +115,41 @@ async fn load_bulk_token_state(
     }
 }
 
+/// Whether the activation proposal for `payload_hash` still exists on-chain
+/// and is pending approval. A `pending` DB row is written by `prepare` before
+/// the client creates the proposal, so it alone doesn't mean a live proposal
+/// exists — check the DAO's recent proposals (matched by the NEP-413
+/// `payload_hash`) so a never-created / rejected / expired proposal doesn't
+/// strand the UI on "awaiting approvals".
+async fn activation_proposal_pending(
+    state: &Arc<AppState>,
+    dao_id: &AccountId,
+    payload_hash: &str,
+) -> bool {
+    use crate::handlers::proposals::scraper::{
+        ProposalStatus, extract_payload_hash_from_kind, fetch_recent_proposals,
+    };
+    // The activation proposal is created right after prepare, so it's in the
+    // tail of the proposal list.
+    const RECENT_PROPOSALS: u64 = 50;
+    match fetch_recent_proposals(&state.network, dao_id, RECENT_PROPOSALS).await {
+        Ok(proposals) => proposals.iter().any(|p| {
+            p.status == ProposalStatus::InProgress
+                && extract_payload_hash_from_kind(&p.kind).as_deref() == Some(payload_hash)
+        }),
+        Err(e) => {
+            // On RPC failure don't flip a genuine awaiting state to inactive —
+            // keep the current behavior and let the next poll re-check.
+            tracing::warn!(
+                dao = %dao_id,
+                error = %e,
+                "activation proposal check failed; assuming still pending"
+            );
+            true
+        }
+    }
+}
+
 /// GET /api/confidential-intents/bulk-payment/activation?daoId=…
 pub async fn get_bulk_activation_status(
     State(state): State<Arc<AppState>>,
@@ -161,7 +196,18 @@ pub async fn get_bulk_activation_status(
 
     let (status, pending_payload_hash) = match latest {
         Some((status, hash)) if status == "pending" => {
-            (BulkActivationState::AwaitingApproval, Some(hash))
+            // A `pending` row means `prepare` built + stored the proposal, but
+            // it's only genuinely "awaiting approvals" if that proposal was
+            // actually created on-chain and is still pending. If the client
+            // never created it (e.g. the wallet never showed the signing
+            // dialog), or it was rejected/expired, treat activation as
+            // `inactive` so the UI offers "Start activation" again instead of
+            // getting stuck on "awaiting approvals".
+            if activation_proposal_pending(&state, &dao_id, &hash).await {
+                (BulkActivationState::AwaitingApproval, Some(hash))
+            } else {
+                (BulkActivationState::Inactive, None)
+            }
         }
         Some((status, _)) if status == "failed" => (BulkActivationState::Failed, None),
         _ => (BulkActivationState::Inactive, None),
