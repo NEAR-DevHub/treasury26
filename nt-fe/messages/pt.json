@@ -2054,6 +2054,7 @@
         "investors": "{count, plural, one {Investidor} other {Investidores}}",
         "poolBreakdown": "Detalhamento do pool",
         "unlockedToken": "Token desbloqueado",
+        "lockedToken": "Token bloqueado",
         "lockupStakingPool": "Pool de staking de lockup",
         "exchange": "Trocar",
         "send": "Enviar",

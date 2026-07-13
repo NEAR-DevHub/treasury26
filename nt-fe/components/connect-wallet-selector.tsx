@@ -33,6 +33,7 @@ import {
     resolveManifestWalletId,
 } from "@/lib/wallets";
 import { cn } from "@/lib/utils";
+import { stripMessageForTooltip } from "@/lib/warnings";
 import { useNear } from "@/stores/near-store";
 
 type WalletPickerType = "near";
@@ -216,7 +217,9 @@ export function ConnectWalletSelector({
                 return {
                     label: offlineBadgeLabel,
                     tooltip:
-                        resolveWarningMessage(walletWarning, slot) ?? undefined,
+                        stripMessageForTooltip(
+                            resolveWarningMessage(walletWarning, slot),
+                        ) || undefined,
                     isOffline: true,
                 };
             }
@@ -239,7 +242,9 @@ export function ConnectWalletSelector({
                 return {
                     label: offlineBadgeLabel,
                     tooltip:
-                        resolveWarningMessage(walletWarning, slot) ?? undefined,
+                        stripMessageForTooltip(
+                            resolveWarningMessage(walletWarning, slot),
+                        ) || undefined,
                     isOffline: true,
                 };
             }
@@ -319,43 +324,56 @@ export function ConnectWalletSelector({
                     </div>
                 )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {WALLET_OPTIONS.map((wallet) => (
-                        <Button
-                            key={wallet.id}
-                            type="button"
-                            variant="secondary"
-                            className="h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
-                            onClick={() => handleWalletChoice(wallet)}
-                            disabled={
-                                isConnectingWallet ||
-                                isWalletChoiceBlocked(wallet.id)
-                            }
-                        >
-                            <div className="flex w-full flex-col gap-2">
-                                <div className="flex items-center justify-between">
-                                    <WalletOptionIcon wallet={wallet} />
-                                    {(() => {
-                                        const badge = getTopLevelBadge(wallet);
-                                        if (!badge) return null;
-                                        return (
-                                            <Pill
-                                                title={badge.label}
-                                                info={badge.tooltip}
-                                                className={
-                                                    badge.isOffline
-                                                        ? "bg-general-warning-background-faded text-general-warning-foreground"
-                                                        : "bg-general-success-background-faded text-general-success-foreground"
-                                                }
-                                            />
-                                        );
-                                    })()}
+                    {WALLET_OPTIONS.map((wallet) => {
+                        // Use aria-disabled (not disabled) when offline so the
+                        // Offline badge tooltip can still receive hover events.
+                        const isOfflineBlocked = isWalletChoiceBlocked(
+                            wallet.id,
+                        );
+                        return (
+                            <Button
+                                key={wallet.id}
+                                type="button"
+                                variant="secondary"
+                                className={cn(
+                                    "h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted",
+                                    isOfflineBlocked &&
+                                        !isConnectingWallet &&
+                                        "cursor-not-allowed opacity-50 hover:bg-secondary",
+                                )}
+                                onClick={() => handleWalletChoice(wallet)}
+                                disabled={isConnectingWallet}
+                                aria-disabled={
+                                    isConnectingWallet || isOfflineBlocked
+                                }
+                            >
+                                <div className="flex w-full flex-col gap-2">
+                                    <div className="flex items-center justify-between">
+                                        <WalletOptionIcon wallet={wallet} />
+                                        {(() => {
+                                            const badge =
+                                                getTopLevelBadge(wallet);
+                                            if (!badge) return null;
+                                            return (
+                                                <Pill
+                                                    title={badge.label}
+                                                    info={badge.tooltip}
+                                                    className={
+                                                        badge.isOffline
+                                                            ? "bg-general-warning-background-faded text-general-warning-foreground"
+                                                            : "bg-general-success-background-faded text-general-success-foreground"
+                                                    }
+                                                />
+                                            );
+                                        })()}
+                                    </div>
+                                    <div className="text-lg font-semibold">
+                                        {wallet.label}
+                                    </div>
                                 </div>
-                                <div className="text-lg font-semibold">
-                                    {wallet.label}
-                                </div>
-                            </div>
-                        </Button>
-                    ))}
+                            </Button>
+                        );
+                    })}
                 </div>
                 <Dialog
                     open={walletPickerOpen !== null}
@@ -378,49 +396,66 @@ export function ConnectWalletSelector({
                         </DialogHeader>
                         <SlotWarning slot="login" className="mb-2" />
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            {walletPickerChoices.map((wallet) => (
-                                <div key={wallet.id}>
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        className="h-26 w-full items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted"
-                                        onClick={() =>
-                                            handleWalletChoice(wallet)
-                                        }
-                                        disabled={
-                                            isConnectingWallet ||
-                                            isWalletChoiceBlocked(wallet.id)
-                                        }
-                                    >
-                                        <div className="flex w-full flex-col gap-2">
-                                            <div className="flex items-center justify-between">
-                                                <WalletOptionIcon
-                                                    wallet={wallet}
-                                                />
-                                                {(() => {
-                                                    const badge =
-                                                        getModalBadge(wallet);
-                                                    if (!badge) return null;
-                                                    return (
-                                                        <Pill
-                                                            title={badge.label}
-                                                            info={badge.tooltip}
-                                                            className={
-                                                                badge.isOffline
-                                                                    ? "bg-general-warning-background-faded text-general-warning-foreground"
-                                                                    : "bg-general-success-background-faded text-general-success-foreground"
-                                                            }
-                                                        />
-                                                    );
-                                                })()}
+                            {walletPickerChoices.map((wallet) => {
+                                const isOfflineBlocked = isWalletChoiceBlocked(
+                                    wallet.id,
+                                );
+                                return (
+                                    <div key={wallet.id}>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            className={cn(
+                                                "h-26 w-full items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted",
+                                                isOfflineBlocked &&
+                                                    !isConnectingWallet &&
+                                                    "cursor-not-allowed opacity-50 hover:bg-secondary",
+                                            )}
+                                            onClick={() =>
+                                                handleWalletChoice(wallet)
+                                            }
+                                            disabled={isConnectingWallet}
+                                            aria-disabled={
+                                                isConnectingWallet ||
+                                                isOfflineBlocked
+                                            }
+                                        >
+                                            <div className="flex w-full flex-col gap-2">
+                                                <div className="flex items-center justify-between">
+                                                    <WalletOptionIcon
+                                                        wallet={wallet}
+                                                    />
+                                                    {(() => {
+                                                        const badge =
+                                                            getModalBadge(
+                                                                wallet,
+                                                            );
+                                                        if (!badge) return null;
+                                                        return (
+                                                            <Pill
+                                                                title={
+                                                                    badge.label
+                                                                }
+                                                                info={
+                                                                    badge.tooltip
+                                                                }
+                                                                className={
+                                                                    badge.isOffline
+                                                                        ? "bg-general-warning-background-faded text-general-warning-foreground"
+                                                                        : "bg-general-success-background-faded text-general-success-foreground"
+                                                                }
+                                                            />
+                                                        );
+                                                    })()}
+                                                </div>
+                                                <div className="text-lg font-semibold">
+                                                    {wallet.label}
+                                                </div>
                                             </div>
-                                            <div className="text-lg font-semibold">
-                                                {wallet.label}
-                                            </div>
-                                        </div>
-                                    </Button>
-                                </div>
-                            ))}
+                                        </Button>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </DialogContent>
                 </Dialog>

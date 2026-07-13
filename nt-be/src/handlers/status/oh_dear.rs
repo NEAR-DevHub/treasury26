@@ -304,11 +304,17 @@ pub async fn run_service_check(state: &AppState, service: &str) -> Option<OhDear
     })
 }
 
-pub fn is_unhealthy_status(status: &OhDearStatus) -> bool {
-    matches!(
-        status,
-        OhDearStatus::Warning | OhDearStatus::Failed | OhDearStatus::Crashed
-    )
+/// Whether the status-monitor should treat a check result as an incident.
+///
+/// Soft `warning` is only actionable for `near-intents` (maintenance). Other
+/// services' warnings (e.g. near-protocol summary, near-rpc syncing/stale) are
+/// treated as healthy so they do not open incidents or page Telegram.
+pub fn is_unhealthy_for_monitor(service: &str, status: &OhDearStatus) -> bool {
+    match status {
+        OhDearStatus::Failed | OhDearStatus::Crashed => true,
+        OhDearStatus::Warning => service == "near-intents",
+        OhDearStatus::Ok | OhDearStatus::Skipped => false,
+    }
 }
 
 pub async fn get_status(
@@ -1712,6 +1718,41 @@ mod tests {
 
         assert_check(&json, "neardata.api", "failed");
         assert_eq!(json["checkResults"][0]["meta"]["http_status"], 503);
+    }
+
+    #[test]
+    fn monitor_treats_non_intents_warnings_as_healthy() {
+        assert!(!is_unhealthy_for_monitor(
+            "near-protocol",
+            &OhDearStatus::Warning
+        ));
+        assert!(!is_unhealthy_for_monitor(
+            "near-rpc",
+            &OhDearStatus::Warning
+        ));
+        assert!(!is_unhealthy_for_monitor(
+            "exchange",
+            &OhDearStatus::Warning
+        ));
+        assert!(!is_unhealthy_for_monitor("backend", &OhDearStatus::Ok));
+        assert!(!is_unhealthy_for_monitor("backend", &OhDearStatus::Skipped));
+    }
+
+    #[test]
+    fn monitor_treats_near_intents_warning_and_hard_failures_as_unhealthy() {
+        assert!(is_unhealthy_for_monitor(
+            "near-intents",
+            &OhDearStatus::Warning
+        ));
+        assert!(is_unhealthy_for_monitor(
+            "near-protocol",
+            &OhDearStatus::Failed
+        ));
+        assert!(is_unhealthy_for_monitor("near-rpc", &OhDearStatus::Crashed));
+        assert!(is_unhealthy_for_monitor(
+            "near-intents",
+            &OhDearStatus::Failed
+        ));
     }
 
     #[test]

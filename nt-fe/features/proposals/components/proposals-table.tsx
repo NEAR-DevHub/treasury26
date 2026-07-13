@@ -71,6 +71,7 @@ import {
 } from "@/features/proposals/utils/receipt-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -172,6 +173,9 @@ export function ProposalsTable({
     const { treasuryId } = useTreasury();
     const { isMobile } = useResponsiveSidebar();
     const router = useRouter();
+    // Global action.approve / action.reject pause all requests — disable bulk
+    // CTAs instead of opening the vote modal only to show the warning.
+    const { approve: approveSlot, reject: rejectSlot } = useVoteActionSlots();
     const columns = useMemo<ColumnDef<Proposal, any>[]>(
         () => [
             columnHelper.display({
@@ -533,6 +537,8 @@ export function ProposalsTable({
                             <Button
                                 variant="secondary"
                                 onClick={() => handleBulkVote("Reject")}
+                                disabled={rejectSlot.blocked}
+                                tooltipContent={rejectSlot.blockedTooltip}
                             >
                                 <X className="h-4 w-4" />
                                 {tCommon("reject")}
@@ -541,12 +547,16 @@ export function ProposalsTable({
                             <Button
                                 variant="default"
                                 tooltipContent={
-                                    allSelectedHaveInsufficientBalance
+                                    approveSlot.blockedTooltip ??
+                                    (allSelectedHaveInsufficientBalance
                                         ? tT("bulkApproveDisabled")
-                                        : undefined
+                                        : undefined)
                                 }
                                 onClick={() => handleBulkVote("Approve")}
-                                disabled={allSelectedHaveInsufficientBalance}
+                                disabled={
+                                    allSelectedHaveInsufficientBalance ||
+                                    approveSlot.blocked
+                                }
                             >
                                 <Check className="h-4 w-4" />
                                 {tCommon("approve")}

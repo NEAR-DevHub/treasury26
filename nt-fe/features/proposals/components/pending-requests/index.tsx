@@ -7,8 +7,7 @@ import {
 import { PageCard } from "@/components/card";
 import { NumberBadge } from "@/components/number-badge";
 import { SlotWarning } from "@/components/warning-message";
-import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
-import { stripMessageForTooltip } from "@/lib/warnings";
+import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
@@ -21,6 +20,7 @@ import { TransactionCell } from "../transaction-cell";
 import { getProposalUIKind } from "../../utils/proposal-utils";
 import { useProposalKindLabel } from "../../hooks/use-proposal-kind-label";
 import { useProposalInsufficientBalance } from "../../hooks/use-proposal-insufficient-balance";
+import { useVoteActionSlots } from "../../hooks/use-vote-action-slots";
 import { VoteModal } from "../vote-modal";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -97,21 +97,11 @@ export function PendingRequestItem({
     const approveBlock = useProposalApproveBlock([proposal]);
     const approveBlocked = approveBlock.anyBlocked;
     const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
-    // Approve and reject are independent slots (same pattern as proposal sidebar).
-    const approveSlot = useSlotBlock("action.approve");
-    const rejectSlot = useSlotBlock("action.reject");
-    // One banner covers the vote actions: approve copy takes precedence.
-    const voteBannerSlot = approveSlot.blocked
-        ? "action.approve"
-        : rejectSlot.blocked
-          ? "action.reject"
-          : null;
-    // SlotWarning is shown inline, so a button tooltip is only the fallback for
-    // an app-wide block (nothing on the card explains why the button is disabled).
-    const approveBlockIsAppLevel =
-        approveSlot.blocked && approveSlot.warning?.slot !== "action.approve";
-    const rejectBlockIsAppLevel =
-        rejectSlot.blocked && rejectSlot.warning?.slot !== "action.reject";
+    const {
+        approve: approveSlot,
+        reject: rejectSlot,
+        voteBannerSlot,
+    } = useVoteActionSlots();
     const title = useMemo(() => {
         if (type === "Confidential Request") {
             return extractConfidentialRequestData(proposal, treasuryId).title;
@@ -177,10 +167,8 @@ export function PendingRequestItem({
                                     }}
                                     disabled={isUserVoter || rejectSlot.blocked}
                                     tooltip={
-                                        rejectBlockIsAppLevel
-                                            ? stripMessageForTooltip(
-                                                  rejectSlot.message,
-                                              )
+                                        rejectSlot.inlineTooltip
+                                            ? rejectSlot.inlineTooltip
                                             : isUserVoter
                                               ? noVoteMessage
                                               : undefined
@@ -225,10 +213,8 @@ export function PendingRequestItem({
                                             insufficientBalanceInfo.hasInsufficientBalance
                                         }
                                         tooltip={
-                                            approveBlockIsAppLevel
-                                                ? stripMessageForTooltip(
-                                                      approveSlot.message,
-                                                  )
+                                            approveSlot.inlineTooltip
+                                                ? approveSlot.inlineTooltip
                                                 : isUserVoter
                                                   ? noVoteMessage
                                                   : undefined

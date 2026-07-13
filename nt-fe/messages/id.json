@@ -2054,6 +2054,7 @@
         "investors": "{count, plural, other {Investor}}",
         "poolBreakdown": "Rincian Pool",
         "unlockedToken": "Token Tidak Terkunci",
+        "lockedToken": "Token Terkunci",
         "lockupStakingPool": "Pool staking lockup",
         "exchange": "Tukar",
         "send": "Kirim",

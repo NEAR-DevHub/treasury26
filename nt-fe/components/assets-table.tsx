@@ -662,7 +662,7 @@ function AvailableView({
                             key={networkRowKey(asset.id, "available", network)}
                             className="bg-muted/30 group"
                         >
-                            <TableCell className="p-4 pl-16">
+                            <TableCell className="p-4 pl-16 overflow-hidden">
                                 <NetworkDisplay
                                     asset={network}
                                     subLabel={
@@ -800,24 +800,24 @@ function LockedView({
     if (!isExpanded) {
         return (
             <>
-                <TableCell className="p-4 text-right hidden sm:table-cell">
+                <TableCell className="p-4 text-right overflow-hidden hidden sm:table-cell">
                     <BalanceCell
                         balance={lockedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={lockedUsd ?? 0}
                     />
                 </TableCell>
-                <TableCell className="p-4 text-right">
+                <TableCell className="p-4 text-right overflow-hidden">
                     <BalanceCell
                         balance={unlockedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={unlockedUsd ?? 0}
                     />
                 </TableCell>
-                <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
+                <TableCell className="p-4 text-right font-medium overflow-hidden hidden sm:table-cell">
                     {formatCurrencyWithSubCent(asset.price)}
                 </TableCell>
-                <TableCell className="p-4 text-right hidden sm:table-cell">
+                <TableCell className="p-4 text-right overflow-hidden hidden sm:table-cell">
                     <BalanceCell
                         balance={totalAllocatedAmount ?? Big(0)}
                         symbol={asset.id}
@@ -901,51 +901,49 @@ function LockedView({
                 const lockedRawNetwork = networkLockedRaw(network);
                 const unlockedRawNetwork = networkAvailableRaw(network);
                 const totalAllocated = lockedRawNetwork.add(unlockedRawNetwork);
+                const lockupInstanceLabel =
+                    (ftLockupInstanceCount ?? 0) > 1 && network.lockupInstanceId
+                        ? network.lockupInstanceId.replace(
+                              /\.ft-lockup\.near$/,
+                              "",
+                          )
+                        : null;
                 return (
                     <TableRow
                         key={networkRowKey(asset.id, "locked", network)}
                         className="bg-muted/30 cursor-pointer hover:bg-muted/50 group"
                         onClick={() => onSelectLockup?.(network)}
                     >
-                        <TableCell className="p-4 pl-16">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-3">
-                                    {network.icon ? (
-                                        <img
-                                            src={network.icon}
-                                            alt={network.symbol}
-                                            className="size-6 rounded-full"
-                                        />
-                                    ) : (
-                                        <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
-                                            {network.symbol
-                                                .charAt(0)
-                                                .toUpperCase()}
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col text-left">
-                                        <span className="font-semibold">
-                                            {network.symbol}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                            Locked Token
-                                            {(ftLockupInstanceCount ?? 0) > 1 &&
-                                                network.lockupInstanceId && (
-                                                    <span>
-                                                        {" "}
-                                                        -{" "}
-                                                        {network.lockupInstanceId.replace(
-                                                            ".ft-lockup.near",
-                                                            "",
-                                                        )}
-                                                    </span>
-                                                )}
-                                        </span>
+                        <TableCell className="p-4 pl-16 overflow-hidden">
+                            <div className="flex items-center gap-3 min-w-0">
+                                {network.icon ? (
+                                    <img
+                                        src={network.icon}
+                                        alt={network.symbol}
+                                        className="size-6 shrink-0 rounded-full"
+                                    />
+                                ) : (
+                                    <div className="size-6 shrink-0 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
+                                        {network.symbol.charAt(0).toUpperCase()}
                                     </div>
+                                )}
+                                <div className="flex min-w-0 flex-col text-left">
+                                    <span className="truncate font-semibold">
+                                        {network.symbol}
+                                    </span>
+                                    <span className="truncate text-xs text-muted-foreground">
+                                        {t("lockedToken")}
+                                        {lockupInstanceLabel && (
+                                            <span>
+                                                {" "}
+                                                - {lockupInstanceLabel}
+                                            </span>
+                                        )}
+                                    </span>
                                 </div>
                             </div>
                         </TableCell>
-                        <TableCell className="p-4 text-right">
+                        <TableCell className="p-4 text-right overflow-hidden">
                             <BalanceCell
                                 balance={displayAmount(
                                     lockedRawNetwork,
@@ -959,7 +957,7 @@ function LockedView({
                                 )}
                             />
                         </TableCell>
-                        <TableCell className="p-4 text-right">
+                        <TableCell className="p-4 text-right overflow-hidden">
                             <BalanceCell
                                 balance={displayAmount(
                                     unlockedRawNetwork,
@@ -974,7 +972,7 @@ function LockedView({
                             />
                         </TableCell>
                         <TableCell />
-                        <TableCell className="p-4 text-right">
+                        <TableCell className="p-4 text-right overflow-hidden">
                             <BalanceCell
                                 balance={displayAmount(
                                     totalAllocated,
@@ -1118,8 +1116,8 @@ function EarningView({
                                         onSelectPool?.(network, pool.poolId)
                                     }
                                 >
-                                    <TableCell className="p-4 pl-16">
-                                        <div className="font-medium text-sm">
+                                    <TableCell className="p-4 pl-16 overflow-hidden">
+                                        <div className="font-medium text-sm truncate">
                                             {pool.poolId}
                                         </div>
                                     </TableCell>
@@ -1183,8 +1181,8 @@ function EarningView({
                                 onSelectPool?.(network, lockupPoolId)
                             }
                         >
-                            <TableCell className="p-4 pl-16">
-                                <div className="font-medium text-sm">
+                            <TableCell className="p-4 pl-16 overflow-hidden">
+                                <div className="font-medium text-sm truncate">
                                     {lockupPoolId}
                                 </div>
                             </TableCell>
@@ -1706,11 +1704,14 @@ export function AssetsTable({ aggregatedTokens }: Props) {
             )}
 
             <div className={cn(hasLockedOrEarning && "p-4 pt-0")}>
-                <Table>
+                <Table className="table-fixed">
                     <TableHeader className="bg-transparent border-t-0">
                         <TableRow className="hover:bg-transparent">
                             {renderSortableHead("token", t("columnToken"), {
-                                headClassName: "pl-0 sm:pl-4",
+                                headClassName: cn(
+                                    "pl-0 sm:pl-4 overflow-hidden",
+                                    view === "locked" ? "w-[24%]" : "w-[34%]",
+                                ),
                                 buttonClassName: cn("justify-start"),
                             })}
                             {view === "available" && (
@@ -1719,7 +1720,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         "balance",
                                         t("balance"),
                                         {
-                                            headClassName: "text-right",
+                                            headClassName: "text-right w-[18%]",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1728,13 +1729,13 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         t("coinPrice"),
                                         {
                                             headClassName:
-                                                "text-right hidden sm:table-cell",
+                                                "text-right w-[16%] hidden sm:table-cell",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
                                     {renderSortableHead("weight", t("weight"), {
                                         headClassName:
-                                            "text-right hidden sm:table-cell",
+                                            "text-right w-[20%] hidden sm:table-cell",
                                         buttonClassName: "ml-auto",
                                     })}
                                 </>
@@ -1745,7 +1746,8 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         "locked",
                                         t("columnLocked"),
                                         {
-                                            headClassName: "text-right",
+                                            headClassName:
+                                                "text-right w-[16%] overflow-hidden",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1754,7 +1756,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         t("columnUnlocked"),
                                         {
                                             headClassName:
-                                                "text-right hidden sm:table-cell",
+                                                "text-right w-[16%] overflow-hidden hidden sm:table-cell",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1763,7 +1765,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         t("coinPrice"),
                                         {
                                             headClassName:
-                                                "text-right hidden sm:table-cell",
+                                                "text-right w-[12%] overflow-hidden hidden sm:table-cell",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1772,7 +1774,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         t("columnTotalAllocated"),
                                         {
                                             headClassName:
-                                                "text-right hidden sm:table-cell",
+                                                "text-right w-[16%] overflow-hidden hidden sm:table-cell",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1784,7 +1786,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         "earningTotal",
                                         t("totalBalance"),
                                         {
-                                            headClassName: "text-right",
+                                            headClassName: "text-right w-[18%]",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1793,7 +1795,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         t("coinPrice"),
                                         {
                                             headClassName:
-                                                "text-right hidden sm:table-cell",
+                                                "text-right w-[16%] hidden sm:table-cell",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1802,7 +1804,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         t("columnAvailableToWithdraw"),
                                         {
                                             headClassName:
-                                                "text-right hidden sm:table-cell",
+                                                "text-right w-[20%] hidden sm:table-cell",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
@@ -1970,18 +1972,18 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                             }));
                                         }}
                                     >
-                                        <TableCell className="py-4 pr-4 pl-0 sm:p-4 sm:pl-4">
-                                            <div className="flex items-center gap-3">
+                                        <TableCell className="py-4 pr-4 pl-0 sm:p-4 sm:pl-4 overflow-hidden">
+                                            <div className="flex items-center gap-3 min-w-0">
                                                 <img
                                                     src={asset.icon}
                                                     alt={asset.name}
-                                                    className="h-8 w-8 rounded-full"
+                                                    className="h-8 w-8 shrink-0 rounded-full"
                                                 />
-                                                <div>
-                                                    <p className="font-semibold">
+                                                <div className="min-w-0">
+                                                    <p className="font-semibold truncate">
                                                         {asset.id}
                                                     </p>
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="text-xs text-muted-foreground truncate">
                                                         {asset.name}
                                                     </p>
                                                 </div>

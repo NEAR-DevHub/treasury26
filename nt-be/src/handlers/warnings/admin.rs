@@ -39,6 +39,8 @@ pub struct AdminError {
     status: StatusCode,
     message: String,
     headers: Option<Box<HeaderMap>>,
+    /// Extra JSON fields merged into the error body (e.g. `existingId` on conflict).
+    extra: Option<Value>,
 }
 
 impl AdminError {
@@ -47,6 +49,7 @@ impl AdminError {
             status,
             message: message.into(),
             headers: None,
+            extra: None,
         }
     }
 
@@ -55,13 +58,28 @@ impl AdminError {
             status,
             message: message.into(),
             headers: Some(Box::new(headers)),
+            extra: None,
+        }
+    }
+
+    fn conflict_existing(existing_id: i32) -> Self {
+        Self {
+            status: StatusCode::CONFLICT,
+            message: "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.".to_string(),
+            headers: None,
+            extra: Some(json!({ "existingId": existing_id })),
         }
     }
 }
 
 impl IntoResponse for AdminError {
     fn into_response(self) -> Response {
-        let body = json!({ "error": self.message });
+        let mut body = json!({ "error": self.message });
+        if let Some(Value::Object(extra)) = self.extra
+            && let Some(obj) = body.as_object_mut()
+        {
+            obj.extend(extra);
+        }
         let mut response = (self.status, Json(body)).into_response();
         if let Some(headers) = self.headers {
             for (key, value) in headers.as_ref().iter() {
@@ -464,22 +482,18 @@ pub async fn create_warning(
         )
     })?;
 
-    db::delete_conflicting_warnings_with_audit(
-        &mut tx,
-        None,
-        &slot,
-        &token,
-        &network,
-        &admin.username,
-        "upsert_replace",
-    )
-    .await
-    .map_err(|_| {
-        AdminError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to create warning.",
-        )
-    })?;
+    if let Some(existing_id) =
+        db::find_conflicting_warning_id(&mut *tx, None, &slot, &token, &network)
+            .await
+            .map_err(|_| {
+                AdminError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to create warning.",
+                )
+            })?
+    {
+        return Err(AdminError::conflict_existing(existing_id));
+    }
 
     let warning = sqlx::query_as::<_, AdminWarning>(&format!(
         r#"
@@ -517,9 +531,15 @@ pub async fn create_warning(
         if let sqlx::Error::Database(db_err) = &e
             && db_err.constraint().is_some()
         {
-            return AdminError::new(StatusCode::CONFLICT, "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.");
+            return AdminError::new(
+                StatusCode::CONFLICT,
+                "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.",
+            );
         }
-        AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create warning. Please try again.")
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create warning. Please try again.",
+        )
     })?;
 
     let action = if show_from.is_some() || ends_at.is_some() {
@@ -747,22 +767,18 @@ pub async fn update_warning(
         )
     })?;
 
-    db::delete_conflicting_warnings_with_audit(
-        &mut tx,
-        Some(id),
-        &slot,
-        &token,
-        &network,
-        &admin.username,
-        "upsert_replace",
-    )
-    .await
-    .map_err(|_| {
-        AdminError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to update warning.",
-        )
-    })?;
+    if let Some(existing_id) =
+        db::find_conflicting_warning_id(&mut *tx, Some(id), &slot, &token, &network)
+            .await
+            .map_err(|_| {
+                AdminError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to update warning.",
+                )
+            })?
+    {
+        return Err(AdminError::conflict_existing(existing_id));
+    }
 
     let updated = sqlx::query_as::<_, AdminWarning>(&format!(
         r#"
@@ -817,7 +833,7 @@ pub async fn update_warning(
         {
             return AdminError::new(
                 StatusCode::CONFLICT,
-                "A warning with the same slot, token, and network combination already exists.",
+                "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.",
             );
         }
         AdminError::new(
@@ -900,11 +916,12 @@ pub async fn delete_warning(
     .bind(id)
     .fetch_optional(&state.db_pool)
     .await
-    .map_err(|_| AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to load warning."))?
-    .ok_or(AdminError::new(
-        StatusCode::NOT_FOUND,
-        "Warning not found — it may have been deleted already.",
-    ))?;
+    .map_err(|_| AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to load warning."))?;
+
+    // Idempotent: already-deleted ids succeed so duplicate clicks don't error.
+    let Some(existing) = existing else {
+        return Ok(StatusCode::NO_CONTENT);
+    };
 
     let mut extra = json!({});
     if let Some(ref gid) = existing.group_id {
