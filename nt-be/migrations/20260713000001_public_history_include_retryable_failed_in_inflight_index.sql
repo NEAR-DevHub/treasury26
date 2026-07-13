@@ -13,7 +13,10 @@ DO $$
 BEGIN
     IF to_regclass('apalis.jobs') IS NOT NULL THEN
         -- Exhaust only duplicate retryable Failed rows, then make the index
-        -- match Apalis retry eligibility.
+        -- match Apalis retry eligibility. Do not write an explanatory error
+        -- column here: apalis.jobs column names differ across Apalis versions,
+        -- and this migration must run against the table shape already present
+        -- in staging/production.
         EXECUTE $sql$
             WITH ranked_public_history_jobs AS (
                 SELECT
@@ -39,12 +42,7 @@ BEGIN
             UPDATE apalis.jobs jobs
             SET
                 attempts = jobs.max_attempts,
-                done_at = COALESCE(jobs.done_at, NOW()),
-                last_error = CONCAT_WS(
-                    E'\n',
-                    jobs.last_error,
-                    'Retryable duplicate exhausted by public history inflight index migration.'
-                )
+                done_at = COALESCE(jobs.done_at, NOW())
             FROM ranked_public_history_jobs ranked
             WHERE jobs.id = ranked.id
               AND ranked.rank > 1
