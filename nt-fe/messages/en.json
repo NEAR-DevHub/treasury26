@@ -1144,9 +1144,7 @@
         "activationFailed": "Failed to start bulk payment activation",
         "errorTitle": "Couldn't load activation status",
         "noPermissionNote": "You don't have permission to start activation. Ask a treasury member with proposal permissions to activate bulk payments.",
-        "awaitingApproverHint": "Treasury members with approval rights need to approve the pending request to finish activation.",
-        "awaitingStuckHint": "Didn't get a wallet prompt, or the request wasn't created? Re-create it — this replaces the previous attempt.",
-        "restartButton": "Re-create request"
+        "awaitingApproverHint": "Treasury members with approval rights need to approve the pending request to finish activation."
     },
     "bulkPaymentCredits": {
         "title": "Bulk Payments",

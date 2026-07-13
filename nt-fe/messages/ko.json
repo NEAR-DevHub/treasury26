@@ -1144,9 +1144,7 @@
         "activationFailed": "대량 결제 활성화를 시작하지 못했습니다",
         "errorTitle": "활성화 상태를 불러올 수 없습니다",
         "noPermissionNote": "활성화를 시작할 권한이 없습니다. 제안 권한이 있는 트레저리 구성원에게 대량 결제 활성화를 요청하세요.",
-        "awaitingApproverHint": "활성화를 완료하려면 승인 권한이 있는 트레저리 구성원이 대기 중인 요청을 승인해야 합니다.",
-        "awaitingStuckHint": "지갑 서명 창이 표시되지 않았거나 요청이 생성되지 않았나요? 다시 생성하세요 — 이전 시도를 대체합니다.",
-        "restartButton": "요청 다시 생성"
+        "awaitingApproverHint": "활성화를 완료하려면 승인 권한이 있는 트레저리 구성원이 대기 중인 요청을 승인해야 합니다."
     },
     "bulkPaymentCredits": {
         "title": "일괄 결제",

@@ -1144,9 +1144,7 @@
         "activationFailed": "Aktivierung der Massenzahlungen konnte nicht gestartet werden",
         "errorTitle": "Aktivierungsstatus konnte nicht geladen werden",
         "noPermissionNote": "Sie haben keine Berechtigung, die Aktivierung zu starten. Bitten Sie ein Mitglied der Schatzkammer mit Antragsberechtigung, Massenzahlungen zu aktivieren.",
-        "awaitingApproverHint": "Mitglieder der Schatzkammer mit Genehmigungsrechten müssen den ausstehenden Antrag genehmigen, um die Aktivierung abzuschließen.",
-        "awaitingStuckHint": "Keine Wallet-Aufforderung erhalten oder die Anfrage wurde nicht erstellt? Erstellen Sie sie neu — dies ersetzt den vorherigen Versuch.",
-        "restartButton": "Anfrage neu erstellen"
+        "awaitingApproverHint": "Mitglieder der Schatzkammer mit Genehmigungsrechten müssen den ausstehenden Antrag genehmigen, um die Aktivierung abzuschließen."
     },
     "bulkPaymentCredits": {
         "title": "Sammelzahlungen",

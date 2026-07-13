@@ -142,30 +142,6 @@ export function BulkActivationCard() {
                         <p className="text-muted-foreground text-xs">
                             {t("awaitingApproverHint")}
                         </p>
-                        {/* Escape hatch: if the approval request was never
-                            actually created — e.g. the wallet never showed the
-                            signing dialog — the flow is otherwise stuck here
-                            with no way forward. Let a proposer re-create it;
-                            `prepare` supersedes the previous pending attempt
-                            and `ensure_bulk_subaccount` is idempotent (the
-                            subaccount already exists), so this is safe. */}
-                        {canPropose && (
-                            <div className="mt-2 flex flex-col items-center gap-2 border-t pt-4">
-                                <p className="text-muted-foreground text-xs">
-                                    {t("awaitingStuckHint")}
-                                </p>
-                                <CreateRequestButton
-                                    permissions={[
-                                        { kind: "call", action: "AddProposal" },
-                                    ]}
-                                    onClick={startActivation}
-                                    isSubmitting={isSubmitting}
-                                    idleMessage={t("restartButton")}
-                                    loadingMessage={t("preparing")}
-                                    className="h-9 w-auto px-4"
-                                />
-                            </div>
-                        )}
                     </>
                 ) : (
                     <>

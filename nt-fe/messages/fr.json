@@ -1144,9 +1144,7 @@
         "activationFailed": "Impossible de démarrer l'activation des paiements groupés",
         "errorTitle": "Impossible de charger le statut d'activation",
         "noPermissionNote": "Vous n'avez pas l'autorisation de démarrer l'activation. Demandez à un membre de la trésorerie disposant des droits de proposition d'activer les paiements groupés.",
-        "awaitingApproverHint": "Les membres de la trésorerie disposant des droits d'approbation doivent approuver la demande en attente pour terminer l'activation.",
-        "awaitingStuckHint": "Vous n'avez pas eu d'invite du portefeuille ou la demande n'a pas été créée ? Recréez-la — cela remplace la tentative précédente.",
-        "restartButton": "Recréer la demande"
+        "awaitingApproverHint": "Les membres de la trésorerie disposant des droits d'approbation doivent approuver la demande en attente pour terminer l'activation."
     },
     "bulkPaymentCredits": {
         "title": "Paiements groupés",

@@ -1144,9 +1144,7 @@
         "activationFailed": "Toplu ödeme etkinleştirmesi başlatılamadı",
         "errorTitle": "Etkinleştirme durumu yüklenemedi",
         "noPermissionNote": "Etkinleştirmeyi başlatma izniniz yok. Toplu ödemeleri etkinleştirmek için öneri iznine sahip bir hazine üyesinden yardım isteyin.",
-        "awaitingApproverHint": "Etkinleştirmeyi tamamlamak için onay yetkisine sahip hazine üyelerinin bekleyen isteği onaylaması gerekir.",
-        "awaitingStuckHint": "Cüzdan isteği görünmedi veya istek oluşturulmadı mı? Yeniden oluşturun — bu, önceki denemenin yerini alır.",
-        "restartButton": "İsteği yeniden oluştur"
+        "awaitingApproverHint": "Etkinleştirmeyi tamamlamak için onay yetkisine sahip hazine üyelerinin bekleyen isteği onaylaması gerekir."
     },
     "bulkPaymentCredits": {
         "title": "Toplu Ödemeler",

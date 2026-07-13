@@ -2455,8 +2455,6 @@
         "activationFailed": "无法启动批量支付激活",
         "errorTitle": "无法加载激活状态",
         "noPermissionNote": "您没有权限启动激活。请让具有提案权限的金库成员激活批量支付。",
-        "awaitingApproverHint": "拥有批准权限的金库成员需要批准待处理的请求以完成激活。",
-        "awaitingStuckHint": "没有收到钱包提示，或请求未创建？重新创建它——这将替换之前的尝试。",
-        "restartButton": "重新创建请求"
+        "awaitingApproverHint": "拥有批准权限的金库成员需要批准待处理的请求以完成激活。"
     }
 }

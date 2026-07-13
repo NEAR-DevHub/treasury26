@@ -2455,8 +2455,6 @@
         "activationFailed": "Không thể bắt đầu kích hoạt thanh toán hàng loạt",
         "errorTitle": "Không thể tải trạng thái kích hoạt",
         "noPermissionNote": "Bạn không có quyền bắt đầu kích hoạt. Hãy nhờ một thành viên kho bạc có quyền đề xuất kích hoạt thanh toán hàng loạt.",
-        "awaitingApproverHint": "Các thành viên kho bạc có quyền phê duyệt cần phê duyệt yêu cầu đang chờ để hoàn tất kích hoạt.",
-        "awaitingStuckHint": "Không nhận được yêu cầu từ ví, hoặc yêu cầu chưa được tạo? Hãy tạo lại — thao tác này thay thế lần thử trước.",
-        "restartButton": "Tạo lại yêu cầu"
+        "awaitingApproverHint": "Các thành viên kho bạc có quyền phê duyệt cần phê duyệt yêu cầu đang chờ để hoàn tất kích hoạt."
     }
 }
