@@ -280,6 +280,17 @@ export interface Proposal {
             }>;
         };
     };
+    /** Populated by backend for public payment/exchange proposals */
+    public_metadata?: {
+        proposal_created_at?: string | null;
+        proposal_executed_at?: string | null;
+        gold_metadata?: {
+            amount_in_usd?: string | null;
+            amount_out_usd?: string | null;
+            usd_change?: string | null;
+            transaction_type?: "sent" | "exchange" | string;
+        };
+    };
 }
 
 export interface ProposalsResponse {
@@ -287,6 +298,22 @@ export interface ProposalsResponse {
     page_size: number;
     total: number;
     proposals: Proposal[];
+}
+
+/**
+ * Sputnik unit-variant kinds (only `Vote` today) serialize to plain JSON
+ * strings in the contract state the backend passes through verbatim.
+ * Normalize them to the object form the rest of the app expects, so
+ * `"Vote" in proposal.kind` checks work.
+ */
+function normalizeProposalKind(proposal: Proposal): Proposal {
+    if (typeof proposal.kind === "string") {
+        return {
+            ...proposal,
+            kind: { [proposal.kind]: {} } as unknown as ProposalKind,
+        };
+    }
+    return proposal;
 }
 
 export type StakeType = "stake" | "unstake" | "Withdraw Earnings" | "whitelist";
@@ -434,7 +461,10 @@ export async function getProposals(
             withCredentials: true,
         });
 
-        return response.data;
+        return {
+            ...response.data,
+            proposals: response.data.proposals.map(normalizeProposalKind),
+        };
     } catch (error) {
         console.error(`Error getting proposals for DAO ${daoId}`, error);
         return { page: 0, page_size: 0, total: 0, proposals: [] };
@@ -454,7 +484,7 @@ export async function getProposal(
         const response = await axios.get<Proposal>(url, {
             withCredentials: true,
         });
-        return response.data;
+        return normalizeProposalKind(response.data);
     } catch (error) {
         console.error(
             `Error getting proposal for DAO ${daoId} and proposal ${proposalId}`,

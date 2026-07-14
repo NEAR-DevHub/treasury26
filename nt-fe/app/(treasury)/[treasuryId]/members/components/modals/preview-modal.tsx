@@ -10,10 +10,8 @@ import {
     DialogFooter,
 } from "@/components/modal";
 import { ButtonWithTooltip } from "@/components/button-with-tooltip";
-import { WarningMessage } from "@/components/warning-message";
 import { RoleBadge } from "@/components/role-badge";
 import { sortRolesByOrder } from "@/lib/role-utils";
-import { useSlotBlock } from "@/hooks/use-warnings";
 
 interface AddMemberFormData {
     members: Array<{
@@ -48,8 +46,6 @@ export function PreviewModal({
 }: PreviewModalProps) {
     const t = useTranslations("members.previewModal");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { blocked: proposalBlocked, message: proposalBlockedMessage } =
-        useSlotBlock("action.create-proposal");
 
     const members = form.watch("members");
     const isEditMode = mode === "edit";
@@ -165,20 +161,8 @@ export function PreviewModal({
                             type="button"
                             onClick={handleSubmit}
                             className="w-full"
-                            disabled={
-                                isSubmitting ||
-                                !!validationError ||
-                                proposalBlocked
-                            }
-                            tooltipMessage={
-                                validationError ??
-                                (proposalBlocked && proposalBlockedMessage ? (
-                                    <WarningMessage
-                                        variant="tooltip"
-                                        message={proposalBlockedMessage}
-                                    />
-                                ) : undefined)
-                            }
+                            disabled={isSubmitting || !!validationError}
+                            tooltipMessage={validationError}
                         >
                             {isSubmitting
                                 ? t("creatingProposal")

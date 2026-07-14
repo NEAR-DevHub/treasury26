@@ -93,6 +93,9 @@ pub struct Proposal {
     /// Contains quote_metadata, status, and correlation_id from confidential_intents table.
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub confidential_metadata: Option<Value>,
+    /// Populated by the backend for public payment/exchange proposals from gold history.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub public_metadata: Option<Value>,
 }
 
 /// Extract the payload_hash from a proposal's `kind` JSON if it's a v1.signer signing proposal.
@@ -174,6 +177,37 @@ pub async fn fetch_proposals(
     }
 
     Ok(all_proposals)
+}
+
+/// Fetch the most recent `limit` proposals in a single `get_proposals` call
+/// (plus one `get_last_proposal_id`). Cheap alternative to [`fetch_proposals`]
+/// when only the tail of the list matters — e.g. checking whether a
+/// just-created proposal is still on-chain and pending.
+pub async fn fetch_recent_proposals(
+    client: &NetworkConfig,
+    dao_id: &AccountId,
+    limit: u64,
+) -> Result<Vec<Proposal>, QueryError<RpcQueryError>> {
+    let last_id = Contract(dao_id.clone())
+        .call_function("get_last_proposal_id", ())
+        .read_only::<u64>()
+        .fetch_from(client)
+        .await?
+        .data;
+    if last_id == 0 {
+        return Ok(Vec::new());
+    }
+    let from_index = last_id.saturating_sub(limit);
+    let proposals = Contract(dao_id.clone())
+        .call_function(
+            "get_proposals",
+            json!({ "from_index": from_index, "limit": last_id - from_index }),
+        )
+        .read_only::<Vec<Proposal>>()
+        .fetch_from(client)
+        .await?
+        .data;
+    Ok(proposals)
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id, proposal_id = proposal_id))]

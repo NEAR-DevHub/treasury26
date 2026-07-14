@@ -20,6 +20,7 @@ import { TransactionCell } from "../transaction-cell";
 import { getProposalUIKind } from "../../utils/proposal-utils";
 import { useProposalKindLabel } from "../../hooks/use-proposal-kind-label";
 import { useProposalInsufficientBalance } from "../../hooks/use-proposal-insufficient-balance";
+import { useVoteActionSlots } from "../../hooks/use-vote-action-slots";
 import { VoteModal } from "../vote-modal";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -91,9 +92,16 @@ export function PendingRequestItem({
     );
     const { accountId } = useNear();
     const isUserVoter = !!proposal.votes[accountId ?? ""];
+    // Approving payment/exchange proposals is blocked while that feature has a
+    // critical warning. Rejection is never blocked by feature pauses.
     const approveBlock = useProposalApproveBlock([proposal]);
     const approveBlocked = approveBlock.anyBlocked;
     const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
+    const {
+        approve: approveSlot,
+        reject: rejectSlot,
+        voteBannerSlot,
+    } = useVoteActionSlots();
     const title = useMemo(() => {
         if (type === "Confidential Request") {
             return extractConfidentialRequestData(proposal, treasuryId).title;
@@ -128,18 +136,26 @@ export function PendingRequestItem({
                                     insufficientBalanceInfo
                                 }
                             />
-                            {approveBlocked && approveBlockedWarning?.slot && (
-                                <SlotWarning
-                                    slot={approveBlockedWarning.slot}
-                                    token={
-                                        approveBlockedWarning.token ?? undefined
-                                    }
-                                    network={
-                                        approveBlockedWarning.network ??
-                                        undefined
-                                    }
-                                />
+                            {/* Vote action paused (approve / reject) — single banner */}
+                            {voteBannerSlot && (
+                                <SlotWarning slot={voteBannerSlot} />
                             )}
+                            {/* Feature-maintenance warning — approval paused, rejection still works */}
+                            {!voteBannerSlot &&
+                                approveBlocked &&
+                                approveBlockedWarning?.slot && (
+                                    <SlotWarning
+                                        slot={approveBlockedWarning.slot}
+                                        token={
+                                            approveBlockedWarning.token ??
+                                            undefined
+                                        }
+                                        network={
+                                            approveBlockedWarning.network ??
+                                            undefined
+                                        }
+                                    />
+                                )}
                             <div className="flex gap-3 w-full sm:invisible sm:group-hover:visible transition-opacity duration-300 ease-in-out">
                                 <AuthButtonWithProposal
                                     proposalKind={proposal.kind}
@@ -149,15 +165,21 @@ export function PendingRequestItem({
                                         e.preventDefault();
                                         onVote("Reject");
                                     }}
+                                    disabled={isUserVoter || rejectSlot.blocked}
                                     tooltip={
-                                        isUserVoter ? noVoteMessage : undefined
+                                        rejectSlot.inlineTooltip
+                                            ? rejectSlot.inlineTooltip
+                                            : isUserVoter
+                                              ? noVoteMessage
+                                              : undefined
                                     }
-                                    disabled={isUserVoter}
                                 >
                                     <X className="size-3.5" />
                                     {tActions("reject")}
                                 </AuthButtonWithProposal>
-                                {insufficientBalanceInfo.hasInsufficientBalance ? (
+                                {insufficientBalanceInfo.hasInsufficientBalance &&
+                                insufficientBalanceInfo.showDeposit !==
+                                    false ? (
                                     <span className="w-full">
                                         <Button
                                             variant="default"
@@ -184,11 +206,18 @@ export function PendingRequestItem({
                                             e.preventDefault();
                                             onVote("Approve");
                                         }}
-                                        disabled={isUserVoter || approveBlocked}
+                                        disabled={
+                                            isUserVoter ||
+                                            approveBlocked ||
+                                            approveSlot.blocked ||
+                                            insufficientBalanceInfo.hasInsufficientBalance
+                                        }
                                         tooltip={
-                                            isUserVoter
-                                                ? noVoteMessage
-                                                : undefined
+                                            approveSlot.inlineTooltip
+                                                ? approveSlot.inlineTooltip
+                                                : isUserVoter
+                                                  ? noVoteMessage
+                                                  : undefined
                                         }
                                     >
                                         <Check className="size-3.5" />

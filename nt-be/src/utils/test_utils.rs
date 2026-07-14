@@ -122,10 +122,28 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         None
     };
 
+    // Drop the driver so the gate fails open (no rate limiting in tests, matching
+    // the old effectively-unlimited test limiter) without spawning a background task.
+    let (nearblocks_gate, _) = crate::utils::priority_rate_gate::PriorityRateGate::<
+        crate::handlers::public_history::bronze::NearblocksPriority,
+    >::new(crate::utils::rate_limiter::RateLimiter::per_minute(
+        "nearblocks-test",
+        10_000,
+        10_000,
+    ));
+
+    let (event_tx, _) = tokio::sync::broadcast::channel(crate::events::EVENT_BUS_CAPACITY);
+
     AppState {
         cache: Cache::new(),
         telegram_client: crate::utils::telegram::TelegramClient::default(),
         http_client,
+        nearblocks_gate,
+        defillama_limiter: crate::utils::rate_limiter::RateLimiter::per_minute(
+            "defillama-test",
+            10_000,
+            10_000,
+        ),
         signer: Signer::from_secret_key(env_vars.signer_key.clone())
             .expect("Failed to create signer."),
         bulk_payment_signer: Signer::from_secret_key(env_vars.bulk_payment_signer.clone())
@@ -135,11 +153,13 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         archival_network,
         bulk_payment_contract_id: env_vars.bulk_payment_contract_id.clone(),
         env_vars,
+        token_price_service: Arc::new(crate::services::TokenPriceService::new(db_pool.clone())),
         db_pool,
         price_service,
         transfer_hint_service: transfer_hint_service.map(Arc::new),
         goldsky_pool: None,
         neardata_client: None,
+        event_tx,
         creation_sweep_notify: Arc::new(tokio::sync::Notify::new()),
     }
 }
@@ -219,10 +239,12 @@ pub async fn seed_policy_member(pool: &sqlx::PgPool, dao_id: &str, account_id: &
     .expect("seed policy member");
 }
 
-/// Seed a policy member who also holds the on-chain `ChangePolicy` permission — i.e. someone
-/// allowed to author templates / flip the custom-requests flag.
+/// Seed a full-admin ("council") policy member: a wildcard `*:*` role. Under the action-only
+/// permission matcher this satisfies every gate — `AddProposal` (author templates) and
+/// `ChangePolicy` (delete templates, flip the custom-requests feature flag) alike — so it stands in
+/// for anyone allowed to do all template management. Requestor-only access is exercised separately.
 #[cfg(test)]
-pub async fn seed_change_policy_member(
+pub async fn seed_full_admin_member(
     state: &std::sync::Arc<AppState>,
     pool: &sqlx::PgPool,
     dao_id: &str,
@@ -230,12 +252,7 @@ pub async fn seed_change_policy_member(
 ) {
     seed_policy_member(pool, dao_id, account_id).await;
     let dao: near_api::AccountId = dao_id.parse().expect("valid dao id");
-    seed_treasury_policy(
-        state,
-        &dao,
-        policy_granting(account_id, &["*:ChangePolicy"]),
-    )
-    .await;
+    seed_treasury_policy(state, &dao, policy_granting(account_id, &["*:*"])).await;
 }
 
 /// Create a user + session for `account_id` and return its auth `cookie` header value.

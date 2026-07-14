@@ -767,12 +767,32 @@
             "approve": "批准",
             "destinationNetwork": "目标网络",
             "processingPayment": "处理付款中",
-            "processingPaymentBody": "此付款已获团队批准，正在处理中，可能需要一些时间才能完成。"
+            "processingPaymentBody": "此付款已获团队批准，正在处理中，可能需要一些时间才能完成。",
+            "addMember": "添加成员",
+            "removeMember": "移除成员",
+            "member": "成员",
+            "role": "角色",
+            "upgradeSelf": "升级合约",
+            "upgradeRemote": "升级远程合约",
+            "codeHash": "代码哈希",
+            "stakingContract": "质押合约",
+            "addBounty": "添加赏金",
+            "bountyDone": "赏金完成",
+            "bountyId": "赏金 ID",
+            "bountyTimes": "最大领取次数",
+            "maxDeadline": "最长期限",
+            "bountyDoneSubtitle": "赏金 #{id}（{receiver}）",
+            "daysCount": "{count, plural, other {# 天}}",
+            "factoryId": "工厂 ID",
+            "autoUpdate": "自动更新",
+            "memberRoleSubtitle": "{member} • {role}"
         },
         "insufficientBalance": {
             "noAsset": "由于金库中没有所需代币,此请求无法被批准。",
             "bond": "由于金库的 <token>{symbol}</token> 余额不足,此请求无法被批准。请添加 <token>{amount} {symbol}</token> 以支付提案保证金。",
             "continue": "由于金库的 <token>{symbol}</token> 余额不足,此请求无法被批准。请添加 <token>{amount} {symbol}</token> 以继续。",
+            "staked": "由于质押的 <token>{symbol}</token> 不足，此请求无法被批准。此矿池还需要质押 <token>{amount} {symbol}</token>。",
+            "readyToWithdraw": "由于可提取的 <token>{symbol}</token> 不足，此请求无法被批准。此矿池还需要 <token>{amount} {symbol}</token> 可提取余额。",
             "modalTitle": "NEAR 余额不足",
             "modalBodyVote": "您钱包中的 NEAR 代币不足以投票。投票需要至少 <amount>{required} NEAR</amount> 的余额。请向钱包中添加 NEAR 后再试。",
             "modalBodyProposal": "您钱包中的 NEAR 代币不足以创建此请求。创建请求需要至少 <amount>{required} NEAR</amount> 的余额。请向钱包中添加 NEAR 后再试。",
@@ -1703,8 +1723,8 @@
         "incompatible": "不兼容",
         "comingSoon": "即将推出",
         "forMembersOnly": "仅限成员",
-        "nearComDescription": "near.com 与 trezu 的机密网络",
-        "nearDescription": "用于公开提现的网络"
+        "nearComDescription": "机密 trezu 网络",
+        "nearDescription": "公开提现和 near.com 钱包网络"
     },
     "addressBookTable": {
         "emptyTitle": "暂无收款人",
@@ -2017,6 +2037,7 @@
         "investors": "{count, plural, other {投资者}}",
         "poolBreakdown": "矿池明细",
         "unlockedToken": "已解锁代币",
+        "lockedToken": "已锁定代币",
         "lockupStakingPool": "锁仓质押池",
         "exchange": "兑换",
         "send": "发送",
@@ -2418,5 +2439,22 @@
             "min": "{label}不得小于 {min}",
             "max": "{label}不得大于 {max}"
         }
+    },
+    "bulkActivation": {
+        "introTitle": "激活批量支付",
+        "introDescription": "此保密金库需要一次性激活才能发送批量支付：注册其保密批量访问密钥需要金库成员进行一轮批准。",
+        "failedDescription": "上一次激活尝试已过期或失败。请重新开始——将创建新的批准请求。",
+        "startButton": "开始激活",
+        "retryButton": "重试激活",
+        "preparing": "正在准备激活…",
+        "approvalNote": "这将创建一个批准请求。当足够多的成员批准后，批量支付将自动解锁。",
+        "awaitingTitle": "等待批准",
+        "awaitingDescription": "激活请求已创建。当足够多的金库成员批准后，保密批量访问密钥将被注册，批量支付将自动解锁。",
+        "awaitingHint": "批准后无需进一步操作——此页面会自动更新。",
+        "proposalCreated": "已创建激活请求——等待成员批准",
+        "activationFailed": "无法启动批量支付激活",
+        "errorTitle": "无法加载激活状态",
+        "noPermissionNote": "您没有权限启动激活。请让具有提案权限的金库成员激活批量支付。",
+        "awaitingApproverHint": "拥有批准权限的金库成员需要批准待处理的请求以完成激活。"
     }
 }

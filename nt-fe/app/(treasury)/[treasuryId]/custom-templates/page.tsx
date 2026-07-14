@@ -101,10 +101,10 @@ function GatedButton({
 
 function EmptyState({
     onCreate,
-    canManage,
+    canAuthor,
 }: {
     onCreate: () => void;
-    canManage: boolean;
+    canAuthor: boolean;
 }) {
     const t = useTranslations("customTemplates");
     const tAuth = useTranslations("auth");
@@ -124,7 +124,7 @@ function EmptyState({
             <div className="flex items-center gap-2">
                 <HowItWorksLink />
                 <GatedButton
-                    allowed={canManage}
+                    allowed={canAuthor}
                     tooltip={tAuth("noPermission")}
                     onClick={onCreate}
                 >
@@ -137,7 +137,8 @@ function EmptyState({
 
 interface TemplateRowProps {
     template: ProposalTemplate;
-    canManage: boolean;
+    canAuthor: boolean;
+    canDelete: boolean;
     canPropose: boolean;
     onCreateRequest: () => void;
     onEdit: () => void;
@@ -147,7 +148,8 @@ interface TemplateRowProps {
 
 function TemplateRow({
     template,
-    canManage,
+    canAuthor,
+    canDelete,
     canPropose,
     onCreateRequest,
     onEdit,
@@ -156,6 +158,7 @@ function TemplateRow({
 }: TemplateRowProps) {
     const t = useTranslations("customTemplates");
     const tCreate = useTranslations("createRequestButton");
+    const tAuth = useTranslations("auth");
     return (
         <div className="group flex min-h-[75px] items-center justify-between gap-3 rounded-xl bg-[#FAFAF9] p-4 dark:bg-muted">
             <div className="flex min-w-0 flex-col gap-0.5">
@@ -169,8 +172,10 @@ function TemplateRow({
                 ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-1">
-                {/* Edit/Pin/Delete are authoring actions — managers only. Proposers just file. */}
-                {canManage ? (
+                {/* Edit/Pin are authoring actions (Requestors + admins, #1046); Delete is
+                    destructive and stays admin-only — shown to everyone but disabled (with a
+                    tooltip) for non-admins, so the action is discoverable, not hidden. */}
+                {canAuthor || canDelete ? (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button
@@ -183,35 +188,56 @@ function TemplateRow({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                                onClick={onEdit}
-                                className={MENU_ITEM_CLASS}
-                            >
-                                <Pencil className="size-4" /> {t("index.edit")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={onTogglePin}
-                                className={MENU_ITEM_CLASS}
-                            >
-                                {template.pinned ? (
-                                    <>
-                                        <PinOff className="size-4" />{" "}
-                                        {t("index.unpin")}
-                                    </>
-                                ) : (
-                                    <>
-                                        <Pin className="size-4" />{" "}
-                                        {t("index.pin")}
-                                    </>
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={onDelete}
-                                className={MENU_ITEM_CLASS}
-                            >
-                                <Trash2 className="size-4" />{" "}
-                                {t("index.delete")}
-                            </DropdownMenuItem>
+                            {canAuthor ? (
+                                <>
+                                    <DropdownMenuItem
+                                        onClick={onEdit}
+                                        className={MENU_ITEM_CLASS}
+                                    >
+                                        <Pencil className="size-4" />{" "}
+                                        {t("index.edit")}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={onTogglePin}
+                                        className={MENU_ITEM_CLASS}
+                                    >
+                                        {template.pinned ? (
+                                            <>
+                                                <PinOff className="size-4" />{" "}
+                                                {t("index.unpin")}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Pin className="size-4" />{" "}
+                                                {t("index.pin")}
+                                            </>
+                                        )}
+                                    </DropdownMenuItem>
+                                </>
+                            ) : null}
+                            {canDelete ? (
+                                <DropdownMenuItem
+                                    onClick={onDelete}
+                                    className={MENU_ITEM_CLASS}
+                                >
+                                    <Trash2 className="size-4" />{" "}
+                                    {t("index.delete")}
+                                </DropdownMenuItem>
+                            ) : (
+                                <Tooltip content={tAuth("noPermission")}>
+                                    {/* Wrap the disabled item so the tooltip has a hoverable target
+                                        (the disabled item itself has pointer-events: none). */}
+                                    <span className="inline-block w-full">
+                                        <DropdownMenuItem
+                                            disabled
+                                            className={MENU_ITEM_CLASS}
+                                        >
+                                            <Trash2 className="size-4" />{" "}
+                                            {t("index.delete")}
+                                        </DropdownMenuItem>
+                                    </span>
+                                </Tooltip>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 ) : null}
@@ -235,7 +261,7 @@ export default function CustomTemplatesIndexPage() {
     const tAuth = useTranslations("auth");
     const router = useRouter();
     const { treasuryId } = useTreasury();
-    const { canManage, canPropose } = useCustomTemplatesAccess();
+    const { canAuthor, canDelete, canPropose } = useCustomTemplatesAccess();
     const { data: templates, isLoading } = useProposalTemplates();
     const updateTemplate = useUpdateProposalTemplate();
     const deleteTemplate = useDeleteProposalTemplate();
@@ -288,7 +314,7 @@ export default function CustomTemplatesIndexPage() {
                 ) : enabled.length === 0 ? (
                     <EmptyState
                         onCreate={() => go("/create")}
-                        canManage={canManage}
+                        canAuthor={canAuthor}
                     />
                 ) : (
                     <PageCard className="gap-4 p-5">
@@ -299,7 +325,7 @@ export default function CustomTemplatesIndexPage() {
                             <div className="flex items-center gap-2">
                                 <HowItWorksLink />
                                 <GatedButton
-                                    allowed={canManage}
+                                    allowed={canAuthor}
                                     tooltip={tAuth("noPermission")}
                                     variant="secondary"
                                     onClick={() => go("/create")}
@@ -314,7 +340,8 @@ export default function CustomTemplatesIndexPage() {
                                 <TemplateRow
                                     key={template.id}
                                     template={template}
-                                    canManage={canManage}
+                                    canAuthor={canAuthor}
+                                    canDelete={canDelete}
                                     canPropose={canPropose}
                                     onCreateRequest={() =>
                                         go(

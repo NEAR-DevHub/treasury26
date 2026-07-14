@@ -44,9 +44,11 @@ export function Pill({
         </div>
     );
     if (info) {
+        // pointer-events-auto so hover still works when the Pill sits inside a
+        // disabled control (e.g. Offline wallet cards use disabled:pointer-events-none).
         return (
             <Tooltip content={info} side={side}>
-                {pill}
+                <div className="pointer-events-auto">{pill}</div>
             </Tooltip>
         );
     }

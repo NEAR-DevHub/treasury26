@@ -29,7 +29,7 @@ const BASIC_AUTH_REALM: &str = "Trezu Status Manager";
 
 const ADMIN_WARNING_COLUMNS: &str = r#"
     id, slot, token, network, is_active, response, severity,
-    user_message, situation, internal_note,
+    user_message, use_custom_message, situation, internal_note,
     show_from, starts_at, ends_at,
     linked_service, linked_post_id, group_id,
     updated_by, updated_at, created_at
@@ -39,6 +39,8 @@ pub struct AdminError {
     status: StatusCode,
     message: String,
     headers: Option<Box<HeaderMap>>,
+    /// Extra JSON fields merged into the error body (e.g. `existingId` on conflict).
+    extra: Option<Value>,
 }
 
 impl AdminError {
@@ -47,6 +49,7 @@ impl AdminError {
             status,
             message: message.into(),
             headers: None,
+            extra: None,
         }
     }
 
@@ -55,13 +58,28 @@ impl AdminError {
             status,
             message: message.into(),
             headers: Some(Box::new(headers)),
+            extra: None,
+        }
+    }
+
+    fn conflict_existing(existing_id: i32) -> Self {
+        Self {
+            status: StatusCode::CONFLICT,
+            message: "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.".to_string(),
+            headers: None,
+            extra: Some(json!({ "existingId": existing_id })),
         }
     }
 }
 
 impl IntoResponse for AdminError {
     fn into_response(self) -> Response {
-        let body = json!({ "error": self.message });
+        let mut body = json!({ "error": self.message });
+        if let Some(Value::Object(extra)) = self.extra
+            && let Some(obj) = body.as_object_mut()
+        {
+            obj.extend(extra);
+        }
         let mut response = (self.status, Json(body)).into_response();
         if let Some(headers) = self.headers {
             for (key, value) in headers.as_ref().iter() {
@@ -142,6 +160,7 @@ pub struct AdminWarning {
     pub response: String,
     pub severity: String,
     pub user_message: Option<String>,
+    pub use_custom_message: bool,
     pub situation: Option<String>,
     pub internal_note: Option<String>,
     pub show_from: Option<DateTime<Utc>>,
@@ -165,6 +184,7 @@ pub struct WarningRequest {
     pub response: Option<String>,
     pub severity: Option<String>,
     pub user_message: Option<String>,
+    pub use_custom_message: Option<bool>,
     pub situation: Option<String>,
     pub internal_note: Option<String>,
     /// ISO-8601 timestamp, or empty string when unset / cleared.
@@ -324,6 +344,7 @@ fn build_changes(old: &AdminWarning, new: &AdminWarning) -> Value {
     push_change!(response);
     push_change!(severity);
     push_change!(user_message);
+    push_change!(use_custom_message);
     push_change!(situation);
     push_change!(internal_note);
     push_change!(show_from);
@@ -401,6 +422,7 @@ pub async fn create_warning(
 
     let user_message = empty_to_none(body.user_message).or_else(|| generated.clone());
     let user_message = user_message.unwrap_or_default();
+    let use_custom_message = body.use_custom_message.unwrap_or(false);
     // Treasury-creation replaces the form with the waitlist; login messages are
     // auto-generated from the catalog — skip the requirement for both.
     let skip_message_check = matches!(slot.as_deref(), Some("treasury-creation") | Some("login"))
@@ -432,6 +454,14 @@ pub async fn create_warning(
             "End time must be after the start time.",
         ));
     }
+    if let (Some(show), Some(start)) = (show_from, starts_at)
+        && start < show
+    {
+        return Err(AdminError::new(
+            StatusCode::BAD_REQUEST,
+            "Event start must be on or after the show-from time.",
+        ));
+    }
 
     let linked_service = empty_to_none(body.linked_service);
     if let Some(ref svc) = linked_service
@@ -452,32 +482,28 @@ pub async fn create_warning(
         )
     })?;
 
-    db::delete_conflicting_warnings_with_audit(
-        &mut tx,
-        None,
-        &slot,
-        &token,
-        &network,
-        &admin.username,
-        "upsert_replace",
-    )
-    .await
-    .map_err(|_| {
-        AdminError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to create warning.",
-        )
-    })?;
+    if let Some(existing_id) =
+        db::find_conflicting_warning_id(&mut *tx, None, &slot, &token, &network)
+            .await
+            .map_err(|_| {
+                AdminError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to create warning.",
+                )
+            })?
+    {
+        return Err(AdminError::conflict_existing(existing_id));
+    }
 
     let warning = sqlx::query_as::<_, AdminWarning>(&format!(
         r#"
         INSERT INTO warning_slots (
             slot, token, network, is_active, response, severity,
-            user_message, situation, internal_note,
+            user_message, use_custom_message, situation, internal_note,
             show_from, starts_at, ends_at,
             linked_service, linked_post_id, group_id, updated_by
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING {ADMIN_WARNING_COLUMNS}
         "#
     ))
@@ -488,6 +514,7 @@ pub async fn create_warning(
     .bind(&response)
     .bind(&severity)
     .bind(&user_message)
+    .bind(use_custom_message)
     .bind(&situation)
     .bind(empty_to_none(body.internal_note))
     .bind(show_from)
@@ -504,9 +531,15 @@ pub async fn create_warning(
         if let sqlx::Error::Database(db_err) = &e
             && db_err.constraint().is_some()
         {
-            return AdminError::new(StatusCode::CONFLICT, "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.");
+            return AdminError::new(
+                StatusCode::CONFLICT,
+                "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.",
+            );
         }
-        AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create warning. Please try again.")
+        AdminError::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create warning. Please try again.",
+        )
     })?;
 
     let action = if show_from.is_some() || ends_at.is_some() {
@@ -530,6 +563,7 @@ pub async fn create_warning(
             "response": warning.response,
             "severity": warning.severity,
             "user_message": warning.user_message,
+            "use_custom_message": warning.use_custom_message,
             "situation": warning.situation,
             "internal_note": warning.internal_note,
             "show_from": warning.show_from,
@@ -638,10 +672,35 @@ pub async fn update_warning(
     );
 
     let user_message = empty_to_none(body.user_message).or(generated);
+    let use_custom_message = body
+        .use_custom_message
+        .unwrap_or(existing.use_custom_message);
     let internal_note = empty_to_none(body.internal_note);
     let show_from = parse_optional_utc(body.show_from);
     let starts_at = parse_optional_utc(body.starts_at);
     let ends_at = parse_optional_utc(body.ends_at);
+    if !is_active && show_from.is_none() {
+        return Err(AdminError::new(
+            StatusCode::BAD_REQUEST,
+            "Either mark the warning as active or set a show-from time.",
+        ));
+    }
+    if let (Some(start), Some(end)) = (starts_at, ends_at)
+        && end <= start
+    {
+        return Err(AdminError::new(
+            StatusCode::BAD_REQUEST,
+            "End time must be after the start time.",
+        ));
+    }
+    if let (Some(show), Some(start)) = (show_from, starts_at)
+        && start < show
+    {
+        return Err(AdminError::new(
+            StatusCode::BAD_REQUEST,
+            "Event start must be on or after the show-from time.",
+        ));
+    }
     let linked_service = empty_to_none(body.linked_service);
     let mut linked_post_id = empty_to_none(body.linked_post_id);
     if linked_service.is_none() {
@@ -659,12 +718,16 @@ pub async fn update_warning(
     }
 
     if warning_should_be_deleted(is_active, &show_from, &ends_at) {
+        let mut extra = json!({ "source": "admin_update" });
+        if let Some(ref gid) = existing.group_id {
+            extra["group_id"] = json!(gid);
+        }
         let changes = db::audit_delete_changes(
             existing.id,
             slot.clone(),
             token.clone(),
             network.clone(),
-            json!({ "source": "admin_update" }),
+            extra,
         );
         db::delete_warning_with_audit(&state.db_pool, id, &admin.username, changes)
             .await
@@ -704,22 +767,18 @@ pub async fn update_warning(
         )
     })?;
 
-    db::delete_conflicting_warnings_with_audit(
-        &mut tx,
-        Some(id),
-        &slot,
-        &token,
-        &network,
-        &admin.username,
-        "upsert_replace",
-    )
-    .await
-    .map_err(|_| {
-        AdminError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to update warning.",
-        )
-    })?;
+    if let Some(existing_id) =
+        db::find_conflicting_warning_id(&mut *tx, Some(id), &slot, &token, &network)
+            .await
+            .map_err(|_| {
+                AdminError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to update warning.",
+                )
+            })?
+    {
+        return Err(AdminError::conflict_existing(existing_id));
+    }
 
     let updated = sqlx::query_as::<_, AdminWarning>(&format!(
         r#"
@@ -732,15 +791,16 @@ pub async fn update_warning(
             response = $6,
             severity = $7,
             user_message = $8,
-            situation = $9,
-            internal_note = $10,
-            show_from = $11,
-            starts_at = $12,
-            ends_at = $13,
-            linked_service = $14,
-            linked_post_id = $15,
-            group_id = $16,
-            updated_by = $17,
+            use_custom_message = $9,
+            situation = $10,
+            internal_note = $11,
+            show_from = $12,
+            starts_at = $13,
+            ends_at = $14,
+            linked_service = $15,
+            linked_post_id = $16,
+            group_id = $17,
+            updated_by = $18,
             updated_at = NOW()
         WHERE id = $1
         RETURNING {ADMIN_WARNING_COLUMNS}
@@ -754,6 +814,7 @@ pub async fn update_warning(
     .bind(&response)
     .bind(&severity)
     .bind(&user_message)
+    .bind(use_custom_message)
     .bind(&situation)
     .bind(&internal_note)
     .bind(show_from)
@@ -772,7 +833,7 @@ pub async fn update_warning(
         {
             return AdminError::new(
                 StatusCode::CONFLICT,
-                "A warning with the same slot, token, and network combination already exists.",
+                "A warning with the same slot, token, and network combination already exists. Edit the existing one instead, or delete it first.",
             );
         }
         AdminError::new(
@@ -787,10 +848,19 @@ pub async fn update_warning(
         &updated.show_from,
         &updated.ends_at,
     );
-    let changes = build_changes(&previous, &updated);
-    let has_changes = !changes.as_object().is_some_and(|m| m.is_empty());
+    let mut changes = build_changes(&previous, &updated);
+    // Always stamp group_id so the admin audit UI can collapse grouped saves.
+    if let Some(obj) = changes.as_object_mut()
+        && let Some(ref gid) = updated.group_id
+    {
+        obj.entry("group_id".to_string())
+            .or_insert_with(|| json!(gid));
+    }
+    let has_field_changes = changes
+        .as_object()
+        .is_some_and(|m| m.keys().any(|k| k != "group_id"));
 
-    if has_changes {
+    if has_field_changes {
         insert_audit_log_in_tx(&mut tx, Some(id), action, &admin.username, changes)
             .await
             .map_err(|(status, msg)| AdminError::new(status, msg))?;
@@ -806,7 +876,7 @@ pub async fn update_warning(
     db::invalidate_warnings_cache(&state).await;
 
     // Only alert when the edit actually changed something.
-    if has_changes {
+    if has_field_changes {
         notifications::notify_warning_event(
             &state,
             WarningEvent {
@@ -846,18 +916,23 @@ pub async fn delete_warning(
     .bind(id)
     .fetch_optional(&state.db_pool)
     .await
-    .map_err(|_| AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to load warning."))?
-    .ok_or(AdminError::new(
-        StatusCode::NOT_FOUND,
-        "Warning not found — it may have been deleted already.",
-    ))?;
+    .map_err(|_| AdminError::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to load warning."))?;
 
+    // Idempotent: already-deleted ids succeed so duplicate clicks don't error.
+    let Some(existing) = existing else {
+        return Ok(StatusCode::NO_CONTENT);
+    };
+
+    let mut extra = json!({});
+    if let Some(ref gid) = existing.group_id {
+        extra["group_id"] = json!(gid);
+    }
     let changes = db::audit_delete_changes(
         existing.id,
         existing.slot.clone(),
         existing.token.clone(),
         existing.network.clone(),
-        json!({}),
+        extra,
     );
     db::delete_warning_with_audit(&state.db_pool, id, &admin.username, changes)
         .await

@@ -772,7 +772,7 @@ export async function getStakingValidatorDetails(
 export interface ProfileData {
     name?: string;
     addressBookName?: string;
-    image?: string;
+    image?: string | { url?: string; ipfs_cid?: string; ipfsCid?: string };
     backgroundImage?: string;
     description?: string;
     linktree?: any;
@@ -1414,6 +1414,51 @@ export async function prepareConfidentialBulkPayment(
         {
             withCredentials: true,
         },
+    );
+    return response.data;
+}
+
+/**
+ * Confidential bulk-payment activation (existing treasuries)
+ */
+export type BulkActivationState =
+    | "active"
+    | "awaiting_approval"
+    | "failed"
+    | "inactive";
+
+export interface BulkActivationStatus {
+    status: BulkActivationState;
+    bulkAccountId: string;
+    pendingPayloadHash?: string;
+}
+
+export async function getBulkActivationStatus(
+    daoId: string,
+): Promise<BulkActivationStatus> {
+    const url = `${BACKEND_API_BASE}/confidential-intents/bulk-payment/activation`;
+    const response = await axios.get<BulkActivationStatus>(url, {
+        params: { daoId },
+        withCredentials: true,
+    });
+    return response.data;
+}
+
+export interface BulkActivationPrepareResponse {
+    bulkAccountId: string;
+    /** SputnikDAO add_proposal args: `{ proposal: { description, kind } }`. */
+    proposal: { proposal: { description: string; kind: unknown } };
+    payloadHash: string;
+}
+
+export async function prepareBulkActivation(
+    daoId: string,
+): Promise<BulkActivationPrepareResponse> {
+    const url = `${BACKEND_API_BASE}/confidential-intents/bulk-payment/activation/prepare`;
+    const response = await axios.post<BulkActivationPrepareResponse>(
+        url,
+        { daoId },
+        { withCredentials: true },
     );
     return response.data;
 }

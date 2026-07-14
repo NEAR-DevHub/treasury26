@@ -1,3 +1,4 @@
+import { ScrollContainer } from "@/components/scroll-container";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BaseFilterPopover } from "./base-filter-popover";
 import { useFilterState } from "../hooks/use-filter-state";
@@ -71,7 +72,7 @@ export function CheckboxFilterContent({
             onDelete={handleDelete}
             className={className}
         >
-            <div className="max-h-60 overflow-y-auto">
+            <ScrollContainer className="max-h-60">
                 {options.map((option) => (
                     <label
                         key={option.value}
@@ -86,7 +87,7 @@ export function CheckboxFilterContent({
                         <span className="text-sm">{option.label}</span>
                     </label>
                 ))}
-            </div>
+            </ScrollContainer>
         </BaseFilterPopover>
     );
 }

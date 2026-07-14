@@ -79,7 +79,7 @@ async fn test_balance_query_before_account_exists(pool: PgPool) -> sqlx::Result<
         after_creation_block, balance_after
     );
     assert!(
-        balance_after > bigdecimal::BigDecimal::from(0),
+        balance_after > 0,
         "Balance after account creation should be non-zero, got: {}",
         balance_after
     );
@@ -104,12 +104,7 @@ async fn test_monitor_cycle_creation_account(pool: PgPool) -> sqlx::Result<()> {
         .db_pool(pool.clone())
         .build()
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
     // UP_TO_BLOCK is historical — route all RPC through the archival endpoint.
     app_state.network = app_state.archival_network.clone();
     let app_state_arc = Arc::new(app_state);
@@ -140,12 +135,7 @@ async fn test_monitor_cycle_creation_account(pool: PgPool) -> sqlx::Result<()> {
     // Run the monitoring cycle
     run_maintenance_cycle(&app_state_arc, UP_TO_BLOCK)
         .await
-        .map_err(|e| {
-            sqlx::Error::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| sqlx::Error::Io(std::io::Error::other(e.to_string())))?;
 
     println!("Monitoring cycle completed");
 

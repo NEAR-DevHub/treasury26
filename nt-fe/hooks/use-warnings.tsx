@@ -37,6 +37,26 @@ import {
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 const WARNINGS_POLL_INTERVAL_MS = 15_000;
 
+/** Sentinel id for the client-only fallback when /api/warnings is unreachable. */
+const BACKEND_DOWN_FALLBACK_ID = -1;
+
+/** Matches shared/status-situations.json `backend_down` (app / notice / high). */
+function buildBackendDownFallback(): Warning {
+    return {
+        id: BACKEND_DOWN_FALLBACK_ID,
+        slot: "app",
+        token: null,
+        network: null,
+        response: "notice",
+        severity: "high",
+        situation: "backend_down",
+        message: null,
+        showFrom: null,
+        startsAt: null,
+        endsAt: null,
+    };
+}
+
 export type WarningResponse = "notice" | "paused";
 export type WarningSeverity = "low" | "high" | "critical";
 
@@ -49,6 +69,8 @@ export interface Warning {
     severity: WarningSeverity;
     situation: string | null;
     message: string | null;
+    /** When true, show stored message as-is instead of translated catalog copy. */
+    useCustomMessage?: boolean;
     showFrom: string | null;
     startsAt: string | null;
     endsAt: string | null;
@@ -161,6 +183,19 @@ async function fetchWarnings(): Promise<{
     };
 }
 
+/** True when the backend (or its DB) is unreachable / unhealthy. */
+async function fetchBackendHealthy(): Promise<boolean> {
+    try {
+        const { data } = await axios.get<{ status?: string }>(
+            `${BACKEND_API_BASE}/health`,
+            { timeout: 10_000 },
+        );
+        return data?.status === "healthy";
+    } catch {
+        return false;
+    }
+}
+
 interface WarningsContextValue {
     warnings: Warning[];
     actionBySlot: Record<string, string>;
@@ -176,7 +211,11 @@ interface WarningsContextValue {
 const WarningsContext = createContext<WarningsContextValue | null>(null);
 
 export function WarningsProvider({ children }: { children: ReactNode }) {
-    const { data, isLoading } = useQuery({
+    const {
+        data,
+        isLoading,
+        isError: warningsFailed,
+    } = useQuery({
         queryKey: ["warnings"],
         queryFn: fetchWarnings,
         refetchInterval: WARNINGS_POLL_INTERVAL_MS,
@@ -184,7 +223,32 @@ export function WarningsProvider({ children }: { children: ReactNode }) {
         retry: false,
     });
 
-    const warnings = data?.warnings ?? [];
+    // Only hit /api/health when warnings already failed — confirms a real
+    // backend/DB outage vs a warnings-route-only problem. Poll while that
+    // failure persists so the banner clears (or reappears) correctly.
+    const { data: backendHealthy = true } = useQuery({
+        queryKey: ["backend-health"],
+        queryFn: fetchBackendHealthy,
+        enabled: warningsFailed,
+        refetchInterval: WARNINGS_POLL_INTERVAL_MS,
+        staleTime: WARNINGS_POLL_INTERVAL_MS,
+        retry: false,
+    });
+
+    const showBackendDownFallback = warningsFailed && !backendHealthy;
+
+    const warnings = useMemo(() => {
+        const apiWarnings = data?.warnings ?? [];
+        if (!showBackendDownFallback) {
+            return apiWarnings;
+        }
+        const hasBackendDown = apiWarnings.some(
+            (w) => w.situation === "backend_down",
+        );
+        return hasBackendDown
+            ? apiWarnings
+            : [...apiWarnings, buildBackendDownFallback()];
+    }, [data?.warnings, showBackendDownFallback]);
     const actionBySlot = data?.actionBySlot ?? {};
 
     const getWarning = useCallback(
@@ -295,9 +359,6 @@ export function useResolveWarningMessage(): (
             if (situationId && situationHidesUserMessage(situationId)) {
                 return null;
             }
-            if (situationId && situationUsesCustomCopy(situationId)) {
-                return warning.message?.trim() || null;
-            }
 
             const schedule = formatWarningScheduleText(
                 formatDate,
@@ -305,6 +366,23 @@ export function useResolveWarningMessage(): (
                 warning.endsAt,
                 scheduleLabels,
             );
+            const action = getAction(effectiveSlot);
+            const runtimeValues = {
+                action,
+                schedule,
+                statusPageLink,
+            };
+
+            const stored = warning.message?.trim();
+            // Explicit admin override, or catalog situations that always use
+            // free-form copy (e.g. funds_at_risk).
+            if (
+                stored &&
+                (warning.useCustomMessage ||
+                    (situationId && situationUsesCustomCopy(situationId)))
+            ) {
+                return fillStoredWarningMessage(stored, runtimeValues);
+            }
 
             if (situationId) {
                 const messageKey = situationMessageKey(
@@ -318,20 +396,15 @@ export function useResolveWarningMessage(): (
                         token: formatWarningToken(warning.token),
                         network: formatWarningNetwork(warning.network),
                         wallet: walletFromLoginSlot(warning.slot),
-                        action: getAction(effectiveSlot),
+                        action,
                         schedule,
                         statusPageLink,
                     });
                 }
             }
 
-            const stored = warning.message?.trim();
             if (!stored) return null;
-            return fillStoredWarningMessage(stored, {
-                action: getAction(effectiveSlot),
-                schedule,
-                statusPageLink,
-            });
+            return fillStoredWarningMessage(stored, runtimeValues);
         },
         [
             formatDate,

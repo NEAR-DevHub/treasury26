@@ -290,6 +290,18 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
         case "upgrade_self":
         case "upgrade_remote":
             return "Upgrade";
+        case "add_member_to_role":
+        case "remove_member_from_role":
+            return "Members";
+        case "set_staking_contract":
+            return "Set Staking Contract";
+        case "add_bounty":
+        case "bounty_done":
+            return "Bounty";
+        case "vote":
+            return "Vote";
+        case "factory_info_update":
+            return "Factory Info Update";
         default:
             return "Unsupported";
     }

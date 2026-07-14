@@ -5,6 +5,7 @@ use axum::{
 };
 use near_api::AccountId;
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::handlers::proposals::{
@@ -80,6 +81,17 @@ struct ConfidentialProposalMetadataRow {
     gold_usd_change: Option<String>,
 }
 
+#[derive(sqlx::FromRow)]
+struct PublicProposalMetadataRow {
+    proposal_id: i64,
+    proposal_created_at: Option<chrono::DateTime<chrono::Utc>>,
+    proposal_executed_at: Option<chrono::DateTime<chrono::Utc>>,
+    amount_in_usd: Option<String>,
+    amount_out_usd: Option<String>,
+    usd_change: Option<String>,
+    transaction_type: String,
+}
+
 pub async fn get_proposals(
     State(state): State<Arc<AppState>>,
     auth_user: OptionalAuthUser,
@@ -143,12 +155,11 @@ pub async fn get_proposals(
 
     // Enrich confidential proposals BEFORE filtering so filters can see subtype.
     // Only enrich if the caller is an authenticated DAO member.
-    let should_enrich = auth_user
+    let confidentiality_check = auth_user
         .verify_member_if_confidential(&state.db_pool, dao_id.as_ref())
-        .await
-        .unwrap_or(false);
+        .await;
     let mut proposals = proposals;
-    if should_enrich {
+    if matches!(confidentiality_check, Ok(true)) {
         enrich_confidential_proposals(&mut proposals, &state.db_pool, dao_id.as_ref()).await;
     }
 
@@ -174,7 +185,7 @@ pub async fn get_proposals(
     let total = filtered_proposals.len();
 
     // Handle pagination
-    let proposals = match (query.page, query.page_size) {
+    let mut proposals = match (query.page, query.page_size) {
         (Some(page), Some(page_size)) => {
             let start = page * page_size;
             let end = start + page_size;
@@ -187,6 +198,10 @@ pub async fn get_proposals(
         }
         _ => filtered_proposals,
     };
+
+    if matches!(confidentiality_check, Ok(false)) {
+        enrich_public_proposals(&mut proposals, &state.db_pool, dao_id.as_ref()).await;
+    }
 
     let response = PaginatedProposals {
         proposals,
@@ -218,12 +233,18 @@ pub async fn get_proposal(
         .await?;
 
     // Enrich if confidential — only for authenticated DAO members
-    let is_confidential = auth_user
+    let confidentiality_check = auth_user
         .verify_member_if_confidential(&state.db_pool, dao_id.as_ref())
-        .await
-        .unwrap_or(false);
-    if is_confidential {
+        .await;
+    if matches!(confidentiality_check, Ok(true)) {
         enrich_confidential_proposals(
+            std::slice::from_mut(&mut proposal),
+            &state.db_pool,
+            dao_id.as_ref(),
+        )
+        .await;
+    } else if matches!(confidentiality_check, Ok(false)) {
+        enrich_public_proposals(
             std::slice::from_mut(&mut proposal),
             &state.db_pool,
             dao_id.as_ref(),
@@ -552,6 +573,85 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
                 map.insert("bulk".into(), bulk.clone());
             }
             proposals[*idx].confidential_metadata = Some(merged);
+        }
+    }
+}
+
+/// Enrich public payment/exchange proposals with historical dates and USD
+/// values from public gold history. This is display-only metadata, so list
+/// responses call it after filtering/pagination to avoid querying unseen rows.
+async fn enrich_public_proposals(proposals: &mut [Proposal], pool: &PgPool, dao_id: &str) {
+    let proposal_indices: Vec<(usize, i64)> = proposals
+        .iter()
+        .enumerate()
+        .filter_map(|(index, proposal)| {
+            i64::try_from(proposal.id)
+                .ok()
+                .map(|proposal_id| (index, proposal_id))
+        })
+        .collect();
+
+    if proposal_indices.is_empty() {
+        return;
+    }
+
+    let proposal_ids: Vec<i64> = proposal_indices
+        .iter()
+        .map(|(_, proposal_id)| *proposal_id)
+        .collect();
+
+    let rows = sqlx::query_as::<_, PublicProposalMetadataRow>(
+        r#"
+        SELECT DISTINCT ON (proposal_id)
+            proposal_id,
+            proposal_created_at,
+            proposal_executed_at,
+            amount_in_usd::TEXT,
+            amount_out_usd::TEXT,
+            usd_change::TEXT,
+            transaction_type::TEXT AS transaction_type
+        FROM gold_public_history_events
+        WHERE dao_id = $1
+          AND proposal_id = ANY($2::BIGINT[])
+          AND transaction_type IN ('sent', 'exchange')
+        ORDER BY proposal_id, COALESCE(proposal_executed_at, proposal_created_at, event_time) DESC, id DESC
+        "#,
+    )
+    .bind(dao_id)
+    .bind(&proposal_ids)
+    .fetch_all(pool)
+    .await;
+
+    let rows = match rows {
+        Ok(rows) => rows,
+        Err(error) => {
+            tracing::warn!("Failed to fetch public proposal metadata: {}", error);
+            return;
+        }
+    };
+
+    let metadata_map: HashMap<i64, serde_json::Value> = rows
+        .iter()
+        .map(|row| {
+            (
+                row.proposal_id,
+                serde_json::json!({
+                    "proposal_created_at": row.proposal_created_at,
+                    "proposal_executed_at": row.proposal_executed_at,
+                    "gold_metadata": {
+                        "amount_in_usd": row.amount_in_usd,
+                        "amount_out_usd": row.amount_out_usd,
+                        "usd_change": row.usd_change,
+                        "transaction_type": row.transaction_type,
+                    },
+                }),
+            )
+        })
+        .collect();
+
+    for (index, proposal_id) in proposal_indices {
+        if let Some(metadata) = metadata_map.get(&proposal_id) {
+            proposals[index].public_metadata = Some(metadata.clone());
         }
     }
 }

@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use crate::handlers::balance_changes::completeness;
 use crate::handlers::balance_changes::confidential_list;
+use crate::handlers::balance_changes::public_list;
 use crate::handlers::balance_changes::{gap_filler, query_builder::*};
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::utils::serde::comma_separated;
@@ -145,8 +146,21 @@ pub async fn get_balance_changes_internal(
     state: &Arc<AppState>,
     params: &BalanceChangesQuery,
 ) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
-    if confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str()).await? {
+    let is_confidential =
+        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str()).await?;
+    if is_confidential {
         return confidential_list::fetch_balance_change_legs(state, params).await;
+    }
+
+    let has_public_gold_rows: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM gold_public_history_events WHERE dao_id = $1)",
+    )
+    .bind(params.account_id.as_str())
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    if has_public_gold_rows {
+        return public_list::fetch_balance_change_legs(state, params).await;
     }
 
     // Parse dates

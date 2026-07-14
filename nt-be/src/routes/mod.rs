@@ -78,6 +78,7 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/public/dashboard/aum",
             get(handlers::public_dashboard::get_public_dashboard_aum),
         )
+        .route("/api/app-events", get(handlers::events::app_events))
         // Balance changes endpoint
         .route(
             "/api/balance-changes",
@@ -348,6 +349,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             post(
                 handlers::intents::confidential::bulk_payment_prepare::bulk_payment_prepare,
             ),
+        )
+        .route(
+            "/api/confidential-intents/bulk-payment/activation",
+            get(handlers::intents::confidential::bulk_activation::get_bulk_activation_status),
+        )
+        .route(
+            "/api/confidential-intents/bulk-payment/activation/prepare",
+            post(handlers::intents::confidential::bulk_activation::prepare_bulk_activation),
         )
         // Proxy endpoints - catch-all for external API
         .route(

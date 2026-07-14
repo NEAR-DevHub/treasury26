@@ -43,16 +43,16 @@ import {
     useSwapStatus,
 } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
+import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
 import Big from "@/lib/big";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
 import { cn, getIntentsExplorerUrl, nanosToMs } from "@/lib/utils";
-import { stripMessageForTooltip } from "@/lib/warnings";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
 import { NotEnoughBalance } from "../../not-enough-balance";
+import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
 import { UserVote } from "../../user-vote";
 import { VotingDurationImpactModal } from "../../voting-duration-impact-modal";
 
@@ -285,24 +285,11 @@ export function ProposalSidebar({
     const approveBlock = useProposalApproveBlock([proposal]);
     const approveBlocked = approveBlock.anyBlocked;
     const approveBlockedWarning = approveBlock.blockedWarnings[0] ?? null;
-    // Approve and reject are independent slots, so ops can pause approving while
-    // rejection keeps working (approvals_paused) — or pause everything.
-    const approveSlot = useSlotBlock("action.approve");
-    const rejectSlot = useSlotBlock("action.reject");
-    // One banner covers the vote actions: the approve copy already explains
-    // rejection still works, so it takes precedence; reject is the fallback.
-    const voteBannerSlot = approveSlot.blocked
-        ? "action.approve"
-        : rejectSlot.blocked
-          ? "action.reject"
-          : null;
-    // A slot warning is shown inline via <SlotWarning>, so a button tooltip is
-    // only the fallback for an app-wide block (nothing in the sidebar explains
-    // why the button is disabled).
-    const approveBlockIsAppLevel =
-        approveSlot.blocked && approveSlot.warning?.slot !== "action.approve";
-    const rejectBlockIsAppLevel =
-        rejectSlot.blocked && rejectSlot.warning?.slot !== "action.reject";
+    const {
+        approve: approveSlot,
+        reject: rejectSlot,
+        voteBannerSlot,
+    } = useVoteActionSlots();
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isExchangeProposal = proposalType === "Exchange";
@@ -335,6 +322,8 @@ export function ProposalSidebar({
     let confidentialPaymentData: PaymentRequestData | undefined;
     let confidentialProposalCreatedAt: Date | undefined;
     let confidentialExecutedAt: Date | undefined;
+    let publicProposalCreatedAt: Date | undefined;
+    let publicExecutedAt: Date | undefined;
     if (isExchangeProposal || isPaymentProposal || isConfidentialRequest) {
         try {
             const { data } = extractProposalData(proposal, treasuryId);
@@ -355,6 +344,13 @@ export function ProposalSidebar({
                 depositAddress = mapped?.data?.depositAddress;
             } else {
                 depositAddress = (data as any)?.depositAddress;
+                publicProposalCreatedAt = parseOptionalDate(
+                    proposal.public_metadata?.proposal_created_at,
+                );
+                publicExecutedAt =
+                    parseOptionalDate(
+                        proposal.public_metadata?.proposal_executed_at,
+                    ) ?? publicProposalCreatedAt;
             }
         } catch (e) {}
     }
@@ -455,12 +451,14 @@ export function ProposalSidebar({
         default:
             timestamp =
                 confidentialExecutedAt ??
+                publicExecutedAt ??
                 getProposalExecutedDate(swapStatus, transaction) ??
                 undefined;
             break;
     }
     const createdAt =
         confidentialProposalCreatedAt ??
+        publicProposalCreatedAt ??
         new Date(nanosToMs(proposal.submission_time));
 
     const isLastApprovingVote = () => {
@@ -682,8 +680,8 @@ export function ProposalSidebar({
                         onClick={() => onVote("Reject")}
                         disabled={isUserVoter || rejectSlot.blocked}
                         tooltip={
-                            rejectBlockIsAppLevel
-                                ? stripMessageForTooltip(rejectSlot.message)
+                            rejectSlot.inlineTooltip
+                                ? rejectSlot.inlineTooltip
                                 : isUserVoter
                                   ? noVoteMessage
                                   : undefined
@@ -692,7 +690,8 @@ export function ProposalSidebar({
                         <X className="h-4 w-4 mr-2" />
                         {t("reject")}
                     </AuthButtonWithProposal>
-                    {insufficientBalanceInfo.hasInsufficientBalance ? (
+                    {insufficientBalanceInfo.hasInsufficientBalance &&
+                    insufficientBalanceInfo.showDeposit !== false ? (
                         <span className="w-full">
                             <Button
                                 variant="default"
@@ -719,13 +718,12 @@ export function ProposalSidebar({
                                 isUserVoter ||
                                 isCheckingVotingDurationImpact ||
                                 approveBlocked ||
-                                approveSlot.blocked
+                                approveSlot.blocked ||
+                                insufficientBalanceInfo.hasInsufficientBalance
                             }
                             tooltip={
-                                approveBlockIsAppLevel
-                                    ? stripMessageForTooltip(
-                                          approveSlot.message,
-                                      )
+                                approveSlot.inlineTooltip
+                                    ? approveSlot.inlineTooltip
                                     : isUserVoter
                                       ? noVoteMessage
                                       : undefined

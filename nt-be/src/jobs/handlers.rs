@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use apalis::prelude::*;
 use apalis_cron::Tick;
+use tokio::sync::{Mutex, OnceCell};
 
 use crate::AppState;
 
@@ -55,6 +56,92 @@ pub async fn price_sync(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, 
     Ok(summary)
 }
 
+/// Backfills historical `token_prices` samples from DeFiLlama for the
+/// (token, 5-minute bucket) pairs `balance_changes` rows need.
+pub async fn token_price_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::HistoricalPriceBackfill::new(
+        state.http_client.clone(),
+        state.env_vars.defillama_api_base_url.clone(),
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+        state.defillama_limiter.clone(),
+    );
+    let summary = backfill.run().await?;
+    Ok(summary.to_string())
+}
+
+/// Fills `balance_changes.usd_value` from the `token_prices` series.
+pub async fn balance_changes_usd_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::BalanceChangesUsdBackfill::new(
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+    );
+    Ok(backfill.run().await?.to_string())
+}
+
+/// Fills NULL `amount_in_usd`/`amount_out_usd` on public gold events.
+pub async fn gold_public_usd_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::GoldPublicUsdBackfill::new(
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+    );
+    Ok(backfill.run().await?.to_string())
+}
+
+/// Fills NULL `amount_in_usd`/`amount_out_usd` on confidential gold events.
+pub async fn gold_confidential_usd_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::GoldConfidentialUsdBackfill::new(
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+    );
+    Ok(backfill.run().await?.to_string())
+}
+
+/// Ingests the Chaindefuser token registry into `tokens` + `token_prices`.
+pub async fn token_price_ingest(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    static INGESTOR: OnceCell<Mutex<crate::services::TokenPriceIngestor>> = OnceCell::const_new();
+
+    let ingestor = INGESTOR
+        .get_or_init(|| async {
+            Mutex::new(crate::services::TokenPriceIngestor::new(
+                state.http_client.clone(),
+                state.db_pool.clone(),
+                Arc::clone(&state.token_price_service),
+            ))
+        })
+        .await;
+
+    let mut ingestor = ingestor.lock().await;
+    let summary = ingestor.tick_result().await?;
+
+    if summary.upstream_unchanged {
+        return Ok("tokens API unchanged".to_string());
+    }
+
+    Ok(format!(
+        "tokens={} sampled={} price_rows={} snapshot_tokens={}",
+        summary.tokens_seen,
+        summary.sampled_prices,
+        summary.price_rows_written,
+        summary.snapshot_tokens
+    ))
+}
+
 /// Confidential history (bronze) ingest scheduler tick.
 pub async fn confidential_history_ingest(
     _t: Tick,
@@ -69,6 +156,85 @@ pub async fn confidential_history_ingest(
     Ok(format!(
         "seen={} processed={} failed={}",
         result.accounts_seen, result.accounts_processed, result.accounts_failed
+    ))
+}
+
+/// Public history bronze scheduler: Goldsky latest refresh enqueue + backfill seeding.
+pub async fn public_history_scheduler(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::bronze::jobs::run_public_history_scheduler_cycle(&state)
+            .await?;
+    Ok(format!(
+        "latest_enqueued={} backfill_enqueued={}",
+        stats.latest_enqueued, stats.backfill_enqueued
+    ))
+}
+
+/// Public history silver projection for dirty accounts.
+pub async fn public_silver_projection(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::silver::worker::project_public_silver_for_dirty_accounts(
+            &state.db_pool,
+        )
+        .await?;
+    Ok(format!(
+        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={}",
+        stats.accounts_seen,
+        stats.accounts_projected,
+        stats.accounts_skipped_locked,
+        stats.accounts_failed,
+        stats.rows_projected,
+        stats.rows_deleted,
+        stats.errors_written
+    ))
+}
+
+/// Public history gold projection for dirty accounts.
+pub async fn public_gold_projection(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::gold::projector::project_public_gold_for_dirty_accounts(
+            &state.db_pool,
+            &state.token_price_service,
+            state.signer_id.as_str(),
+        )
+        .await?;
+    let changed = stats.changed_accounts.len();
+    for account_id in stats.changed_accounts {
+        state.publish_treasury_projection_updated(account_id);
+    }
+    Ok(format!(
+        "seen={} projected={} skipped_locked={} failed={} changed={} rows_projected={} rows_deleted={} errors={}",
+        stats.accounts_seen,
+        stats.accounts_projected,
+        stats.accounts_skipped_locked,
+        stats.accounts_failed,
+        changed,
+        stats.rows_projected,
+        stats.rows_deleted,
+        stats.errors_written
+    ))
+}
+
+/// Reconciles stale public DAO proposal statuses.
+pub async fn public_proposal_reconciliation(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::proposals::reconciler::reconcile_stale_proposals(&state)
+            .await?;
+    Ok(format!(
+        "claimed={} updated={} fetch_failed={}",
+        stats.claimed, stats.updated, stats.fetch_failed
     ))
 }
 
@@ -90,7 +256,7 @@ pub async fn confidential_gold_reconciliation(
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
     crate::handlers::intents::confidential::gold::reconciliation_worker::run_reconciliation_pass(
-        &state.db_pool,
+        &state,
         "scheduled",
     )
     .await;
@@ -124,16 +290,32 @@ pub async fn goldsky_enrichment(
 
     let mut total = 0usize;
     loop {
-        let processed = crate::handlers::balance_changes::goldsky_enrichment::run_enrichment_cycle(
-            &goldsky_pool,
-            &state.db_pool,
-            &state.archival_network,
-            intents_api_key.as_deref(),
-            &intents_api_url,
-            Some(&state),
-        )
-        .await
-        .map_err(erase)?;
+        let processed =
+            match crate::handlers::balance_changes::goldsky_enrichment::run_enrichment_cycle(
+                &goldsky_pool,
+                &state.db_pool,
+                &state.archival_network,
+                intents_api_key.as_deref(),
+                &intents_api_url,
+                Some(&state),
+            )
+            .await
+            {
+                Ok(processed) => processed,
+                Err(e) => {
+                    // Batches already processed are committed (the cycle advances
+                    // its cursor per batch), so log that progress and surface the
+                    // failure — the next tick resumes from the cursor. The cycle's
+                    // error is `Box<dyn Error>` (not Send+Sync), so it must be
+                    // stringified via `erase` to cross into a task error.
+                    tracing::warn!(
+                        outcomes_this_task = total,
+                        error = %e,
+                        "goldsky enrichment failed mid-drain"
+                    );
+                    return Err(erase(e));
+                }
+            };
         total += processed;
         if processed < BATCH_SIZE {
             break;
@@ -159,6 +341,8 @@ pub async fn status_monitor(_t: Tick, state: Data<Arc<AppState>>) -> Result<Stri
 }
 
 /// Event detection + Telegram dispatch, concurrently like the old loop.
+/// Each half runs regardless of the other failing; failures are aggregated
+/// so a bad Telegram token can't stall detection (or vice versa).
 pub async fn notifications(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
     let (detected, dispatched) = tokio::join!(
         crate::handlers::notifications::detector::run_detection_cycle(&state.db_pool),
@@ -168,9 +352,27 @@ pub async fn notifications(_t: Tick, state: Data<Arc<AppState>>) -> Result<Strin
             &state.env_vars.frontend_base_url,
         ),
     );
-    let detected = detected?;
-    let dispatched = dispatched?;
-    Ok(format!("detected {detected}, dispatched {dispatched}"))
+
+    // On a one-sided failure, log the partial progress and return the
+    // *original* error value (preserving its type/source chain for Sentry
+    // grouping) rather than a flattened string.
+    match (detected, dispatched) {
+        (Ok(detected), Ok(dispatched)) => {
+            Ok(format!("detected {detected}, dispatched {dispatched}"))
+        }
+        (Err(e), Ok(dispatched)) => {
+            tracing::warn!(dispatched, "notifications: detection failed; dispatch ok");
+            Err(e)
+        }
+        (Ok(detected), Err(e)) => {
+            tracing::warn!(detected, "notifications: dispatch failed; detection ok");
+            Err(e)
+        }
+        (Err(de), Err(pe)) => {
+            tracing::warn!(dispatch_error = %pe, "notifications: detection and dispatch both failed");
+            Err(de)
+        }
+    }
 }
 
 /// Low-balance ops alerts for sponsor accounts.
@@ -201,15 +403,38 @@ pub async fn dao_policy_stale(_t: Tick, state: Data<Arc<AppState>>) -> Result<St
 }
 
 /// Monthly plan credit reset + export expiry (daily at UTC midnight, plus
-/// a startup task).
+/// a startup task). The steps are independent — both always run, failures
+/// are aggregated.
 pub async fn subscription_monthly_reset(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let reset =
-        crate::handlers::subscription::reset_due_monthly_plan_credits(&state.db_pool).await?;
-    let expired = crate::handlers::subscription::expire_old_exports(&state.db_pool).await?;
-    Ok(format!("reset {reset} accounts, expired {expired} exports"))
+    let reset = crate::handlers::subscription::reset_due_monthly_plan_credits(&state.db_pool).await;
+    let expired = crate::handlers::subscription::expire_old_exports(&state.db_pool).await;
+
+    match (reset, expired) {
+        (Ok(reset), Ok(expired)) => {
+            Ok(format!("reset {reset} accounts, expired {expired} exports"))
+        }
+        (Err(e), Ok(expired)) => {
+            tracing::warn!(
+                expired,
+                "monthly reset: credit reset failed; export expiry ok"
+            );
+            Err(e.into())
+        }
+        (Ok(reset), Err(e)) => {
+            tracing::warn!(
+                reset,
+                "monthly reset: export expiry failed; credit reset ok"
+            );
+            Err(e.into())
+        }
+        (Err(re), Err(ee)) => {
+            tracing::warn!(export_error = %ee, "monthly reset: credit reset and export expiry both failed");
+            Err(re.into())
+        }
+    }
 }
 
 /// Ensures the current week's public dashboard snapshot exists (weekly
@@ -225,14 +450,31 @@ pub async fn public_dashboard_refresh(
     })
 }
 
-/// FT lockup DAO schedule refresh + due claims.
+/// FT lockup DAO schedule refresh + due claims. Claims run even when the
+/// refresh fails (due claims from previously-synced schedules are still
+/// valid); failures are aggregated.
 pub async fn ft_lockup_refresh(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let refresh = crate::services::refresh_ft_lockup_dao_schedules(&state).await?;
-    let claims = crate::services::run_due_ft_lockup_claims(&state, None, false).await?;
-    Ok(format!("refresh: {refresh:?}; claims: {claims:?}"))
+    let refresh = crate::services::refresh_ft_lockup_dao_schedules(&state).await;
+    let claims = crate::services::run_due_ft_lockup_claims(&state, None, false).await;
+
+    match (refresh, claims) {
+        (Ok(refresh), Ok(claims)) => Ok(format!("refresh: {refresh:?}; claims: {claims:?}")),
+        (Err(e), Ok(claims)) => {
+            tracing::warn!(?claims, "ft-lockup: schedule refresh failed; claims ok");
+            Err(e)
+        }
+        (Ok(refresh), Err(e)) => {
+            tracing::warn!(?refresh, "ft-lockup: claims failed; refresh ok");
+            Err(e)
+        }
+        (Err(re), Err(ce)) => {
+            tracing::warn!(claims_error = %ce, "ft-lockup: refresh and claims both failed");
+            Err(re)
+        }
+    }
 }
 
 /// Deletes finished apalis tasks older than `APALIS_TASK_RETENTION_DAYS`

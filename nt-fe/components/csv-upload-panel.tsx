@@ -3,6 +3,7 @@
 import { useState, useEffect, useId } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { ScrollContainer } from "@/components/scroll-container";
 import { Textarea } from "@/components/textarea";
 import { Upload, FileText, X } from "lucide-react";
 import {
@@ -246,7 +247,7 @@ export function CsvUploadPanel({
 
                     {/* Errors below file upload */}
                     {activeTab === "upload" && hasErrors && (
-                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                        <ScrollContainer className="space-y-1 max-h-48">
                             {errors.map((error, idx) => (
                                 <div
                                     key={idx}
@@ -255,7 +256,7 @@ export function CsvUploadPanel({
                                     {error.message}
                                 </div>
                             ))}
-                        </div>
+                        </ScrollContainer>
                     )}
                 </div>
             </TabsContent>
@@ -284,7 +285,7 @@ export function CsvUploadPanel({
 
                     {/* Errors below textarea */}
                     {hasErrors && (
-                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                        <ScrollContainer className="space-y-1 max-h-48">
                             {errors.map((error, idx) => (
                                 <div
                                     key={idx}
@@ -293,7 +294,7 @@ export function CsvUploadPanel({
                                     {error.message}
                                 </div>
                             ))}
-                        </div>
+                        </ScrollContainer>
                     )}
                 </div>
             </TabsContent>

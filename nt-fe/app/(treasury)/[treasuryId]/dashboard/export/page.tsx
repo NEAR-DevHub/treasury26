@@ -57,6 +57,7 @@ import {
     TabsTrigger,
 } from "@/components/underline-tabs";
 import { EmptyState } from "@/components/empty-state";
+import { ScrollContainer } from "@/components/scroll-container";
 import { toast } from "sonner";
 import { useFormatHistoryDuration } from "@/features/activity";
 import { format } from "date-fns";
@@ -907,68 +908,72 @@ export default function ExportActivityPage() {
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent
-                                                        className="min-w-(--radix-dropdown-menu-trigger-width) text-foreground max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-muted-foreground/40"
+                                                        className="min-w-(--radix-dropdown-menu-trigger-width) text-foreground p-0"
                                                         align="start"
                                                     >
-                                                        <DropdownMenuCheckboxItem
-                                                            checked={selectedAssets.includes(
-                                                                "all",
-                                                            )}
-                                                            onCheckedChange={() =>
-                                                                toggleAsset(
+                                                        <ScrollContainer className="max-h-[300px] p-1">
+                                                            <DropdownMenuCheckboxItem
+                                                                checked={selectedAssets.includes(
                                                                     "all",
-                                                                )
-                                                            }
-                                                            onSelect={(e) =>
-                                                                e.preventDefault()
-                                                            }
-                                                        >
-                                                            <div className="flex items-center">
-                                                                <Coins className="w-4 h-4 mr-2" />
-                                                                {tExport(
-                                                                    "fields.allAssets",
                                                                 )}
-                                                            </div>
-                                                        </DropdownMenuCheckboxItem>
-                                                        {aggregatedTokens.map(
-                                                            (token: any) => (
-                                                                <DropdownMenuCheckboxItem
-                                                                    key={
-                                                                        token.id
-                                                                    }
-                                                                    checked={selectedAssets.includes(
-                                                                        token.id,
+                                                                onCheckedChange={() =>
+                                                                    toggleAsset(
+                                                                        "all",
+                                                                    )
+                                                                }
+                                                                onSelect={(e) =>
+                                                                    e.preventDefault()
+                                                                }
+                                                            >
+                                                                <div className="flex items-center">
+                                                                    <Coins className="w-4 h-4 mr-2" />
+                                                                    {tExport(
+                                                                        "fields.allAssets",
                                                                     )}
-                                                                    onCheckedChange={() =>
-                                                                        toggleAsset(
+                                                                </div>
+                                                            </DropdownMenuCheckboxItem>
+                                                            {aggregatedTokens.map(
+                                                                (
+                                                                    token: any,
+                                                                ) => (
+                                                                    <DropdownMenuCheckboxItem
+                                                                        key={
+                                                                            token.id
+                                                                        }
+                                                                        checked={selectedAssets.includes(
                                                                             token.id,
-                                                                        )
-                                                                    }
-                                                                    onSelect={(
-                                                                        e,
-                                                                    ) =>
-                                                                        e.preventDefault()
-                                                                    }
-                                                                >
-                                                                    <div className="flex items-center">
-                                                                        {token.icon && (
-                                                                            <img
-                                                                                src={
-                                                                                    token.icon
-                                                                                }
-                                                                                alt={
-                                                                                    token.name ||
-                                                                                    token.id
-                                                                                }
-                                                                                className="w-4 h-4 rounded-full mr-2"
-                                                                            />
                                                                         )}
-                                                                        {token.name ||
-                                                                            token.id}
-                                                                    </div>
-                                                                </DropdownMenuCheckboxItem>
-                                                            ),
-                                                        )}
+                                                                        onCheckedChange={() =>
+                                                                            toggleAsset(
+                                                                                token.id,
+                                                                            )
+                                                                        }
+                                                                        onSelect={(
+                                                                            e,
+                                                                        ) =>
+                                                                            e.preventDefault()
+                                                                        }
+                                                                    >
+                                                                        <div className="flex items-center">
+                                                                            {token.icon && (
+                                                                                <img
+                                                                                    src={
+                                                                                        token.icon
+                                                                                    }
+                                                                                    alt={
+                                                                                        token.name ||
+                                                                                        token.id
+                                                                                    }
+                                                                                    className="w-4 h-4 rounded-full mr-2"
+                                                                                />
+                                                                            )}
+                                                                            {token.name ||
+                                                                                token.id}
+                                                                        </div>
+                                                                    </DropdownMenuCheckboxItem>
+                                                                ),
+                                                            )}
+                                                        </ScrollContainer>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>

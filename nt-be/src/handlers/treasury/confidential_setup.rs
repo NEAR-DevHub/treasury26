@@ -304,49 +304,73 @@ pub fn derive_bulk_subaccount_id(
 ///    on intents.near.
 /// 4. Authenticate with 1Click using sub as `signer_id` + DAO's pubkey + extracted sig.
 /// 5. Store JWT in `bulk_payment_*` columns on `monitored_accounts`.
+///
+/// Make sure the DAO's bulk-payment subaccount exists and is bootstrapped.
+/// Idempotent: skips the factory call when the subaccount already reports a
+/// bootstrap status, and (re)uses `bootstrap`'s Ready state otherwise.
+/// Returns the subaccount id and the DAO's derived MPC public key.
+pub(crate) async fn ensure_bulk_subaccount(
+    state: &Arc<AppState>,
+    treasury_id: &AccountId,
+) -> Result<(AccountId, String), (StatusCode, String)> {
+    let factory_id = state.bulk_payment_contract_id.clone();
+    let sub_id = derive_bulk_subaccount_id(treasury_id, &factory_id)?;
+
+    // Already provisioned? `get_bootstrap_status` answers on any initialized
+    // subaccount; a missing account errors and we fall through to creation.
+    let already_bootstrapped = Contract(sub_id.clone())
+        .call_function("get_bootstrap_status", ())
+        .read_only::<Value>()
+        .fetch_from(&state.network)
+        .await
+        .is_ok();
+
+    if !already_bootstrapped {
+        tracing::info!(
+            "Bulk-payment setup: creating subaccount {} via factory {}",
+            sub_id,
+            factory_id
+        );
+
+        // Factory call. Backend-signed (subsidized); the contract requires
+        // `>= 0.1 NEAR` attached, but we send a bit more for storage headroom.
+        near_api::Contract(factory_id.clone())
+            .call_function(
+                "create_confidential_subaccount",
+                json!({ "dao_id": treasury_id }),
+            )
+            .transaction()
+            .deposit(NearToken::from_millinear(150))
+            .gas(NearGas::from_tgas(150))
+            .with_signer(state.signer_id.clone(), state.signer.clone())
+            .send_to(&state.network)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("factory create_confidential_subaccount failed: {}", e),
+                )
+            })?
+            .into_result()
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("factory create_confidential_subaccount failed: {}", e),
+                )
+            })?;
+    }
+
+    // Poll bootstrap status. Bootstrap fans out 2× derived_public_key + 2×
+    // add_public_key, so it usually settles in 1–2 blocks; cap at ~30s.
+    let dao_mpc_public_key = poll_bootstrap_ready(state, &sub_id).await?;
+    Ok((sub_id, dao_mpc_public_key))
+}
+
 async fn setup_bulk_payment_subaccount(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
 ) -> Result<(), (StatusCode, String)> {
-    let factory_id = state.bulk_payment_contract_id.clone();
-    let sub_id = derive_bulk_subaccount_id(treasury_id, &factory_id)?;
-
-    tracing::info!(
-        "Bulk-payment setup: creating subaccount {} via factory {}",
-        sub_id,
-        factory_id
-    );
-
-    // 1. Factory call. Backend-signed (subsidized); the contract requires
-    //    `>= 0.1 NEAR` attached, but we send a bit more for storage headroom.
-    near_api::Contract(factory_id.clone())
-        .call_function(
-            "create_confidential_subaccount",
-            json!({ "dao_id": treasury_id }),
-        )
-        .transaction()
-        .deposit(NearToken::from_millinear(150))
-        .gas(NearGas::from_tgas(150))
-        .with_signer(state.signer_id.clone(), state.signer.clone())
-        .send_to(&state.network)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("factory create_confidential_subaccount failed: {}", e),
-            )
-        })?
-        .into_result()
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("factory create_confidential_subaccount failed: {}", e),
-            )
-        })?;
-
-    // 2. Poll bootstrap status. Bootstrap fans out 2× derived_public_key + 2×
-    //    add_public_key, so it usually settles in 1–2 blocks; cap at ~30s.
-    let dao_mpc_public_key = poll_bootstrap_ready(state, &sub_id).await?;
+    let (sub_id, dao_mpc_public_key) = ensure_bulk_subaccount(state, treasury_id).await?;
 
     // 3. Build + submit auth proposal (DAO signs, JWT issued for sub).
     let (auth_proposal, auth_payload) =
@@ -451,7 +475,7 @@ async fn poll_bootstrap_ready(
 
 /// Authenticate the bulk-payment subaccount with the 1Click API and persist
 /// the JWT in the `bulk_payment_*` columns of `monitored_accounts`.
-async fn authenticate_bulk_payment_with_1click(
+pub(crate) async fn authenticate_bulk_payment_with_1click(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
     dao_public_key: &str,

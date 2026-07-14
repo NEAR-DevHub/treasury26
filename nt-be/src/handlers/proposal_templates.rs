@@ -279,11 +279,17 @@ pub async fn create_proposal_template(
     Path(dao_id): Path<AccountId>,
     Json(req): Json<CreateProposalTemplateRequest>,
 ) -> Result<(StatusCode, Json<ProposalTemplate>), (StatusCode, String)> {
-    // Authoring a template defines a reusable on-chain action shape that members fill and execute,
-    // so gate writes on the DAO's policy-management permission (ChangePolicy) — reads/fills stay at
-    // membership. Unit-testable via `seed_treasury_policy`.
+    // Writes must be at least as strict as the member-gated reads. `verify_can_perform_action`
+    // alone honors `Everyone` roles, so a DAO granting `AddProposal` to `Everyone` would otherwise
+    // let non-members write templates — gate on DAO membership first, then the action permission.
     auth_user
-        .verify_can_perform_action(&state, &dao_id, "ChangePolicy")
+        .verify_dao_member_for_http(&state.db_pool, &dao_id)
+        .await?;
+    // A template is a reusable shape for a request its author will later file, so authoring is gated
+    // on the same capability as filing — `AddProposal` (issue #1046: Requestors manage templates).
+    // Deletion is the exception: it stays `ChangePolicy` (admin-only) — see `delete_proposal_template`.
+    auth_user
+        .verify_can_perform_action(&state, &dao_id, "AddProposal")
         .await?;
 
     let manifest = validate_manifest(&req.manifest).map_err(|e| (StatusCode::BAD_REQUEST, e))?;
@@ -365,8 +371,13 @@ pub async fn update_proposal_template(
     Path((dao_id, id)): Path<(AccountId, Uuid)>,
     Json(req): Json<UpdateProposalTemplateRequest>,
 ) -> Result<Json<ProposalTemplate>, (StatusCode, String)> {
+    // Member-gated first (see `create_proposal_template`), then authoring. Editing/pinning is
+    // authoring — same `AddProposal` bar as create (issue #1046).
     auth_user
-        .verify_can_perform_action(&state, &dao_id, "ChangePolicy")
+        .verify_dao_member_for_http(&state.db_pool, &dao_id)
+        .await?;
+    auth_user
+        .verify_can_perform_action(&state, &dao_id, "AddProposal")
         .await?;
 
     let manifest = match &req.manifest {
@@ -435,6 +446,13 @@ pub async fn delete_proposal_template(
     auth_user: AuthUser,
     Path((dao_id, id)): Path<(AccountId, Uuid)>,
 ) -> Result<StatusCode, (StatusCode, String)> {
+    // Member-gated first (see `create_proposal_template`), then the admin action. Deletion is
+    // destructive and removes a template other members rely on, so it stays admin-only:
+    // `ChangePolicy`. With the action-only permission matcher this resolves to roles holding a
+    // wildcard-action permission (`policy:*`, `config:*`, `*:*`) — i.e. governance, not Requestors.
+    auth_user
+        .verify_dao_member_for_http(&state.db_pool, &dao_id)
+        .await?;
     auth_user
         .verify_can_perform_action(&state, &dao_id, "ChangePolicy")
         .await?;
@@ -460,7 +478,7 @@ mod tests {
     use crate::{
         routes::create_routes,
         utils::test_utils::{
-            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_change_policy_member,
+            DAO_ID, USER_ACCOUNT_ID, issue_auth_cookie, policy_granting, seed_full_admin_member,
             seed_policy_member, seed_treasury_policy, send, test_state,
         },
     };
@@ -527,7 +545,7 @@ mod tests {
         let app = create_routes(state.clone());
 
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         let mut manifest = valid_manifest();
@@ -549,7 +567,7 @@ mod tests {
         let app = create_routes(state.clone());
 
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         // CREATE
@@ -873,10 +891,11 @@ mod tests {
         }
     }
 
-    /// A policy member who lacks `ChangePolicy` can read/list templates but cannot author them —
-    /// the read/write split the gate exists to enforce.
+    /// A policy member with no proposal permissions at all can read/list templates but cannot write
+    /// any of them — neither `AddProposal` (create/edit) nor `ChangePolicy` (delete). The read/write
+    /// split the gate exists to enforce.
     #[sqlx::test]
-    async fn test_member_without_change_policy_cannot_write(pool: PgPool) {
+    async fn test_member_without_write_permission_cannot_write(pool: PgPool) {
         let state = test_state(pool.clone());
         let app = create_routes(state.clone());
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
@@ -912,7 +931,104 @@ mod tests {
             assert_eq!(
                 status,
                 StatusCode::FORBIDDEN,
-                "{method} must be forbidden without ChangePolicy"
+                "{method} must be forbidden for a member with no write permission"
+            );
+        }
+    }
+
+    /// Issue #1046: a Requestor (`call:AddProposal`, no admin/`ChangePolicy`) can author templates —
+    /// create and edit — but deletion stays admin-only, so DELETE is forbidden for them.
+    #[sqlx::test]
+    async fn test_requestor_can_author_but_not_delete(pool: PgPool) {
+        let state = test_state(pool.clone());
+        let app = create_routes(state.clone());
+        let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
+
+        seed_policy_member(&pool, DAO_ID, USER_ACCOUNT_ID).await;
+        let dao: near_api::AccountId = DAO_ID.parse().expect("valid dao id");
+        seed_treasury_policy(
+            &state,
+            &dao,
+            policy_granting(USER_ACCOUNT_ID, &["call:AddProposal"]),
+        )
+        .await;
+        let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
+
+        // CREATE is allowed (authoring == AddProposal).
+        let (status, body) = send(
+            app.clone(),
+            "POST",
+            base.clone(),
+            &cookie,
+            Some(json!({ "name": "Requestor Template", "manifest": valid_manifest() })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::CREATED, "requestor create: {body}");
+        let created: Value = serde_json::from_str(&body).expect("create response is JSON");
+        let id = created["id"]
+            .as_str()
+            .expect("create response has a string id")
+            .to_string();
+        let item = format!("{base}/{id}");
+
+        // EDIT is allowed (same AddProposal bar).
+        let (status, body) = send(
+            app.clone(),
+            "PUT",
+            item.clone(),
+            &cookie,
+            Some(json!({ "name": "Requestor Template v2" })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "requestor edit: {body}");
+
+        // DELETE is admin-only → forbidden for a Requestor.
+        let (status, _) = send(app.clone(), "DELETE", item, &cookie, None).await;
+        assert_eq!(
+            status,
+            StatusCode::FORBIDDEN,
+            "delete must be admin-only, forbidden for a Requestor"
+        );
+    }
+
+    /// Writes are DAO-member-gated, not action-permission-gated alone. A DAO whose policy grants
+    /// everything to an `Everyone` role would pass `verify_can_perform_action` for ANY account, so
+    /// the membership check must still reject a caller who is not a DAO member.
+    #[sqlx::test]
+    async fn test_everyone_role_still_requires_membership(pool: PgPool) {
+        let state = test_state(pool.clone());
+        let app = create_routes(state.clone());
+        let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
+
+        // The DAO exists (seed a *different* member for the daos/monitored rows) and its policy
+        // grants `*:*` to `Everyone` — so the action check alone would pass for anyone.
+        seed_policy_member(&pool, DAO_ID, "someone-else.near").await;
+        let dao: near_api::AccountId = DAO_ID.parse().expect("valid dao id");
+        seed_treasury_policy(
+            &state,
+            &dao,
+            json!({ "roles": [{ "name": "all", "kind": "Everyone", "permissions": ["*:*"] }] }),
+        )
+        .await;
+        // USER_ACCOUNT_ID is authenticated but NOT a member of this DAO.
+        let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
+
+        let item = format!("{base}/{}", Uuid::new_v4());
+        let writes: [(&str, String, Option<Value>); 3] = [
+            (
+                "POST",
+                base.clone(),
+                Some(json!({ "name": "X", "manifest": valid_manifest() })),
+            ),
+            ("PUT", item.clone(), Some(json!({ "enabled": true }))),
+            ("DELETE", item.clone(), None),
+        ];
+        for (method, uri, body) in writes {
+            let (status, _) = send(app.clone(), method, uri, &cookie, body).await;
+            assert_eq!(
+                status,
+                StatusCode::FORBIDDEN,
+                "{method} must require DAO membership even when Everyone grants the action"
             );
         }
     }
@@ -923,7 +1039,7 @@ mod tests {
         let app = create_routes(state.clone());
         let base = format!("/api/treasury/{DAO_ID}/proposal-templates");
 
-        seed_change_policy_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
+        seed_full_admin_member(&state, &pool, DAO_ID, USER_ACCOUNT_ID).await;
         let cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
 
         let padded = json!({

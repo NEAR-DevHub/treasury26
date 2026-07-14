@@ -8,6 +8,11 @@ import {
     ArrowDownToLine,
     Settings,
     ArrowRightLeft,
+    Users,
+    ArrowUpCircle,
+    Award,
+    Vote,
+    Factory,
 } from "lucide-react";
 import { Proposal } from "@/lib/proposals-api";
 import { getProposalUIKind } from "../utils/proposal-utils";
@@ -102,6 +107,42 @@ export function ProposalTypeIcon({
             return (
                 <div className="flex h-8 w-8 items-center justify-center rounded-full dark:bg-gray-500/10 bg-gray-100">
                     <Settings className="size-5 shrink-0 dark:text-gray-400 text-gray-800" />
+                </div>
+            );
+        case "Members":
+            return (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full dark:bg-purple-500/10 bg-purple-100">
+                    <Users className="size-5 shrink-0 dark:text-purple-300 text-purple-800" />
+                </div>
+            );
+        case "Upgrade":
+            return (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full dark:bg-cyan-500/10 bg-cyan-100">
+                    <ArrowUpCircle className="size-5 shrink-0 dark:text-cyan-300 text-cyan-800" />
+                </div>
+            );
+        case "Set Staking Contract":
+            return (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full dark:bg-green-500/10 bg-green-100">
+                    <Database className="size-5 shrink-0 dark:text-green-300 text-green-700" />
+                </div>
+            );
+        case "Bounty":
+            return (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full dark:bg-yellow-500/10 bg-yellow-100">
+                    <Award className="size-5 shrink-0 dark:text-yellow-300 text-yellow-800" />
+                </div>
+            );
+        case "Vote":
+            return (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full dark:bg-teal-500/10 bg-teal-100">
+                    <Vote className="size-5 shrink-0 dark:text-teal-300 text-teal-800" />
+                </div>
+            );
+        case "Factory Info Update":
+            return (
+                <div className="flex h-8 w-8 items-center justify-center rounded-full dark:bg-slate-500/10 bg-slate-100">
+                    <Factory className="size-5 shrink-0 dark:text-slate-400 text-slate-800" />
                 </div>
             );
         default:

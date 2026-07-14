@@ -24,14 +24,6 @@ impl AuditAction {
     }
 }
 
-#[derive(Debug, sqlx::FromRow)]
-struct ConflictingWarning {
-    id: i32,
-    slot: Option<String>,
-    token: Option<String>,
-    network: Option<String>,
-}
-
 pub async fn invalidate_warnings_cache(state: &AppState) {
     invalidate_warnings_cache_for(&state.cache).await;
 }
@@ -90,48 +82,33 @@ pub async fn delete_warning_with_audit_in_tx(
     Ok(())
 }
 
-pub async fn delete_conflicting_warnings_with_audit(
-    tx: &mut Transaction<'_, Postgres>,
+pub async fn find_conflicting_warning_id<'e, E>(
+    executor: E,
     except_id: Option<i32>,
     slot: &Option<String>,
     token: &Option<String>,
     network: &Option<String>,
-    changed_by: &str,
-    source: &str,
-) -> Result<(), sqlx::Error> {
-    let rows = sqlx::query_as::<_, ConflictingWarning>(
+) -> Result<Option<i32>, sqlx::Error>
+where
+    E: sqlx::Executor<'e, Database = Postgres>,
+{
+    sqlx::query_scalar(
         r#"
-        SELECT id, slot, token, network
+        SELECT id
         FROM warning_slots
         WHERE ($1::int IS NULL OR id != $1)
           AND COALESCE(slot, '') = COALESCE($2, '')
           AND COALESCE(token, '') = COALESCE($3, '')
           AND COALESCE(network, '') = COALESCE($4, '')
+        LIMIT 1
         "#,
     )
     .bind(except_id)
     .bind(slot)
     .bind(token)
     .bind(network)
-    .fetch_all(&mut **tx)
-    .await?;
-
-    for row in rows {
-        let changes = audit_delete_changes(
-            row.id,
-            row.slot.clone(),
-            row.token.clone(),
-            row.network.clone(),
-            json!({ "source": source }),
-        );
-        sqlx::query("DELETE FROM warning_slots WHERE id = $1")
-            .bind(row.id)
-            .execute(&mut **tx)
-            .await?;
-        insert_audit_log(&mut **tx, None, AuditAction::Deleted, changed_by, changes).await?;
-    }
-
-    Ok(())
+    .fetch_optional(executor)
+    .await
 }
 
 pub fn audit_delete_changes(

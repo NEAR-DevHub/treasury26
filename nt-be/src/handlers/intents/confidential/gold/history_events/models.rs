@@ -54,6 +54,7 @@ pub struct ProjectionCycleStats {
     pub accounts_projected: usize,
     pub accounts_skipped_locked: usize,
     pub accounts_failed: usize,
+    pub changed_accounts: Vec<String>,
     pub rows_projected: u64,
     pub rows_deleted: u64,
     pub errors_written: u64,

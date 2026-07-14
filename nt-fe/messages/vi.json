@@ -767,12 +767,32 @@
             "approve": "Phê duyệt",
             "destinationNetwork": "Mạng đích",
             "processingPayment": "Đang xử lý thanh toán",
-            "processingPaymentBody": "Khoản thanh toán này đã được nhóm phê duyệt và đang được xử lý. Có thể mất một chút thời gian để hoàn thành."
+            "processingPaymentBody": "Khoản thanh toán này đã được nhóm phê duyệt và đang được xử lý. Có thể mất một chút thời gian để hoàn thành.",
+            "addMember": "Thêm thành viên",
+            "removeMember": "Xóa thành viên",
+            "member": "Thành viên",
+            "role": "Vai trò",
+            "upgradeSelf": "Nâng cấp hợp đồng",
+            "upgradeRemote": "Nâng cấp hợp đồng từ xa",
+            "codeHash": "Hash mã",
+            "stakingContract": "Hợp đồng staking",
+            "addBounty": "Thêm bounty",
+            "bountyDone": "Bounty hoàn thành",
+            "bountyId": "ID bounty",
+            "bountyTimes": "Số lần nhận tối đa",
+            "maxDeadline": "Thời hạn tối đa",
+            "bountyDoneSubtitle": "Bounty #{id} bởi {receiver}",
+            "daysCount": "{count, plural, other {# ngày}}",
+            "factoryId": "ID factory",
+            "autoUpdate": "Tự động cập nhật",
+            "memberRoleSubtitle": "{member} • {role}"
         },
         "insufficientBalance": {
             "noAsset": "Yêu cầu này không thể được phê duyệt vì token cần thiết không có sẵn trong ngân quỹ.",
             "bond": "Yêu cầu này không thể được phê duyệt vì ngân quỹ không đủ số dư <token>{symbol}</token>. Hãy thêm <token>{amount} {symbol}</token> để chi trả phí bond đề xuất.",
             "continue": "Yêu cầu này không thể được phê duyệt vì ngân quỹ không đủ số dư <token>{symbol}</token>. Hãy thêm <token>{amount} {symbol}</token> để tiếp tục.",
+            "staked": "Yêu cầu này không thể được phê duyệt vì không đủ <token>{symbol}</token> đã stake. Cần thêm <token>{amount} {symbol}</token> đã stake trong pool này.",
+            "readyToWithdraw": "Yêu cầu này không thể được phê duyệt vì không đủ <token>{symbol}</token> sẵn sàng rút. Cần thêm <token>{amount} {symbol}</token> có thể rút từ pool này.",
             "modalTitle": "Số dư NEAR không đủ",
             "modalBodyVote": "Bạn không có đủ token NEAR trong ví để bỏ phiếu này. Việc bỏ phiếu yêu cầu số dư tối thiểu là <amount>{required} NEAR</amount>. Vui lòng thêm NEAR vào ví và thử lại.",
             "modalBodyProposal": "Bạn không có đủ token NEAR trong ví để tạo yêu cầu này. Việc tạo yêu cầu cần số dư tối thiểu là <amount>{required} NEAR</amount>. Vui lòng thêm NEAR vào ví và thử lại.",
@@ -1703,8 +1723,8 @@
         "incompatible": "Không tương thích",
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
-        "nearComDescription": "Mạng bảo mật của near.com và trezu",
-        "nearDescription": "Mạng dành cho rút tiền công khai"
+        "nearComDescription": "Mạng cho trezu bí mật",
+        "nearDescription": "Mạng cho rút tiền công khai và ví near.com"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",
@@ -2017,6 +2037,7 @@
         "investors": "{count, plural, other {Nhà đầu tư}}",
         "poolBreakdown": "Phân tích Pool",
         "unlockedToken": "Token đã mở khóa",
+        "lockedToken": "Token đã khóa",
         "lockupStakingPool": "Pool staking lockup",
         "exchange": "Trao đổi",
         "send": "Gửi",
@@ -2418,5 +2439,22 @@
             "min": "{label} phải lớn hơn hoặc bằng {min}",
             "max": "{label} phải nhỏ hơn hoặc bằng {max}"
         }
+    },
+    "bulkActivation": {
+        "introTitle": "Kích hoạt thanh toán hàng loạt",
+        "introDescription": "Kho bạc bảo mật này cần kích hoạt một lần để gửi thanh toán hàng loạt: việc đăng ký khóa truy cập hàng loạt bảo mật cần một vòng phê duyệt từ các thành viên kho bạc.",
+        "failedDescription": "Lần kích hoạt trước đã hết hạn hoặc thất bại. Hãy bắt đầu lại — một yêu cầu phê duyệt mới sẽ được tạo.",
+        "startButton": "Bắt đầu kích hoạt",
+        "retryButton": "Thử kích hoạt lại",
+        "preparing": "Đang chuẩn bị kích hoạt…",
+        "approvalNote": "Thao tác này tạo một yêu cầu phê duyệt. Thanh toán hàng loạt sẽ tự động mở khóa khi đủ thành viên phê duyệt.",
+        "awaitingTitle": "Đang chờ phê duyệt",
+        "awaitingDescription": "Yêu cầu kích hoạt đã được tạo. Khi đủ thành viên kho bạc phê duyệt, khóa truy cập hàng loạt bảo mật sẽ được đăng ký và thanh toán hàng loạt tự động mở khóa.",
+        "awaitingHint": "Không cần thao tác thêm sau khi phê duyệt — trang này tự động cập nhật.",
+        "proposalCreated": "Đã tạo yêu cầu kích hoạt — đang chờ thành viên phê duyệt",
+        "activationFailed": "Không thể bắt đầu kích hoạt thanh toán hàng loạt",
+        "errorTitle": "Không thể tải trạng thái kích hoạt",
+        "noPermissionNote": "Bạn không có quyền bắt đầu kích hoạt. Hãy nhờ một thành viên kho bạc có quyền đề xuất kích hoạt thanh toán hàng loạt.",
+        "awaitingApproverHint": "Các thành viên kho bạc có quyền phê duyệt cần phê duyệt yêu cầu đang chờ để hoàn tất kích hoạt."
     }
 }
