@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
         "removeRecipient": "Xóa người nhận",
         "removeRecipientConfirm": "Bạn có chắc muốn xóa khoản thanh toán cho <strong>{recipient}</strong> không? Hành động này không thể hoàn tác.",
+        "allRecipientsRemoved": "Đã xóa tất cả người nhận — tải lên danh sách mới để tiếp tục",
         "remove": "Xóa",
         "edit": "Chỉnh sửa"
     },

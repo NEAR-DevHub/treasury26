@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "ネットワーク手数料({fee} {symbol})をカバーするトークンが不足しています。リクエストを送信してから承認前に補充できます。",
         "removeRecipient": "受取人を削除",
         "removeRecipientConfirm": "<strong>{recipient}</strong>への支払いを削除してもよろしいですか?この操作は取り消せません。",
+        "allRecipientsRemoved": "すべての受取人が削除されました — 続行するには新しいリストをアップロードしてください",
         "remove": "削除",
         "edit": "編集"
     },

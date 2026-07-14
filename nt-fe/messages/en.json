@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
         "removeRecipient": "Remove Recipient",
         "removeRecipientConfirm": "Are you sure you want to remove the payment to <strong>{recipient}</strong>? This action cannot be undone.",
+        "allRecipientsRemoved": "All recipients removed — upload a new list to continue",
         "remove": "Remove",
         "edit": "Edit"
     },

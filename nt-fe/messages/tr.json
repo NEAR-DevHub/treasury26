@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "Ağ ücretini ({fee} {symbol}) karşılamak için yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
         "removeRecipient": "Alıcıyı Kaldır",
         "removeRecipientConfirm": "<strong>{recipient}</strong> kişisine yapılan ödemeyi kaldırmak istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+        "allRecipientsRemoved": "Tüm alıcılar kaldırıldı — devam etmek için yeni bir liste yükleyin",
         "remove": "Kaldır",
         "edit": "Düzenle"
     },

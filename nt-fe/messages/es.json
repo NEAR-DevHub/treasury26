@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "Tokens insuficientes para cubrir la tarifa de red ({fee} {symbol}). Puedes enviar la solicitud y recargar antes de la aprobación.",
         "removeRecipient": "Eliminar destinatario",
         "removeRecipientConfirm": "¿Seguro que quieres eliminar el pago a <strong>{recipient}</strong>? Esta acción no se puede deshacer.",
+        "allRecipientsRemoved": "Se eliminaron todos los destinatarios: sube una nueva lista para continuar",
         "remove": "Eliminar",
         "edit": "Editar"
     },

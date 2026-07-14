@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "Unzureichende Token, um die Netzwerkgebühr ({fee} {symbol}) zu decken. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
         "removeRecipient": "Empfänger entfernen",
         "removeRecipientConfirm": "Möchten Sie die Zahlung an <strong>{recipient}</strong> wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
+        "allRecipientsRemoved": "Alle Empfänger entfernt — laden Sie eine neue Liste hoch, um fortzufahren",
         "remove": "Entfernen",
         "edit": "Bearbeiten"
     },

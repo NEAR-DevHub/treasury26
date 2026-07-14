@@ -418,7 +418,8 @@ export function ProposalSidebar({
     // Receipt button visibility rules:
     // - Proposal must be executed and of a receipt-eligible kind.
     // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
-    // - Batch receipts are hidden for confidential treasuries.
+    // - Public batch receipts are hidden on confidential treasuries; confidential
+    //   bulk uses Confidential Request kind and is allowed.
     // - Hidden (guest) confidential treasuries cannot generate receipts.
     const canShowReceiptButton =
         isExecuted &&

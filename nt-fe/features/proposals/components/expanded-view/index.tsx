@@ -72,7 +72,12 @@ function ExpandedViewInternal({
         }
         case "Confidential Request": {
             const confidentialData = data as ConfidentialRequestData;
-            return <ConfidentialRequestExpanded data={confidentialData} />;
+            return (
+                <ConfidentialRequestExpanded
+                    data={confidentialData}
+                    proposalId={proposal.id}
+                />
+            );
         }
         case "Function Call": {
             const functionCallData = data as FunctionCallData;

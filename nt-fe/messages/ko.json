@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "네트워크 수수료({fee} {symbol})를 충당할 토큰이 부족합니다. 요청을 제출하고 승인 전에 충전할 수 있습니다.",
         "removeRecipient": "수신자 제거",
         "removeRecipientConfirm": "<strong>{recipient}</strong>에 대한 결제를 제거하시겠습니까? 이 작업은 취소할 수 없습니다.",
+        "allRecipientsRemoved": "모든 수신자가 제거되었습니다 — 계속하려면 새 목록을 업로드하세요",
         "remove": "제거",
         "edit": "편집"
     },

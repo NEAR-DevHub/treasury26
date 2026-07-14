@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "אין מספיק טוקנים לכיסוי עמלת הרשת ({fee} {symbol}). ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
         "removeRecipient": "הסר נמען",
         "removeRecipientConfirm": "האם אתה בטוח שברצונך להסיר את התשלום ל-<strong>{recipient}</strong>? לא ניתן לבטל פעולה זו.",
+        "allRecipientsRemoved": "כל הנמענים הוסרו — העלה רשימה חדשה כדי להמשיך",
         "remove": "הסרה",
         "edit": "עריכה"
     },

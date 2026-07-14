@@ -32,6 +32,7 @@ import { CreateRequestButton } from "@/components/create-request-button";
 import { trackEvent } from "@/lib/analytics";
 import { Tooltip } from "@/components/tooltip";
 import { Address } from "@/components/address";
+import { toast } from "sonner";
 
 interface ReviewPaymentsStepProps extends StepProps {
     initialPaymentData: BulkPaymentData[];
@@ -107,6 +108,12 @@ export function ReviewPaymentsStep({
         onPaymentDataChange(updatedPayments);
         setRemoveDialogOpen(false);
         setRecipientToRemove(null);
+
+        // Empty review is invalid — send the user back to upload a new list.
+        if (updatedPayments.length === 0) {
+            toast.info(tBulk("allRecipientsRemoved"));
+            handleBack?.();
+        }
     };
 
     const handleRemoveClick = (index: number, recipient: string) => {
@@ -115,7 +122,7 @@ export function ReviewPaymentsStep({
     };
 
     const handleProceedClick = () => {
-        if (isSubmitting) return;
+        if (isSubmitting || paymentData.length === 0) return;
         trackEvent("bulk-payments-submit-click", {
             source: "bulk_payments_review_step",
             treasury_id: treasuryId ?? "",
@@ -455,7 +462,11 @@ export function ReviewPaymentsStep({
                     <CreateRequestButton
                         type="button"
                         onClick={handleProceedClick}
-                        disabled={hasValidationErrors || isSubmitting}
+                        disabled={
+                            hasValidationErrors ||
+                            isSubmitting ||
+                            paymentData.length === 0
+                        }
                         isSubmitting={isSubmitting}
                         permissions={[{ kind: "call", action: "AddProposal" }]}
                         idleMessage={tPay("confirmSubmit")}

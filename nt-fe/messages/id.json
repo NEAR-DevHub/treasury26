@@ -1126,6 +1126,7 @@
         "insufficientTokensForFee": "Token tidak cukup untuk menutupi biaya jaringan ({fee} {symbol}). Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
         "removeRecipient": "Hapus Penerima",
         "removeRecipientConfirm": "Apakah Anda yakin ingin menghapus pembayaran ke <strong>{recipient}</strong>? Tindakan ini tidak dapat dibatalkan.",
+        "allRecipientsRemoved": "Semua penerima dihapus — unggah daftar baru untuk melanjutkan",
         "remove": "Hapus",
         "edit": "Ubah"
     },
