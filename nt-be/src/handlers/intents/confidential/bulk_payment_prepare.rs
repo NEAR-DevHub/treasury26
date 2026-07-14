@@ -106,7 +106,7 @@ fn build_recipient_quote_body(
 
     let mut body = json!({
         "dry": false,
-        "swapType": "EXACT_INPUT",
+        "swapType": "EXACT_OUTPUT",
         "slippageTolerance": slippage,
         "originAsset": origin_asset,
         "depositType": "CONFIDENTIAL_INTENTS",
@@ -139,7 +139,7 @@ fn build_header_quote_body(
 ) -> Value {
     let mut body = json!({
         "dry": false,
-        "swapType": "EXACT_INPUT",
+        "swapType": "EXACT_OUTPUT",
         "slippageTolerance": 100,
         "originAsset": origin_asset,
         "depositType": "CONFIDENTIAL_INTENTS",
