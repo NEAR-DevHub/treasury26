@@ -49,6 +49,24 @@ export function getProposalExecutedDate(
     return null;
 }
 
+/**
+ * Whether the UI should keep showing a loading state for the execution
+ * timestamp instead of "N/A". NearBlocks / swap status can lag briefly after
+ * approval; callers poll until a timestamp appears.
+ */
+export function isExecutionTimestampPending({
+    executedDate,
+    isQueryLoading,
+    isAwaitingResolution,
+}: {
+    executedDate: Date | null;
+    isQueryLoading: boolean;
+    isAwaitingResolution: boolean;
+}): boolean {
+    if (executedDate) return false;
+    return isQueryLoading || isAwaitingResolution;
+}
+
 function toPaymentReceiptData(data: PaymentRequestData): ReceiptProposalData {
     return {
         variant: "payment",

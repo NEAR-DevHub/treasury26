@@ -841,7 +841,7 @@ export const useNear = () => {
                     queryKey: [
                         "proposal-transaction",
                         treasuryId,
-                        vote.proposalId.toString(),
+                        vote.proposalId,
                     ],
                 }),
             ),

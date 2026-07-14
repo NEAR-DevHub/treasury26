@@ -108,7 +108,11 @@ pub fn get_defuse_tokens_map() -> &'static HashMap<String, BaseTokenInfo> {
         let mut map = HashMap::new();
         for unified_token in tokens {
             for base_token in unified_token.grouped_tokens {
-                map.insert(base_token.defuse_asset_id.clone(), base_token);
+                // or_insert so unified tokens (processed first) take priority
+                // over synthetic standalone duplicates (e.g. "AURORA" wins over
+                // "AURORA (omni)" when both share the same defuseAssetId).
+                map.entry(base_token.defuse_asset_id.clone())
+                    .or_insert(base_token);
             }
         }
         map

@@ -35,7 +35,9 @@ import {
 import {
     extractReceiptProposalData,
     getProposalExecutedDate,
+    isExecutionTimestampPending,
     isReceiptEligibleProposalKind,
+    isTerminalSwapStatus,
 } from "@/features/proposals/utils/receipt-utils";
 import {
     useProposals,
@@ -364,14 +366,16 @@ export function ProposalSidebar({
 
     // Fetch transaction data for non-intents proposals, or for statuses
     // whose resolved date/link should come from the chain transaction.
-    const { data: transaction, isLoading: isLoadingTransaction } =
-        useProposalTransaction(
-            treasuryId,
-            proposal,
-            policy,
-            shouldUseTransactionDate &&
-                (!hasDepositAddress || !shouldUseSwapDate),
-        );
+    const {
+        data: transaction,
+        isLoading: isLoadingTransaction,
+        isAwaitingTransaction,
+    } = useProposalTransaction(
+        treasuryId,
+        proposal,
+        policy,
+        shouldUseTransactionDate && (!hasDepositAddress || !shouldUseSwapDate),
+    );
 
     // Fetch swap status for executed intents proposals (exchange or payment).
     const shouldFetchSwapStatus = isExecuted && hasDepositAddress;
@@ -391,9 +395,25 @@ export function ProposalSidebar({
     const isSwapSuccessReady = shouldRequireSwapSuccess
         ? isPublicTreasuryGuestViewer || swapStatus?.status === "SUCCESS"
         : true;
+    const executedDate =
+        confidentialExecutedAt ??
+        getProposalExecutedDate(swapStatus, transaction) ??
+        null;
+    const isAwaitingSwapDate =
+        shouldUseSwapDate &&
+        !swapStatus?.updatedAt &&
+        !isTerminalSwapStatus(swapStatus?.status);
     const isResolvedDateLoading =
         isExecuted &&
-        (shouldUseSwapDate ? isLoadingSwapStatus : isLoadingTransaction);
+        isExecutionTimestampPending({
+            executedDate,
+            isQueryLoading: shouldUseSwapDate
+                ? isLoadingSwapStatus
+                : isLoadingTransaction,
+            isAwaitingResolution: shouldUseSwapDate
+                ? isAwaitingSwapDate
+                : isAwaitingTransaction,
+        });
     const isHidden = isConfidential && isGuestTreasury;
 
     // Confidential exchange (a confidential request that is not a payment).

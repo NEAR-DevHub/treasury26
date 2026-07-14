@@ -18,6 +18,7 @@ use crate::{
         intents_chains::{ChainIcons, get_chain_metadata_by_name},
         intents_tokens::{
             find_token_by_defuse_asset_id, find_token_by_defuse_asset_id_and_address,
+            find_unified_asset_id, get_tokens_map,
         },
     },
     utils::cache::{Cache, CacheKey, CacheTier},
@@ -481,6 +482,36 @@ pub fn metadata_lookup_candidates(token_id: &str) -> Vec<String> {
     build_metadata_lookup_candidates(token_id).all
 }
 
+/// Prefer the unified asset's display symbol/name/icon when a defuse id maps to
+/// a real unified group. Standalone catalog duplicates (e.g. `AURORA (omni)`)
+/// share the same defuseAssetId but should not win for user-facing labels.
+fn apply_unified_display_override(meta: &mut TokenMetadata) {
+    let stripped = meta
+        .token_id
+        .strip_prefix("intents.near:")
+        .unwrap_or(meta.token_id.as_str());
+    let with_nep141 = if stripped.starts_with("nep141:") || stripped.starts_with("nep245:") {
+        stripped.to_string()
+    } else {
+        format!("nep141:{stripped}")
+    };
+
+    for defuse_id in [stripped, with_nep141.as_str()] {
+        let Some(unified_id) = find_unified_asset_id(defuse_id) else {
+            continue;
+        };
+        let Some(unified) = get_tokens_map().get(&unified_id.to_lowercase()) else {
+            continue;
+        };
+        meta.symbol = unified.symbol.clone();
+        meta.name = unified.name.clone();
+        if meta.icon.is_none() {
+            meta.icon = Some(unified.icon.clone());
+        }
+        return;
+    }
+}
+
 fn tokens_json_metadata_for_defuse(
     defuse_id: &str,
     address_candidates: &[String],
@@ -530,7 +561,7 @@ fn tokens_json_metadata_for_defuse(
     };
     let selected_chain = deployment_chain_name.unwrap_or_else(|| token.origin_chain_name.clone());
     let chain_metadata = get_chain_metadata_by_name(&selected_chain);
-    Some(TokenMetadata {
+    let mut meta = TokenMetadata {
         token_id: output_token_id.to_string(),
         name: token.name.clone(),
         symbol: token.symbol.clone(),
@@ -541,13 +572,15 @@ fn tokens_json_metadata_for_defuse(
         network: Some(selected_chain),
         chain_name: chain_metadata.as_ref().map(|m| m.name.clone()),
         chain_icons: chain_metadata.map(|m| m.icon),
-    })
+    };
+    apply_unified_display_override(&mut meta);
+    Some(meta)
 }
 
 fn chaindefuser_item_to_metadata(item: &ChaindefuserToken, output_token_id: &str) -> TokenMetadata {
     let static_token = find_token_by_defuse_asset_id(&item.defuse_asset_id);
     let chain_metadata = get_chain_metadata_by_name(&item.blockchain);
-    TokenMetadata {
+    let mut meta = TokenMetadata {
         token_id: output_token_id.to_string(),
         name: static_token
             .map(|t| t.name.clone())
@@ -563,7 +596,9 @@ fn chaindefuser_item_to_metadata(item: &ChaindefuserToken, output_token_id: &str
             .map(|m| m.name.clone())
             .or(Some(item.blockchain.clone())),
         chain_icons: chain_metadata.map(|m| m.icon),
-    }
+    };
+    apply_unified_display_override(&mut meta);
+    meta
 }
 
 fn merge_missing_fields(into: &mut TokenMetadata, from: &TokenMetadata) {
@@ -796,6 +831,7 @@ pub async fn fetch_tokens_with_fallback(
         }
 
         if let Some(mut meta) = metadata {
+            apply_unified_display_override(&mut meta);
             meta.apply_near_symbol_name_override();
             result.insert(token_id, meta);
         } else {
@@ -1045,7 +1081,8 @@ pub async fn search_token_by_symbol(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_metadata_lookup_candidates, metadata_lookup_candidates, nearblocks_lookup_candidate,
+        TokenMetadata, apply_unified_display_override, build_metadata_lookup_candidates,
+        find_token_by_defuse_asset_id, metadata_lookup_candidates, nearblocks_lookup_candidate,
         tokens_json_metadata_for_defuse,
     };
 
@@ -1121,6 +1158,43 @@ mod tests {
         let resolved = tokens_json_metadata_for_defuse(defuse_id, &near_contract, defuse_id)
             .expect("expected token resolution from tokens.json");
         assert_eq!(resolved.network.as_deref(), Some("near"));
+        assert_eq!(
+            resolved.symbol, "AURORA",
+            "near deployment must resolve to unified AURORA, not standalone AURORA (omni)"
+        );
+    }
+
+    #[test]
+    fn unified_display_override_replaces_omni_duplicate_symbol() {
+        let mut meta = TokenMetadata {
+            token_id:
+                "intents.near:nep141:aaaaaa20d9e0e2461697782ef11675f668207961.factory.bridge.near"
+                    .to_string(),
+            name: "Aurora".to_string(),
+            symbol: "AURORA (omni)".to_string(),
+            decimals: 18,
+            icon: None,
+            price: None,
+            price_updated_at: None,
+            network: Some("near".to_string()),
+            chain_name: Some("NEAR".to_string()),
+            chain_icons: None,
+        };
+        apply_unified_display_override(&mut meta);
+        assert_eq!(meta.symbol, "AURORA");
+        assert_eq!(meta.name, "Aurora");
+    }
+
+    #[test]
+    fn defuse_tokens_map_prefers_unified_aurora_over_omni_duplicate() {
+        let token = find_token_by_defuse_asset_id(
+            "nep141:aaaaaa20d9e0e2461697782ef11675f668207961.factory.bridge.near",
+        )
+        .expect("expected aurora defuse entry");
+        assert_eq!(
+            token.symbol, "AURORA",
+            "get_defuse_tokens_map must keep unified AURORA over standalone AURORA (omni)"
+        );
     }
 
     #[test]
