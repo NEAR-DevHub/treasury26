@@ -415,8 +415,10 @@ export function DepositModal({
     // deposit slot is paused or the app is in maintenance.
     const depositTokenNetworkScoped =
         isTokenOrNetworkScopedWarning(depositScopeWarning);
-    const { data: bridgeAssets = STABLE_EMPTY_ARRAY, isLoading: isLoadingAssets } =
-        useBridgeTokens(true, { includeNearNetwork: true });
+    const {
+        data: bridgeAssets = STABLE_EMPTY_ARRAY,
+        isLoading: isLoadingAssets,
+    } = useBridgeTokens(true, { includeNearNetwork: true });
     const depositSelectorsDisabled =
         isLoadingAssets || (depositBlocked && !depositTokenNetworkScoped);
 
