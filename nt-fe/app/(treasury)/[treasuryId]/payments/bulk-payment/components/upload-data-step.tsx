@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import {
+    useState,
+    useEffect,
+    useMemo,
+    cloneElement,
+    isValidElement,
+    type ReactElement,
+} from "react";
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
@@ -87,6 +94,9 @@ export function UploadDataStep({
         row: number;
         message: string;
     }> | null>(null);
+    // Kept separate from dataErrors so the network card (not paste/upload)
+    // owns the "select recipient network" validation state.
+    const [networkError, setNetworkError] = useState<string | null>(null);
     const [isReviewLoading, setIsReviewLoading] = useState(false);
 
     const isLoading = isLoadingSubscription;
@@ -122,6 +132,13 @@ export function UploadDataStep({
             setUploadedFile(file);
         }
     }, [uploadedFileName, uploadedFile]);
+
+    // Clear network-card error once a recipient network is selected.
+    useEffect(() => {
+        if (destinationNetwork) {
+            setNetworkError(null);
+        }
+    }, [destinationNetwork]);
 
     const handleFileUpload = (file: File) => {
         if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
@@ -203,10 +220,11 @@ export function UploadDataStep({
         // auto-picks when only one option matches the first address, but the
         // user may have wiped the selection (no compatible network) — block here.
         if (isConfidential && !destinationNetwork) {
-            setDataErrors([{ row: 0, message: t("selectRecipientNetwork") }]);
+            setNetworkError(t("selectRecipientNetwork"));
             return;
         }
 
+        setNetworkError(null);
         setDataErrors(null);
         setIsReviewLoading(true);
         try {
@@ -770,7 +788,23 @@ export function UploadDataStep({
                                             </div>
                                         </TabsContent>
                                         <div className="mt-2">
-                                            {networkSlot}
+                                            {networkSlot &&
+                                            isValidElement(networkSlot)
+                                                ? cloneElement(
+                                                      networkSlot as ReactElement<{
+                                                          invalid?: boolean;
+                                                          errorMessage?:
+                                                              | string
+                                                              | null;
+                                                      }>,
+                                                      {
+                                                          invalid:
+                                                              !!networkError,
+                                                          errorMessage:
+                                                              networkError,
+                                                      },
+                                                  )
+                                                : networkSlot}
                                         </div>
                                     </Tabs>
                                 </div>
