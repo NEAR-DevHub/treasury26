@@ -304,11 +304,11 @@ fn should_persist_price_sample(at: DateTime<Utc>) -> bool {
         .is_multiple_of(TOKEN_PRICE_PERSIST_INTERVAL_MINUTES)
 }
 
-fn month_start(day: NaiveDate) -> NaiveDate {
+pub(super) fn month_start(day: NaiveDate) -> NaiveDate {
     NaiveDate::from_ymd_opt(day.year(), day.month(), 1).expect("valid month start")
 }
 
-fn next_month_start(month: NaiveDate) -> NaiveDate {
+pub(super) fn next_month_start(month: NaiveDate) -> NaiveDate {
     let (year, month) = if month.month() == 12 {
         (month.year() + 1, 1)
     } else {
@@ -317,11 +317,14 @@ fn next_month_start(month: NaiveDate) -> NaiveDate {
     NaiveDate::from_ymd_opt(year, month, 1).expect("valid next month start")
 }
 
-fn partition_name(month: NaiveDate) -> String {
+pub(super) fn partition_name(month: NaiveDate) -> String {
     format!("token_prices_p{}", month.format("%Y%m"))
 }
 
-async fn create_month_partition(pool: &PgPool, month: NaiveDate) -> Result<(), sqlx::Error> {
+pub(super) async fn create_month_partition(
+    pool: &PgPool,
+    month: NaiveDate,
+) -> Result<(), sqlx::Error> {
     // DDL cannot take bind parameters; both values are chrono-formatted.
     let next_month = next_month_start(month);
     let sql = format!(
@@ -331,7 +334,14 @@ async fn create_month_partition(pool: &PgPool, month: NaiveDate) -> Result<(), s
         month,
         next_month,
     );
-    sqlx::query(&sql).execute(pool).await?;
+    // IF NOT EXISTS does not protect against concurrent creators (the loser
+    // fails with "would overlap"); an advisory xact lock serializes them.
+    let mut tx = pool.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext('token_prices_partitioning'))")
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query(&sql).execute(&mut *tx).await?;
+    tx.commit().await?;
     Ok(())
 }
 

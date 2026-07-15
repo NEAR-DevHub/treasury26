@@ -20,6 +20,11 @@ export function getKindFromProposal(
     proposalKind: ProposalKind,
 ): ProposalPermissionKind | undefined {
     if (typeof proposalKind === "string") {
+        // Unit-variant contract kinds (only "Vote" today) arrive as plain
+        // strings when not normalized at the API boundary.
+        if (proposalKind === "Vote") {
+            return "vote";
+        }
         return proposalKind as unknown as ProposalPermissionKind;
     }
 

@@ -8,10 +8,12 @@ import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ConfidentialTransferExpandedProps {
     data: ConfidentialRequestData;
+    proposalId: number;
 }
 
 export function ConfidentialRequestExpanded({
     data,
+    proposalId,
 }: ConfidentialTransferExpandedProps) {
     const requestDisplayContext = useRequestDisplayContext();
     const isExecuted = requestDisplayContext?.isExecuted ?? false;
@@ -34,7 +36,12 @@ export function ConfidentialRequestExpanded({
     if (mapped.type === "swap") {
         return <SwapExpanded data={mapped.data} isExecuted={isExecuted} />;
     } else if (mapped.type === "bulk") {
-        return <ConfidentialBulkExpanded data={mapped.data} />;
+        return (
+            <ConfidentialBulkExpanded
+                data={mapped.data}
+                proposalId={proposalId}
+            />
+        );
     }
 
     return <TransferExpanded data={mapped.data} />;

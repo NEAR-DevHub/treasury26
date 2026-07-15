@@ -15,6 +15,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
+import { ScrollContainer } from "@/components/scroll-container";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
@@ -84,7 +85,7 @@ export function MemberAvatarsWithOverflow({
 
     // Hidden members list for the popover (desktop - only remaining members)
     const HiddenMembersList = () => (
-        <div className="max-h-[300px] overflow-y-auto">
+        <ScrollContainer className="max-h-[300px]">
             <div className="space-y-2 p-1">
                 {hiddenMembers.map((member) => (
                     <div
@@ -101,7 +102,7 @@ export function MemberAvatarsWithOverflow({
                     </div>
                 ))}
             </div>
-        </div>
+        </ScrollContainer>
     );
 
     // All members list for mobile sheet (all members with scroll)

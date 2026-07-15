@@ -20,7 +20,13 @@ export function NotEnoughBalance({
     }
 
     const messageKey =
-        insufficientBalanceInfo.type === "bond" ? "bond" : "continue";
+        insufficientBalanceInfo.type === "bond"
+            ? "bond"
+            : insufficientBalanceInfo.type === "staked"
+              ? "staked"
+              : insufficientBalanceInfo.type === "readyToWithdraw"
+                ? "readyToWithdraw"
+                : "continue";
     const symbol = insufficientBalanceInfo.tokenSymbol ?? "";
     const amount = insufficientBalanceInfo.differenceDisplay ?? "";
 

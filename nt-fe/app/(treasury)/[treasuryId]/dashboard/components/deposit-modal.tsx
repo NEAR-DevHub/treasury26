@@ -47,6 +47,8 @@ import {
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import { type BridgeNetwork, useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useNear } from "@/stores/near-store";
+import { isAxiosErrorWithStatus } from "@/lib/query-retry";
 import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
@@ -333,10 +335,12 @@ export function DepositModal({
         [t],
     );
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
-    // Guests on confidential treasuries can only use the NEAR direct network;
-    // other networks are shown as "for members only" and disabled. When network
-    // selection is restricted like this, we must not auto-select a network.
-    const isNetworkSelectionRestricted = isConfidential && isGuestTreasury;
+    const { accountId } = useNear();
+    // Guests (and logged-out users) on confidential treasuries cannot select any
+    // network — all options are shown as "for members only". Include !accountId
+    // so logout doesn't wait on the guest-config reload race.
+    const isNetworkSelectionRestricted =
+        isConfidential && (isGuestTreasury || !accountId);
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -389,7 +393,11 @@ export function DepositModal({
     const [addressSourceTab, setAddressSourceTab] = useState<
         "public" | "confidential"
     >("public");
-    const { data: popularAssets = [] } = usePopularAssetsByActivity();
+    // Stable empty defaults — inline `= []` creates a new reference every
+    // render while the query is pending, which re-fires the load effect
+    // (popularAssets is a dependency) and triggers React error.
+    const { data: popularAssets = STABLE_EMPTY_ARRAY } =
+        usePopularAssetsByActivity();
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
@@ -407,10 +415,12 @@ export function DepositModal({
     // deposit slot is paused or the app is in maintenance.
     const depositTokenNetworkScoped =
         isTokenOrNetworkScopedWarning(depositScopeWarning);
+    const {
+        data: bridgeAssets = STABLE_EMPTY_ARRAY,
+        isLoading: isLoadingAssets,
+    } = useBridgeTokens(true, { includeNearNetwork: true });
     const depositSelectorsDisabled =
-        depositBlocked && !depositTokenNetworkScoped;
-    const { data: bridgeAssets = [], isLoading: isLoadingAssets } =
-        useBridgeTokens(true, { includeNearNetwork: true });
+        isLoadingAssets || (depositBlocked && !depositTokenNetworkScoped);
 
     const invalidatePendingAddressRequest = useCallback(() => {
         latestAddressRequestRef.current += 1;
@@ -428,6 +438,26 @@ export function DepositModal({
             });
         }
     }, [selectedAsset?.id, selectedNetwork?.id, treasuryId]);
+
+    // After logout (or when guest restrictions apply), clear any selected
+    // network/address so we don't keep calling authenticated deposit APIs.
+    useEffect(() => {
+        if (!isNetworkSelectionRestricted) return;
+        if (!selectedNetwork) return;
+
+        invalidatePendingAddressRequest();
+        setDepositInfo(null);
+        setSingleUseExpiresAt(null);
+        setHasAcknowledgedSingleUse(false);
+        setAddressSourceTab("public");
+        form.setValue("network", null);
+        form.clearErrors("network");
+    }, [
+        isNetworkSelectionRestricted,
+        selectedNetwork,
+        invalidatePendingAddressRequest,
+        form,
+    ]);
 
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
@@ -480,13 +510,8 @@ export function DepositModal({
     }, [selectedAsset, selectedNetwork, bridgeAssets]);
 
     const networkSections = useMemo(() => {
-        if (isConfidential && isGuestTreasury) {
+        if (isNetworkSelectionRestricted) {
             return buildSectionedOptions(filteredNetworks, [
-                {
-                    title: t("sections.available"),
-                    filter: (network) =>
-                        network.id === NEAR_COM_DIRECT_NETWORK_ID,
-                },
                 {
                     title: t("sections.forMembersOnly"),
                     filter: () => true,
@@ -543,8 +568,7 @@ export function DepositModal({
     }, [
         filteredNetworks,
         selectedNetworkBalances,
-        isConfidential,
-        isGuestTreasury,
+        isNetworkSelectionRestricted,
         t,
     ]);
 
@@ -786,7 +810,12 @@ export function DepositModal({
         }
 
         if (targetAsset) {
-            form.setValue("asset", targetAsset);
+            const currentAsset = form.getValues("asset");
+            // Only write when the selection actually changes — re-running this
+            // effect (e.g. popular assets arriving) must not churn form state.
+            if (currentAsset?.id !== targetAsset.id) {
+                form.setValue("asset", targetAsset);
+            }
 
             const availableNetworks =
                 newAssetNetworksMap.get(targetAsset.id) || [];
@@ -822,10 +851,16 @@ export function DepositModal({
                 networkToSelect = availableNetworks[0];
             }
 
-            if (networkToSelect) {
+            // Guests (and logged-out users) on confidential treasuries may not
+            // select or restore any network.
+            if (isNetworkSelectionRestricted) {
+                networkToSelect = null;
+            }
+
+            const currentNetwork = form.getValues("network");
+            const nextNetworkId = networkToSelect?.id ?? null;
+            if ((currentNetwork?.id ?? null) !== nextNetworkId) {
                 form.setValue("network", networkToSelect);
-            } else {
-                form.setValue("network", null);
             }
         }
 
@@ -848,6 +883,8 @@ export function DepositModal({
         prefillTokenId,
         prefillNetworkId,
         popularAssets,
+        isNetworkSelectionRestricted,
+        accountId,
     ]);
 
     // Handle asset selection - show all assets but update network list
@@ -920,6 +957,14 @@ export function DepositModal({
                 return;
             }
 
+            // Guests on confidential treasuries cannot use any network.
+            if (isNetworkSelectionRestricted) {
+                setDepositInfo(null);
+                setSingleUseExpiresAt(null);
+                setIsLoadingAddress(false);
+                return;
+            }
+
             const isNearNetwork = (
                 selectedNetwork.chainId ?? selectedNetwork.id
             )
@@ -969,6 +1014,16 @@ export function DepositModal({
                 }
             }
 
+            // Intents deposit addresses require an authenticated session.
+            // Safety net for mid-logout races — clear quietly.
+            if (!accountId) {
+                if (requestId !== latestAddressRequestRef.current) return;
+                setDepositInfo(null);
+                setSingleUseExpiresAt(null);
+                setIsLoadingAddress(false);
+                return;
+            }
+
             setIsLoadingAddress(true);
             form.clearErrors("network");
 
@@ -1002,11 +1057,24 @@ export function DepositModal({
                         message: t("errors.addressUnavailable"),
                     });
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 if (requestId !== latestAddressRequestRef.current) return;
+                // Auth errors after logout: clear quietly (network already reset).
+                if (
+                    isAxiosErrorWithStatus(err, 401) ||
+                    isAxiosErrorWithStatus(err, 403)
+                ) {
+                    setDepositInfo(null);
+                    setSingleUseExpiresAt(null);
+                    form.clearErrors("network");
+                    return;
+                }
                 form.setError("network", {
                     type: "manual",
-                    message: err.message || t("errors.fetchFailed"),
+                    message:
+                        err instanceof Error
+                            ? err.message
+                            : t("errors.fetchFailed"),
                 });
                 setDepositInfo(null);
                 setSingleUseExpiresAt(null);
@@ -1032,6 +1100,9 @@ export function DepositModal({
         t,
         treasuryId,
         invalidatePendingAddressRequest,
+        accountId,
+        isNetworkSelectionRestricted,
+        form,
     ]);
 
     const isNearNetworkSelected = isNearNetworkId(

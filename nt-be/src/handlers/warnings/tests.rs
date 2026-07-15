@@ -381,3 +381,173 @@ async fn test_multiple_admin_users_are_recorded_in_audit_log(pool: PgPool) {
         "Audit log should record the authenticated admin username"
     );
 }
+
+#[sqlx::test]
+async fn test_create_warning_rejects_duplicate_slot_without_overwrite(pool: PgPool) {
+    let state = test_state(pool.clone());
+    let app = create_routes(state.clone());
+    let auth = primary_admin_auth(&state);
+
+    sqlx::query("DELETE FROM warning_slots")
+        .execute(&pool)
+        .await
+        .expect("Should clear warnings");
+
+    let create_body = json!({
+        "slot": "login",
+        "isActive": true,
+        "response": "paused",
+        "severity": "high",
+        "situation": "wallet_login_unavailable",
+        "userMessage": "### Original\nFirst warning",
+        "useCustomMessage": true,
+    })
+    .to_string();
+
+    let first = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/internal/api/warnings")
+                .header(header::AUTHORIZATION, &auth)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(create_body.clone()))
+                .expect("Should build first create request"),
+        )
+        .await
+        .expect("First create should complete");
+    assert_eq!(first.status(), StatusCode::OK);
+    let created = response_json(first).await;
+    let existing_id = created
+        .get("id")
+        .and_then(Value::as_i64)
+        .expect("Created warning should have id");
+
+    let second = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/internal/api/warnings")
+                .header(header::AUTHORIZATION, &auth)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "slot": "login",
+                        "isActive": true,
+                        "response": "paused",
+                        "severity": "high",
+                        "situation": "wallet_login_unavailable",
+                        "userMessage": "### Replacement\nShould not overwrite",
+                        "useCustomMessage": true,
+                    })
+                    .to_string(),
+                ))
+                .expect("Should build duplicate create request"),
+        )
+        .await
+        .expect("Duplicate create should complete");
+
+    assert_eq!(second.status(), StatusCode::CONFLICT);
+    let conflict = response_json(second).await;
+    assert_eq!(
+        conflict.get("existingId").and_then(Value::as_i64),
+        Some(existing_id)
+    );
+
+    let remaining: Vec<(Option<String>, bool)> = sqlx::query_as(
+        r#"
+        SELECT user_message, use_custom_message
+        FROM warning_slots
+        WHERE COALESCE(slot, '') = 'login'
+        "#,
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("Should load remaining login warnings");
+
+    assert_eq!(
+        remaining.len(),
+        1,
+        "Duplicate create must not insert a second row"
+    );
+    assert_eq!(
+        remaining[0].0.as_deref(),
+        Some("### Original\nFirst warning"),
+        "Original custom message must be preserved"
+    );
+    assert!(remaining[0].1, "use_custom_message must stay true");
+}
+
+#[sqlx::test]
+async fn test_delete_warning_is_idempotent(pool: PgPool) {
+    let state = test_state(pool.clone());
+    let app = create_routes(state.clone());
+    let auth = primary_admin_auth(&state);
+
+    sqlx::query("DELETE FROM warning_slots")
+        .execute(&pool)
+        .await
+        .expect("Should clear warnings");
+
+    let create = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/internal/api/warnings")
+                .header(header::AUTHORIZATION, &auth)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    json!({
+                        "slot": "exchange",
+                        "isActive": true,
+                        "response": "notice",
+                        "severity": "high",
+                        "userMessage": "Exchange issue",
+                    })
+                    .to_string(),
+                ))
+                .expect("Should build create request"),
+        )
+        .await
+        .expect("Create should complete");
+    assert_eq!(create.status(), StatusCode::OK);
+    let created = response_json(create).await;
+    let warning_id = created
+        .get("id")
+        .and_then(Value::as_i64)
+        .expect("Created warning should have id");
+
+    let first_delete = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/internal/api/warnings/{warning_id}"))
+                .header(header::AUTHORIZATION, &auth)
+                .body(Body::empty())
+                .expect("Should build first delete"),
+        )
+        .await
+        .expect("First delete should complete");
+    assert_eq!(first_delete.status(), StatusCode::NO_CONTENT);
+
+    let second_delete = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/internal/api/warnings/{warning_id}"))
+                .header(header::AUTHORIZATION, &auth)
+                .body(Body::empty())
+                .expect("Should build second delete"),
+        )
+        .await
+        .expect("Second delete should complete");
+    assert_eq!(
+        second_delete.status(),
+        StatusCode::NO_CONTENT,
+        "Deleting an already-removed warning should succeed"
+    );
+}

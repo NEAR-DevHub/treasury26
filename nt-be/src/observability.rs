@@ -1,9 +1,18 @@
+use apalis_board::axum::sse::{TracingBroadcaster, TracingSubscriber};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde_json::Value;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::Level;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+
+/// Shared log broadcaster feeding the apalis-board dashboard's live-log SSE
+/// pane. Created once: the tracing layer below writes every event to it, and
+/// `jobs::board_router` serves it as the `/api/v1/events` extension. Cheap
+/// when no dashboard client is connected (the broadcaster fans out to zero
+/// receivers).
+pub static LOG_BROADCASTER: Lazy<Arc<Mutex<TracingBroadcaster>>> =
+    Lazy::new(TracingBroadcaster::create);
 
 const REDACTED: &str = "[REDACTED]";
 const MAX_SANITIZED_TEXT_LEN: usize = 1024;
@@ -78,6 +87,7 @@ fn init_tracing_subscriber(enable_sentry: bool) {
                 .with(env_filter)
                 .with(fmt_layer)
                 .with(sentry_layer)
+                .with(TracingSubscriber::new(&LOG_BROADCASTER).layer())
                 .try_init();
         }
         LogFormat::Pretty => {
@@ -91,6 +101,7 @@ fn init_tracing_subscriber(enable_sentry: bool) {
                 .with(env_filter)
                 .with(fmt_layer)
                 .with(sentry_layer)
+                .with(TracingSubscriber::new(&LOG_BROADCASTER).layer())
                 .try_init();
         }
     }
@@ -271,6 +282,46 @@ fn truncate_sanitized_text(mut text: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The apalis-board layer must forward events emitted inside an apalis
+    /// `task` span to the broadcaster — that's what the dashboard's `/events`
+    /// SSE endpoint streams. It filters to `span.is_some()`, so only
+    /// task-span logs reach the pane; this pins that the wiring produces them.
+    #[tokio::test]
+    async fn board_layer_streams_task_span_logs() {
+        use futures::StreamExt;
+
+        let broadcaster = TracingBroadcaster::create();
+        let mut client = broadcaster.lock().unwrap().new_client();
+        let subscriber = tracing_subscriber::registry()
+            .with(EnvFilter::new("info"))
+            .with(TracingSubscriber::new(&broadcaster).layer());
+
+        tracing::subscriber::with_default(subscriber, || {
+            // Mirrors the span apalis' TraceLayer opens per task.
+            let span = tracing::info_span!("task", task_id = "t-1", attempt = 0_i64);
+            span.in_scope(|| tracing::info!("inside a task"));
+            // A log outside any task span (general app log).
+            tracing::info!("outside any span");
+        });
+
+        let mut with_span = 0;
+        let mut without_span = 0;
+        while let Ok(Some(Ok(entry))) =
+            tokio::time::timeout(std::time::Duration::from_millis(500), client.next()).await
+        {
+            if entry.span.is_some() {
+                with_span += 1;
+            } else {
+                without_span += 1;
+            }
+        }
+        // The task-span log is captured (the SSE endpoint keeps it); the
+        // spanless one is captured too but would be dropped by the endpoint's
+        // `span.is_some()` filter — the board only shows task logs by design.
+        assert_eq!(with_span, 1, "task-span log must reach the broadcaster");
+        assert_eq!(without_span, 1);
+    }
 
     #[test]
     fn sentry_dsn_from_env_value_requires_non_empty_value() {

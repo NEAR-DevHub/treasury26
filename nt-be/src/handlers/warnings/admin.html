@@ -1361,14 +1361,19 @@
       });
       if (!res.ok && res.status !== 204) {
         let msg;
+        let existingId = null;
         try {
           const json = await res.json();
           msg = json.error || JSON.stringify(json);
+          if (json.existingId != null) existingId = Number(json.existingId);
         } catch {
           msg = await res.text().catch(() => '') || `Request failed (${res.status})`;
         }
         showFormError(msg);
-        throw new Error(msg);
+        const err = new Error(msg);
+        err.status = res.status;
+        err.existingId = existingId;
+        throw err;
       }
       if (res.status === 204) return null;
       return res.json();
@@ -1480,7 +1485,7 @@
         || w.internalNote;
 
       return `
-          <article class="card ${w.response || 'notice'}">
+          <article class="card ${w.response || 'notice'}" data-warning-id="${w.id}"${isGroup && w.groupId ? ` data-group-id="${escapeHtml(w.groupId)}"` : ''}>
             <div class="card-header">
               <h3>${title}</h3>
               <div class="actions">
@@ -2373,7 +2378,9 @@
             useCustomMessage: Boolean(body.useCustomMessage),
             groupId: groupId || '',
           };
-          if (s === 'login') {
+          if (wantLogin && s === 'login') {
+            // Auto-paired companion from "Also pause login" — use catalog defaults.
+            // Standalone situation #11 edits must keep the admin's custom copy.
             payload = {
               ...payload,
               situation: 'wallet_login_unavailable',
@@ -2392,7 +2399,27 @@
             targetId = editId;
           }
           if (!targetId) {
-            targetId = findExistingWarning(s, payload.token, payload.network)?.id;
+            const existing = findExistingWarning(s, payload.token, payload.network);
+            if (existing) {
+              if (editId) {
+                // Group edit: update the existing companion row for this slot.
+                targetId = existing.id;
+              } else {
+                // New warning — never silently overwrite an existing slot.
+                setSaving(false);
+                if (confirm(
+                  `A warning already exists for ${slotLabel(s)} (#${existing.id}). Open it for editing instead?`
+                )) {
+                  hideWarningForm(true);
+                  await editWarning(existing.id);
+                } else {
+                  showFormError(
+                    `A warning already exists for this slot (#${existing.id}). Edit or delete it first.`
+                  );
+                }
+                return;
+              }
+            }
           }
           if (targetId) {
             await api(`/internal/api/warnings/${targetId}`, { method: 'PUT', body: JSON.stringify(payload) });
@@ -2412,7 +2439,13 @@
         hideWarningForm(true);
         await loadWarnings();
       } catch (e) {
-        // error already shown by api()
+        if (e.existingId && confirm(
+          `A warning already exists (#${e.existingId}). Open it for editing instead?`
+        )) {
+          hideWarningForm(true);
+          await editWarning(e.existingId);
+        }
+        // otherwise error already shown by api()
       } finally {
         setSaving(false);
       }
@@ -2425,7 +2458,37 @@
       return 'grp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
     }
 
+    let deleteInFlight = false;
+
+    function setWarningActionsDisabled(ids, groupId, disabled, deletingLabel) {
+      const cards = [];
+      if (groupId) {
+        document.querySelectorAll(`.card[data-group-id="${CSS.escape(groupId)}"]`)
+          .forEach(el => cards.push(el));
+      }
+      for (const id of ids) {
+        const el = document.querySelector(`.card[data-warning-id="${id}"]`);
+        if (el && !cards.includes(el)) cards.push(el);
+      }
+      for (const card of cards) {
+        card.querySelectorAll('[data-action="edit-warning"], [data-action="delete-warning"]')
+          .forEach(btn => {
+            btn.disabled = disabled;
+            if (btn.dataset.action === 'delete-warning') {
+              if (disabled && deletingLabel) {
+                if (!btn.dataset.savedLabel) btn.dataset.savedLabel = btn.innerHTML;
+                btn.innerHTML = deletingLabel;
+              } else if (!disabled && btn.dataset.savedLabel) {
+                btn.innerHTML = btn.dataset.savedLabel;
+                delete btn.dataset.savedLabel;
+              }
+            }
+          });
+      }
+    }
+
     async function deleteWarning(id) {
+      if (deleteInFlight) return;
       const target = warningsCache.find(x => x.id === id);
       const groupMembers = target?.groupId
         ? warningsCache.filter(x => x.groupId === target.groupId)
@@ -2434,6 +2497,8 @@
       const idsToDelete = groupMembers.length > 1
         ? groupMembers.map(m => m.id)
         : [id];
+      deleteInFlight = true;
+      setWarningActionsDisabled(idsToDelete, target?.groupId, true, 'Deleting…');
       try {
         for (const wid of idsToDelete) {
           await api(`/internal/api/warnings/${wid}`, { method: 'DELETE' });
@@ -2441,6 +2506,9 @@
         await loadWarnings();
       } catch (e) {
         showPageError(e.message);
+        setWarningActionsDisabled(idsToDelete, target?.groupId, false);
+      } finally {
+        deleteInFlight = false;
       }
     }
 
@@ -2822,8 +2890,12 @@
       switch (action) {
         case 'hide-form':      hideWarningForm(); break;
         case 'save-warning':   saveWarning(id, btn); break;
-        case 'edit-warning':   editWarning(id); break;
-        case 'delete-warning': deleteWarning(id); break;
+        case 'edit-warning':
+          if (!deleteInFlight) editWarning(id);
+          break;
+        case 'delete-warning':
+          deleteWarning(id);
+          break;
       }
     });
 

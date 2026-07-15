@@ -23,7 +23,9 @@ use std::sync::Arc;
 
 use apalis::layers::WorkerBuilderExt;
 use apalis::layers::sentry::SentryLayer;
-use apalis::layers::tracing::{DefaultOnFailure, TraceLayer};
+use apalis::layers::tracing::{
+    DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer,
+};
 use apalis::prelude::*;
 use apalis_core::backend::TaskSink;
 use apalis_core::backend::pipe::PipeExt;
@@ -270,14 +272,23 @@ macro_rules! register_cron_worker {
                 // the task's queue / id / attempt as Sentry context, plus a
                 // per-task performance transaction. No-op when Sentry is off.
                 .layer(SentryLayer::new())
-                // Trace failures at WARN, not the default ERROR: a single
+                // The `task` span and its start/done events are created at
+                // INFO (apalis defaults them to DEBUG). Two reasons: the
+                // apalis-board dashboard only streams logs carrying a `task`
+                // span (its `/events` SSE filters `span.is_some()`), and a
+                // DEBUG span is disabled under the default `info` filter — so
+                // at INFO the span is live, task activity shows on the board,
+                // and every cycle's logs inherit the task_id/attempt context.
+                // Failures stay at WARN (not the default ERROR): a single
                 // failed cycle is retried by the next cron tick and is a
                 // warning, and this keeps the tracing→Sentry bridge
                 // (ERROR→event) from emitting a *second* event for the same
-                // failure the SentryLayer already captured. Persistent failures
-                // still surface via Sentry + the board.
+                // failure the SentryLayer already captured.
                 .layer(
                     TraceLayer::new()
+                        .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
+                        .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
+                        .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
                         .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
                 )
                 .concurrency(1)
@@ -396,6 +407,55 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         schedule_every_secs(60),
         handlers::token_price_ingest
     );
+
+    monitor = register_cron_worker!(
+        monitor,
+        queues,
+        state,
+        "token-price-backfill",
+        schedule_every_secs(env_secs("TOKEN_PRICE_BACKFILL_INTERVAL_SECONDS", 3600)),
+        handlers::token_price_backfill
+    );
+
+    // Skipping this becuase balance_changs table will be depreceated and we will only use gold projections
+
+    // if !state.env_vars.disable_balance_changes_usd_backfill {
+    //     spawn_cron_worker!(
+    //         queues,
+    //         state,
+    //         "balance-changes-usd-backfill",
+    //         schedule_every_secs(env_secs(
+    //             "BALANCE_CHANGES_USD_BACKFILL_INTERVAL_SECONDS",
+    //             3600
+    //         )),
+    //         handlers::balance_changes_usd_backfill
+    //     );
+    // }
+
+    if !state.env_vars.disable_gold_public_usd_backfill {
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "gold-public-usd-backfill",
+            schedule_every_secs(env_secs("GOLD_PUBLIC_USD_BACKFILL_INTERVAL_SECONDS", 3600)),
+            handlers::gold_public_usd_backfill
+        );
+    }
+
+    if !state.env_vars.disable_gold_confidential_usd_backfill {
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "gold-confidential-usd-backfill",
+            schedule_every_secs(env_secs(
+                "GOLD_CONFIDENTIAL_USD_BACKFILL_INTERVAL_SECONDS",
+                3600
+            )),
+            handlers::gold_confidential_usd_backfill
+        );
+    }
 
     monitor = register_cron_worker!(
         monitor,
@@ -589,6 +649,10 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
         "subscription-monthly-reset",
         "public-dashboard-refresh",
         "ft-lockup-refresh",
+        "token-price-backfill",
+        "balance-changes-usd-backfill",
+        "gold-public-usd-backfill",
+        "gold-confidential-usd-backfill",
     ] {
         if let Some(store) = queues.storage(queue) {
             // Label the push with the real queue name so a failed push is
@@ -710,9 +774,19 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
         api = api.register(store.clone());
     }
 
+    // The board registers an `/api/v1/events` SSE route (apalis-board's
+    // `events` feature, on by default) whose handler extracts an
+    // `Extension<Arc<Mutex<TracingBroadcaster>>>`. Without it, opening the
+    // dashboard 500s with "Missing request extension … TracingBroadcaster".
+    // Supply the process-wide broadcaster that the tracing subscriber writes
+    // to (see `observability::LOG_BROADCASTER`), so the dashboard's live-log
+    // pane streams the app's logs.
+    let broadcaster = crate::observability::LOG_BROADCASTER.clone();
+
     Router::new()
         .nest("/api/v1", api.build())
         .fallback_service(ServeUI::new())
+        .layer(axum::Extension(broadcaster))
         // Auth gates every board route. Applied inside the guard so that an
         // unknown public `/api/*` path 404s without an auth challenge.
         .layer(axum::middleware::from_fn_with_state(

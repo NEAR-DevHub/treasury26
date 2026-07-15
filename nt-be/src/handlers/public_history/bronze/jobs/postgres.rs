@@ -18,10 +18,16 @@ pub(crate) async fn setup_public_history_jobs(pool: &PgPool) -> Result<(), sqlx:
 
     let sql = format!(
         r#"
+        -- Apalis retries Failed jobs while attempts < max_attempts. Treat
+        -- those rows as inflight too, or a duplicate Pending job can be
+        -- inserted and later collide when the Failed row is retried.
         CREATE UNIQUE INDEX IF NOT EXISTS {PUBLIC_HISTORY_INFLIGHT_INDEX}
         ON apalis.jobs (job_type, ((metadata->>'{PUBLIC_HISTORY_JOB_KEY_FIELD}')))
         WHERE job_type IN ({namespace_literals})
-          AND status IN ('Pending', 'Queued', 'Running')
+          AND (
+              status IN ('Pending', 'Queued', 'Running')
+              OR (status = 'Failed' AND attempts < max_attempts)
+          )
           AND metadata ? '{PUBLIC_HISTORY_JOB_KEY_FIELD}'
         "#
     );

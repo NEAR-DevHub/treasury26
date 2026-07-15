@@ -63,7 +63,7 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
     const shouldLoadQuoteUsd =
         isExecuted &&
         !!data.depositAddress &&
-        (data.amountInUsd == null || data.amountOutUsd == null);
+        (data.amountInUsd === undefined || data.amountOutUsd === undefined);
     const { data: quoteByDepositAddress } = useQuoteByDepositAddress(
         data.depositAddress || null,
         undefined,

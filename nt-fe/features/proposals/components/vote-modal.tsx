@@ -17,6 +17,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
 import type { Proposal } from "@/lib/proposals-api";
 import { stripMessageForTooltip } from "@/lib/warnings";
+import { isAppLevelSlotBlock } from "@/features/proposals/hooks/use-vote-action-slots";
 import { useNear } from "@/stores/near-store";
 
 interface VoteModalProps {
@@ -51,8 +52,11 @@ export function VoteModal({
     // The slot warning is already shown inline via <SlotWarning>, so the button
     // tooltip is only the fallback for an app-wide block (nothing visible in the
     // modal explains why the button is disabled).
-    const voteBlockIsAppLevel =
-        voteSlotBlocked && voteWarning?.slot !== voteSlot;
+    const voteBlockIsAppLevel = isAppLevelSlotBlock(
+        voteSlot,
+        voteSlotBlocked,
+        voteWarning,
+    );
     const approveBlock = useProposalApproveBlock(proposals);
     const [isSubmitting, setIsSubmitting] = useState(false);
 

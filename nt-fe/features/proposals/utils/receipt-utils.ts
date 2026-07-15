@@ -6,6 +6,7 @@ import type {
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import type {
     BatchPaymentRequestData,
+    ConfidentialBulkData,
     ConfidentialRequestData,
     PaymentRequestData,
     SwapRequestData,
@@ -19,6 +20,89 @@ export interface ReceiptProposalData {
     receiverAddress?: string;
     sourceAmountRaw?: string;
     destinationAmountWithDecimals?: string;
+}
+
+export interface ConfidentialBulkRecipientLeg {
+    recipient: string;
+    /** Gross amount charged for this leg (quote amountIn). */
+    amountIn: string;
+    /** Recipient net amount in smallest units (quote amountOut). */
+    amountOut: string;
+}
+
+/** Receipt/batch payment shape — net amount the recipient receives. */
+export interface ConfidentialBulkReceiptPayment {
+    recipient: string;
+    /** Recipient net amount in smallest units (quote amountOut). */
+    amount: string;
+}
+
+export interface ConfidentialBulkReceiptData {
+    tokenId: string;
+    payments: ConfidentialBulkReceiptPayment[];
+}
+
+type BulkQuoteMetadata = {
+    quote?: {
+        amountIn?: string;
+        amountOut?: string;
+    };
+    quoteRequest?: {
+        recipient?: string;
+    };
+};
+
+/**
+ * Map a confidential bulk recipient's stored 1Click quote into shared leg
+ * fields (recipient + amountIn/amountOut) used by receipts and expanded view.
+ */
+export function mapConfidentialBulkRecipientPayment(
+    quoteMetadata: Record<string, unknown> | null | undefined,
+): ConfidentialBulkRecipientLeg {
+    const quote = (quoteMetadata ?? {}) as BulkQuoteMetadata;
+    const amountIn = quote.quote?.amountIn ?? "0";
+    const amountOut = quote.quote?.amountOut ?? amountIn;
+    const recipient = quote.quoteRequest?.recipient ?? "";
+    return { recipient, amountIn, amountOut };
+}
+
+export function toConfidentialBulkReceiptData(
+    data: ConfidentialBulkData,
+): ConfidentialBulkReceiptData {
+    return {
+        tokenId: data.tokenId,
+        payments: data.recipients.map((recipient) => {
+            const leg = mapConfidentialBulkRecipientPayment(
+                recipient.quoteMetadata,
+            );
+            return { recipient: leg.recipient, amount: leg.amountOut };
+        }),
+    };
+}
+
+/**
+ * Extract multi-recipient receipt rows for a confidential bulk payment.
+ * Returns null for non-bulk confidential requests and other proposal kinds.
+ */
+export function extractConfidentialBulkReceiptData(
+    proposal: Proposal,
+    treasuryId?: string,
+): ConfidentialBulkReceiptData | null {
+    try {
+        const { type, data } = extractProposalData(proposal, treasuryId);
+        if (type !== "Confidential Request") {
+            return null;
+        }
+
+        const confidentialData = data as ConfidentialRequestData;
+        if (confidentialData.mapped?.type !== "bulk") {
+            return null;
+        }
+
+        return toConfidentialBulkReceiptData(confidentialData.mapped.data);
+    } catch {
+        return null;
+    }
 }
 
 export function isReceiptEligibleProposalKind(proposalKind?: string): boolean {
@@ -115,6 +199,22 @@ export function extractReceiptProposalData(
                     confidentialData.mapped.data,
                     treasuryId,
                 );
+            }
+
+            // Bulk receipts render via the multi-card path using
+            // extractConfidentialBulkReceiptData — surface token/total here so
+            // eligibility checks treat the proposal as receipt-capable.
+            if (confidentialData.mapped?.type === "bulk") {
+                const bulkData = confidentialData.mapped.data;
+                return {
+                    variant: "payment",
+                    sourceTokenId: bulkData.tokenId,
+                    destinationTokenId: undefined,
+                    depositAddress: undefined,
+                    receiverAddress: undefined,
+                    sourceAmountRaw: bulkData.totalAmount,
+                    destinationAmountWithDecimals: undefined,
+                };
             }
         }
     } catch {

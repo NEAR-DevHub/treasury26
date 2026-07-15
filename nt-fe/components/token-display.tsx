@@ -168,17 +168,17 @@ export const NetworkDisplay = ({
     const image = asset.chainIcons ? asset.chainIcons.icon : asset.icon;
 
     return (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
             <img
                 src={image}
                 alt={`${asset.chainName} network`}
-                className="size-6"
+                className="size-6 shrink-0"
             />
-            <div className="flex flex-col text-left">
-                <span className="font-semibold capitalize">
+            <div className="flex min-w-0 flex-col text-left">
+                <span className="truncate font-semibold capitalize">
                     {asset.chainName}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="truncate text-xs text-muted-foreground">
                     {subLabel ?? type}
                 </span>
             </div>
@@ -196,11 +196,11 @@ export const BalanceCell = ({
     balanceUSD: number;
 }) => {
     return (
-        <div className="text-right">
-            <div className="font-medium text-sm">
+        <div className="min-w-0 max-w-full overflow-hidden text-right">
+            <div className="truncate font-medium text-sm">
                 {formatCurrencyWithSubCent(balanceUSD)}
             </div>
-            <div className="text-xxs text-muted-foreground">
+            <div className="truncate text-xxs text-muted-foreground">
                 {formatSmartAmount(balance)} {symbol}
             </div>
         </div>
