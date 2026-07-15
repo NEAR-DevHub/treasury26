@@ -183,7 +183,12 @@ fn storage(pool: &PgPool, queue: &str) -> TickStorage {
 /// tasks. On Unix that's SIGINT **or** SIGTERM — SIGTERM is what
 /// containers/systemd send to stop the process, so waiting only on Ctrl-C
 /// (SIGINT) would skip the graceful drain in production.
-async fn jobs_shutdown_signal() -> std::io::Result<()> {
+///
+/// Also used by `main.rs` as the HTTP server's graceful-shutdown trigger:
+/// installing a tokio signal handler here replaces the OS default
+/// "terminate on SIGINT" for the whole process, so *every* long-running
+/// future must observe the signal itself or the process never exits.
+pub async fn shutdown_signal() -> std::io::Result<()> {
     // NOTE: `run_with_signal` treats *any* completion of this future — Ok or
     // Err — as a shutdown request. So on failure to install the signal
     // handlers we must NOT return (that would stop the whole jobs monitor at
@@ -298,8 +303,10 @@ macro_rules! register_cron_worker {
 }
 
 /// Registers and spawns every background job. Returns the queue registry
-/// used to serve the apalis-board UI.
-pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
+/// used to serve the apalis-board UI, plus the handle of the monitor task
+/// so `main` can await the graceful drain before letting the runtime drop
+/// (dropping the runtime would abort in-flight tasks mid-drain).
+pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHandle<()>) {
     // apalis schema + tables (idempotent).
     setup_apalis(&state.db_pool)
         .await
@@ -318,7 +325,20 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     // blip; it only exits on a terminal condition, which is rare. A restart
     // then re-establishes the connection. (If a cooldown on repeated exits is
     // ever needed, apalis's `circuit_breaker` worker ext is the native tool.)
+    //
+    // A `GracefulExit` (worker stopped via `.stop()`, i.e. shutdown) must NOT
+    // be restarted: during shutdown the Monitor stops each rebuilt worker
+    // immediately, so restarting on GracefulExit hot-loops
+    // stop→exit→restart→stop forever and the process never terminates after
+    // SIGINT/SIGTERM. Same for any exit while shutdown is in progress.
     let mut monitor = Monitor::new().should_restart(|ctx, err, attempt| {
+        if matches!(err, WorkerError::GracefulExit) || ctx.is_shutting_down() {
+            tracing::info!(
+                worker = %ctx.name(),
+                "job worker stopped for shutdown; not restarting"
+            );
+            return false;
+        }
         tracing::error!(
             worker = %ctx.name(),
             error = %err,
@@ -664,13 +684,13 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
     // Drive all workers under the monitor on one supervised task. It runs
     // until a shutdown signal, then drains in-flight tasks (see
     // `shutdown_timeout` if a bound is needed).
-    tokio::spawn(async move {
-        if let Err(e) = monitor.run_with_signal(jobs_shutdown_signal()).await {
+    let monitor_handle = tokio::spawn(async move {
+        if let Err(e) = monitor.run_with_signal(shutdown_signal()).await {
             tracing::error!(error = %e, "jobs monitor exited");
         }
     });
 
-    queues
+    (queues, monitor_handle)
 }
 
 const BOARD_AUTH_REALM: &str = "Trezu Jobs Board";
