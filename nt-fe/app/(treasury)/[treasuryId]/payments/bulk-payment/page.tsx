@@ -278,7 +278,7 @@ export default function BulkPaymentPage() {
 
         isSubmittingProposalRef.current = true;
         setIsSubmittingProposal(true);
-        
+
         // createProposal already toasts wallet rejection; only toast prepare errors.
         let reachedCreateProposal = false;
         try {
@@ -355,7 +355,6 @@ export default function BulkPaymentPage() {
         } finally {
             isSubmittingProposalRef.current = false;
             setIsSubmittingProposal(false);
-
         }
     };
 

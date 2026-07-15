@@ -8,8 +8,8 @@ use crate::observability::sanitize_sensitive_text;
 
 pub mod balances;
 pub mod bronze;
-pub mod bulk_payment_confirm;
 pub mod bulk_activation;
+pub mod bulk_payment_confirm;
 pub mod bulk_payment_prepare;
 pub mod generate_intent;
 pub mod gold;

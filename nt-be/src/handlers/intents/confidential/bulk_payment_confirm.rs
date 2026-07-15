@@ -480,7 +480,11 @@ mod tests {
         )
         .await;
 
-        assert_eq!(status, StatusCode::OK, "zero credits still confirms: {body}");
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "zero credits still confirms: {body}"
+        );
         assert_eq!(credits_of(&pool, DAO_ID).await, 0, "credits clamp at zero");
         assert_eq!(
             batch_payments_used(&pool, DAO_ID).await,
