@@ -1042,6 +1042,7 @@
         "proposalSubmitted": "Sammelzahlungsvorschlag übermittelt",
         "submitListFailed": "Übermittlung der Zahlungsliste fehlgeschlagen",
         "submitFailed": "Übermittlung der Sammelzahlung fehlgeschlagen",
+        "quoteFetchFailed": "Überweisungsgebühren konnten nicht abgerufen werden. Bitte versuchen Sie es erneut.",
         "upload": {
             "pleaseUploadCsv": "Bitte laden Sie eine CSV-Datei hoch",
             "fileSizeLimit": "Dateigröße muss kleiner als 1,5 MB sein",

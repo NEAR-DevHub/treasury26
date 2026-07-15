@@ -1042,6 +1042,7 @@
         "proposalSubmitted": "Proposta de pagamento em massa enviada",
         "submitListFailed": "Falha ao enviar lista de pagamentos",
         "submitFailed": "Falha ao enviar pagamento em massa",
+        "quoteFetchFailed": "Não foi possível obter as taxas de transferência. Tente novamente.",
         "upload": {
             "pleaseUploadCsv": "Por favor, faça upload de um arquivo CSV",
             "fileSizeLimit": "O tamanho do arquivo deve ser inferior a 1,5 MB",

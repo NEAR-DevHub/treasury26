@@ -1394,14 +1394,31 @@ export interface BulkPaymentPrepareRequest {
     destinationAsset?: string;
     decimals: number;
     payments: Array<{ recipient: string; amount: string }>;
-    notes?: string;
     slippageTolerance?: number;
+}
+
+/**
+ * Firm 1Click quote amounts for one leg. `amountIn` is what the paying side
+ * is charged (origin asset, smallest units); `amountOut` is what the
+ * receiving side nets after transfer fees (destination asset, smallest
+ * units). Fee math uses the `*Formatted` decimal strings so differing
+ * origin/destination chain decimals never skew it.
+ */
+export interface BulkPaymentLegQuote {
+    amountIn: string;
+    amountInFormatted: string;
+    amountOut: string;
+    amountOutFormatted: string;
 }
 
 export interface BulkPaymentPrepareResponse {
     bulkAccountId: string;
     headerPayloadHash: string;
     recipientPayloadHashes: string[];
+    /** Per recipient leg, same order as the request's `payments`. */
+    recipientQuotes: BulkPaymentLegQuote[];
+    /** DAO → bulk subaccount leg; `amountIn` is the DAO's total charge. */
+    headerQuote: BulkPaymentLegQuote;
 }
 
 export async function prepareConfidentialBulkPayment(
@@ -1415,6 +1432,30 @@ export async function prepareConfidentialBulkPayment(
             withCredentials: true,
         },
     );
+    return response.data;
+}
+
+export interface BulkPaymentConfirmRequest {
+    daoId: string;
+    /** Header intent hash from the prepare response being confirmed. */
+    headerPayloadHash: string;
+    /** Notes typed on the review screen — stored privately on the header intent. */
+    notes?: string;
+}
+
+/**
+ * Submit-time counterpart of `prepareConfidentialBulkPayment`. Prepare runs
+ * when the review screen loads (for fee display), so the side effects of an
+ * actual submission — attaching notes and consuming a batch-payment credit —
+ * happen here, right before the DAO proposal is created.
+ */
+export async function confirmConfidentialBulkPayment(
+    request: BulkPaymentConfirmRequest,
+): Promise<{ success: boolean }> {
+    const url = `${BACKEND_API_BASE}/confidential-intents/bulk-payment/confirm`;
+    const response = await axios.post<{ success: boolean }>(url, request, {
+        withCredentials: true,
+    });
     return response.data;
 }
 

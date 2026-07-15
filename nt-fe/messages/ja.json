@@ -1042,6 +1042,7 @@
         "proposalSubmitted": "一括支払い提案が送信されました",
         "submitListFailed": "支払いリストの送信に失敗しました",
         "submitFailed": "一括支払いの送信に失敗しました",
+        "quoteFetchFailed": "送金手数料を取得できませんでした。もう一度お試しください。",
         "upload": {
             "pleaseUploadCsv": "CSVファイルをアップロードしてください",
             "fileSizeLimit": "ファイルサイズは1.5MB未満である必要があります",
