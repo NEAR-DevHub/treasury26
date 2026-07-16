@@ -1,6 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import {
+    type ChangeEvent,
+    type ClipboardEvent,
+    type KeyboardEvent,
+    useMemo,
+} from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "./button";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -23,6 +28,18 @@ import {
 import z from "zod";
 import Big from "@/lib/big";
 import { getPaymentBalanceWarning } from "@/lib/intents-fee";
+
+function sanitizeAmountInput(value: string): string {
+    return value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+}
+
+function isEntireInputSelected(el: HTMLInputElement): boolean {
+    return (
+        el.value.length > 0 &&
+        el.selectionStart === 0 &&
+        el.selectionEnd === el.value.length
+    );
+}
 
 export const tokenSchema = z.object({
     address: z.string(),
@@ -205,6 +222,69 @@ export function TokenInput<
                 const displayError =
                     errorMessage || fieldState.error?.message || null;
 
+                const handleMaxClick = () => {
+                    if (!tokenBalance || !tokenDecimals) return;
+                    const maxAmount = Big(tokenBalance)
+                        .div(Big(10).pow(tokenDecimals))
+                        .toFixed(tokenDecimals);
+                    setValue(
+                        amountName,
+                        maxAmount as PathValue<
+                            TFieldValues,
+                            Path<TFieldValues>
+                        >,
+                    );
+                    onMaxSet?.(maxAmount);
+                };
+
+                // Replace at keydown so React/RHF re-renders can't turn
+                // select-all into append.
+                const handleAmountKeyDown = (
+                    e: KeyboardEvent<HTMLInputElement>,
+                ) => {
+                    if (
+                        e.ctrlKey ||
+                        e.metaKey ||
+                        e.altKey ||
+                        e.key.length !== 1
+                    ) {
+                        return;
+                    }
+                    if (!isEntireInputSelected(e.currentTarget)) return;
+
+                    const nextValue = e.key.replace(/[^0-9.]/g, "");
+                    if (nextValue === "" && e.key !== ".") return;
+
+                    e.preventDefault();
+                    onAmountInput?.();
+                    field.onChange(nextValue || ".");
+                };
+
+                const handleAmountPaste = (
+                    e: ClipboardEvent<HTMLInputElement>,
+                ) => {
+                    if (!isEntireInputSelected(e.currentTarget)) return;
+
+                    e.preventDefault();
+                    onAmountInput?.();
+                    field.onChange(
+                        sanitizeAmountInput(e.clipboardData.getData("text")),
+                    );
+                };
+
+                const handleAmountChange = (
+                    e: ChangeEvent<HTMLInputElement>,
+                ) => {
+                    onAmountInput?.();
+                    field.onChange(sanitizeAmountInput(e.target.value));
+                };
+
+                const inputValue = loading
+                    ? "..."
+                    : customValue !== undefined
+                      ? customValue
+                      : field.value.toString();
+
                 return (
                     <InputBlock
                         interactive={!readOnly}
@@ -229,32 +309,7 @@ export function TokenInput<
                                                 variant="secondary"
                                                 className="bg-muted-foreground/10 hover:bg-muted-foreground/20"
                                                 size="sm"
-                                                onClick={() => {
-                                                    if (
-                                                        tokenBalance &&
-                                                        tokenDecimals
-                                                    ) {
-                                                        const maxAmount = Big(
-                                                            tokenBalance,
-                                                        )
-                                                            .div(
-                                                                Big(10).pow(
-                                                                    tokenDecimals,
-                                                                ),
-                                                            )
-                                                            .toFixed(
-                                                                tokenDecimals,
-                                                            );
-                                                        setValue(
-                                                            amountName,
-                                                            maxAmount as PathValue<
-                                                                TFieldValues,
-                                                                Path<TFieldValues>
-                                                            >,
-                                                        );
-                                                        onMaxSet?.(maxAmount);
-                                                    }
-                                                }}
+                                                onClick={handleMaxClick}
                                             >
                                                 {t("max")}
                                             </Button>
@@ -276,107 +331,22 @@ export function TokenInput<
                                         onKeyDown={
                                             readOnly
                                                 ? undefined
-                                                : (e) => {
-                                                      // Replace at keydown so React/RHF re-renders
-                                                      // can't turn select-all into append.
-                                                      if (
-                                                          e.ctrlKey ||
-                                                          e.metaKey ||
-                                                          e.altKey ||
-                                                          e.key.length !== 1
-                                                      ) {
-                                                          return;
-                                                      }
-                                                      const el =
-                                                          e.currentTarget;
-                                                      if (
-                                                          el.value.length ===
-                                                              0 ||
-                                                          el.selectionStart !==
-                                                              0 ||
-                                                          el.selectionEnd !==
-                                                              el.value.length
-                                                      ) {
-                                                          return;
-                                                      }
-                                                      const nextValue =
-                                                          e.key.replace(
-                                                              /[^0-9.]/g,
-                                                              "",
-                                                          );
-                                                      if (
-                                                          nextValue === "" &&
-                                                          e.key !== "."
-                                                      ) {
-                                                          return;
-                                                      }
-                                                      e.preventDefault();
-                                                      onAmountInput?.();
-                                                      field.onChange(
-                                                          nextValue || ".",
-                                                      );
-                                                  }
+                                                : handleAmountKeyDown
                                         }
                                         onPaste={
                                             readOnly
                                                 ? undefined
-                                                : (e) => {
-                                                      const el =
-                                                          e.currentTarget;
-                                                      if (
-                                                          el.value.length ===
-                                                              0 ||
-                                                          el.selectionStart !==
-                                                              0 ||
-                                                          el.selectionEnd !==
-                                                              el.value.length
-                                                      ) {
-                                                          return;
-                                                      }
-                                                      e.preventDefault();
-                                                      const nextValue =
-                                                          e.clipboardData
-                                                              .getData("text")
-                                                              .replace(
-                                                                  /[^0-9.]/g,
-                                                                  "",
-                                                              )
-                                                              .replace(
-                                                                  /^0+(?=\d)/,
-                                                                  "",
-                                                              );
-                                                      onAmountInput?.();
-                                                      field.onChange(nextValue);
-                                                  }
+                                                : handleAmountPaste
                                         }
                                         onChange={
                                             readOnly
                                                 ? undefined
-                                                : (e) => {
-                                                      onAmountInput?.();
-                                                      field.onChange(
-                                                          e.target.value
-                                                              .replace(
-                                                                  /[^0-9.]/g,
-                                                                  "",
-                                                              )
-                                                              .replace(
-                                                                  /^0+(?=\d)/,
-                                                                  "",
-                                                              ),
-                                                      );
-                                                  }
+                                                : handleAmountChange
                                         }
                                         onBlur={
                                             readOnly ? undefined : field.onBlur
                                         }
-                                        value={
-                                            loading
-                                                ? "..."
-                                                : customValue !== undefined
-                                                  ? customValue
-                                                  : field.value.toString()
-                                        }
+                                        value={inputValue}
                                         placeholder="0"
                                         className={cn(
                                             readOnly && "text-muted-foreground",
@@ -387,32 +357,38 @@ export function TokenInput<
                                 <FormField
                                     control={control}
                                     name={tokenName}
-                                    render={({ field }) => (
-                                        <TokenSelect
-                                            disabled={tokenSelect?.disabled}
-                                            locked={tokenSelect?.locked}
-                                            showPopularAssets={
-                                                tokenSelect?.showPopularAssets ??
-                                                false
-                                            }
-                                            selectedToken={token}
-                                            setSelectedToken={(
-                                                selectedToken: SelectedTokenData,
-                                            ) => {
-                                                field.onChange(selectedToken);
-                                                onTokenChange?.(
-                                                    selectedToken as Token,
-                                                );
-                                            }}
-                                            showOnlyOwnedAssets={
-                                                tokenSelect?.showOnlyOwnedAssets ??
-                                                false
-                                            }
-                                            filterTokens={
-                                                tokenSelect?.filterTokens
-                                            }
-                                        />
-                                    )}
+                                    render={({ field: tokenField }) => {
+                                        const handleTokenSelect = (
+                                            selectedToken: SelectedTokenData,
+                                        ) => {
+                                            tokenField.onChange(selectedToken);
+                                            onTokenChange?.(
+                                                selectedToken as Token,
+                                            );
+                                        };
+
+                                        return (
+                                            <TokenSelect
+                                                disabled={tokenSelect?.disabled}
+                                                locked={tokenSelect?.locked}
+                                                showPopularAssets={
+                                                    tokenSelect?.showPopularAssets ??
+                                                    false
+                                                }
+                                                selectedToken={token}
+                                                setSelectedToken={
+                                                    handleTokenSelect
+                                                }
+                                                showOnlyOwnedAssets={
+                                                    tokenSelect?.showOnlyOwnedAssets ??
+                                                    false
+                                                }
+                                                filterTokens={
+                                                    tokenSelect?.filterTokens
+                                                }
+                                            />
+                                        );
+                                    }}
                                 />
                             </div>
                             {estimatedUSDValue !== null &&
