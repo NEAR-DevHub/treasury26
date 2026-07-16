@@ -14,12 +14,16 @@ impl QuoteProposalType {
             Self::PaymentTransfer => "payment_transfer",
         }
     }
+}
 
-    pub fn from_str(value: &str) -> Option<Self> {
+impl std::str::FromStr for QuoteProposalType {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
-            "asset_exchange" | "asset-exchange" => Some(Self::AssetExchange),
-            "payment_transfer" | "payment-transfer" => Some(Self::PaymentTransfer),
-            _ => None,
+            "asset_exchange" | "asset-exchange" => Ok(Self::AssetExchange),
+            "payment_transfer" | "payment-transfer" => Ok(Self::PaymentTransfer),
+            _ => Err(()),
         }
     }
 }
@@ -52,7 +56,7 @@ impl QuoteProposalSnapshot {
         let quote_type = value
             .get("type")
             .and_then(Value::as_str)
-            .and_then(QuoteProposalType::from_str)?;
+            .and_then(|quote_type| quote_type.parse().ok())?;
         Some(Self {
             quote_type,
             deposit_address: string_field(value, "depositAddress")?,
