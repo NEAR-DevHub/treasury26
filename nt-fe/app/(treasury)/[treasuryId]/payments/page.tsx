@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowDownToLine, Info, Shield } from "lucide-react";
+import { ArrowDownToLine, Info } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -184,24 +184,7 @@ function Step1({
             <SlotWarning slot="payments" />
             <PageCard>
                 <div className="flex justify-between items-center">
-                    <StepperHeader
-                        title={
-                            isConfidential ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                    <span>{tPay("title")}</span>
-                                    <Tooltip
-                                        content={tPay("confidentialTooltip")}
-                                    >
-                                        <span className="inline-flex">
-                                            <Shield className="size-4 fill-foreground" />
-                                        </span>
-                                    </Tooltip>
-                                </span>
-                            ) : (
-                                tPay("title")
-                            )
-                        }
-                    />
+                    <StepperHeader title={tPay("title")} />
                     <div className="flex items-center gap-2">
                         {/* Bulk payments are available for confidential
                             treasuries too: the bulk-payment page guides

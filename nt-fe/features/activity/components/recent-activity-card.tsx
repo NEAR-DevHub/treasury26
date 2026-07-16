@@ -8,7 +8,6 @@ import {
     ArrowUpToLine,
     ChevronRight,
     Clock,
-    Shield,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -61,7 +60,6 @@ import { FormattedDate } from "@/components/formatted-date";
 import { parseWarningCopy } from "@/components/warning-message";
 import { StepperHeader } from "@/components/step-wizard";
 import { Table, TableBody, TableCell, TableRow } from "@/components/table";
-import { Tooltip } from "@/components/tooltip";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useWarningMessage } from "@/hooks/use-warnings";
@@ -535,26 +533,7 @@ export function RecentActivity() {
             <Card className="gap-3 border-none shadow-none">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 px-4">
                     <div className="space-y-1">
-                        <StepperHeader
-                            title={
-                                isConfidential ? (
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span>{t("recentTitle")}</span>
-                                        <Tooltip
-                                            content={tCommon(
-                                                "confidentialDataTooltip",
-                                            )}
-                                        >
-                                            <span className="inline-flex">
-                                                <Shield className="size-4 fill-foreground" />
-                                            </span>
-                                        </Tooltip>
-                                    </span>
-                                ) : (
-                                    t("recentTitle")
-                                )
-                            }
-                        />
+                        <StepperHeader title={t("recentTitle")} />
                     </div>
                     <div className="flex items-center gap-2">
                         {/* TODO: Uncomment after price integration */}

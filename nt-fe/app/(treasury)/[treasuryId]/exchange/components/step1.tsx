@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, Loader2, Shield } from "lucide-react";
+import { ArrowDown, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect } from "react";
@@ -11,7 +11,6 @@ import { CreateRequestButton } from "@/components/create-request-button";
 import { PendingButton } from "@/components/pending-button";
 import { type StepProps, StepperHeader } from "@/components/step-wizard";
 import { TokenInput } from "@/components/token-input";
-import { Tooltip } from "@/components/tooltip";
 import { SlotWarning } from "@/components/warning-message";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
@@ -180,24 +179,7 @@ export function Step1({
             <SlotWarning slot="exchange" />
             <PageCard className="relative">
                 <div className="flex items-center justify-between gap-2">
-                    <StepperHeader
-                        title={
-                            isConfidential ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                    <span>{tEx("heading")}</span>
-                                    <Tooltip
-                                        content={tEx("confidentialTooltip")}
-                                    >
-                                        <span className="inline-flex">
-                                            <Shield className="size-4 fill-foreground" />
-                                        </span>
-                                    </Tooltip>
-                                </span>
-                            ) : (
-                                tEx("heading")
-                            )
-                        }
-                    />
+                    <StepperHeader title={tEx("heading")} />
                     <div className="flex items-center gap-2">
                         <PendingButton
                             id="exchange-pending-btn"

@@ -11,29 +11,8 @@ import {
     getTokenPriceAtTimestamp,
 } from "@/lib/proposals-api";
 import { isTerminalSwapStatus } from "@/features/proposals/utils/receipt-utils";
-import { useTreasury } from "@/hooks/use-treasury";
 import { isAxiosErrorWithStatus } from "@/lib/query-retry";
 import { Policy } from "@/types/policy";
-
-function useCanReadProposalQueries(daoId: string | null | undefined) {
-    const {
-        treasuryId,
-        isConfidential,
-        isGuestTreasury,
-        isLoading,
-        treasuryNotFound,
-    } = useTreasury();
-
-    if (!daoId || daoId !== treasuryId) {
-        return true;
-    }
-
-    if (isLoading || treasuryNotFound) {
-        return false;
-    }
-
-    return !(isConfidential && isGuestTreasury);
-}
 
 /**
  * Query hook to get proposals for a specific DAO with optional filtering
@@ -76,12 +55,11 @@ export function useProposals(
         refetchOnMount?: boolean | "always";
     },
 ) {
-    const canReadProposalQueries = useCanReadProposalQueries(daoId);
     const filtersKey = filters ? JSON.stringify(filters) : null;
     return useQuery({
         queryKey: ["proposals", daoId, filtersKey],
         queryFn: () => getProposals(daoId!, filters),
-        enabled: enabled && canReadProposalQueries && !!daoId,
+        enabled: enabled && !!daoId,
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
         refetchOnMount: options?.refetchOnMount,
         refetchInterval: options?.refetchInterval,
@@ -92,11 +70,10 @@ export function useProposal(
     daoId: string | null | undefined,
     proposalId: string | null | undefined,
 ) {
-    const canReadProposalQueries = useCanReadProposalQueries(daoId);
     return useQuery({
         queryKey: ["proposal", daoId, proposalId],
         queryFn: () => getProposal(daoId!, proposalId!),
-        enabled: canReadProposalQueries && !!daoId && !!proposalId,
+        enabled: !!daoId && !!proposalId,
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
     });
 }
@@ -112,13 +89,11 @@ export function useProposalTransaction(
     enabled: boolean = true,
 ) {
     const queryClient = useQueryClient();
-    const canReadProposalQueries = useCanReadProposalQueries(daoId);
     // Only executed proposals (on-chain Approved) have an execution tx to wait
     // for. Rejected/Removed should surface N/A rather than keep polling.
     const expectsTransaction =
         proposal?.status === "Approved" || proposal?.status === "Failed";
-    const isQueryEnabled =
-        enabled && canReadProposalQueries && !!daoId && !!proposal && !!policy;
+    const isQueryEnabled = enabled && !!daoId && !!proposal && !!policy;
     const queryKey = [
         "proposal-transaction",
         daoId,
