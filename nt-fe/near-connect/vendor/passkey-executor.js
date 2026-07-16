@@ -10630,7 +10630,10 @@
     }
     return a.length - b.length;
   }
-  const FACTORY_ID = "passkey-wallet-contract.trezu.near";
+  const FACTORY_IDS = {
+    p256: "p256-passkey-wallet-contract.trezu.near",
+    ed25519: "ed25519-passkey-wallet-contract.trezu.near"
+  };
   const REGISTRY_ID = "passkeys-registry.near";
   const REGISTRY_FC_PRIVATE_KEY = "ed25519:3eDM1nB2hVs8mYminjBuBSxr7d4Gmd2JaAJhtmviVDQRm1zPGC7TxXoEwQsR9JBxDH3ax1U5RnfiAP3n4CZCfHXf";
   const SPONSOR_ACCOUNT_ID = "";
@@ -10893,7 +10896,6 @@
       return;
     }
     w.writeU8(1);
-    writeCodeId(w, signer.code);
     w.writeBool(signer.signature_enabled);
     w.writeU32(signer.subwallet_id);
     w.writeU32(signer.timeout_secs);
@@ -10988,7 +10990,6 @@
   function authMessageToWireJson(msg) {
     const signer = msg.signer.type === "signer_id" ? { type: "signer_id", signer_id: msg.signer.signer_id } : {
       type: "code",
-      code: msg.signer.code,
       signature_enabled: msg.signer.signature_enabled,
       subwallet_id: msg.signer.subwallet_id,
       timeout_secs: msg.signer.timeout_secs,
@@ -11057,7 +11058,6 @@
       chain_id: CHAIN_ID,
       signer: {
         type: "code",
-        code: { account_id: FACTORY_ID },
         signature_enabled: args.config.signature_enabled,
         subwallet_id: args.config.subwallet_id,
         timeout_secs: args.config.timeout_secs,
@@ -11286,7 +11286,7 @@
     return w.toBytes();
   }
   function serializeDefaultStateInit(publicKey) {
-    return serializeStateInit({ account_id: FACTORY_ID }, [
+    return serializeStateInit({ account_id: FACTORY_IDS[publicKey.curve] }, [
       [new Uint8Array(0), serializeDefaultWalletState(publicKey)]
     ]);
   }
@@ -14334,9 +14334,9 @@
     },
     async resolveAuth(params) {
       assertMainnet(params.network);
+      const signedIn = await getActiveCredential();
       const message = buildAuthMessage({ ...params, config: DEFAULT_WALLET_CONFIG });
       const challenge = authMessageHash(message);
-      const signedIn = await getActiveCredential();
       if (signedIn) {
         await ensureAccountOnChain(signedIn);
         const assertion2 = await webauthnGet(challenge, signedIn.rawId);
