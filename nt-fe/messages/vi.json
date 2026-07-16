@@ -1160,6 +1160,7 @@
             "estimatedTime": "Thời gian ước tính",
             "estimatedTimeValue": "{seconds} giây",
             "estimatedTimeTooltip": "Thời gian xấp xỉ để hoàn tất giao dịch trao đổi.",
+            "instant": "Ngay lập tức",
             "minimumReceived": "Số tiền nhận tối thiểu",
             "minimumReceivedTooltip": "Đây là số tiền tối thiểu bạn sẽ nhận từ giao dịch trao đổi này, dựa trên giới hạn trượt giá đã đặt cho yêu cầu.",
             "depositAddress": "Địa chỉ nạp tiền",

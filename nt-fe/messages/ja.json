@@ -1177,6 +1177,7 @@
             "estimatedTime": "予想時間",
             "estimatedTimeValue": "{seconds}秒",
             "estimatedTimeTooltip": "交換完了までのおおよその時間です。",
+            "instant": "即時",
             "minimumReceived": "最小受取額",
             "minimumReceivedTooltip": "リクエストに設定されたスリッページ上限に基づき、この交換で受け取る最小額です。",
             "depositAddress": "入金アドレス",

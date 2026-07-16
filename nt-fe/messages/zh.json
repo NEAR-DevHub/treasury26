@@ -1160,6 +1160,7 @@
             "estimatedTime": "预计时间",
             "estimatedTimeValue": "{seconds} 秒",
             "estimatedTimeTooltip": "完成兑换的大致时间。",
+            "instant": "即时",
             "minimumReceived": "最低接收量",
             "minimumReceivedTooltip": "这是您将通过此次兑换至少收到的金额,基于为请求设定的滑点上限。",
             "depositAddress": "存款地址",

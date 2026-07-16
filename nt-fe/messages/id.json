@@ -1177,6 +1177,7 @@
             "estimatedTime": "Estimasi Waktu",
             "estimatedTimeValue": "{seconds} detik",
             "estimatedTimeTooltip": "Waktu perkiraan untuk menyelesaikan pertukaran.",
+            "instant": "Instan",
             "minimumReceived": "Minimum Diterima",
             "minimumReceivedTooltip": "Ini adalah jumlah minimum yang akan Anda terima dari pertukaran ini, berdasarkan batas slippage yang ditetapkan untuk permintaan.",
             "depositAddress": "Alamat Deposit",

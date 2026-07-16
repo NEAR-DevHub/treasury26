@@ -1177,6 +1177,7 @@
             "estimatedTime": "예상 시간",
             "estimatedTimeValue": "{seconds}초",
             "estimatedTimeTooltip": "교환 완료에 걸리는 대략적인 시간입니다.",
+            "instant": "즉시",
             "minimumReceived": "최소 수신액",
             "minimumReceivedTooltip": "이 교환에서 받게 될 최소 금액으로, 요청에 설정된 슬리피지 한도를 기준으로 합니다.",
             "depositAddress": "입금 주소",

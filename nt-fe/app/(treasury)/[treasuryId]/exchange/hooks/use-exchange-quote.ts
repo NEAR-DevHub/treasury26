@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { UseFormReturn } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import Big from "@/lib/big";
 import {
@@ -11,20 +10,23 @@ import { Token } from "@/components/token-input";
 import {
     formatAssetForIntentsAPI,
     getRecipientType,
-    classifyExchangeError,
     getDepositAndRefundType,
     isNEARDeposit,
     isNEARWithdraw,
 } from "../utils";
+import { formatQuoteErrorMessage, isAbortError } from "../quote-errors";
 import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
+
+export type ExchangeSwapType = "EXACT_INPUT" | "EXACT_OUTPUT";
 
 interface UseExchangeQuoteParams {
     selectedTreasury: string | null | undefined;
     sellToken: Token;
     receiveToken: Token;
-    sellAmount: string;
+    /** Human-readable amount for the side driving the quote. */
+    amount: string;
+    swapType: ExchangeSwapType;
     slippageTolerance: number;
-    form: UseFormReturn<any>;
     enabled: boolean;
     isDryRun: boolean;
     refetchInterval: number;
@@ -32,34 +34,36 @@ interface UseExchangeQuoteParams {
 }
 
 /**
- * Custom hook for fetching exchange quotes (both dry and live)
- * Handles form updates and error management
- * Returns { data, isLoading, isFetching }
+ * Fetches an exchange quote. Pure with respect to form state — callers apply
+ * quote results (derived amounts / proposalData) themselves.
  */
 export function useExchangeQuote({
     selectedTreasury,
     sellToken,
     receiveToken,
-    sellAmount,
+    amount,
+    swapType,
     slippageTolerance,
-    form,
     enabled,
     isDryRun,
     refetchInterval,
     isConfidential,
 }: UseExchangeQuoteParams) {
     const tEx = useTranslations("exchangeErrors");
-    return useQuery({
+    const amountToken = swapType === "EXACT_INPUT" ? sellToken : receiveToken;
+
+    const query = useQuery({
         queryKey: [
             isDryRun ? "dryExchangeQuote" : "liveExchangeQuote",
             selectedTreasury,
             sellToken.address,
             receiveToken.address,
-            sellAmount,
+            amount,
+            swapType,
             slippageTolerance,
             isConfidential,
         ],
-        queryFn: async (): Promise<IntentsQuoteResponse | null> => {
+        queryFn: async ({ signal }): Promise<IntentsQuoteResponse | null> => {
             if (!selectedTreasury) return null;
 
             try {
@@ -67,26 +71,26 @@ export function useExchangeQuote({
                 const isWithdraw = isNEARWithdraw(sellToken, receiveToken);
 
                 if (isDeposit || isWithdraw) {
-                    const amountInRaw = Big(sellAmount)
-                        .mul(Big(10).pow(sellToken.decimals))
+                    // Scale with the driving side (sell for EXACT_INPUT, receive for EXACT_OUTPUT).
+                    const amountInRaw = Big(amount)
+                        .mul(Big(10).pow(amountToken.decimals))
                         .toFixed();
 
-                    // Fetch token price for USD calculation
                     const tokenMetadata =
                         await getTokenMetadata(WRAP_NEAR_TOKEN_ID);
                     const tokenPrice = tokenMetadata?.price || 0;
                     const amountUsd = (
-                        parseFloat(sellAmount) * tokenPrice
+                        parseFloat(amount) * tokenPrice
                     ).toFixed();
 
-                    const mockQuote: IntentsQuoteResponse = {
+                    return {
                         quote: {
                             amountIn: amountInRaw,
-                            amountInFormatted: sellAmount,
+                            amountInFormatted: amount,
                             amountInUsd: amountUsd,
                             minAmountIn: amountInRaw,
                             amountOut: amountInRaw,
-                            amountOutFormatted: sellAmount,
+                            amountOutFormatted: amount,
                             amountOutUsd: amountUsd,
                             minAmountOut: amountInRaw,
                             timeEstimate: 0,
@@ -99,7 +103,7 @@ export function useExchangeQuote({
                             ).toISOString(),
                         },
                         quoteRequest: {
-                            swapType: "EXACT_INPUT",
+                            swapType,
                             slippageTolerance: 0,
                             originAsset: isDeposit
                                 ? NEAR_NETWORK_ID
@@ -121,20 +125,10 @@ export function useExchangeQuote({
                         timestamp: new Date().toISOString(),
                         correlationId: `mock-${Date.now()}`,
                     };
-
-                    if (isDryRun) {
-                        form.setValue("receiveAmount", sellAmount);
-                        form.clearErrors("receiveAmount");
-                    } else {
-                        form.setValue("proposalData" as any, mockQuote, {
-                            shouldValidate: false,
-                        });
-                    }
-                    return mockQuote;
                 }
 
-                const parsedAmount = Big(sellAmount)
-                    .mul(Big(10).pow(sellToken.decimals))
+                const parsedAmount = Big(amount)
+                    .mul(Big(10).pow(amountToken.decimals))
                     .toFixed();
 
                 const originAsset = formatAssetForIntentsAPI(sellToken.address);
@@ -150,11 +144,11 @@ export function useExchangeQuote({
                     isConfidential,
                 );
 
-                const quote = await getIntentsQuote(
+                return await getIntentsQuote(
                     {
                         daoId: selectedTreasury,
-                        swapType: "EXACT_INPUT",
-                        slippageTolerance: Math.round(slippageTolerance * 100), // Convert to basis points
+                        swapType,
+                        slippageTolerance: Math.round(slippageTolerance * 100),
                         originAsset,
                         depositType: depositAndRefundType,
                         destinationAsset,
@@ -165,68 +159,20 @@ export function useExchangeQuote({
                         recipientType: recipientType,
                         deadline: new Date(
                             Date.now() + 24 * 60 * 60 * 1000,
-                        ).toISOString(), // 24 hours
+                        ).toISOString(),
                         quoteWaitingTimeMs: isDryRun ? 0 : 3000,
                     },
                     isDryRun,
+                    signal,
                 );
-
-                if (quote) {
-                    if (isDryRun) {
-                        // Dry run: update receive amount
-                        form.setValue(
-                            "receiveAmount",
-                            quote.quote.amountOutFormatted,
-                        );
-                        form.clearErrors("receiveAmount");
-                    } else {
-                        // Live quote: store for submission
-                        form.setValue("proposalData" as any, quote, {
-                            shouldValidate: false,
-                        });
-                    }
-                    return quote;
+            } catch (error: unknown) {
+                if (isAbortError(error) || signal.aborted) {
+                    throw error;
                 }
-                return null;
-            } catch (error: any) {
                 console.error("Error fetching quote:", error);
-
-                if (isDryRun) {
-                    // Only show errors for dry run (user is still on Step 1)
-                    const { code, raw, minAmountRaw } = classifyExchangeError(
-                        error?.message || tEx("fetchFailed"),
-                    );
-
-                    let message = code === "unknown" ? raw : tEx(code);
-
-                    // Surface the specific bridge minimum when the backend
-                    // provides one (e.g. "...try at least 10000").
-                    if (code === "amountTooLow" && minAmountRaw) {
-                        try {
-                            const threshold = Big(minAmountRaw);
-                            const parsedAmount = minAmountRaw.includes(".")
-                                ? threshold
-                                : threshold.div(
-                                      Big(10).pow(sellToken.decimals),
-                                  );
-                            const min = parsedAmount
-                                .toFixed(sellToken.decimals)
-                                .replace(/\.?0+$/, "");
-                            message = tEx("amountTooLowWithMin", {
-                                min,
-                                token: sellToken.symbol,
-                            });
-                        } catch {
-                            // Fall back to the generic low-amount message.
-                        }
-                    }
-
-                    form.setError("receiveAmount", {
-                        type: "manual",
-                        message,
-                    });
-                }
-                return null;
+                throw new Error(
+                    formatQuoteErrorMessage(error, amountToken, tEx),
+                );
             }
         },
         enabled,
@@ -234,5 +180,20 @@ export function useExchangeQuote({
         staleTime: refetchInterval,
         refetchIntervalInBackground: false,
         refetchOnWindowFocus: false,
+        retry: false,
     });
+
+    const isQuoteError =
+        enabled &&
+        query.isError &&
+        query.error instanceof Error &&
+        !isAbortError(query.error);
+
+    // React Query keeps the last successful data after a failed refetch.
+    // Surface null instead so callers never treat a stale quote as valid.
+    const data = isQuoteError ? undefined : query.data;
+
+    const quoteError = isQuoteError ? query.error.message : null;
+
+    return { ...query, data, quoteError };
 }

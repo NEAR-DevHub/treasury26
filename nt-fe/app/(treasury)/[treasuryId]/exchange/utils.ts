@@ -187,6 +187,10 @@ export function classifyExchangeError(errorMessage: string): {
     if (
         lowerError.includes("no route") ||
         lowerError.includes("no swap") ||
+        lowerError.includes("no quote") ||
+        lowerError.includes("no liquidity") ||
+        lowerError.includes("insufficient liquidity") ||
+        lowerError.includes("liquidity unavailable") ||
         lowerError.includes("not supported") ||
         lowerError.includes("tokenin is not valid") ||
         lowerError.includes("tokenout is not valid")

@@ -1177,6 +1177,7 @@
             "estimatedTime": "Estimated Time",
             "estimatedTimeValue": "{seconds} seconds",
             "estimatedTimeTooltip": "Approximate time to complete the exchange.",
+            "instant": "Instant",
             "minimumReceived": "Minimum Received",
             "minimumReceivedTooltip": "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request.",
             "depositAddress": "Deposit Address",

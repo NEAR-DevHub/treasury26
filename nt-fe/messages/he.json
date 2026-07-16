@@ -1177,6 +1177,7 @@
             "estimatedTime": "זמן משוער",
             "estimatedTimeValue": "{seconds} שניות",
             "estimatedTimeTooltip": "זמן משוער להשלמת ההחלפה.",
+            "instant": "מיידי",
             "minimumReceived": "קבלה מינימלית",
             "minimumReceivedTooltip": "זהו הסכום המינימלי שתקבל מהחלפה זו, בהתבסס על מגבלת ההחלקה שנקבעה עבור הבקשה.",
             "depositAddress": "כתובת הפקדה",

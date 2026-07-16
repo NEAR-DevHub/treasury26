@@ -1160,6 +1160,7 @@
             "estimatedTime": "Оцінний час",
             "estimatedTimeValue": "{seconds} с",
             "estimatedTimeTooltip": "Приблизний час до завершення обміну.",
+            "instant": "Миттєво",
             "minimumReceived": "Мінімум отримуєте",
             "minimumReceivedTooltip": "Це мінімальна сума, яку ви отримаєте з цього обміну, виходячи з ліміту прослизання для запиту.",
             "depositAddress": "Адреса депозиту",

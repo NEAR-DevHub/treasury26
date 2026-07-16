@@ -2,14 +2,17 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import {
     useTreasuryConfig,
-    useUserTreasuries,
+    useUserTreasuriesWithOptions,
 } from "@/hooks/use-treasury-queries";
 import { useNear } from "@/stores/near-store";
 import { useTreasuryStore } from "@/stores/treasury-store";
 
 /**
- * Hook to determine if the current user is viewing a treasury as a guest
- * (i.e., the treasury is not in their list of treasuries they have access to)
+ * Resolves the active treasury from the URL, including membership.
+ *
+ * Membership lookups include hidden treasuries so a member who hid a treasury
+ * (Manage Treasuries) still gets member UI when opening it via View Treasury.
+ * The returned `treasuries` list excludes hidden ones for selector/picker UX.
  */
 export function useTreasury() {
     const params = useParams();
@@ -20,8 +23,9 @@ export function useTreasury() {
         (state) => state.setLastTreasuryId,
     );
 
+    // includeHidden: membership must see hidden treasuries; selector list filters them out below.
     const { data: treasuries = [], isLoading: isLoadingTreasuries } =
-        useUserTreasuries(accountId);
+        useUserTreasuriesWithOptions(accountId, { includeHidden: true });
     const currentTreasury = treasuries.find((t) => t.daoId === treasuryId);
     const visibleTreasuries = useMemo(
         () => treasuries.filter((t) => !t.isHidden),

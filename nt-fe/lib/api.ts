@@ -1345,8 +1345,13 @@ export async function getIntentsQuote(
             `Error getting intents ${dry ? "dry quote" : "proposal"}:`,
             error,
         );
+        const data = error.response?.data;
         const message =
-            error.response?.data || error?.message || "Failed to get quote";
+            (typeof data === "string" && data) ||
+            (typeof data?.error === "string" && data.error) ||
+            (typeof data?.message === "string" && data.message) ||
+            error?.message ||
+            "Failed to get quote";
         throw new Error(message);
     }
 }

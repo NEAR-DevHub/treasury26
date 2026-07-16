@@ -3,18 +3,15 @@ import Big from "@/lib/big";
 import { formatTokenAmount } from "@/lib/utils";
 
 interface FormatQuoteAmountParams {
-    amountOut: string;
-    amountOutFormatted: string;
-    amountOutUsd: string;
+    amount: string;
+    amountFormatted: string;
+    amountUsd: string;
     tokenDecimals: number;
 }
 
 /**
- * Hook to format token amounts from quote data with optimal precision
- * Calculates token price from quote USD value and formats with enough decimals to represent $0.01
- *
- * @param params - Quote amount data and token decimals
- * @returns Formatted token amount string
+ * Formats a quote amount with enough precision to represent ~$0.01,
+ * using USD value from the quote to infer token price.
  */
 export function useFormatQuoteAmount(
     params: FormatQuoteAmountParams | null,
@@ -24,24 +21,21 @@ export function useFormatQuoteAmount(
             return "";
         }
 
-        const { amountOut, amountOutFormatted, amountOutUsd, tokenDecimals } =
-            params;
+        const { amount, amountFormatted, amountUsd, tokenDecimals } = params;
 
         try {
-            // Calculate token price from USD value: price = usdValue / tokenAmount
-            const usdValue = parseFloat(amountOutUsd || "0");
-            const tokenAmountDecimal = Big(amountOut).div(
+            const usdValue = parseFloat(amountUsd || "0");
+            const tokenAmountDecimal = Big(amount).div(
                 Big(10).pow(tokenDecimals),
             );
             const tokenPrice = tokenAmountDecimal.gt(0)
                 ? usdValue / Number(tokenAmountDecimal.toString())
                 : 0;
 
-            return formatTokenAmount(amountOut, tokenDecimals, tokenPrice);
+            return formatTokenAmount(amount, tokenDecimals, tokenPrice);
         } catch (error) {
             console.error("Error formatting quote amount:", error);
-            // Fallback to backend formatted value
-            return amountOutFormatted;
+            return amountFormatted;
         }
     }, [params]);
 }

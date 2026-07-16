@@ -1177,6 +1177,7 @@
             "estimatedTime": "Tahmini Süre",
             "estimatedTimeValue": "{seconds} saniye",
             "estimatedTimeTooltip": "Takası tamamlamak için yaklaşık süre.",
+            "instant": "Anında",
             "minimumReceived": "Alınacak Minimum",
             "minimumReceivedTooltip": "Bu, talep için ayarlanan kayma limitine göre bu takastan alacağınız minimum miktardır.",
             "depositAddress": "Depozito Adresi",

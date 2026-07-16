@@ -11,7 +11,7 @@ import TokenSelect, { SelectedTokenData } from "./token-select";
 import { WarningMessage } from "./warning-message";
 import { LargeInput } from "./large-input";
 import { InputBlock } from "./input-block";
-import { FormField, FormMessage } from "./ui/form";
+import { FormField } from "./ui/form";
 import {
     Control,
     FieldValues,
@@ -78,6 +78,8 @@ interface TokenInputProps<
     loading?: boolean;
     customValue?: string;
     infoMessage?: string;
+    /** External error message (e.g. quote failure). Takes priority over field validation. */
+    errorMessage?: string | null;
     /** Token/slot warning (`### heading` + body). Renders heading inline, body in tooltip. */
     warningMessage?: string | null;
     /**
@@ -94,6 +96,8 @@ interface TokenInputProps<
     dynamicFontSize?: boolean;
     onAmountInput?: () => void;
     onMaxSet?: (maxAmount: string) => void;
+    /** Fires after the user picks a different token. */
+    onTokenChange?: (token: Token) => void;
     usdValueOverride?: number | null;
 }
 
@@ -110,12 +114,14 @@ export function TokenInput<
     loading = false,
     customValue,
     infoMessage,
+    errorMessage,
     warningMessage,
     showInsufficientBalance = false,
     networkFee = null,
     dynamicFontSize = false,
     onAmountInput,
     onMaxSet,
+    onTokenChange,
     usdValueOverride,
 }: TokenInputProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("tokenInput");
@@ -195,161 +201,262 @@ export function TokenInput<
         <FormField
             control={control}
             name={amountName}
-            render={({ field, fieldState }) => (
-                <InputBlock
-                    interactive={!readOnly}
-                    title={title}
-                    invalid={!!fieldState.error}
-                    topRightContent={
-                        <div className="flex items-center gap-2">
-                            {tokenBalance && tokenDecimals && (
-                                <>
-                                    <p className="text-xs text-muted-foreground">
-                                        {t("balance", {
-                                            amount: formatBalance(
-                                                tokenBalance,
-                                                tokenDecimals,
-                                            ),
-                                            symbol: token.symbol.toUpperCase(),
-                                        })}
-                                    </p>
-                                    {!readOnly && (
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            className="bg-muted-foreground/10 hover:bg-muted-foreground/20"
-                                            size="sm"
-                                            onClick={() => {
-                                                if (
-                                                    tokenBalance &&
-                                                    tokenDecimals
-                                                ) {
-                                                    const maxAmount = Big(
-                                                        tokenBalance,
-                                                    )
-                                                        .div(
-                                                            Big(10).pow(
-                                                                tokenDecimals,
-                                                            ),
+            render={({ field, fieldState }) => {
+                const displayError =
+                    errorMessage || fieldState.error?.message || null;
+
+                return (
+                    <InputBlock
+                        interactive={!readOnly}
+                        title={title}
+                        invalid={!!displayError}
+                        topRightContent={
+                            <div className="flex items-center gap-2">
+                                {tokenBalance && tokenDecimals && (
+                                    <>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t("balance", {
+                                                amount: formatBalance(
+                                                    tokenBalance,
+                                                    tokenDecimals,
+                                                ),
+                                                symbol: token.symbol.toUpperCase(),
+                                            })}
+                                        </p>
+                                        {!readOnly && (
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                className="bg-muted-foreground/10 hover:bg-muted-foreground/20"
+                                                size="sm"
+                                                onClick={() => {
+                                                    if (
+                                                        tokenBalance &&
+                                                        tokenDecimals
+                                                    ) {
+                                                        const maxAmount = Big(
+                                                            tokenBalance,
                                                         )
-                                                        .toFixed(tokenDecimals);
-                                                    setValue(
-                                                        amountName,
-                                                        maxAmount as PathValue<
-                                                            TFieldValues,
-                                                            Path<TFieldValues>
-                                                        >,
-                                                    );
-                                                    onMaxSet?.(maxAmount);
-                                                }
+                                                            .div(
+                                                                Big(10).pow(
+                                                                    tokenDecimals,
+                                                                ),
+                                                            )
+                                                            .toFixed(
+                                                                tokenDecimals,
+                                                            );
+                                                        setValue(
+                                                            amountName,
+                                                            maxAmount as PathValue<
+                                                                TFieldValues,
+                                                                Path<TFieldValues>
+                                                            >,
+                                                        );
+                                                        onMaxSet?.(maxAmount);
+                                                    }
+                                                }}
+                                            >
+                                                {t("max")}
+                                            </Button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        }
+                    >
+                        <>
+                            <div className="flex justify-between items-center">
+                                <div className="flex-1 min-w-0">
+                                    <LargeInput
+                                        // text + inputMode: type="number" breaks select-all + replace.
+                                        type="text"
+                                        inputMode="decimal"
+                                        borderless
+                                        dynamicFontSize={dynamicFontSize}
+                                        onKeyDown={
+                                            readOnly
+                                                ? undefined
+                                                : (e) => {
+                                                      // Replace at keydown so React/RHF re-renders
+                                                      // can't turn select-all into append.
+                                                      if (
+                                                          e.ctrlKey ||
+                                                          e.metaKey ||
+                                                          e.altKey ||
+                                                          e.key.length !== 1
+                                                      ) {
+                                                          return;
+                                                      }
+                                                      const el =
+                                                          e.currentTarget;
+                                                      if (
+                                                          el.value.length ===
+                                                              0 ||
+                                                          el.selectionStart !==
+                                                              0 ||
+                                                          el.selectionEnd !==
+                                                              el.value.length
+                                                      ) {
+                                                          return;
+                                                      }
+                                                      const nextValue =
+                                                          e.key.replace(
+                                                              /[^0-9.]/g,
+                                                              "",
+                                                          );
+                                                      if (
+                                                          nextValue === "" &&
+                                                          e.key !== "."
+                                                      ) {
+                                                          return;
+                                                      }
+                                                      e.preventDefault();
+                                                      onAmountInput?.();
+                                                      field.onChange(
+                                                          nextValue || ".",
+                                                      );
+                                                  }
+                                        }
+                                        onPaste={
+                                            readOnly
+                                                ? undefined
+                                                : (e) => {
+                                                      const el =
+                                                          e.currentTarget;
+                                                      if (
+                                                          el.value.length ===
+                                                              0 ||
+                                                          el.selectionStart !==
+                                                              0 ||
+                                                          el.selectionEnd !==
+                                                              el.value.length
+                                                      ) {
+                                                          return;
+                                                      }
+                                                      e.preventDefault();
+                                                      const nextValue =
+                                                          e.clipboardData
+                                                              .getData("text")
+                                                              .replace(
+                                                                  /[^0-9.]/g,
+                                                                  "",
+                                                              )
+                                                              .replace(
+                                                                  /^0+(?=\d)/,
+                                                                  "",
+                                                              );
+                                                      onAmountInput?.();
+                                                      field.onChange(nextValue);
+                                                  }
+                                        }
+                                        onChange={
+                                            readOnly
+                                                ? undefined
+                                                : (e) => {
+                                                      onAmountInput?.();
+                                                      field.onChange(
+                                                          e.target.value
+                                                              .replace(
+                                                                  /[^0-9.]/g,
+                                                                  "",
+                                                              )
+                                                              .replace(
+                                                                  /^0+(?=\d)/,
+                                                                  "",
+                                                              ),
+                                                      );
+                                                  }
+                                        }
+                                        onBlur={
+                                            readOnly ? undefined : field.onBlur
+                                        }
+                                        value={
+                                            loading
+                                                ? "..."
+                                                : customValue !== undefined
+                                                  ? customValue
+                                                  : field.value.toString()
+                                        }
+                                        placeholder="0"
+                                        className={cn(
+                                            readOnly && "text-muted-foreground",
+                                        )}
+                                        readOnly={readOnly}
+                                    />
+                                </div>
+                                <FormField
+                                    control={control}
+                                    name={tokenName}
+                                    render={({ field }) => (
+                                        <TokenSelect
+                                            disabled={tokenSelect?.disabled}
+                                            locked={tokenSelect?.locked}
+                                            showPopularAssets={
+                                                tokenSelect?.showPopularAssets ??
+                                                false
+                                            }
+                                            selectedToken={token}
+                                            setSelectedToken={(
+                                                selectedToken: SelectedTokenData,
+                                            ) => {
+                                                field.onChange(selectedToken);
+                                                onTokenChange?.(
+                                                    selectedToken as Token,
+                                                );
                                             }}
-                                        >
-                                            {t("max")}
-                                        </Button>
+                                            showOnlyOwnedAssets={
+                                                tokenSelect?.showOnlyOwnedAssets ??
+                                                false
+                                            }
+                                            filterTokens={
+                                                tokenSelect?.filterTokens
+                                            }
+                                        />
                                     )}
-                                </>
-                            )}
-                        </div>
-                    }
-                >
-                    <>
-                        <div className="flex justify-between items-center">
-                            <div className="flex-1 min-w-0">
-                                <LargeInput
-                                    type={readOnly ? "text" : "number"}
-                                    borderless
-                                    dynamicFontSize={dynamicFontSize}
-                                    onChange={
-                                        readOnly
-                                            ? undefined
-                                            : (e) => {
-                                                  onAmountInput?.();
-                                                  field.onChange(
-                                                      e.target.value.replace(
-                                                          /^0+(?=\d)/,
-                                                          "",
-                                                      ),
-                                                  );
-                                              }
-                                    }
-                                    onBlur={readOnly ? undefined : field.onBlur}
-                                    value={
-                                        loading
-                                            ? "..."
-                                            : customValue !== undefined
-                                              ? customValue
-                                              : field.value.toString()
-                                    }
-                                    placeholder="0"
-                                    className={cn(
-                                        readOnly && "text-muted-foreground",
-                                    )}
-                                    readOnly={readOnly}
                                 />
                             </div>
-                            <FormField
-                                control={control}
-                                name={tokenName}
-                                render={({ field }) => (
-                                    <TokenSelect
-                                        disabled={tokenSelect?.disabled}
-                                        locked={tokenSelect?.locked}
-                                        showPopularAssets={
-                                            tokenSelect?.showPopularAssets ??
-                                            false
-                                        }
-                                        selectedToken={token}
-                                        setSelectedToken={(
-                                            selectedToken: SelectedTokenData,
-                                        ) => {
-                                            field.onChange(selectedToken);
-                                        }}
-                                        showOnlyOwnedAssets={
-                                            tokenSelect?.showOnlyOwnedAssets ??
-                                            false
-                                        }
-                                        filterTokens={tokenSelect?.filterTokens}
-                                    />
+                            {estimatedUSDValue !== null &&
+                                estimatedUSDValue > 0 && (
+                                    <p className="text-muted-foreground text-xs truncate">
+                                        {`≈ ${formatCurrency(estimatedUSDValue)}`}
+                                    </p>
                                 )}
-                            />
-                        </div>
-                        {estimatedUSDValue !== null &&
-                            estimatedUSDValue > 0 && (
-                                <p className="text-muted-foreground text-xs truncate">
-                                    {`≈ ${formatCurrency(estimatedUSDValue)}`}
+                            {balanceWarning && (
+                                <p className="text-general-info-foreground text-sm mt-2">
+                                    {balanceWarning.type === "fee_not_covered"
+                                        ? t("insufficientTokensForFee", {
+                                              fee:
+                                                  balanceWarning.formattedFee ??
+                                                  "",
+                                              symbol:
+                                                  balanceWarning.symbol ?? "",
+                                          })
+                                        : t("insufficientTokens")}
                                 </p>
                             )}
-                        {balanceWarning && (
-                            <p className="text-general-info-foreground text-sm mt-2">
-                                {balanceWarning.type === "fee_not_covered"
-                                    ? t("insufficientTokensForFee", {
-                                          fee:
-                                              balanceWarning.formattedFee ?? "",
-                                          symbol: balanceWarning.symbol ?? "",
-                                      })
-                                    : t("insufficientTokens")}
-                            </p>
-                        )}
-                        {fieldState.error ? (
-                            <FormMessage />
-                        ) : warningMessage ? (
-                            <WarningMessage
-                                variant="inline"
-                                message={warningMessage}
-                                className="text-sm mt-2"
-                            />
-                        ) : infoMessage ? (
-                            <p className="text-general-info-foreground text-sm mt-2">
-                                {infoMessage}
-                            </p>
-                        ) : !balanceWarning ? (
-                            <p className="text-muted-foreground text-xs invisible">
-                                Invisible
-                            </p>
-                        ) : null}
-                    </>
-                </InputBlock>
-            )}
+                            {displayError ? (
+                                <p className="text-destructive text-sm mt-2">
+                                    {String(displayError)}
+                                </p>
+                            ) : warningMessage ? (
+                                <WarningMessage
+                                    variant="inline"
+                                    message={warningMessage}
+                                    className="text-sm mt-2"
+                                />
+                            ) : infoMessage ? (
+                                <p className="text-general-info-foreground text-sm mt-2">
+                                    {infoMessage}
+                                </p>
+                            ) : !balanceWarning ? (
+                                <p className="text-muted-foreground text-xs invisible">
+                                    Invisible
+                                </p>
+                            ) : null}
+                        </>
+                    </InputBlock>
+                );
+            }}
         />
     );
 }
