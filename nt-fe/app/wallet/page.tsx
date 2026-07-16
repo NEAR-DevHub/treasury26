@@ -16,6 +16,7 @@ import SignClient from "@walletconnect/sign-client";
 import axios from "axios";
 import Logo from "@/components/icons/logo";
 import { LoadingScreen } from "@/components/loading-screen";
+import { ensurePasskeyWallet } from "@/lib/passkey-wallet";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import { TransferExpanded } from "@/features/proposals/components/expanded-view/transfer-expanded";
 import { FunctionCallExpanded } from "@/features/proposals/components/expanded-view/function-call-expanded";
@@ -266,6 +267,13 @@ function WalletPageContent() {
             walletConnect: getWalletConnectClient(),
             network,
         });
+
+        // This page uses the connector's own wallet popup, so the
+        // Trezu-hosted Passkey executor is registered unconditionally
+        // (mainnet-only — its manifest declares testnet: false).
+        if (network === "mainnet") {
+            void ensurePasskeyWallet(nc);
+        }
 
         nc.on("wallet:signIn", async (t: EventMap["wallet:signIn"]) => {
             const acct = t.accounts[0]?.accountId;
