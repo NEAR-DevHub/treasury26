@@ -393,7 +393,11 @@ export function DepositModal({
     const [addressSourceTab, setAddressSourceTab] = useState<
         "public" | "confidential"
     >("public");
-    const { data: popularAssets = [] } = usePopularAssetsByActivity();
+    // Stable empty defaults — inline `= []` creates a new reference every
+    // render while the query is pending, which re-fires the load effect
+    // (popularAssets is a dependency) and triggers React error.
+    const { data: popularAssets = STABLE_EMPTY_ARRAY } =
+        usePopularAssetsByActivity();
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
@@ -411,10 +415,12 @@ export function DepositModal({
     // deposit slot is paused or the app is in maintenance.
     const depositTokenNetworkScoped =
         isTokenOrNetworkScopedWarning(depositScopeWarning);
+    const {
+        data: bridgeAssets = STABLE_EMPTY_ARRAY,
+        isLoading: isLoadingAssets,
+    } = useBridgeTokens(true, { includeNearNetwork: true });
     const depositSelectorsDisabled =
-        depositBlocked && !depositTokenNetworkScoped;
-    const { data: bridgeAssets = [], isLoading: isLoadingAssets } =
-        useBridgeTokens(true, { includeNearNetwork: true });
+        isLoadingAssets || (depositBlocked && !depositTokenNetworkScoped);
 
     const invalidatePendingAddressRequest = useCallback(() => {
         latestAddressRequestRef.current += 1;
@@ -804,7 +810,12 @@ export function DepositModal({
         }
 
         if (targetAsset) {
-            form.setValue("asset", targetAsset);
+            const currentAsset = form.getValues("asset");
+            // Only write when the selection actually changes — re-running this
+            // effect (e.g. popular assets arriving) must not churn form state.
+            if (currentAsset?.id !== targetAsset.id) {
+                form.setValue("asset", targetAsset);
+            }
 
             const availableNetworks =
                 newAssetNetworksMap.get(targetAsset.id) || [];
@@ -846,10 +857,10 @@ export function DepositModal({
                 networkToSelect = null;
             }
 
-            if (networkToSelect) {
+            const currentNetwork = form.getValues("network");
+            const nextNetworkId = networkToSelect?.id ?? null;
+            if ((currentNetwork?.id ?? null) !== nextNetworkId) {
                 form.setValue("network", networkToSelect);
-            } else {
-                form.setValue("network", null);
             }
         }
 

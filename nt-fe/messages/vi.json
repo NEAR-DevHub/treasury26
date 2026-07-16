@@ -1127,6 +1127,7 @@
         "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
         "removeRecipient": "Xóa người nhận",
         "removeRecipientConfirm": "Bạn có chắc muốn xóa khoản thanh toán cho <strong>{recipient}</strong> không? Hành động này không thể hoàn tác.",
+        "allRecipientsRemoved": "Đã xóa tất cả người nhận — tải lên danh sách mới để tiếp tục",
         "remove": "Xóa",
         "edit": "Chỉnh sửa"
     },
@@ -1160,6 +1161,7 @@
             "estimatedTime": "Thời gian ước tính",
             "estimatedTimeValue": "{seconds} giây",
             "estimatedTimeTooltip": "Thời gian xấp xỉ để hoàn tất giao dịch trao đổi.",
+            "instant": "Ngay lập tức",
             "minimumReceived": "Số tiền nhận tối thiểu",
             "minimumReceivedTooltip": "Đây là số tiền tối thiểu bạn sẽ nhận từ giao dịch trao đổi này, dựa trên giới hạn trượt giá đã đặt cho yêu cầu.",
             "depositAddress": "Địa chỉ nạp tiền",

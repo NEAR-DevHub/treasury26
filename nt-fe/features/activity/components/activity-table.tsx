@@ -159,9 +159,7 @@ export function ActivityTable({
                                                 {status === "pending" ? (
                                                     <span className="inline-flex items-center gap-1 text-xs font-medium text-general-orange-foreground">
                                                         <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                        {t(
-                                                            "table.processing",
-                                                        )}
+                                                        {t("table.processing")}
                                                     </span>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground whitespace-normal wrap-break-word md:whitespace-nowrap">

@@ -1,4 +1,4 @@
-import { useQuery, type Query } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type Query } from "@tanstack/react-query";
 import {
     getProposals,
     ProposalFilters,
@@ -101,38 +101,68 @@ export function useProposal(
     });
 }
 
+/** NearBlocks indexes shortly after execution — poll until the tx appears. */
+const PROPOSAL_TX_POLL_MS = 5_000;
+const PROPOSAL_TX_MAX_POLLS = 12; // ~1 minute
+
 export function useProposalTransaction(
     daoId: string | null | undefined,
     proposal: Proposal | null | undefined,
     policy: Policy | null | undefined,
     enabled: boolean = true,
 ) {
+    const queryClient = useQueryClient();
     const canReadProposalQueries = useCanReadProposalQueries(daoId);
-    return useQuery({
-        queryKey: [
-            "proposal-transaction",
-            daoId,
-            proposal?.id,
-            proposal?.status,
-            proposal?.submission_time,
-            policy?.proposal_period,
-        ],
+    // Only executed proposals (on-chain Approved) have an execution tx to wait
+    // for. Rejected/Removed should surface N/A rather than keep polling.
+    const expectsTransaction =
+        proposal?.status === "Approved" || proposal?.status === "Failed";
+    const isQueryEnabled =
+        enabled && canReadProposalQueries && !!daoId && !!proposal && !!policy;
+    const queryKey = [
+        "proposal-transaction",
+        daoId,
+        proposal?.id,
+        proposal?.status,
+        proposal?.submission_time,
+        policy?.proposal_period,
+    ] as const;
+
+    const query = useQuery({
+        queryKey,
         queryFn: () => getProposalTransaction(daoId!, proposal!, policy!),
-        enabled:
-            enabled &&
-            canReadProposalQueries &&
-            !!daoId &&
-            !!proposal &&
-            !!policy,
-        staleTime: 1000 * 60 * 5, // 5 minutes (transaction data is more stable)
+        enabled: isQueryEnabled,
+        staleTime: 1000 * 60 * 5, // 5 minutes once we have the transaction
+        refetchInterval: (q) => {
+            // Keep polling while NearBlocks has not indexed the execution tx yet.
+            if (!expectsTransaction) return false;
+            if (q.state.data) return false;
+            if (q.state.dataUpdateCount >= PROPOSAL_TX_MAX_POLLS) return false;
+            return PROPOSAL_TX_POLL_MS;
+        },
         retry: (failureCount, error) => {
-            // Don't retry on 404 (not found) errors
+            // Don't retry on 404 (not found) errors — polling handles indexer lag.
             if (isAxiosErrorWithStatus(error, 404)) {
                 return false;
             }
             return failureCount < 3;
         },
     });
+
+    const dataUpdateCount =
+        queryClient.getQueryState(queryKey)?.dataUpdateCount ?? 0;
+
+    // True while we still expect a transaction (including between poll intervals),
+    // so callers can show a skeleton instead of "N/A".
+    const isAwaitingTransaction =
+        isQueryEnabled &&
+        expectsTransaction &&
+        !query.data &&
+        (query.isLoading ||
+            query.isFetching ||
+            dataUpdateCount < PROPOSAL_TX_MAX_POLLS);
+
+    return { ...query, isAwaitingTransaction };
 }
 
 /**

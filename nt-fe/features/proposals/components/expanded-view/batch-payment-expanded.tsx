@@ -198,8 +198,8 @@ interface BatchPaymentExpandedViewProps {
     /** On-chain proposal id — used to build per-recipient receipt links. */
     proposalId?: number;
     /**
-     * Whether to show the per-recipient "generate receipt" button. Public bulk
-     * enables it once executed; confidential bulk leaves it off.
+     * Whether to show the per-recipient "generate receipt" button. Enabled for
+     * executed public and confidential bulk payments.
      */
     showReceiptButton?: boolean;
 }

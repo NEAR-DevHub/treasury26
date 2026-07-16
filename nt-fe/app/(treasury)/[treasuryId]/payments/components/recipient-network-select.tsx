@@ -52,6 +52,10 @@ interface RecipientNetworkSelectProps {
      */
     onNetworkChange?: (option: RecipientNetworkOption) => void;
     warningMessage?: string | null;
+    /** Highlights the network card when selection is required/missing. */
+    invalid?: boolean;
+    /** Error text shown under the network card. */
+    errorMessage?: string | null;
 }
 
 export type RecipientNetworkRuleOption = RecipientNetworkOption & {
@@ -126,6 +130,8 @@ export function RecipientNetworkSelect({
     sectionRules,
     onNetworkChange,
     warningMessage,
+    invalid = false,
+    errorMessage = null,
 }: RecipientNetworkSelectProps) {
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
@@ -259,7 +265,7 @@ export function RecipientNetworkSelect({
                 title={t("label")}
                 interactive={!isDisabled}
                 disabled={isDisabled}
-                invalid={false}
+                invalid={invalid}
             >
                 <Button
                     type="button"
@@ -285,6 +291,9 @@ export function RecipientNetworkSelect({
                     />
                 )}
             </InputBlock>
+            {errorMessage && (
+                <p className="text-sm text-destructive mt-1">{errorMessage}</p>
+            )}
 
             <SelectModal
                 isOpen={open}

@@ -67,7 +67,7 @@ import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insuffic
 import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
 import {
     extractReceiptProposalData,
-    getProposalExecutedDate,
+    resolveExecutionTimestamp,
 } from "@/features/proposals/utils/receipt-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -107,13 +107,16 @@ function ProposalTimelineDate({
     )?.depositAddress;
     const shouldUseSwapDate = isProposalExecuted && !!depositAddress;
 
-    const { data: transaction, isLoading: isLoadingTransaction } =
-        useProposalTransaction(
-            treasuryId,
-            proposal,
-            policy,
-            isProposalExecuted && !shouldUseSwapDate,
-        );
+    const {
+        data: transaction,
+        isLoading: isLoadingTransaction,
+        isAwaitingTransaction,
+    } = useProposalTransaction(
+        treasuryId,
+        proposal,
+        policy,
+        isProposalExecuted && !shouldUseSwapDate,
+    );
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress || null,
         undefined,
@@ -132,14 +135,18 @@ function ProposalTimelineDate({
         );
     }
 
-    const isDateLoading = shouldUseSwapDate
-        ? isLoadingSwapStatus
-        : isLoadingTransaction;
+    const { executedDate, isDateLoading } = resolveExecutionTimestamp({
+        swapStatus,
+        transaction,
+        shouldUseSwapDate,
+        isLoadingSwapStatus,
+        isLoadingTransaction,
+        isAwaitingTransaction,
+    });
     if (isDateLoading) {
         return <Skeleton className="h-3.5 w-24" />;
     }
 
-    const executedDate = getProposalExecutedDate(swapStatus, transaction);
     if (!executedDate) {
         return (
             <FormattedDate

@@ -1127,6 +1127,7 @@
         "insufficientTokensForFee": "Token tidak cukup untuk menutupi biaya jaringan ({fee} {symbol}). Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
         "removeRecipient": "Hapus Penerima",
         "removeRecipientConfirm": "Apakah Anda yakin ingin menghapus pembayaran ke <strong>{recipient}</strong>? Tindakan ini tidak dapat dibatalkan.",
+        "allRecipientsRemoved": "Semua penerima dihapus — unggah daftar baru untuk melanjutkan",
         "remove": "Hapus",
         "edit": "Ubah"
     },
@@ -1177,6 +1178,7 @@
             "estimatedTime": "Estimasi Waktu",
             "estimatedTimeValue": "{seconds} detik",
             "estimatedTimeTooltip": "Waktu perkiraan untuk menyelesaikan pertukaran.",
+            "instant": "Instan",
             "minimumReceived": "Minimum Diterima",
             "minimumReceivedTooltip": "Ini adalah jumlah minimum yang akan Anda terima dari pertukaran ini, berdasarkan batas slippage yang ditetapkan untuk permintaan.",
             "depositAddress": "Alamat Deposit",

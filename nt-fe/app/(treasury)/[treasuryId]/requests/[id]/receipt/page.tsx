@@ -23,9 +23,10 @@ import {
     getProposalUIKind,
 } from "@/features/proposals/utils/proposal-utils";
 import {
+    extractConfidentialBulkReceiptData,
     extractReceiptProposalData,
-    getProposalExecutedDate,
     isReceiptEligibleProposalKind,
+    resolveExecutionTimestamp,
 } from "@/features/proposals/utils/receipt-utils";
 import { useCachedProposalSubmissionTime } from "@/hooks/use-cached-proposal-submission-time";
 import {
@@ -702,9 +703,18 @@ export default function RequestReceiptPage({
     const isBatchPaymentProposal = proposalUiKind === "Batch Payment Request";
     const isConfidentialRequestProposal =
         proposalUiKind === "Confidential Request";
+    const confidentialBulkReceiptData =
+        proposal && isConfidentialRequestProposal
+            ? extractConfidentialBulkReceiptData(proposal, treasuryId)
+            : null;
+    const isConfidentialBulkProposal = confidentialBulkReceiptData !== null;
+    // Public batch + confidential bulk both render one receipt card per
+    // recipient (multi-card PDF).
+    const isMultiRecipientReceipt =
+        isBatchPaymentProposal || isConfidentialBulkProposal;
     const isReceiptEligibleProposal =
         isReceiptEligibleProposalKind(proposalUiKind);
-    const isSingleReceiptProposal = !isBatchPaymentProposal;
+    const isSingleReceiptProposal = !isMultiRecipientReceipt;
     const submissionTime = proposal?.submission_time ?? cachedSubmissionTime;
     const canLoadPolicy =
         !!treasuryId && !!submissionTime && isReceiptEligibleProposal;
@@ -742,13 +752,16 @@ export default function RequestReceiptPage({
     const isExecutableReceipt = status === "Executed";
     const shouldUseSwapExecutionDate = isExecutableReceipt && !!depositAddress;
 
-    const { data: transaction, isLoading: isLoadingTransaction } =
-        useProposalTransaction(
-            treasuryId,
-            proposal,
-            policy,
-            !isHidden && !!proposal && !!policy,
-        );
+    const {
+        data: transaction,
+        isLoading: isLoadingTransaction,
+        isAwaitingTransaction,
+    } = useProposalTransaction(
+        treasuryId,
+        proposal,
+        policy,
+        !isHidden && !!proposal && !!policy,
+    );
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress,
         undefined,
@@ -763,7 +776,17 @@ export default function RequestReceiptPage({
         !shouldUseSwapExecutionDate ||
         (!isConfidential && isGuestTreasury) ||
         swapStatus?.status === "SUCCESS";
-    const transactionDate = getProposalExecutedDate(swapStatus, transaction);
+    const {
+        executedDate: transactionDate,
+        isDateLoading: resolvedTransactionDateLoading,
+    } = resolveExecutionTimestamp({
+        swapStatus,
+        transaction,
+        shouldUseSwapDate: shouldUseSwapExecutionDate,
+        isLoadingSwapStatus,
+        isLoadingTransaction,
+        isAwaitingTransaction,
+    });
     const isExchangeProposal = receiptProposalVariant === "exchange";
     const hasDepositAddress = !!depositAddress;
     const isNearComDestination = isNearComPaymentRoute({
@@ -836,20 +859,23 @@ export default function RequestReceiptPage({
         isSingleReceiptProposal ? destinationTokenId : null,
     );
     const { data: batchPaymentData, isLoading: isLoadingBatchPayment } =
-        useBatchPayment(batchReceiptData?.batchId || null);
-    const effectiveBatchTokenId =
-        batchPaymentData?.tokenId?.toLowerCase() === "native"
-            ? "near"
-            : (batchReceiptData?.tokenId ??
-              batchPaymentData?.tokenId ??
-              "near");
+        useBatchPayment(
+            isConfidentialBulkProposal
+                ? null
+                : batchReceiptData?.batchId || null,
+        );
+    const effectiveBatchTokenId = isConfidentialBulkProposal
+        ? confidentialBulkReceiptData.tokenId || "near"
+        : batchPaymentData?.tokenId?.toLowerCase() === "native"
+          ? "near"
+          : (batchReceiptData?.tokenId ?? batchPaymentData?.tokenId ?? "near");
     const { data: batchTokenData } = useToken(
         !isHidden ? effectiveBatchTokenId : null,
     );
     const { data: batchHistoricalPrice } = useTokenPriceAtTimestamp(
         effectiveBatchTokenId,
         executedAtIso,
-        isBatchPaymentProposal &&
+        isMultiRecipientReceipt &&
             isExecutableReceipt &&
             !!effectiveBatchTokenId &&
             !!executedAtIso,
@@ -865,8 +891,12 @@ export default function RequestReceiptPage({
         !!policy &&
         isExecutableReceipt &&
         isSwapSuccessReady &&
+        // Public batch on a confidential treasury is unsupported; confidential
+        // bulk uses Confidential Request kind and is allowed.
         !(isBatchPaymentProposal && isConfidential);
-    const batchPayments = batchPaymentData?.payments ?? [];
+    const batchPayments = isConfidentialBulkProposal
+        ? confidentialBulkReceiptData.payments
+        : (batchPaymentData?.payments ?? []);
     const paymentsToRender = useMemo(
         () =>
             recipientFilter
@@ -940,9 +970,7 @@ export default function RequestReceiptPage({
     const isTransactionDateLoading =
         isExecutableReceipt &&
         isSingleReceiptProposal &&
-        (shouldUseSwapExecutionDate
-            ? isLoadingSwapStatus
-            : isLoadingTransaction);
+        resolvedTransactionDateLoading;
     const isRateLoading = hasExplicitReceiptUsd
         ? false
         : hasDepositAddress
@@ -1059,7 +1087,9 @@ export default function RequestReceiptPage({
         redirect(`/${treasuryId}/requests`);
     }
 
-    if (isBatchPaymentProposal) {
+    if (isMultiRecipientReceipt) {
+        const isLoadingMultiRecipientPayments =
+            isBatchPaymentProposal && isLoadingBatchPayment;
         return (
             <ReceiptPageShell
                 receiptUrl={receiptUrl}
@@ -1067,12 +1097,16 @@ export default function RequestReceiptPage({
                 onPrint={handlePrint}
             >
                 <div className="space-y-4">
-                    {isLoadingBatchPayment ? (
+                    {isLoadingMultiRecipientPayments ? (
                         <ReceiptPdfSkeletonCard />
                     ) : (
                         paymentsToRender.map((payment, index) => (
                             <BatchReceiptCard
-                                key={`${batchReceiptData?.batchId ?? "batch"}-${index}`}
+                                key={`${
+                                    isConfidentialBulkProposal
+                                        ? "confidential-bulk"
+                                        : (batchReceiptData?.batchId ?? "batch")
+                                }-${index}`}
                                 batchPayment={payment}
                                 paymentIndex={index}
                                 totalPayments={paymentsToRender.length}

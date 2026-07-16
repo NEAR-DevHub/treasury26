@@ -1127,6 +1127,7 @@
         "insufficientTokensForFee": "Unzureichende Token, um die Netzwerkgebühr ({fee} {symbol}) zu decken. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
         "removeRecipient": "Empfänger entfernen",
         "removeRecipientConfirm": "Möchten Sie die Zahlung an <strong>{recipient}</strong> wirklich entfernen? Diese Aktion kann nicht rückgängig gemacht werden.",
+        "allRecipientsRemoved": "Alle Empfänger entfernt — laden Sie eine neue Liste hoch, um fortzufahren",
         "remove": "Entfernen",
         "edit": "Bearbeiten"
     },
@@ -1177,6 +1178,7 @@
             "estimatedTime": "Geschätzte Zeit",
             "estimatedTimeValue": "{seconds} Sekunden",
             "estimatedTimeTooltip": "Ungefähre Zeit zum Abschluss des Tauschs.",
+            "instant": "Sofort",
             "minimumReceived": "Mindestens erhalten",
             "minimumReceivedTooltip": "Dies ist der Mindestbetrag, den Sie aus diesem Tausch erhalten, basierend auf dem für die Anfrage festgelegten Slippage-Limit.",
             "depositAddress": "Einzahlungsadresse",

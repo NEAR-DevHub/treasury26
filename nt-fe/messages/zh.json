@@ -1127,6 +1127,7 @@
         "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
         "removeRecipient": "移除收款人",
         "removeRecipientConfirm": "您确定要移除给 <strong>{recipient}</strong> 的付款吗?此操作无法撤销。",
+        "allRecipientsRemoved": "所有收款人已移除 — 请上传新列表以继续",
         "remove": "移除",
         "edit": "编辑"
     },
@@ -1160,6 +1161,7 @@
             "estimatedTime": "预计时间",
             "estimatedTimeValue": "{seconds} 秒",
             "estimatedTimeTooltip": "完成兑换的大致时间。",
+            "instant": "即时",
             "minimumReceived": "最低接收量",
             "minimumReceivedTooltip": "这是您将通过此次兑换至少收到的金额,基于为请求设定的滑点上限。",
             "depositAddress": "存款地址",

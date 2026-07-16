@@ -1127,6 +1127,7 @@
         "insufficientTokensForFee": "Tokens insuficientes para cobrir a taxa de rede ({fee} {symbol}). Você pode enviar a solicitação e completar o saldo antes da aprovação.",
         "removeRecipient": "Remover destinatário",
         "removeRecipientConfirm": "Tem certeza de que deseja remover o pagamento para <strong>{recipient}</strong>? Esta ação não pode ser desfeita.",
+        "allRecipientsRemoved": "Todos os destinatários foram removidos — envie uma nova lista para continuar",
         "remove": "Remover",
         "edit": "Editar"
     },
@@ -1177,6 +1178,7 @@
             "estimatedTime": "Tempo estimado",
             "estimatedTimeValue": "{seconds} segundos",
             "estimatedTimeTooltip": "Tempo aproximado para concluir a troca.",
+            "instant": "Instantâneo",
             "minimumReceived": "Mínimo recebido",
             "minimumReceivedTooltip": "Este é o valor mínimo que você receberá desta troca, com base no limite de slippage definido para a solicitação.",
             "depositAddress": "Endereço de depósito",

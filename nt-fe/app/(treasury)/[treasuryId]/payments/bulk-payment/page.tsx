@@ -227,6 +227,8 @@ export default function BulkPaymentPage() {
         }));
 
         const toNearCom = destinationNetworkId === NEAR_COM_NETWORK_ID;
+        // createProposal already toasts wallet rejection; only toast prepare errors.
+        let reachedCreateProposal = false;
         try {
             const prepared = await prepareConfidentialBulkPayment({
                 daoId: selectedTreasury,
@@ -246,6 +248,7 @@ export default function BulkPaymentPage() {
                 treasuryId: selectedTreasury,
             });
 
+            reachedCreateProposal = true;
             await createProposal(
                 tBulk("proposalSubmitted"),
                 {
@@ -294,9 +297,13 @@ export default function BulkPaymentPage() {
             setPaymentData([]);
         } catch (error) {
             console.error("Failed to submit confidential bulk payment:", error);
-            toast.error(
-                error instanceof Error ? error.message : tBulk("submitFailed"),
-            );
+            if (!reachedCreateProposal) {
+                toast.error(
+                    error instanceof Error
+                        ? error.message
+                        : tBulk("submitFailed"),
+                );
+            }
         }
     };
 
@@ -305,13 +312,23 @@ export default function BulkPaymentPage() {
         if (isSubmittingProposalRef.current) {
             return;
         }
-        if (isConfidential) {
-            return onSubmitConfidential();
-        }
         if (!selectedTreasury || paymentData.length === 0 || !selectedToken)
             return;
+
+        // Lock immediately (ref + state) so rapid clicks cannot create
+        // duplicate prepare/proposal requests before React re-renders.
         isSubmittingProposalRef.current = true;
         setIsSubmittingProposal(true);
+
+        if (isConfidential) {
+            try {
+                await onSubmitConfidential();
+            } finally {
+                isSubmittingProposalRef.current = false;
+                setIsSubmittingProposal(false);
+            }
+            return;
+        }
 
         const totalAmount = paymentData.reduce(
             (sum, item) => sum.add(Big(item.amount || "0")),
@@ -319,6 +336,9 @@ export default function BulkPaymentPage() {
         );
 
         let loadingToastId: string | number | undefined;
+        // createProposal already toasts wallet rejection; only toast list/
+        // prepare failures from earlier in this flow.
+        let reachedCreateProposal = false;
 
         try {
             // Show loading toast
@@ -442,7 +462,8 @@ export default function BulkPaymentPage() {
                 },
             );
 
-            // Create proposal (throws on failure)
+            // Create proposal (throws on failure; toasts wallet rejection itself)
+            reachedCreateProposal = true;
             await createProposal(
                 tBulk("proposalSubmitted"),
                 {
@@ -495,10 +516,13 @@ export default function BulkPaymentPage() {
             if (loadingToastId) {
                 toast.dismiss(loadingToastId);
             }
-            // createProposal already handles wallet rejection UI; submit list errors need a toast.
-            toast.error(
-                error instanceof Error ? error.message : tBulk("submitFailed"),
-            );
+            if (!reachedCreateProposal) {
+                toast.error(
+                    error instanceof Error
+                        ? error.message
+                        : tBulk("submitFailed"),
+                );
+            }
         } finally {
             isSubmittingProposalRef.current = false;
             setIsSubmittingProposal(false);

@@ -1127,6 +1127,7 @@
         "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
         "removeRecipient": "Remove Recipient",
         "removeRecipientConfirm": "Are you sure you want to remove the payment to <strong>{recipient}</strong>? This action cannot be undone.",
+        "allRecipientsRemoved": "All recipients removed — upload a new list to continue",
         "remove": "Remove",
         "edit": "Edit"
     },
@@ -1177,6 +1178,7 @@
             "estimatedTime": "Estimated Time",
             "estimatedTimeValue": "{seconds} seconds",
             "estimatedTimeTooltip": "Approximate time to complete the exchange.",
+            "instant": "Instant",
             "minimumReceived": "Minimum Received",
             "minimumReceivedTooltip": "This is the minimum amount you'll receive from this exchange, based on the slippage limit set for the request.",
             "depositAddress": "Deposit Address",
