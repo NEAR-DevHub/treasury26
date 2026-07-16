@@ -13,7 +13,8 @@ const https = require("https");
 const { URL } = require("url");
 
 const PROXY_PORT = process.env.PROXY_PORT || 8888;
-const TARGET_HOST = process.env.BACKEND_PROXY_TARGET || "https://api.trezu.app";
+const TARGET_HOST =
+    process.env.BACKEND_PROXY_TARGET || "https://api.testenv.trezu.app";
 
 const server = http.createServer((req, res) => {
     // Get the origin from the request

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowDownToLine, Info } from "lucide-react";
+import { ArrowDownToLine, Info, Shield } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -152,10 +152,11 @@ function Step1({
     const tPay = useTranslations("payments");
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<PaymentFormValues>();
-    const { treasuryId, isConfidential } = useTreasury();
+    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
     const isMobile = useMediaQuery("(max-width: 768px)");
     const address = form.watch("address");
     const amount = form.watch("amount");
+    const showConfidentialShield = isConfidential && !isGuestTreasury;
 
     const handleSave = async () => {
         // Validate and proceed to next step
@@ -184,7 +185,24 @@ function Step1({
             <SlotWarning slot="payments" />
             <PageCard>
                 <div className="flex justify-between items-center">
-                    <StepperHeader title={tPay("title")} />
+                    <StepperHeader
+                        title={
+                            showConfidentialShield ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span>{tPay("title")}</span>
+                                    <Tooltip
+                                        content={tPay("confidentialTooltip")}
+                                    >
+                                        <span className="inline-flex">
+                                            <Shield className="size-4 fill-foreground" />
+                                        </span>
+                                    </Tooltip>
+                                </span>
+                            ) : (
+                                tPay("title")
+                            )
+                        }
+                    />
                     <div className="flex items-center gap-2">
                         {/* Bulk payments are available for confidential
                             treasuries too: the bulk-payment page guides

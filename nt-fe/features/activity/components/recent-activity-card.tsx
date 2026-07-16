@@ -8,6 +8,7 @@ import {
     ArrowUpToLine,
     ChevronRight,
     Clock,
+    Shield,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -57,13 +58,13 @@ import Link from "next/link";
 import { ConfidentialState } from "@/components/confidential-state";
 import { ExportButton } from "@/components/export-button";
 import { FormattedDate } from "@/components/formatted-date";
-import { parseWarningCopy } from "@/components/warning-message";
 import { StepperHeader } from "@/components/step-wizard";
 import { Table, TableBody, TableCell, TableRow } from "@/components/table";
+import { Tooltip } from "@/components/tooltip";
+import { parseWarningCopy } from "@/components/warning-message";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { useWarningMessage } from "@/hooks/use-warnings";
-import { useWarnings } from "@/hooks/use-warnings";
+import { useWarningMessage, useWarnings } from "@/hooks/use-warnings";
 import { useIsHistoryRefreshing } from "./history-refresh-indicator";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 
@@ -227,6 +228,7 @@ export function RecentActivity() {
     const isMobile = useMediaQuery("(max-width: 640px)");
     const isHistoryRefreshing = useIsHistoryRefreshing();
     const isHidden = isConfidential && isGuestTreasury;
+    const showConfidentialShield = isConfidential && !isGuestTreasury;
     const { getWarning } = useWarnings();
     const activityWarning = getWarning("data.activity");
     const activityWarningMessage = useWarningMessage(
@@ -533,7 +535,26 @@ export function RecentActivity() {
             <Card className="gap-3 border-none shadow-none">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 px-4">
                     <div className="space-y-1">
-                        <StepperHeader title={t("recentTitle")} />
+                        <StepperHeader
+                            title={
+                                showConfidentialShield ? (
+                                    <span className="inline-flex items-center gap-1.5">
+                                        <span>{t("recentTitle")}</span>
+                                        <Tooltip
+                                            content={tCommon(
+                                                "confidentialDataTooltip",
+                                            )}
+                                        >
+                                            <span className="inline-flex">
+                                                <Shield className="size-4 fill-foreground" />
+                                            </span>
+                                        </Tooltip>
+                                    </span>
+                                ) : (
+                                    t("recentTitle")
+                                )
+                            }
+                        />
                     </div>
                     <div className="flex items-center gap-2">
                         {/* TODO: Uncomment after price integration */}
