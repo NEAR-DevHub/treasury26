@@ -11052,24 +11052,6 @@
     timeout_secs: DEFAULT_TIMEOUT_SECS,
     extensions: []
   };
-  function configsEqual(a, b) {
-    return a.signature_enabled === b.signature_enabled && a.subwallet_id === b.subwallet_id && a.timeout_secs === b.timeout_secs && a.extensions.length === b.extensions.length && [...a.extensions].sort().every((ext, i) => ext === [...b.extensions].sort()[i]);
-  }
-  async function fetchLiveConfig(client, accountId) {
-    const view = async (functionName) => (await client.callContractReadFunction({ contractAccountId: accountId, functionName })).result;
-    const [signatureAllowed, subwalletId, timeoutSecs, extensions] = await Promise.all([
-      view("w_is_signature_allowed"),
-      view("w_subwallet_id"),
-      view("w_timeout_secs"),
-      view("w_extensions")
-    ]);
-    return {
-      signature_enabled: Boolean(signatureAllowed),
-      subwallet_id: Number(subwalletId),
-      timeout_secs: Number(timeoutSecs),
-      extensions: Array.isArray(extensions) ? extensions.filter((e) => typeof e === "string") : []
-    };
-  }
   function buildAuthMessage(args) {
     return {
       chain_id: CHAIN_ID,
@@ -14352,20 +14334,18 @@
     },
     async resolveAuth(params) {
       assertMainnet(params.network);
-      const client = getClient();
+      const message = buildAuthMessage({ ...params, config: DEFAULT_WALLET_CONFIG });
+      const challenge = authMessageHash(message);
       const signedIn = await getActiveCredential();
       if (signedIn) {
         await ensureAccountOnChain(signedIn);
-        const config2 = await fetchLiveConfig(client, signedIn.accountId);
-        const message = buildAuthMessage({ ...params, config: config2 });
-        const assertion2 = await webauthnGet(authMessageHash(message), signedIn.rawId);
+        const assertion2 = await webauthnGet(challenge, signedIn.rawId);
         return {
           accountId: signedIn.accountId,
           authorization: buildAuthorizationBlob(message, buildProof(signedIn.curve, assertion2))
         };
       }
-      const assumedMessage = buildAuthMessage({ ...params, config: DEFAULT_WALLET_CONFIG });
-      const assertion = await webauthnGet(authMessageHash(assumedMessage));
+      const assertion = await webauthnGet(challenge);
       const resolved = await resolveCredential(assertion);
       const active = toActiveCredential(resolved);
       await setActiveCredential(active);
@@ -14375,23 +14355,11 @@
         await clearActiveCredential();
         throw e;
       }
-      const liveConfig = await fetchLiveConfig(client, resolved.accountId);
-      if (configsEqual(liveConfig, DEFAULT_WALLET_CONFIG)) {
-        return {
-          accountId: resolved.accountId,
-          authorization: buildAuthorizationBlob(
-            assumedMessage,
-            buildProof(resolved.publicKey.curve, assertion)
-          )
-        };
-      }
-      const liveMessage = buildAuthMessage({ ...params, config: liveConfig });
-      const secondAssertion = await webauthnGet(authMessageHash(liveMessage), resolved.rawIdB64);
       return {
         accountId: resolved.accountId,
         authorization: buildAuthorizationBlob(
-          liveMessage,
-          buildProof(resolved.publicKey.curve, secondAssertion)
+          message,
+          buildProof(resolved.publicKey.curve, assertion)
         )
       };
     }
