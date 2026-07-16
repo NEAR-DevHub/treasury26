@@ -625,7 +625,7 @@ fn quote_snapshot_from_proposal(
 ) -> Option<QuoteProposalSnapshot> {
     let description = description?;
     let action = extract_from_description(description, "proposalaction")?;
-    let quote_type = QuoteProposalType::from_str(&action)?;
+    let quote_type = action.parse().ok()?;
     let transfers = proposal_transfer_actions(kind);
     let deposit_address = quote_deposit_from_description(description).or_else(|| {
         transfers
