@@ -344,7 +344,8 @@
             "from": "DE",
             "to": "A",
             "transactionHash": "HASH DE TRANSACCIÓN",
-            "hashTooltip": "Identificador único (hash) de esta transacción"
+            "hashTooltip": "Identificador único (hash) de esta transacción",
+            "processing": "Procesando"
         },
         "empty": {
             "title": "No se encontraron transacciones",

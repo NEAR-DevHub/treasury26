@@ -188,7 +188,7 @@ async fn fetch_raw_page(
     );
     let mut params = vec![("per_page", limit.to_string())];
     if let Some(cursor) = cursor {
-        params.push(("cursor", cursor.to_string()));
+        params.push(("next", cursor.to_string()));
     }
 
     let mut attempt = 0;

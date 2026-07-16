@@ -129,7 +129,7 @@ pub async fn upsert_silver_legs(
 
     let account_ids: Vec<&str> = legs.iter().map(|leg| leg.account_id.as_str()).collect();
     let leg_keys: Vec<&str> = legs.iter().map(|leg| leg.leg_key.as_str()).collect();
-    let source_event_ids: Vec<i64> = legs.iter().map(|leg| leg.source_event_id).collect();
+    let source_event_ids: Vec<Option<i64>> = legs.iter().map(|leg| leg.source_event_id).collect();
     let sources: Vec<&str> = legs.iter().map(|leg| leg.source.as_str()).collect();
     let proposal_refs: Vec<Option<i64>> = legs
         .iter()

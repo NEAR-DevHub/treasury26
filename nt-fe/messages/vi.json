@@ -344,7 +344,8 @@
             "from": "TỪ",
             "to": "ĐẾN",
             "transactionHash": "HASH GIAO DỊCH",
-            "hashTooltip": "Định danh duy nhất (hash) của giao dịch này"
+            "hashTooltip": "Định danh duy nhất (hash) của giao dịch này",
+            "processing": "Đang xử lý"
         },
         "empty": {
             "title": "Không tìm thấy giao dịch nào",

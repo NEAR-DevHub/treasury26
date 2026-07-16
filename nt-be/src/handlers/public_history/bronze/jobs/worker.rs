@@ -28,8 +28,8 @@ use super::postgres::{
     PUBLIC_HISTORY_LATEST_NAMESPACE, active_public_history_job_exists, is_unique_violation_on,
 };
 
-pub(crate) const JOB_CONCURRENCY: usize = 4;
-pub(crate) const BACKFILL_JOB_CONCURRENCY: usize = 4;
+pub(crate) const JOB_CONCURRENCY: usize = 2;
+pub(crate) const BACKFILL_JOB_CONCURRENCY: usize = 2;
 pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 20;
 
 type PublicHistoryStorage = PostgresStorage<PublicHistoryJob>;

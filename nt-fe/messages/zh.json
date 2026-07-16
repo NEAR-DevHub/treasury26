@@ -344,7 +344,8 @@
             "from": "发送方",
             "to": "接收方",
             "transactionHash": "交易哈希",
-            "hashTooltip": "此交易的唯一标识符(哈希)"
+            "hashTooltip": "此交易的唯一标识符(哈希)",
+            "processing": "处理中"
         },
         "empty": {
             "title": "未找到交易",

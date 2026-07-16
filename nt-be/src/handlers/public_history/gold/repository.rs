@@ -4,6 +4,7 @@ use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
 use super::models::{DirtyPublicGoldAccount, GoldBalanceSeedRow, GoldPublicHistoryEvent};
+use crate::handlers::public_history::quotes::QUOTE_LEG_MATCH_SQL;
 use crate::handlers::public_history::silver::models::SilverTransferLegRow;
 
 pub async fn load_dirty_accounts(
@@ -128,14 +129,14 @@ pub async fn load_silver_suffix(
     account_id: &str,
     recompute_from: DateTime<Utc>,
 ) -> Result<Vec<SilverTransferLegRow>, sqlx::Error> {
-    sqlx::query_as::<_, SilverTransferLegRow>(
+    let sql = format!(
         r#"
         SELECT
             l.id,
             l.account_id,
             l.leg_key,
-            l.proposal_ref,
-            l.proposal_id,
+            COALESCE(l.proposal_ref, dp.id) AS proposal_ref,
+            COALESCE(l.proposal_id, dp.proposal_id) AS proposal_id,
             l.transaction_hash,
             l.receipt_id,
             l.block_height,
@@ -157,17 +158,32 @@ pub async fn load_silver_suffix(
             dp.quote_metadata,
             dp.quote_deposit_address
         FROM silver_public_transfer_legs l
+        LEFT JOIN LATERAL (
+            SELECT matched.id, matched.proposal_id
+            FROM (
+                SELECT
+                    dp.id,
+                    dp.proposal_id,
+                    COUNT(*) OVER () AS match_count
+                FROM dao_proposals dp
+                WHERE l.proposal_ref IS NULL
+                  AND dp.proposal_executed_at IS NOT NULL
+                  AND {QUOTE_LEG_MATCH_SQL}
+            ) matched
+            WHERE matched.match_count = 1
+        ) fallback_dp ON TRUE
         LEFT JOIN dao_proposals dp
-          ON dp.id = l.proposal_ref
+          ON dp.id = COALESCE(l.proposal_ref, fallback_dp.id)
         WHERE l.account_id = $1
           AND l.block_time >= $2
         ORDER BY l.block_time ASC, l.block_height ASC, l.id ASC
-        "#,
-    )
-    .bind(account_id)
-    .bind(recompute_from)
-    .fetch_all(&mut **tx)
-    .await
+        "#
+    );
+    sqlx::query_as::<_, SilverTransferLegRow>(&sql)
+        .bind(account_id)
+        .bind(recompute_from)
+        .fetch_all(&mut **tx)
+        .await
 }
 
 pub async fn upsert_gold_event(

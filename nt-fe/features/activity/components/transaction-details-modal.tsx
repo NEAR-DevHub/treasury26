@@ -324,7 +324,7 @@ export function TransactionDetailsModal({
                         <Button
                             asChild
                             variant="secondary"
-                            className="h-12 w-full rounded-[8px] font-medium"
+                            className="h-9 w-full rounded-[8px] font-medium"
                         >
                             <Link
                                 href={`/${treasuryId}/requests/${activity.proposalId}`}

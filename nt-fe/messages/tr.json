@@ -344,7 +344,8 @@
             "from": "KİMDEN",
             "to": "KİME",
             "transactionHash": "İŞLEM HASH'İ",
-            "hashTooltip": "Bu işlemin benzersiz tanımlayıcısı (hash)"
+            "hashTooltip": "Bu işlemin benzersiz tanımlayıcısı (hash)",
+            "processing": "İşleniyor"
         },
         "empty": {
             "title": "İşlem bulunamadı",

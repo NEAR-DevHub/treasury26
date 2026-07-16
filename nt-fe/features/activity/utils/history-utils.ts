@@ -77,11 +77,39 @@ export interface ActivityAccount {
     counterparty: string | null;
     signerId: string | null;
     receiverId: string | null;
-    swap?: any; // Swap object if this is a swap transaction
+    swap?: {
+        swapRole?: string;
+        receivedAmount?: string | null;
+    };
     actionKind?: string | null;
     methodName?: string | null;
     amount?: string;
     tokenSymbol?: string;
+}
+
+export type ActivityStatus = "pending" | "failed" | null;
+
+export function getActivityStatus(activity: ActivityAccount): ActivityStatus {
+    const actionKind = activity.actionKind ?? "";
+    if (
+        actionKind === "PublicExchange:failed" ||
+        actionKind === "PublicSent:failed"
+    ) {
+        return "failed";
+    }
+    if (
+        actionKind === "PublicExchange:pending" ||
+        actionKind === "PublicSent:pending"
+    ) {
+        return "pending";
+    }
+    if (
+        activity.swap?.swapRole === "deposit" &&
+        activity.swap.receivedAmount == null
+    ) {
+        return "pending";
+    }
+    return null;
 }
 
 /**
@@ -290,7 +318,7 @@ export function getToAccountId(
 }
 
 function buildHistoryDescriptionLabels(
-    t: (key: string, values?: Record<string, any>) => string,
+    t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): HistoryDescriptionLabels {
     return {
         unlimited: t("unlimitedHistory"),
@@ -304,7 +332,7 @@ function buildHistoryDescriptionLabels(
 }
 
 function buildActivityLabels(
-    t: (key: string, values?: Record<string, any>) => string,
+    t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): ActivityLabels {
     return {
         exchangePending: t("exchangePending"),
@@ -320,7 +348,7 @@ function buildActivityLabels(
 }
 
 function buildActivitySubLabels(
-    t: (key: string, values?: Record<string, any>) => string,
+    t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): ActivitySubLabels {
     return {
         viaIntents: t("viaIntents"),

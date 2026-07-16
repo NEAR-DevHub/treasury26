@@ -8,9 +8,13 @@ use std::sync::Arc;
 
 use bigdecimal::{BigDecimal, FromPrimitive, Zero};
 use chrono::{DateTime, Utc};
+use serde_json::Value;
 use sqlx::{PgPool, QueryBuilder, Row};
 
 use crate::AppState;
+use crate::handlers::public_history::quotes::{
+    proposal_quote_from_metadata, quote_destination_token_id,
+};
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, SwapInfo};
 
@@ -39,6 +43,7 @@ struct PublicGoldRow {
     proposal_id: Option<i64>,
     proposal_execution_transaction_hash: Option<String>,
     status: String,
+    quote_metadata: Option<Value>,
     created_at: DateTime<Utc>,
 }
 
@@ -69,6 +74,7 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for PublicGoldRow {
             proposal_execution_transaction_hash: row
                 .try_get("proposal_execution_transaction_hash")?,
             status: row.try_get("status")?,
+            quote_metadata: row.try_get("quote_metadata")?,
             created_at: row.try_get("created_at")?,
         })
     }
@@ -407,6 +413,7 @@ pub async fn fetch_balance_change_legs(
             proposal_id,
             proposal_execution_transaction_hash,
             status::text AS status,
+            raw_payload->'quote_metadata' AS quote_metadata,
             created_at
         FROM gold_public_history_events
         "#,
@@ -480,6 +487,15 @@ struct LegRow {
     swap_solver_tx: Option<String>,
 }
 
+fn pending_exchange_received_token(row: &PublicGoldRow) -> Option<String> {
+    if row.status == "success" {
+        return None;
+    }
+    proposal_quote_from_metadata(row.quote_metadata.as_ref())
+        .and_then(|quote| quote.destination_asset)
+        .map(|destination_asset| quote_destination_token_id(&destination_asset))
+}
+
 impl LegRow {
     fn hashes(row: &PublicGoldRow) -> Vec<String> {
         let mut hashes = Vec::new();
@@ -536,11 +552,26 @@ impl LegRow {
                     }]
                 })
                 .unwrap_or_default(),
+            "sent" if expand_exchange_balances && row.token_out_balance_after.is_none() => {
+                Vec::new()
+            }
             "sent" => row
                 .token_out
                 .clone()
                 .map(|token_id| {
                     let amount = row.amount_out.clone().unwrap_or_else(BigDecimal::zero);
+                    let action_kind = if row.status == "success" {
+                        "PublicSent".to_string()
+                    } else {
+                        format!("PublicSent:{}", row.status)
+                    };
+                    // Proposal-linked quote rows carry the deposit address as
+                    // counterparty; never surface it as the recipient.
+                    let receiver = if row.proposal_id.is_some() {
+                        row.recipient.clone()
+                    } else {
+                        row.recipient.clone().or(row.counterparty.clone())
+                    };
                     vec![Self {
                         id: row.id,
                         account_id: row.dao_id.clone(),
@@ -554,9 +585,9 @@ impl LegRow {
                             .token_out_balance_after
                             .clone()
                             .unwrap_or_else(BigDecimal::zero),
-                        counterparty: row.recipient.clone().or(row.counterparty.clone()),
+                        counterparty: receiver.clone(),
                         signer_id: Some(row.dao_id.clone()),
-                        receiver_id: row.recipient.clone().or(row.counterparty.clone()),
+                        receiver_id: receiver,
                         block_height: row.block_height.unwrap_or(0),
                         block_time: row.event_time,
                         transaction_hashes: Self::hashes(&row),
@@ -568,7 +599,7 @@ impl LegRow {
                         created_at: row.created_at,
                         proposal_id: row.proposal_id,
                         usd_value: row.amount_out_usd.clone(),
-                        action_kind: "PublicSent".to_string(),
+                        action_kind,
                         swap_sent_token: None,
                         swap_sent_amount: None,
                         swap_received_token: None,
@@ -577,6 +608,9 @@ impl LegRow {
                     }]
                 })
                 .unwrap_or_default(),
+            "exchange" if expand_exchange_balances && row.token_out_balance_after.is_none() => {
+                Vec::new()
+            }
             "exchange" if expand_exchange_balances => {
                 let mut legs = Vec::new();
                 if let Some(token_out) = row.token_out.clone() {
@@ -624,6 +658,7 @@ impl LegRow {
             "exchange" => row
                 .token_in
                 .clone()
+                .or_else(|| pending_exchange_received_token(&row))
                 .or_else(|| row.token_out.clone())
                 .map(|token_id| vec![Self::exchange_summary(row, token_id)])
                 .unwrap_or_default(),
@@ -632,6 +667,7 @@ impl LegRow {
     }
 
     fn exchange_summary(row: PublicGoldRow, token_id: String) -> Self {
+        let pending_received_token = pending_exchange_received_token(&row);
         let solver = row
             .transaction_hash
             .clone()
@@ -671,7 +707,11 @@ impl LegRow {
             action_kind: format!("PublicExchange:{}", row.status),
             swap_sent_token: row.token_out.clone(),
             swap_sent_amount: row.amount_out.clone(),
-            swap_received_token: row.token_in.clone().or(row.token_out.clone()),
+            swap_received_token: row
+                .token_in
+                .clone()
+                .or(pending_received_token)
+                .or(row.token_out.clone()),
             swap_received_amount: if row.status == "success" {
                 row.amount_in.clone()
             } else {
@@ -769,6 +809,7 @@ mod tests {
             proposal_id: Some(7),
             proposal_execution_transaction_hash: None,
             status: "success".to_string(),
+            quote_metadata: None,
             created_at: ts(),
         }
     }

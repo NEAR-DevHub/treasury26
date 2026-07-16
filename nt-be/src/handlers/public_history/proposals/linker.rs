@@ -38,6 +38,9 @@ use crate::handlers::proposals::scraper::{
     ProposalStatus, extract_from_description, extract_payload_hash_from_kind, fetch_proposal,
 };
 use crate::handlers::public_history::bronze::store::BronzePublicHistoryEvent;
+use crate::handlers::public_history::quotes::{
+    QuoteProposalSnapshot, QuoteProposalType, build_quote_metadata,
+};
 use crate::handlers::public_history::silver::cursors::mark_silver_dirty_tx;
 use crate::utils::jsonrpc::create_rpc_client;
 
@@ -154,10 +157,17 @@ impl DaoProposalUpsert<'_> {
                     EXCLUDED.proposal_kind,
                     dao_proposals.proposal_kind
                 ),
-                quote_metadata = COALESCE(
-                    EXCLUDED.quote_metadata,
-                    dao_proposals.quote_metadata
-                ),
+                quote_metadata = CASE
+                    WHEN EXCLUDED.quote_metadata IS NULL
+                        THEN dao_proposals.quote_metadata
+                    WHEN dao_proposals.quote_metadata IS NULL
+                        THEN EXCLUDED.quote_metadata
+                    WHEN dao_proposals.quote_metadata ? 'proposalQuote'
+                         OR dao_proposals.quote_metadata ? 'status'
+                        THEN dao_proposals.quote_metadata || EXCLUDED.quote_metadata
+                    ELSE jsonb_build_object('status', dao_proposals.quote_metadata)
+                         || EXCLUDED.quote_metadata
+                END,
                 quote_deposit_address = COALESCE(
                     EXCLUDED.quote_deposit_address,
                     dao_proposals.quote_deposit_address
@@ -495,37 +505,160 @@ fn proposal_description_from_raw_add(event: &BronzePublicHistoryEvent) -> Option
         .map(ToString::to_string)
 }
 
-fn transfer_receiver_from_kind(kind: &Value) -> Option<String> {
-    let actions = kind.get("FunctionCall")?.get("actions")?.as_array()?;
-    for action in actions {
-        let method = action.get("method_name")?.as_str()?;
-        if !matches!(
-            method,
-            "ft_transfer" | "ft_transfer_call" | "mt_transfer" | "mt_transfer_call"
-        ) {
-            continue;
-        }
-        let args_b64 = action.get("args")?.as_str()?;
-        let bytes = base64::engine::general_purpose::STANDARD
-            .decode(args_b64)
-            .ok()?;
-        let args: Value = serde_json::from_slice(&bytes).ok()?;
-        if let Some(receiver_id) = args.get("receiver_id").and_then(Value::as_str) {
-            return Some(receiver_id.to_string());
-        }
-    }
-    None
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ProposalTransferAction {
+    receiver_id: String,
+    amount_raw: String,
+    origin_asset: String,
 }
 
-fn exchange_deposit_address(description: Option<&str>, kind: Option<&Value>) -> Option<String> {
-    let description = description?;
-    if extract_from_description(description, "proposalaction").as_deref() != Some("asset-exchange")
-    {
-        return None;
+fn decode_action_args(action: &Value) -> Option<Value> {
+    let args_b64 = action.get("args")?.as_str()?;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(args_b64)
+        .ok()?;
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn near_deposit_amounts(actions: &[Value]) -> Vec<String> {
+    actions
+        .iter()
+        .filter(|action| action.get("method_name").and_then(Value::as_str) == Some("near_deposit"))
+        .filter_map(|action| action.get("deposit").and_then(Value::as_str))
+        .map(ToString::to_string)
+        .collect()
+}
+
+fn origin_asset_for_transfer(
+    function_receiver_id: &str,
+    action_method: &str,
+    args: &Value,
+    native_deposit_amounts: &[String],
+    amount_raw: &str,
+) -> Option<String> {
+    if matches!(action_method, "mt_transfer" | "mt_transfer_call") {
+        let token_id = args.get("token_id").and_then(Value::as_str)?.trim();
+        if token_id.starts_with("intents.near:") {
+            return Some(token_id.to_string());
+        }
+        return Some(format!("intents.near:{token_id}"));
     }
+
+    if function_receiver_id == "wrap.near"
+        && native_deposit_amounts
+            .iter()
+            .any(|deposit| deposit == amount_raw)
+    {
+        return Some("near".to_string());
+    }
+
+    if function_receiver_id.starts_with("nep141:") || function_receiver_id == "near" {
+        return Some(function_receiver_id.to_string());
+    }
+
+    Some(format!("nep141:{function_receiver_id}"))
+}
+
+fn proposal_transfer_actions(kind: Option<&Value>) -> Vec<ProposalTransferAction> {
+    let Some(function_call) = kind.and_then(|kind| kind.get("FunctionCall")) else {
+        return Vec::new();
+    };
+    let Some(function_receiver_id) = function_call.get("receiver_id").and_then(Value::as_str)
+    else {
+        return Vec::new();
+    };
+    let Some(actions) = function_call.get("actions").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+
+    let native_deposit_amounts = near_deposit_amounts(actions);
+    actions
+        .iter()
+        .filter_map(|action| {
+            let method = action.get("method_name").and_then(Value::as_str)?;
+            if !matches!(
+                method,
+                "ft_transfer" | "ft_transfer_call" | "mt_transfer" | "mt_transfer_call"
+            ) {
+                return None;
+            }
+            let args = decode_action_args(action)?;
+            let receiver_id = args
+                .get("receiver_id")
+                .and_then(Value::as_str)?
+                .trim()
+                .to_string();
+            let amount_raw = args
+                .get("amount")
+                .and_then(Value::as_str)?
+                .trim()
+                .to_string();
+            let origin_asset = origin_asset_for_transfer(
+                function_receiver_id,
+                method,
+                &args,
+                &native_deposit_amounts,
+                &amount_raw,
+            )?;
+            Some(ProposalTransferAction {
+                receiver_id,
+                amount_raw,
+                origin_asset,
+            })
+        })
+        .collect()
+}
+
+fn quote_deposit_from_description(description: &str) -> Option<String> {
     extract_from_description(description, "depositAddress")
         .or_else(|| extract_from_description(description, "Deposit Address"))
-        .or_else(|| kind.and_then(transfer_receiver_from_kind))
+}
+
+fn quote_signature_from_description(description: &str) -> Option<String> {
+    extract_from_description(description, "signature")
+        .or_else(|| extract_from_description(description, "Signature"))
+}
+
+fn quote_snapshot_from_proposal(
+    description: Option<&str>,
+    kind: Option<&Value>,
+) -> Option<QuoteProposalSnapshot> {
+    let description = description?;
+    let action = extract_from_description(description, "proposalaction")?;
+    let quote_type = QuoteProposalType::from_str(&action)?;
+    let transfers = proposal_transfer_actions(kind);
+    let deposit_address = quote_deposit_from_description(description).or_else(|| {
+        transfers
+            .first()
+            .map(|transfer| transfer.receiver_id.clone())
+    })?;
+    let transfer = transfers
+        .iter()
+        .find(|transfer| transfer.receiver_id == deposit_address)
+        .or_else(|| transfers.first())?;
+
+    match quote_type {
+        QuoteProposalType::AssetExchange => Some(QuoteProposalSnapshot {
+            quote_type,
+            deposit_address,
+            recipient: None,
+            origin_asset: transfer.origin_asset.clone(),
+            origin_amount_raw: transfer.amount_raw.clone(),
+            destination_asset: extract_from_description(description, "tokenOutAddress")
+                .or_else(|| extract_from_description(description, "Token Out Address")),
+            signature: quote_signature_from_description(description),
+        }),
+        QuoteProposalType::PaymentTransfer => Some(QuoteProposalSnapshot {
+            quote_type,
+            deposit_address,
+            recipient: extract_from_description(description, "recipient")
+                .or_else(|| extract_from_description(description, "Recipient")),
+            origin_asset: transfer.origin_asset.clone(),
+            origin_amount_raw: transfer.amount_raw.clone(),
+            destination_asset: None,
+            signature: quote_signature_from_description(description),
+        }),
+    }
 }
 
 async fn fetch_quote_metadata_for_deposit(
@@ -836,10 +969,13 @@ async fn link_proposal_group(
     let description = details
         .description
         .or_else(|| group.created.and_then(proposal_description_from_raw_add));
-    let quote_deposit_address =
-        exchange_deposit_address(description.as_deref(), proposal_kind.as_ref());
-    let quote_metadata = match quote_deposit_address.as_deref() {
-        Some(deposit_address) => {
+    let quote_snapshot =
+        quote_snapshot_from_proposal(description.as_deref(), proposal_kind.as_ref());
+    let quote_deposit_address = quote_snapshot
+        .as_ref()
+        .map(|quote| quote.deposit_address.clone());
+    let quote_status = match (group.executed, quote_deposit_address.as_deref()) {
+        (Some(_), Some(deposit_address)) => {
             fetch_quote_metadata_for_deposit(
                 state,
                 &group.dao_id,
@@ -848,8 +984,9 @@ async fn link_proposal_group(
             )
             .await
         }
-        None => None,
+        _ => None,
     };
+    let quote_metadata = build_quote_metadata(None, quote_snapshot.as_ref(), quote_status);
 
     let upsert = DaoProposalUpsert {
         dao_id: &group.dao_id,
@@ -963,6 +1100,10 @@ mod tests {
         }
     }
 
+    fn encoded_args(value: Value) -> String {
+        base64::engine::general_purpose::STANDARD.encode(value.to_string())
+    }
+
     #[test]
     fn vote_receipt_decodes_as_voted_not_executed() {
         let event = receipt_event(
@@ -974,6 +1115,70 @@ mod tests {
         let receipt = decode_receipt(&event).expect("decoded");
         assert_eq!(receipt.role, ProposalReceiptRole::Voted);
         assert_eq!(receipt.proposal_id, Some(7));
+    }
+
+    #[test]
+    fn exchange_quote_snapshot_uses_signed_description_and_transfer_args() {
+        let description = "* Proposal Action: asset-exchange <br>* Token Out Address: nep141:usdt.near <br>* Deposit Address: deposit-address <br>* Signature: ed25519:sig";
+        let kind = serde_json::json!({
+            "FunctionCall": {
+                "receiver_id": "intents.near",
+                "actions": [{
+                    "method_name": "mt_transfer",
+                    "args": encoded_args(serde_json::json!({
+                        "receiver_id": "deposit-address",
+                        "amount": "1000000",
+                        "token_id": "nep141:usdc.near"
+                    })),
+                    "deposit": "1",
+                    "gas": "150000000000000"
+                }]
+            }
+        });
+
+        let quote = quote_snapshot_from_proposal(Some(description), Some(&kind)).expect("quote");
+
+        assert_eq!(quote.quote_type, QuoteProposalType::AssetExchange);
+        assert_eq!(quote.deposit_address, "deposit-address");
+        assert_eq!(quote.origin_asset, "intents.near:nep141:usdc.near");
+        assert_eq!(quote.origin_amount_raw, "1000000");
+        assert_eq!(quote.destination_asset.as_deref(), Some("nep141:usdt.near"));
+        assert_eq!(quote.signature.as_deref(), Some("ed25519:sig"));
+    }
+
+    #[test]
+    fn payment_quote_snapshot_keeps_actual_recipient_not_deposit_address() {
+        let description = "* Proposal Action: payment-transfer <br>* Recipient: alice.near <br>* Deposit Address: deposit-address <br>* Signature: ed25519:sig";
+        let kind = serde_json::json!({
+            "FunctionCall": {
+                "receiver_id": "wrap.near",
+                "actions": [
+                    {
+                        "method_name": "near_deposit",
+                        "args": encoded_args(serde_json::json!({})),
+                        "deposit": "1000000000000000000000000",
+                        "gas": "10000000000000"
+                    },
+                    {
+                        "method_name": "ft_transfer",
+                        "args": encoded_args(serde_json::json!({
+                            "receiver_id": "deposit-address",
+                            "amount": "1000000000000000000000000"
+                        })),
+                        "deposit": "1",
+                        "gas": "150000000000000"
+                    }
+                ]
+            }
+        });
+
+        let quote = quote_snapshot_from_proposal(Some(description), Some(&kind)).expect("quote");
+
+        assert_eq!(quote.quote_type, QuoteProposalType::PaymentTransfer);
+        assert_eq!(quote.deposit_address, "deposit-address");
+        assert_eq!(quote.recipient.as_deref(), Some("alice.near"));
+        assert_eq!(quote.origin_asset, "near");
+        assert_eq!(quote.origin_amount_raw, "1000000000000000000000000");
     }
 
     #[test]

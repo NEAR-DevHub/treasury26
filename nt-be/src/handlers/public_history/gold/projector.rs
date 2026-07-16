@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use bigdecimal::BigDecimal;
@@ -15,6 +15,10 @@ use super::repository::{
     clear_projection_error, delete_stale_gold_rows, earliest_pending_exchange_time,
     earliest_silver_time, has_gold_before, load_dirty_accounts, load_silver_suffix,
     seed_ledger_before, upsert_gold_event, upsert_projection_error,
+};
+use crate::handlers::public_history::quotes::{
+    QuoteProposalSnapshot, QuoteProposalType, proposal_quote_from_metadata, quote_amount_matches,
+    quote_asset_matches_token, quote_status_value_from_metadata,
 };
 use crate::handlers::public_history::silver::models::{
     PublicTransactionType, PublicTransferDirection, PublicTransferLegKind, SilverTransferLegRow,
@@ -36,13 +40,17 @@ struct ExchangePairs {
 struct ParsedQuoteStatus {
     near_tx_hashes: HashSet<String>,
     destination_chain_tx_hashes: HashSet<String>,
-    origin_asset: Option<String>,
     destination_asset: Option<String>,
-    amount_in_raw: Option<BigDecimal>,
     amount_out_raw: Option<BigDecimal>,
     amount_sent_usd: Option<BigDecimal>,
     amount_received_usd: Option<BigDecimal>,
     status: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct ParsedQuoteMetadata {
+    proposal: Option<QuoteProposalSnapshot>,
+    status: Option<ParsedQuoteStatus>,
 }
 
 impl ParsedQuoteStatus {
@@ -62,12 +70,16 @@ impl ParsedQuoteStatus {
             Some("failed") | Some("refunded") | Some("failure")
         )
     }
+
+    fn is_success(&self) -> bool {
+        matches!(self.status.as_deref(), Some("success"))
+    }
 }
 
 struct PendingExchange {
     outgoing: SilverTransferLegRow,
-    token_out_balance_before: BigDecimal,
-    token_out_balance_after: BigDecimal,
+    token_out_balance_before: Option<BigDecimal>,
+    token_out_balance_after: Option<BigDecimal>,
 }
 
 fn choose_recompute_from(
@@ -160,7 +172,7 @@ fn quote_usd_change(quote: Option<&ParsedQuoteStatus>) -> Option<BigDecimal> {
 }
 
 fn parse_quote_status(raw: Option<&Value>) -> Option<ParsedQuoteStatus> {
-    let raw = raw?;
+    let raw = quote_status_value_from_metadata(raw)?;
     let mut near_tx_hashes = HashSet::new();
     let mut destination_chain_tx_hashes = HashSet::new();
     collect_string_array(raw, "nearTxHashes", &mut near_tx_hashes);
@@ -173,11 +185,7 @@ fn parse_quote_status(raw: Option<&Value>) -> Option<ParsedQuoteStatus> {
     Some(ParsedQuoteStatus {
         near_tx_hashes,
         destination_chain_tx_hashes,
-        origin_asset: find_string(raw, "originAsset"),
         destination_asset: find_string(raw, "destinationAsset"),
-        amount_in_raw: find_path_string(raw, &["swapDetails", "amountIn"])
-            .or_else(|| find_string(raw, "amountIn"))
-            .and_then(|value| value.parse().ok()),
         // Only use fulfilled amountOut when 1Click reports actual swap details. Quote amountOut
         // can differ from the final received amount because of slippage.
         amount_out_raw: find_path_string(raw, &["swapDetails", "amountOut"])
@@ -188,42 +196,6 @@ fn parse_quote_status(raw: Option<&Value>) -> Option<ParsedQuoteStatus> {
             .or_else(|| find_path_decimal(raw, &["quoteResponse", "quote", "amountOutUsd"])),
         status: find_string(raw, "status").map(|status| status.to_ascii_lowercase()),
     })
-}
-
-fn quote_asset_matches_token(quote_asset: &str, token_id: &str) -> bool {
-    if quote_asset == token_id {
-        return true;
-    }
-
-    let quote_asset = quote_asset.trim();
-    let token_id = token_id.trim();
-
-    if quote_asset.eq_ignore_ascii_case("near") {
-        return matches!(
-            token_id,
-            "near" | "wrap.near" | "intents.near:nep141:wrap.near"
-        );
-    }
-
-    if let Some(raw_nep141) = quote_asset.strip_prefix("nep141:") {
-        if raw_nep141 == token_id || format!("intents.near:{quote_asset}") == token_id {
-            return true;
-        }
-        if raw_nep141 == "wrap.near" {
-            return matches!(
-                token_id,
-                "near" | "wrap.near" | "intents.near:nep141:wrap.near"
-            );
-        }
-    }
-
-    token_id
-        .strip_prefix("intents.near:")
-        .is_some_and(|suffix| suffix == quote_asset)
-}
-
-fn quote_amount_matches(expected: Option<&BigDecimal>, actual_raw: &BigDecimal) -> bool {
-    expected.is_none_or(|expected| expected == actual_raw)
 }
 
 fn leg_direction(leg: &SilverTransferLegRow) -> Result<PublicTransferDirection, String> {
@@ -331,7 +303,7 @@ fn is_projectable_transfer(
 
 fn is_quote_matched_exchange_deposit(
     leg: &SilverTransferLegRow,
-    quote: Option<&ParsedQuoteStatus>,
+    quote: Option<&ParsedQuoteMetadata>,
     relayer_account: &str,
 ) -> Result<bool, String> {
     if !is_projectable_transfer(leg, relayer_account)?
@@ -339,25 +311,86 @@ fn is_quote_matched_exchange_deposit(
     {
         return Ok(false);
     }
-    let Some(quote_deposit_address) = leg.quote_deposit_address.as_deref() else {
+    let Some(proposal_quote) = quote.and_then(|quote| quote.proposal.as_ref()) else {
         return Ok(false);
     };
+    if proposal_quote.quote_type != QuoteProposalType::AssetExchange {
+        return Ok(false);
+    }
     // A quote-linked exchange starts as a proposal payment to the quote deposit
     // address; ordinary transfers to intents.near should stay regular sends.
-    if leg.proposal_ref.is_none() || leg.counterparty.as_deref() != Some(quote_deposit_address) {
-        return Ok(false);
-    }
-    if let Some(origin_asset) = quote.and_then(|quote| quote.origin_asset.as_deref())
-        && !quote_asset_matches_token(origin_asset, &leg.token_id)
+    if leg.proposal_ref.is_none()
+        || leg.counterparty.as_deref() != Some(proposal_quote.deposit_address.as_str())
     {
         return Ok(false);
     }
-    if let Some(quote) = quote
-        && !quote_amount_matches(quote.amount_in_raw.as_ref(), &leg.amount_raw)
-    {
+    if !quote_asset_matches_token(&proposal_quote.origin_asset, &leg.token_id) {
+        return Ok(false);
+    }
+    let expected_amount = proposal_quote.origin_amount_raw.parse::<BigDecimal>().ok();
+    if !quote_amount_matches(expected_amount.as_ref(), &leg.amount_raw) {
         return Ok(false);
     }
     Ok(true)
+}
+
+fn is_quote_payment_outgoing(
+    leg: &SilverTransferLegRow,
+    quote: Option<&ParsedQuoteMetadata>,
+    relayer_account: &str,
+) -> Result<Option<QuoteProposalSnapshot>, String> {
+    if !is_projectable_transfer(leg, relayer_account)?
+        || leg_direction(leg)? != PublicTransferDirection::Outgoing
+    {
+        return Ok(None);
+    }
+    let Some(proposal_quote) = quote.and_then(|quote| quote.proposal.as_ref()) else {
+        return Ok(None);
+    };
+    if proposal_quote.quote_type != QuoteProposalType::PaymentTransfer
+        || leg.proposal_ref.is_none()
+        || leg.counterparty.as_deref() != Some(proposal_quote.deposit_address.as_str())
+        || !quote_asset_matches_token(&proposal_quote.origin_asset, &leg.token_id)
+    {
+        return Ok(None);
+    }
+    let expected_amount = proposal_quote.origin_amount_raw.parse::<BigDecimal>().ok();
+    if !quote_amount_matches(expected_amount.as_ref(), &leg.amount_raw) {
+        return Ok(None);
+    }
+    Ok(Some(proposal_quote.clone()))
+}
+
+// For quote payments the counterparty is the 1Click deposit address,
+// which must never be displayed as the recipient.
+fn outgoing_recipient(
+    quote_payment: Option<&QuoteProposalSnapshot>,
+    leg: &SilverTransferLegRow,
+) -> Option<String> {
+    match quote_payment {
+        Some(quote) => quote.recipient.clone(),
+        None => leg.counterparty.clone(),
+    }
+}
+
+fn quote_event_status(quote: Option<&ParsedQuoteMetadata>) -> PublicHistoryEventStatus {
+    if quote
+        .and_then(|quote| quote.status.as_ref())
+        .is_some_and(ParsedQuoteStatus::is_success)
+    {
+        PublicHistoryEventStatus::Success
+    } else if quote
+        .and_then(|quote| quote.status.as_ref())
+        .is_some_and(ParsedQuoteStatus::is_failed_terminal)
+    {
+        PublicHistoryEventStatus::Failed
+    } else {
+        PublicHistoryEventStatus::Pending
+    }
+}
+
+fn is_synthetic_quote_leg(leg: &SilverTransferLegRow) -> bool {
+    leg.leg_kind == PublicTransferLegKind::QuotePending.as_str()
 }
 
 fn is_exchange_fulfillment_candidate(
@@ -375,20 +408,35 @@ fn is_exchange_fulfillment_candidate(
 
 fn incoming_matches_quote(
     incoming: &SilverTransferLegRow,
-    quote: Option<&ParsedQuoteStatus>,
+    quote: Option<&ParsedQuoteMetadata>,
 ) -> bool {
     let Some(quote) = quote else {
-        return true;
+        return false;
     };
-    if let Some(destination_asset) = quote.destination_asset.as_deref()
+    if let Some(destination_asset) = quote
+        .proposal
+        .as_ref()
+        .and_then(|proposal| proposal.destination_asset.as_deref())
+        .or_else(|| {
+            quote
+                .status
+                .as_ref()
+                .and_then(|status| status.destination_asset.as_deref())
+        })
         && !quote_asset_matches_token(destination_asset, &incoming.token_id)
     {
         return false;
     }
-    quote_amount_matches(quote.amount_out_raw.as_ref(), &incoming.amount_raw)
+    quote_amount_matches(
+        quote
+            .status
+            .as_ref()
+            .and_then(|status| status.amount_out_raw.as_ref()),
+        &incoming.amount_raw,
+    )
 }
 
-fn build_quote_map(rows: &[SilverTransferLegRow]) -> HashMap<i64, ParsedQuoteStatus> {
+fn build_quote_map(rows: &[SilverTransferLegRow]) -> HashMap<i64, ParsedQuoteMetadata> {
     let mut quotes = HashMap::new();
     for row in rows {
         let Some(proposal_ref) = row.proposal_ref else {
@@ -397,11 +445,23 @@ fn build_quote_map(rows: &[SilverTransferLegRow]) -> HashMap<i64, ParsedQuoteSta
         if quotes.contains_key(&proposal_ref) {
             continue;
         }
-        if let Some(quote) = parse_quote_status(row.quote_metadata.as_ref()) {
+        let quote = ParsedQuoteMetadata {
+            proposal: proposal_quote_from_metadata(row.quote_metadata.as_ref()),
+            status: parse_quote_status(row.quote_metadata.as_ref()),
+        };
+        if quote.proposal.is_some() || quote.status.is_some() {
             quotes.insert(proposal_ref, quote);
         }
     }
     quotes
+}
+
+fn incoming_after_quote_window(
+    incoming: &SilverTransferLegRow,
+    outgoing: &SilverTransferLegRow,
+) -> bool {
+    let start = outgoing.proposal_executed_at.unwrap_or(outgoing.block_time);
+    incoming.block_time >= start && incoming.block_time >= outgoing.block_time
 }
 
 fn plan_exchange_pairs(
@@ -421,14 +481,11 @@ fn plan_exchange_pairs(
         }
     }
 
-    let mut fallback_pending_outgoing: VecDeque<i64> = VecDeque::new();
-    let mut by_id: HashMap<i64, &SilverTransferLegRow> = HashMap::new();
     let mut outgoing_to_incoming = HashMap::new();
     let mut incoming_to_outgoing = HashMap::new();
     let mut matched_incoming_ids = HashSet::new();
 
     for row in rows {
-        by_id.insert(row.id, row);
         let quote = row
             .proposal_ref
             .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
@@ -438,17 +495,17 @@ fn plan_exchange_pairs(
 
         // Prefer explicit fulfillment hashes from the quote payload; they avoid
         // pairing a deposit with an unrelated incoming intents transfer.
-        if let Some(quote) = quote
-            && quote.has_fulfillment_hashes()
+        if let Some(status) = quote.and_then(|quote| quote.status.as_ref())
+            && status.has_fulfillment_hashes()
         {
-            let matched_incoming = quote.fulfillment_hashes().find_map(|tx_hash| {
+            let matched_incoming = status.fulfillment_hashes().find_map(|tx_hash| {
                 incoming_by_tx_hash.get(tx_hash).and_then(|indices| {
                     indices.iter().find_map(|index| {
                         let incoming = rows.get(*index)?;
                         (!matched_incoming_ids.contains(&incoming.id)
                             && incoming.account_id == row.account_id
-                            && incoming.block_time >= row.block_time
-                            && incoming_matches_quote(incoming, Some(quote)))
+                            && incoming_after_quote_window(incoming, row)
+                            && incoming_matches_quote(incoming, quote))
                         .then_some(incoming.id)
                     })
                 })
@@ -462,37 +519,21 @@ fn plan_exchange_pairs(
             continue;
         }
 
-        // Some historical quote payloads lack fulfillment hashes. Keep them as
-        // pending candidates and match by account/time/asset/amount later.
-        fallback_pending_outgoing.push_back(row.id);
-    }
-
-    for row in rows {
-        if matched_incoming_ids.contains(&row.id)
-            || !is_exchange_fulfillment_candidate(row, relayer_account)?
-        {
-            continue;
-        }
-        let matched =
-            fallback_pending_outgoing
-                .iter()
-                .enumerate()
-                .rev()
-                .find_map(|(index, outgoing_id)| {
-                    let outgoing = by_id.get(outgoing_id)?;
-                    let quote = outgoing
-                        .proposal_ref
-                        .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
-                    (outgoing.account_id == row.account_id
-                        && outgoing.block_time <= row.block_time
-                        && incoming_matches_quote(row, quote))
-                    .then_some((index, *outgoing_id))
-                });
-        if let Some((index, outgoing_id)) = matched {
-            fallback_pending_outgoing.remove(index);
-            outgoing_to_incoming.insert(outgoing_id, row.id);
-            incoming_to_outgoing.insert(row.id, outgoing_id);
-            matched_incoming_ids.insert(row.id);
+        let candidates = rows
+            .iter()
+            .filter(|incoming| !matched_incoming_ids.contains(&incoming.id))
+            .filter(|incoming| incoming.account_id == row.account_id)
+            .filter(|incoming| incoming_after_quote_window(incoming, row))
+            .filter(|incoming| {
+                is_exchange_fulfillment_candidate(incoming, relayer_account).unwrap_or(false)
+            })
+            .filter(|incoming| incoming_matches_quote(incoming, quote))
+            .collect::<Vec<_>>();
+        if candidates.len() == 1 {
+            let incoming = candidates[0];
+            outgoing_to_incoming.insert(row.id, incoming.id);
+            incoming_to_outgoing.insert(incoming.id, row.id);
+            matched_incoming_ids.insert(incoming.id);
         }
     }
 
@@ -527,6 +568,7 @@ async fn leg_amount_usd(
 
 async fn public_gold_event_from_leg(
     leg: &SilverTransferLegRow,
+    quote: Option<&ParsedQuoteMetadata>,
     ledger: &mut GoldLedger,
     token_prices: &TokenPriceService,
     relayer_account: &str,
@@ -582,7 +624,20 @@ async fn public_gold_event_from_leg(
         }
         PublicTransferDirection::Outgoing => {
             let amount_out_usd = leg_amount_usd(token_prices, leg, event_time).await;
-            let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
+            let quote_payment = is_quote_payment_outgoing(leg, quote, relayer_account)?;
+            let (token_out_balance_before, token_out_balance_after) = if is_synthetic_quote_leg(leg)
+            {
+                (None, None)
+            } else {
+                let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
+                (Some(before), Some(after))
+            };
+            let recipient = outgoing_recipient(quote_payment.as_ref(), leg);
+            let status = if quote_payment.is_some() {
+                quote_event_status(quote)
+            } else {
+                PublicHistoryEventStatus::Success
+            };
             Ok(Some(GoldPublicHistoryEvent {
                 gold_event_key,
                 primary_transfer_leg_id: leg.id,
@@ -599,9 +654,9 @@ async fn public_gold_event_from_leg(
                 usd_change: None,
                 token_in_balance_before: None,
                 token_in_balance_after: None,
-                token_out_balance_before: Some(before),
-                token_out_balance_after: Some(after),
-                recipient: leg.counterparty.clone(),
+                token_out_balance_before,
+                token_out_balance_after,
+                recipient,
                 counterparty: leg.counterparty.clone(),
                 refund_to: None,
                 transaction_hash: leg.transaction_hash.clone(),
@@ -616,8 +671,16 @@ async fn public_gold_event_from_leg(
                 proposal_execution_transaction_hash: leg
                     .proposal_execution_transaction_hash
                     .clone(),
-                status: PublicHistoryEventStatus::Success,
-                raw_payload: leg.raw_payload.clone(),
+                status,
+                raw_payload: if quote_payment.is_some() {
+                    serde_json::json!({
+                        "classification": "quote_payment_transfer",
+                        "quote_metadata": leg.quote_metadata.clone(),
+                        "outgoing_leg": leg.raw_payload.clone(),
+                    })
+                } else {
+                    leg.raw_payload.clone()
+                },
             }))
         }
         PublicTransferDirection::Internal => Ok(None),
@@ -626,17 +689,17 @@ async fn public_gold_event_from_leg(
 
 fn pending_exchange_event_from_leg(
     pending: &PendingExchange,
-    quote: Option<&ParsedQuoteStatus>,
+    quote: Option<&ParsedQuoteMetadata>,
 ) -> Result<GoldPublicHistoryEvent, String> {
     let leg = &pending.outgoing;
-    let status = if quote.is_some_and(ParsedQuoteStatus::is_failed_terminal) {
-        PublicHistoryEventStatus::Failed
-    } else {
-        PublicHistoryEventStatus::Pending
+    let status = match quote_event_status(quote) {
+        PublicHistoryEventStatus::Success => PublicHistoryEventStatus::Pending,
+        other => other,
     };
-    let amount_in_usd = quote.and_then(|quote| quote.amount_received_usd.clone());
-    let amount_out_usd = quote.and_then(|quote| quote.amount_sent_usd.clone());
-    let usd_change = quote_usd_change(quote);
+    let status_quote = quote.and_then(|quote| quote.status.as_ref());
+    let amount_in_usd = status_quote.and_then(|quote| quote.amount_received_usd.clone());
+    let amount_out_usd = status_quote.and_then(|quote| quote.amount_sent_usd.clone());
+    let usd_change = quote_usd_change(status_quote);
 
     Ok(GoldPublicHistoryEvent {
         gold_event_key: format!("silver-leg:{}", leg.leg_key),
@@ -654,8 +717,8 @@ fn pending_exchange_event_from_leg(
         usd_change,
         token_in_balance_before: None,
         token_in_balance_after: None,
-        token_out_balance_before: Some(pending.token_out_balance_before.clone()),
-        token_out_balance_after: Some(pending.token_out_balance_after.clone()),
+        token_out_balance_before: pending.token_out_balance_before.clone(),
+        token_out_balance_after: pending.token_out_balance_after.clone(),
         recipient: leg.counterparty.clone(),
         counterparty: leg.counterparty.clone(),
         refund_to: None,
@@ -681,15 +744,16 @@ fn pending_exchange_event_from_leg(
 fn completed_exchange_event_from_legs(
     pending: &PendingExchange,
     incoming: &SilverTransferLegRow,
-    quote: Option<&ParsedQuoteStatus>,
+    quote: Option<&ParsedQuoteMetadata>,
     ledger: &mut GoldLedger,
 ) -> GoldPublicHistoryEvent {
     let outgoing = &pending.outgoing;
     let (token_in_balance_before, token_in_balance_after) =
         ledger.apply_in(&incoming.token_id, &incoming.amount);
-    let amount_in_usd = quote.and_then(|quote| quote.amount_received_usd.clone());
-    let amount_out_usd = quote.and_then(|quote| quote.amount_sent_usd.clone());
-    let usd_change = quote_usd_change(quote);
+    let status_quote = quote.and_then(|quote| quote.status.as_ref());
+    let amount_in_usd = status_quote.and_then(|quote| quote.amount_received_usd.clone());
+    let amount_out_usd = status_quote.and_then(|quote| quote.amount_sent_usd.clone());
+    let usd_change = quote_usd_change(status_quote);
 
     GoldPublicHistoryEvent {
         gold_event_key: format!("silver-leg:{}", outgoing.leg_key),
@@ -707,8 +771,8 @@ fn completed_exchange_event_from_legs(
         usd_change,
         token_in_balance_before: Some(token_in_balance_before),
         token_in_balance_after: Some(token_in_balance_after),
-        token_out_balance_before: Some(pending.token_out_balance_before.clone()),
-        token_out_balance_after: Some(pending.token_out_balance_after.clone()),
+        token_out_balance_before: pending.token_out_balance_before.clone(),
+        token_out_balance_after: pending.token_out_balance_after.clone(),
         recipient: Some(incoming.account_id.clone()),
         counterparty: outgoing.counterparty.clone(),
         refund_to: None,
@@ -736,7 +800,7 @@ async fn persist_completed_exchange(
     tx: &mut Transaction<'_, Postgres>,
     pending: PendingExchange,
     incoming: &SilverTransferLegRow,
-    quote_by_proposal_ref: &HashMap<i64, ParsedQuoteStatus>,
+    quote_by_proposal_ref: &HashMap<i64, ParsedQuoteMetadata>,
     ledger: &mut GoldLedger,
     preserve_keys: &mut HashSet<String>,
     stats: &mut GoldProjectionResult,
@@ -854,11 +918,17 @@ pub async fn project_public_gold_for_account(
             .proposal_ref
             .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
         if is_quote_matched_exchange_deposit(&leg, quote, relayer_account).unwrap_or(false) {
-            let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
+            let (token_out_balance_before, token_out_balance_after) =
+                if is_synthetic_quote_leg(&leg) {
+                    (None, None)
+                } else {
+                    let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
+                    (Some(before), Some(after))
+                };
             let pending = PendingExchange {
                 outgoing: leg.clone(),
-                token_out_balance_before: before,
-                token_out_balance_after: after,
+                token_out_balance_before,
+                token_out_balance_after,
             };
 
             if exchange_pairs.outgoing_to_incoming.contains_key(&leg.id) {
@@ -919,7 +989,9 @@ pub async fn project_public_gold_for_account(
             continue;
         }
 
-        match public_gold_event_from_leg(&leg, &mut ledger, token_prices, relayer_account).await {
+        match public_gold_event_from_leg(&leg, quote, &mut ledger, token_prices, relayer_account)
+            .await
+        {
             Ok(Some(event)) => {
                 preserve_keys.insert(event.gold_event_key.clone());
                 upsert_gold_event(&mut tx, &event).await?;
@@ -1250,20 +1322,31 @@ mod tests {
         outgoing.amount_raw = decimal("1000000");
         outgoing.amount = decimal("1");
         outgoing.quote_metadata = Some(serde_json::json!({
-            "status": "SUCCESS",
-            "nearTxHashes": ["fulfillment-tx"],
-            "quoteResponse": {
-                "quoteRequest": {
-                    "originAsset": "nep141:usdc.near",
-                    "destinationAsset": "nep141:usdt.near"
-                },
-                "quote": {
-                    "amountIn": "1000000"
-                }
+            "proposalQuote": {
+                "type": "asset_exchange",
+                "depositAddress": "deposit-address",
+                "recipient": null,
+                "originAsset": "nep141:usdc.near",
+                "originAmountRaw": "1000000",
+                "destinationAsset": "nep141:usdt.near",
+                "signature": "sig"
             },
-            "swapDetails": {
-                "amountIn": "1000000",
-                "amountOut": "2000000"
+            "status": {
+                "status": "SUCCESS",
+                "nearTxHashes": ["fulfillment-tx"],
+                "quoteResponse": {
+                    "quoteRequest": {
+                        "originAsset": "nep141:usdc.near",
+                        "destinationAsset": "nep141:usdt.near"
+                    },
+                    "quote": {
+                        "amountIn": "1000000"
+                    }
+                },
+                "swapDetails": {
+                    "amountIn": "1000000",
+                    "amountOut": "2000000"
+                }
             }
         }));
 
@@ -1285,8 +1368,8 @@ mod tests {
                 let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
                 let pending = PendingExchange {
                     outgoing: leg.clone(),
-                    token_out_balance_before: before,
-                    token_out_balance_after: after,
+                    token_out_balance_before: Some(before),
+                    token_out_balance_after: Some(after),
                 };
                 pending_exchanges.insert(leg.id, pending);
                 if let Some(incoming) = deferred_incoming.remove(&leg.id)
@@ -1395,5 +1478,41 @@ mod tests {
         assert_eq!(quote.amount_sent_usd, None);
         assert_eq!(quote.amount_received_usd, None);
         assert_eq!(quote_usd_change(Some(&quote)), None);
+    }
+
+    fn payment_quote(recipient: Option<&str>) -> QuoteProposalSnapshot {
+        QuoteProposalSnapshot {
+            quote_type: QuoteProposalType::PaymentTransfer,
+            deposit_address: "deposit.near".to_string(),
+            recipient: recipient.map(str::to_string),
+            origin_asset: "near".to_string(),
+            origin_amount_raw: "100".to_string(),
+            destination_asset: None,
+            signature: None,
+        }
+    }
+
+    #[test]
+    fn quote_payment_recipient_comes_from_proposal_quote() {
+        let row = leg("native", Some("deposit.near"), "100");
+        assert_eq!(
+            outgoing_recipient(Some(&payment_quote(Some("bob.near"))), &row),
+            Some("bob.near".to_string())
+        );
+    }
+
+    #[test]
+    fn quote_payment_without_recipient_never_shows_deposit_address() {
+        let row = leg("native", Some("deposit.near"), "100");
+        assert_eq!(outgoing_recipient(Some(&payment_quote(None)), &row), None);
+    }
+
+    #[test]
+    fn plain_send_recipient_falls_back_to_counterparty() {
+        let row = leg("native", Some("alice.near"), "100");
+        assert_eq!(
+            outgoing_recipient(None, &row),
+            Some("alice.near".to_string())
+        );
     }
 }

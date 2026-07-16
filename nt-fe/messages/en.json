@@ -344,7 +344,8 @@
             "from": "FROM",
             "to": "TO",
             "transactionHash": "TRANSACTION HASH",
-            "hashTooltip": "Unique identifier (hash) of this transaction"
+            "hashTooltip": "Unique identifier (hash) of this transaction",
+            "processing": "Processing"
         },
         "empty": {
             "title": "No transactions found",

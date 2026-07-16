@@ -386,6 +386,14 @@ pub async fn spawn_all(state: Arc<AppState>) -> JobQueues {
             schedule_every_secs(600),
             handlers::public_proposal_reconciliation
         );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-quote-status-refresh",
+            schedule_every_secs(env_secs("PUBLIC_QUOTE_REFRESH_INTERVAL_SECONDS", 120)),
+            handlers::public_quote_status_refresh
+        );
     } else {
         tracing::warn!("public history workers disabled: NEARBLOCKS_API_KEY missing");
     }

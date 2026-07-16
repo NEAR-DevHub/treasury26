@@ -3,7 +3,6 @@
 import {
     AlertTriangle,
     ArrowDownToLine,
-    ArrowRight,
     ArrowRightLeft,
     ArrowUpToLine,
     ChevronRight,
@@ -11,24 +10,17 @@ import {
     Shield,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
 import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import {
-    useFormatHistoryDuration,
+    getActivityStatus,
     useGetActivityLabel,
     useGetActivitySubLabel,
 } from "../utils/history-utils";
@@ -58,14 +50,13 @@ import Link from "next/link";
 import { ConfidentialState } from "@/components/confidential-state";
 import { ExportButton } from "@/components/export-button";
 import { FormattedDate } from "@/components/formatted-date";
-import { parseWarningCopy } from "@/components/warning-message";
 import { StepperHeader } from "@/components/step-wizard";
 import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { Tooltip } from "@/components/tooltip";
+import { parseWarningCopy } from "@/components/warning-message";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { useWarningMessage } from "@/hooks/use-warnings";
-import { useWarnings } from "@/hooks/use-warnings";
+import { useWarningMessage, useWarnings } from "@/hooks/use-warnings";
 import { useIsHistoryRefreshing } from "./history-refresh-indicator";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 
@@ -109,7 +100,7 @@ const groupStakingActivities = (
 
         if (isStakingReward(current)) {
             // Look ahead to find consecutive staking rewards from the same pool
-            const pool = current.counterparty!;
+            const pool = current.counterparty ?? "";
             const group: RecentActivityType[] = [current];
             let j = i + 1;
 
@@ -217,9 +208,8 @@ export function RecentActivity() {
     const tCommon = useTranslations("common");
     const getActivityLabel = useGetActivityLabel();
     const getActivitySubLabel = useGetActivitySubLabel();
-    const formatHistoryDuration = useFormatHistoryDuration();
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
-    const [hideSmallTransactions, setHideSmallTransactions] = useState(false);
+    const [hideSmallTransactions] = useState(false);
     const [selectedActivity, setSelectedActivity] =
         useState<RecentActivityType | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -248,10 +238,7 @@ export function RecentActivity() {
         hideSmallTransactions ? 1 : undefined,
     );
 
-    const { data: planDetails } = useSubscription(treasuryId);
-
     const activities = response?.data || [];
-    const historyMonths = planDetails?.planConfig?.limits?.historyLookupMonths;
 
     // Group staking activities
     const groupedActivities = useMemo(
@@ -282,24 +269,30 @@ export function RecentActivity() {
         setIsModalOpen(true);
     };
 
-    const getActivityType = (activity: RecentActivityType) => {
-        return getActivityLabel({
-            ...activity,
-            tokenSymbol: activity.tokenMetadata?.symbol,
-        });
-    };
-
-    const getActivityFrom = (activity: RecentActivityType) => {
-        return getActivitySubLabel(
-            {
+    const getActivityType = useCallback(
+        (activity: RecentActivityType) => {
+            return getActivityLabel({
                 ...activity,
                 tokenSymbol: activity.tokenMetadata?.symbol,
-            },
-            treasuryId,
-        );
-    };
+            });
+        },
+        [getActivityLabel],
+    );
 
-    const columns = useMemo<ColumnDef<GroupedActivity, any>[]>(
+    const getActivityFrom = useCallback(
+        (activity: RecentActivityType) => {
+            return getActivitySubLabel(
+                {
+                    ...activity,
+                    tokenSymbol: activity.tokenMetadata?.symbol,
+                },
+                treasuryId,
+            );
+        },
+        [getActivitySubLabel, treasuryId],
+    );
+
+    const columns = useMemo<ColumnDef<GroupedActivity, unknown>[]>(
         () => [
             columnHelper.display({
                 id: "type",
@@ -421,6 +414,7 @@ export function RecentActivity() {
                     if (activity.swap) {
                         const swap = activity.swap;
                         const isDeposit = swap.swapRole === "deposit";
+                        const status = getActivityStatus(activity);
                         const sentSymbol =
                             swap.sentTokenMetadata?.symbol ?? null;
                         const receivedSymbol =
@@ -451,9 +445,16 @@ export function RecentActivity() {
                                             <span className="font-semibold text-general-success-foreground truncate">
                                                 {receivedSymbol}
                                             </span>
-                                            {swap.receivedAmount == null ? (
-                                                <span className="text-xs font-medium text-muted-foreground shrink-0">
-                                                    pending
+                                            {status ? (
+                                                <span
+                                                    className={cn(
+                                                        "text-xs font-medium capitalize shrink-0",
+                                                        status === "failed"
+                                                            ? "text-general-destructive-foreground"
+                                                            : "text-muted-foreground",
+                                                    )}
+                                                >
+                                                    {status}
                                                 </span>
                                             ) : null}
                                         </>
@@ -517,14 +518,14 @@ export function RecentActivity() {
                 },
             }),
         ],
-        [expandedGroups, t],
+        [expandedGroups, getActivityFrom, getActivityType, t],
     );
 
     const table = useReactTable({
         data: displayedActivities,
         columns,
         getCoreRowModel: getCoreRowModel(),
-        getRowId: (row, index) =>
+        getRowId: (row) =>
             row.type === "grouped"
                 ? `group-${row.pool}-${row.blockTime}`
                 : `single-${row.activity.id}`,
@@ -614,143 +615,135 @@ export function RecentActivity() {
                             description={t("emptyDashboard.description")}
                         />
                     ) : (
-                        <>
-                            <div className="w-full overflow-x-auto px-2">
-                                <Table className="table-fixed w-full min-w-full">
-                                    <colgroup>
-                                        <col className="w-42 sm:w-52 lg:w-1/2" />
-                                        <col className="min-w-0 lg:w-1/2" />
-                                    </colgroup>
-                                    <TableBody>
-                                        {table.getRowModel().rows.map((row) => {
-                                            const grouped = row.original;
-                                            const isGroup =
-                                                grouped.type === "grouped";
-                                            const groupId = isGroup
-                                                ? `${grouped.pool}-${grouped.blockTime}`
-                                                : "";
-                                            const isExpanded =
-                                                isGroup &&
-                                                expandedGroups.has(groupId);
+                        <div className="w-full overflow-x-auto px-2">
+                            <Table className="table-fixed w-full min-w-full">
+                                <colgroup>
+                                    <col className="w-42 sm:w-52 lg:w-1/2" />
+                                    <col className="min-w-0 lg:w-1/2" />
+                                </colgroup>
+                                <TableBody>
+                                    {table.getRowModel().rows.map((row) => {
+                                        const grouped = row.original;
+                                        const isGroup =
+                                            grouped.type === "grouped";
+                                        const groupId = isGroup
+                                            ? `${grouped.pool}-${grouped.blockTime}`
+                                            : "";
+                                        const isExpanded =
+                                            isGroup &&
+                                            expandedGroups.has(groupId);
 
-                                            return (
-                                                <>
-                                                    <TableRow
-                                                        key={row.id}
-                                                        className="group cursor-pointer"
-                                                        onClick={() => {
-                                                            if (isGroup) {
-                                                                toggleGroup(
-                                                                    groupId,
-                                                                );
-                                                            } else {
-                                                                handleActivityClick(
-                                                                    grouped.activity,
-                                                                );
-                                                            }
-                                                        }}
-                                                    >
-                                                        {row
-                                                            .getVisibleCells()
-                                                            .map(
-                                                                (cell, idx) => (
-                                                                    <TableCell
-                                                                        key={
-                                                                            cell.id
-                                                                        }
-                                                                        className={cn(
-                                                                            "py-2 h-14",
-                                                                            idx ===
-                                                                                0
-                                                                                ? "pl-0 overflow-hidden pr-0 max-w-0"
-                                                                                : "pr-0 overflow-hidden",
-                                                                        )}
-                                                                    >
-                                                                        {flexRender(
-                                                                            cell
-                                                                                .column
-                                                                                .columnDef
-                                                                                .cell,
-                                                                            cell.getContext(),
-                                                                        )}
-                                                                    </TableCell>
-                                                                ),
-                                                            )}
-                                                    </TableRow>
-                                                    {isExpanded &&
-                                                        grouped.activities.map(
-                                                            (activity, idx) => (
-                                                                <TableRow
-                                                                    key={`${groupId}-sub-${idx}`}
-                                                                    className="group cursor-pointer bg-muted/30"
-                                                                    onClick={() =>
-                                                                        handleActivityClick(
-                                                                            activity,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <TableCell className="py-2 h-14 pl-8 sm:pl-14 overflow-hidden max-w-0">
-                                                                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                                                            <div
-                                                                                className={cn(
-                                                                                    "flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0",
-                                                                                    "bg-general-success-background-faded",
+                                        return (
+                                            <>
+                                                <TableRow
+                                                    key={row.id}
+                                                    className="group cursor-pointer"
+                                                    onClick={() => {
+                                                        if (isGroup) {
+                                                            toggleGroup(
+                                                                groupId,
+                                                            );
+                                                        } else {
+                                                            handleActivityClick(
+                                                                grouped.activity,
+                                                            );
+                                                        }
+                                                    }}
+                                                >
+                                                    {row
+                                                        .getVisibleCells()
+                                                        .map((cell, idx) => (
+                                                            <TableCell
+                                                                key={cell.id}
+                                                                className={cn(
+                                                                    "py-2 h-14",
+                                                                    idx === 0
+                                                                        ? "pl-0 overflow-hidden pr-0 max-w-0"
+                                                                        : "pr-0 overflow-hidden",
+                                                                )}
+                                                            >
+                                                                {flexRender(
+                                                                    cell.column
+                                                                        .columnDef
+                                                                        .cell,
+                                                                    cell.getContext(),
+                                                                )}
+                                                            </TableCell>
+                                                        ))}
+                                                </TableRow>
+                                                {isExpanded &&
+                                                    grouped.activities.map(
+                                                        (activity) => (
+                                                            <TableRow
+                                                                key={`${groupId}-sub-${activity.id}`}
+                                                                className="group cursor-pointer bg-muted/30"
+                                                                onClick={() =>
+                                                                    handleActivityClick(
+                                                                        activity,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <TableCell className="py-2 h-14 pl-8 sm:pl-14 overflow-hidden max-w-0">
+                                                                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                                                                        <div
+                                                                            className={cn(
+                                                                                "flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0",
+                                                                                "bg-general-success-background-faded",
+                                                                            )}
+                                                                        >
+                                                                            <ArrowDownToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-success-foreground" />
+                                                                        </div>
+                                                                        <div className="min-w-0 flex-1 overflow-hidden">
+                                                                            <div className="text-sm sm:text-base font-semibold truncate">
+                                                                                {t(
+                                                                                    "tabs.stakingRewards",
                                                                                 )}
-                                                                            >
-                                                                                <ArrowDownToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-success-foreground" />
                                                                             </div>
-                                                                            <div className="min-w-0 flex-1 overflow-hidden">
-                                                                                <div className="text-sm sm:text-base font-semibold truncate">
-                                                                                    {t(
-                                                                                        "tabs.stakingRewards",
-                                                                                    )}
-                                                                                </div>
-                                                                                <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
-                                                                                    {t(
-                                                                                        "fromPool",
-                                                                                        {
-                                                                                            pool: grouped.pool,
-                                                                                        },
-                                                                                    )}
-                                                                                </div>
+                                                                            <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
+                                                                                {t(
+                                                                                    "fromPool",
+                                                                                    {
+                                                                                        pool: grouped.pool,
+                                                                                    },
+                                                                                )}
                                                                             </div>
                                                                         </div>
-                                                                    </TableCell>
-                                                                    <TableCell className="py-2 h-14 pr-3 pl-4 overflow-hidden">
-                                                                        <div className="flex items-center justify-end min-w-0">
-                                                                            <div className="flex flex-col items-end gap-0.5 min-w-0 w-full">
-                                                                                <div className="text-sm sm:text-base font-semibold text-general-success-foreground truncate w-full text-right">
-                                                                                    {formatActivityAmount(
-                                                                                        activity.amount,
-                                                                                    )}{" "}
-                                                                                    {activity
-                                                                                        .tokenMetadata
-                                                                                        ?.symbol ??
-                                                                                        activity.tokenId}
-                                                                                </div>
-                                                                                <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                                                                                    <FormattedDate
-                                                                                        date={
-                                                                                            new Date(
-                                                                                                activity.blockTime,
-                                                                                            )
-                                                                                        }
-                                                                                        relative
-                                                                                    />
-                                                                                </div>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="py-2 h-14 pr-3 pl-4 overflow-hidden">
+                                                                    <div className="flex items-center justify-end min-w-0">
+                                                                        <div className="flex flex-col items-end gap-0.5 min-w-0 w-full">
+                                                                            <div className="text-sm sm:text-base font-semibold text-general-success-foreground truncate w-full text-right">
+                                                                                {formatActivityAmount(
+                                                                                    activity.amount,
+                                                                                )}{" "}
+                                                                                {activity
+                                                                                    .tokenMetadata
+                                                                                    ?.symbol ??
+                                                                                    activity.tokenId}
+                                                                            </div>
+                                                                            <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                                                                                <FormattedDate
+                                                                                    date={
+                                                                                        new Date(
+                                                                                            activity.blockTime,
+                                                                                        )
+                                                                                    }
+                                                                                    relative
+                                                                                />
                                                                             </div>
                                                                         </div>
-                                                                    </TableCell>
-                                                                </TableRow>
-                                                            ),
-                                                        )}
-                                                </>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </>
+                                                                    </div>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ),
+                                                    )}
+                                            </>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>

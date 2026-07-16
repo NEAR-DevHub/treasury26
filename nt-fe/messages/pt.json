@@ -344,7 +344,8 @@
             "from": "DE",
             "to": "PARA",
             "transactionHash": "HASH DA TRANSAÇÃO",
-            "hashTooltip": "Identificador único (hash) desta transação"
+            "hashTooltip": "Identificador único (hash) desta transação",
+            "processing": "Processando"
         },
         "empty": {
             "title": "Nenhuma transação encontrada",

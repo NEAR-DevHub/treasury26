@@ -344,7 +344,8 @@
             "from": "DARI",
             "to": "KE",
             "transactionHash": "HASH TRANSAKSI",
-            "hashTooltip": "Pengenal unik (hash) dari transaksi ini"
+            "hashTooltip": "Pengenal unik (hash) dari transaksi ini",
+            "processing": "Memproses"
         },
         "empty": {
             "title": "Tidak ada transaksi ditemukan",

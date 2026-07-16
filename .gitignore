@@ -15,3 +15,4 @@ nt-be/src/bin/confidential_deposit_verifier.rs
 
 # local-only confidential deposit verification script
 nt-be/scripts/verify_confidential_deposits.sh
+.gstack/

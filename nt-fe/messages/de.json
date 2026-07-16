@@ -344,7 +344,8 @@
             "from": "VON",
             "to": "AN",
             "transactionHash": "TRANSAKTIONS-HASH",
-            "hashTooltip": "Eindeutige Kennung (Hash) dieser Transaktion"
+            "hashTooltip": "Eindeutige Kennung (Hash) dieser Transaktion",
+            "processing": "In Bearbeitung"
         },
         "empty": {
             "title": "Keine Transaktionen gefunden",
