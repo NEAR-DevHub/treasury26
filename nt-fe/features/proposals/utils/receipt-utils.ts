@@ -50,21 +50,46 @@ export function getProposalExecutedDate(
 }
 
 /**
- * Whether the UI should keep showing a loading state for the execution
- * timestamp instead of "N/A". NearBlocks / swap status can lag briefly after
- * approval; callers poll until a timestamp appears.
+ * Shared execution-timestamp resolution for table / sidebar / receipt.
+ * Keeps swap-vs-NearBlocks loading rules in one place so call sites can't drift.
  */
-export function isExecutionTimestampPending({
-    executedDate,
-    isQueryLoading,
-    isAwaitingResolution,
+export function resolveExecutionTimestamp({
+    swapStatus,
+    transaction,
+    shouldUseSwapDate,
+    isLoadingSwapStatus,
+    isLoadingTransaction,
+    isAwaitingTransaction,
+    fallbackDate,
 }: {
-    executedDate: Date | null;
-    isQueryLoading: boolean;
-    isAwaitingResolution: boolean;
-}): boolean {
-    if (executedDate) return false;
-    return isQueryLoading || isAwaitingResolution;
+    swapStatus: SwapStatusResponse | null | undefined;
+    transaction: { timestamp: number } | null | undefined;
+    shouldUseSwapDate: boolean;
+    isLoadingSwapStatus: boolean;
+    isLoadingTransaction: boolean;
+    isAwaitingTransaction: boolean;
+    /** e.g. confidential metadata executedAt */
+    fallbackDate?: Date | null;
+}): { executedDate: Date | null; isDateLoading: boolean } {
+    const executedDate =
+        fallbackDate ??
+        getProposalExecutedDate(swapStatus, transaction) ??
+        null;
+
+    if (executedDate) {
+        return { executedDate, isDateLoading: false };
+    }
+
+    const isAwaitingSwapDate =
+        shouldUseSwapDate &&
+        !swapStatus?.updatedAt &&
+        !isTerminalSwapStatus(swapStatus?.status);
+
+    const isDateLoading =
+        (shouldUseSwapDate ? isLoadingSwapStatus : isLoadingTransaction) ||
+        (shouldUseSwapDate ? isAwaitingSwapDate : isAwaitingTransaction);
+
+    return { executedDate, isDateLoading };
 }
 
 function toPaymentReceiptData(data: PaymentRequestData): ReceiptProposalData {

@@ -34,10 +34,8 @@ import {
 } from "@/features/proposals/utils/proposal-utils";
 import {
     extractReceiptProposalData,
-    getProposalExecutedDate,
-    isExecutionTimestampPending,
     isReceiptEligibleProposalKind,
-    isTerminalSwapStatus,
+    resolveExecutionTimestamp,
 } from "@/features/proposals/utils/receipt-utils";
 import {
     useProposals,
@@ -395,25 +393,17 @@ export function ProposalSidebar({
     const isSwapSuccessReady = shouldRequireSwapSuccess
         ? isPublicTreasuryGuestViewer || swapStatus?.status === "SUCCESS"
         : true;
-    const executedDate =
-        confidentialExecutedAt ??
-        getProposalExecutedDate(swapStatus, transaction) ??
-        null;
-    const isAwaitingSwapDate =
-        shouldUseSwapDate &&
-        !swapStatus?.updatedAt &&
-        !isTerminalSwapStatus(swapStatus?.status);
-    const isResolvedDateLoading =
-        isExecuted &&
-        isExecutionTimestampPending({
-            executedDate,
-            isQueryLoading: shouldUseSwapDate
-                ? isLoadingSwapStatus
-                : isLoadingTransaction,
-            isAwaitingResolution: shouldUseSwapDate
-                ? isAwaitingSwapDate
-                : isAwaitingTransaction,
+    const { executedDate, isDateLoading: resolvedDateLoading } =
+        resolveExecutionTimestamp({
+            swapStatus,
+            transaction,
+            shouldUseSwapDate,
+            isLoadingSwapStatus,
+            isLoadingTransaction,
+            isAwaitingTransaction,
+            fallbackDate: confidentialExecutedAt ?? publicExecutedAt,
         });
+    const isResolvedDateLoading = isExecuted && resolvedDateLoading;
     const isHidden = isConfidential && isGuestTreasury;
 
     // Confidential exchange (a confidential request that is not a payment).
@@ -469,11 +459,7 @@ export function ProposalSidebar({
             break;
 
         default:
-            timestamp =
-                confidentialExecutedAt ??
-                publicExecutedAt ??
-                getProposalExecutedDate(swapStatus, transaction) ??
-                undefined;
+            timestamp = executedDate ?? undefined;
             break;
     }
     const createdAt =

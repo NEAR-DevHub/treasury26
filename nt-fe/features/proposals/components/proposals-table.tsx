@@ -67,9 +67,7 @@ import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insuffic
 import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
 import {
     extractReceiptProposalData,
-    getProposalExecutedDate,
-    isExecutionTimestampPending,
-    isTerminalSwapStatus,
+    resolveExecutionTimestamp,
 } from "@/features/proposals/utils/receipt-utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -137,19 +135,13 @@ function ProposalTimelineDate({
         );
     }
 
-    const executedDate = getProposalExecutedDate(swapStatus, transaction);
-    const isAwaitingSwapDate =
-        shouldUseSwapDate &&
-        !swapStatus?.updatedAt &&
-        !isTerminalSwapStatus(swapStatus?.status);
-    const isDateLoading = isExecutionTimestampPending({
-        executedDate,
-        isQueryLoading: shouldUseSwapDate
-            ? isLoadingSwapStatus
-            : isLoadingTransaction,
-        isAwaitingResolution: shouldUseSwapDate
-            ? isAwaitingSwapDate
-            : isAwaitingTransaction,
+    const { executedDate, isDateLoading } = resolveExecutionTimestamp({
+        swapStatus,
+        transaction,
+        shouldUseSwapDate,
+        isLoadingSwapStatus,
+        isLoadingTransaction,
+        isAwaitingTransaction,
     });
     if (isDateLoading) {
         return <Skeleton className="h-3.5 w-24" />;

@@ -115,7 +115,8 @@ export function useProposalTransaction(
     const canReadProposalQueries = useCanReadProposalQueries(daoId);
     // Only executed proposals (on-chain Approved) have an execution tx to wait
     // for. Rejected/Removed should surface N/A rather than keep polling.
-    const expectsTransaction = proposal?.status === "Approved";
+    const expectsTransaction =
+        proposal?.status === "Approved" || proposal?.status === "Failed";
     const isQueryEnabled =
         enabled && canReadProposalQueries && !!daoId && !!proposal && !!policy;
     const queryKey = [
