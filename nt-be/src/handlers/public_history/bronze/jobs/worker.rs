@@ -493,33 +493,58 @@ async fn handle_backfill_job(
         })
 }
 
-pub(crate) fn spawn_public_history_job_workers(state: Arc<AppState>) {
+/// Registers both queue workers on the shared jobs [`Monitor`], with the same
+/// failure containment as the cron workers in `crate::jobs`: `catch_panic`
+/// turns a handler panic into a task error, `SentryLayer` captures each task
+/// failure once, the INFO-level `TraceLayer` makes task activity visible on
+/// the apalis-board live-log pane, and the Monitor's `should_restart` rebuilds
+/// a worker that exits on a terminal backend error — previously these were
+/// bare `tokio::spawn`s that died silently.
+pub(crate) fn register_public_history_job_workers(
+    mut monitor: Monitor,
+    state: Arc<AppState>,
+) -> Monitor {
+    use apalis::layers::sentry::SentryLayer;
+    use apalis::layers::tracing::{
+        DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer,
+    };
+
+    // Failures stay at WARN for the same reason as the cron workers: the
+    // SentryLayer already captured the task failure, and the tracing→Sentry
+    // bridge would emit a duplicate event at ERROR.
+    fn trace_layer() -> TraceLayer {
+        TraceLayer::new()
+            .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
+            .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
+            .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
+            .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN))
+    }
+
     let latest_state = state.clone();
-    tokio::spawn(async move {
-        let storage = latest_storage(latest_state.db_pool.clone());
-        let worker = WorkerBuilder::new("public-history-latest")
-            .backend(storage)
-            .data(JobContext::new(latest_state))
-            .enable_tracing()
+    monitor = monitor.register(move |_attempt| {
+        WorkerBuilder::new("public-history-latest")
+            .backend(latest_storage(latest_state.db_pool.clone()))
+            .data(JobContext::new(latest_state.clone()))
+            .catch_panic()
+            .layer(SentryLayer::new())
+            .layer(trace_layer())
             .concurrency(JOB_CONCURRENCY)
-            .build(handle_latest_job);
-        let result = worker.run().await;
-        if let Err(error) = result {
-            tracing::error!(error = %error, "public history latest worker stopped");
-        }
+            .build(handle_latest_job)
     });
 
-    tokio::spawn(async move {
-        let storage = backfill_storage(state.db_pool.clone());
-        let worker = WorkerBuilder::new("public-history-backfill")
-            .backend(storage)
-            .data(JobContext::new(state))
-            .enable_tracing()
+    monitor.register(move |_attempt| {
+        WorkerBuilder::new("public-history-backfill")
+            .backend(backfill_storage(state.db_pool.clone()))
+            .data(JobContext::new(state.clone()))
+            .catch_panic()
+            .layer(SentryLayer::new())
+            .layer(trace_layer())
             .concurrency(BACKFILL_JOB_CONCURRENCY)
-            .build(handle_backfill_job);
-        let result = worker.run().await;
-        if let Err(error) = result {
-            tracing::error!(error = %error, "public history backfill worker stopped");
-        }
-    });
+            .build(handle_backfill_job)
+    })
+}
+
+/// The two queue storages, typed for apalis-board registration.
+pub(crate) fn board_storages(pool: PgPool) -> Vec<PostgresStorage<PublicHistoryJob>> {
+    vec![latest_storage(pool.clone()), backfill_storage(pool)]
 }
