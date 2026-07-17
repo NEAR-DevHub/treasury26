@@ -1329,7 +1329,10 @@
                 "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out.",
                 "passkeyNew": "New",
                 "passkeyDomainNote": "Your passkey is saved for trezu.app on this device (or synced via iCloud/Google). It cannot be used on other apps, and other apps’ passkeys cannot access Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey for Touch ID and Face ID",
+            "passkeyCardSubtitle": "Use your device biometrics or passcode to sign in",
+            "passkeyCardBadge": "Recommended for smooth onboarding"
         },
         "unexpectedError": "An unexpected error occurred",
         "creationFailed": "Failed to create treasury. Please try again.",
