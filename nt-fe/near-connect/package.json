@@ -10,7 +10,7 @@
     },
     "homepage": "https://github.com/NEAR-DevHub/treasury26",
     "scripts": {
-        "build": "vite build && node copy-passkey.js",
+        "build": "vite build",
         "type-check": "tsc --noEmit"
     },
     "devDependencies": {

@@ -2,15 +2,17 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
-// The Passkey executor artifact is vendored (near-connect/vendor) and copied
-// to .next/static/near-connect/passkey-executor.js at build time. The spec is
-// skipped until the artifact ships (Passkey stays behind the warnings kill
-// switch until then).
+// The Passkey executor ships from the frol-ai/near-connect-passkey main branch
+// (served via raw.githubusercontent.com — see lib/passkey-wallet.ts). The spec
+// route-mocks that URL with a locally-built artifact from a sibling checkout of
+// the executor repo, and skips when it isn't present (e.g. CI without the
+// sibling repo — Passkey stays behind the warnings kill switch until then).
 const EXECUTOR_ARTIFACT = path.join(
     __dirname,
     "..",
-    "near-connect",
-    "vendor",
+    "..",
+    "..",
+    "near-connect-passkey",
     "passkey-executor.js",
 );
 
@@ -70,11 +72,11 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
         },
     });
 
-    // Serve the executor from the vendored artifact so the test doesn't
-    // depend on the postbuild copy step having run.
+    // Serve the executor from the locally-built artifact instead of fetching
+    // it from GitHub, so the test has no network dependency.
     // Match with an optional cache-busting query string: near-connect
     // fetches the executor as `…/passkey-executor.js?nonce=<per-session>`.
-    await context.route("**/near-connect/passkey-executor.js*", (route) =>
+    await context.route("**/passkey-executor.js*", (route) =>
         route.fulfill({
             status: 200,
             contentType: "application/javascript",
