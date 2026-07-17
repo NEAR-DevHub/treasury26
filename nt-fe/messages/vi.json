@@ -372,7 +372,18 @@
             "method": "Phương thức",
             "contract": "Hợp đồng",
             "transaction": "Giao dịch",
-            "depositTransaction": "Giao dịch nạp tiền"
+            "depositTransaction": "Giao dịch nạp tiền",
+            "depositTitle": "Chi tiết nạp tiền",
+            "exchangeTitle": "Chi tiết trao đổi",
+            "transferTitle": "Chi tiết chuyển khoản",
+            "via": "Qua",
+            "status": "Trạng thái",
+            "completed": "Hoàn tất",
+            "processing": "Đang xử lý",
+            "failed": "Thất bại",
+            "exchangeTransaction": "Giao dịch trao đổi",
+            "transferTransaction": "Giao dịch chuyển khoản",
+            "rate": "Tỷ giá"
         },
         "refresh": {
             "ariaLabel": "Làm mới lịch sử bảo mật",

@@ -372,7 +372,18 @@
             "method": "Método",
             "contract": "Contrato",
             "transaction": "Transacción",
-            "depositTransaction": "Transacción de depósito"
+            "depositTransaction": "Transacción de depósito",
+            "depositTitle": "Detalles del depósito",
+            "exchangeTitle": "Detalles del intercambio",
+            "transferTitle": "Detalles de la transferencia",
+            "via": "Vía",
+            "status": "Estado",
+            "completed": "Completado",
+            "processing": "Procesando",
+            "failed": "Fallido",
+            "exchangeTransaction": "Transacción de intercambio",
+            "transferTransaction": "Transacción de transferencia",
+            "rate": "Tasa"
         },
         "refresh": {
             "ariaLabel": "Actualizar historial confidencial",

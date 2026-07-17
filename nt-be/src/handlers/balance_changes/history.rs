@@ -1578,6 +1578,10 @@ pub struct SwapInfo {
     pub solver_transaction_hash: String,
     /// "deposit" for the outgoing leg, "fulfillment" for the incoming leg
     pub swap_role: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sent_amount_usd: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub received_amount_usd: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -2051,6 +2055,8 @@ pub async fn get_recent_activity(
                         received_token_metadata,
                         solver_transaction_hash: s.solver_transaction_hash.clone(),
                         swap_role: role.to_string(),
+                        sent_amount_usd: None,
+                        received_amount_usd: None,
                     }
                 })
                 .or_else(|| {
@@ -2063,6 +2069,14 @@ pub async fn get_recent_activity(
                         received_token_metadata: s.received_token_metadata.clone(),
                         solver_transaction_hash: s.solver_transaction_hash.clone(),
                         swap_role: "fulfillment".to_string(),
+                        sent_amount_usd: s
+                            .sent_amount_usd
+                            .as_ref()
+                            .and_then(ToPrimitive::to_f64),
+                        received_amount_usd: s
+                            .received_amount_usd
+                            .as_ref()
+                            .and_then(ToPrimitive::to_f64),
                     })
                 });
 

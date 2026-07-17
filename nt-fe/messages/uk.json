@@ -372,7 +372,18 @@
             "method": "Метод",
             "contract": "Контракт",
             "transaction": "Транзакція",
-            "depositTransaction": "Транзакція поповнення"
+            "depositTransaction": "Транзакція поповнення",
+            "depositTitle": "Деталі депозиту",
+            "exchangeTitle": "Деталі обміну",
+            "transferTitle": "Деталі переказу",
+            "via": "Через",
+            "status": "Статус",
+            "completed": "Завершено",
+            "processing": "Обробляється",
+            "failed": "Невдало",
+            "exchangeTransaction": "Транзакція обміну",
+            "transferTransaction": "Транзакція переказу",
+            "rate": "Курс"
         },
         "refresh": {
             "ariaLabel": "Оновити конфіденційну історію",

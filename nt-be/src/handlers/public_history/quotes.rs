@@ -178,7 +178,7 @@ pub fn quote_asset_matches_token(quote_asset: &str, token_id: &str) -> bool {
         return true;
     }
 
-    if quote_asset.eq_ignore_ascii_case("near") {
+    if quote_asset.eq_ignore_ascii_case("near") || quote_asset.eq_ignore_ascii_case("wrap.near") {
         return matches!(
             token_id,
             "near" | "wrap.near" | "nep141:wrap.near" | "intents.near:nep141:wrap.near"
@@ -230,7 +230,7 @@ pub const QUOTE_LEG_MATCH_SQL: &str = r#"
     AND (
         dp.quote_metadata->'proposalQuote'->>'originAsset' = l.token_id
         OR (
-            dp.quote_metadata->'proposalQuote'->>'originAsset' = 'near'
+            dp.quote_metadata->'proposalQuote'->>'originAsset' IN ('near', 'wrap.near')
             AND l.token_id IN ('near', 'wrap.near', 'nep141:wrap.near', 'intents.near:nep141:wrap.near')
         )
         OR (
@@ -311,15 +311,23 @@ mod tests {
 
     #[test]
     fn near_quote_asset_matches_all_wrap_forms() {
-        for token_id in [
-            "near",
-            "wrap.near",
-            "nep141:wrap.near",
-            "intents.near:nep141:wrap.near",
-        ] {
-            assert!(quote_asset_matches_token("near", token_id), "{token_id}");
+        for quote_asset in ["near", "wrap.near"] {
+            for token_id in [
+                "near",
+                "wrap.near",
+                "nep141:wrap.near",
+                "intents.near:nep141:wrap.near",
+            ] {
+                assert!(
+                    quote_asset_matches_token(quote_asset, token_id),
+                    "{quote_asset} vs {token_id}"
+                );
+            }
+            assert!(!quote_asset_matches_token(
+                quote_asset,
+                "usdt.tether-token.near"
+            ));
         }
-        assert!(!quote_asset_matches_token("near", "usdt.tether-token.near"));
     }
 
     #[test]

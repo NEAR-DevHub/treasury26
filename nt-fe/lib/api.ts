@@ -287,6 +287,8 @@ export interface SwapInfo {
     receivedTokenMetadata: TokenMetadataInfo;
     solverTransactionHash: string;
     swapRole: "deposit" | "fulfillment";
+    sentAmountUsd?: number;
+    receivedAmountUsd?: number;
 }
 
 export interface RecentActivity {

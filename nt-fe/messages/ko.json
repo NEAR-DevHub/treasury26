@@ -372,7 +372,18 @@
             "method": "메서드",
             "contract": "컨트랙트",
             "transaction": "트랜잭션",
-            "depositTransaction": "입금 트랜잭션"
+            "depositTransaction": "입금 트랜잭션",
+            "depositTitle": "입금 상세",
+            "exchangeTitle": "교환 상세",
+            "transferTitle": "이체 상세",
+            "via": "경유",
+            "status": "상태",
+            "completed": "완료",
+            "processing": "처리 중",
+            "failed": "실패",
+            "exchangeTransaction": "교환 트랜잭션",
+            "transferTransaction": "이체 트랜잭션",
+            "rate": "환율"
         },
         "refresh": {
             "ariaLabel": "기밀 기록 새로 고침",

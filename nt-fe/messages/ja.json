@@ -372,7 +372,18 @@
             "method": "メソッド",
             "contract": "コントラクト",
             "transaction": "トランザクション",
-            "depositTransaction": "入金トランザクション"
+            "depositTransaction": "入金トランザクション",
+            "depositTitle": "入金詳細",
+            "exchangeTitle": "交換詳細",
+            "transferTitle": "送金詳細",
+            "via": "経由",
+            "status": "ステータス",
+            "completed": "完了",
+            "processing": "処理中",
+            "failed": "失敗",
+            "exchangeTransaction": "交換トランザクション",
+            "transferTransaction": "送金トランザクション",
+            "rate": "レート"
         },
         "refresh": {
             "ariaLabel": "機密履歴を更新",

@@ -1,13 +1,13 @@
 "use client";
 
 import { ArrowDown, Loader2, Shield } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
+import { NearIntentsLogo } from "@/components/icons/near-intents-logo";
 import { PendingButton } from "@/components/pending-button";
 import { type StepProps, StepperHeader } from "@/components/step-wizard";
 import { TokenInput } from "@/components/token-input";
@@ -17,7 +17,7 @@ import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useBridgeScopedWarning } from "@/hooks/use-warnings";
-import { ETH_TOKEN, DRY_QUOTE_REFRESH_INTERVAL } from "../constants";
+import { DRY_QUOTE_REFRESH_INTERVAL, ETH_TOKEN } from "../constants";
 import type { ExchangeFormValues } from "../exchange-form";
 import { useExchangeAmountQuote } from "../hooks/use-exchange-amount-quote";
 import { ExchangeSettingsModal } from "./exchange-settings-modal";
@@ -31,7 +31,6 @@ export function Step1({
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<ExchangeFormValues>();
     const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
-    const { resolvedTheme } = useTheme();
 
     const { blocked: exchangeSlotBlocked, scopedMessage: sendWarningMessage } =
         useBridgeScopedWarning(
@@ -172,8 +171,6 @@ export function Step1({
         form.setValue("receiveAmount", "");
         form.setValue("amountMode", "EXACT_INPUT");
     };
-
-    const isDarkTheme = resolvedTheme === "dark";
 
     return (
         <>
@@ -333,15 +330,7 @@ export function Step1({
                 <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
                     <span>{tEx("poweredBy")}</span>
                     <span className="font-semibold flex items-center gap-1">
-                        <img
-                            src={
-                                isDarkTheme
-                                    ? "/near-intents-dark.svg"
-                                    : "/near-intents-light.svg"
-                            }
-                            alt="NEAR Intents"
-                            className="h-3"
-                        />
+                        <NearIntentsLogo className="h-3" />
                     </span>
                 </div>
             </PageCard>

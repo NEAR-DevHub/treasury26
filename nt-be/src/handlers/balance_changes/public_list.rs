@@ -482,8 +482,10 @@ struct LegRow {
     action_kind: String,
     swap_sent_token: Option<String>,
     swap_sent_amount: Option<BigDecimal>,
+    swap_sent_amount_usd: Option<BigDecimal>,
     swap_received_token: Option<String>,
     swap_received_amount: Option<BigDecimal>,
+    swap_received_amount_usd: Option<BigDecimal>,
     swap_solver_tx: Option<String>,
 }
 
@@ -546,8 +548,10 @@ impl LegRow {
                         action_kind: "PublicDeposit".to_string(),
                         swap_sent_token: None,
                         swap_sent_amount: None,
+                        swap_sent_amount_usd: None,
                         swap_received_token: None,
                         swap_received_amount: None,
+                        swap_received_amount_usd: None,
                         swap_solver_tx: None,
                     }]
                 })
@@ -602,8 +606,10 @@ impl LegRow {
                         action_kind,
                         swap_sent_token: None,
                         swap_sent_amount: None,
+                        swap_sent_amount_usd: None,
                         swap_received_token: None,
                         swap_received_amount: None,
+                        swap_received_amount_usd: None,
                         swap_solver_tx: None,
                     }]
                 })
@@ -645,8 +651,10 @@ impl LegRow {
                         action_kind: "PublicExchange".to_string(),
                         swap_sent_token: None,
                         swap_sent_amount: None,
+                        swap_sent_amount_usd: None,
                         swap_received_token: None,
                         swap_received_amount: None,
+                        swap_received_amount_usd: None,
                         swap_solver_tx: None,
                     });
                 }
@@ -707,6 +715,7 @@ impl LegRow {
             action_kind: format!("PublicExchange:{}", row.status),
             swap_sent_token: row.token_out.clone(),
             swap_sent_amount: row.amount_out.clone(),
+            swap_sent_amount_usd: row.amount_out_usd.clone(),
             swap_received_token: row
                 .token_in
                 .clone()
@@ -714,6 +723,11 @@ impl LegRow {
                 .or(row.token_out.clone()),
             swap_received_amount: if row.status == "success" {
                 row.amount_in.clone()
+            } else {
+                None
+            },
+            swap_received_amount_usd: if row.status == "success" {
+                row.amount_in_usd.clone()
             } else {
                 None
             },
@@ -766,6 +780,8 @@ impl LegRow {
                 .cloned()
                 .unwrap_or_else(|| fallback_metadata(&received_token_id)),
             solver_transaction_hash,
+            sent_amount_usd: self.swap_sent_amount_usd.clone(),
+            received_amount_usd: self.swap_received_amount_usd.clone(),
         })
     }
 }

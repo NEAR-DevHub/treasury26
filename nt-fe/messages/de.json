@@ -372,7 +372,18 @@
             "method": "Methode",
             "contract": "Vertrag",
             "transaction": "Transaktion",
-            "depositTransaction": "Einzahlungstransaktion"
+            "depositTransaction": "Einzahlungstransaktion",
+            "depositTitle": "Einzahlungsdetails",
+            "exchangeTitle": "Umtauschdetails",
+            "transferTitle": "Überweisungsdetails",
+            "via": "Über",
+            "status": "Status",
+            "completed": "Abgeschlossen",
+            "processing": "In Bearbeitung",
+            "failed": "Fehlgeschlagen",
+            "exchangeTransaction": "Umtauschtransaktion",
+            "transferTransaction": "Überweisungstransaktion",
+            "rate": "Kurs"
         },
         "refresh": {
             "ariaLabel": "Vertraulichen Verlauf aktualisieren",

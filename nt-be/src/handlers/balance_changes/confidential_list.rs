@@ -420,9 +420,11 @@ struct LegRow {
     action_kind: String,
     swap_sent_token: Option<String>,
     swap_sent_amount: Option<BigDecimal>,
+    swap_sent_amount_usd: Option<BigDecimal>,
     swap_other_token: Option<String>,
     swap_received_token: Option<String>,
     swap_received_amount: Option<BigDecimal>,
+    swap_received_amount_usd: Option<BigDecimal>,
     swap_solver_tx: Option<String>,
 }
 
@@ -483,9 +485,11 @@ impl LegRow {
                     action_kind: "ConfidentialSend".to_string(),
                     swap_sent_token: None,
                     swap_sent_amount: None,
+                    swap_sent_amount_usd: None,
                     swap_other_token: None,
                     swap_received_token: None,
                     swap_received_amount: None,
+                    swap_received_amount_usd: None,
                     swap_solver_tx: None,
                 })
             }
@@ -517,9 +521,11 @@ impl LegRow {
                     action_kind: "ConfidentialDeposit".to_string(),
                     swap_sent_token: None,
                     swap_sent_amount: None,
+                    swap_sent_amount_usd: None,
                     swap_other_token: None,
                     swap_received_token: None,
                     swap_received_amount: None,
+                    swap_received_amount_usd: None,
                     swap_solver_tx: None,
                 })
             }
@@ -541,13 +547,15 @@ impl LegRow {
                     transaction_hash,
                     created_at,
                     proposal_id,
-                    usd_value: amount_out_usd,
+                    usd_value: amount_out_usd.clone(),
                     action_kind: "ConfidentialExchange".to_string(),
                     swap_sent_token: origin_asset.clone(),
                     swap_sent_amount: amount_in,
+                    swap_sent_amount_usd: amount_in_usd,
                     swap_other_token: origin_asset,
                     swap_received_token: Some(destination_asset),
                     swap_received_amount: Some(amount_out),
+                    swap_received_amount_usd: amount_out_usd,
                     swap_solver_tx: Some(solver_tx),
                 })
             }
@@ -605,6 +613,8 @@ impl LegRow {
             received_amount: self.swap_received_amount.clone(),
             received_token_metadata,
             solver_transaction_hash: solver,
+            sent_amount_usd: self.swap_sent_amount_usd.clone(),
+            received_amount_usd: self.swap_received_amount_usd.clone(),
         })
     }
 }
