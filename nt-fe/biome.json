@@ -7,14 +7,7 @@
     },
     "files": {
         "ignoreUnknown": true,
-        "includes": [
-            "**",
-            "!node_modules",
-            "!.next",
-            "!dist",
-            "!build",
-            "!near-connect/vendor"
-        ]
+        "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
     },
     "formatter": {
         "enabled": true,
