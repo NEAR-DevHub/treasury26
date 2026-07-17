@@ -1338,7 +1338,9 @@
                 "passkeyBullet2": "en basit kurulumu istiyorsanız",
                 "passkeyBullet3": "Trezu'yu biyometrik özellikli telefon veya dizüstünde kullanacaksanız",
                 "recoveryLabel": "Kurtarma:",
-                "recoveryText": "Hangi seçeneği seçerseniz seçin, bir cihaz kaybının sizi kilitlememesi için kurulumdan sonra ikinci bir üye (cüzdan) eklemenizi öneririz."
+                "recoveryText": "Hangi seçeneği seçerseniz seçin, bir cihaz kaybının sizi kilitlememesi için kurulumdan sonra ikinci bir üye (cüzdan) eklemenizi öneririz.",
+                "passkeyNew": "Yeni",
+                "passkeyDomainNote": "Geçiş anahtarınız bu cihazda trezu.app için kaydedilir (veya iCloud/Google üzerinden senkronize edilir). Başka uygulamalarda kullanılamaz ve başka uygulamaların geçiş anahtarları Trezu'ya erişemez."
             }
         },
         "unexpectedError": "Beklenmedik bir hata oluştu",

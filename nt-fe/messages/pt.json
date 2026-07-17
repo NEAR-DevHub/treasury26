@@ -1338,7 +1338,9 @@
                 "passkeyBullet2": "quer a configuração mais simples",
                 "passkeyBullet3": "vai usar o Trezu em celular ou notebook com biometria",
                 "recoveryLabel": "Recuperação:",
-                "recoveryText": "Independentemente da sua escolha, recomendamos adicionar um segundo membro (carteira) após a configuração para que a perda de um dispositivo não bloqueie seu acesso."
+                "recoveryText": "Independentemente da sua escolha, recomendamos adicionar um segundo membro (carteira) após a configuração para que a perda de um dispositivo não bloqueie seu acesso.",
+                "passkeyNew": "Novo",
+                "passkeyDomainNote": "Sua chave de acesso é salva para trezu.app neste dispositivo (ou sincronizada via iCloud/Google). Ela não pode ser usada em outros aplicativos, e chaves de outros aplicativos não podem acessar o Trezu."
             }
         },
         "unexpectedError": "Ocorreu um erro inesperado",

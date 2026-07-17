@@ -1338,7 +1338,9 @@
                 "passkeyBullet2": "Want the simplest setup",
                 "passkeyBullet3": "Will use Trezu on a phone or laptop with biometrics",
                 "recoveryLabel": "Recovery:",
-                "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out."
+                "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out.",
+                "passkeyNew": "New",
+                "passkeyDomainNote": "Your passkey is saved for trezu.app on this device (or synced via iCloud/Google). It cannot be used on other apps, and other apps’ passkeys cannot access Trezu."
             }
         },
         "unexpectedError": "An unexpected error occurred",

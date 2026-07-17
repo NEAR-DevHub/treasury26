@@ -30,6 +30,7 @@ import {
     type ProposalPermissionKind,
 } from "@/lib/config-utils";
 import type { Proposal, Vote as ProposalVote } from "@/lib/proposals-api";
+import { ensurePasskeyWallet } from "@/lib/passkey-wallet";
 import { clearSessionQueries } from "@/lib/session-query-cleanup";
 import {
     estimateProposalStorage,
@@ -40,6 +41,7 @@ import {
     DIRECT_TRIGGER_WALLET_IDS,
     SELECTED_WALLET_STORAGE_KEY,
     TARGET_WALLET_STORAGE_KEY,
+    WALLET_IDS,
     isDirectTriggerWallet,
 } from "@/lib/wallets";
 
@@ -234,6 +236,13 @@ export const useNearStore = create<NearStore>((set, get) => ({
             connector &&
             (targetWalletId === undefined || connectorExcludeKey === excludeKey)
         ) {
+            // The Passkey wallet is registered programmatically (Trezu-local
+            // manifest), not via the shared near-connect manifest — a reused
+            // connector may predate the passkey target, so register here too
+            // (registerWallet dedupes by id).
+            if (targetWalletId === WALLET_IDS.PASSKEY) {
+                await ensurePasskeyWallet(connector);
+            }
             return connector;
         }
 
@@ -277,6 +286,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
 
         // Login is driven explicitly in `connect()` via NEP-641 `resolveAuth`,
         // so no sign-in event handlers are needed here.
+
+        // Passkey ships as a Trezu-hosted executor with a programmatic
+        // manifest (see lib/passkey-wallet.ts); only register it when the
+        // passkey flow is targeted so it never shows up in the generic
+        // NEAR-wallets popup (registered wallets bypass excludedWallets).
+        if (targetWalletId === WALLET_IDS.PASSKEY) {
+            await ensurePasskeyWallet(newConnector);
+        }
 
         set({
             connector: newConnector,

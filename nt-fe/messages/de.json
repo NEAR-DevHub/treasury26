@@ -1338,7 +1338,9 @@
                 "passkeyBullet2": "das einfachste Setup möchtest",
                 "passkeyBullet3": "Trezu auf einem Telefon oder Laptop mit Biometrie nutzt",
                 "recoveryLabel": "Wiederherstellung:",
-                "recoveryText": "Egal, wofür du dich entscheidest: Wir empfehlen, nach dem Setup ein zweites Mitglied (Wallet) hinzuzufügen, damit dich ein verlorenes Gerät nicht aussperrt."
+                "recoveryText": "Egal, wofür du dich entscheidest: Wir empfehlen, nach dem Setup ein zweites Mitglied (Wallet) hinzuzufügen, damit dich ein verlorenes Gerät nicht aussperrt.",
+                "passkeyNew": "Neu",
+                "passkeyDomainNote": "Dein Passkey wird für trezu.app auf diesem Gerät gespeichert (oder über iCloud/Google synchronisiert). Er funktioniert nicht in anderen Apps, und Passkeys anderer Apps haben keinen Zugriff auf Trezu."
             }
         },
         "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
