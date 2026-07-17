@@ -108,6 +108,8 @@ export function LargeInput({
                 ref={inputRef}
                 autoComplete="off"
                 autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
                 {...props}
                 value={value}
                 style={suffix ? { paddingRight: suffixWidth } : undefined}
