@@ -1321,7 +1321,9 @@
                 "passkeyBullet2": "muốn thiết lập đơn giản nhất",
                 "passkeyBullet3": "sẽ dùng Trezu trên điện thoại hoặc laptop có sinh trắc học",
                 "recoveryLabel": "Khôi phục:",
-                "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập."
+                "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập.",
+                "passkeyNew": "Mới",
+                "passkeyDomainNote": "Passkey của bạn được lưu cho trezu.app trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Trezu."
             }
         },
         "unexpectedError": "Đã xảy ra lỗi không mong muốn",

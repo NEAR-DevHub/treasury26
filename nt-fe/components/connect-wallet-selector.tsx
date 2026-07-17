@@ -531,12 +531,12 @@ export function ConnectWalletSelector({
                                             wallet={{
                                                 id: WALLET_IDS.PASSKEY,
                                                 label: "Passkey",
-                                                supported: false,
+                                                supported: true,
                                             }}
                                         />
                                         <Pill
                                             title={t(
-                                                "walletSelector.guide.comingSoon",
+                                                "walletSelector.guide.passkeyNew",
                                             )}
                                             variant="info"
                                         />
@@ -580,6 +580,11 @@ export function ConnectWalletSelector({
                                                 )}
                                             </li>
                                         </ul>
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            {t(
+                                                "walletSelector.guide.passkeyDomainNote",
+                                            )}
+                                        </p>
                                     </div>
                                 </div>
                             </div>

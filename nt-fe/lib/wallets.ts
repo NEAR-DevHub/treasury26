@@ -19,6 +19,7 @@ export const MANIFEST_WALLET_IDS = {
     NEAR_MOBILE: WALLET_IDS.NEAR_MOBILE,
     NEAR_CLI: WALLET_IDS.NEAR_CLI,
     EVM: WALLET_IDS.EVM,
+    PASSKEY: WALLET_IDS.PASSKEY,
 } as const;
 
 export type HotLabsManifestWalletId =
@@ -49,6 +50,7 @@ export const MANIFEST_WALLET_ID_BY_OPTION: Partial<
     [WALLET_IDS.NEAR_MOBILE]: MANIFEST_WALLET_IDS.NEAR_MOBILE,
     [WALLET_IDS.NEAR_CLI]: MANIFEST_WALLET_IDS.NEAR_CLI,
     [WALLET_IDS.EVM]: MANIFEST_WALLET_IDS.EVM,
+    [WALLET_IDS.PASSKEY]: MANIFEST_WALLET_IDS.PASSKEY,
 };
 
 export const WALLET_GROUP_BY_ID: Partial<Record<WalletId, WalletId>> = {
@@ -63,6 +65,7 @@ export const WALLET_GROUP_BY_ID: Partial<Record<WalletId, WalletId>> = {
 export const DIRECT_TRIGGER_WALLET_IDS = [
     WALLET_IDS.LEDGER,
     WALLET_IDS.EVM,
+    WALLET_IDS.PASSKEY,
 ] as const satisfies readonly WalletId[];
 
 export function isDirectTriggerWallet(walletId: string): boolean {
@@ -102,7 +105,7 @@ export const WALLET_OPTIONS: WalletOption[] = [
     {
         id: WALLET_IDS.PASSKEY,
         label: "Passkey",
-        supported: false,
+        supported: true,
     },
     {
         id: WALLET_IDS.PHANTOM,
