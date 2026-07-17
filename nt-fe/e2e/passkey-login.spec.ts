@@ -14,6 +14,11 @@ const EXECUTOR_ARTIFACT = path.join(
     "passkey-executor.js",
 );
 
+// Public part of the executor's embedded function-call key for
+// passkeys-registry.near (REGISTRY_FC_PRIVATE_KEY in the vendored
+// constants). Used to satisfy the registration transaction's key lookup.
+const FC_PUBLIC_KEY = "ed25519:4rPkq4P1KwD4kVuUETqL5wLUEH3hEHqwiuSEKVC3fUwT";
+
 // Helper: JSON-RPC call_function result body (bytes of JSON)
 function callFunctionResult(id: unknown, value: unknown) {
     return {
@@ -139,6 +144,34 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
                             },
                         },
                     };
+                } else if (p.request_type === "view_access_key_list") {
+                    // near-api-ts's memory signer enumerates the account's
+                    // keys to find the one it signs with — return the
+                    // executor's embedded function-call key (public part).
+                    result = {
+                        jsonrpc: "2.0",
+                        id: body.id,
+                        result: {
+                            block_hash: "A".repeat(44),
+                            block_height: 100000000,
+                            keys: [
+                                {
+                                    public_key: FC_PUBLIC_KEY,
+                                    access_key: {
+                                        nonce: 1,
+                                        permission: {
+                                            FunctionCall: {
+                                                allowance: null,
+                                                receiver_id:
+                                                    "passkeys-registry.near",
+                                                method_names: ["register"],
+                                            },
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    };
                 } else {
                     result = { jsonrpc: "2.0", id: body.id, result: {} };
                 }
@@ -158,18 +191,52 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
                 body.method === "send_tx" ||
                 body.method === "broadcast_tx_commit"
             ) {
-                // Registry `register` / relayed transactions succeed
+                // Registry `register` / relayed transactions succeed. Shape
+                // must satisfy near-api-ts's FinalExecutionOutcomeView zod
+                // schema (send_tx uses wait_until=EXECUTED_OPTIMISTIC).
+                const hash = "A".repeat(44);
+                const outcome = {
+                    executor_id: "passkeys-registry.near",
+                    gas_burnt: 0,
+                    logs: [],
+                    receipt_ids: [],
+                    status: { SuccessValue: "" },
+                    tokens_burnt: "0",
+                };
                 result = {
                     jsonrpc: "2.0",
                     id: body.id,
                     result: {
-                        final_execution_status: "FINAL",
+                        final_execution_status: "EXECUTED_OPTIMISTIC",
                         status: { SuccessValue: "" },
-                        transaction: {},
+                        transaction: {
+                            actions: [],
+                            hash,
+                            nonce: 1,
+                            public_key: FC_PUBLIC_KEY,
+                            receiver_id: "passkeys-registry.near",
+                            signature:
+                                "ed25519:11111111111111111111111111111111",
+                            signer_id: "passkeys-registry.near",
+                        },
                         transaction_outcome: {
-                            outcome: { status: { SuccessValue: "" } },
+                            block_hash: hash,
+                            id: hash,
+                            outcome,
+                            proof: [],
                         },
                         receipts_outcome: [],
+                    },
+                };
+            } else if (body.method === "EXPERIMENTAL_protocol_config") {
+                // near-api-ts's getAccountInfo needs the storage price.
+                result = {
+                    jsonrpc: "2.0",
+                    id: body.id,
+                    result: {
+                        runtime_config: {
+                            storage_amount_per_byte: "10000000000000000000",
+                        },
                     },
                 };
             } else {
