@@ -3,12 +3,15 @@
 //! Some wallets cannot sign a NEP-366 delegate action directly. Instead they sign
 //! a `RequestMessage` and the client relays a delegate action whose sole action is
 //! `w_execute_signed(msg, proof)` on the user's wallet contract. The DAO proposal
-//! calls we sponsor live inside `msg.request.out`, a `PromiseDAG` of `PromiseSingle`s
-//! (see `contracts/wallet`).
+//! calls we sponsor live inside the request (see `contracts/wallet`).
 //!
-//! This module recognizes that shape and flattens the inner promises into the same
-//! [`DaoCall`]s the direct path produces; `msg.request.ops` (wallet-internal
-//! operations) must be empty for a sponsorable request.
+//! Two request shapes are accepted, both flattened into the same [`DaoCall`]s:
+//! * **legacy** — `msg.request.out`, a `PromiseDAG` of `PromiseSingle`s (still
+//!   emitted by near-connect-ledger and other unmigrated clients);
+//! * **current** — `msg.request.external`, a fan-out of `NearPromise`s.
+//!
+//! Wallet-internal operations (`msg.request.ops` / `msg.request.internal`) must be
+//! empty for a sponsorable request.
 
 use std::ops::Deref;
 
@@ -83,16 +86,22 @@ fn as_w_execute_call(action: &Action) -> Result<&FunctionCallAction, String> {
 fn inner_calls(args: &[u8]) -> Result<Vec<DaoCall>, String> {
     let parsed: WExecuteSignedArgs = serde_json::from_slice(args)
         .map_err(|e| format!("Invalid w_execute_signed args: {}", e))?;
-    if !parsed.msg.request.ops.is_empty() {
+    let request = &parsed.msg.request;
+    if !request.ops.is_empty() || !request.internal.is_empty() {
         return Err(
             "w_execute_signed request carries wallet ops, which are not sponsorable".to_owned(),
         );
     }
     let mut calls = Vec::new();
-    collect_dag(&parsed.msg.request.out, &mut calls)?;
+    // Legacy PromiseDAG shape (`out`) — near-connect-ledger and other clients not
+    // yet migrated to the fan-out (`external`) shape.
+    collect_dag(&request.out, &mut calls)?;
+    // Current fan-out shape (`external`).
+    collect_external(&request.external, &mut calls)?;
     Ok(calls)
 }
 
+/// Flatten legacy `request.out` (a `PromiseDAG` of `PromiseSingle`s) into calls.
 fn collect_dag(dag: &PromiseDag, collected_calls: &mut Vec<DaoCall>) -> Result<(), String> {
     for nested in &dag.after {
         collect_dag(nested, collected_calls)?;
@@ -114,6 +123,31 @@ fn collect_dag(dag: &PromiseDag, collected_calls: &mut Vec<DaoCall>) -> Result<(
                 method_name: function_name.clone(),
                 args: decode_base64(args)?,
                 deposit: parse_yocto_deposit(deposit)?,
+            });
+        }
+    }
+    Ok(())
+}
+
+/// Flatten current `request.external` (a fan-out of `NearPromise`s) into calls.
+fn collect_external(
+    promises: &[NearPromise],
+    collected_calls: &mut Vec<DaoCall>,
+) -> Result<(), String> {
+    for promise in promises {
+        for action in &promise.actions {
+            if action.action != "function_call" {
+                return Err(
+                    "w_execute_signed promise contains a non-function-call action".to_owned(),
+                );
+            }
+            let payload: FunctionCallPayload = serde_json::from_value(action.payload.clone())
+                .map_err(|e| format!("Invalid function_call payload in w_execute_signed: {}", e))?;
+            collected_calls.push(DaoCall {
+                receiver_id: promise.receiver_id.clone(),
+                method_name: payload.function_name,
+                args: decode_base64(&payload.args)?,
+                deposit: parse_yocto_deposit(&payload.deposit)?,
             });
         }
     }
@@ -159,11 +193,19 @@ struct RequestMessage {
 
 #[derive(Deserialize)]
 struct Request {
+    // Legacy shape.
     #[serde(default)]
     ops: Vec<Value>,
     #[serde(default)]
     out: PromiseDag,
+    // Current shape.
+    #[serde(default)]
+    internal: Vec<Value>,
+    #[serde(default)]
+    external: Vec<NearPromise>,
 }
+
+// ─── Legacy PromiseDAG shape (`out`) ─────────────────────────────────────────────
 
 #[derive(Deserialize, Default)]
 struct PromiseDag {
@@ -195,6 +237,37 @@ enum PromiseAction {
     Other,
 }
 
+// ─── Current fan-out shape (`external`) ──────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct NearPromise {
+    receiver_id: AccountId,
+    #[serde(default)]
+    actions: Vec<NearAction>,
+}
+
+/// Adjacently-tagged wallet action (`{ "action": …, "payload": … }`). Captured
+/// generically so unknown/non-function-call actions are rejected explicitly
+/// rather than failing to deserialize (a future `NearAction` variant is a safe
+/// reject, not a parse crash).
+#[derive(Deserialize)]
+struct NearAction {
+    action: String,
+    #[serde(default)]
+    payload: Value,
+}
+
+#[derive(Deserialize)]
+struct FunctionCallPayload {
+    function_name: String,
+    /// base64-encoded (`serde_with::base64::Base64`), omitted when empty.
+    #[serde(default)]
+    args: String,
+    /// Decimal yoctoNEAR string, omitted when zero.
+    #[serde(default)]
+    deposit: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,7 +278,7 @@ mod tests {
         s.parse().unwrap()
     }
 
-    /// Decode just the `out` promises of a `{ msg: { request } }` payload.
+    /// Decode the promises of a `{ msg: { request } }` payload (either shape).
     fn collect(args: &Value) -> Result<Vec<DaoCall>, String> {
         inner_calls(&serde_json::to_vec(args).unwrap())
     }
@@ -235,11 +308,11 @@ mod tests {
         // Inner promise bond of 5 yocto; the client's outer deposit (1) is ignored —
         // the sponsor attaches exactly the inner sum it forwards as the bond.
         let args = json!({
-            "msg": { "request": { "out": { "then": [{
+            "msg": { "request": { "external": [{
                 "receiver_id": "dao.sputnik-dao.near",
                 // base64("{}") for the inner args — only the deposit matters here.
-                "actions": [{ "action": "function_call", "function_name": "add_proposal", "args": "e30=", "deposit": "5" }]
-            }] } } }
+                "actions": [{ "action": "function_call", "payload": { "function_name": "add_proposal", "args": "e30=", "deposit": "5" } }]
+            }] } }
         });
         let action = w_execute_action(&args, NearToken::from_yoctonear(1));
         let built = build_sponsored_actions(&[action]).unwrap();
@@ -254,11 +327,11 @@ mod tests {
     #[test]
     fn collect_calls_flattens_inner_proposal() {
         let args = json!({
-            "msg": { "request": { "out": { "then": [{
+            "msg": { "request": { "external": [{
                 "receiver_id": "dao.sputnik-dao.near",
                 // base64("{}") — collect_calls only base64-decodes the inner args.
-                "actions": [{ "action": "function_call", "function_name": "add_proposal", "args": "e30=", "deposit": "0" }]
-            }] } } }
+                "actions": [{ "action": "function_call", "payload": { "function_name": "add_proposal", "args": "e30=", "deposit": "0" } }]
+            }] } }
         });
         let action = w_execute_action(&args, NearToken::from_near(0));
         let calls = collect_calls(&[action]).unwrap();
@@ -272,15 +345,17 @@ mod tests {
         // Inner add_proposal args (base64-decodes to a Transfer proposal).
         let inner = "eyJwcm9wb3NhbCI6eyJkZXNjcmlwdGlvbiI6IiIsImtpbmQiOnsiVHJhbnNmZXIiOnsidG9rZW5faWQiOiIiLCJyZWNlaXZlcl9pZCI6Im1lZ2hhMTkubmVhciIsImFtb3VudCI6IjEwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAiLCJtc2ciOm51bGx9fX19";
         let args = json!({
-            "msg": { "request": { "ops": [], "out": { "after": [], "then": [{
+            "msg": { "request": { "internal": [], "external": [{
                 "receiver_id": "testing-astradao.sputnik-dao.near",
                 "actions": [{
                     "action": "function_call",
-                    "function_name": "add_proposal",
-                    "args": inner,
-                    "deposit": "0"
+                    "payload": {
+                        "function_name": "add_proposal",
+                        "args": inner,
+                        "deposit": "0"
+                    }
                 }]
-            }] } } },
+            }] } },
             "proof": "ignored"
         });
         let calls = collect(&args).unwrap();
@@ -296,13 +371,65 @@ mod tests {
     #[test]
     fn rejects_wallet_ops() {
         let args = json!({
-            "msg": { "request": { "ops": [{ "op": "set_signature_mode", "enable": true }], "out": {} } }
+            "msg": { "request": { "internal": [{ "op": "set_signature_mode", "enable": true }], "external": [] } }
         });
         assert!(collect(&args).unwrap_err().contains("wallet ops"));
     }
 
     #[test]
     fn rejects_non_function_call_promise() {
+        let args = json!({
+            "msg": { "request": { "external": [{
+                "receiver_id": "dao.sputnik-dao.near",
+                "actions": [{ "action": "transfer", "payload": { "amount": "1" } }]
+            }] } }
+        });
+        assert!(collect(&args).unwrap_err().contains("non-function-call"));
+    }
+
+    // ─── Legacy PromiseDAG (`out`) shape — still emitted by unmigrated clients ────
+
+    #[test]
+    fn legacy_collect_calls_flattens_inner_proposal() {
+        let args = json!({
+            "msg": { "request": { "out": { "then": [{
+                "receiver_id": "dao.sputnik-dao.near",
+                "actions": [{ "action": "function_call", "function_name": "add_proposal", "args": "e30=", "deposit": "0" }]
+            }] } } }
+        });
+        let action = w_execute_action(&args, NearToken::from_near(0));
+        let calls = collect_calls(&[action]).unwrap();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].receiver_id, acc("dao.sputnik-dao.near"));
+        assert_eq!(calls[0].method_name, "add_proposal");
+    }
+
+    #[test]
+    fn legacy_build_sponsored_actions_overrides_outer_deposit() {
+        let args = json!({
+            "msg": { "request": { "out": { "then": [{
+                "receiver_id": "dao.sputnik-dao.near",
+                "actions": [{ "action": "function_call", "function_name": "add_proposal", "args": "e30=", "deposit": "5" }]
+            }] } } }
+        });
+        let action = w_execute_action(&args, NearToken::from_yoctonear(1));
+        let built = build_sponsored_actions(&[action]).unwrap();
+        let Action::FunctionCall(function_call) = &built[0] else {
+            panic!("expected a FunctionCall");
+        };
+        assert_eq!(function_call.deposit, NearToken::from_yoctonear(5));
+    }
+
+    #[test]
+    fn legacy_rejects_wallet_ops() {
+        let args = json!({
+            "msg": { "request": { "ops": [{ "op": "set_signature_mode", "enable": true }], "out": {} } }
+        });
+        assert!(collect(&args).unwrap_err().contains("wallet ops"));
+    }
+
+    #[test]
+    fn legacy_rejects_non_function_call_promise() {
         let args = json!({
             "msg": { "request": { "out": { "then": [{
                 "receiver_id": "dao.sputnik-dao.near",
