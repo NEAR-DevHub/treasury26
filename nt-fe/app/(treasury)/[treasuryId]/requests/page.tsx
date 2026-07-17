@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
-import { ConfidentialState } from "@/components/confidential-state";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { TabsContent } from "@/components/underline-tabs";
 import { useProposals } from "@/hooks/use-proposals";
@@ -39,6 +38,8 @@ const FILTER_PANEL_MAX_HEIGHT = "500px";
 
 function useProposalFilterOptions(): FilterOption[] {
     const tFilters = useTranslations("requests.filters");
+    const { isConfidential, isGuestTreasury } = useTreasury();
+    const isConfidentialGuest = isConfidential && isGuestTreasury;
     return useMemo(
         () => [
             { id: "proposal_types", label: tFilters("requestsType") },
@@ -47,13 +48,18 @@ function useProposalFilterOptions(): FilterOption[] {
                 label: tFilters("createdDate"),
                 maxDate: new Date(),
             },
-            { id: "recipients", label: tFilters("recipient") },
-            { id: "token", label: tFilters("token") },
+            // Recipient and token are hidden data for confidential guests
+            ...(isConfidentialGuest
+                ? []
+                : [
+                      { id: "recipients", label: tFilters("recipient") },
+                      { id: "token", label: tFilters("token") },
+                  ]),
             { id: "proposers", label: tFilters("requester") },
             { id: "approvers", label: tFilters("approver") },
             { id: "my_vote", label: tFilters("myVoteStatus") },
         ],
-        [tFilters],
+        [tFilters, isConfidentialGuest],
     );
 }
 
@@ -64,9 +70,7 @@ function ProposalsList({
     status?: ProposalStatus;
     onSelectionChange?: (count: number) => void;
 }) {
-    const { treasuryId, config, isConfidential, isGuestTreasury } =
-        useTreasury();
-    const isConfidentialGuest = isConfidential && isGuestTreasury;
+    const { treasuryId, config } = useTreasury();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -127,7 +131,6 @@ function ProposalsList({
     // Prefetch the next page
     useEffect(() => {
         if (
-            !isConfidentialGuest &&
             treasuryId &&
             data &&
             data.proposals.length === pageSize &&
@@ -143,23 +146,7 @@ function ProposalsList({
                 queryFn: () => getProposals(treasuryId, nextFilters),
             });
         }
-    }, [
-        data,
-        page,
-        treasuryId,
-        filters,
-        queryClient,
-        pageSize,
-        isConfidentialGuest,
-    ]);
-
-    if (isConfidentialGuest) {
-        return (
-            <ConfidentialState
-                skeleton={<TableSkeleton rows={12} columns={7} />}
-            />
-        );
-    }
+    }, [data, page, treasuryId, filters, queryClient, pageSize]);
 
     if (isLoading) {
         return <TableSkeleton rows={12} columns={7} />;
@@ -229,8 +216,6 @@ export default function RequestsPage() {
     const params = useParams();
     const treasuryId = params?.treasuryId as string | undefined;
     const { accountId } = useNear();
-    const { isConfidential, isGuestTreasury } = useTreasury();
-    const isConfidentialGuest = isConfidential && isGuestTreasury;
     const { data: proposals } = useProposals(treasuryId, {
         statuses: ["InProgress"],
         ...(accountId && {
@@ -328,21 +313,6 @@ export default function RequestsPage() {
         { value: "Expired", label: tReq("tabs.expired") },
         { value: "Failed", label: tReq("tabs.failed") },
     ];
-
-    if (isConfidentialGuest) {
-        return (
-            <PageComponentLayout
-                title={t("title")}
-                description={t("description")}
-            >
-                <PageCard>
-                    <ConfidentialState
-                        skeleton={<TableSkeleton rows={12} columns={7} />}
-                    />
-                </PageCard>
-            </PageComponentLayout>
-        );
-    }
 
     // Only show "No Requests Found" if there are no proposals AND no filters are active
     if (

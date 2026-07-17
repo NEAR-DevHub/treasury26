@@ -152,10 +152,11 @@ function Step1({
     const tPay = useTranslations("payments");
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<PaymentFormValues>();
-    const { treasuryId, isConfidential } = useTreasury();
+    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
     const isMobile = useMediaQuery("(max-width: 768px)");
     const address = form.watch("address");
     const amount = form.watch("amount");
+    const showConfidentialShield = isConfidential && !isGuestTreasury;
 
     const handleSave = async () => {
         // Validate and proceed to next step
@@ -186,7 +187,7 @@ function Step1({
                 <div className="flex justify-between items-center">
                     <StepperHeader
                         title={
-                            isConfidential ? (
+                            showConfidentialShield ? (
                                 <span className="inline-flex items-center gap-1.5">
                                     <span>{tPay("title")}</span>
                                     <Tooltip

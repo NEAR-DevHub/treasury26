@@ -2,6 +2,7 @@
 
 import { ArrowDown, Loader2, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import { useCallback, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/button";
@@ -30,7 +31,13 @@ export function Step1({
     const tEx = useTranslations("exchange");
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<ExchangeFormValues>();
-    const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
+    const {
+        treasuryId: selectedTreasury,
+        isConfidential,
+        isGuestTreasury,
+    } = useTreasury();
+    const { resolvedTheme } = useTheme();
+    const showConfidentialShield = isConfidential && !isGuestTreasury;
 
     const { blocked: exchangeSlotBlocked, scopedMessage: sendWarningMessage } =
         useBridgeScopedWarning(
@@ -179,7 +186,7 @@ export function Step1({
                 <div className="flex items-center justify-between gap-2">
                     <StepperHeader
                         title={
-                            isConfidential ? (
+                            showConfidentialShield ? (
                                 <span className="inline-flex items-center gap-1.5">
                                     <span>{tEx("heading")}</span>
                                     <Tooltip
