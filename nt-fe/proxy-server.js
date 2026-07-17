@@ -1,11 +1,21 @@
 #!/usr/bin/env node
 
 /**
- * Simple CORS proxy server for local development
- * Proxies requests from localhost:8080 to the production backend (api.trezu.app)
- * This avoids CORS issues when developing locally
+ * Same-origin auth proxy for local development.
  *
- * Usage: bun proxy-server.js
+ * Runs the backend on the SAME site as the frontend (both `localhost`) so
+ * the session cookie — set `Secure; SameSite=Strict` by the backend — is
+ * actually sent on authenticated calls. Pointing the frontend directly at
+ * `https://api.*.trezu.app` makes those calls cross-site, so the browser
+ * stores the login cookie but never attaches it (accept-terms / me fail
+ * with "Missing authentication token").
+ *
+ * Usage:
+ *   bun proxy:staging            # proxy → staging backend
+ *   bun proxy:prod               # proxy → production backend
+ *   BACKEND_PROXY_TARGET=<url> node proxy-server.js
+ * then run the frontend with NEXT_PUBLIC_BACKEND_API_BASE=http://localhost:8888
+ * (see the `dev:proxied` script).
  */
 
 const http = require("http");
@@ -64,6 +74,22 @@ const server = http.createServer((req, res) => {
                 "access-control-allow-origin": origin,
                 "access-control-allow-credentials": "true",
             };
+
+            // Rewrite Set-Cookie so the backend's session cookie is stored
+            // for this http://localhost:<port> origin: drop `Secure` (we are
+            // on http) and any `Domain=…trezu.app` (host-only for localhost).
+            // `SameSite` is left as-is — localhost:3000 → localhost:<port> is
+            // same-site, so even `Strict` cookies are sent.
+            const setCookie = proxyRes.headers["set-cookie"];
+            if (setCookie) {
+                headers["set-cookie"] = (
+                    Array.isArray(setCookie) ? setCookie : [setCookie]
+                ).map((c) =>
+                    c
+                        .replace(/;\s*Secure/gi, "")
+                        .replace(/;\s*Domain=[^;]*/gi, ""),
+                );
+            }
 
             res.writeHead(proxyRes.statusCode, headers);
             proxyRes.pipe(res);

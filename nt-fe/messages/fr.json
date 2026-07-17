@@ -1326,7 +1326,9 @@
                 "passkeyBullet2": "souhaitez la configuration la plus simple",
                 "passkeyBullet3": "utiliserez Trezu sur un téléphone ou un ordinateur avec biométrie",
                 "recoveryLabel": "Récupération :",
-                "recoveryText": "Quel que soit votre choix, nous vous recommandons d'ajouter un deuxième membre (wallet) après la configuration afin qu'un appareil perdu ne vous bloque pas."
+                "recoveryText": "Quel que soit votre choix, nous vous recommandons d'ajouter un deuxième membre (wallet) après la configuration afin qu'un appareil perdu ne vous bloque pas.",
+                "passkeyNew": "Nouveau",
+                "passkeyDomainNote": "Votre clé d’accès est enregistrée pour trezu.app sur cet appareil (ou synchronisée via iCloud/Google). Elle ne peut pas être utilisée sur d’autres applications, et les clés d’autres applications ne peuvent pas accéder à Trezu."
             }
         },
         "unexpectedError": "Une erreur inattendue s'est produite",

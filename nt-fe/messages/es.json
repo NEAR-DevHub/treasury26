@@ -1326,7 +1326,9 @@
                 "passkeyBullet2": "Quieres la configuración más simple",
                 "passkeyBullet3": "Usarás Trezu en un teléfono o portátil con biometría",
                 "recoveryLabel": "Recuperación:",
-                "recoveryText": "Elijas lo que elijas, te recomendamos añadir un segundo miembro (wallet) después de la configuración para que la pérdida de un dispositivo no te deje fuera."
+                "recoveryText": "Elijas lo que elijas, te recomendamos añadir un segundo miembro (wallet) después de la configuración para que la pérdida de un dispositivo no te deje fuera.",
+                "passkeyNew": "Nuevo",
+                "passkeyDomainNote": "Tu llave de acceso se guarda para trezu.app en este dispositivo (o se sincroniza con iCloud/Google). No puede usarse en otras aplicaciones, y las llaves de otras aplicaciones no pueden acceder a Trezu."
             }
         },
         "unexpectedError": "Se produjo un error inesperado",
