@@ -485,6 +485,7 @@ export async function getPendingProposalsCount(
     try {
         const response = await axios.get<PendingProposalsCountResponse>(
             `${BACKEND_API_BASE}/proposals/${daoId}/pending-count`,
+            { withCredentials: true },
         );
         return response.data;
     } catch (error) {

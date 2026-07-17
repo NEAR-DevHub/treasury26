@@ -220,8 +220,13 @@ pub async fn get_proposals(
 
 pub async fn get_pending_proposals_count(
     State(state): State<Arc<AppState>>,
+    auth_user: OptionalAuthUser,
     Path(dao_id): Path<AccountId>,
 ) -> Result<(StatusCode, Json<PendingProposalsCount>), (StatusCode, String)> {
+    auth_user
+        .verify_confidential_guest_access(&state.db_pool, dao_id.as_ref())
+        .await?;
+
     let cache_key = CacheKey::new("dao-proposals").with(&dao_id).build();
     let (proposals, _policy): (Vec<Proposal>, Policy) = state
         .cache
@@ -371,6 +376,97 @@ pub async fn get_dao_approvers(
     };
 
     Ok((StatusCode::OK, Json(response)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        auth::{AuthUser, OptionalAuthUser},
+        utils::test_utils::build_test_state,
+    };
+
+    #[sqlx::test]
+    async fn pending_count_allows_saved_confidential_guests_and_returns_no_proposals(
+        pool: sqlx::PgPool,
+    ) {
+        let dao: AccountId = "count-test-dao.sputnik-dao.near".parse().unwrap();
+        let state = Arc::new(build_test_state(pool.clone()));
+        let guest = AuthUser {
+            account_id: "count-guest.near".parse().unwrap(),
+        };
+
+        sqlx::query!(
+            "INSERT INTO monitored_accounts (account_id, is_confidential_account) VALUES ($1, true)",
+            dao.as_str(),
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query!(
+            "INSERT INTO dao_members (dao_id, account_id, is_policy_member, is_saved, is_hidden) VALUES ($1, $2, false, true, false)",
+            dao.as_str(),
+            guest.account_id.as_str(),
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let policy: Policy = serde_json::from_value(serde_json::json!({
+            "roles": [],
+            "default_vote_policy": {},
+            "proposal_bond": "0",
+            "proposal_period": "0",
+            "bounty_bond": "0",
+            "bounty_forgiveness_period": "0"
+        }))
+        .unwrap();
+        let cache_key = CacheKey::new("dao-proposals").with(&dao).build();
+        state
+            .cache
+            .short_term
+            .insert(
+                cache_key,
+                serde_json::to_value((Vec::<Proposal>::new(), policy)).unwrap(),
+            )
+            .await;
+
+        let response = get_pending_proposals_count(
+            State(state),
+            OptionalAuthUser(Some(guest)),
+            Path(dao),
+        )
+        .await
+        .unwrap()
+        .1
+        .0;
+
+        let response_value = serde_json::to_value(response).unwrap();
+        assert_eq!(response_value, serde_json::json!({ "count": 0 }));
+        assert!(response_value.get("proposals").is_none());
+    }
+
+    #[sqlx::test]
+    async fn pending_count_rejects_unauthenticated_confidential_guests(pool: sqlx::PgPool) {
+        let dao: AccountId = "count-private-dao.sputnik-dao.near".parse().unwrap();
+        let state = Arc::new(build_test_state(pool.clone()));
+
+        sqlx::query!(
+            "INSERT INTO monitored_accounts (account_id, is_confidential_account) VALUES ($1, true)",
+            dao.as_str(),
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            get_pending_proposals_count(State(state), OptionalAuthUser(None), Path(dao))
+                .await
+                .unwrap_err()
+                .0,
+            StatusCode::UNAUTHORIZED
+        );
+    }
 }
 
 /// Enrich confidential proposals (v1.signer) with quote_metadata, status, and

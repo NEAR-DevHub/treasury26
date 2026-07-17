@@ -224,11 +224,69 @@ impl FromRequestParts<Arc<AppState>> for AuthUser {
 pub struct OptionalAuthUser(pub Option<AuthUser>);
 
 impl OptionalAuthUser {
-    /// If the given account is a confidential treasury, verify that the caller
-    /// is an authenticated DAO policy member.
+    /// Verify that the caller may view count-only data for a confidential treasury.
     ///
-    /// Returns `true` if the account is confidential, `false` otherwise.
-    /// Fails with 401/403 when confidential but the caller is missing or not a member.
+    /// Members always have access. Non-members must have explicitly saved the
+    /// treasury, which is the authenticated guest-viewer relationship used by
+    /// the treasury selector.
+    pub async fn verify_confidential_guest_access(
+        &self,
+        db: &sqlx::PgPool,
+        dao_id: &AccountIdRef,
+    ) -> Result<(), (StatusCode, String)> {
+        let row = sqlx::query!(
+            r#"
+            SELECT
+                ma.is_confidential_account,
+                dm.is_policy_member AS "is_policy_member?",
+                dm.is_saved AS "is_saved?"
+            FROM monitored_accounts ma
+            LEFT JOIN dao_members dm
+                ON dm.dao_id = ma.account_id
+                AND dm.account_id = $2
+            WHERE ma.account_id = $1
+            "#,
+            dao_id.as_str(),
+            self.0.as_ref().map(|user| user.account_id.as_str()),
+        )
+        .fetch_optional(db)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check confidential status: {}", e),
+            )
+        })?;
+
+        let is_confidential = row
+            .as_ref()
+            .and_then(|r| r.is_confidential_account)
+            .unwrap_or(false);
+
+        if !is_confidential {
+            return Ok(());
+        }
+
+        if self.0.is_none() {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                "Authentication required for confidential treasury".to_string(),
+            ));
+        }
+
+        let has_guest_access = row.as_ref().is_some_and(|row| {
+            row.is_policy_member.unwrap_or(false) || row.is_saved.unwrap_or(false)
+        });
+        if !has_guest_access {
+            return Err((
+                StatusCode::FORBIDDEN,
+                "Treasury has not been saved by this user".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
     pub async fn verify_member_if_confidential(
         &self,
         db: &sqlx::PgPool,
@@ -360,6 +418,55 @@ mod tests {
     /// touching the network. If the seeded key didn't match `fetch_treasury_policy_cached`'s key,
     /// this would miss the cache and RPC a non-existent test DAO and error — so a passing assertion
     /// also proves the seed and fetch keys agree.
+    #[sqlx::test]
+    async fn confidential_guest_access_requires_a_saved_treasury(pool: sqlx::PgPool) {
+        let dao: AccountId = "confidential-dao.sputnik-dao.near".parse().unwrap();
+        let guest = AuthUser {
+            account_id: "guest.near".parse().unwrap(),
+        };
+        let unauthorized = OptionalAuthUser(Some(guest.clone()));
+
+        sqlx::query!(
+            "INSERT INTO monitored_accounts (account_id, is_confidential_account) VALUES ($1, true)",
+            dao.as_str(),
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            unauthorized
+                .verify_confidential_guest_access(&pool, &dao)
+                .await
+                .unwrap_err()
+                .0,
+            StatusCode::FORBIDDEN
+        );
+
+        sqlx::query!(
+            "INSERT INTO dao_members (dao_id, account_id, is_policy_member, is_saved, is_hidden) VALUES ($1, $2, false, true, false)",
+            dao.as_str(),
+            guest.account_id.as_str(),
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        OptionalAuthUser(Some(guest))
+            .verify_confidential_guest_access(&pool, &dao)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            OptionalAuthUser(None)
+                .verify_confidential_guest_access(&pool, &dao)
+                .await
+                .unwrap_err()
+                .0,
+            StatusCode::UNAUTHORIZED
+        );
+    }
+
     #[sqlx::test]
     async fn seeded_policy_is_served_from_cache(pool: sqlx::PgPool) {
         let state = Arc::new(build_test_state(pool));
