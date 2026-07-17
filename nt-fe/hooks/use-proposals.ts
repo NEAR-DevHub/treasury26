@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient, type Query } from "@tanstack/react-query";
 import {
+    getPendingProposalsCount,
     getProposals,
     ProposalFilters,
     ProposalsResponse,
@@ -63,6 +64,18 @@ export function useProposals(
         staleTime: 1000 * 10, // 10 seconds (proposals can change frequently)
         refetchOnMount: options?.refetchOnMount,
         refetchInterval: options?.refetchInterval,
+    });
+}
+
+export function usePendingProposalsCount(
+    daoId: string | null | undefined,
+    enabled: boolean = true,
+) {
+    return useQuery({
+        queryKey: ["pending-proposals-count", daoId],
+        queryFn: () => getPendingProposalsCount(daoId!),
+        enabled: enabled && !!daoId,
+        staleTime: 1000 * 10,
     });
 }
 

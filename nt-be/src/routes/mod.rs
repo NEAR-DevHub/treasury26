@@ -205,6 +205,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::proposals::get_proposals::get_proposals),
         )
         .route(
+            "/api/proposals/{dao_id}/pending-count",
+            get(handlers::proposals::get_proposals::get_pending_proposals_count),
+        )
+        .route(
             "/api/proposal/{dao_id}/{proposal_id}",
             get(handlers::proposals::get_proposals::get_proposal),
         )

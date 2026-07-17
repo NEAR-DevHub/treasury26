@@ -300,6 +300,10 @@ export interface ProposalsResponse {
     proposals: Proposal[];
 }
 
+export interface PendingProposalsCountResponse {
+    count: number;
+}
+
 /**
  * Sputnik unit-variant kinds (only `Vote` today) serialize to plain JSON
  * strings in the contract state the backend passes through verbatim.
@@ -468,6 +472,24 @@ export async function getProposals(
     } catch (error) {
         console.error(`Error getting proposals for DAO ${daoId}`, error);
         return { page: 0, page_size: 0, total: 0, proposals: [] };
+    }
+}
+
+export async function getPendingProposalsCount(
+    daoId: string,
+): Promise<PendingProposalsCountResponse> {
+    if (!daoId) {
+        return { count: 0 };
+    }
+
+    try {
+        const response = await axios.get<PendingProposalsCountResponse>(
+            `${BACKEND_API_BASE}/proposals/${daoId}/pending-count`,
+        );
+        return response.data;
+    } catch (error) {
+        console.error(`Error getting pending proposals count for DAO ${daoId}`, error);
+        return { count: 0 };
     }
 }
 

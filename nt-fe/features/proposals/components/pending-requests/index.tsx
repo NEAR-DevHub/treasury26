@@ -9,7 +9,10 @@ import { NumberBadge } from "@/components/number-badge";
 import { SlotWarning } from "@/components/warning-message";
 import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useProposals } from "@/hooks/use-proposals";
+import {
+    usePendingProposalsCount,
+    useProposals,
+} from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
@@ -240,6 +243,10 @@ export function PendingRequests() {
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
     const isHidden = isConfidential && isGuestTreasury;
     const router = useRouter();
+    const { data: pendingProposalsCount } = usePendingProposalsCount(
+        treasuryId,
+        isHidden,
+    );
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
     const [voteInfo, setVoteInfo] = useState<{
@@ -268,6 +275,11 @@ export function PendingRequests() {
                         <h1 className="font-semibold text-nowrap">
                             {t("title")}
                         </h1>
+                        {(pendingProposalsCount?.count ?? 0) > 0 && (
+                            <NumberBadge
+                                number={pendingProposalsCount?.count ?? 0}
+                            />
+                        )}
                     </div>
                 </div>
                 <ConfidentialState skeleton={<PendingRequestsGridSkeleton />} />

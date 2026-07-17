@@ -11,8 +11,8 @@ use std::sync::Arc;
 use crate::handlers::proposals::{
     filters::{ProposalFilters, SortBy},
     scraper::{
-        Policy, Proposal, extract_from_description, extract_payload_hash_from_kind, fetch_policy,
-        fetch_proposal, fetch_proposals,
+        Policy, Proposal, ProposalStatus, extract_from_description, extract_payload_hash_from_kind,
+        fetch_policy, fetch_proposal, fetch_proposals,
     },
 };
 use crate::{
@@ -65,6 +65,11 @@ pub struct PaginatedProposals {
     pub total: usize,
     pub page: usize,
     pub page_size: usize,
+}
+
+#[derive(serde::Serialize)]
+pub struct PendingProposalsCount {
+    pub count: usize,
 }
 
 #[derive(sqlx::FromRow)]
@@ -211,6 +216,28 @@ pub async fn get_proposals(
     };
 
     Ok((StatusCode::OK, Json(response)))
+}
+
+pub async fn get_pending_proposals_count(
+    State(state): State<Arc<AppState>>,
+    Path(dao_id): Path<AccountId>,
+) -> Result<(StatusCode, Json<PendingProposalsCount>), (StatusCode, String)> {
+    let cache_key = CacheKey::new("dao-proposals").with(&dao_id).build();
+    let (proposals, _policy): (Vec<Proposal>, Policy) = state
+        .cache
+        .cached_contract_call(CacheTier::ShortTerm, cache_key, async {
+            let proposals = fetch_proposals(&state.network, &dao_id).await?;
+            let policy = fetch_policy(&state.network, &dao_id).await?;
+            Ok((proposals, policy))
+        })
+        .await?;
+
+    let count = proposals
+        .iter()
+        .filter(|proposal| proposal.status == ProposalStatus::InProgress)
+        .count();
+
+    Ok((StatusCode::OK, Json(PendingProposalsCount { count })))
 }
 
 pub async fn get_proposal(
