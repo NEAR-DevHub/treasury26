@@ -1332,7 +1332,8 @@
             },
             "passkeyCardTitle": "Touch ID 및 Face ID용 패스키",
             "passkeyCardSubtitle": "기기의 생체 인식 또는 비밀번호로 로그인하세요",
-            "passkeyCardBadge": "간편한 시작을 위해 추천"
+            "passkeyCardBadge": "쉽고 안전하게",
+            "web3WalletsSeparator": "Web3 지갑"
         },
         "unexpectedError": "예기치 않은 오류가 발생했습니다",
         "creationFailed": "트레저리 생성에 실패했습니다. 다시 시도해 주세요.",

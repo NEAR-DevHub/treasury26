@@ -1332,7 +1332,8 @@
             },
             "passkeyCardTitle": "Passkey para Touch ID e Face ID",
             "passkeyCardSubtitle": "Entre com a biometria ou o código do seu dispositivo",
-            "passkeyCardBadge": "Recomendado para uma integração simples"
+            "passkeyCardBadge": "Fácil e seguro",
+            "web3WalletsSeparator": "Carteiras Web3"
         },
         "unexpectedError": "Ocorreu um erro inesperado",
         "creationFailed": "Falha ao criar tesouraria. Por favor, tente novamente.",

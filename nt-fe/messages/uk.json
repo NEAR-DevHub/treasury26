@@ -1315,7 +1315,8 @@
             },
             "passkeyCardTitle": "Passkey для Touch ID та Face ID",
             "passkeyCardSubtitle": "Увійдіть за допомогою біометрії або коду доступу пристрою",
-            "passkeyCardBadge": "Рекомендовано для простого старту"
+            "passkeyCardBadge": "Просто й безпечно",
+            "web3WalletsSeparator": "Web3-гаманці"
         },
         "unexpectedError": "Сталася неочікувана помилка",
         "creationFailed": "Не вдалось створити скарбницю. Спробуйте ще раз.",

@@ -366,40 +366,50 @@ export function ConnectWalletSelector({
                                         isConnectingWallet || isOfflineBlocked
                                     }
                                 >
-                                    <div className="flex w-full items-start gap-3">
-                                        <WalletOptionIcon wallet={wallet} />
-                                        <div className="flex min-w-0 flex-1 flex-col gap-1">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <span className="text-lg font-semibold">
-                                                    {t(
-                                                        "walletSelector.passkeyCardTitle",
-                                                    )}
-                                                </span>
-                                                <Pill
-                                                    title={badge.label}
-                                                    info={
-                                                        "tooltip" in badge
-                                                            ? badge.tooltip
-                                                            : undefined
-                                                    }
-                                                    className={
-                                                        "isOffline" in badge &&
-                                                        badge.isOffline
-                                                            ? "shrink-0 bg-general-warning-background-faded text-general-warning-foreground"
-                                                            : "shrink-0 bg-general-success-background-faded text-general-success-foreground"
-                                                    }
-                                                />
-                                            </div>
-                                            <span className="text-sm font-normal text-muted-foreground whitespace-normal">
-                                                {t(
-                                                    "walletSelector.passkeyCardSubtitle",
-                                                )}
-                                            </span>
+                                    <div className="flex w-full flex-col gap-2">
+                                        <div className="flex items-center justify-between">
+                                            <WalletOptionIcon wallet={wallet} />
+                                            <Pill
+                                                title={badge.label}
+                                                info={
+                                                    "tooltip" in badge
+                                                        ? badge.tooltip
+                                                        : undefined
+                                                }
+                                                className={
+                                                    "isOffline" in badge &&
+                                                    badge.isOffline
+                                                        ? "shrink-0 bg-general-warning-background-faded text-general-warning-foreground"
+                                                        : "shrink-0 bg-general-success-background-faded text-general-success-foreground"
+                                                }
+                                            />
                                         </div>
+                                        <div className="text-lg font-semibold">
+                                            {t(
+                                                "walletSelector.passkeyCardTitle",
+                                            )}
+                                        </div>
+                                        <span className="text-sm font-normal text-muted-foreground whitespace-normal">
+                                            {t(
+                                                "walletSelector.passkeyCardSubtitle",
+                                            )}
+                                        </span>
                                     </div>
                                 </Button>
                             );
                         })()}
+                    {passkeyOption && (
+                        <div
+                            role="separator"
+                            className="flex items-center gap-3 sm:col-span-2"
+                        >
+                            <span className="h-px flex-1 bg-border" />
+                            <span className="text-xs font-medium text-muted-foreground">
+                                {t("walletSelector.web3WalletsSeparator")}
+                            </span>
+                            <span className="h-px flex-1 bg-border" />
+                        </div>
+                    )}
                     {otherOptions.map((wallet) => {
                         // Use aria-disabled (not disabled) when offline so the
                         // Offline badge tooltip can still receive hover events.

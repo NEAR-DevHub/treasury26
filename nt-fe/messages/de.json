@@ -1332,7 +1332,8 @@
             },
             "passkeyCardTitle": "Passkey für Touch ID und Face ID",
             "passkeyCardSubtitle": "Melde dich mit der Biometrie oder dem Code deines Geräts an",
-            "passkeyCardBadge": "Empfohlen für einfaches Onboarding"
+            "passkeyCardBadge": "Einfach & Sicher",
+            "web3WalletsSeparator": "Web3-Wallets"
         },
         "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
         "creationFailed": "Erstellung der Treasury fehlgeschlagen. Bitte erneut versuchen.",

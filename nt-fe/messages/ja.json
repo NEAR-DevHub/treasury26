@@ -1332,7 +1332,8 @@
             },
             "passkeyCardTitle": "Touch ID・Face ID対応のパスキー",
             "passkeyCardSubtitle": "デバイスの生体認証またはパスコードでサインイン",
-            "passkeyCardBadge": "スムーズな導入におすすめ"
+            "passkeyCardBadge": "簡単・安全",
+            "web3WalletsSeparator": "Web3ウォレット"
         },
         "unexpectedError": "予期しないエラーが発生しました",
         "creationFailed": "トレジャリーの作成に失敗しました。もう一度お試しください。",
