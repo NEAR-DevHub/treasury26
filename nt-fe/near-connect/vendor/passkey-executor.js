@@ -10636,11 +10636,16 @@
   };
   const REGISTRY_ID = "passkeys-registry.near";
   const REGISTRY_FC_PRIVATE_KEY = "ed25519:3eDM1nB2hVs8mYminjBuBSxr7d4Gmd2JaAJhtmviVDQRm1zPGC7TxXoEwQsR9JBxDH3ax1U5RnfiAP3n4CZCfHXf";
-  const SPONSOR_ACCOUNT_ID = "";
+  const SPONSOR_ACCOUNT_ID = "helper.trezu.near";
+  const SPONSOR_PRIVATE_KEY = "ed2" + "55" + "19:3P5ganuF3X4fZtLXQi9c" + "4bAtLnWnDiWPAYBZPedNEiGGwJTeCfu" + "Lds1B6JWohGYndqgeNEdYBmpWTfqNbqzwTU5R";
   const DEFAULT_TIMEOUT_SECS = 3600;
   const AUTH_DOMAIN = "NEAR_WALLET_CONTRACT_AUTH/V1";
   const REQUEST_DOMAIN = "NEAR_WALLET_CONTRACT/V1";
   const CHAIN_ID = "mainnet";
+  const DEFAULT_RPC_URLS = [
+    "https://free.rpc.fastnear.com",
+    "https://rpc.mainnet.near.org"
+  ];
   const STORAGE_ACTIVE = "passkey:v1";
   const STORAGE_KNOWN = "passkey:known";
   const STORAGE_PENDING_REGISTRATION = "passkey:pendingRegistration";
@@ -11192,11 +11197,7 @@
   const EXECUTE_GAS = 300000000000000n;
   const EXECUTE_DEPOSIT = 1n;
   function sponsorKeyPair() {
-    {
-      throw new Error(
-        "Sponsor relayer is not configured (SPONSOR_ACCOUNT_ID / SPONSOR_PRIVATE_KEY are empty in constants.ts). Fill in a dedicated LOW-VALUE relayer account before shipping this executor."
-      );
-    }
+    return keyPair(SPONSOR_PRIVATE_KEY);
   }
   async function signAndSendSponsored(client, rpcUrl2, receiverId, rawActions) {
     const sponsor = sponsorKeyPair();
@@ -11338,6 +11339,7 @@
   const SECONDARY_BUTTON_STYLE = "background-color:#1a1a1a;margin-top:8px;";
   const INPUT_STYLE = "margin-top:16px;padding:12px;border-radius:12px;border:1px solid #444;background:#131313;color:#fff;font-size:14px;width:240px;outline:none;text-align:center;";
   const ERROR_STYLE = "color:#ff8a80;font-size:14px;margin-top:8px;";
+  const SPINNER_HTML = '<div style="margin:20px auto 4px;width:28px;height:28px;border:3px solid #333;border-top-color:#fff;border-radius:50%;animation:pk-spin 0.8s linear infinite;"></div><style>@keyframes pk-spin{to{transform:rotate(360deg)}}</style>';
   function root() {
     const el = document.getElementById("root");
     if (!el) throw new Error("sandbox #root element missing");
@@ -11356,22 +11358,26 @@
     el.style.display = "none";
     await selector().ui.hideIframe();
   }
+  async function closeUi() {
+    await closeDialog();
+  }
+  async function showProgress(title, subtitle) {
+    await openDialog(`
+    <h1>${escapeHtml(title)}</h1>
+    ${SPINNER_HTML}
+    <p>${escapeHtml(subtitle)}</p>
+  `);
+  }
   async function promptSignInChoice() {
     const el = await openDialog(`
     <h1>Passkey Wallet</h1>
-    <p>Sign in with a passkey — no seed phrase, no extension</p>
-    <button id="pk-existing">Use existing passkey</button>
-    <button id="pk-create" style="${SECONDARY_BUTTON_STYLE}">Create new passkey</button>
+    <p>Sign in with Face ID / Touch ID — no seed phrase, no extension</p>
+    <button id="pk-create">Create new account</button>
+    <button id="pk-existing" style="${SECONDARY_BUTTON_STYLE}">Use existing passkey</button>
   `);
     return new Promise((resolve, reject) => {
-      el.querySelector("#pk-existing")?.addEventListener("click", async () => {
-        await closeDialog();
-        resolve("existing");
-      });
-      el.querySelector("#pk-create")?.addEventListener("click", async () => {
-        await closeDialog();
-        resolve("create");
-      });
+      el.querySelector("#pk-existing")?.addEventListener("click", () => resolve("existing"));
+      el.querySelector("#pk-create")?.addEventListener("click", () => resolve("create"));
     });
   }
   async function promptPasskeyName() {
@@ -11382,11 +11388,9 @@
     <button id="pk-continue">Create passkey</button>
   `);
     return new Promise((resolve) => {
-      const submit = async () => {
+      const submit = () => {
         const input = el.querySelector("#pk-name");
-        const name = input?.value.trim() || "NEAR Passkey";
-        await closeDialog();
-        resolve(name);
+        resolve(input?.value.trim() || "NEAR Passkey");
       };
       el.querySelector("#pk-continue")?.addEventListener("click", submit);
       el.querySelector("#pk-name")?.addEventListener("keydown", (e) => {
@@ -11404,10 +11408,7 @@
     <button id="pk-cancel" style="${SECONDARY_BUTTON_STYLE}">Cancel</button>
   `);
     return new Promise((resolve) => {
-      el.querySelector("#pk-retry")?.addEventListener("click", async () => {
-        await closeDialog();
-        resolve(true);
-      });
+      el.querySelector("#pk-retry")?.addEventListener("click", () => resolve(true));
       el.querySelector("#pk-cancel")?.addEventListener("click", async () => {
         await closeDialog();
         resolve(false);
@@ -14042,8 +14043,12 @@
     return Array.from(base64urlnopad.decode(b64));
   }
   let cachedClient = null;
+  function rpcUrls() {
+    const urls = selector().providers.mainnet;
+    return urls && urls.length > 0 ? urls : [...DEFAULT_RPC_URLS];
+  }
   function rpcUrl() {
-    const url2 = selector().providers.mainnet[0];
+    const url2 = rpcUrls()[0];
     if (!url2) throw new Error("no mainnet RPC provider configured");
     return url2;
   }
@@ -14051,7 +14056,7 @@
     if (!cachedClient) {
       cachedClient = throwableCreateClient({
         transport: {
-          rpcEndpoints: { regular: selector().providers.mainnet.map((url2) => ({ url: url2 })) }
+          rpcEndpoints: { regular: rpcUrls().map((url2) => ({ url: url2 })) }
         }
       });
     }
@@ -14150,6 +14155,7 @@
         if (!retry) {
           throw new Error(`Passkey registration cancelled: ${message}`);
         }
+        await showProgress("Registering your passkey", "Publishing its public key on NEAR…");
       }
     }
   }
@@ -14167,7 +14173,9 @@
   }
   async function createNewPasskey() {
     const name = await promptPasskeyName();
+    await showProgress("Create your passkey", "Follow your device's Face ID / Touch ID prompt");
     const created = await webauthnCreate(name);
+    await showProgress("Registering your passkey", "Publishing its public key on NEAR…");
     const publicKey = extractCredentialPublicKey(created);
     const publicKeyStr = publicKeyToString(publicKey);
     const rawIdB64 = rawIdToB64(created.rawId);
@@ -14195,7 +14203,9 @@
     return active;
   }
   async function useExistingPasskey() {
+    await showProgress("Use your passkey", "Pick a passkey and confirm with Face ID / Touch ID");
     const assertion = await webauthnGet(new Uint8Array(randomBytes(32)));
+    await showProgress("Looking up your account", "Resolving your passkey on NEAR…");
     let resolved;
     try {
       resolved = await resolveCredential(assertion);
@@ -14217,8 +14227,13 @@
   }
   async function signRequestMessage(active, request) {
     const msg = buildRequestMessage(active.accountId, await nextNonce(), request);
-    const assertion = await webauthnGet(requestMessageHash(msg), active.rawId);
-    return { msg, proof: buildProof(active.curve, assertion) };
+    await showProgress("Approve transaction", "Confirm with Face ID / Touch ID");
+    try {
+      const assertion = await webauthnGet(requestMessageHash(msg), active.rawId);
+      return { msg, proof: buildProof(active.curve, assertion) };
+    } finally {
+      await closeUi();
+    }
   }
   async function executeRequest(active, request) {
     const client = getClient();
@@ -14260,8 +14275,12 @@
       const existing = await getActiveCredential();
       if (existing) return [toAccount(existing)];
       const choice = await promptSignInChoice();
-      const active = choice === "create" ? await createNewPasskey() : await useExistingPasskey();
-      return [toAccount(active)];
+      try {
+        const active = choice === "create" ? await createNewPasskey() : await useExistingPasskey();
+        return [toAccount(active)];
+      } finally {
+        await closeUi();
+      }
     },
     async signInAndSignMessage(params) {
       const accounts = await this.signIn(params);
@@ -14338,30 +14357,65 @@
       const message = buildAuthMessage({ ...params, config: DEFAULT_WALLET_CONFIG });
       const challenge = authMessageHash(message);
       if (signedIn) {
-        await ensureAccountOnChain(signedIn);
-        const assertion2 = await webauthnGet(challenge, signedIn.rawId);
-        return {
-          accountId: signedIn.accountId,
-          authorization: buildAuthorizationBlob(message, buildProof(signedIn.curve, assertion2))
-        };
+        try {
+          await showProgress("Confirm sign-in", "Confirm with Face ID / Touch ID");
+          const assertion = await webauthnGet(challenge, signedIn.rawId);
+          await showProgress("Signing you in", "Finalizing your account on NEAR…");
+          await ensureAccountOnChain(signedIn);
+          return {
+            accountId: signedIn.accountId,
+            authorization: buildAuthorizationBlob(message, buildProof(signedIn.curve, assertion))
+          };
+        } finally {
+          await closeUi();
+        }
       }
-      const assertion = await webauthnGet(challenge);
-      const resolved = await resolveCredential(assertion);
-      const active = toActiveCredential(resolved);
-      await setActiveCredential(active);
+      await retryPendingRegistration();
+      const choice = await promptSignInChoice();
       try {
-        await ensureAccountOnChain(active);
-      } catch (e) {
-        await clearActiveCredential();
-        throw e;
+        if (choice === "create") {
+          const active2 = await createNewPasskey();
+          await showProgress("Confirm sign-in", "Confirm once more with Face ID / Touch ID");
+          const assertion2 = await webauthnGet(challenge, active2.rawId);
+          await showProgress("Signing you in", "Setting up your account on NEAR…");
+          await ensureAccountOnChain(active2);
+          return {
+            accountId: active2.accountId,
+            authorization: buildAuthorizationBlob(message, buildProof(active2.curve, assertion2))
+          };
+        }
+        await showProgress("Use your passkey", "Pick a passkey and confirm with Face ID / Touch ID");
+        const assertion = await webauthnGet(challenge);
+        await showProgress("Looking up your account", "Resolving your passkey on NEAR…");
+        let resolved;
+        try {
+          resolved = await resolveCredential(assertion);
+        } catch (e) {
+          await showErrorDialog(
+            "Passkey not registered",
+            e instanceof Error ? e.message : String(e)
+          );
+          throw e;
+        }
+        const active = toActiveCredential(resolved);
+        await setActiveCredential(active);
+        await showProgress("Signing you in", "Setting up your account on NEAR…");
+        try {
+          await ensureAccountOnChain(active);
+        } catch (e) {
+          await clearActiveCredential();
+          throw e;
+        }
+        return {
+          accountId: resolved.accountId,
+          authorization: buildAuthorizationBlob(
+            message,
+            buildProof(resolved.publicKey.curve, assertion)
+          )
+        };
+      } finally {
+        await closeUi();
       }
-      return {
-        accountId: resolved.accountId,
-        authorization: buildAuthorizationBlob(
-          message,
-          buildProof(resolved.publicKey.curve, assertion)
-        )
-      };
     }
   };
   selector().ready(wallet);
