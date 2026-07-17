@@ -119,9 +119,9 @@ export function getActivityStatus(activity: ActivityAccount): ActivityStatus {
  * 1. Swaps → "Exchange"
  * 2. Staking rewards → "Staking Rewards"
  * 3. Proposal actions → "Proposal Action"
- * 4. Incoming → "Deposit [TOKEN]"
- * 5. Outgoing → "Payment Sent"
- * 6. No action data → "Transaction"
+ * 4. Positive amount → "Deposit [TOKEN]"
+ * 5. Negative amount or action data → "Payment Sent"
+ * 6. No direction or action data → "Transaction"
  */
 export interface ActivityLabels {
     exchangePending: string;
@@ -157,13 +157,13 @@ export function getActivityLabel(
         return labels.proposalAction;
     }
 
-    const isReceived = parseFloat(activity.amount ?? "0") > 0;
+    const amount = parseFloat(activity.amount ?? "0");
 
-    if (activity.actionKind) {
-        if (isReceived) {
-            const symbol = activity.tokenSymbol || labels.fallbackToken;
-            return labels.deposit(symbol);
-        }
+    if (amount > 0) {
+        const symbol = activity.tokenSymbol || labels.fallbackToken;
+        return labels.deposit(symbol);
+    }
+    if (amount < 0 || activity.actionKind) {
         return labels.paymentSent;
     }
 

@@ -152,11 +152,19 @@ pub fn quote_status_is_success(metadata: Option<&Value>) -> bool {
     )
 }
 
-pub fn quote_status_is_failed(metadata: Option<&Value>) -> bool {
+/// 1Click terminal failure statuses (lowercased), including
+/// `INCOMPLETE_DEPOSIT` which the API never advances past.
+pub fn quote_status_str_is_failed(status: &str) -> bool {
     matches!(
-        quote_status_text_from_metadata(metadata).as_deref(),
-        Some("failed") | Some("refunded") | Some("failure")
+        status,
+        "failed" | "refunded" | "failure" | "incomplete_deposit"
     )
+}
+
+pub fn quote_status_is_failed(metadata: Option<&Value>) -> bool {
+    quote_status_text_from_metadata(metadata)
+        .as_deref()
+        .is_some_and(quote_status_str_is_failed)
 }
 
 pub fn quote_status_is_terminal(metadata: Option<&Value>) -> bool {
@@ -235,7 +243,10 @@ pub const QUOTE_LEG_MATCH_SQL: &str = r#"
         )
         OR (
             dp.quote_metadata->'proposalQuote'->>'originAsset' LIKE 'intents.near:%'
-            AND dp.quote_metadata->'proposalQuote'->>'originAsset' = l.token_id
+            AND (
+                dp.quote_metadata->'proposalQuote'->>'originAsset' = l.token_id
+                OR substring(dp.quote_metadata->'proposalQuote'->>'originAsset' from 14) = l.token_id
+            )
         )
     )
 "#;
@@ -277,6 +288,17 @@ mod tests {
             quote
         );
         assert!(quote_status_is_success(Some(&merged)));
+    }
+
+    #[test]
+    fn incomplete_deposit_is_terminal_and_failed() {
+        let envelope = json!({ "status": { "status": "INCOMPLETE_DEPOSIT" } });
+        assert!(quote_status_is_terminal(Some(&envelope)));
+        assert!(quote_status_is_failed(Some(&envelope)));
+
+        let bare = json!({ "status": "INCOMPLETE_DEPOSIT" });
+        assert!(quote_status_is_terminal(Some(&bare)));
+        assert!(!quote_status_is_success(Some(&bare)));
     }
 
     #[test]

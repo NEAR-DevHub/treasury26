@@ -53,7 +53,7 @@ async fn claim_stale_quote_proposals(
                   OR COALESCE(
                       UPPER(quote_metadata->'status'->>'status'),
                       UPPER(quote_metadata->>'status')
-                  ) NOT IN ('SUCCESS', 'FAILED', 'REFUNDED')
+                  ) NOT IN ('SUCCESS', 'FAILED', 'REFUNDED', 'INCOMPLETE_DEPOSIT')
               )
             ORDER BY COALESCE(proposal_executed_at, proposal_created_at) DESC
             LIMIT $1
@@ -78,12 +78,32 @@ async fn apply_quote_status(
     proposal: &StaleQuoteProposal,
     status: Value,
 ) -> Result<u64, sqlx::Error> {
-    let current = quote_status_value_from_metadata(proposal.quote_metadata.as_ref());
-    if current == Some(&status) {
+    // The claim lock is released before the 1Click fetch, so the linker may
+    // have merged newer metadata meanwhile; reload under lock and merge
+    // against the current value, never regressing a terminal status.
+    let current: Option<Value> = sqlx::query_scalar(
+        r#"
+        SELECT quote_metadata
+        FROM dao_proposals
+        WHERE dao_id = $1
+          AND proposal_id = $2
+        FOR UPDATE
+        "#,
+    )
+    .bind(&proposal.dao_id)
+    .bind(proposal.proposal_id)
+    .fetch_optional(&mut **tx)
+    .await?
+    .flatten();
+
+    if quote_status_is_terminal(current.as_ref()) {
+        return Ok(0);
+    }
+    if quote_status_value_from_metadata(current.as_ref()) == Some(&status) {
         return Ok(0);
     }
 
-    let merged = merge_quote_status(proposal.quote_metadata.as_ref(), status);
+    let merged = merge_quote_status(current.as_ref(), status);
     let updated = sqlx::query(
         r#"
         UPDATE dao_proposals

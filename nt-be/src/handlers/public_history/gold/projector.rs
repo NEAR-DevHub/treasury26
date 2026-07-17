@@ -18,7 +18,7 @@ use super::repository::{
 };
 use crate::handlers::public_history::quotes::{
     QuoteProposalSnapshot, QuoteProposalType, proposal_quote_from_metadata, quote_amount_matches,
-    quote_asset_matches_token, quote_status_value_from_metadata,
+    quote_asset_matches_token, quote_status_str_is_failed, quote_status_value_from_metadata,
 };
 use crate::handlers::public_history::silver::models::{
     PublicTransactionType, PublicTransferDirection, PublicTransferLegKind, SilverTransferLegRow,
@@ -65,10 +65,9 @@ impl ParsedQuoteStatus {
     }
 
     fn is_failed_terminal(&self) -> bool {
-        matches!(
-            self.status.as_deref(),
-            Some("failed") | Some("refunded") | Some("failure")
-        )
+        self.status
+            .as_deref()
+            .is_some_and(quote_status_str_is_failed)
     }
 
     fn is_success(&self) -> bool {
