@@ -224,16 +224,16 @@ pub async fn get_pending_proposals_count(
     Path(dao_id): Path<AccountId>,
 ) -> Result<(StatusCode, Json<PendingProposalsCount>), (StatusCode, String)> {
     auth_user
-        .verify_confidential_guest_access(&state.db_pool, dao_id.as_ref())
+        .verify_guest_treasury_access(&state.db_pool, dao_id.as_ref())
         .await?;
 
-    let cache_key = CacheKey::new("dao-proposals").with(&dao_id).build();
-    let (proposals, _policy): (Vec<Proposal>, Policy) = state
+    let cache_key = CacheKey::new("dao-pending-proposals-count")
+        .with(&dao_id)
+        .build();
+    let proposals: Vec<Proposal> = state
         .cache
         .cached_contract_call(CacheTier::ShortTerm, cache_key, async {
-            let proposals = fetch_proposals(&state.network, &dao_id).await?;
-            let policy = fetch_policy(&state.network, &dao_id).await?;
-            Ok((proposals, policy))
+            fetch_proposals(&state.network, &dao_id).await
         })
         .await?;
 
@@ -397,13 +397,6 @@ mod tests {
         };
 
         sqlx::query!(
-            "INSERT INTO monitored_accounts (account_id, is_confidential_account) VALUES ($1, true)",
-            dao.as_str(),
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-        sqlx::query!(
             "INSERT INTO dao_members (dao_id, account_id, is_policy_member, is_saved, is_hidden) VALUES ($1, $2, false, true, false)",
             dao.as_str(),
             guest.account_id.as_str(),
@@ -412,23 +405,13 @@ mod tests {
         .await
         .unwrap();
 
-        let policy: Policy = serde_json::from_value(serde_json::json!({
-            "roles": [],
-            "default_vote_policy": {},
-            "proposal_bond": "0",
-            "proposal_period": "0",
-            "bounty_bond": "0",
-            "bounty_forgiveness_period": "0"
-        }))
-        .unwrap();
-        let cache_key = CacheKey::new("dao-proposals").with(&dao).build();
+        let cache_key = CacheKey::new("dao-pending-proposals-count")
+            .with(&dao)
+            .build();
         state
             .cache
             .short_term
-            .insert(
-                cache_key,
-                serde_json::to_value((Vec::<Proposal>::new(), policy)).unwrap(),
-            )
+            .insert(cache_key, serde_json::to_value(Vec::<Proposal>::new()).unwrap())
             .await;
 
         let response = get_pending_proposals_count(
@@ -450,14 +433,6 @@ mod tests {
     async fn pending_count_rejects_unauthenticated_confidential_guests(pool: sqlx::PgPool) {
         let dao: AccountId = "count-private-dao.sputnik-dao.near".parse().unwrap();
         let state = Arc::new(build_test_state(pool.clone()));
-
-        sqlx::query!(
-            "INSERT INTO monitored_accounts (account_id, is_confidential_account) VALUES ($1, true)",
-            dao.as_str(),
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
 
         assert_eq!(
             get_pending_proposals_count(State(state), OptionalAuthUser(None), Path(dao))
