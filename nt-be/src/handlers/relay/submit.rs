@@ -191,8 +191,7 @@ async fn submit_relay(
         }
     };
 
-    result.map_err(|error_message| {
-        tracing::error!("Relay execution failed: {}", error_message);
-        error_response(StatusCode::INTERNAL_SERVER_ERROR, error_message)
-    })
+    // `error_response` logs the failure at ERROR (→ Sentry); no extra log
+    // here or the same failure would produce two events.
+    result.map_err(|error_message| error_response(StatusCode::INTERNAL_SERVER_ERROR, error_message))
 }

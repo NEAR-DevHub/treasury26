@@ -17,6 +17,7 @@
 
 pub mod context;
 pub mod handlers;
+pub mod watchdog;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -52,6 +53,33 @@ impl JobQueues {
             .iter()
             .find(|(queue, _)| *queue == name)
             .map(|(_, storage)| storage)
+    }
+}
+
+/// Registration-time accumulator: board entries plus the watchdog specs that
+/// mirror them. Filled by `register_cron_worker!`, split apart at the end of
+/// [`spawn_all`].
+#[derive(Default)]
+struct QueueRegistry {
+    entries: Vec<(&'static str, TickStorage)>,
+    specs: Vec<watchdog::JobSpec>,
+}
+
+impl QueueRegistry {
+    fn register(&mut self, name: &'static str, storage: TickStorage, interval_secs: Option<u64>) {
+        self.entries.push((name, storage));
+        match interval_secs {
+            Some(interval_secs) => self.specs.push(watchdog::JobSpec {
+                queue: name,
+                kind: watchdog::QueueKind::Cron { interval_secs },
+            }),
+            // A schedule with fewer than two upcoming ticks can't yield a
+            // cadence; leave the queue off the watchdog rather than guess.
+            None => tracing::warn!(
+                queue = name,
+                "could not derive cron interval; queue not watched for staleness"
+            ),
+        }
     }
 }
 
@@ -261,8 +289,12 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
 macro_rules! register_cron_worker {
     ($monitor:expr, $queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
         let store = storage(&$state.db_pool, $name);
-        $queues.push(($name, store.clone()));
         let schedule = $schedule;
+        $queues.register(
+            $name,
+            store.clone(),
+            watchdog::schedule_interval_secs(&schedule),
+        );
         let state = $state.clone();
         // `register` takes a factory `Fn(attempt) -> Worker`: the Monitor
         // calls it to (re)build the worker, so a restart gets a fresh
@@ -312,7 +344,7 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
         .await
         .expect("failed to run apalis migrations");
 
-    let mut queues: Vec<(&'static str, TickStorage)> = Vec::new();
+    let mut queues = QueueRegistry::default();
 
     // apalis's own supervisor: runs every worker, restarts one that exits
     // (backend/storage failure) via `should_restart`, and drains in-flight
@@ -368,11 +400,21 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
     }
 
     if state.env_vars.nearblocks_api_key.is_some() {
-        crate::handlers::public_history::bronze::jobs::start_public_history_queue_workers(
-            state.clone(),
-        )
-        .await
-        .expect("failed to start public history queue workers");
+        // Task-queue (non-cron) workers, supervised by the same Monitor so
+        // they get restart-on-exit, catch_panic, and Sentry like cron jobs.
+        monitor =
+            crate::handlers::public_history::bronze::jobs::start_public_history_queue_workers(
+                monitor,
+                state.clone(),
+            )
+            .await
+            .expect("failed to start public history queue workers");
+        for queue in crate::handlers::public_history::bronze::jobs::QUEUE_NAMES {
+            queues.specs.push(watchdog::JobSpec {
+                queue,
+                kind: watchdog::QueueKind::Queue,
+            });
+        }
 
         monitor = register_cron_worker!(
             monitor,
@@ -546,6 +588,7 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
         // Look the queue up by name — relying on `last()` breaks silently
         // if another queue is later registered below this block.
         if let Some(store) = queues
+            .entries
             .iter()
             .find(|(name, _)| *name == "treasury-creation-sweeper")
             .map(|(_, s)| s.clone())
@@ -660,7 +703,21 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
         handlers::apalis_prune
     );
 
-    let queues = JobQueues { entries: queues };
+    // Watchdog: alerts (ERROR → Sentry) when any registered queue stops
+    // making progress. Its registry is installed below, once every queue is
+    // known.
+    monitor = register_cron_worker!(
+        monitor,
+        queues,
+        state,
+        "job-watchdog",
+        schedule_every_secs(60),
+        watchdog::job_watchdog
+    );
+
+    let QueueRegistry { entries, specs } = queues;
+    watchdog::install(specs);
+    let queues = JobQueues { entries };
 
     // Jobs that previously ran once at startup, in addition to their cron
     // schedule. Pushed as regular tasks so they show up on the board.
@@ -670,7 +727,6 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
         "public-dashboard-refresh",
         "ft-lockup-refresh",
         "token-price-backfill",
-        "balance-changes-usd-backfill",
         "gold-public-usd-backfill",
         "gold-confidential-usd-backfill",
     ] {
@@ -792,6 +848,15 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
     let mut api = ApiBuilder::new(Router::new());
     for (_, store) in &queues.entries {
         api = api.register(store.clone());
+    }
+    // The bronze public-history task queues are not Tick-backed, so they are
+    // not in `queues`; register them separately so they show on the board.
+    if state.env_vars.nearblocks_api_key.is_some() {
+        for store in
+            crate::handlers::public_history::bronze::jobs::board_storages(state.db_pool.clone())
+        {
+            api = api.register(store);
+        }
     }
 
     // The board registers an `/api/v1/events` SSE route (apalis-board's
