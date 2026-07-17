@@ -173,7 +173,7 @@ pub(crate) async fn derive_targets_for_proposal(
     let ClassifiedTargets {
         mut direct,
         bulk_lists,
-    } = classify_kind(&proposal.kind, &state.bulk_payment_contract_id);
+    } = classify_kind(&proposal.kind, &state.bulk_payment_contract_id, treasury_id);
 
     // Expand each bulk list's recipients via the on-chain list.
     for BulkList { token, list_id } in bulk_lists {
@@ -209,7 +209,15 @@ pub(crate) async fn derive_targets_for_proposal(
 ///   special case that registers the bulk contract and expands recipients).
 /// - `FunctionCall` action `mt_transfer_call` to the bulk contract when the
 ///   intents `token_id` is a `nep141:` asset.
-fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> ClassifiedTargets {
+/// - `FunctionCall` action `near_deposit` (native NEAR wrap) → register the
+///   treasury itself on the wrap contract, otherwise `near_deposit` deducts
+///   the registration cost from the attached deposit and a batched
+///   `ft_transfer` of the full amount overdraws the wNEAR balance.
+fn classify_kind(
+    kind: &serde_json::Value,
+    bulk_contract: &AccountId,
+    treasury_id: &AccountId,
+) -> ClassifiedTargets {
     let mut classified = ClassifiedTargets::default();
 
     let kind = ProposalKind::from_value(kind);
@@ -231,6 +239,15 @@ fn classify_kind(kind: &serde_json::Value, bulk_contract: &AccountId) -> Classif
 
     for action in &func_call.actions {
         match action.method_name.as_str() {
+            // `near_deposit` (wrap.near) → register the treasury itself, so
+            // the wrap credits the full attached deposit instead of spending
+            // 0.00125 NEAR of it on first-time storage registration.
+            "near_deposit" => {
+                classified.direct.insert(Registration {
+                    account_id: treasury_id.clone(),
+                    token_id: func_call.receiver_id.clone(),
+                });
+            }
             // `ft_transfer` on a token contract → register the recipient on it.
             "ft_transfer" => {
                 if let Some(args) = decode_args::<FtTransferArgs>(&action.args) {
@@ -409,6 +426,10 @@ mod tests {
         "bulkpayment.near".parse().unwrap()
     }
 
+    fn treasury() -> AccountId {
+        "mydao.sputnik-dao.near".parse().unwrap()
+    }
+
     fn acc(s: &str) -> AccountId {
         s.parse().unwrap()
     }
@@ -438,7 +459,7 @@ mod tests {
     #[test]
     fn transfer_ft_registers_recipient() {
         let kind = json!({ "Transfer": { "token_id": "usdc.near", "receiver_id": "alice.near" } });
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert_eq!(out.direct, regs(&[("alice.near", "usdc.near")]));
         assert!(out.bulk_lists.is_empty());
     }
@@ -446,11 +467,11 @@ mod tests {
     #[test]
     fn transfer_native_registers_nothing() {
         let kind = json!({ "Transfer": { "token_id": "", "receiver_id": "alice.near" } });
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert!(out.direct.is_empty());
 
         let kind = json!({ "Transfer": { "token_id": "near", "receiver_id": "alice.near" } });
-        assert!(classify_kind(&kind, &bulk()).direct.is_empty());
+        assert!(classify_kind(&kind, &bulk(), &treasury()).direct.is_empty());
     }
 
     #[test]
@@ -462,14 +483,16 @@ mod tests {
                 json!({ "receiver_id": "deposit.near", "amount": "5" }),
             )],
         );
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert_eq!(out.direct, regs(&[("deposit.near", "usdc.near")]));
         assert!(out.bulk_lists.is_empty());
     }
 
     #[test]
-    fn near_deposit_plus_ft_transfer_only_registers_transfer_receiver() {
-        // Native NEAR via intents/exchange: near_deposit is ignored, ft_transfer covers the deposit address.
+    fn near_deposit_plus_ft_transfer_registers_treasury_and_transfer_receiver() {
+        // Native NEAR via intents/exchange: near_deposit registers the treasury
+        // itself (so the wrap credits the full attached amount), ft_transfer
+        // covers the deposit address.
         let kind = function_call_kind(
             "wrap.near",
             vec![
@@ -480,8 +503,24 @@ mod tests {
                 ),
             ],
         );
-        let out = classify_kind(&kind, &bulk());
-        assert_eq!(out.direct, regs(&[("1click.near", "wrap.near")]));
+        let out = classify_kind(&kind, &bulk(), &treasury());
+        assert_eq!(
+            out.direct,
+            regs(&[
+                ("1click.near", "wrap.near"),
+                ("mydao.sputnik-dao.near", "wrap.near"),
+            ])
+        );
+    }
+
+    #[test]
+    fn near_deposit_only_registers_treasury() {
+        // Pure wrap proposal (NEAR -> wNEAR): the treasury must be registered
+        // so near_deposit does not spend part of the attached deposit.
+        let kind = function_call_kind("wrap.near", vec![fc_action("near_deposit", json!({}))]);
+        let out = classify_kind(&kind, &bulk(), &treasury());
+        assert_eq!(out.direct, regs(&[("mydao.sputnik-dao.near", "wrap.near")]));
+        assert!(out.bulk_lists.is_empty());
     }
 
     #[test]
@@ -493,7 +532,7 @@ mod tests {
                 json!({ "receiver_id": "somecontract.near", "amount": "5", "msg": "x" }),
             )],
         );
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert_eq!(out.direct, regs(&[("somecontract.near", "usdc.near")]));
         assert!(out.bulk_lists.is_empty());
     }
@@ -507,7 +546,7 @@ mod tests {
                 json!({ "receiver_id": "bulkpayment.near", "amount": "5", "msg": "list-7" }),
             )],
         );
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert_eq!(out.direct, regs(&[("bulkpayment.near", "usdc.near")]));
         assert_eq!(out.bulk_lists.len(), 1);
         assert_eq!(out.bulk_lists[0].token, acc("usdc.near"));
@@ -528,7 +567,7 @@ mod tests {
                 }),
             )],
         );
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert_eq!(
             out.direct,
             regs(&[("bulkpayment.near", "usdt.tether-token.near")])
@@ -548,7 +587,7 @@ mod tests {
                 json!({ "receiver_id": "1click.near", "token_id": "nep141:usdc.near", "amount": "5" }),
             )],
         );
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert!(out.direct.is_empty());
         assert!(out.bulk_lists.is_empty());
     }
@@ -559,7 +598,7 @@ mod tests {
             "wrap.near",
             vec![fc_action("near_withdraw", json!({ "amount": "5" }))],
         );
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert!(out.direct.is_empty());
 
         // approve_list (NEAR bulk) — no FT registration.
@@ -567,14 +606,14 @@ mod tests {
             "bulkpayment.near",
             vec![fc_action("approve_list", json!({ "list_id": "list-1" }))],
         );
-        assert!(classify_kind(&kind, &bulk()).direct.is_empty());
+        assert!(classify_kind(&kind, &bulk(), &treasury()).direct.is_empty());
     }
 
     #[test]
     fn non_payment_kind_registers_nothing() {
         // Unmodelled proposal kinds (e.g. ChangePolicy) must classify cleanly to none.
         let kind = json!({ "ChangePolicy": { "policy": {} } });
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert!(out.direct.is_empty());
         assert!(out.bulk_lists.is_empty());
     }
@@ -589,7 +628,7 @@ mod tests {
             )
         };
         let kind = function_call_kind("usdc.near", vec![transfer(), transfer()]);
-        let out = classify_kind(&kind, &bulk());
+        let out = classify_kind(&kind, &bulk(), &treasury());
         assert_eq!(out.direct, regs(&[("deposit.near", "usdc.near")]));
     }
 }
