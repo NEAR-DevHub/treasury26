@@ -1315,7 +1315,8 @@
             },
             "passkeyCardTitle": "支持 Touch ID 和 Face ID 的通行密钥",
             "passkeyCardSubtitle": "使用设备的生物识别或密码登录",
-            "passkeyCardBadge": "推荐，轻松上手"
+            "passkeyCardBadge": "简单又安全",
+            "web3WalletsSeparator": "Web3 钱包"
         },
         "unexpectedError": "发生意外错误",
         "creationFailed": "创建金库失败。请再试一次。",

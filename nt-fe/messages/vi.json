@@ -1315,7 +1315,8 @@
             },
             "passkeyCardTitle": "Passkey cho Touch ID và Face ID",
             "passkeyCardSubtitle": "Đăng nhập bằng sinh trắc học hoặc mật mã của thiết bị",
-            "passkeyCardBadge": "Được khuyến nghị để bắt đầu dễ dàng"
+            "passkeyCardBadge": "Dễ dàng & An toàn",
+            "web3WalletsSeparator": "Ví Web3"
         },
         "unexpectedError": "Đã xảy ra lỗi không mong muốn",
         "creationFailed": "Không thể tạo ngân quỹ. Vui lòng thử lại.",

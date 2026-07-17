@@ -1332,7 +1332,8 @@
             },
             "passkeyCardTitle": "Passkey עבור Touch ID ו-Face ID",
             "passkeyCardSubtitle": "היכנסו באמצעות זיהוי ביומטרי או קוד המכשיר",
-            "passkeyCardBadge": "מומלץ לתחילת עבודה חלקה"
+            "passkeyCardBadge": "פשוט ומאובטח",
+            "web3WalletsSeparator": "ארנקי Web3"
         },
         "unexpectedError": "אירעה שגיאה בלתי צפויה",
         "creationFailed": "יצירת האוצר נכשלה. אנא נסה שוב.",
