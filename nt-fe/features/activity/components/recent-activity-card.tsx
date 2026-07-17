@@ -219,6 +219,7 @@ export function RecentActivity() {
     const isMobile = useMediaQuery("(max-width: 640px)");
     const isHistoryRefreshing = useIsHistoryRefreshing();
     const isHidden = isConfidential && isGuestTreasury;
+    const showConfidentialShield = isConfidential && !isGuestTreasury;
     const { getWarning } = useWarnings();
     const activityWarning = getWarning("data.activity");
     const activityWarningMessage = useWarningMessage(
@@ -538,7 +539,7 @@ export function RecentActivity() {
                     <div className="space-y-1">
                         <StepperHeader
                             title={
-                                isConfidential ? (
+                                showConfidentialShield ? (
                                     <span className="inline-flex items-center gap-1.5">
                                         <span>{t("recentTitle")}</span>
                                         <Tooltip

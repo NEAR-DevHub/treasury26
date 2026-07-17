@@ -1,8 +1,8 @@
 "use client";
 
 import { ArrowDown, Loader2, Shield } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import { useCallback, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/button";
@@ -17,7 +17,7 @@ import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useBridgeScopedWarning } from "@/hooks/use-warnings";
-import { ETH_TOKEN, DRY_QUOTE_REFRESH_INTERVAL } from "../constants";
+import { DRY_QUOTE_REFRESH_INTERVAL, ETH_TOKEN } from "../constants";
 import type { ExchangeFormValues } from "../exchange-form";
 import { useExchangeAmountQuote } from "../hooks/use-exchange-amount-quote";
 import { ExchangeSettingsModal } from "./exchange-settings-modal";
@@ -30,8 +30,13 @@ export function Step1({
     const tEx = useTranslations("exchange");
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<ExchangeFormValues>();
-    const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
+    const {
+        treasuryId: selectedTreasury,
+        isConfidential,
+        isGuestTreasury,
+    } = useTreasury();
     const { resolvedTheme } = useTheme();
+    const showConfidentialShield = isConfidential && !isGuestTreasury;
 
     const { blocked: exchangeSlotBlocked, scopedMessage: sendWarningMessage } =
         useBridgeScopedWarning(
@@ -182,7 +187,7 @@ export function Step1({
                 <div className="flex items-center justify-between gap-2">
                     <StepperHeader
                         title={
-                            isConfidential ? (
+                            showConfidentialShield ? (
                                 <span className="inline-flex items-center gap-1.5">
                                     <span>{tEx("heading")}</span>
                                     <Tooltip

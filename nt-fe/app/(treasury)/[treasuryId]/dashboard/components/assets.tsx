@@ -22,11 +22,12 @@ interface Props {
 export default function Assets({ tokens, state }: Props) {
     const t = useTranslations("assetsPage");
     const tCommon = useTranslations("common");
-    const { isConfidential } = useTreasury();
+    const { isConfidential, isGuestTreasury } = useTreasury();
     const isHistoryRefreshing = useIsHistoryRefreshing();
     const aggregatedTokens = useAggregatedTokens(tokens);
     const bucketVisibility = getDashboardBucketVisibility(tokens);
     const hasTabs = bucketVisibility.showLocked || bucketVisibility.showEarning;
+    const showConfidentialShield = isConfidential && !isGuestTreasury;
 
     const renderContent = () => {
         if (state === "hidden") {
@@ -60,7 +61,7 @@ export default function Assets({ tokens, state }: Props) {
                 <div className="flex justify-between">
                     <StepperHeader
                         title={
-                            isConfidential ? (
+                            showConfidentialShield ? (
                                 <span className="inline-flex items-center gap-1.5">
                                     <span>{t("title")}</span>
                                     <Tooltip

@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { trackEvent } from "@/lib/analytics";
 import { use, useEffect, useState } from "react";
 import { PageCard } from "@/components/card";
-import { ConfidentialState } from "@/components/confidential-state";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExpandedView } from "@/features/proposals";
@@ -43,13 +42,7 @@ function RequestPageSkeleton() {
 export default function RequestPage({ params }: RequestPageProps) {
     const t = useTranslations("pages.requests");
     const { id } = use(params);
-    const {
-        treasuryId,
-        isConfidential,
-        isGuestTreasury,
-        isLoading: isTreasuryLoading,
-    } = useTreasury();
-    const isConfidentialGuest = isConfidential && isGuestTreasury;
+    const { treasuryId, isLoading: isTreasuryLoading } = useTreasury();
     const router = useRouter();
     const cachedSubmissionTime = useCachedProposalSubmissionTime(
         treasuryId,
@@ -80,29 +73,6 @@ export default function RequestPage({ params }: RequestPageProps) {
         vote: "Approve" | "Reject" | "Remove";
         proposals: Proposal[];
     }>({ vote: "Approve", proposals: [] });
-
-    if (isConfidentialGuest) {
-        return (
-            <PageComponentLayout
-                title={t("detailTitle", { id })}
-                description={t("detailDescription")}
-                backButton={`/${treasuryId}/requests`}
-            >
-                <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full">
-                    <PageCard className="w-full">
-                        <ConfidentialState
-                            skeleton={<Skeleton className="h-[300px] w-full" />}
-                        />
-                    </PageCard>
-                    <div className="w-full">
-                        <PageCard className="w-full">
-                            <Skeleton className="h-[200px] w-full" />
-                        </PageCard>
-                    </div>
-                </div>
-            </PageComponentLayout>
-        );
-    }
 
     if (
         isTreasuryLoading ||
