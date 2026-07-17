@@ -2069,10 +2069,7 @@ pub async fn get_recent_activity(
                         received_token_metadata: s.received_token_metadata.clone(),
                         solver_transaction_hash: s.solver_transaction_hash.clone(),
                         swap_role: "fulfillment".to_string(),
-                        sent_amount_usd: s
-                            .sent_amount_usd
-                            .as_ref()
-                            .and_then(ToPrimitive::to_f64),
+                        sent_amount_usd: s.sent_amount_usd.as_ref().and_then(ToPrimitive::to_f64),
                         received_amount_usd: s
                             .received_amount_usd
                             .as_ref()

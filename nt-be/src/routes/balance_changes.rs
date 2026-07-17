@@ -181,13 +181,13 @@ pub async fn get_balance_changes_internal(
     //         .as_ref()
     //         .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
     //         .map(|dt| dt.with_timezone(&Utc));
-    // 
+    //
     //     let end_date = params
     //         .end_time
     //         .as_ref()
     //         .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
     //         .map(|dt| dt.with_timezone(&Utc));
-    // 
+    //
     //     // Convert decimal-adjusted min/max amounts to raw token units
     //     // This only works when filtering by a single token
     //     let (min_amount_raw, max_amount_raw) = if params.min_amount.is_some()
@@ -197,19 +197,19 @@ pub async fn get_balance_changes_internal(
     //         if let Some(ref tokens) = params.token_ids {
     //             if tokens.len() == 1 {
     //                 let token_id = &tokens[0];
-    // 
+    //
     //                 // Fetch metadata to get decimals using the helper function
     //                 let metadata_map: std::collections::HashMap<String, TokenMetadata> =
     //                     fetch_tokens_with_fallback(state, std::slice::from_ref(token_id), false, false)
     //                         .await;
     //                 let metadata = metadata_map.get(token_id);
-    // 
+    //
     //                 let decimals = metadata.map(|m| m.decimals).unwrap_or(24); // Default to NEAR decimals
     //                 let multiplier = 10_f64.powi(decimals as i32);
-    // 
+    //
     //                 let min_raw = params.min_amount.map(|v| v * multiplier);
     //                 let max_raw = params.max_amount.map(|v| v * multiplier);
-    // 
+    //
     //                 (min_raw, max_raw)
     //             } else {
     //                 // Multiple tokens - can't determine decimals
@@ -222,7 +222,7 @@ pub async fn get_balance_changes_internal(
     //     } else {
     //         (None, None)
     //     };
-    // 
+    //
     //     // Build filters
     //     let filters = BalanceChangeFilters {
     //         account_id: params.account_id.clone(),
@@ -242,24 +242,24 @@ pub async fn get_balance_changes_internal(
     //         exclude_near_dust: params.exclude_near_dust,
     //         exclude_swaps_from_direction: params.exclude_swaps_from_direction,
     //     };
-    // 
+    //
     //     // Build SQL query
     //     let select_fields = "id, account_id, block_height, block_time, token_id, receipt_id, transaction_hashes, counterparty, signer_id, receiver_id, amount, balance_before, balance_after, created_at, action_kind, method_name, actions, usd_value";
-    // 
+    //
     //     // Determine pagination based on whether limit is specified
     //     // For exports, limit is None and we want all records
     //     // For API queries, limit has a value (default 100, max 1000)
     //     let with_pagination = params.limit.is_some() || params.offset.is_some();
-    // 
+    //
     //     let (query_str, _next_param_idx) = build_select_query(
     //         &filters,
     //         select_fields,
     //         "block_height DESC, id DESC",
     //         with_pagination,
     //     );
-    // 
+    //
     //     let mut query = query_as::<_, BalanceChange>(&query_str).bind(filters.account_id.as_str());
-    // 
+    //
     //     // Bind date filters in order
     //     if let Some(ref cutoff) = filters.date_cutoff {
     //         query = query.bind(cutoff);
@@ -270,14 +270,14 @@ pub async fn get_balance_changes_internal(
     //     if let Some(ref end) = filters.end_date {
     //         query = query.bind(end);
     //     }
-    // 
+    //
     //     // Bind token filters
     //     if let Some(ref tokens) = filters.token_ids {
     //         query = query.bind(tokens);
     //     } else if let Some(ref exclude_tokens) = filters.exclude_token_ids {
     //         query = query.bind(exclude_tokens);
     //     }
-    // 
+    //
     //     // Bind amount filters
     //     if let Some(min) = filters.min_amount {
     //         query = query.bind(min);
@@ -300,7 +300,7 @@ pub async fn get_balance_changes_internal(
     //     if let Some(ref to_accounts_not) = filters.to_accounts_not {
     //         query = query.bind(to_accounts_not);
     //     }
-    // 
+    //
     //     // Bind pagination only if we're using it
     //     if with_pagination {
     //         let limit = params
@@ -310,10 +310,10 @@ pub async fn get_balance_changes_internal(
     //         let offset = params.offset.unwrap_or(0);
     //         query = query.bind(limit).bind(offset);
     //     }
-    // 
+    //
     //     // Execute query
     //     let changes = query.fetch_all(&state.db_pool).await?;
-    // 
+    //
     //     // Transform staking tokens and prepare for enrichment
     //     let mut enriched_changes: Vec<EnrichedBalanceChange> = changes
     //         .into_iter()
@@ -338,7 +338,7 @@ pub async fn get_balance_changes_internal(
     //                     change.action_kind,
     //                 )
     //             };
-    // 
+    //
     //             EnrichedBalanceChange {
     //                 id: change.id,
     //                 account_id: change.account_id,
@@ -364,7 +364,7 @@ pub async fn get_balance_changes_internal(
     //             }
     //         })
     //         .collect();
-    // 
+    //
     //     // Conditionally enrich with metadata
     //     if params.include_metadata.unwrap_or(false) {
     //         // Collect token IDs and fetch metadata with fallbacks
@@ -372,7 +372,7 @@ pub async fn get_balance_changes_internal(
     //             .iter()
     //             .map(|c| c.token_id.clone())
     //             .collect();
-    // 
+    //
     //         let metadata_map = fetch_tokens_with_fallback(
     //             state,
     //             &token_ids,
@@ -380,28 +380,28 @@ pub async fn get_balance_changes_internal(
     //             false,
     //         )
     //         .await;
-    // 
+    //
     //         // Attach metadata to each change
     //         for change in &mut enriched_changes {
     //             change.token_metadata = metadata_map.get(&change.token_id).cloned();
     //         }
     //     }
-    // 
+    //
     //     // Conditionally enrich with historical prices
     //     if params.include_prices.unwrap_or(false) {
     //         // Group changes by token_id and collect unique dates
     //         let mut token_dates: HashMap<String, HashSet<chrono::NaiveDate>> = HashMap::new();
-    // 
+    //
     //         for change in &enriched_changes {
     //             token_dates
     //                 .entry(change.token_id.clone())
     //                 .or_default()
     //                 .insert(change.block_time.date_naive());
     //         }
-    // 
+    //
     //         // Fetch prices for each token
     //         let mut all_prices: HashMap<String, HashMap<chrono::NaiveDate, f64>> = HashMap::new();
-    // 
+    //
     //         for (token_id, dates) in token_dates {
     //             let dates_vec: Vec<chrono::NaiveDate> = dates.into_iter().collect();
     //             match state
@@ -417,7 +417,7 @@ pub async fn get_balance_changes_internal(
     //                 }
     //             }
     //         }
-    // 
+    //
     //         // Attach prices to metadata
     //         for change in &mut enriched_changes {
     //             if let Some(ref mut metadata) = change.token_metadata {
@@ -430,7 +430,7 @@ pub async fn get_balance_changes_internal(
     //             }
     //         }
     //     }
-    // 
+    //
     //     Ok(enriched_changes)
 }
 
