@@ -1312,7 +1312,10 @@
                 "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập.",
                 "passkeyNew": "Mới",
                 "passkeyDomainNote": "Passkey của bạn được lưu cho trezu.app trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey cho Touch ID và Face ID",
+            "passkeyCardSubtitle": "Đăng nhập bằng sinh trắc học hoặc mật mã của thiết bị",
+            "passkeyCardBadge": "Được khuyến nghị để bắt đầu dễ dàng"
         },
         "unexpectedError": "Đã xảy ra lỗi không mong muốn",
         "creationFailed": "Không thể tạo ngân quỹ. Vui lòng thử lại.",

@@ -1329,7 +1329,10 @@
                 "recoveryText": "Quel que soit votre choix, nous vous recommandons d'ajouter un deuxième membre (wallet) après la configuration afin qu'un appareil perdu ne vous bloque pas.",
                 "passkeyNew": "Nouveau",
                 "passkeyDomainNote": "Votre clé d’accès est enregistrée pour trezu.app sur cet appareil (ou synchronisée via iCloud/Google). Elle ne peut pas être utilisée sur d’autres applications, et les clés d’autres applications ne peuvent pas accéder à Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey pour Touch ID et Face ID",
+            "passkeyCardSubtitle": "Connectez-vous avec la biométrie ou le code de votre appareil",
+            "passkeyCardBadge": "Recommandé pour une prise en main facile"
         },
         "unexpectedError": "Une erreur inattendue s'est produite",
         "creationFailed": "Échec de la création de la trésorerie. Veuillez réessayer.",

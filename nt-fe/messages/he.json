@@ -1329,7 +1329,10 @@
                 "recoveryText": "לא משנה במה תבחר, אנו ממליצים להוסיף חבר שני (ארנק) לאחר ההגדרה כדי שאובדן מכשיר לא ינעל אותך בחוץ.",
                 "passkeyNew": "חדש",
                 "passkeyDomainNote": "מפתח הגישה שלך נשמר עבור trezu.app במכשיר זה (או מסונכרן דרך iCloud/Google). לא ניתן להשתמש בו באפליקציות אחרות, ומפתחות של אפליקציות אחרות לא יכולים לגשת ל‑Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey עבור Touch ID ו-Face ID",
+            "passkeyCardSubtitle": "היכנסו באמצעות זיהוי ביומטרי או קוד המכשיר",
+            "passkeyCardBadge": "מומלץ לתחילת עבודה חלקה"
         },
         "unexpectedError": "אירעה שגיאה בלתי צפויה",
         "creationFailed": "יצירת האוצר נכשלה. אנא נסה שוב.",

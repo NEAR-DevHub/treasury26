@@ -302,6 +302,15 @@ export function ConnectWalletSelector({
 
     const walletPickerChoices = NEAR_WALLET_CHOICES;
 
+    // Passkey is the recommended entry: rendered as a full-width hero card at
+    // the top, the rest fill the two-column grid below it.
+    const passkeyOption = WALLET_OPTIONS.find(
+        (wallet) => wallet.id === WALLET_IDS.PASSKEY,
+    );
+    const otherOptions = WALLET_OPTIONS.filter(
+        (wallet) => wallet.id !== WALLET_IDS.PASSKEY,
+    );
+
     return (
         <>
             <PageCard>
@@ -324,7 +333,74 @@ export function ConnectWalletSelector({
                     </div>
                 )}
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {WALLET_OPTIONS.map((wallet) => {
+                    {passkeyOption &&
+                        (() => {
+                            const wallet = passkeyOption;
+                            const isOfflineBlocked = isWalletChoiceBlocked(
+                                wallet.id,
+                            );
+                            // Show the Offline warning when blocked, otherwise
+                            // the "recommended" badge.
+                            const topBadge = getTopLevelBadge(wallet);
+                            const badge = topBadge?.isOffline
+                                ? topBadge
+                                : {
+                                      label: t(
+                                          "walletSelector.passkeyCardBadge",
+                                      ),
+                                  };
+                            return (
+                                <Button
+                                    key={wallet.id}
+                                    type="button"
+                                    variant="secondary"
+                                    className={cn(
+                                        "h-auto items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted sm:col-span-2",
+                                        isOfflineBlocked &&
+                                            !isConnectingWallet &&
+                                            "cursor-not-allowed opacity-50 hover:bg-secondary",
+                                    )}
+                                    onClick={() => handleWalletChoice(wallet)}
+                                    disabled={isConnectingWallet}
+                                    aria-disabled={
+                                        isConnectingWallet || isOfflineBlocked
+                                    }
+                                >
+                                    <div className="flex w-full items-start gap-3">
+                                        <WalletOptionIcon wallet={wallet} />
+                                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <span className="text-lg font-semibold">
+                                                    {t(
+                                                        "walletSelector.passkeyCardTitle",
+                                                    )}
+                                                </span>
+                                                <Pill
+                                                    title={badge.label}
+                                                    info={
+                                                        "tooltip" in badge
+                                                            ? badge.tooltip
+                                                            : undefined
+                                                    }
+                                                    className={
+                                                        "isOffline" in badge &&
+                                                        badge.isOffline
+                                                            ? "shrink-0 bg-general-warning-background-faded text-general-warning-foreground"
+                                                            : "shrink-0 bg-general-success-background-faded text-general-success-foreground"
+                                                    }
+                                                />
+                                            </div>
+                                            <span className="text-sm font-normal text-muted-foreground whitespace-normal">
+                                                {t(
+                                                    "walletSelector.passkeyCardSubtitle",
+                                                )}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Button>
+                            );
+                        })()}
+                    {otherOptions.map((wallet) => {
                         // Use aria-disabled (not disabled) when offline so the
                         // Offline badge tooltip can still receive hover events.
                         const isOfflineBlocked = isWalletChoiceBlocked(

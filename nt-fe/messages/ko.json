@@ -1329,7 +1329,10 @@
                 "recoveryText": "어떤 방식을 선택하든, 기기를 잃어버려도 잠기지 않도록 설정 후 두 번째 멤버(지갑)를 추가하는 것을 권장합니다.",
                 "passkeyNew": "신규",
                 "passkeyDomainNote": "패스키는 이 기기에서 trezu.app용으로 저장됩니다(iCloud/Google을 통해 동기화될 수 있음). 다른 앱에서는 사용할 수 없으며, 다른 앱의 패스키로 Trezu에 접근할 수도 없습니다."
-            }
+            },
+            "passkeyCardTitle": "Touch ID 및 Face ID용 패스키",
+            "passkeyCardSubtitle": "기기의 생체 인식 또는 비밀번호로 로그인하세요",
+            "passkeyCardBadge": "간편한 시작을 위해 추천"
         },
         "unexpectedError": "예기치 않은 오류가 발생했습니다",
         "creationFailed": "트레저리 생성에 실패했습니다. 다시 시도해 주세요.",
