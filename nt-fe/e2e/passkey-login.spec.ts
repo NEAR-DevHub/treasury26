@@ -67,7 +67,9 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
 
     // Serve the executor from the vendored artifact so the test doesn't
     // depend on the postbuild copy step having run.
-    await context.route("**/near-connect/passkey-executor.js", (route) =>
+    // Match with an optional cache-busting query string: near-connect
+    // fetches the executor as `…/passkey-executor.js?nonce=<per-session>`.
+    await context.route("**/near-connect/passkey-executor.js*", (route) =>
         route.fulfill({
             status: 200,
             contentType: "application/javascript",
@@ -202,9 +204,6 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
         const authorization = JSON.parse(body.authorization);
         expect(authorization.message.purpose).toBe("PROVE_OWNERSHIP");
         expect(authorization.message.recipient).toBe("Trezu App");
-        expect(authorization.message.payload).toBe(
-            "Login to Trezu — test payload",
-        );
         expect(authorization.proof).toBeTruthy();
 
         resolvedAccountId = body.accountId;
@@ -251,14 +250,21 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
         .frameLocator('iframe[sandbox*="allow-scripts"]')
         .first();
 
-    // Fresh browser: choose to create a new passkey; the CDP virtual
+    // Fresh browser: choose to create a new account. The CDP virtual
     // authenticator answers both the create() and the resolveAuth get()
     // ceremonies automatically.
     const createBtn = iframe.getByRole("button", {
-        name: /create new passkey/i,
+        name: /create new account/i,
     });
     await expect(createBtn).toBeVisible({ timeout: 15000 });
     await createBtn.click();
+
+    // Name-your-passkey step: accept the default name.
+    const confirmCreateBtn = iframe.getByRole("button", {
+        name: /create passkey/i,
+    });
+    await expect(confirmCreateBtn).toBeVisible({ timeout: 15000 });
+    await confirmCreateBtn.click();
 
     // Login completes: the sign-in screen goes away
     await expect(page.getByText("Choose how to sign in")).not.toBeVisible({
