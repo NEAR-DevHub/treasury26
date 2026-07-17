@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE daos\n        SET is_dirty = false,\n            last_policy_sync_at = NOW(),\n            sync_attempts = 0,\n            next_retry_at = NULL\n        WHERE dao_id = $1\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "65112bdb96c34b56bd00db3bcdf99a03b3342a558cb70cd89fe98cde2f423f10"
+}

@@ -15,22 +15,23 @@ const MAX_DAOS_PER_CYCLE: i64 = 50;
 /// Period after which non-dirty DAOs should be re-synced (24 hours = daily)
 const STALE_THRESHOLD_HOURS: i64 = 24;
 
+/// Per-DAO RPC timeout for a single `get_policy` call. The dirty worker runs
+/// `concurrency(1)` and syncs DAOs sequentially, so without a bound one hung
+/// RPC would stall *all* dirty processing indefinitely.
+const GET_POLICY_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Process dirty DAOs (high priority)
+///
+/// Selects only DAOs that are *due* (`next_retry_at` in the past or unset) and
+/// orders never-synced DAOs first, so a freshly created treasury is indexed
+/// promptly instead of queuing behind DAOs that keep failing to sync. A
+/// transient failure backs the DAO off (see [`record_transient_sync_failure`])
+/// so it frees its slot instead of being retried every cycle.
 pub async fn process_dirty_daos(
     pool: &PgPool,
     network: &NetworkConfig,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    let dirty_daos: Vec<String> = sqlx::query_scalar(
-        r#"
-        SELECT dao_id FROM daos
-        WHERE is_dirty = true AND sync_failed = false
-        ORDER BY updated_at ASC
-        LIMIT $1
-        "#,
-    )
-    .bind(MAX_DAOS_PER_CYCLE)
-    .fetch_all(pool)
-    .await?;
+    let dirty_daos = select_due_dirty_daos(pool, MAX_DAOS_PER_CYCLE).await?;
 
     let mut processed = 0;
     for dao_id in dirty_daos {
@@ -49,7 +50,9 @@ pub async fn process_dirty_daos(
                     );
                     mark_dao_sync_failed(pool, &dao_id).await;
                 } else {
-                    tracing::warn!("Failed to sync DAO {}: {}", dao_id, e);
+                    // Transient: back the DAO off so it stops occupying a
+                    // processing slot every cycle and can't starve fresh DAOs.
+                    record_transient_sync_failure(pool, &dao_id, &error_str).await;
                 }
             }
         }
@@ -58,6 +61,66 @@ pub async fn process_dirty_daos(
     }
 
     Ok(processed)
+}
+
+/// Selects the dirty, non-failed DAOs that are due for a sync attempt.
+///
+/// `next_retry_at` in the future is skipped (a DAO backing off after a
+/// transient failure), and never-synced DAOs (`last_policy_sync_at IS NULL`,
+/// i.e. freshly created treasuries) are ordered first so they index promptly
+/// even when older DAOs keep failing.
+async fn select_due_dirty_daos(pool: &PgPool, limit: i64) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT dao_id FROM daos
+        WHERE is_dirty = true AND sync_failed = false
+          AND (next_retry_at IS NULL OR next_retry_at <= NOW())
+        ORDER BY last_policy_sync_at ASC NULLS FIRST,
+                 next_retry_at ASC NULLS FIRST,
+                 updated_at ASC
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await
+}
+
+/// Records a transient sync failure: increments the attempt counter and defers
+/// the next attempt with exponential backoff (30s, 60s, … capped at 1h). The
+/// DAO stays `is_dirty = true` and is **not** marked `sync_failed`, so it keeps
+/// retrying (and self-heals once the transient condition clears) without
+/// blocking every cycle — the due-filter in [`process_dirty_daos`] skips it
+/// until `next_retry_at`.
+async fn record_transient_sync_failure(pool: &PgPool, dao_id: &str, error: &str) {
+    // Backoff uses the pre-increment attempt count (SET reads old row values):
+    // 30·2^min(attempts,7)s, capped at 3600s. `min(_, 7)` avoids the pow
+    // exploding before the cap clamps it.
+    let updated = sqlx::query!(
+        r#"
+        UPDATE daos
+        SET sync_attempts = sync_attempts + 1,
+            next_retry_at = NOW() + make_interval(
+                secs => LEAST(30.0 * (2 ^ LEAST(sync_attempts, 7)), 3600.0)
+            )
+        WHERE dao_id = $1
+        RETURNING sync_attempts, next_retry_at
+        "#,
+        dao_id
+    )
+    .fetch_optional(pool)
+    .await;
+
+    match updated {
+        Ok(Some(row)) => tracing::warn!(
+            dao_id,
+            attempt = row.sync_attempts,
+            next_retry_at = ?row.next_retry_at,
+            "Failed to sync DAO (transient); backing off: {error}"
+        ),
+        Ok(None) => tracing::warn!(dao_id, "Failed to sync DAO but row vanished: {error}"),
+        Err(e) => tracing::error!(dao_id, "Failed to record DAO sync backoff: {e}"),
+    }
 }
 
 /// Process stale DAOs (low priority, daily refresh)
@@ -143,12 +206,17 @@ async fn sync_dao_members(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let account_id: AccountId = dao_id.parse()?;
 
-    // Fetch policy from the DAO contract
-    let policy = Contract(account_id.clone())
+    // Fetch policy from the DAO contract, bounded so a hung RPC can't stall the
+    // single-threaded dirty worker forever.
+    let policy_future = Contract(account_id.clone())
         .call_function("get_policy", ())
         .read_only::<serde_json::Value>()
-        .fetch_from(network)
-        .await?
+        .fetch_from(network);
+    let policy = tokio::time::timeout(GET_POLICY_TIMEOUT, policy_future)
+        .await
+        .map_err(|_| -> Box<dyn std::error::Error + Send + Sync> {
+            format!("get_policy timed out after {GET_POLICY_TIMEOUT:?}").into()
+        })??
         .data;
 
     // Extract unique members from roles (no duplicates)
@@ -162,11 +230,15 @@ async fn sync_dao_members(
     let members_vec: Vec<String> = members.into_iter().collect();
     reconcile_policy_membership(&mut tx, dao_id, &members_vec).await?;
 
-    // Mark DAO as clean and update sync timestamp
+    // Mark DAO as clean, update sync timestamp, and clear any backoff so a
+    // DAO that failed transiently before is treated as fresh next time.
     sqlx::query!(
         r#"
         UPDATE daos
-        SET is_dirty = false, last_policy_sync_at = NOW()
+        SET is_dirty = false,
+            last_policy_sync_at = NOW(),
+            sync_attempts = 0,
+            next_retry_at = NULL
         WHERE dao_id = $1
         "#,
         dao_id
@@ -450,6 +522,151 @@ mod tests {
         .await?;
         assert_eq!(saved_count, 1, "Saved row should remain");
 
+        Ok(())
+    }
+
+    /// Inserts a dirty DAO row with explicit sync state for selection tests.
+    async fn insert_dirty_dao(
+        pool: &PgPool,
+        dao_id: &str,
+        last_policy_sync_at: Option<&str>,
+        next_retry_at_sql: &str,
+    ) -> sqlx::Result<()> {
+        let query = format!(
+            r#"
+            INSERT INTO daos (dao_id, is_dirty, sync_failed, source, last_policy_sync_at, next_retry_at)
+            VALUES ($1, true, false, 'factory', {}, {})
+            "#,
+            last_policy_sync_at
+                .map(|t| format!("'{t}'::timestamptz"))
+                .unwrap_or_else(|| "NULL".to_string()),
+            next_retry_at_sql,
+        );
+        sqlx::query(&query).bind(dao_id).execute(pool).await?;
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn test_select_due_prioritizes_never_synced_and_skips_backed_off(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        // Never-synced (new treasury) — should come first.
+        insert_dirty_dao(&pool, "new.sputnik-dao.near", None, "NULL").await?;
+        // Synced long ago, due now — should come after the never-synced one.
+        insert_dirty_dao(
+            &pool,
+            "old.sputnik-dao.near",
+            Some("2020-01-01T00:00:00Z"),
+            "NULL",
+        )
+        .await?;
+        // Backed off into the future — should be skipped entirely.
+        insert_dirty_dao(
+            &pool,
+            "backing-off.sputnik-dao.near",
+            None,
+            "NOW() + INTERVAL '1 hour'",
+        )
+        .await?;
+
+        let due = select_due_dirty_daos(&pool, 50).await?;
+
+        assert_eq!(
+            due,
+            vec![
+                "new.sputnik-dao.near".to_string(),
+                "old.sputnik-dao.near".to_string()
+            ],
+            "never-synced DAO first, backed-off DAO excluded"
+        );
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn test_transient_failure_backs_off_and_success_resets(pool: PgPool) -> sqlx::Result<()> {
+        let dao_id = "flaky.sputnik-dao.near";
+        insert_dirty_dao(&pool, dao_id, None, "NULL").await?;
+
+        record_transient_sync_failure(&pool, dao_id, "network timeout").await;
+
+        let row = sqlx::query!(
+            r#"SELECT sync_attempts, is_dirty, sync_failed, next_retry_at FROM daos WHERE dao_id = $1"#,
+            dao_id
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(row.sync_attempts, 1, "attempt counter incremented");
+        assert!(row.is_dirty, "still dirty (keeps retrying)");
+        assert!(
+            !row.sync_failed,
+            "transient failure does not mark sync_failed"
+        );
+        assert!(
+            row.next_retry_at.is_some(),
+            "backoff deferred the next attempt"
+        );
+
+        // A backed-off DAO is not due yet.
+        assert!(
+            select_due_dirty_daos(&pool, 50).await?.is_empty(),
+            "backed-off DAO excluded from due set"
+        );
+
+        // Simulate a later successful sync clearing the backoff.
+        sqlx::query!(
+            r#"
+            UPDATE daos
+            SET is_dirty = false, last_policy_sync_at = NOW(),
+                sync_attempts = 0, next_retry_at = NULL
+            WHERE dao_id = $1
+            "#,
+            dao_id
+        )
+        .execute(&pool)
+        .await?;
+
+        let row = sqlx::query!(
+            r#"SELECT sync_attempts, next_retry_at, is_dirty FROM daos WHERE dao_id = $1"#,
+            dao_id
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(row.sync_attempts, 0, "attempts reset on success");
+        assert!(row.next_retry_at.is_none(), "backoff cleared on success");
+        assert!(!row.is_dirty, "clean after success");
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn test_backoff_grows_and_caps_at_one_hour(pool: PgPool) -> sqlx::Result<()> {
+        let dao_id = "persistently-failing.sputnik-dao.near";
+        insert_dirty_dao(&pool, dao_id, None, "NULL").await?;
+
+        // Drive many failures; the deferral must never exceed ~1h (3600s).
+        for _ in 0..12 {
+            record_transient_sync_failure(&pool, dao_id, "still failing").await;
+            let secs: f64 = sqlx::query_scalar(
+                r#"SELECT EXTRACT(EPOCH FROM (next_retry_at - NOW()))::float8 FROM daos WHERE dao_id = $1"#,
+            )
+            .bind(dao_id)
+            .fetch_one(&pool)
+            .await?;
+            assert!(secs <= 3601.0, "backoff must cap at 1 hour, got {secs}s");
+        }
+
+        let attempts: i32 =
+            sqlx::query_scalar(r#"SELECT sync_attempts FROM daos WHERE dao_id = $1"#)
+                .bind(dao_id)
+                .fetch_one(&pool)
+                .await?;
+        assert_eq!(attempts, 12, "every failure counted");
+        // Never escalates to sync_failed: a transient outage must self-heal.
+        let sync_failed: bool =
+            sqlx::query_scalar(r#"SELECT sync_failed FROM daos WHERE dao_id = $1"#)
+                .bind(dao_id)
+                .fetch_one(&pool)
+                .await?;
+        assert!(!sync_failed, "transient failures never become permanent");
         Ok(())
     }
 }
