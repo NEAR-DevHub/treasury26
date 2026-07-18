@@ -477,29 +477,65 @@ pub async fn ft_lockup_refresh(
     }
 }
 
-/// Deletes finished apalis tasks older than `APALIS_TASK_RETENTION_DAYS`
-/// (default 7) so high-frequency queues don't grow unbounded.
+/// Prunes terminal apalis tasks so the high-frequency queues (~1M rows/day)
+/// don't bloat the `apalis.jobs` table — which slows every poll/keep-alive
+/// query and the board UI.
+///
+/// Retention is in **hours** (`APALIS_TASK_RETENTION_HOURS`, default 48),
+/// falling back to `APALIS_TASK_RETENTION_DAYS × 24` if only the old day-based
+/// var is set. Deletes `Done`/`Killed` **and** exhausted `Failed`
+/// (`attempts >= max_attempts`) rows — the latter are terminal too and were
+/// never cleaned before, so they accumulated. Retryable `Failed` rows
+/// (`attempts < max_attempts`) and any Pending/Queued/Running task are left
+/// untouched. Runs in bounded batches so a large backlog can't hold a long
+/// lock on the table the workers are actively polling.
 pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
-    // Clamp so a misconfigured (negative) value can't flip the cutoff into
-    // the future and delete *every* finished task; cap at ~10y for sanity.
-    let retention_days: i64 = std::env::var("APALIS_TASK_RETENTION_DAYS")
+    // Clamp so a misconfigured (negative) value can't flip the cutoff into the
+    // future and delete *every* terminal task; cap at ~10y for sanity.
+    let retention_hours: i64 = std::env::var("APALIS_TASK_RETENTION_HOURS")
         .ok()
         .and_then(|s| s.parse::<i64>().ok())
-        .unwrap_or(7)
-        .clamp(0, 3650);
+        .or_else(|| {
+            std::env::var("APALIS_TASK_RETENTION_DAYS")
+                .ok()
+                .and_then(|s| s.parse::<i64>().ok())
+                .map(|days| days.saturating_mul(24))
+        })
+        .unwrap_or(48)
+        .clamp(0, 3650 * 24);
 
-    let result = sqlx::query(
-        "DELETE FROM apalis.jobs
-         WHERE status IN ('Done', 'Killed')
-           AND done_at IS NOT NULL
-           AND done_at < now() - make_interval(days => $1::int)",
-    )
-    .bind(retention_days)
-    .execute(&state.db_pool)
-    .await?;
+    const BATCH_SIZE: i64 = 10_000;
+    // Backstop against a runaway loop; 100 batches = up to 1M rows per run.
+    const MAX_BATCHES: usize = 100;
+
+    let mut total: u64 = 0;
+    for _ in 0..MAX_BATCHES {
+        let result = sqlx::query(
+            "DELETE FROM apalis.jobs
+             WHERE id IN (
+                 SELECT id FROM apalis.jobs
+                 WHERE done_at IS NOT NULL
+                   AND done_at < now() - make_interval(hours => $1::int)
+                   AND (
+                       status IN ('Done', 'Killed')
+                       OR (status = 'Failed' AND attempts >= max_attempts)
+                   )
+                 LIMIT $2
+             )",
+        )
+        .bind(retention_hours)
+        .bind(BATCH_SIZE)
+        .execute(&state.db_pool)
+        .await?;
+
+        let deleted = result.rows_affected();
+        total += deleted;
+        if (deleted as i64) < BATCH_SIZE {
+            break;
+        }
+    }
 
     Ok(format!(
-        "pruned {} finished tasks older than {retention_days} days",
-        result.rows_affected()
+        "pruned {total} terminal tasks older than {retention_hours}h"
     ))
 }

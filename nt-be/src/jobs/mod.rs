@@ -90,6 +90,24 @@ fn env_secs(var: &str, default: u64) -> u64 {
         .unwrap_or(default)
 }
 
+/// Wall-clock cap on a single job handler execution (default 30 min,
+/// `APALIS_JOB_TIMEOUT_SECONDS`).
+///
+/// A handler that exceeds it has its future dropped (cancelled) and the task
+/// recorded as failed. This is the safety net for the failure mode that wedged
+/// `account-maintenance` for days on testenv: a handler that hangs on an
+/// un-timed `.await` (e.g. an unresponsive RPC) never completes, but apalis's
+/// keep-alive heartbeat runs on a *separate* task and stays healthy — so the
+/// orphaned-task reenqueue never fires, and with `concurrency(1)` that one
+/// hung task holds the queue's only slot forever while cron ticks pile up
+/// Pending. The timeout frees the slot; the next cron tick retries.
+///
+/// Set generously (30 min) so no legitimate cycle is killed — it only fires on
+/// a genuine hang. Per-job overrides can be added later if a job needs longer.
+pub(crate) fn job_timeout() -> std::time::Duration {
+    std::time::Duration::from_secs(env_secs("APALIS_JOB_TIMEOUT_SECONDS", 1800).max(1))
+}
+
 /// Builds a cron schedule that fires every `secs` seconds.
 ///
 /// A 6-field cron `*/n` step only expresses intervals that divide their
@@ -303,6 +321,11 @@ macro_rules! register_cron_worker {
             WorkerBuilder::new($name)
                 .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
                 .data(state.clone())
+                // Innermost layer: bounds the handler itself so a hung cycle
+                // aborts and frees the concurrency(1) slot (see `job_timeout`).
+                // Placed inside catch_panic/Sentry/Trace so the timeout error
+                // is caught, reported to Sentry, and logged like any failure.
+                .timeout(job_timeout())
                 .catch_panic()
                 // apalis's Sentry integration: captures a task failure once
                 // (after catch_panic has converted any panic to an error) with
@@ -693,13 +716,15 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
     }
 
     // Retention: prune finished apalis tasks so high-frequency queues don't
-    // grow unbounded. Daily at 03:30 UTC.
+    // grow unbounded. Hourly — the high-frequency queues (2–5s ticks, plus
+    // per-account public-history jobs) produce ~1M rows/day, so a once-daily
+    // prune let the table (and every poll/UI query over it) bloat badly.
     monitor = register_cron_worker!(
         monitor,
         queues,
         state,
         "apalis-prune",
-        Schedule::from_str("0 30 3 * * *").expect("valid cron"),
+        Schedule::from_str("0 0 * * * *").expect("valid cron"),
         handlers::apalis_prune
     );
 
