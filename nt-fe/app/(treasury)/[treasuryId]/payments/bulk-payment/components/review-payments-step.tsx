@@ -21,6 +21,7 @@ import {
 } from "@/components/modal";
 import { NumberBadge } from "@/components/number-badge";
 import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
+import type { QuoteFees } from "../utils/confidential-prepare";
 import { cn, formatBalance, formatTokenDisplayAmount } from "@/lib/utils";
 import { validateAccountsAndStorage } from "../utils";
 import { useBulkParsingLabels } from "../utils/use-parsing-labels";
@@ -41,6 +42,21 @@ interface ReviewPaymentsStepProps extends StepProps {
     onPaymentDataChange: (data: BulkPaymentData[]) => void;
     onSubmit: () => void;
     isSubmitting?: boolean;
+    /**
+     * Confidential flow only: lifecycle of the review-time prepare call that
+     * fetches firm quotes. Fees render from `fees` (not the local estimate),
+     * and submission stays blocked until the call succeeds.
+     */
+    confidentialPrepare?: {
+        status: "idle" | "loading" | "success" | "error";
+        fees: QuoteFees | null;
+        retry: () => void;
+        /**
+         * Treasury has no batch-payment credits (or prepare 402'd). Quotes
+         * aren't fetched and submission stays blocked; retry is pointless.
+         */
+        outOfCredits: boolean;
+    };
 }
 
 export function ReviewPaymentsStep({
@@ -51,10 +67,12 @@ export function ReviewPaymentsStep({
     onPaymentDataChange,
     onSubmit,
     isSubmitting = false,
+    confidentialPrepare,
 }: ReviewPaymentsStepProps) {
     const tPay = useTranslations("payments");
     const tBulk = useTranslations("bulkPayment");
     const tIntents = useTranslations("intentsQuote");
+    const tCommon = useTranslations("common");
     const parsingLabels = useBulkParsingLabels();
     const form = useFormContext<BulkPaymentFormValues>();
     const selectedToken = form.watch("selectedToken");
@@ -145,15 +163,40 @@ export function ReviewPaymentsStep({
     const feePerRecipient = networkFeePerRecipient
         ? Big(networkFeePerRecipient)
         : null;
-    const totalNetworkFee = feePerRecipient
+    // Confidential flow: fees come from the firm quotes fetched at review
+    // load (null until they arrive, and zero-fee legs show no row — same as
+    // the estimate path). Standard flow keeps the local estimate.
+    const estimatedTotalFee = feePerRecipient
         ? feePerRecipient.mul(paymentData.length)
         : null;
-    // Confidential bulk pads each leg by the estimated fee, so the DAO is
-    // actually charged recipients + fees. Roll fees into the headline total
-    // so the AmountSummary and balance check reflect reality.
+    const quotedTotalFee = confidentialPrepare?.fees?.totalNetworkFee;
+    const totalNetworkFee = confidentialPrepare
+        ? quotedTotalFee?.gt(0)
+            ? quotedTotalFee
+            : null
+        : estimatedTotalFee;
+    // Confidential bulk charges the DAO recipients + fees. Roll fees into
+    // the headline total so the AmountSummary and balance check reflect
+    // reality.
     const totalAmount = totalNetworkFee
         ? recipientsTotal.add(totalNetworkFee)
         : recipientsTotal;
+    // Per-recipient fee shown on each row: the firm quote leg in the
+    // confidential flow (guarded on length so a just-edited list never reads
+    // a stale quote by index; zero-fee legs show nothing), the flat local
+    // estimate otherwise.
+    const quotedRecipientFees =
+        confidentialPrepare?.fees?.perRecipientFees.length ===
+        paymentData.length
+            ? confidentialPrepare.fees.perRecipientFees
+            : null;
+    const getRecipientFee = (index: number) => {
+        if (confidentialPrepare) {
+            const fee = quotedRecipientFees?.[index];
+            return fee?.gt(0) ? fee : null;
+        }
+        return feePerRecipient;
+    };
 
     // Calculate total USD value and check insufficient balance (amount + fees)
     let totalUSDValue = Big(0);
@@ -252,6 +295,7 @@ export function ReviewPaymentsStep({
                         // Actual data after validation
                         <>
                             {paymentData.map((payment, index) => {
+                                const recipientFee = getRecipientFee(index);
                                 // Calculate estimated USD value
                                 // balanceUSD is the total USD value of the token balance
                                 // To get price per token: balanceUSD / (balance / 10^decimals)
@@ -373,6 +417,31 @@ export function ReviewPaymentsStep({
                                                                             2,
                                                                         )}
                                                                     </div>
+                                                                    {confidentialPrepare?.status ===
+                                                                    "loading" ? (
+                                                                        <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground whitespace-nowrap">
+                                                                            {tPay(
+                                                                                "networkFee",
+                                                                            )}
+                                                                            :
+                                                                            <span className="inline-block h-4 w-16 bg-muted animate-pulse rounded" />
+                                                                        </div>
+                                                                    ) : (
+                                                                        recipientFee && (
+                                                                            <div className="text-xs text-muted-foreground whitespace-nowrap">
+                                                                                {tPay(
+                                                                                    "networkFee",
+                                                                                )}
+                                                                                :{" "}
+                                                                                {formatTokenDisplayAmount(
+                                                                                    recipientFee,
+                                                                                )}{" "}
+                                                                                {
+                                                                                    selectedToken.symbol
+                                                                                }
+                                                                            </div>
+                                                                        )
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-3 justify-end">
@@ -420,6 +489,55 @@ export function ReviewPaymentsStep({
                     )}
                 </div>
 
+                {/* Confidential: skeleton while firm quotes are in flight. */}
+                {!isValidatingAccounts &&
+                    confidentialPrepare?.status === "loading" && (
+                        <div className="flex items-center justify-between gap-2 text-sm py-3 border-t border-border">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                                <p>{tPay("networkFee")}</p>
+                                <Tooltip
+                                    content={tIntents("networkFeeTooltip")}
+                                    side="top"
+                                >
+                                    <Info
+                                        className="size-3 shrink-0"
+                                        aria-label={tPay("networkFeeInfo")}
+                                    />
+                                </Tooltip>
+                            </div>
+                            <div className="h-5 w-24 bg-muted animate-pulse rounded" />
+                        </div>
+                    )}
+
+                {/* Confidential: no batch-payment credits — no quotes, no
+                    submit, and nothing a retry could fix. */}
+                {!isValidatingAccounts && confidentialPrepare?.outOfCredits && (
+                    <div className="flex items-center justify-between gap-2 text-sm py-3 border-t border-border">
+                        <p className="text-red-600 dark:text-red-400">
+                            {tBulk("upload.bulkPaymentsUsed")}
+                        </p>
+                    </div>
+                )}
+
+                {/* Confidential: quote fetch failed — submission stays blocked. */}
+                {!isValidatingAccounts &&
+                    !confidentialPrepare?.outOfCredits &&
+                    confidentialPrepare?.status === "error" && (
+                        <div className="flex items-center justify-between gap-2 text-sm py-3 border-t border-border">
+                            <p className="text-red-600 dark:text-red-400">
+                                {tBulk("quoteFetchFailed")}
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={confidentialPrepare.retry}
+                            >
+                                {tCommon("retry")}
+                            </Button>
+                        </div>
+                    )}
+
                 {!isValidatingAccounts && totalNetworkFee && (
                     <div className="flex items-center justify-between gap-2 text-sm py-3 border-t border-border">
                         <div className="flex items-center gap-1 text-muted-foreground">
@@ -465,7 +583,10 @@ export function ReviewPaymentsStep({
                         disabled={
                             hasValidationErrors ||
                             isSubmitting ||
-                            paymentData.length === 0
+                            paymentData.length === 0 ||
+                            // Confidential: only submit fees the user has seen.
+                            (confidentialPrepare !== undefined &&
+                                confidentialPrepare.status !== "success")
                         }
                         isSubmitting={isSubmitting}
                         permissions={[{ kind: "call", action: "AddProposal" }]}

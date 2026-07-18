@@ -354,6 +354,12 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             ),
         )
         .route(
+            "/api/confidential-intents/bulk-payment/confirm",
+            post(
+                handlers::intents::confidential::bulk_payment_confirm::bulk_payment_confirm,
+            ),
+        )
+        .route(
             "/api/confidential-intents/bulk-payment/activation",
             get(handlers::intents::confidential::bulk_activation::get_bulk_activation_status),
         )

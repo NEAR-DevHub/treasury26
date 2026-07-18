@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Toplu ödeme önerisi gönderildi",
         "submitListFailed": "Ödeme listesi gönderilemedi",
         "submitFailed": "Toplu ödeme gönderilemedi",
+        "quoteFetchFailed": "Transfer ücretleri alınamadı. Lütfen tekrar deneyin.",
         "upload": {
             "pleaseUploadCsv": "Lütfen bir CSV dosyası yükleyin",
             "fileSizeLimit": "Dosya boyutu 1.5 MB'dan az olmalıdır",

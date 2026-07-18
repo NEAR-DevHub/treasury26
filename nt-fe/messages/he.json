@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "הצעת תשלום בכמויות נשלחה",
         "submitListFailed": "שליחת רשימת התשלומים נכשלה",
         "submitFailed": "שליחת תשלום בכמויות נכשלה",
+        "quoteFetchFailed": "לא ניתן היה לקבל את עמלות ההעברה. נסו שוב.",
         "upload": {
             "pleaseUploadCsv": "אנא העלה קובץ CSV",
             "fileSizeLimit": "גודל הקובץ חייב להיות פחות מ-1.5 MB",

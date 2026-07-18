@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "批量付款提案已提交",
         "submitListFailed": "提交付款列表失败",
         "submitFailed": "提交批量付款失败",
+        "quoteFetchFailed": "无法获取转账费用，请重试。",
         "upload": {
             "pleaseUploadCsv": "请上传 CSV 文件",
             "fileSizeLimit": "文件大小必须小于 1.5 MB",

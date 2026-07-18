@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Bulk payment proposal submitted",
         "submitListFailed": "Failed to submit payment list",
         "submitFailed": "Failed to submit bulk payment",
+        "quoteFetchFailed": "Couldn't fetch transfer fees. Please try again.",
         "upload": {
             "pleaseUploadCsv": "Please upload a CSV file",
             "fileSizeLimit": "File size must be less than 1.5 MB",
