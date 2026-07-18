@@ -56,6 +56,40 @@ pub fn init_observability() -> ObservabilityGuard {
     }
 }
 
+/// axum middleware that opens a tracing span for the lifetime of each HTTP
+/// request, so every log line a handler emits is attributable to the request:
+/// `method`, `route` (the matched pattern when available, else the path), and a
+/// generated `request_id` to correlate all lines of one request.
+///
+/// Without this, API request logs carried no request context — the Sentry tower
+/// layers create a Sentry transaction/hub, not a `tracing::Span`, so tracing
+/// output during a request was unattributed unless the handler had its own
+/// `#[tracing::instrument]` (only a minority do). The span is INFO so it is live
+/// under the default filter; the fmt layer doesn't emit span open/close lines,
+/// so this adds context to existing logs without adding noise.
+pub async fn trace_request(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use tracing::Instrument as _;
+
+    let method = request.method().clone();
+    let route = request
+        .extensions()
+        .get::<axum::extract::MatchedPath>()
+        .map(|matched| matched.as_str().to_owned())
+        .unwrap_or_else(|| request.uri().path().to_owned());
+    let request_id = uuid::Uuid::new_v4();
+
+    let span = tracing::info_span!(
+        "http_request",
+        method = %method,
+        route = %route,
+        request_id = %request_id,
+    );
+    next.run(request).instrument(span).await
+}
+
 /// Initialize backend logging through tracing.
 ///
 /// This intentionally mirrors the previous logger behavior: when RUST_LOG is
@@ -282,6 +316,39 @@ fn truncate_sanitized_text(mut text: String) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `trace_request` must run each request inside the `http_request` span so
+    /// handler logs inherit its context (method/route/request_id).
+    #[tokio::test]
+    async fn trace_request_wraps_handler_in_named_span() {
+        use axum::{Router, body::Body, http::Request, routing::get};
+        use tower::ServiceExt as _;
+
+        async fn handler() -> &'static str {
+            let name = tracing::Span::current().metadata().map(|m| m.name());
+            assert_eq!(name, Some("http_request"), "handler must run in the span");
+            "ok"
+        }
+
+        // A subscriber must be active or spans are no-ops (metadata is None).
+        let subscriber = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::INFO)
+            .finish();
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        let app = Router::new()
+            .route("/x", get(handler))
+            .layer(axum::middleware::from_fn(super::trace_request));
+
+        let response = app
+            .oneshot(Request::builder().uri("/x").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+
+        // A failed in-handler assertion panics -> 500; 200 proves it ran inside
+        // the span.
+        assert_eq!(response.status(), 200);
+    }
 
     /// The apalis-board layer must forward events emitted inside an apalis
     /// `task` span to the broadcaster — that's what the dashboard's `/events`

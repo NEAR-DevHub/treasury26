@@ -24,9 +24,7 @@ use std::sync::Arc;
 
 use apalis::layers::WorkerBuilderExt;
 use apalis::layers::sentry::SentryLayer;
-use apalis::layers::tracing::{
-    DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer,
-};
+use apalis::layers::tracing::{DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer};
 use apalis::prelude::*;
 use apalis_core::backend::TaskSink;
 use apalis_core::backend::pipe::PipeExt;
@@ -242,7 +240,7 @@ async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
 async fn ensure_board_indexes(pool: &PgPool) {
     use sqlx::Executor as _;
 
-    const INDEXES: [(&str, &str); 3] = [
+    const INDEXES: [(&str, &str); 5] = [
         (
             "idx_jobs_status_doneat_runat",
             "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_status_doneat_runat \
@@ -256,6 +254,22 @@ async fn ensure_board_indexes(pool: &PgPool) {
         (
             "idx_jobs_run_at",
             "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_run_at ON apalis.jobs (run_at)",
+        ),
+        // Queues page (list_queues): GROUP BY job_type status-count aggregates.
+        // Narrow on purpose — the wider indexes above are too big for the
+        // planner to pick for a pure aggregate, so it kept seq-scanning the fat
+        // table. EXPLAIN shows this turns them into index-only scans.
+        (
+            "idx_jobs_type_status",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_type_status \
+             ON apalis.jobs (job_type, status)",
+        ),
+        // Queues page: per-job_type run_at rollups (7-day activity, most-recent,
+        // time windows).
+        (
+            "idx_jobs_type_runat",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_type_runat \
+             ON apalis.jobs (job_type, run_at)",
         ),
     ];
 
@@ -377,23 +391,40 @@ macro_rules! register_cron_worker {
                 // the task's queue / id / attempt as Sentry context, plus a
                 // per-task performance transaction. No-op when Sentry is off.
                 .layer(SentryLayer::new())
-                // The `task` span and its start/done events are created at
-                // INFO (apalis defaults them to DEBUG). Two reasons: the
-                // apalis-board dashboard only streams logs carrying a `task`
-                // span (its `/events` SSE filters `span.is_some()`), and a
-                // DEBUG span is disabled under the default `info` filter — so
-                // at INFO the span is live, task activity shows on the board,
-                // and every cycle's logs inherit the task_id/attempt context.
-                // Failures stay at WARN (not the default ERROR): a single
-                // failed cycle is retried by the next cron tick and is a
-                // warning, and this keeps the tracing→Sentry bridge
-                // (ERROR→event) from emitting a *second* event for the same
-                // failure the SentryLayer already captured.
+                // The task span is INFO so it is live under the default `info`
+                // filter: the apalis-board `/events` SSE only streams logs
+                // carrying a `task` span, and every log the handler emits
+                // inherits this span's context. The default span carries only
+                // task_id/attempt — so it is replaced with one that also
+                // records `queue` (the job name), making every job log line
+                // attributable to its queue. The per-cycle start/done events
+                // are dropped to DEBUG: at INFO they flooded the logs with two
+                // lines per tick per queue (~2M/day from the 2–5s queues),
+                // burying anything worth noticing. Failures stay at WARN (not
+                // the default ERROR): a failed cycle is retried by the next
+                // tick, and this keeps the tracing→Sentry bridge (ERROR→event)
+                // from emitting a *second* event for a failure the SentryLayer
+                // already captured.
                 .layer(
                     TraceLayer::new()
-                        .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
-                        .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
-                        .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
+                        .make_span_with({
+                            let queue = $name;
+                            move |req: &apalis_core::task::Task<_, _, _>| {
+                                tracing::info_span!(
+                                    "task",
+                                    queue,
+                                    task_id = req
+                                        .parts
+                                        .task_id
+                                        .as_ref()
+                                        .map(ToString::to_string)
+                                        .unwrap_or_default(),
+                                    attempt = req.parts.attempt.current(),
+                                )
+                            }
+                        })
+                        .on_request(DefaultOnRequest::new().level(tracing::Level::DEBUG))
+                        .on_response(DefaultOnResponse::new().level(tracing::Level::DEBUG))
                         .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
                 )
                 .concurrency(1)

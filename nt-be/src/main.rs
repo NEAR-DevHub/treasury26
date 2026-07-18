@@ -83,7 +83,13 @@ async fn async_main() {
         // keeps unknown public `/api/*` a plain 404.
         .fallback_service(board)
         .layer(SentryHttpLayer::new().enable_transaction())
-        .layer(NewSentryLayer::<Request<Body>>::new_from_top());
+        .layer(NewSentryLayer::<Request<Body>>::new_from_top())
+        // Opens a per-request tracing span (method/route/request_id) so handler
+        // logs are attributable to the request. Outermost so it wraps every
+        // route, including the board and the sentry layers.
+        .layer(axum::middleware::from_fn(
+            nt_be::observability::trace_request,
+        ));
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
     let addr = format!("0.0.0.0:{}", port);
