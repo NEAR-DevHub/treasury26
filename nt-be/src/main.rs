@@ -7,6 +7,7 @@ use axum::{
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use std::sync::Arc;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
+use tower_http::trace::{DefaultOnFailure, TraceLayer};
 
 fn main() {
     tokio::runtime::Builder::new_multi_thread()
@@ -82,14 +83,31 @@ async fn async_main() {
         // Auth. It answers only paths no other route matched; its API guard
         // keeps unknown public `/api/*` a plain 404.
         .fallback_service(board)
+        // tower-http's standard request tracing. Its default
+        // `ServerErrorsAsFailures` classifier logs 5xx responses via
+        // `on_failure` at ERROR — which the sentry-tracing layer turns into a
+        // Sentry event — while 4xx are not failures, so client errors don't
+        // alarm. The span (INFO) also gives every handler log line request
+        // context (method/path/request_id). This replaces a hand-rolled
+        // middleware with the ecosystem-standard layer.
+        //
+        // Innermost of these three so it runs inside the per-request Sentry hub
+        // bound by `NewSentryLayer`: the 5xx event is then captured with the
+        // request's scope/context.
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &Request<Body>| {
+                    tracing::info_span!(
+                        "http_request",
+                        method = %request.method(),
+                        path = %request.uri().path(),
+                        request_id = %uuid::Uuid::new_v4(),
+                    )
+                })
+                .on_failure(DefaultOnFailure::new().level(tracing::Level::ERROR)),
+        )
         .layer(SentryHttpLayer::new().enable_transaction())
-        .layer(NewSentryLayer::<Request<Body>>::new_from_top())
-        // Opens a per-request tracing span (method/route/request_id) so handler
-        // logs are attributable to the request. Outermost so it wraps every
-        // route, including the board and the sentry layers.
-        .layer(axum::middleware::from_fn(
-            nt_be::observability::trace_request,
-        ));
+        .layer(NewSentryLayer::<Request<Body>>::new_from_top());
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
     let addr = format!("0.0.0.0:{}", port);
