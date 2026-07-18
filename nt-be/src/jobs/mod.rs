@@ -218,7 +218,52 @@ async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
     conn.execute("SET search_path TO apalis_migrations, public")
         .await?;
     PostgresStorage::migrations().run(&mut *conn).await?;
+    drop(conn);
+
+    ensure_board_indexes(pool).await;
     Ok(())
+}
+
+/// Adds composite indexes that the apalis-board queries need but the apalis
+/// schema doesn't ship.
+///
+/// The board's task-list queries filter by `status` (and optionally
+/// `job_type`) and `ORDER BY done_at DESC, run_at DESC`; the built-in schema
+/// only has single-column `status`/`job_type` indexes, so on a large table
+/// (~1M rows on testenv) Postgres filtered then sorted the whole matching set
+/// on every page load — the reason the board UI was slow. These composite
+/// indexes let it satisfy the filter+order with an index range scan.
+///
+/// `CONCURRENTLY` avoids taking a write lock on the table the workers are
+/// actively polling; `IF NOT EXISTS` makes it a cheap no-op after the first
+/// build. It cannot run inside a transaction, so it runs on a plain pooled
+/// connection (autocommit). A failure here must not stop startup — log and
+/// carry on; the board is just slower without them.
+async fn ensure_board_indexes(pool: &PgPool) {
+    use sqlx::Executor as _;
+
+    const INDEXES: [(&str, &str); 3] = [
+        (
+            "idx_jobs_status_doneat_runat",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_status_doneat_runat \
+             ON apalis.jobs (status, done_at DESC, run_at DESC)",
+        ),
+        (
+            "idx_jobs_type_status_doneat_runat",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_type_status_doneat_runat \
+             ON apalis.jobs (job_type, status, done_at DESC, run_at DESC)",
+        ),
+        (
+            "idx_jobs_run_at",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_run_at ON apalis.jobs (run_at)",
+        ),
+    ];
+
+    for (name, ddl) in INDEXES {
+        if let Err(e) = pool.execute(ddl).await {
+            tracing::warn!(index = name, error = %e, "failed to create apalis board index");
+        }
+    }
 }
 
 fn storage(pool: &PgPool, queue: &str) -> TickStorage {
