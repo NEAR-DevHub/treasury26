@@ -65,6 +65,7 @@ pub enum PublicTransferLegKind {
     Mint,
     Burn,
     WrapAndTransfer,
+    QuotePending,
 }
 
 impl PublicTransferLegKind {
@@ -74,6 +75,7 @@ impl PublicTransferLegKind {
             Self::Mint => "mint",
             Self::Burn => "burn",
             Self::WrapAndTransfer => "wrap_and_transfer",
+            Self::QuotePending => "quote_pending",
         }
     }
 
@@ -83,6 +85,7 @@ impl PublicTransferLegKind {
             "mint" => Ok(Self::Mint),
             "burn" => Ok(Self::Burn),
             "wrap_and_transfer" => Ok(Self::WrapAndTransfer),
+            "quote_pending" => Ok(Self::QuotePending),
             other => Err(format!("unknown public transfer leg kind: {}", other)),
         }
     }
@@ -226,7 +229,7 @@ pub struct ProposalLink {
 pub struct NormalizedTransferLeg {
     pub account_id: String,
     pub leg_key: String,
-    pub source_event_id: i64,
+    pub source_event_id: Option<i64>,
     pub source: PublicHistorySource,
     pub proposal_link: Option<ProposalLink>,
     pub transaction_hash: Option<String>,

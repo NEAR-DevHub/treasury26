@@ -344,7 +344,8 @@
             "from": "DARI",
             "to": "KE",
             "transactionHash": "HASH TRANSAKSI",
-            "hashTooltip": "Pengenal unik (hash) dari transaksi ini"
+            "hashTooltip": "Pengenal unik (hash) dari transaksi ini",
+            "processing": "Memproses"
         },
         "empty": {
             "title": "Tidak ada transaksi ditemukan",
@@ -371,7 +372,18 @@
             "method": "Metode",
             "contract": "Kontrak",
             "transaction": "Transaksi",
-            "depositTransaction": "Transaksi setoran"
+            "depositTransaction": "Transaksi setoran",
+            "depositTitle": "Detail Setoran",
+            "exchangeTitle": "Detail Penukaran",
+            "transferTitle": "Detail Transfer",
+            "via": "Melalui",
+            "status": "Status",
+            "completed": "Selesai",
+            "processing": "Diproses",
+            "failed": "Gagal",
+            "exchangeTransaction": "Transaksi Penukaran",
+            "transferTransaction": "Transaksi Transfer",
+            "rate": "Kurs"
         },
         "refresh": {
             "ariaLabel": "Segarkan riwayat rahasia",
@@ -1983,7 +1995,7 @@
     "activityLabels": {
         "exchangePending": "Pertukaran Tertunda",
         "exchangeRequest": "Permintaan Pertukaran",
-        "exchangeFulfillment": "Pemenuhan Pertukaran",
+        "exchangeFulfillment": "Pertukaran",
         "stakingRewards": "Imbalan Staking",
         "proposalAction": "Tindakan Usulan",
         "deposit": "Deposit {symbol}",

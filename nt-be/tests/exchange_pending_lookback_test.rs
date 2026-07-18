@@ -4,6 +4,9 @@ use chrono::{Duration, TimeZone, Utc};
 use nt_be::handlers::public_history::gold::cursors::mark_gold_dirty;
 use nt_be::handlers::public_history::gold::projector::project_public_gold_for_account;
 use nt_be::handlers::public_history::gold::repository::earliest_pending_exchange_time;
+use nt_be::handlers::public_history::quotes::{
+    QuoteProposalSnapshot, QuoteProposalType, build_quote_metadata,
+};
 use nt_be::services::TokenPriceService;
 use serial_test::serial;
 use sqlx::postgres::PgPoolOptions;
@@ -333,23 +336,41 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     .bind(ACCOUNT_ID)
     .bind(outgoing_time - Duration::minutes(3))
     .bind(proposal_executed_at)
-    .bind(serde_json::json!({
-        "status": "SUCCESS",
-        "nearTxHashes": ["fulfillment-tx"],
-        "quoteResponse": {
-            "quoteRequest": {
-                "originAsset": "nep141:wrap.near",
-                "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
-            },
-            "quote": {
-                "amountIn": "100000000000000000000000"
-            }
-        },
-        "swapDetails": {
-            "amountIn": "100000000000000000000000",
-            "amountOut": "492331"
-        }
-    }))
+    .bind(
+        build_quote_metadata(
+            None,
+            Some(&QuoteProposalSnapshot {
+                quote_type: QuoteProposalType::AssetExchange,
+                deposit_address: "deposit-address".to_string(),
+                recipient: None,
+                origin_asset: "nep141:wrap.near".to_string(),
+                origin_amount_raw: "100000000000000000000000".to_string(),
+                destination_asset: Some(
+                    "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+                        .to_string(),
+                ),
+                signature: None,
+            }),
+            Some(serde_json::json!({
+                "status": "SUCCESS",
+                "nearTxHashes": ["fulfillment-tx"],
+                "quoteResponse": {
+                    "quoteRequest": {
+                        "originAsset": "nep141:wrap.near",
+                        "destinationAsset": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near"
+                    },
+                    "quote": {
+                        "amountIn": "100000000000000000000000"
+                    }
+                },
+                "swapDetails": {
+                    "amountIn": "100000000000000000000000",
+                    "amountOut": "492331"
+                }
+            })),
+        )
+        .expect("quote metadata"),
+    )
     .fetch_one(&pool)
     .await
     .expect("insert proposal");

@@ -77,11 +77,39 @@ export interface ActivityAccount {
     counterparty: string | null;
     signerId: string | null;
     receiverId: string | null;
-    swap?: any; // Swap object if this is a swap transaction
+    swap?: {
+        swapRole?: string;
+        receivedAmount?: string | null;
+    };
     actionKind?: string | null;
     methodName?: string | null;
     amount?: string;
     tokenSymbol?: string;
+}
+
+export type ActivityStatus = "pending" | "failed" | null;
+
+export function getActivityStatus(activity: ActivityAccount): ActivityStatus {
+    const actionKind = activity.actionKind ?? "";
+    if (
+        actionKind === "PublicExchange:failed" ||
+        actionKind === "PublicSent:failed"
+    ) {
+        return "failed";
+    }
+    if (
+        actionKind === "PublicExchange:pending" ||
+        actionKind === "PublicSent:pending"
+    ) {
+        return "pending";
+    }
+    if (
+        activity.swap?.swapRole === "deposit" &&
+        activity.swap.receivedAmount == null
+    ) {
+        return "pending";
+    }
+    return null;
 }
 
 /**
@@ -91,9 +119,9 @@ export interface ActivityAccount {
  * 1. Swaps → "Exchange"
  * 2. Staking rewards → "Staking Rewards"
  * 3. Proposal actions → "Proposal Action"
- * 4. Incoming → "Deposit [TOKEN]"
- * 5. Outgoing → "Payment Sent"
- * 6. No action data → "Transaction"
+ * 4. Positive amount → "Deposit [TOKEN]"
+ * 5. Negative amount or action data → "Payment Sent"
+ * 6. No direction or action data → "Transaction"
  */
 export interface ActivityLabels {
     exchangePending: string;
@@ -129,13 +157,13 @@ export function getActivityLabel(
         return labels.proposalAction;
     }
 
-    const isReceived = parseFloat(activity.amount ?? "0") > 0;
+    const amount = parseFloat(activity.amount ?? "0");
 
-    if (activity.actionKind) {
-        if (isReceived) {
-            const symbol = activity.tokenSymbol || labels.fallbackToken;
-            return labels.deposit(symbol);
-        }
+    if (amount > 0) {
+        const symbol = activity.tokenSymbol || labels.fallbackToken;
+        return labels.deposit(symbol);
+    }
+    if (amount < 0 || activity.actionKind) {
         return labels.paymentSent;
     }
 
@@ -290,7 +318,7 @@ export function getToAccountId(
 }
 
 function buildHistoryDescriptionLabels(
-    t: (key: string, values?: Record<string, any>) => string,
+    t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): HistoryDescriptionLabels {
     return {
         unlimited: t("unlimitedHistory"),
@@ -304,7 +332,7 @@ function buildHistoryDescriptionLabels(
 }
 
 function buildActivityLabels(
-    t: (key: string, values?: Record<string, any>) => string,
+    t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): ActivityLabels {
     return {
         exchangePending: t("exchangePending"),
@@ -320,7 +348,7 @@ function buildActivityLabels(
 }
 
 function buildActivitySubLabels(
-    t: (key: string, values?: Record<string, any>) => string,
+    t: (key: string, values?: Record<string, string | number | Date>) => string,
 ): ActivitySubLabels {
     return {
         viaIntents: t("viaIntents"),

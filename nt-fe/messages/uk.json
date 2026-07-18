@@ -344,7 +344,8 @@
             "from": "ВІД",
             "to": "ДО",
             "transactionHash": "ХЕШ ТРАНЗАКЦІЇ",
-            "hashTooltip": "Унікальний ідентифікатор (хеш) цієї транзакції"
+            "hashTooltip": "Унікальний ідентифікатор (хеш) цієї транзакції",
+            "processing": "Обробка"
         },
         "empty": {
             "title": "Транзакцій не знайдено",
@@ -371,7 +372,18 @@
             "method": "Метод",
             "contract": "Контракт",
             "transaction": "Транзакція",
-            "depositTransaction": "Транзакція поповнення"
+            "depositTransaction": "Транзакція поповнення",
+            "depositTitle": "Деталі депозиту",
+            "exchangeTitle": "Деталі обміну",
+            "transferTitle": "Деталі переказу",
+            "via": "Через",
+            "status": "Статус",
+            "completed": "Завершено",
+            "processing": "Обробляється",
+            "failed": "Невдало",
+            "exchangeTransaction": "Транзакція обміну",
+            "transferTransaction": "Транзакція переказу",
+            "rate": "Курс"
         },
         "refresh": {
             "ariaLabel": "Оновити конфіденційну історію",
@@ -1966,7 +1978,7 @@
     "activityLabels": {
         "exchangePending": "Очікує обмін",
         "exchangeRequest": "Запит на обмін",
-        "exchangeFulfillment": "Виконання обміну",
+        "exchangeFulfillment": "Обмін",
         "stakingRewards": "Винагороди стейкінгу",
         "proposalAction": "Дія пропозиції",
         "deposit": "Поповнення {symbol}",

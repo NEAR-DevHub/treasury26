@@ -1578,6 +1578,10 @@ pub struct SwapInfo {
     pub solver_transaction_hash: String,
     /// "deposit" for the outgoing leg, "fulfillment" for the incoming leg
     pub swap_role: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sent_amount_usd: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub received_amount_usd: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -1625,6 +1629,7 @@ pub async fn get_recent_activity(
                     Json(serde_json::json!({ "error": e.to_string() })),
                 )
             })?;
+    let exclude_near_dust = is_confidential;
 
     // Get account plan info and calculate date cutoff
     let account_plan = get_account_plan_info(&state.db_pool, params.account_id.as_str())
@@ -1735,7 +1740,7 @@ pub async fn get_recent_activity(
         from_accounts_not: params.from_account_not.clone(),
         to_accounts: params.to_account.clone(),
         to_accounts_not: params.to_account_not.clone(),
-        exclude_near_dust: true,
+        exclude_near_dust,
         exclude_swaps_from_direction: true, // Recent activity: exclude swaps from incoming/outgoing (separate tab)
     };
 
@@ -1799,7 +1804,7 @@ pub async fn get_recent_activity(
             include_metadata: Some(false),
             include_prices: Some(false),
             include_chain_metadata: Some(false),
-            exclude_near_dust: true,
+            exclude_near_dust,
             exclude_swaps_from_direction: true,
         };
         public_list::count_balance_change_legs(&state.db_pool, &count_query)
@@ -1839,7 +1844,7 @@ pub async fn get_recent_activity(
         include_metadata: Some(true),
         include_prices: Some(true),
         include_chain_metadata: Some(false), // Recent activity doesn't need chain metadata here (will be added for swaps later)
-        exclude_near_dust: true,
+        exclude_near_dust,
         exclude_swaps_from_direction: true, // Recent activity: exclude swaps from incoming/outgoing (separate Exchange tab)
     };
 
@@ -2050,6 +2055,8 @@ pub async fn get_recent_activity(
                         received_token_metadata,
                         solver_transaction_hash: s.solver_transaction_hash.clone(),
                         swap_role: role.to_string(),
+                        sent_amount_usd: None,
+                        received_amount_usd: None,
                     }
                 })
                 .or_else(|| {
@@ -2062,6 +2069,11 @@ pub async fn get_recent_activity(
                         received_token_metadata: s.received_token_metadata.clone(),
                         solver_transaction_hash: s.solver_transaction_hash.clone(),
                         swap_role: "fulfillment".to_string(),
+                        sent_amount_usd: s.sent_amount_usd.as_ref().and_then(ToPrimitive::to_f64),
+                        received_amount_usd: s
+                            .received_amount_usd
+                            .as_ref()
+                            .and_then(ToPrimitive::to_f64),
                     })
                 });
 

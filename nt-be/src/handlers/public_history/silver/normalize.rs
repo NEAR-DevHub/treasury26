@@ -74,7 +74,7 @@ fn normalize_ft(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
     Ok(Some(NormalizedTransferLeg {
         account_id: row.account_id.clone(),
         leg_key: source_event_leg_key(row),
-        source_event_id: row.id,
+        source_event_id: Some(row.id),
         source: PublicHistorySource::NearblocksFt,
         proposal_link: proposal_link(row),
         transaction_hash: row.transaction_hash.clone(),
@@ -123,7 +123,7 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
     Ok(Some(NormalizedTransferLeg {
         account_id: row.account_id.clone(),
         leg_key: source_event_leg_key(row),
-        source_event_id: row.id,
+        source_event_id: Some(row.id),
         source: PublicHistorySource::NearblocksMt,
         proposal_link: proposal_link(row),
         transaction_hash: row.transaction_hash.clone(),
@@ -180,7 +180,7 @@ fn normalize_receipt(
     Ok(Some(NormalizedTransferLeg {
         account_id: row.account_id.clone(),
         leg_key: source_event_leg_key(row),
-        source_event_id: row.id,
+        source_event_id: Some(row.id),
         source: PublicHistorySource::NearblocksReceipt,
         proposal_link: proposal_link(row),
         transaction_hash: row.transaction_hash.clone(),
@@ -210,6 +210,9 @@ pub fn normalize_bronze_row(
         PublicHistorySource::NearblocksFt => normalize_ft(row),
         PublicHistorySource::NearblocksMt => normalize_mt(row),
         PublicHistorySource::NearblocksReceipt => normalize_receipt(row),
+        PublicHistorySource::QuoteProjection => {
+            Err("quote projection rows are synthetic".to_string())
+        }
     }
 }
 

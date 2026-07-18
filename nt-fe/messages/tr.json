@@ -344,7 +344,8 @@
             "from": "KİMDEN",
             "to": "KİME",
             "transactionHash": "İŞLEM HASH'İ",
-            "hashTooltip": "Bu işlemin benzersiz tanımlayıcısı (hash)"
+            "hashTooltip": "Bu işlemin benzersiz tanımlayıcısı (hash)",
+            "processing": "İşleniyor"
         },
         "empty": {
             "title": "İşlem bulunamadı",
@@ -371,7 +372,18 @@
             "method": "Metot",
             "contract": "Sözleşme",
             "transaction": "İşlem",
-            "depositTransaction": "Yatırma işlemi"
+            "depositTransaction": "Yatırma işlemi",
+            "depositTitle": "Yatırma Detayları",
+            "exchangeTitle": "Takas Detayları",
+            "transferTitle": "Transfer Detayları",
+            "via": "Aracılığıyla",
+            "status": "Durum",
+            "completed": "Tamamlandı",
+            "processing": "İşleniyor",
+            "failed": "Başarısız",
+            "exchangeTransaction": "Takas İşlemi",
+            "transferTransaction": "Transfer İşlemi",
+            "rate": "Kur"
         },
         "refresh": {
             "ariaLabel": "Gizli geçmişi yenile",
@@ -1983,7 +1995,7 @@
     "activityLabels": {
         "exchangePending": "Takas Beklemede",
         "exchangeRequest": "Takas Talebi",
-        "exchangeFulfillment": "Takas Gerçekleştirme",
+        "exchangeFulfillment": "Takas",
         "stakingRewards": "Staking Ödülleri",
         "proposalAction": "Öneri Eylemi",
         "deposit": "{symbol} Yatırma",

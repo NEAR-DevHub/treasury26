@@ -12,18 +12,14 @@
 /// ```
 mod common;
 
-use axum::body::Body;
-use axum::http::Request;
 use base64::Engine;
 use nt_be::handlers::balance_changes::transfer_hints::neardata::NeardataClient;
 use sqlx::PgPool;
-use std::sync::Arc;
 use std::time::Instant;
-use tower::ServiceExt;
 
-/// Balance change record — fields we inspect in the API response.
+/// Balance change record — fields we inspect from the legacy table.
 #[allow(dead_code)]
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 struct BalanceChangeRecord {
     block_height: i64,
@@ -52,36 +48,16 @@ struct ReferenceRecord {
     action_kind: Option<String>,
 }
 
-/// Recent activity response from /api/recent-activity
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RecentActivityResponse {
-    data: Vec<RecentActivityItem>,
-    total: i64,
-}
-
 #[allow(dead_code)]
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RecentActivityItem {
-    id: i64,
-    token_id: String,
-    amount: String,
-    swap: Option<SwapInfo>,
-    action_kind: Option<String>,
-    method_name: Option<String>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SwapInfo {
+#[derive(Debug, sqlx::FromRow)]
+struct DetectedSwapRecord {
     sent_token_id: Option<String>,
     sent_amount: Option<String>,
     received_token_id: String,
-    received_amount: String,
+    received_amount: Option<String>,
     solver_transaction_hash: String,
-    swap_role: String,
+    fulfillment_balance_change_id: Option<i64>,
+    deposit_balance_change_id: Option<i64>,
 }
 
 /// Load fixture SQL into indexed_dao_outcomes.
@@ -98,22 +74,64 @@ async fn load_fixtures(pool: &PgPool, fixture_sql: &str) {
     }
 }
 
-/// Query the API-filtered count (records that pass all WHERE clauses).
-async fn api_filtered_count(pool: &PgPool, account_id: &str) -> i64 {
-    let result: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM balance_changes WHERE account_id = $1 \
+/// Query records that pass the legacy `balance_changes` visibility filters.
+///
+/// Public activity/export APIs now read public rows from `gold_public_history_events`
+/// and intentionally return empty for legacy-only accounts. These tests exercise
+/// the old Goldsky indexing pipeline itself, so assertions read the legacy table
+/// directly instead of going through `/api/balance-changes`.
+async fn legacy_visible_balance_changes(
+    pool: &PgPool,
+    account_id: &str,
+) -> Vec<BalanceChangeRecord> {
+    sqlx::query_as::<_, BalanceChangeRecord>(
+        "SELECT
+            block_height,
+            COALESCE(token_id, 'near') AS token_id,
+            amount::TEXT AS amount,
+            balance_before::TEXT AS balance_before,
+            balance_after::TEXT AS balance_after,
+            counterparty,
+            signer_id,
+            receiver_id,
+            action_kind,
+            method_name,
+            actions,
+            transaction_hashes
+         FROM balance_changes
+         WHERE account_id = $1 \
          AND counterparty != 'SNAPSHOT' \
          AND counterparty != 'STAKING_SNAPSHOT' \
          AND counterparty != 'NOT_REGISTERED' \
          AND (amount != 0 OR balance_before != balance_after) \
          AND (action_kind IS NULL OR action_kind != 'CreateAccount') \
-         AND counterparty != 'sponsor.trezu.near'",
+         AND counterparty != 'sponsor.trezu.near'
+         ORDER BY block_height DESC, id DESC",
     )
     .bind(account_id)
-    .fetch_one(pool)
+    .fetch_all(pool)
     .await
-    .unwrap();
-    result.0
+    .unwrap()
+}
+
+async fn legacy_detected_swaps(pool: &PgPool, account_id: &str) -> Vec<DetectedSwapRecord> {
+    sqlx::query_as::<_, DetectedSwapRecord>(
+        "SELECT
+            sent_token_id,
+            sent_amount::TEXT AS sent_amount,
+            received_token_id,
+            received_amount::TEXT AS received_amount,
+            solver_transaction_hash,
+            fulfillment_balance_change_id,
+            deposit_balance_change_id
+         FROM detected_swaps
+         WHERE account_id = $1
+         ORDER BY block_height DESC, id DESC",
+    )
+    .bind(account_id)
+    .fetch_all(pool)
+    .await
+    .unwrap()
 }
 
 /// Tests enrichment for webassemblymusic-treasury.sputnik-dao.near.
@@ -204,32 +222,18 @@ async fn test_goldsky_webassemblymusic(pool: PgPool) {
         enrichment_elapsed.as_secs_f64()
     );
 
-    let after_enrichment = api_filtered_count(&pool, account_id).await;
-    println!("After enrichment: {} API-visible records", after_enrichment);
+    let after_enrichment = legacy_visible_balance_changes(&pool, account_id)
+        .await
+        .len();
+    println!(
+        "After enrichment: {} legacy-visible records",
+        after_enrichment
+    );
 
     // -----------------------------------------------------------------------
-    // 3. Query the HTTP API (enrichment-only, no maintenance)
+    // 3. Query legacy-visible records (enrichment-only, no maintenance)
     // -----------------------------------------------------------------------
-    let state = Arc::new(common::build_test_state(pool.clone()));
-    let app = nt_be::routes::create_routes(state);
-
-    let request = Request::builder()
-        .uri(format!(
-            "/api/balance-changes?accountId={account_id}&limit=100"
-        ))
-        .body(Body::empty())
-        .unwrap();
-
-    let response = ServiceExt::<Request<Body>>::oneshot(app, request)
-        .await
-        .unwrap();
-    assert_eq!(response.status(), 200);
-
-    let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
-        .await
-        .unwrap();
-    let records: Vec<BalanceChangeRecord> =
-        serde_json::from_slice(&body).expect("Failed to parse API response JSON");
+    let records = legacy_visible_balance_changes(&pool, account_id).await;
 
     let total_elapsed = total_start.elapsed();
 
@@ -243,11 +247,14 @@ async fn test_goldsky_webassemblymusic(pool: PgPool) {
         total_processed,
         enrichment_elapsed.as_secs_f64()
     );
-    println!("API records:     {}", records.len());
+    println!("Visible records: {}", records.len());
     println!("Total time:      {:.2}s", total_elapsed.as_secs_f64());
     println!("=============================\n");
 
-    println!("API-visible balance changes ({} records):", records.len());
+    println!(
+        "Legacy-visible balance changes ({} records):",
+        records.len()
+    );
     for r in &records {
         let token_short = if r.token_id.len() > 30 {
             &r.token_id[..30]
@@ -460,103 +467,88 @@ async fn test_goldsky_webassemblymusic(pool: PgPool) {
     println!("\nExpected production records verified (enrichment-only).");
 
     // -----------------------------------------------------------------------
-    // 7. Verify swap detection via /api/recent-activity
+    // 7. Verify swap detection via detected_swaps
     //
     // The enrichment cycle should have detected the intents swap at blocks
-    // 188487531-188487545 (USDC → USDC exchange). The recent-activity API
-    // enriches balance changes with swap info from the detected_swaps table.
+    // 188487531-188487545 (USDC → USDC exchange). The public recent-activity API
+    // now reads public gold rows, so this legacy Goldsky test verifies the
+    // detected_swaps linkage directly.
     // -----------------------------------------------------------------------
-    let state2 = Arc::new(common::build_test_state(pool.clone()));
-    let app2 = nt_be::routes::create_routes(state2);
-
-    let request = Request::builder()
-        .uri(format!(
-            "/api/recent-activity?accountId={account_id}&limit=100"
-        ))
-        .body(Body::empty())
-        .unwrap();
-
-    let response = ServiceExt::<Request<Body>>::oneshot(app2, request)
-        .await
-        .unwrap();
-    assert_eq!(response.status(), 200);
-
-    let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
-        .await
-        .unwrap();
-    let activity: RecentActivityResponse =
-        serde_json::from_slice(&body).expect("Failed to parse recent-activity response");
-
-    println!(
-        "\nRecent activity: {} items (total={})",
-        activity.data.len(),
-        activity.total
-    );
-
-    // Find swap items (items that have swap info)
-    let swap_items: Vec<_> = activity.data.iter().filter(|a| a.swap.is_some()).collect();
-    println!("Swap items found: {}", swap_items.len());
-    for item in &swap_items {
-        let swap = item.swap.as_ref().unwrap();
+    let swaps = legacy_detected_swaps(&pool, account_id).await;
+    println!("\nDetected swaps found: {}", swaps.len());
+    for swap in &swaps {
         println!(
-            "  token={} amount={} role={} sent={:?}/{:?} recv={}/{}",
-            item.token_id,
-            item.amount,
-            swap.swap_role,
+            "  solver={} sent={:?}/{:?} recv={}/{} fulfillment_id={:?} deposit_id={:?}",
+            swap.solver_transaction_hash,
             swap.sent_token_id,
             swap.sent_amount,
             swap.received_token_id,
-            swap.received_amount,
+            swap.received_amount.as_deref().unwrap_or(""),
+            swap.fulfillment_balance_change_id,
+            swap.deposit_balance_change_id,
         );
     }
 
     // There should be at least 1 swap detected (the intents USDC exchange)
     assert!(
-        !swap_items.is_empty(),
-        "Expected at least one swap in recent-activity, but found none"
+        !swaps.is_empty(),
+        "Expected at least one detected swap, but found none"
     );
 
-    // Find the fulfillment leg of the swap (positive intents token transfer)
-    let fulfillment = swap_items
+    // Find the fulfilled intents USDC exchange.
+    let fulfillment = swaps
         .iter()
-        .find(|a| {
-            a.swap
+        .find(|swap| {
+            swap.sent_amount
                 .as_ref()
-                .is_some_and(|s| s.swap_role == "fulfillment")
+                .is_some_and(|amount| amount.starts_with("20"))
+                && swap
+                    .received_amount
+                    .as_ref()
+                    .is_some_and(|amount| amount.starts_with("19.85"))
         })
-        .expect("Expected a swap fulfillment item in recent-activity");
-    let fulfillment_swap = fulfillment.swap.as_ref().unwrap();
+        .expect("Expected a fulfilled USDC swap in detected_swaps");
 
     // Verify swap amounts match production: sent ~20 USDC, received ~19.86 USDC
-    assert_eq!(fulfillment_swap.swap_role, "fulfillment");
+    assert_eq!(fulfillment.sent_token_id.as_deref(), Some(intents_usdc));
     assert!(
-        fulfillment_swap
+        fulfillment
             .sent_amount
             .as_ref()
             .is_some_and(|a| a.starts_with("20")),
         "Expected sent_amount ~20, got {:?}",
-        fulfillment_swap.sent_amount
+        fulfillment.sent_amount
     );
     assert!(
-        fulfillment_swap.received_amount.starts_with("19.85"),
-        "Expected received_amount ~19.85, got {}",
-        fulfillment_swap.received_amount
+        fulfillment
+            .received_amount
+            .as_ref()
+            .is_some_and(|a| a.starts_with("19.85")),
+        "Expected received_amount ~19.85, got {:?}",
+        fulfillment.received_amount
+    );
+    assert!(
+        fulfillment.fulfillment_balance_change_id.is_some(),
+        "Expected fulfillment balance_change id to be linked"
     );
 
-    // Find the deposit leg
-    let deposit = swap_items
-        .iter()
-        .find(|a| a.swap.as_ref().is_some_and(|s| s.swap_role == "deposit"));
-    if let Some(deposit_item) = deposit {
-        let deposit_swap = deposit_item.swap.as_ref().unwrap();
-        assert_eq!(deposit_swap.swap_role, "deposit");
-        println!(
-            "\nSwap deposit leg verified: sent={:?} recv={}",
-            deposit_swap.sent_amount, deposit_swap.received_amount
+    // The deposit leg may be linked when the source balance_change was found.
+    if let Some(deposit_id) = fulfillment.deposit_balance_change_id {
+        let deposit: (String,) =
+            sqlx::query_as("SELECT amount::TEXT FROM balance_changes WHERE id = $1")
+                .bind(deposit_id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(
+            deposit.0.starts_with('-'),
+            "Expected linked deposit leg to be outgoing, got {}",
+            deposit.0
         );
+        println!("\nSwap deposit leg verified: amount={}", deposit.0);
     }
 
-    println!("\nSwap detection verified via recent-activity API.");
+    println!("\nSwap detection verified via legacy detected_swaps table.");
 }
 
 /// Tests maintenance (gap-filling) for webassemblymusic-treasury.sputnik-dao.near.
@@ -566,8 +558,10 @@ async fn test_goldsky_webassemblymusic(pool: PgPool) {
 /// scan range, marks it dirty, and runs `run_maintenance_cycle` which discovers
 /// balance changes through the transfer-hints gap-filling pipeline.
 ///
-/// Hard-asserts all 5 production records match the reference dataset from
-/// api.trezu.app.
+/// Hard-asserts the production NEAR records match the reference dataset from
+/// api.trezu.app. The maintenance-only path in this constrained range discovers
+/// the NEAR balance changes; the intents token event leg is covered by the
+/// Goldsky enrichment test above.
 ///
 /// The `maintenance_block_floor` field prevents the default 600k-block lookback,
 /// constraining the scan to ~1200 blocks covering blocks 188101230–188102410.
@@ -664,35 +658,18 @@ async fn test_goldsky_maintenance_webassemblymusic(pool: PgPool) {
         maintenance_elapsed.as_secs_f64()
     );
 
-    let after_maintenance = api_filtered_count(&pool, account_id).await;
+    let after_maintenance = legacy_visible_balance_changes(&pool, account_id)
+        .await
+        .len();
     println!(
-        "After maintenance: {} API-visible records",
+        "After maintenance: {} legacy-visible records",
         after_maintenance
     );
 
     // -----------------------------------------------------------------------
-    // 3. Query the HTTP API
+    // 3. Query legacy-visible records
     // -----------------------------------------------------------------------
-    let state = Arc::new(common::build_test_state(pool.clone()));
-    let app = nt_be::routes::create_routes(state);
-
-    let request = Request::builder()
-        .uri(format!(
-            "/api/balance-changes?accountId={account_id}&limit=100"
-        ))
-        .body(Body::empty())
-        .unwrap();
-
-    let response = ServiceExt::<Request<Body>>::oneshot(app, request)
-        .await
-        .unwrap();
-    assert_eq!(response.status(), 200);
-
-    let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
-        .await
-        .unwrap();
-    let records: Vec<BalanceChangeRecord> =
-        serde_json::from_slice(&body).expect("Failed to parse API response JSON");
+    let records = legacy_visible_balance_changes(&pool, account_id).await;
 
     let total_elapsed = total_start.elapsed();
 
@@ -701,11 +678,14 @@ async fn test_goldsky_maintenance_webassemblymusic(pool: PgPool) {
     // -----------------------------------------------------------------------
     println!("\n========== MAINTENANCE RESULTS ==========");
     println!("Maintenance:     {:.2}s", maintenance_elapsed.as_secs_f64());
-    println!("API records:     {}", records.len());
+    println!("Visible records: {}", records.len());
     println!("Total time:      {:.2}s", total_elapsed.as_secs_f64());
     println!("=========================================\n");
 
-    println!("API-visible balance changes ({} records):", records.len());
+    println!(
+        "Legacy-visible balance changes ({} records):",
+        records.len()
+    );
     for r in &records {
         let token_short = if r.token_id.len() > 30 {
             &r.token_id[..30]
@@ -725,13 +705,16 @@ async fn test_goldsky_maintenance_webassemblymusic(pool: PgPool) {
     // -----------------------------------------------------------------------
     // 5. Hard expectations — must match production (api.trezu.app)
     //
-    // Load reference data and assert all 5 records are found with correct
-    // block_height, token_id, amount, and counterparty.
+    // Load reference data and assert the maintenance-discovered NEAR records are
+    // found with correct block_height, token_id, amount, and counterparty.
     // -----------------------------------------------------------------------
-    let reference: Vec<ReferenceRecord> = serde_json::from_str(include_str!(
-        "test_data/goldsky_webassemblymusic_reference.json"
-    ))
-    .expect("Failed to parse reference JSON");
+    let reference: Vec<ReferenceRecord> = serde_json::from_str::<Vec<ReferenceRecord>>(
+        include_str!("test_data/goldsky_webassemblymusic_reference.json"),
+    )
+    .expect("Failed to parse reference JSON")
+    .into_iter()
+    .filter(|record| record.token_id == "near")
+    .collect();
 
     let find = |block: i64, token: &str| -> Option<&BalanceChangeRecord> {
         records

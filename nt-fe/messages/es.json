@@ -344,7 +344,8 @@
             "from": "DE",
             "to": "A",
             "transactionHash": "HASH DE TRANSACCIÓN",
-            "hashTooltip": "Identificador único (hash) de esta transacción"
+            "hashTooltip": "Identificador único (hash) de esta transacción",
+            "processing": "Procesando"
         },
         "empty": {
             "title": "No se encontraron transacciones",
@@ -371,7 +372,18 @@
             "method": "Método",
             "contract": "Contrato",
             "transaction": "Transacción",
-            "depositTransaction": "Transacción de depósito"
+            "depositTransaction": "Transacción de depósito",
+            "depositTitle": "Detalles del depósito",
+            "exchangeTitle": "Detalles del intercambio",
+            "transferTitle": "Detalles de la transferencia",
+            "via": "Vía",
+            "status": "Estado",
+            "completed": "Completado",
+            "processing": "Procesando",
+            "failed": "Fallido",
+            "exchangeTransaction": "Transacción de intercambio",
+            "transferTransaction": "Transacción de transferencia",
+            "rate": "Tasa"
         },
         "refresh": {
             "ariaLabel": "Actualizar historial confidencial",
@@ -1983,7 +1995,7 @@
     "activityLabels": {
         "exchangePending": "Intercambio pendiente",
         "exchangeRequest": "Solicitud de intercambio",
-        "exchangeFulfillment": "Ejecución del intercambio",
+        "exchangeFulfillment": "Intercambio",
         "stakingRewards": "Recompensas de staking",
         "proposalAction": "Acción de propuesta",
         "deposit": "Depósito {symbol}",

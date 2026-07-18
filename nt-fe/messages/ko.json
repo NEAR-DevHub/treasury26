@@ -344,7 +344,8 @@
             "from": "보낸 사람",
             "to": "받는 사람",
             "transactionHash": "트랜잭션 해시",
-            "hashTooltip": "이 트랜잭션의 고유 식별자(해시)"
+            "hashTooltip": "이 트랜잭션의 고유 식별자(해시)",
+            "processing": "처리 중"
         },
         "empty": {
             "title": "트랜잭션을 찾을 수 없습니다",
@@ -371,7 +372,18 @@
             "method": "메서드",
             "contract": "컨트랙트",
             "transaction": "트랜잭션",
-            "depositTransaction": "입금 트랜잭션"
+            "depositTransaction": "입금 트랜잭션",
+            "depositTitle": "입금 상세",
+            "exchangeTitle": "교환 상세",
+            "transferTitle": "이체 상세",
+            "via": "경유",
+            "status": "상태",
+            "completed": "완료",
+            "processing": "처리 중",
+            "failed": "실패",
+            "exchangeTransaction": "교환 트랜잭션",
+            "transferTransaction": "이체 트랜잭션",
+            "rate": "환율"
         },
         "refresh": {
             "ariaLabel": "기밀 기록 새로 고침",
@@ -1983,7 +1995,7 @@
     "activityLabels": {
         "exchangePending": "교환 대기 중",
         "exchangeRequest": "교환 요청",
-        "exchangeFulfillment": "교환 이행",
+        "exchangeFulfillment": "교환",
         "stakingRewards": "스테이킹 보상",
         "proposalAction": "제안 작업",
         "deposit": "{symbol} 입금",

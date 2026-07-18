@@ -461,7 +461,12 @@ async fn test_balance_chart_with_real_data() {
     );
 }
 
-/// Test CSV export with webassemblymusic-treasury data
+/// Test CSV export with webassemblymusic-treasury data.
+///
+/// The legacy `balance_changes` fallback in `get_balance_changes_internal`
+/// is disabled: accounts without gold public history rows export an empty
+/// (header-only) CSV. This fixture account only seeds `balance_changes`,
+/// so the export must contain just the header.
 #[tokio::test]
 #[serial]
 async fn test_csv_export_with_real_data() {
@@ -470,10 +475,6 @@ async fn test_csv_export_with_real_data() {
 
     // Start the server
     let server = TestServer::start().await;
-
-    // Wait for the background price sync to complete
-    // The price sync service has a 5 second startup delay, then syncs prices from the mock DeFiLlama server
-    wait_for_price_sync().await;
 
     let client = reqwest::Client::new();
 
@@ -538,11 +539,11 @@ async fn test_csv_export_with_real_data() {
         "CSV should not include NOT_REGISTERED records"
     );
 
-    // Exact row count (1 header + 172 data rows = 173 total) - some swap deposits are filtered out
+    // Legacy-only account (no gold public history): header row only.
     let row_count = csv_content.lines().count();
     assert_eq!(
-        row_count, 173,
-        "CSV should have exactly 173 rows (1 header + 172 data rows)"
+        row_count, 1,
+        "CSV for an account without gold history should contain only the header row"
     );
 
     // Compare with snapshot (hard assertion for regression testing)

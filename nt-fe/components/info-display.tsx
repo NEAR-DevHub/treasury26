@@ -44,7 +44,7 @@ const styleVariants = cva("flex flex-col", {
     },
 });
 
-const lineVariants = cva("border-b border-border p-1 pb-4", {
+const lineVariants = cva("border-b border-border pb-4", {
     variants: {
         style: {
             default: "",

@@ -7,18 +7,16 @@
 ///   2. The balance change has token_id="near", not "wrap.near"
 ///   3. The method_name is "act_proposal", not "on_proposal_callback"
 ///
-/// Uses Goldsky fixtures + mock intents API. Asserts via the HTTP API only.
+/// Uses Goldsky fixtures + mock intents API. The public recent-activity API now
+/// reads public gold rows, so this legacy Goldsky test asserts the
+/// `detected_swaps` linkage directly.
 ///
 /// ```bash
 /// cargo test --test wnear_swap_deposit_test -- --nocapture
 /// ```
 mod common;
 
-use axum::body::Body;
-use axum::http::Request;
 use sqlx::PgPool;
-use std::sync::Arc;
-use tower::ServiceExt;
 use wiremock::{
     Mock, MockServer, ResponseTemplate,
     matchers::{method, path},
@@ -30,38 +28,15 @@ const DEPOSIT_TX: &str = "9CLCjpPN2tY6UE7HNd5e5eABLedzVrvXTvLUGJDwXgEq";
 const INTENTS_USDC_TOKEN: &str =
     "intents.near:nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
 
-/// Recent activity response from /api/recent-activity
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RecentActivityResponse {
-    data: Vec<RecentActivityItem>,
-    total: i64,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RecentActivityItem {
-    #[allow(dead_code)]
-    id: i64,
+#[derive(Debug, sqlx::FromRow)]
+struct SwapLegRow {
+    role: String,
     token_id: String,
     amount: String,
     transaction_hashes: Vec<String>,
-    swap: Option<SwapInfo>,
-    #[allow(dead_code)]
-    method_name: Option<String>,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SwapInfo {
     sent_token_id: Option<String>,
-    #[allow(dead_code)]
-    sent_amount: Option<String>,
     received_token_id: String,
-    #[allow(dead_code)]
-    received_amount: String,
     solver_transaction_hash: String,
-    swap_role: String,
 }
 
 /// Load fixture SQL into indexed_dao_outcomes.
@@ -106,34 +81,48 @@ async fn start_mock_intents_server() -> MockServer {
     mock_server
 }
 
-/// Helper to query the recent-activity API endpoint.
-async fn query_recent_activity(
-    pool: &PgPool,
-    transaction_type: Option<&str>,
-) -> RecentActivityResponse {
-    let state = Arc::new(common::build_test_state(pool.clone()));
-    let app = nt_be::routes::create_routes(state);
+/// Helper to query legacy exchange legs through detected_swaps.
+async fn query_legacy_exchange_legs(pool: &PgPool) -> Vec<SwapLegRow> {
+    sqlx::query_as::<_, SwapLegRow>(
+        "SELECT
+            'fulfillment' AS role,
+            bc.token_id,
+            bc.amount::TEXT AS amount,
+            bc.transaction_hashes,
+            ds.sent_token_id,
+            ds.received_token_id,
+            ds.solver_transaction_hash
+         FROM detected_swaps ds
+         JOIN balance_changes bc ON bc.id = ds.fulfillment_balance_change_id
+         WHERE ds.account_id = $1
+           AND ds.solver_transaction_hash = $2
 
-    let mut uri = format!("/api/recent-activity?accountId={ACCOUNT_ID}&limit=50");
-    if let Some(tt) = transaction_type {
-        uri.push_str(&format!("&transactionType={tt}"));
-    }
+         UNION ALL
 
-    let request = Request::builder().uri(&uri).body(Body::empty()).unwrap();
+         SELECT
+            'deposit' AS role,
+            bc.token_id,
+            bc.amount::TEXT AS amount,
+            bc.transaction_hashes,
+            ds.sent_token_id,
+            ds.received_token_id,
+            ds.solver_transaction_hash
+         FROM detected_swaps ds
+         JOIN balance_changes bc ON bc.id = ds.deposit_balance_change_id
+         WHERE ds.account_id = $1
+           AND ds.solver_transaction_hash = $2
 
-    let response = ServiceExt::<Request<Body>>::oneshot(app, request)
-        .await
-        .unwrap();
-    assert_eq!(response.status(), 200, "API request failed");
-
-    let body = axum::body::to_bytes(response.into_body(), 1024 * 1024)
-        .await
-        .unwrap();
-    serde_json::from_slice(&body).expect("Failed to parse RecentActivityResponse")
+         ORDER BY role",
+    )
+    .bind(ACCOUNT_ID)
+    .bind(FULFILLMENT_TX)
+    .fetch_all(pool)
+    .await
+    .unwrap()
 }
 
 /// End-to-end test: load Goldsky fixtures, run enrichment with mock intents API,
-/// then verify both swap legs appear in the Exchange tab via the HTTP API.
+/// then verify both swap legs are linked in detected_swaps.
 #[sqlx::test]
 async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
     common::load_test_env();
@@ -203,51 +192,37 @@ async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
     );
 
     // -----------------------------------------------------------------------
-    // 3. Query the Exchange tab and verify both legs
+    // 3. Query the linked exchange legs and verify both sides
     // -----------------------------------------------------------------------
-    let exchange = query_recent_activity(&pool, Some("exchange")).await;
+    let exchange = query_legacy_exchange_legs(&pool).await;
 
-    println!(
-        "\nExchange tab: {} entries (total={})",
-        exchange.data.len(),
-        exchange.total
-    );
-    for item in &exchange.data {
+    println!("\nLegacy exchange legs: {} entries", exchange.len());
+    for item in &exchange {
         println!(
-            "  token={} amount={} tx={:?} swap_role={:?}",
-            item.token_id,
-            item.amount,
-            item.transaction_hashes,
-            item.swap.as_ref().map(|s| &s.swap_role),
+            "  token={} amount={} tx={:?} role={}",
+            item.token_id, item.amount, item.transaction_hashes, item.role,
         );
     }
 
     // There should be at least the fulfillment entry
     let fulfillment = exchange
-        .data
         .iter()
-        .find(|item| {
-            item.swap
-                .as_ref()
-                .is_some_and(|s| s.swap_role == "fulfillment")
-        })
-        .expect("Should have a fulfillment entry in Exchange tab");
+        .find(|item| item.role == "fulfillment")
+        .expect("Should have a fulfillment entry in detected_swaps");
 
     assert_eq!(fulfillment.token_id, INTENTS_USDC_TOKEN);
-    let swap = fulfillment.swap.as_ref().unwrap();
-    assert_eq!(swap.solver_transaction_hash, FULFILLMENT_TX);
+    assert_eq!(fulfillment.solver_transaction_hash, FULFILLMENT_TX);
     assert_eq!(
-        swap.sent_token_id.as_deref(),
+        fulfillment.sent_token_id.as_deref(),
         Some("intents.near:nep141:wrap.near"),
         "Sent token should be intents-prefixed wrap.near"
     );
-    assert_eq!(swap.received_token_id, INTENTS_USDC_TOKEN);
+    assert_eq!(fulfillment.received_token_id, INTENTS_USDC_TOKEN);
 
-    // The deposit leg should also be linked and appear in the Exchange tab
+    // The deposit leg should also be linked.
     let deposits: Vec<_> = exchange
-        .data
         .iter()
-        .filter(|item| item.swap.as_ref().is_some_and(|s| s.swap_role == "deposit"))
+        .filter(|item| item.role == "deposit")
         .collect();
 
     assert_eq!(
@@ -267,11 +242,11 @@ async fn test_wnear_swap_deposit_detected_via_enrichment(pool: PgPool) {
         "Deposit token should be 'near' (raw NEAR Transfer)"
     );
 
-    // Total exchange entries: 1 fulfillment + 1 deposit
+    // Total linked exchange legs: 1 fulfillment + 1 deposit
     assert_eq!(
-        exchange.data.len(),
+        exchange.len(),
         2,
-        "Exchange tab should have exactly 2 entries"
+        "Detected swap should have exactly 2 linked legs"
     );
 
     println!("\nAll assertions passed!");

@@ -4,7 +4,7 @@ This directory contains snapshot reference files for balance history API tests.
 
 ## Files
 
-- `csv_export_snapshot.csv` - Reference CSV export output (204 rows: 1 header + 203 data rows)
+- `csv_export_snapshot.csv` - Reference CSV export output for a legacy-only account (1 header row)
 - `chart_hourly_snapshot.json` - Hourly interval chart data (June-December 2025)
 - `chart_daily_snapshot.json` - Daily interval chart data (214 days)
 - `chart_weekly_snapshot.json` - Weekly interval chart data (~31 weeks)
@@ -34,7 +34,7 @@ After regenerating:
 ## Test Coverage
 
 These snapshots verify:
-- Exact row counts for CSV exports (204 rows)
+- Exact row counts for CSV exports
 - Token counts per interval (12 tokens)
 - Data point counts for each token at each interval
 - Consistent output structure and data across runs

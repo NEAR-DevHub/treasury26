@@ -8,6 +8,7 @@ import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
+import { NearIntentsLogo } from "@/components/icons/near-intents-logo";
 import { PendingButton } from "@/components/pending-button";
 import { type StepProps, StepperHeader } from "@/components/step-wizard";
 import { TokenInput } from "@/components/token-input";
@@ -178,8 +179,6 @@ export function Step1({
         form.setValue("amountMode", "EXACT_INPUT");
     };
 
-    const isDarkTheme = resolvedTheme === "dark";
-
     return (
         <>
             <SlotWarning slot="exchange" />
@@ -338,15 +337,7 @@ export function Step1({
                 <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
                     <span>{tEx("poweredBy")}</span>
                     <span className="font-semibold flex items-center gap-1">
-                        <img
-                            src={
-                                isDarkTheme
-                                    ? "/near-intents-dark.svg"
-                                    : "/near-intents-light.svg"
-                            }
-                            alt="NEAR Intents"
-                            className="h-3"
-                        />
+                        <NearIntentsLogo className="h-3" />
                     </span>
                 </div>
             </PageCard>

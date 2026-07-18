@@ -1,17 +1,21 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Amount } from "@/features/proposals/components/amount";
-import { useToken } from "@/hooks/use-treasury-queries";
-import { formatBalance, formatCurrency } from "@/lib/utils";
-import Big from "@/lib/big";
 import { useMemo } from "react";
+import { useToken } from "@/hooks/use-treasury-queries";
+import Big from "@/lib/big";
+import {
+    formatBalance,
+    formatCurrency,
+    formatCurrencyWithSubCent,
+} from "@/lib/utils";
 
 interface RateProps {
     tokenIn: string;
     tokenOut: string;
     amountIn?: Big;
     amountInWithDecimals?: string;
+    amountInUsd?: number | null;
     amountOut?: Big;
     amountOutWithDecimals?: string;
 }
@@ -21,6 +25,7 @@ export function Rate({
     tokenOut,
     amountIn,
     amountInWithDecimals,
+    amountInUsd,
     amountOut,
     amountOutWithDecimals,
 }: RateProps) {
@@ -40,11 +45,26 @@ export function Rate({
         }
         return Big(amount2).div(Big(amount1)).toFixed(6);
     }, [amount1, amount2, tCommon]);
+    const tokenInUnitUsd = useMemo(() => {
+        if (amountInUsd === null) {
+            return null;
+        }
+        if (amountInUsd !== undefined) {
+            if (!amount1 || amount1 === "0") {
+                return null;
+            }
+            return formatCurrencyWithSubCent(
+                Big(amountInUsd).div(Big(amount1)).toNumber(),
+            );
+        }
+        return formatCurrency(tokenInData?.price || 0);
+    }, [amount1, amountInUsd, tokenInData?.price]);
 
     return (
         <p className="text-sm text-foreground">
-            1 {tokenInData?.symbol} ({formatCurrency(tokenInData?.price || 0)})
-            ≈ {cost} {tokenOutData?.symbol}
+            1 {tokenInData?.symbol}
+            {tokenInUnitUsd ? ` (${tokenInUnitUsd})` : ""} ≈ {cost}{" "}
+            {tokenOutData?.symbol}
         </p>
     );
 }

@@ -5,12 +5,13 @@ use std::collections::{HashMap, HashSet};
 use super::cursors::clear_silver_dirty_if_not_advanced;
 use super::models::{SilverProjectionCycleStats, SilverProjectionResult};
 use super::normalize::normalize_bronze_row;
+use super::quote_pending::build_quote_pending_legs;
 use super::repository::{
     clear_projection_errors, delete_stale_silver_rows, earliest_bronze_time, has_silver_before,
     load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
     upsert_projection_errors, upsert_silver_legs,
 };
-const PUBLIC_SILVER_WORKERS: usize = 4;
+const PUBLIC_SILVER_WORKERS: usize = 2;
 
 pub async fn project_public_silver_for_account(
     pool: &PgPool,
@@ -99,6 +100,12 @@ pub async fn project_public_silver_for_account(
     }
 
     upsert_silver_legs(&mut tx, &legs).await?;
+    let quote_pending_legs = build_quote_pending_legs(&mut tx, account_id, recompute_from).await?;
+    for leg in &quote_pending_legs {
+        preserve_leg_keys.insert(leg.leg_key.clone());
+    }
+    stats.rows_projected += quote_pending_legs.len() as u64;
+    upsert_silver_legs(&mut tx, &quote_pending_legs).await?;
     clear_projection_errors(&mut tx, &clear_error_source_event_ids).await?;
     upsert_projection_errors(&mut tx, account_id, &projection_errors).await?;
 

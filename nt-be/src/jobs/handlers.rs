@@ -238,6 +238,22 @@ pub async fn public_proposal_reconciliation(
     ))
 }
 
+/// Refreshes 1Click status for public quote proposals.
+pub async fn public_quote_status_refresh(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::proposals::quote_refresher::refresh_public_quote_statuses(
+            &state,
+        )
+        .await?;
+    Ok(format!(
+        "claimed={} updated={} fetch_failed={}",
+        stats.claimed, stats.updated, stats.fetch_failed
+    ))
+}
+
 /// Hourly confidential balance snapshots (gold).
 pub async fn confidential_snapshots(
     _t: Tick,

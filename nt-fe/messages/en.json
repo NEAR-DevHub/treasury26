@@ -344,7 +344,8 @@
             "from": "FROM",
             "to": "TO",
             "transactionHash": "TRANSACTION HASH",
-            "hashTooltip": "Unique identifier (hash) of this transaction"
+            "hashTooltip": "Unique identifier (hash) of this transaction",
+            "processing": "Processing"
         },
         "empty": {
             "title": "No transactions found",
@@ -371,7 +372,18 @@
             "method": "Method",
             "contract": "Contract",
             "transaction": "Transaction",
-            "depositTransaction": "Deposit Transaction"
+            "depositTransaction": "Deposit Transaction",
+            "depositTitle": "Deposit Details",
+            "exchangeTitle": "Exchange Details",
+            "transferTitle": "Transfer Details",
+            "via": "Via",
+            "status": "Status",
+            "completed": "Completed",
+            "processing": "Processing",
+            "failed": "Failed",
+            "exchangeTransaction": "Exchange Transaction",
+            "transferTransaction": "Transfer Transaction",
+            "rate": "Rate"
         },
         "refresh": {
             "ariaLabel": "Refresh confidential history",
@@ -1983,7 +1995,7 @@
     "activityLabels": {
         "exchangePending": "Exchange Pending",
         "exchangeRequest": "Exchange Request",
-        "exchangeFulfillment": "Exchange Fulfillment",
+        "exchangeFulfillment": "Exchange",
         "stakingRewards": "Staking Rewards",
         "proposalAction": "Proposal Action",
         "deposit": "Deposit {symbol}",

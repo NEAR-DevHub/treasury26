@@ -344,7 +344,8 @@
             "from": "发送方",
             "to": "接收方",
             "transactionHash": "交易哈希",
-            "hashTooltip": "此交易的唯一标识符(哈希)"
+            "hashTooltip": "此交易的唯一标识符(哈希)",
+            "processing": "处理中"
         },
         "empty": {
             "title": "未找到交易",
@@ -371,7 +372,18 @@
             "method": "方法",
             "contract": "合约",
             "transaction": "交易",
-            "depositTransaction": "存款交易"
+            "depositTransaction": "存款交易",
+            "depositTitle": "存款详情",
+            "exchangeTitle": "兑换详情",
+            "transferTitle": "转账详情",
+            "via": "通过",
+            "status": "状态",
+            "completed": "已完成",
+            "processing": "处理中",
+            "failed": "失败",
+            "exchangeTransaction": "兑换交易",
+            "transferTransaction": "转账交易",
+            "rate": "汇率"
         },
         "refresh": {
             "ariaLabel": "刷新机密历史记录",
@@ -1966,7 +1978,7 @@
     "activityLabels": {
         "exchangePending": "兑换待处理",
         "exchangeRequest": "兑换请求",
-        "exchangeFulfillment": "兑换完成",
+        "exchangeFulfillment": "兑换",
         "stakingRewards": "质押奖励",
         "proposalAction": "提案操作",
         "deposit": "存入 {symbol}",

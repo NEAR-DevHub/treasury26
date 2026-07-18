@@ -344,7 +344,8 @@
             "from": "מאת",
             "to": "אל",
             "transactionHash": "גיבוב עסקה",
-            "hashTooltip": "מזהה ייחודי (גיבוב) של עסקה זו"
+            "hashTooltip": "מזהה ייחודי (גיבוב) של עסקה זו",
+            "processing": "מעבד"
         },
         "empty": {
             "title": "לא נמצאו עסקאות",
@@ -371,7 +372,18 @@
             "method": "שיטה",
             "contract": "חוזה",
             "transaction": "עסקה",
-            "depositTransaction": "עסקת הפקדה"
+            "depositTransaction": "עסקת הפקדה",
+            "depositTitle": "פרטי הפקדה",
+            "exchangeTitle": "פרטי המרה",
+            "transferTitle": "פרטי העברה",
+            "via": "באמצעות",
+            "status": "סטטוס",
+            "completed": "הושלם",
+            "processing": "בתהליך",
+            "failed": "נכשל",
+            "exchangeTransaction": "עסקת המרה",
+            "transferTransaction": "עסקת העברה",
+            "rate": "שער"
         },
         "refresh": {
             "ariaLabel": "רענון היסטוריה חסויה",
@@ -1983,7 +1995,7 @@
     "activityLabels": {
         "exchangePending": "החלפה ממתינה",
         "exchangeRequest": "בקשת החלפה",
-        "exchangeFulfillment": "מילוי החלפה",
+        "exchangeFulfillment": "החלפה",
         "stakingRewards": "תגמולי סטייקינג",
         "proposalAction": "פעולת הצעה",
         "deposit": "הפקדת {symbol}",

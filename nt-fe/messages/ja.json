@@ -344,7 +344,8 @@
             "from": "送信元",
             "to": "送信先",
             "transactionHash": "トランザクションハッシュ",
-            "hashTooltip": "このトランザクションの一意な識別子(ハッシュ)"
+            "hashTooltip": "このトランザクションの一意な識別子(ハッシュ)",
+            "processing": "処理中"
         },
         "empty": {
             "title": "トランザクションが見つかりません",
@@ -371,7 +372,18 @@
             "method": "メソッド",
             "contract": "コントラクト",
             "transaction": "トランザクション",
-            "depositTransaction": "入金トランザクション"
+            "depositTransaction": "入金トランザクション",
+            "depositTitle": "入金詳細",
+            "exchangeTitle": "交換詳細",
+            "transferTitle": "送金詳細",
+            "via": "経由",
+            "status": "ステータス",
+            "completed": "完了",
+            "processing": "処理中",
+            "failed": "失敗",
+            "exchangeTransaction": "交換トランザクション",
+            "transferTransaction": "送金トランザクション",
+            "rate": "レート"
         },
         "refresh": {
             "ariaLabel": "機密履歴を更新",
@@ -1983,7 +1995,7 @@
     "activityLabels": {
         "exchangePending": "交換保留中",
         "exchangeRequest": "交換リクエスト",
-        "exchangeFulfillment": "交換完了",
+        "exchangeFulfillment": "交換",
         "stakingRewards": "ステーキング報酬",
         "proposalAction": "提案アクション",
         "deposit": "{symbol}を入金",
