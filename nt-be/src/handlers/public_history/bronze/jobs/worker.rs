@@ -525,6 +525,9 @@ pub(crate) fn register_public_history_job_workers(
         WorkerBuilder::new("public-history-latest")
             .backend(latest_storage(latest_state.db_pool.clone()))
             .data(JobContext::new(latest_state.clone()))
+            // Bounds the handler so a hung NearBlocks fetch aborts and frees
+            // its slot instead of wedging the worker (see `crate::jobs::job_timeout`).
+            .timeout(crate::jobs::job_timeout())
             .catch_panic()
             .layer(SentryLayer::new())
             .layer(trace_layer())
@@ -536,6 +539,7 @@ pub(crate) fn register_public_history_job_workers(
         WorkerBuilder::new("public-history-backfill")
             .backend(backfill_storage(state.db_pool.clone()))
             .data(JobContext::new(state.clone()))
+            .timeout(crate::jobs::job_timeout())
             .catch_panic()
             .layer(SentryLayer::new())
             .layer(trace_layer())
