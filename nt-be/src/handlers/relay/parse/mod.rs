@@ -72,13 +72,19 @@ pub struct RelayResponse {
 /// Build an error response from a status and message.
 ///
 /// This is the single choke point every relay failure flows through — parse
-/// rejects, authorization, policy, registrations, and on-chain submission —
-/// so it also emits the ERROR event that the tracing→Sentry bridge turns
-/// into a Sentry alert. The message is a field (not the log message) so all
-/// relay failures group under one Sentry issue instead of one per message.
+/// rejects, authorization, policy, registrations, and on-chain submission — so
+/// it logs the failure by class: **server errors (5xx)** at `error!`, which the
+/// tracing→Sentry bridge turns into an alert, and **client errors (4xx)** —
+/// invalid delegate action, forbidden, payment-required — at `warn!` only, so a
+/// caller sending a bad request can't spam Sentry with false alarms. The message
+/// is a field (not the log message) so failures group by status, not by text.
 pub fn error_response(status: StatusCode, msg: impl Into<String>) -> RelayError {
     let msg = msg.into();
-    tracing::error!(status = %status, error = %msg, "relay request failed");
+    if status.is_server_error() {
+        tracing::error!(status = %status, error = %msg, "relay request failed");
+    } else {
+        tracing::warn!(status = %status, error = %msg, "relay request rejected");
+    }
     (
         status,
         Json(RelayResponse {
