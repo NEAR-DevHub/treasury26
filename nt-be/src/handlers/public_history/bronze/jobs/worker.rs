@@ -506,18 +506,35 @@ pub(crate) fn register_public_history_job_workers(
 ) -> Monitor {
     use apalis::layers::sentry::SentryLayer;
     use apalis::layers::tracing::{
-        DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer,
+        DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer,
     };
 
-    // Failures stay at WARN for the same reason as the cron workers: the
-    // SentryLayer already captured the task failure, and the tracing→Sentry
-    // bridge would emit a duplicate event at ERROR.
-    fn trace_layer() -> TraceLayer {
-        TraceLayer::new()
-            .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
-            .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
-            .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
-            .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN))
+    // Same tracing policy as the cron workers in `crate::jobs`: the task span
+    // records `queue` (so each log line is attributable to the job) at INFO;
+    // per-cycle start/done events at DEBUG (boilerplate); failures at WARN (the
+    // SentryLayer already captured them, and the tracing→Sentry bridge would
+    // otherwise emit a duplicate at ERROR). The span is built inline per worker
+    // because it bakes in the queue name.
+    macro_rules! queue_trace_layer {
+        ($queue:literal) => {
+            TraceLayer::new()
+                .make_span_with(move |req: &Task<_, _, _>| {
+                    tracing::info_span!(
+                        "task",
+                        queue = $queue,
+                        task_id = req
+                            .parts
+                            .task_id
+                            .as_ref()
+                            .map(ToString::to_string)
+                            .unwrap_or_default(),
+                        attempt = req.parts.attempt.current(),
+                    )
+                })
+                .on_request(DefaultOnRequest::new().level(tracing::Level::DEBUG))
+                .on_response(DefaultOnResponse::new().level(tracing::Level::DEBUG))
+                .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN))
+        };
     }
 
     let latest_state = state.clone();
@@ -530,7 +547,7 @@ pub(crate) fn register_public_history_job_workers(
             .timeout(crate::jobs::job_timeout())
             .catch_panic()
             .layer(SentryLayer::new())
-            .layer(trace_layer())
+            .layer(queue_trace_layer!("public-history-latest"))
             .concurrency(JOB_CONCURRENCY)
             .build(handle_latest_job)
     });
@@ -542,7 +559,7 @@ pub(crate) fn register_public_history_job_workers(
             .timeout(crate::jobs::job_timeout())
             .catch_panic()
             .layer(SentryLayer::new())
-            .layer(trace_layer())
+            .layer(queue_trace_layer!("public-history-backfill"))
             .concurrency(BACKFILL_JOB_CONCURRENCY)
             .build(handle_backfill_job)
     })
