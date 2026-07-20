@@ -32,6 +32,7 @@ use apalis_cron::{CronStream, Tick};
 use apalis_postgres::{Config, PostgresStorage};
 use axum::Router;
 use cron::Schedule;
+use futures::StreamExt as _;
 use sqlx::PgPool;
 
 use crate::AppState;
@@ -104,6 +105,25 @@ fn env_secs(var: &str, default: u64) -> u64 {
 /// a genuine hang. Per-job overrides can be added later if a job needs longer.
 pub(crate) fn job_timeout() -> std::time::Duration {
     std::time::Duration::from_secs(env_secs("APALIS_JOB_TIMEOUT_SECONDS", 1800).max(1))
+}
+
+/// Backoff before a cron worker's feed resumes after a restart, keyed on the
+/// Monitor's restart `attempt` (2s, 4s, 8s, … capped at 60s; 0 on first start).
+///
+/// A cron worker exits when its `CronStream → store` pipe errors — e.g. a DB
+/// connection reset kills the tick push — and the Monitor rebuilds it
+/// *immediately*, with no delay. Without a backoff, a persistent DB outage
+/// becomes a hot restart loop that spins CPU, hammers the DB with reconnect
+/// attempts, and starves every other worker on the shared runtime; that is how
+/// a brief DB blip cascaded into a fleet-wide stall that never recovered.
+/// Delaying the feed on retry makes the worker quietly back off and retry until
+/// the DB is back, then resume on its own — no process restart needed.
+fn restart_backoff(attempt: usize) -> std::time::Duration {
+    if attempt == 0 {
+        return std::time::Duration::ZERO;
+    }
+    let secs = 2u64.saturating_pow(attempt.min(6) as u32).min(60);
+    std::time::Duration::from_secs(secs)
 }
 
 /// Builds a cron schedule that fires every `secs` seconds.
@@ -374,11 +394,28 @@ macro_rules! register_cron_worker {
         );
         let state = $state.clone();
         // `register` takes a factory `Fn(attempt) -> Worker`: the Monitor
-        // calls it to (re)build the worker, so a restart gets a fresh
-        // backend/connection.
-        $monitor.register(move |_attempt| {
+        // calls it to (re)build the worker (immediately, no delay) whenever it
+        // exits. On a restart (`attempt > 0`) we prepend an async backoff to the
+        // cron feed so a persistent DB failure can't hot-loop the rebuild (see
+        // `restart_backoff`); the delay yields no ticks, so no DB push is
+        // attempted until it elapses.
+        $monitor.register(move |attempt| {
+            let backoff = restart_backoff(attempt);
+            let feed = futures::stream::once(async move {
+                if !backoff.is_zero() {
+                    tracing::warn!(
+                        queue = $name,
+                        attempt,
+                        backoff_secs = backoff.as_secs(),
+                        "cron worker restarting after backoff (backend/DB error?)"
+                    );
+                    tokio::time::sleep(backoff).await;
+                }
+            })
+            .filter_map(|_| std::future::ready(None))
+            .chain(CronStream::new(schedule.clone()));
             WorkerBuilder::new($name)
-                .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
+                .backend(feed.pipe_to(store.clone()))
                 .data(state.clone())
                 // Innermost layer: bounds the handler itself so a hung cycle
                 // aborts and frees the concurrency(1) slot (see `job_timeout`).
@@ -999,7 +1036,20 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
 
 #[cfg(test)]
 mod tests {
-    use super::{cron_every_secs, is_foreign_api_path, schedule_every_secs};
+    use super::{cron_every_secs, is_foreign_api_path, restart_backoff, schedule_every_secs};
+
+    #[test]
+    fn restart_backoff_grows_and_caps() {
+        // First start: no delay.
+        assert_eq!(restart_backoff(0), std::time::Duration::ZERO);
+        // Exponential on retry, capped at 60s so it never hot-loops nor waits
+        // absurdly long.
+        assert_eq!(restart_backoff(1), std::time::Duration::from_secs(2));
+        assert_eq!(restart_backoff(2), std::time::Duration::from_secs(4));
+        assert_eq!(restart_backoff(5), std::time::Duration::from_secs(32));
+        assert_eq!(restart_backoff(6), std::time::Duration::from_secs(60));
+        assert_eq!(restart_backoff(100), std::time::Duration::from_secs(60));
+    }
 
     #[test]
     fn cron_every_secs_expressible_intervals() {
