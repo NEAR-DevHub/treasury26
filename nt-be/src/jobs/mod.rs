@@ -904,6 +904,7 @@ async fn run_leader_runtime(
         push_startup_tasks(&queues, &state.db_pool).await;
     }
 
+    let liveness_pool = state.db_pool.clone();
     let consumer_handles =
         crate::handlers::public_history::bronze::jobs::spawn_public_history_queue_workers(
             state,
@@ -930,9 +931,18 @@ async fn run_leader_runtime(
         });
     }
 
+    // Keep the liveness monitor outside the Apalis Monitor, but inside the
+    // elected-leader session. It can still detect a parked worker fleet while
+    // followers avoid independently restarting themselves for the leader's
+    // queue state. Dropping this future on session cancellation also keeps
+    // leadership handoff and normal shutdown from waiting on its endless loop.
+    let liveness = watchdog::run_liveness_monitor(liveness_pool);
+    tokio::pin!(liveness);
+
     let unexpected_error = tokio::select! {
         _ = shutdown.cancelled() => None,
         result = children.join_next() => Some(runtime_child_error(result)),
+        _ = &mut liveness => Some("job liveness monitor exited unexpectedly".to_string()),
     };
 
     shutdown.cancel();
@@ -960,6 +970,7 @@ pub async fn spawn_all(
 
     let (queues, watchdog_specs) = prepare_job_queues(state.clone());
     watchdog::install(watchdog_specs);
+
     install_treasury_sweeper_wakeup(&queues, &state, shutdown.clone());
 
     let runtime_state = state.clone();
