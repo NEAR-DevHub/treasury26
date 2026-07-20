@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
@@ -27,6 +27,7 @@ import { validateAccountsAndStorage } from "../utils";
 import { useBulkParsingLabels } from "../utils/use-parsing-labels";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useAddressBook } from "@/features/address-book";
 import { AmountSummary } from "@/components/amount-summary";
 import { CreateRequestButton } from "@/components/create-request-button";
@@ -34,6 +35,7 @@ import { trackEvent } from "@/lib/analytics";
 import { Tooltip } from "@/components/tooltip";
 import { Address } from "@/components/address";
 import { toast } from "sonner";
+import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
 
 interface ReviewPaymentsStepProps extends StepProps {
     initialPaymentData: BulkPaymentData[];
@@ -42,6 +44,17 @@ interface ReviewPaymentsStepProps extends StepProps {
     onPaymentDataChange: (data: BulkPaymentData[]) => void;
     onSubmit: () => void;
     isSubmitting?: boolean;
+    /**
+     * Confidential flow: selected receive-network id (bridge asset network id
+     * or near.com). Drives the network badge on each recipient amount row —
+     * same pattern as single confidential payment review.
+     */
+    destinationNetworkId?: string;
+    /**
+     * Confidential flow: raw receive-network name used for NEAR account /
+     * storage validation when receive chain ≠ source token chain.
+     */
+    destinationNetworkName?: string;
     /**
      * Confidential flow only: lifecycle of the review-time prepare call that
      * fetches firm quotes. Fees render from `fees` (not the local estimate),
@@ -67,6 +80,8 @@ export function ReviewPaymentsStep({
     onPaymentDataChange,
     onSubmit,
     isSubmitting = false,
+    destinationNetworkId,
+    destinationNetworkName,
     confidentialPrepare,
 }: ReviewPaymentsStepProps) {
     const tPay = useTranslations("payments");
@@ -90,11 +105,30 @@ export function ReviewPaymentsStep({
 
     const { treasuryId } = useTreasury();
     const { data: addressBook = [] } = useAddressBook();
+    const { data: bridgeAssets = [] } = useBridgeTokens(true);
     const { data: selectedTokenData } = useToken(selectedToken?.address || "");
     const { data: balance } = useTokenBalance(
         treasuryId,
         selectedToken?.address || "",
     );
+
+    // Chain icons for the receive network (recipient amount badge) — mirrors
+    // single confidential payment review.
+    const destinationChainIcons = useMemo(() => {
+        if (!destinationNetworkId) {
+            return undefined;
+        }
+        if (isNearComNetwork(destinationNetworkId)) {
+            return getNearComChainIcons();
+        }
+        for (const asset of bridgeAssets) {
+            const network = asset.networks.find(
+                (n) => n.id === destinationNetworkId,
+            );
+            if (network?.chainIcons) return network.chainIcons;
+        }
+        return undefined;
+    }, [bridgeAssets, destinationNetworkId]);
 
     // Validate accounts on mount
     useEffect(() => {
@@ -108,6 +142,7 @@ export function ReviewPaymentsStep({
                     paymentData,
                     selectedToken,
                     parsingLabels,
+                    destinationNetworkName,
                 );
                 setPaymentData(validatedPayments);
                 onPaymentDataChange(validatedPayments);
@@ -229,7 +264,7 @@ export function ReviewPaymentsStep({
     }
 
     return (
-        <PageCard className="max-w-[600px] mx-auto">
+        <PageCard className="max-w-[600px] mx-auto w-full min-w-0">
             <ReviewStep
                 reviewingTitle={tPay("reviewYourPayment")}
                 handleBack={handleBack}
@@ -342,143 +377,131 @@ export function ReviewPaymentsStep({
                                                         : "secondary"
                                                 }
                                             />
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-3 mb-2">
-                                                    <div className="flex flex-col gap-2 justify-between min-w-0 flex-1 lg:flex-auto">
-                                                        <div className="flex flex-col gap-0.5">
-                                                            {(() => {
-                                                                const contact =
-                                                                    addressBook.find(
-                                                                        (e) =>
-                                                                            e.address.toLowerCase() ===
-                                                                            payment.recipient.toLowerCase(),
-                                                                    );
-                                                                return (
-                                                                    <>
-                                                                        {contact && (
-                                                                            <span className="font-semibold text-sm text-foreground">
-                                                                                {
-                                                                                    contact.name
-                                                                                }
-                                                                            </span>
-                                                                        )}
-
-                                                                        <Address
-                                                                            address={
-                                                                                payment.recipient
-                                                                            }
-                                                                            className={cn(
-                                                                                contact
-                                                                                    ? "text-xs text-muted-foreground"
-                                                                                    : "font-semibold text-sm text-foreground",
-                                                                            )}
-                                                                        />
-                                                                    </>
+                                            <div className="flex-1 min-w-0 space-y-2">
+                                                <div className="flex items-start justify-between gap-2 w-full">
+                                                    <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
+                                                        {(() => {
+                                                            const contact =
+                                                                addressBook.find(
+                                                                    (e) =>
+                                                                        e.address.toLowerCase() ===
+                                                                        payment.recipient.toLowerCase(),
                                                                 );
-                                                            })()}
-                                                        </div>
-                                                        {payment.validationError && (
-                                                            <div className="text-xs text-red-600 dark:text-red-400 mb-2">
-                                                                {
-                                                                    payment.validationError
-                                                                }
-                                                            </div>
-                                                        )}
+                                                            return (
+                                                                <>
+                                                                    {contact && (
+                                                                        <span className="font-semibold text-sm text-foreground truncate">
+                                                                            {
+                                                                                contact.name
+                                                                            }
+                                                                        </span>
+                                                                    )}
+
+                                                                    <Address
+                                                                        address={
+                                                                            payment.recipient
+                                                                        }
+                                                                        className={cn(
+                                                                            "min-w-0",
+                                                                            contact
+                                                                                ? "text-xs text-muted-foreground"
+                                                                                : "font-semibold text-sm text-foreground",
+                                                                        )}
+                                                                    />
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </div>
 
-                                                    <div className="shrink-0">
-                                                        <div className="flex flex-col gap-2 items-end">
-                                                            <div className="flex items-center gap-2">
-                                                                <TokenDisplay
-                                                                    symbol={
-                                                                        selectedToken.symbol
-                                                                    }
-                                                                    icon={
-                                                                        selectedToken.icon ||
-                                                                        ""
-                                                                    }
-                                                                    chainIcons={
-                                                                        selectedToken.chainIcons
-                                                                    }
-                                                                    iconSize="md"
-                                                                />
-                                                                <div className="text-right">
-                                                                    <div className="text-sm font-semibold whitespace-nowrap">
-                                                                        {formatTokenDisplayAmount(
-                                                                            payment.amount,
-                                                                        )}{" "}
-                                                                        {
-                                                                            selectedToken.symbol
-                                                                        }
-                                                                    </div>
-                                                                    <div className="text-xs text-muted-foreground whitespace-nowrap">
-                                                                        ≈ $
-                                                                        {estimatedUSDValue.toFixed(
-                                                                            2,
-                                                                        )}
-                                                                    </div>
-                                                                    {confidentialPrepare?.status ===
-                                                                    "loading" ? (
-                                                                        <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground whitespace-nowrap">
-                                                                            {tPay(
-                                                                                "networkFee",
-                                                                            )}
-                                                                            :
-                                                                            <span className="inline-block h-4 w-16 bg-muted animate-pulse rounded" />
-                                                                        </div>
-                                                                    ) : (
-                                                                        recipientFee && (
-                                                                            <div className="text-xs text-muted-foreground whitespace-nowrap">
-                                                                                {tPay(
-                                                                                    "networkFee",
-                                                                                )}
-                                                                                :{" "}
-                                                                                {formatTokenDisplayAmount(
-                                                                                    recipientFee,
-                                                                                )}{" "}
-                                                                                {
-                                                                                    selectedToken.symbol
-                                                                                }
-                                                                            </div>
-                                                                        )
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-3 justify-end">
-                                                                <Button
-                                                                    variant="unstyled"
-                                                                    size="sm"
-                                                                    className="text-muted-foreground hover:text-foreground px-0!"
-                                                                    onClick={() =>
-                                                                        onEditPayment(
-                                                                            index,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Edit2 className="w-4 h-4" />{" "}
-                                                                    {tBulk(
-                                                                        "edit",
-                                                                    )}
-                                                                </Button>
-                                                                <Button
-                                                                    variant="unstyled"
-                                                                    size="sm"
-                                                                    className="text-muted-foreground hover:text-foreground px-0!"
-                                                                    onClick={() =>
-                                                                        handleRemoveClick(
-                                                                            index,
-                                                                            payment.recipient,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Trash2 className="w-4 h-4" />{" "}
-                                                                    {tBulk(
-                                                                        "remove",
-                                                                    )}
-                                                                </Button>
-                                                            </div>
+                                                    <div className="flex items-start gap-2 shrink-0">
+                                                        <TokenDisplay
+                                                            symbol={
+                                                                selectedToken.symbol
+                                                            }
+                                                            icon={
+                                                                selectedToken.icon ||
+                                                                ""
+                                                            }
+                                                            chainIcons={
+                                                                destinationChainIcons ??
+                                                                selectedToken.chainIcons
+                                                            }
+                                                            iconSize="md"
+                                                        />
+                                                        <div className="flex flex-col gap-[3px] items-end">
+                                                            <p className="text-sm font-semibold whitespace-nowrap leading-5">
+                                                                {formatTokenDisplayAmount(
+                                                                    payment.amount,
+                                                                )}{" "}
+                                                                {
+                                                                    selectedToken.symbol
+                                                                }
+                                                            </p>
+                                                            <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                                                ≈ $
+                                                                {estimatedUSDValue.toFixed(
+                                                                    2,
+                                                                )}
+                                                            </p>
                                                         </div>
                                                     </div>
+                                                </div>
+
+                                                {payment.validationError && (
+                                                    <div className="text-xs text-red-600 dark:text-red-400">
+                                                        {
+                                                            payment.validationError
+                                                        }
+                                                    </div>
+                                                )}
+
+                                                {confidentialPrepare?.status ===
+                                                "loading" ? (
+                                                    <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                                                        {tPay("networkFee")}:
+                                                        <span className="inline-block h-4 w-16 bg-muted animate-pulse rounded" />
+                                                    </div>
+                                                ) : (
+                                                    recipientFee && (
+                                                        <div className="text-xs text-muted-foreground text-right">
+                                                            {tPay("networkFee")}
+                                                            :{" "}
+                                                            {formatTokenDisplayAmount(
+                                                                recipientFee,
+                                                            )}{" "}
+                                                            {
+                                                                selectedToken.symbol
+                                                            }
+                                                        </div>
+                                                    )
+                                                )}
+
+                                                <div className="flex items-center gap-3 justify-end">
+                                                    <Button
+                                                        variant="unstyled"
+                                                        size="sm"
+                                                        className="text-muted-foreground hover:text-foreground px-0!"
+                                                        onClick={() =>
+                                                            onEditPayment(index)
+                                                        }
+                                                    >
+                                                        <Edit2 className="w-4 h-4" />{" "}
+                                                        {tBulk("edit")}
+                                                    </Button>
+                                                    <Button
+                                                        variant="unstyled"
+                                                        size="sm"
+                                                        className="text-muted-foreground hover:text-foreground px-0!"
+                                                        onClick={() =>
+                                                            handleRemoveClick(
+                                                                index,
+                                                                payment.recipient,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />{" "}
+                                                        {tBulk("remove")}
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>

@@ -605,13 +605,16 @@ export default function BulkPaymentPage() {
                 title={pageTitle}
                 description={t("description")}
             >
-                <div className="w-full max-w-[600px] mx-auto">
+                <div className="w-full max-w-[600px] mx-auto min-w-0">
                     <EditPaymentStep
                         handleBack={handleCancelEdit}
                         payment={payment}
                         paymentIndex={editingIndex}
                         selectedToken={selectedToken}
                         networkFeePerRecipient={networkFeePerRecipient}
+                        destinationNetwork={
+                            isConfidential ? destinationNetworkName : undefined
+                        }
                         onSave={handleSaveEdit}
                         onCancel={handleCancelEdit}
                     />
@@ -624,7 +627,7 @@ export default function BulkPaymentPage() {
         <PageComponentLayout title={pageTitle} description={t("description")}>
             <FormProvider {...form}>
                 <div
-                    className={`w-full mx-auto ${step === 1 ? "max-w-3xl" : "max-w-7xl"}`}
+                    className={`w-full mx-auto min-w-0 ${step === 1 ? "max-w-[600px]" : "max-w-7xl"}`}
                 >
                     {/* Step 0: Upload Data */}
                     {step === 0 && (
@@ -658,6 +661,9 @@ export default function BulkPaymentPage() {
                                             >[0]["token"]
                                         }
                                         recipient={firstRecipient}
+                                        // Pick receive network independently —
+                                        // CSV validation enforces address type.
+                                        requireRecipient={false}
                                         sectionRules={networkSectionRules}
                                         bridgeAssets={bridgeAssets}
                                         isBridgeAssetsLoading={
@@ -689,6 +695,16 @@ export default function BulkPaymentPage() {
                             onPaymentDataChange={setPaymentData}
                             onSubmit={onSubmit}
                             isSubmitting={isSubmittingProposal}
+                            destinationNetworkId={
+                                isConfidential
+                                    ? destinationNetworkId
+                                    : undefined
+                            }
+                            destinationNetworkName={
+                                isConfidential
+                                    ? destinationNetworkName
+                                    : undefined
+                            }
                             confidentialPrepare={
                                 isConfidential
                                     ? {

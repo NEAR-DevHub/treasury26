@@ -190,7 +190,7 @@ function DialogContent({
             className={cn(
                 "bg-card p-3.5 flex flex-col",
                 // Mobile: bottom drawer (full width, no margins)
-                "max-w-none! w-full inset-x-0 left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 max-h-[85vh] rounded-t-2xl rounded-b-none",
+                "max-w-none! w-full inset-x-0 left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 max-h-[80vh] rounded-t-2xl rounded-b-none",
                 "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
                 "data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100",
                 // Desktop: centered modal

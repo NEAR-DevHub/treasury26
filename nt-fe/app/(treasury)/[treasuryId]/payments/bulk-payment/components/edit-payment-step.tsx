@@ -19,6 +19,11 @@ interface EditPaymentStepProps extends StepProps {
     paymentIndex: number;
     selectedToken: SelectedTokenData;
     networkFeePerRecipient: string | null;
+    /**
+     * Confidential bulk receive-network name. When set, recipient address
+     * validation and address-book filtering use this chain (not NEAR / send).
+     */
+    destinationNetwork?: string;
     onSave: (
         index: number,
         data: EditPaymentFormValues,
@@ -32,6 +37,7 @@ export function EditPaymentStep({
     paymentIndex,
     selectedToken,
     networkFeePerRecipient,
+    destinationNetwork,
     onSave,
     onCancel,
 }: EditPaymentStepProps) {
@@ -104,6 +110,7 @@ export function EditPaymentStep({
                     saveButtonText={tBulk("saveChanges")}
                     onSave={handleSave}
                     hideRecipientNetwork
+                    recipientNetworkOverride={destinationNetwork}
                     isSubmitting={isSaving}
                 />
             </Form>
