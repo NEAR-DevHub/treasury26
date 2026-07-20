@@ -38,14 +38,15 @@ export function ConfidentialBanner({
 
     if (type === "mini") {
         return (
-            <Tooltip
-                content={t("description")}
-                triggerProps={{
-                    asChild: false,
-                    className: cn("size-4", className),
-                }}
-            >
-                <Shield className="fill-foreground w-full h-full" />
+            <Tooltip content={t("description")}>
+                <span
+                    className={cn(
+                        "inline-flex size-4 shrink-0 items-center justify-center",
+                        className,
+                    )}
+                >
+                    <Shield className="size-full fill-foreground" />
+                </span>
             </Tooltip>
         );
     }

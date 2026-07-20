@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Toplu ödeme önerisi gönderildi",
         "submitListFailed": "Ödeme listesi gönderilemedi",
         "submitFailed": "Toplu ödeme gönderilemedi",
+        "quoteFetchFailed": "Transfer ücretleri alınamadı. Lütfen tekrar deneyin.",
         "upload": {
             "pleaseUploadCsv": "Lütfen bir CSV dosyası yükleyin",
             "fileSizeLimit": "Dosya boyutu 1.5 MB'dan az olmalıdır",
@@ -1341,7 +1342,11 @@
                 "recoveryText": "Hangi seçeneği seçerseniz seçin, bir cihaz kaybının sizi kilitlememesi için kurulumdan sonra ikinci bir üye (cüzdan) eklemenizi öneririz.",
                 "passkeyNew": "Yeni",
                 "passkeyDomainNote": "Geçiş anahtarınız bu cihazda trezu.app için kaydedilir (veya iCloud/Google üzerinden senkronize edilir). Başka uygulamalarda kullanılamaz ve başka uygulamaların geçiş anahtarları Trezu'ya erişemez."
-            }
+            },
+            "passkeyCardTitle": "Touch ID ve Face ID için Passkey",
+            "passkeyCardSubtitle": "Cihazınızın biyometriği veya parolasıyla oturum açın",
+            "passkeyCardBadge": "Kolay ve Güvenli",
+            "web3WalletsSeparator": "Web3 cüzdanları"
         },
         "unexpectedError": "Beklenmedik bir hata oluştu",
         "creationFailed": "Hazine oluşturulamadı. Lütfen tekrar deneyin.",

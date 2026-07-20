@@ -1,9 +1,42 @@
 import { describe, expect, it } from "bun:test";
-import { parseAmount } from "./parsing";
+import { parseAmount, parseAndValidateCsv } from "./parsing";
+import type { BulkParsingLabels } from "./parsing";
 
 const labels = {
     pleaseRemoveChars: (chars: string) => `Please remove: ${chars}`,
     amountCannotBeEmpty: "Amount cannot be empty",
+};
+
+const parsingLabels: BulkParsingLabels = {
+    rowPrefix: (row, message) => `Row ${row}: ${message}`,
+    rowPrefixOnly: (row) => `Row ${row}: `,
+    missingRecipientFirstColumn: "missing recipient",
+    invalidNearAddress: (address) => `invalid near ${address}`,
+    invalidChainAddress: (address, chain) =>
+        `invalid ${chain} address ${address}`,
+    rowNeedsAmountRecipient: "needs amount and recipient",
+    missingRecipientBeforeComma: "missing recipient before comma",
+    missingAmountAfterComma: (recipient) => `missing amount after ${recipient}`,
+    invalidAmountNumber: (amountStr) => `invalid amount ${amountStr}`,
+    amountGreaterThanZero: (amountStr) => `amount not > 0: ${amountStr}`,
+    amountTooLarge: (amountStr) => `amount too large: ${amountStr}`,
+    invalidAmountFallback: "invalid amount",
+    pleaseRemoveChars: (chars) => `Please remove: ${chars}`,
+    amountCannotBeEmpty: "Amount cannot be empty",
+    tokenMismatch: (provided, expected) =>
+        `token mismatch ${provided} vs ${expected}`,
+    multipleTokenSymbols: (symbols) => `multiple symbols ${symbols}`,
+    noPaymentDataFound: "no payment data",
+    exceedsRecipientLimit: (count, limit) => `exceeds limit ${count}/${limit}`,
+    noPaymentDataProvided: "no data provided",
+    headerColumnsNotFound: "header not found",
+    failedToParseCsv: "failed csv",
+    failedToParsePaste: "failed paste",
+    failedToValidateAccount: "failed validate account",
+    nearValidationError: () => "near validation error",
+    feeEstimationFailed: "fee failed",
+    feeEstimationFailedRow: (row, recipient) =>
+        `fee failed row ${row} ${recipient}`,
 };
 
 describe("parseAmount thousand separators", () => {
@@ -31,5 +64,40 @@ describe("parseAmount thousand separators", () => {
     it("still handles mixed comma+dot formats", () => {
         expect(parseAmount("1,000.50", labels).amount).toBe("1000.50");
         expect(parseAmount("1.000,50", labels).amount).toBe("1000.50");
+    });
+});
+
+describe("parseAndValidateCsv destination network", () => {
+    const ethAddress = "0x1111111111111111111111111111111111111111";
+    const nearAddress = "alice.near";
+    const ethCsv = `recipient,amount\n${ethAddress},10`;
+    const nearCsv = `recipient,amount\n${nearAddress},10`;
+
+    it("validates addresses against receive network, not send token network", () => {
+        // Source token lives on NEAR; receive network is eth.
+        const result = parseAndValidateCsv(
+            ethCsv,
+            parsingLabels,
+            { symbol: "USDC", network: "near", residency: "intents" },
+            "eth",
+        );
+
+        expect(result.errors).toEqual([]);
+        expect(result.payments).toHaveLength(1);
+        expect(result.payments[0]?.recipient).toBe(ethAddress);
+    });
+
+    it("rejects near addresses when receive network is eth", () => {
+        // Without destination override this would pass (token network = near).
+        const result = parseAndValidateCsv(
+            nearCsv,
+            parsingLabels,
+            { symbol: "USDC", network: "near", residency: "intents" },
+            "eth",
+        );
+
+        expect(result.payments).toHaveLength(0);
+        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors[0]?.message.toLowerCase()).toContain("eth");
     });
 });

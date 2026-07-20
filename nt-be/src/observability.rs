@@ -283,6 +283,71 @@ fn truncate_sanitized_text(mut text: String) -> String {
 mod tests {
     use super::*;
 
+    /// The tower-http `TraceLayer` wired in `main` must log **5xx** responses at
+    /// ERROR (which the sentry-tracing layer turns into a Sentry event) via the
+    /// default `ServerErrorsAsFailures` classifier, and leave 2xx/4xx alone — so
+    /// client errors don't alarm. Mirrors the layer's failure config.
+    #[tokio::test]
+    async fn trace_layer_logs_only_5xx_at_error() {
+        use axum::{Router, body::Body, http::Request, http::StatusCode, routing::get};
+        use std::sync::{Arc, Mutex};
+        use tower::ServiceExt as _;
+        use tower_http::trace::{DefaultOnFailure, TraceLayer};
+
+        // Records the level of every event so we can count ERROR events (the
+        // ones the sentry-tracing bridge would capture).
+        #[derive(Clone, Default)]
+        struct Capture(Arc<Mutex<Vec<tracing::Level>>>);
+        impl<S: tracing::Subscriber> tracing_subscriber::Layer<S> for Capture {
+            fn on_event(
+                &self,
+                event: &tracing::Event<'_>,
+                _ctx: tracing_subscriber::layer::Context<'_, S>,
+            ) {
+                self.0.lock().unwrap().push(*event.metadata().level());
+            }
+        }
+
+        let events = Capture::default();
+        let subscriber = tracing_subscriber::registry().with(events.clone());
+        let _guard = tracing::subscriber::set_default(subscriber);
+
+        async fn ok() -> &'static str {
+            "ok"
+        }
+        async fn bad() -> StatusCode {
+            StatusCode::BAD_REQUEST
+        }
+        async fn err() -> StatusCode {
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+        let app = Router::new()
+            .route("/ok", get(ok))
+            .route("/bad", get(bad))
+            .route("/err", get(err))
+            .layer(
+                TraceLayer::new_for_http()
+                    .on_failure(DefaultOnFailure::new().level(tracing::Level::ERROR)),
+            );
+
+        for path in ["/ok", "/bad", "/err"] {
+            let _ = app
+                .clone()
+                .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+        }
+
+        let error_events = events
+            .0
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|level| **level == tracing::Level::ERROR)
+            .count();
+        assert_eq!(error_events, 1, "only the 5xx response logs at ERROR");
+    }
+
     /// The apalis-board layer must forward events emitted inside an apalis
     /// `task` span to the broadcaster — that's what the dashboard's `/events`
     /// SSE endpoint streams. It filters to `span.is_some()`, so only

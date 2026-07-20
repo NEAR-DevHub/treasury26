@@ -19,6 +19,7 @@
 pub mod context;
 pub mod handlers;
 pub mod leadership;
+pub mod watchdog;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -59,11 +60,63 @@ impl JobQueues {
     }
 }
 
+/// Registration-time accumulator: board entries plus the watchdog specs that
+/// mirror them. Filled by `register_cron_worker!`, split apart at the end of
+/// [`spawn_all`].
+#[derive(Default)]
+struct QueueRegistry {
+    entries: Vec<(&'static str, TickStorage)>,
+    specs: Vec<watchdog::JobSpec>,
+}
+
+impl QueueRegistry {
+    fn storage(&self, name: &str) -> Option<&TickStorage> {
+        self.entries
+            .iter()
+            .find(|(queue, _)| *queue == name)
+            .map(|(_, storage)| storage)
+    }
+
+    fn register(&mut self, name: &'static str, storage: TickStorage, interval_secs: Option<u64>) {
+        self.entries.push((name, storage));
+        match interval_secs {
+            Some(interval_secs) => self.specs.push(watchdog::JobSpec {
+                queue: name,
+                kind: watchdog::QueueKind::Cron { interval_secs },
+            }),
+            // A schedule with fewer than two upcoming ticks can't yield a
+            // cadence; leave the queue off the watchdog rather than guess.
+            None => tracing::warn!(
+                queue = name,
+                "could not derive cron interval; queue not watched for staleness"
+            ),
+        }
+    }
+}
+
 fn env_secs(var: &str, default: u64) -> u64 {
     std::env::var(var)
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(default)
+}
+
+/// Wall-clock cap on a single job handler execution (default 30 min,
+/// `APALIS_JOB_TIMEOUT_SECONDS`).
+///
+/// A handler that exceeds it has its future dropped (cancelled) and the task
+/// recorded as failed. This is the safety net for the failure mode that wedged
+/// `account-maintenance` for days on testenv: a handler that hangs on an
+/// un-timed `.await` (e.g. an unresponsive RPC) never completes, but apalis's
+/// keep-alive heartbeat runs on a *separate* task and stays healthy — so the
+/// orphaned-task reenqueue never fires, and with `concurrency(1)` that one
+/// hung task holds the queue's only slot forever while cron ticks pile up
+/// Pending. The timeout frees the slot; the next cron tick retries.
+///
+/// Set generously (30 min) so no legitimate cycle is killed — it only fires on
+/// a genuine hang. Per-job overrides can be added later if a job needs longer.
+pub(crate) fn job_timeout() -> std::time::Duration {
+    std::time::Duration::from_secs(env_secs("APALIS_JOB_TIMEOUT_SECONDS", 1800).max(1))
 }
 
 /// Builds a cron schedule that fires every `secs` seconds.
@@ -176,7 +229,68 @@ async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
     conn.execute("SET search_path TO apalis_migrations, public")
         .await?;
     PostgresStorage::migrations().run(&mut *conn).await?;
+    drop(conn);
+
+    ensure_board_indexes(pool).await;
     Ok(())
+}
+
+/// Adds composite indexes that the apalis-board queries need but the apalis
+/// schema doesn't ship.
+///
+/// The board's task-list queries filter by `status` (and optionally
+/// `job_type`) and `ORDER BY done_at DESC, run_at DESC`; the built-in schema
+/// only has single-column `status`/`job_type` indexes, so on a large table
+/// (~1M rows on testenv) Postgres filtered then sorted the whole matching set
+/// on every page load — the reason the board UI was slow. These composite
+/// indexes let it satisfy the filter+order with an index range scan.
+///
+/// `CONCURRENTLY` avoids taking a write lock on the table the workers are
+/// actively polling; `IF NOT EXISTS` makes it a cheap no-op after the first
+/// build. It cannot run inside a transaction, so it runs on a plain pooled
+/// connection (autocommit). A failure here must not stop startup — log and
+/// carry on; the board is just slower without them.
+async fn ensure_board_indexes(pool: &PgPool) {
+    use sqlx::Executor as _;
+
+    const INDEXES: [(&str, &str); 5] = [
+        (
+            "idx_jobs_status_doneat_runat",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_status_doneat_runat \
+             ON apalis.jobs (status, done_at DESC, run_at DESC)",
+        ),
+        (
+            "idx_jobs_type_status_doneat_runat",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_type_status_doneat_runat \
+             ON apalis.jobs (job_type, status, done_at DESC, run_at DESC)",
+        ),
+        (
+            "idx_jobs_run_at",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_run_at ON apalis.jobs (run_at)",
+        ),
+        // Queues page (list_queues): GROUP BY job_type status-count aggregates.
+        // Narrow on purpose — the wider indexes above are too big for the
+        // planner to pick for a pure aggregate, so it kept seq-scanning the fat
+        // table. EXPLAIN shows this turns them into index-only scans.
+        (
+            "idx_jobs_type_status",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_type_status \
+             ON apalis.jobs (job_type, status)",
+        ),
+        // Queues page: per-job_type run_at rollups (7-day activity, most-recent,
+        // time windows).
+        (
+            "idx_jobs_type_runat",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_type_runat \
+             ON apalis.jobs (job_type, run_at)",
+        ),
+    ];
+
+    for (name, ddl) in INDEXES {
+        if let Err(e) = pool.execute(ddl).await {
+            tracing::warn!(index = name, error = %e, "failed to create apalis board index");
+        }
+    }
 }
 
 fn storage(pool: &PgPool, queue: &str) -> TickStorage {
@@ -264,17 +378,21 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
 /// builder-style), so this must be used as `monitor = register_cron_worker!(monitor, …)`.
 macro_rules! register_cron_worker {
     ($monitor:expr, $queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
+        let schedule = $schedule;
         let store = match $queues.storage($name) {
             Some(store) => store.clone(),
             None => {
                 let store = storage(&$state.db_pool, $name);
-                $queues.entries.push(($name, store.clone()));
+                $queues.register(
+                    $name,
+                    store.clone(),
+                    watchdog::schedule_interval_secs(&schedule),
+                );
                 store
             }
         };
         match $monitor {
             Some(monitor) => {
-                let schedule = $schedule;
                 let state = $state.clone();
                 // `register` takes a factory `Fn(attempt) -> Worker`: the Monitor
                 // calls it to (re)build the worker, so a restart gets a fresh
@@ -283,6 +401,9 @@ macro_rules! register_cron_worker {
                     WorkerBuilder::new($name)
                         .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
                         .data(state.clone())
+                        // Bounds a hung handler so it cannot hold this queue's
+                        // sole concurrency slot forever.
+                        .timeout(job_timeout())
                         .catch_panic()
                         // apalis's Sentry integration: captures a task failure once
                         // (after catch_panic has converted any panic to an error) with
@@ -356,9 +477,9 @@ fn job_monitor() -> Monitor {
 
 fn configure_cron_runtime(
     state: Arc<AppState>,
-    mut queues: JobQueues,
+    mut queues: QueueRegistry,
     mut monitor: Option<Monitor>,
-) -> (Option<Monitor>, JobQueues) {
+) -> (Option<Monitor>, QueueRegistry) {
     let preparing_queues = monitor.is_none();
 
     if !state.env_vars.disable_balance_monitoring {
@@ -635,35 +756,59 @@ fn configure_cron_runtime(
     }
 
     // Retention: prune finished apalis tasks so high-frequency queues don't
-    // grow unbounded. Daily at 03:30 UTC.
+    // grow unbounded. Hourly — the high-frequency queues (2–5s ticks, plus
+    // per-account public-history jobs) produce ~1M rows/day, so a once-daily
+    // prune let the table (and every poll/UI query over it) bloat badly.
     monitor = register_cron_worker!(
         monitor,
         queues,
         state,
         "apalis-prune",
-        Schedule::from_str("0 30 3 * * *").expect("valid cron"),
+        Schedule::from_str("0 0 * * * *").expect("valid cron"),
         handlers::apalis_prune
+    );
+
+    monitor = register_cron_worker!(
+        monitor,
+        queues,
+        state,
+        "job-watchdog",
+        schedule_every_secs(60),
+        watchdog::job_watchdog
     );
 
     (monitor, queues)
 }
 
-fn prepare_job_queues(state: Arc<AppState>) -> JobQueues {
-    configure_cron_runtime(
-        state,
-        JobQueues {
-            entries: Vec::new(),
-        },
-        None,
-    )
-    .1
+fn prepare_job_queues(state: Arc<AppState>) -> (JobQueues, Vec<watchdog::JobSpec>) {
+    let (_, mut registry) = configure_cron_runtime(state.clone(), QueueRegistry::default(), None);
+
+    if state.env_vars.nearblocks_api_key.is_some() {
+        registry.specs.extend(
+            crate::handlers::public_history::bronze::jobs::QUEUE_NAMES
+                .into_iter()
+                .map(|queue| watchdog::JobSpec {
+                    queue,
+                    kind: watchdog::QueueKind::Queue,
+                }),
+        );
+    }
+
+    let QueueRegistry { entries, specs } = registry;
+    (JobQueues { entries }, specs)
 }
 
 fn build_cron_runtime(state: Arc<AppState>, queues: JobQueues) -> (Monitor, JobQueues) {
-    let (monitor, queues) = configure_cron_runtime(state, queues, Some(job_monitor()));
+    let registry = QueueRegistry {
+        entries: queues.entries,
+        specs: Vec::new(),
+    };
+    let (monitor, registry) = configure_cron_runtime(state, registry, Some(job_monitor()));
     (
         monitor.expect("cron monitor must be present when starting workers"),
-        queues,
+        JobQueues {
+            entries: registry.entries,
+        },
     )
 }
 
@@ -813,7 +958,8 @@ pub async fn spawn_all(
         .await
         .expect("failed to set up public history queue workers");
 
-    let queues = prepare_job_queues(state.clone());
+    let (queues, watchdog_specs) = prepare_job_queues(state.clone());
+    watchdog::install(watchdog_specs);
     install_treasury_sweeper_wakeup(&queues, &state, shutdown.clone());
 
     let runtime_state = state.clone();
@@ -833,7 +979,6 @@ pub async fn spawn_all(
             ))
         }),
     );
-
     (queues, leadership_handle)
 }
 
@@ -936,6 +1081,15 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
     let mut api = ApiBuilder::new(Router::new());
     for (_, store) in &queues.entries {
         api = api.register(store.clone());
+    }
+    // The bronze public-history task queues are not Tick-backed, so they are
+    // not in `queues`; register them separately so they show on the board.
+    if state.env_vars.nearblocks_api_key.is_some() {
+        for store in
+            crate::handlers::public_history::bronze::jobs::board_storages(state.db_pool.clone())
+        {
+            api = api.register(store);
+        }
     }
 
     // The board registers an `/api/v1/events` SSE route (apalis-board's

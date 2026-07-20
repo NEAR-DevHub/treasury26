@@ -1,3 +1,4 @@
+use futures::stream::StreamExt;
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 use sqlx::types::chrono::{DateTime, Utc};
@@ -139,11 +140,79 @@ pub async fn run_maintenance_cycle(
         return Ok(());
     }
 
-    tracing::info!("Processing {} enabled accounts", accounts.len());
+    let concurrency = maintenance_concurrency();
+    let account_timeout = maintenance_account_timeout();
+    tracing::info!(
+        accounts = accounts.len(),
+        concurrency,
+        timeout_secs = account_timeout.as_secs(),
+        "Processing enabled accounts"
+    );
 
-    for (account_id, original_dirty_at) in &accounts {
-        tracing::info!("Processing {}", account_id);
+    // Process accounts with bounded parallelism, each isolated by a timeout.
+    // Isolation is the root-cause fix for the queue wedge: a single account
+    // whose RPC hangs (or errors) is abandoned for this cycle instead of
+    // stalling every account behind it or blocking the worker forever.
+    futures::stream::iter(accounts.iter())
+        .for_each_concurrent(concurrency, |(account_id, original_dirty_at)| async move {
+            match tokio::time::timeout(
+                account_timeout,
+                process_account(app_state, account_id, *original_dirty_at, up_to_block),
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => {
+                    tracing::error!(account_id = %account_id, "account maintenance failed: {e}")
+                }
+                Err(_) => tracing::warn!(
+                    account_id = %account_id,
+                    timeout_secs = account_timeout.as_secs(),
+                    "account maintenance timed out; abandoning this account for this cycle"
+                ),
+            }
+        })
+        .await;
 
+    tracing::info!("Cycle complete");
+    Ok(())
+}
+
+/// Bounded parallelism for per-account maintenance within one cycle
+/// (`ACCOUNT_MAINTENANCE_CONCURRENCY`, default 4). Kept modest so parallel
+/// accounts don't exhaust the shared DB pool (max 20) or upstream RPC budgets.
+fn maintenance_concurrency() -> usize {
+    std::env::var("ACCOUNT_MAINTENANCE_CONCURRENCY")
+        .ok()
+        .and_then(|s| s.parse::<usize>().ok())
+        .filter(|&n| n >= 1)
+        .unwrap_or(4)
+}
+
+/// Per-account wall-clock budget
+/// (`ACCOUNT_MAINTENANCE_ACCOUNT_TIMEOUT_SECONDS`, default 120s). One account
+/// whose RPC hangs is abandoned for this cycle rather than wedging the worker;
+/// the next cron tick retries it. This is the inner, per-account counterpart to
+/// the outer whole-handler `job_timeout` safety net.
+fn maintenance_account_timeout() -> std::time::Duration {
+    let secs = std::env::var("ACCOUNT_MAINTENANCE_ACCOUNT_TIMEOUT_SECONDS")
+        .ok()
+        .and_then(|s| s.parse::<u64>().ok())
+        .filter(|&n| n >= 1)
+        .unwrap_or(120);
+    std::time::Duration::from_secs(secs)
+}
+
+/// Full per-account maintenance pipeline. All step errors stay isolated to this
+/// account (the caller logs and continues), so one account's failure can no
+/// longer abort the whole cycle as the previous `?`-in-loop did.
+async fn process_account(
+    app_state: &AppState,
+    account_id: &str,
+    original_dirty_at: Option<DateTime<Utc>>,
+    up_to_block: i64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    {
         {
             // Regular treasury: full on-chain pipeline
 
@@ -458,7 +527,6 @@ pub async fn run_maintenance_cycle(
         }
     }
 
-    tracing::info!("Cycle complete");
     Ok(())
 }
 

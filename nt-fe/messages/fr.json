@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Proposition de paiement groupé soumise",
         "submitListFailed": "Échec de la soumission de la liste de paiements",
         "submitFailed": "Échec de la soumission du paiement groupé",
+        "quoteFetchFailed": "Impossible de récupérer les frais de transfert. Veuillez réessayer.",
         "upload": {
             "pleaseUploadCsv": "Veuillez télécharger un fichier CSV",
             "fileSizeLimit": "La taille du fichier doit être inférieure à 1,5 Mo",
@@ -1341,7 +1342,11 @@
                 "recoveryText": "Quel que soit votre choix, nous vous recommandons d'ajouter un deuxième membre (wallet) après la configuration afin qu'un appareil perdu ne vous bloque pas.",
                 "passkeyNew": "Nouveau",
                 "passkeyDomainNote": "Votre clé d’accès est enregistrée pour trezu.app sur cet appareil (ou synchronisée via iCloud/Google). Elle ne peut pas être utilisée sur d’autres applications, et les clés d’autres applications ne peuvent pas accéder à Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey pour Touch ID et Face ID",
+            "passkeyCardSubtitle": "Connectez-vous avec la biométrie ou le code de votre appareil",
+            "passkeyCardBadge": "Simple et sécurisé",
+            "web3WalletsSeparator": "Portefeuilles Web3"
         },
         "unexpectedError": "Une erreur inattendue s'est produite",
         "creationFailed": "Échec de la création de la trésorerie. Veuillez réessayer.",

@@ -625,6 +625,7 @@ pub(crate) fn spawn_public_history_job_workers(
                     WorkerBuilder::new(PUBLIC_HISTORY_LATEST_WORKER)
                         .backend(storage)
                         .data(JobContext::new(latest_state))
+                        .timeout(crate::jobs::job_timeout())
                         .enable_tracing()
                         .concurrency(JOB_CONCURRENCY)
                         .build(handle_latest_job)
@@ -651,6 +652,7 @@ pub(crate) fn spawn_public_history_job_workers(
                     WorkerBuilder::new(PUBLIC_HISTORY_BACKFILL_WORKER)
                         .backend(storage)
                         .data(JobContext::new(state))
+                        .timeout(crate::jobs::job_timeout())
                         .enable_tracing()
                         .concurrency(BACKFILL_JOB_CONCURRENCY)
                         .build(handle_backfill_job)
@@ -666,6 +668,11 @@ pub(crate) fn spawn_public_history_job_workers(
     });
 
     vec![latest_handle, backfill_handle]
+}
+
+/// The two queue storages, typed for apalis-board registration.
+pub(crate) fn board_storages(pool: PgPool) -> Vec<PostgresStorage<PublicHistoryJob>> {
+    vec![latest_storage(pool.clone()), backfill_storage(pool)]
 }
 
 #[cfg(test)]

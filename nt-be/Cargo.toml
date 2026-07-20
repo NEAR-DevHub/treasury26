@@ -9,7 +9,7 @@ async-trait = "0.1"
 axum = { version = "0.8.7", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
 tokio-util = "0.7"
-tower-http = { version = "0.6", features = ["cors"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 near-api = "0.8"
 near-account-id = "2.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -58,7 +58,7 @@ bs58 = "0.5"
 url = "2"
 teloxide = { version = "0.17.0", features = ["rustls"], default-features = false }
 # Background job processing (apalis + web board)
-apalis = { version = "1.0.0-rc.9", features = ["limit", "retry", "tracing", "catch-panic", "sentry"] }
+apalis = { version = "1.0.0-rc.9", features = ["limit", "retry", "tracing", "catch-panic", "sentry", "timeout"] }
 apalis-core = { version = "1.0.0-rc.9", features = ["serde"] }
 apalis-cron = { version = "1.0.0-rc.8", features = ["serde"] }
 apalis-sql = "1.0.0-rc.8"

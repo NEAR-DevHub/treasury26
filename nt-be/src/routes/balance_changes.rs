@@ -71,6 +71,8 @@ pub struct BalanceChangesQuery {
     pub exclude_swaps_from_direction: bool, // If true, "incoming" and "outgoing" exclude swaps (for UI tabs); if false, include swaps (for exports/API)
 }
 
+// Constructed only by the commented-out legacy balance_changes path.
+#[allow(dead_code)]
 #[derive(Debug, Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct BalanceChange {

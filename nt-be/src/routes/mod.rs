@@ -89,6 +89,9 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
     Router::new()
         // Health check
         .route("/api/health", get(health_check))
+        // Background-job health: per-queue last success/failure/backlog and
+        // staleness; 503 while anything is stale. Admin Basic Auth.
+        .route("/api/jobs/health", get(crate::jobs::watchdog::jobs_health))
         .route(
             "/api/public/dashboard/aum",
             get(handlers::public_dashboard::get_public_dashboard_aum),
@@ -363,6 +366,12 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/confidential-intents/bulk-payment/prepare",
             post(
                 handlers::intents::confidential::bulk_payment_prepare::bulk_payment_prepare,
+            ),
+        )
+        .route(
+            "/api/confidential-intents/bulk-payment/confirm",
+            post(
+                handlers::intents::confidential::bulk_payment_confirm::bulk_payment_confirm,
             ),
         )
         .route(

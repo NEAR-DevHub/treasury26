@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "批量付款提案已提交",
         "submitListFailed": "提交付款列表失败",
         "submitFailed": "提交批量付款失败",
+        "quoteFetchFailed": "无法获取转账费用，请重试。",
         "upload": {
             "pleaseUploadCsv": "请上传 CSV 文件",
             "fileSizeLimit": "文件大小必须小于 1.5 MB",
@@ -1324,7 +1325,11 @@
                 "recoveryText": "无论你选择哪种方式，我们建议你在设置完成后添加第二位成员（钱包），以防设备丢失导致无法访问。",
                 "passkeyNew": "新",
                 "passkeyDomainNote": "您的通行密钥保存在此设备上，仅用于 trezu.app（或通过 iCloud/Google 同步）。它无法在其他应用中使用，其他应用的通行密钥也无法访问 Trezu。"
-            }
+            },
+            "passkeyCardTitle": "支持 Touch ID 和 Face ID 的通行密钥",
+            "passkeyCardSubtitle": "使用设备的生物识别或密码登录",
+            "passkeyCardBadge": "简单又安全",
+            "web3WalletsSeparator": "Web3 钱包"
         },
         "unexpectedError": "发生意外错误",
         "creationFailed": "创建金库失败。请再试一次。",

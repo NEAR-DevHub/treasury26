@@ -13,10 +13,7 @@ import { default_near_token } from "@/constants/token";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
-import {
-    getBatchStorageDepositIsRegistered,
-    prepareConfidentialBulkPayment,
-} from "@/lib/api";
+import { confirmConfidentialBulkPayment } from "@/lib/api";
 import Big from "@/lib/big";
 import {
     buildApproveListProposal,
@@ -47,6 +44,15 @@ import {
     buildBulkPaymentFormSchema,
     type EditPaymentFormValues,
 } from "./schemas";
+import {
+    buildPrepareRequest,
+    deriveQuoteFees,
+    isOutOfCreditsError,
+    maxQuotedRecipientFee,
+    needsFeeRepad,
+} from "./utils/confidential-prepare";
+import { useConfidentialPrepare } from "./utils/use-confidential-prepare";
+import { useSubscription } from "@/hooks/use-subscription";
 
 export default function BulkPaymentPage() {
     const t = useTranslations("pages.payments");
@@ -145,6 +151,82 @@ export default function BulkPaymentPage() {
     const [isSubmittingProposal, setIsSubmittingProposal] = useState(false);
     const isSubmittingProposalRef = useRef(false);
 
+    const toNearCom = destinationNetworkId === NEAR_COM_NETWORK_ID;
+    const { data: subscription } = useSubscription(selectedTreasury);
+    // Don't quote for a treasury that can't submit. Mirrors the BE gate:
+    // only treasuries with known plan info and zero credits are blocked;
+    // unmonitored ones proceed (the BE warns and allows).
+    const hasNoCredits =
+        subscription != null && subscription.batchPaymentCredits <= 0;
+    // Confidential flow: fetch firm 1Click quotes as soon as the review step
+    // shows, so the fees on screen are the ones the submitted proposal is
+    // built from. Null (no call) outside the confidential review step; edits
+    // to the payment list change the payload and re-fire automatically.
+    const prepareRequest = useMemo(() => {
+        if (
+            !isConfidential ||
+            step !== 1 ||
+            !selectedTreasury ||
+            !selectedToken ||
+            paymentData.length === 0 ||
+            hasNoCredits
+        ) {
+            return null;
+        }
+        return buildPrepareRequest({
+            daoId: selectedTreasury,
+            token: {
+                address: selectedToken.address,
+                decimals: selectedToken.decimals,
+            },
+            payments: paymentData,
+            networkFeePerRecipient,
+            toNearCom,
+            destinationAsset: destinationAssetId ?? destinationNetworkId,
+        });
+    }, [
+        isConfidential,
+        step,
+        selectedTreasury,
+        selectedToken,
+        paymentData,
+        networkFeePerRecipient,
+        toNearCom,
+        destinationAssetId,
+        destinationNetworkId,
+        hasNoCredits,
+    ]);
+    const { prepare, retryPrepare } = useConfidentialPrepare(prepareRequest);
+    const quoteFees = useMemo(
+        () =>
+            prepare.status === "success" ? deriveQuoteFees(prepare.data) : null,
+        [prepare],
+    );
+    // SDK pad can understate the firm 1Click fee. When that happens, bump the
+    // pad and re-prepare so EXACT_INPUT amountOut matches the typed amount —
+    // same numbers request details will show from stored quotes.
+    const padAdjustmentPending =
+        prepare.status === "success" &&
+        quoteFees != null &&
+        needsFeeRepad(networkFeePerRecipient, quoteFees);
+
+    useEffect(() => {
+        if (!padAdjustmentPending || !quoteFees) return;
+        setNetworkFeePerRecipient(maxQuotedRecipientFee(quoteFees).toFixed());
+    }, [padAdjustmentPending, quoteFees]);
+
+    const prepareReady = prepare.status === "success" && !padAdjustmentPending;
+    const prepareStatusForReview =
+        prepare.status === "success" && padAdjustmentPending
+            ? "loading"
+            : prepare.status;
+
+    // The 402 branch is a race backstop: credits ran out between the
+    // subscription check above and the prepare call landing.
+    const outOfCredits =
+        hasNoCredits ||
+        (prepare.status === "error" && isOutOfCreditsError(prepare.error));
+
     const trackReviewStepEnter = (
         source: "upload_continue" | "edit_save" | "edit_cancel",
         recipientsCount: number,
@@ -202,43 +284,30 @@ export default function BulkPaymentPage() {
         setEditingIndex(null);
     };
 
-    // Confidential submission — talks to the BE prepare endpoint, builds an
-    // opaque v1.signer proposal that signs the header intent hash. The BE
-    // worker drives activate/ping/submit after the DAO approves.
+    // Confidential submission — consumes the prepare response fetched at
+    // review-load (the same quotes the fee display used), builds an opaque
+    // v1.signer proposal that signs the header intent hash. The BE worker
+    // drives activate/ping/submit after the DAO approves.
     const onSubmitConfidential = async () => {
         if (!selectedTreasury || paymentData.length === 0 || !selectedToken)
             return;
+        // Confirm is disabled until quotes load and any fee re-pad finishes.
+        if (!prepareReady || prepare.status !== "success") return;
+        const prepared = prepare.data;
 
         const proposalBond = policy?.proposal_bond || "0";
 
-        // Pad each recipient amount by the estimated network fee so the BE
-        // can keep using EXACT_INPUT 1Click quotes — the sub will always
-        // hold enough to cover the withdrawal, and the recipient nets ~the
-        // user-typed amount. NEAR.COM (intra-Intents) leg has no fee.
-        const feePerRecipient = networkFeePerRecipient
-            ? Big(networkFeePerRecipient)
-            : Big(0);
-        const payments = paymentData.map((p) => ({
-            recipient: p.recipient,
-            amount: Big(p.amount || "0")
-                .add(feePerRecipient)
-                .times(Big(10).pow(selectedToken.decimals))
-                .toFixed(0),
-        }));
+        isSubmittingProposalRef.current = true;
+        setIsSubmittingProposal(true);
 
-        const toNearCom = destinationNetworkId === NEAR_COM_NETWORK_ID;
         // createProposal already toasts wallet rejection; only toast prepare errors.
         let reachedCreateProposal = false;
         try {
-            const prepared = await prepareConfidentialBulkPayment({
+            // Attach the review-screen notes and consume a batch-payment
+            // credit — the submit-time side effects prepare no longer has.
+            await confirmConfidentialBulkPayment({
                 daoId: selectedTreasury,
-                originAsset: selectedToken.address,
-                toNearCom,
-                destinationAsset: toNearCom
-                    ? undefined
-                    : (destinationAssetId ?? destinationNetworkId),
-                decimals: selectedToken.decimals,
-                payments,
+                headerPayloadHash: prepared.headerPayloadHash,
                 notes: comment || undefined,
             });
 
@@ -304,6 +373,9 @@ export default function BulkPaymentPage() {
                         : tBulk("submitFailed"),
                 );
             }
+        } finally {
+            isSubmittingProposalRef.current = false;
+            setIsSubmittingProposal(false);
         }
     };
 
@@ -554,13 +626,16 @@ export default function BulkPaymentPage() {
                 title={pageTitle}
                 description={t("description")}
             >
-                <div className="w-full max-w-[600px] mx-auto">
+                <div className="w-full max-w-[600px] mx-auto min-w-0">
                     <EditPaymentStep
                         handleBack={handleCancelEdit}
                         payment={payment}
                         paymentIndex={editingIndex}
                         selectedToken={selectedToken}
                         networkFeePerRecipient={networkFeePerRecipient}
+                        destinationNetwork={
+                            isConfidential ? destinationNetworkName : undefined
+                        }
                         onSave={handleSaveEdit}
                         onCancel={handleCancelEdit}
                     />
@@ -573,7 +648,7 @@ export default function BulkPaymentPage() {
         <PageComponentLayout title={pageTitle} description={t("description")}>
             <FormProvider {...form}>
                 <div
-                    className={`w-full mx-auto ${step === 1 ? "max-w-3xl" : "max-w-7xl"}`}
+                    className={`w-full mx-auto min-w-0 ${step === 1 ? "max-w-[600px]" : "max-w-7xl"}`}
                 >
                     {/* Step 0: Upload Data */}
                     {step === 0 && (
@@ -607,6 +682,9 @@ export default function BulkPaymentPage() {
                                             >[0]["token"]
                                         }
                                         recipient={firstRecipient}
+                                        // Pick receive network independently —
+                                        // CSV validation enforces address type.
+                                        requireRecipient={false}
                                         sectionRules={networkSectionRules}
                                         bridgeAssets={bridgeAssets}
                                         isBridgeAssetsLoading={
@@ -638,6 +716,41 @@ export default function BulkPaymentPage() {
                             onPaymentDataChange={setPaymentData}
                             onSubmit={onSubmit}
                             isSubmitting={isSubmittingProposal}
+                            destinationNetworkId={
+                                isConfidential
+                                    ? destinationNetworkId
+                                    : undefined
+                            }
+                            destinationNetworkName={
+                                isConfidential
+                                    ? destinationNetworkName
+                                    : undefined
+                            }
+                            confidentialPrepare={
+                                isConfidential
+                                    ? {
+                                          status: prepareStatusForReview,
+                                          fees: prepareReady ? quoteFees : null,
+                                          quotes:
+                                              prepareReady &&
+                                              prepare.status === "success"
+                                                  ? {
+                                                        headerAmountInFormatted:
+                                                            prepare.data
+                                                                .headerQuote
+                                                                .amountInFormatted,
+                                                        recipientAmountOutFormatted:
+                                                            prepare.data.recipientQuotes.map(
+                                                                (q) =>
+                                                                    q.amountOutFormatted,
+                                                            ),
+                                                    }
+                                                  : null,
+                                          retry: retryPrepare,
+                                          outOfCredits,
+                                      }
+                                    : undefined
+                            }
                         />
                     )}
                 </div>

@@ -10,6 +10,13 @@ mod scheduler;
 mod worker;
 
 pub(crate) use scheduler::run_public_history_scheduler_cycle;
+pub(crate) use worker::board_storages;
+
+/// Queue names of the two event-driven workers, for watchdog registration.
+pub(crate) const QUEUE_NAMES: [&str; 2] = [
+    postgres::PUBLIC_HISTORY_LATEST_NAMESPACE,
+    postgres::PUBLIC_HISTORY_BACKFILL_NAMESPACE,
+];
 
 pub async fn setup_public_history_queue_workers(state: &AppState) -> Result<(), sqlx::Error> {
     if state.env_vars.nearblocks_api_key.is_none() {

@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Sammelzahlungsvorschlag übermittelt",
         "submitListFailed": "Übermittlung der Zahlungsliste fehlgeschlagen",
         "submitFailed": "Übermittlung der Sammelzahlung fehlgeschlagen",
+        "quoteFetchFailed": "Überweisungsgebühren konnten nicht abgerufen werden. Bitte versuchen Sie es erneut.",
         "upload": {
             "pleaseUploadCsv": "Bitte laden Sie eine CSV-Datei hoch",
             "fileSizeLimit": "Dateigröße muss kleiner als 1,5 MB sein",
@@ -1341,7 +1342,11 @@
                 "recoveryText": "Egal, wofür du dich entscheidest: Wir empfehlen, nach dem Setup ein zweites Mitglied (Wallet) hinzuzufügen, damit dich ein verlorenes Gerät nicht aussperrt.",
                 "passkeyNew": "Neu",
                 "passkeyDomainNote": "Dein Passkey wird für trezu.app auf diesem Gerät gespeichert (oder über iCloud/Google synchronisiert). Er funktioniert nicht in anderen Apps, und Passkeys anderer Apps haben keinen Zugriff auf Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey für Touch ID und Face ID",
+            "passkeyCardSubtitle": "Melde dich mit der Biometrie oder dem Code deines Geräts an",
+            "passkeyCardBadge": "Einfach & Sicher",
+            "web3WalletsSeparator": "Web3-Wallets"
         },
         "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
         "creationFailed": "Erstellung der Treasury fehlgeschlagen. Bitte erneut versuchen.",

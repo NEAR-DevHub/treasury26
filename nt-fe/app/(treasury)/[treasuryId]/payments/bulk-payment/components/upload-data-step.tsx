@@ -276,6 +276,9 @@ export function UploadDataStep({
                         ? { ...selectedToken, address: destinationAssetId }
                         : selectedToken,
                     parsingLabels,
+                    // Confidential: quote against the receive network, not
+                    // the source token's residency chain.
+                    isConfidential ? destinationNetwork : undefined,
                 );
 
                 if (!isConfidential) {
@@ -311,9 +314,9 @@ export function UploadDataStep({
     // Show full page skeleton while loading
     if (isLoading) {
         return (
-            <div className="flex flex-wrap justify-center gap-6 w-full">
+            <div className="flex flex-col lg:flex-row lg:justify-center gap-4 w-full min-w-0">
                 {/* Main Content Skeleton */}
-                <div className="flex-1 min-w-0 max-w-3xl">
+                <div className="w-full min-w-0 max-w-[600px] mx-auto lg:mx-0">
                     <PageCard className="gap-2">
                         <div className="flex flex-col gap-3">
                             <div className="flex flex-col">
@@ -323,12 +326,12 @@ export function UploadDataStep({
                                             variant="unstyled"
                                             size="icon"
                                             onClick={handleBack}
-                                            className="p-0!"
+                                            className="p-0! shrink-0"
                                         >
-                                            <ArrowLeft className="w-5 h-5" />
+                                            <ArrowLeft className="size-5" />
                                         </Button>
                                     )}
-                                    <h4 className="text-lg font-bold mb-1">
+                                    <h4 className="text-base md:text-lg font-bold mb-1">
                                         {t("headerTitle")}
                                     </h4>
                                 </div>
@@ -341,9 +344,9 @@ export function UploadDataStep({
                             <div>
                                 <div className="flex gap-2 mb-4">
                                     <div className="w-6 h-6 bg-muted-foreground/20 rounded-full animate-pulse" />
-                                    <div className="flex-1 space-y-3">
+                                    <div className="flex-1 space-y-3 min-w-0">
                                         <div className="h-5 bg-muted-foreground/20 rounded w-32 animate-pulse" />
-                                        <div className="h-14 bg-muted-foreground/20 rounded animate-pulse" />
+                                        <div className="h-12 bg-muted-foreground/20 rounded animate-pulse" />
                                     </div>
                                 </div>
                             </div>
@@ -352,22 +355,22 @@ export function UploadDataStep({
                             <div>
                                 <div className="flex gap-2 mb-4">
                                     <div className="w-6 h-6 bg-muted-foreground/20 rounded-full animate-pulse" />
-                                    <div className="flex-1 space-y-3">
+                                    <div className="flex-1 space-y-3 min-w-0">
                                         <div className="h-5 bg-muted-foreground/20 rounded w-48 animate-pulse" />
                                         <div className="h-10 bg-muted-foreground/20 rounded animate-pulse" />
-                                        <div className="h-64 bg-muted-foreground/20 rounded animate-pulse" />
+                                        <div className="h-48 md:h-64 bg-muted-foreground/20 rounded animate-pulse" />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Button Skeleton */}
-                            <div className="h-12 bg-muted-foreground/20 rounded animate-pulse" />
+                            <div className="h-11 bg-muted-foreground/20 rounded animate-pulse" />
                         </div>
                     </PageCard>
                 </div>
 
                 {/* Sidebar Skeleton */}
-                <div className="flex flex-col gap-4 w-full lg:w-80 shrink-0">
+                <div className="flex flex-col gap-4 w-full max-w-[600px] mx-auto lg:mx-0 lg:w-80 lg:max-w-none shrink-0">
                     {/* Requirements Card Skeleton */}
                     <PageCard
                         style={{
@@ -401,9 +404,9 @@ export function UploadDataStep({
     }
 
     return (
-        <div className="flex flex-wrap justify-center gap-4 w-full">
+        <div className="flex flex-col lg:flex-row lg:justify-center gap-4 w-full min-w-0">
             {/* Main Content */}
-            <div className="flex-1 max-w-[600px] min-w-[300px]">
+            <div className="w-full min-w-0 max-w-[600px] mx-auto lg:mx-0">
                 <PageCard className="gap-2">
                     {/* Header */}
                     <div className="flex flex-col gap-3">
@@ -414,12 +417,12 @@ export function UploadDataStep({
                                         variant="ghost"
                                         size="icon"
                                         onClick={handleBack}
-                                        className="p-0!"
+                                        className="p-0! shrink-0"
                                     >
-                                        <ArrowLeft />
+                                        <ArrowLeft className="size-5" />
                                     </Button>
                                 )}
-                                <div className="flex flex-col">
+                                <div className="flex flex-col min-w-0">
                                     <p className="font-semibold mb-1">
                                         {t("headerTitle")}
                                     </p>
@@ -485,11 +488,11 @@ export function UploadDataStep({
                                                 "disableTokenMessage",
                                             )}
                                             disabled={availableCredits === 0}
-                                            iconSize="lg"
+                                            iconSize="md"
                                             classNames={{
                                                 trigger: showTokenWarning
-                                                    ? "w-full h-14 shrink-0 border-0 bg-transparent shadow-none hover:bg-transparent hover:border-none rounded-none px-0"
-                                                    : "w-full h-14 rounded-lg px-4 bg-muted hover:bg-muted/80 hover:border-none",
+                                                    ? "w-full h-11 md:h-12 shrink-0 border-0 bg-transparent shadow-none hover:bg-transparent hover:border-none rounded-none px-0"
+                                                    : "w-full h-11 md:h-12 rounded-lg px-3 md:px-4 bg-muted hover:bg-muted/80 hover:border-none",
                                             }}
                                         />
                                         {showTokenWarning && (
@@ -504,8 +507,8 @@ export function UploadDataStep({
                             </div>
                         </div>
                         {/* Step 2: Provide Payment Data */}
-                        <div className="mb-4">
-                            <div className="flex gap-2 mb-4">
+                        <div className="md:mb-4">
+                            <div className="flex gap-2 md:mb-4">
                                 <NumberBadge number={2} variant="secondary" />
                                 <div className="flex-1 flex flex-col gap-2">
                                     <h3 className="text-sm font-semibold">
@@ -613,7 +616,7 @@ export function UploadDataStep({
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex items-center gap-2 text-sm">
+                                                        <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 text-sm">
                                                             <span className="text-muted-foreground">
                                                                 {t(
                                                                     "noFilePrompt",
@@ -751,7 +754,7 @@ export function UploadDataStep({
                                                     borderless
                                                     placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
                                                     rows={8}
-                                                    className={`w-full max-w-full resize-none font-mono text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap wrap-anywhere overflow-x-hidden min-h-41 ${
+                                                    className={`w-full max-w-full resize-none font-mono text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap wrap-anywhere overflow-x-hidden min-h-32 md:min-h-41 ${
                                                         dataErrors &&
                                                         dataErrors.length > 0
                                                             ? "border border-destructive bg-destructive/5! focus:border-destructive!"
@@ -846,7 +849,7 @@ export function UploadDataStep({
             </div>
 
             {/* Right Sidebar */}
-            <div className="flex flex-col gap-4 w-full lg:w-80 shrink-0">
+            <div className="flex flex-col gap-4 w-full max-w-[600px] mx-auto lg:mx-0 lg:w-80 lg:max-w-none shrink-0">
                 {/* Requirements Card */}
                 <PageCard
                     style={{

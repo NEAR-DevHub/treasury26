@@ -41,11 +41,11 @@ export function BulkPaymentCreditsDisplay({
     const periodDisplay = isTrial ? t("oneTimeTrial") : t("month");
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="font-semibold">{t("title")}</p>
-                <span className="text-sm font-medium border py-1 px-2 rounded-lg border-general-border bg-general-unofficial-outline">
+                <span className="text-xs sm:text-sm font-medium border py-1 px-2 rounded-lg border-general-border bg-general-unofficial-outline whitespace-nowrap">
                     {isUnlimited
                         ? t("unlimited")
                         : t("creditsPerPeriod", {
@@ -69,7 +69,7 @@ export function BulkPaymentCreditsDisplay({
 
             {/* Upgrade CTA - Only show if not unlimited */}
             {!isUnlimited && (
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm text-secondary-foreground">
                         {t("moreFlexibility")}
                     </span>
@@ -77,7 +77,7 @@ export function BulkPaymentCreditsDisplay({
                         variant={
                             creditsAvailable === 0 ? "default" : "secondary"
                         }
-                        className="p-3"
+                        className="px-3"
                         size="sm"
                         onClick={() => {
                             window.open(APP_CONTACT_US_URL, "_blank");

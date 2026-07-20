@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Usulan pembayaran massal telah dikirim",
         "submitListFailed": "Gagal mengirim daftar pembayaran",
         "submitFailed": "Gagal mengirim pembayaran massal",
+        "quoteFetchFailed": "Tidak dapat mengambil biaya transfer. Silakan coba lagi.",
         "upload": {
             "pleaseUploadCsv": "Silakan unggah file CSV",
             "fileSizeLimit": "Ukuran file harus kurang dari 1.5 MB",
@@ -1341,7 +1342,11 @@
                 "recoveryText": "Apa pun yang Anda pilih, kami sarankan menambahkan anggota kedua (wallet) setelah setup agar perangkat yang hilang tidak membuat Anda terkunci.",
                 "passkeyNew": "Baru",
                 "passkeyDomainNote": "Passkey Anda disimpan untuk trezu.app di perangkat ini (atau disinkronkan melalui iCloud/Google). Passkey ini tidak dapat digunakan di aplikasi lain, dan passkey aplikasi lain tidak dapat mengakses Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey untuk Touch ID dan Face ID",
+            "passkeyCardSubtitle": "Masuk dengan biometrik atau kode sandi perangkat Anda",
+            "passkeyCardBadge": "Mudah & Aman",
+            "web3WalletsSeparator": "Dompet Web3"
         },
         "unexpectedError": "Terjadi kesalahan tak terduga",
         "creationFailed": "Gagal membuat treasury. Silakan coba lagi.",

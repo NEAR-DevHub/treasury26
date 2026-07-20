@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Bulk payment proposal submitted",
         "submitListFailed": "Failed to submit payment list",
         "submitFailed": "Failed to submit bulk payment",
+        "quoteFetchFailed": "Couldn't fetch transfer fees. Please try again.",
         "upload": {
             "pleaseUploadCsv": "Please upload a CSV file",
             "fileSizeLimit": "File size must be less than 1.5 MB",
@@ -1341,7 +1342,11 @@
                 "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out.",
                 "passkeyNew": "New",
                 "passkeyDomainNote": "Your passkey is saved for trezu.app on this device (or synced via iCloud/Google). It cannot be used on other apps, and other apps’ passkeys cannot access Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey for Touch ID and Face ID",
+            "passkeyCardSubtitle": "Use your device biometrics or passcode to sign in",
+            "passkeyCardBadge": "Easy & Secure",
+            "web3WalletsSeparator": "Web3 wallets"
         },
         "unexpectedError": "An unexpected error occurred",
         "creationFailed": "Failed to create treasury. Please try again.",

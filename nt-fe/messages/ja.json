@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "一括支払い提案が送信されました",
         "submitListFailed": "支払いリストの送信に失敗しました",
         "submitFailed": "一括支払いの送信に失敗しました",
+        "quoteFetchFailed": "送金手数料を取得できませんでした。もう一度お試しください。",
         "upload": {
             "pleaseUploadCsv": "CSVファイルをアップロードしてください",
             "fileSizeLimit": "ファイルサイズは1.5MB未満である必要があります",
@@ -1341,7 +1342,11 @@
                 "recoveryText": "どちらを選んでも、デバイス紛失時にアクセス不能にならないよう、セットアップ後に2人目のメンバー（ウォレット）を追加することをおすすめします。",
                 "passkeyNew": "新着",
                 "passkeyDomainNote": "パスキーはこのデバイス上で trezu.app 用に保存されます（iCloud/Google 経由で同期される場合もあります）。他のアプリでは使用できず、他のアプリのパスキーから Trezu にアクセスすることもできません。"
-            }
+            },
+            "passkeyCardTitle": "Touch ID・Face ID対応のパスキー",
+            "passkeyCardSubtitle": "デバイスの生体認証またはパスコードでサインイン",
+            "passkeyCardBadge": "簡単・安全",
+            "web3WalletsSeparator": "Web3ウォレット"
         },
         "unexpectedError": "予期しないエラーが発生しました",
         "creationFailed": "トレジャリーの作成に失敗しました。もう一度お試しください。",

@@ -13,7 +13,14 @@
 //!
 //! Returns the header hash + recipient hashes so the FE can:
 //!   - put the recipient hashes in the proposal description CSV
-//!   - put the header hash inside the v1.signer FunctionCall args.
+//!   - put the header hash inside the v1.signer FunctionCall args
+//!
+//! plus the per-leg firm quote amounts, so the review screen shows the
+//! real transfer fees the quotes lock in (not local estimates).
+//!
+//! This endpoint runs at review-load time and has no billing side effects;
+//! the FE calls `bulk_payment_confirm` at submit time to attach notes and
+//! consume a batch-payment credit.
 
 use axum::{Json, extract::State, http::StatusCode};
 use chrono::Duration;
@@ -72,6 +79,52 @@ pub struct BulkPaymentPrepareResponse {
     pub header_payload_hash: String,
     /// Recipient intent hashes — go into the proposal description CSV.
     pub recipient_payload_hashes: Vec<String>,
+    /// Firm quote amounts per recipient leg, same order as the request's
+    /// `payments`. The review UI derives real transfer fees from these.
+    pub recipient_quotes: Vec<LegQuote>,
+    /// Firm quote amounts for the header leg (DAO → bulk subaccount);
+    /// `amount_in` is the total the DAO is charged.
+    pub header_quote: LegQuote,
+}
+
+/// Quote-derived amounts for one 1Click leg. `amount_in` is what the paying
+/// side is charged (origin asset, smallest units); `amount_out` is what the
+/// receiving side nets after transfer fees (destination asset, smallest
+/// units). The `*_formatted` variants are 1Click's human-readable decimal
+/// strings — the FE diffs those, so differing origin/destination chain
+/// decimals never skew the fee math.
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LegQuote {
+    pub amount_in: String,
+    pub amount_in_formatted: String,
+    pub amount_out: String,
+    pub amount_out_formatted: String,
+}
+
+/// Pull the fee-relevant amounts out of a raw 1Click quote response.
+/// dry=false quotes always carry these; a miss means 1Click misbehaved,
+/// and without them the review screen can't show trustworthy fees.
+fn extract_leg_quote(quote_response: &Value, leg: &str) -> Result<LegQuote, (StatusCode, String)> {
+    let field = |name: &str| -> Result<String, (StatusCode, String)> {
+        quote_response
+            .get("quote")
+            .and_then(|q| q.get(name))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                (
+                    StatusCode::BAD_GATEWAY,
+                    format!("{} quote missing quote.{}", leg, name),
+                )
+            })
+    };
+    Ok(LegQuote {
+        amount_in: field("amountIn")?,
+        amount_in_formatted: field("amountInFormatted")?,
+        amount_out: field("amountOut")?,
+        amount_out_formatted: field("amountOutFormatted")?,
+    })
 }
 
 /// Default deadline for confidential bulk quotes/intents — long enough that
@@ -411,19 +464,11 @@ pub async fn bulk_payment_prepare(
     // +1 for the header leg appended below.
     let mut batch = LegBatch::with_capacity(recipient_results.len() + 1);
     let mut recipient_hashes: Vec<String> = Vec::with_capacity(recipient_results.len());
+    let mut recipient_quotes: Vec<LegQuote> = Vec::with_capacity(recipient_results.len());
     let mut total_amount_in: u128 = 0;
     for (hash, quote_response, payload) in recipient_results {
-        let amount_in = quote_response
-            .get("quote")
-            .and_then(|q| q.get("amountIn"))
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                (
-                    StatusCode::BAD_GATEWAY,
-                    "recipient quote missing quote.amountIn".to_string(),
-                )
-            })?;
-        let parsed = amount_in.parse::<u128>().map_err(|e| {
+        let leg_quote = extract_leg_quote(&quote_response, "recipient")?;
+        let parsed = leg_quote.amount_in.parse::<u128>().map_err(|e| {
             (
                 StatusCode::BAD_GATEWAY,
                 format!("recipient amountIn not numeric: {}", e),
@@ -437,6 +482,7 @@ pub async fn bulk_payment_prepare(
         })?;
 
         recipient_hashes.push(hash.clone());
+        recipient_quotes.push(leg_quote);
         batch.push(
             dao_account_id.to_string(),
             hash,
@@ -457,14 +503,15 @@ pub async fn bulk_payment_prepare(
         &total_amount_str,
         &deadline,
     );
-    let (header_hash, header_quote, header_payload) =
+    let (header_hash, header_quote_response, header_payload) =
         quote_and_generate(&state, &dao_token, &header_body, &header_signer_id).await?;
 
+    let header_quote = extract_leg_quote(&header_quote_response, "header")?;
     batch.push(
         request.dao_id.clone(),
         header_hash.clone(),
         header_payload,
-        header_quote,
+        header_quote_response,
         "shield",
         request.notes.clone(),
     );
@@ -551,57 +598,21 @@ pub async fn bulk_payment_prepare(
         )
     })?;
 
+    // No credit decrement here: prepare now fires on every review-screen
+    // load (to show real quote fees), so consuming a batch-payment credit
+    // moved to `bulk_payment_confirm`, which the FE calls only when the
+    // user actually submits. The `batch_payment_credits <= 0` gate above
+    // still blocks review-time quoting for out-of-credit treasuries.
     tracing::info!(
-        "Confidential bulk payment prepared for treasury {}. Decrementing credits...",
+        "Confidential bulk payment prepared for treasury {}",
         request.dao_id
     );
-
-    let db_result = sqlx::query_as::<_, (i32,)>(
-        r#"
-        UPDATE monitored_accounts
-        SET batch_payment_credits = GREATEST(batch_payment_credits - 1, 0),
-            updated_at = NOW()
-        WHERE account_id = $1
-        RETURNING batch_payment_credits
-        "#,
-    )
-    .bind(&request.dao_id)
-    .fetch_optional(&state.db_pool)
-    .await;
-
-    match db_result {
-        Ok(Some((new_credits,))) => {
-            tracing::info!(
-                "Successfully decremented credits for treasury {}. New balance: {}",
-                request.dao_id,
-                new_credits
-            );
-        }
-        Ok(None) => {
-            tracing::warn!(
-                "Treasury {} not found in monitored_accounts, credits not decremented",
-                request.dao_id
-            );
-        }
-        Err(e) => {
-            tracing::error!(
-                "Failed to decrement batch payment credits for {}: {}",
-                request.dao_id,
-                e
-            );
-        }
-    }
-
-    crate::services::platform_metrics::record_event(
-        &state.db_pool,
-        &request.dao_id,
-        crate::services::platform_metrics::PlatformMetric::BatchPaymentsUsed,
-    )
-    .await;
 
     Ok(Json(BulkPaymentPrepareResponse {
         bulk_account_id: sub_id_str,
         header_payload_hash: header_hash,
         recipient_payload_hashes: recipient_hashes,
+        recipient_quotes,
+        header_quote,
     }))
 }

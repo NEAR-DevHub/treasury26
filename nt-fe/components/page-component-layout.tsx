@@ -97,7 +97,7 @@ export function PageComponentLayout({
 
                         {logo ?? (
                             <div className="flex items-baseline gap-2">
-                                <h1 className="text-base md:text-lg font-bold">
+                                <h1 className="text-sm md:text-lg font-bold">
                                     {title}
                                 </h1>
                                 {description && (

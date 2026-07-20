@@ -1074,6 +1074,7 @@
         "proposalSubmitted": "Propuesta de pago masivo enviada",
         "submitListFailed": "No se pudo enviar la lista de pagos",
         "submitFailed": "No se pudo enviar el pago masivo",
+        "quoteFetchFailed": "No se pudieron obtener las comisiones de transferencia. Inténtalo de nuevo.",
         "upload": {
             "pleaseUploadCsv": "Sube un archivo CSV",
             "fileSizeLimit": "El tamaño del archivo debe ser inferior a 1,5 MB",
@@ -1341,7 +1342,11 @@
                 "recoveryText": "Elijas lo que elijas, te recomendamos añadir un segundo miembro (wallet) después de la configuración para que la pérdida de un dispositivo no te deje fuera.",
                 "passkeyNew": "Nuevo",
                 "passkeyDomainNote": "Tu llave de acceso se guarda para trezu.app en este dispositivo (o se sincroniza con iCloud/Google). No puede usarse en otras aplicaciones, y las llaves de otras aplicaciones no pueden acceder a Trezu."
-            }
+            },
+            "passkeyCardTitle": "Passkey para Touch ID y Face ID",
+            "passkeyCardSubtitle": "Inicia sesión con la biometría o el código de tu dispositivo",
+            "passkeyCardBadge": "Fácil y seguro",
+            "web3WalletsSeparator": "Monederos Web3"
         },
         "unexpectedError": "Se produjo un error inesperado",
         "creationFailed": "Error al crear la tesorería. Inténtalo de nuevo.",
