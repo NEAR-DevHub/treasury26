@@ -57,12 +57,23 @@ interface ReviewPaymentsStepProps extends StepProps {
     destinationNetworkName?: string;
     /**
      * Confidential flow only: lifecycle of the review-time prepare call that
-     * fetches firm quotes. Fees render from `fees` (not the local estimate),
-     * and submission stays blocked until the call succeeds.
+     * fetches firm quotes. Display amounts come from `quotes` (same fields
+     * request details reads from stored prepare metadata); submission stays
+     * blocked until status is success.
      */
     confidentialPrepare?: {
         status: "idle" | "loading" | "success" | "error";
         fees: QuoteFees | null;
+        /**
+         * Firm quote amounts from prepare — mirrors backend / request details.
+         * Null while loading or while a fee re-pad is in flight.
+         */
+        quotes: {
+            /** DAO total spend (`headerQuote.amountInFormatted`). */
+            headerAmountInFormatted: string;
+            /** Per-recipient net (`amountOutFormatted`), same order as payments. */
+            recipientAmountOutFormatted: string[];
+        } | null;
         retry: () => void;
         /**
          * Treasury has no batch-payment credits (or prepare 402'd). Quotes
@@ -210,12 +221,18 @@ export function ReviewPaymentsStep({
             ? quotedTotalFee
             : null
         : estimatedTotalFee;
-    // Confidential bulk charges the DAO recipients + fees. Roll fees into
-    // the headline total so the AmountSummary and balance check reflect
-    // reality.
-    const totalAmount = totalNetworkFee
-        ? recipientsTotal.add(totalNetworkFee)
-        : recipientsTotal;
+    // Confidential: Total = header quote amountIn (what the DAO is charged) —
+    // same field request details uses. Fallback while quotes load: typed sum
+    // (+ estimated fee for public / pre-quote).
+    const quotedTotalAmount = confidentialPrepare?.quotes
+        ?.headerAmountInFormatted
+        ? Big(confidentialPrepare.quotes.headerAmountInFormatted)
+        : null;
+    const totalAmount =
+        quotedTotalAmount ??
+        (totalNetworkFee
+            ? recipientsTotal.add(totalNetworkFee)
+            : recipientsTotal);
     // Per-recipient fee shown on each row: the firm quote leg in the
     // confidential flow (guarded on length so a just-edited list never reads
     // a stale quote by index; zero-fee legs show nothing), the flat local
@@ -225,6 +242,11 @@ export function ReviewPaymentsStep({
         paymentData.length
             ? confidentialPrepare.fees.perRecipientFees
             : null;
+    const quotedRecipientOuts =
+        confidentialPrepare?.quotes?.recipientAmountOutFormatted.length ===
+        paymentData.length
+            ? confidentialPrepare.quotes.recipientAmountOutFormatted
+            : null;
     const getRecipientFee = (index: number) => {
         if (confidentialPrepare) {
             const fee = quotedRecipientFees?.[index];
@@ -232,6 +254,10 @@ export function ReviewPaymentsStep({
         }
         return feePerRecipient;
     };
+    // Confidential: show amountOut (net received) once quotes land — matches
+    // request details. Until then show the typed amount.
+    const getRecipientDisplayAmount = (index: number, typedAmount: string) =>
+        quotedRecipientOuts?.[index] ?? typedAmount;
 
     // Calculate total USD value and check insufficient balance (amount + fees)
     let totalUSDValue = Big(0);
@@ -246,10 +272,16 @@ export function ReviewPaymentsStep({
             );
             const balanceFormattedBig = Big(balanceFormattedString);
 
+            // When total already includes fees (header quote or typed+fee),
+            // do not pass networkFee again — that double-counts.
             balanceWarning = getPaymentBalanceWarning({
-                amount: totalAmount.toString(),
+                amount: quotedTotalAmount
+                    ? totalAmount.toString()
+                    : recipientsTotal.toString(),
                 balance: balanceFormattedBig,
-                networkFee: totalNetworkFee ?? undefined,
+                networkFee: quotedTotalAmount
+                    ? undefined
+                    : (totalNetworkFee ?? undefined),
                 decimals: selectedToken.decimals,
                 symbol: selectedToken.symbol,
             });
@@ -331,10 +363,12 @@ export function ReviewPaymentsStep({
                         <>
                             {paymentData.map((payment, index) => {
                                 const recipientFee = getRecipientFee(index);
-                                // Calculate estimated USD value
-                                // balanceUSD is the total USD value of the token balance
-                                // To get price per token: balanceUSD / (balance / 10^decimals)
-                                // To get USD value of payment: amount * pricePerToken
+                                const displayAmount = getRecipientDisplayAmount(
+                                    index,
+                                    payment.amount,
+                                );
+                                // Calculate estimated USD value from the
+                                // amount shown (net amountOut once quoted).
                                 let estimatedUSDValue = 0;
                                 if (selectedTokenData?.price && balance) {
                                     try {
@@ -347,7 +381,7 @@ export function ReviewPaymentsStep({
                                         );
                                         if (balanceFormatted > 0) {
                                             estimatedUSDValue =
-                                                Number(payment.amount) *
+                                                Number(displayAmount) *
                                                 selectedTokenData.price;
                                         }
                                     } catch (error) {
@@ -431,7 +465,7 @@ export function ReviewPaymentsStep({
                                                         <div className="flex flex-col gap-[3px] items-end">
                                                             <p className="text-sm font-semibold whitespace-nowrap leading-5">
                                                                 {formatTokenDisplayAmount(
-                                                                    payment.amount,
+                                                                    displayAmount,
                                                                 )}{" "}
                                                                 {
                                                                     selectedToken.symbol
