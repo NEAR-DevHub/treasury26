@@ -480,11 +480,42 @@ impl AppState {
     pub async fn new() -> Result<AppState, Box<dyn std::error::Error>> {
         let env_vars = EnvVars::default();
 
-        // Database connection
-        tracing::info!("Connecting to database...");
+        // Database connection.
+        //
+        // Connection-lifecycle settings are tuned so the app survives a rolling
+        // restart without exhausting the database's `max_connections`. Before,
+        // the pool opened up to 20 connections and (with no idle/lifetime
+        // bounds) held them forever, so during a deploy the outgoing and
+        // incoming instances overlapped at ~2× the cap and the new instance's
+        // job workers could not acquire connections and stalled. Now:
+        //  - `idle_timeout` releases idle connections, so a mostly-idle instance
+        //    (most job workers just poll briefly) holds only a handful — the
+        //    deploy overlap is small instead of a full 20+20.
+        //  - `max_lifetime` recycles connections so ones broken by a server
+        //    reset are dropped rather than lingering.
+        //  - `test_before_acquire` hands out only live connections, replacing
+        //    ones killed by a reset instead of failing a worker on a dead socket.
+        //  - `min_connections(0)` keeps boot lazy (no eager herd of opens).
+        // `DATABASE_MAX_CONNECTIONS` lets ops fit the pool to the DB's cap and
+        // the number of concurrent instances (cap ≥ max × instances + headroom).
+        let max_connections = std::env::var("DATABASE_MAX_CONNECTIONS")
+            .ok()
+            .and_then(|v| v.parse::<u32>().ok())
+            .filter(|v| *v >= 1)
+            .unwrap_or(20);
+        let acquire_timeout_secs = std::env::var("DATABASE_ACQUIRE_TIMEOUT_SECONDS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .filter(|v| *v >= 1)
+            .unwrap_or(10);
+        tracing::info!(max_connections, "Connecting to database...");
         let db_pool = sqlx::postgres::PgPoolOptions::new()
-            .max_connections(20)
-            .acquire_timeout(Duration::from_secs(3))
+            .max_connections(max_connections)
+            .min_connections(0)
+            .acquire_timeout(Duration::from_secs(acquire_timeout_secs))
+            .idle_timeout(Duration::from_secs(600))
+            .max_lifetime(Duration::from_secs(1800))
+            .test_before_acquire(true)
             .connect(&env_vars.database_url)
             .await?;
 
