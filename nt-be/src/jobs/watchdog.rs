@@ -309,9 +309,125 @@ pub async fn jobs_health(State(state): State<Arc<AppState>>, headers: HeaderMap)
         .into_response()
 }
 
+/// True when a large enough fraction of registered queues are stale to call
+/// it a *systemic* stall (the whole worker fleet down) rather than one bad job.
+fn is_systemic_stall(stale: usize, total: usize, fraction: f64) -> bool {
+    total > 0 && (stale as f64) / (total as f64) >= fraction
+}
+
+fn env_f64(var: &str, default: f64) -> f64 {
+    std::env::var(var)
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .filter(|v: &f64| v.is_finite() && *v > 0.0)
+        .unwrap_or(default)
+}
+
+fn env_u64(var: &str, default: u64) -> u64 {
+    std::env::var(var)
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(default)
+}
+
+/// Independent liveness monitor for the whole job fleet.
+///
+/// The `job-watchdog` above runs as an apalis worker, so when the *entire*
+/// fleet stalls — e.g. a Postgres restart drops every pooled connection at once
+/// and the workers park (heartbeat stops, queue dead) instead of erroring, so
+/// the Monitor's exit-triggered `should_restart` never fires — the watchdog
+/// stalls with it and can neither alert nor recover. (That is also why such an
+/// outage produced no Sentry alert: the alerting job never ran.)
+///
+/// This runs as a plain background task, independent of the apalis Monitor, so
+/// it keeps working when the workers don't. After a startup grace period, it
+/// checks every minute whether a large fraction of queues have gone stale (or
+/// the DB is unreachable) for several consecutive checks; if so it emits an
+/// ERROR (→ Sentry) and **exits the process** so the orchestrator restarts it
+/// clean — the only reliable way to unpark workers stuck on dead connections.
+///
+/// Guards against restart loops: a startup grace period (healthy queues need
+/// time to record their first success), and a required run of consecutive bad
+/// checks so a momentary blip doesn't restart the process. Config via env:
+/// `JOB_LIVENESS_GRACE_SECONDS` (900), `JOB_LIVENESS_CHECK_INTERVAL_SECONDS`
+/// (60), `JOB_LIVENESS_STALE_FRACTION` (0.6), `JOB_LIVENESS_CONSECUTIVE` (3).
+pub async fn run_liveness_monitor(pool: PgPool) {
+    let grace = Duration::from_secs(env_u64("JOB_LIVENESS_GRACE_SECONDS", 900));
+    let interval = Duration::from_secs(env_u64("JOB_LIVENESS_CHECK_INTERVAL_SECONDS", 60).max(1));
+    let stale_fraction = env_f64("JOB_LIVENESS_STALE_FRACTION", 0.6);
+    let needed = env_u64("JOB_LIVENESS_CONSECUTIVE", 3).max(1);
+
+    let start = Instant::now();
+    let mut consecutive: u64 = 0;
+
+    loop {
+        tokio::time::sleep(interval).await;
+        if start.elapsed() < grace {
+            continue;
+        }
+
+        let bad = match evaluate(&pool).await {
+            Ok(report) if !report.is_empty() => {
+                let total = report.len();
+                let stale = report.iter().filter(|job| job.stale).count();
+                if is_systemic_stall(stale, total, stale_fraction) {
+                    tracing::warn!(
+                        stale,
+                        total,
+                        consecutive = consecutive + 1,
+                        "job fleet appears broadly stalled"
+                    );
+                    Some(format!("{stale}/{total} queues stale"))
+                } else {
+                    None
+                }
+            }
+            // Registry not installed yet, or no queues — not a signal.
+            Ok(_) => None,
+            // DB unreachable is itself a fleet-down signal; restarting
+            // re-establishes connections.
+            Err(e) => {
+                tracing::warn!(error = %e, consecutive = consecutive + 1, "job liveness check failed");
+                Some(format!("liveness DB check failed: {e}"))
+            }
+        };
+
+        match bad {
+            Some(reason) => {
+                consecutive += 1;
+                if consecutive >= needed {
+                    // ERROR → Sentry (this task is alive even when the fleet is
+                    // not, so unlike the in-process watchdog this alert fires).
+                    tracing::error!(
+                        reason = %reason,
+                        consecutive,
+                        "job fleet stalled; restarting process to recover"
+                    );
+                    // Give the log/Sentry a moment to flush before exit.
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                    std::process::exit(1);
+                }
+            }
+            None => consecutive = 0,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn systemic_stall_needs_a_majority_of_queues() {
+        // One bad job in a healthy fleet is not systemic.
+        assert!(!is_systemic_stall(1, 30, 0.6));
+        assert!(!is_systemic_stall(17, 30, 0.6)); // 56% < 60%
+        // The incident: 24/30 stale is systemic.
+        assert!(is_systemic_stall(24, 30, 0.6));
+        assert!(is_systemic_stall(18, 30, 0.6)); // exactly 60%
+        // Never divide by zero on an empty registry.
+        assert!(!is_systemic_stall(0, 0, 0.6));
+    }
 
     #[test]
     fn interval_derived_from_uniform_schedules() {

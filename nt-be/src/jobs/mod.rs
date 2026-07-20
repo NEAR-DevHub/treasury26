@@ -826,6 +826,13 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
 
     let QueueRegistry { entries, specs } = queues;
     watchdog::install(specs);
+
+    // Liveness monitor runs *outside* the apalis Monitor so it survives a
+    // fleet-wide stall (e.g. a Postgres restart that parks every worker) and
+    // can restart the process to recover — the in-process `job-watchdog` can't,
+    // since it stalls along with the fleet it watches.
+    tokio::spawn(watchdog::run_liveness_monitor(state.db_pool.clone()));
+
     let queues = JobQueues { entries };
 
     // Jobs that previously ran once at startup, in addition to their cron
