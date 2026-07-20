@@ -87,6 +87,29 @@ export function deriveQuoteFees(
     return { perRecipientFees, totalNetworkFee };
 }
 
+/** Largest per-recipient withdrawal fee from firm quotes (token units). */
+export function maxQuotedRecipientFee(fees: QuoteFees): Big {
+    return fees.perRecipientFees.reduce(
+        (max, fee) => (fee.gt(max) ? fee : max),
+        Big(0),
+    );
+}
+
+/**
+ * True when the firm quote fee exceeds the pad used for EXACT_INPUT — the
+ * recipient would under-receive vs the typed amount until we re-pad and
+ * re-prepare.
+ */
+export function needsFeeRepad(
+    currentPad: string | null | undefined,
+    fees: QuoteFees,
+): boolean {
+    const pad = currentPad ? Big(currentPad) : Big(0);
+    const maxFee = maxQuotedRecipientFee(fees);
+    // Tiny epsilon avoids churn on float/decimal noise between quote rounds.
+    return maxFee.gt(pad.plus("0.0000001"));
+}
+
 // ─── Error classification ───
 
 /**

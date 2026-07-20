@@ -70,6 +70,13 @@ interface PaymentFormSectionProps<
     destinationNetworkNameFieldName?: Path<TFieldValues>;
     /** Hide recipient network selector (e.g. bulk payments). Default false. */
     hideRecipientNetwork?: boolean;
+    /**
+     * When the network selector is hidden (bulk), validate the recipient and
+     * filter the address book against this receive-network name instead of
+     * defaulting to NEAR / the send token's chain. Used by confidential bulk
+     * where receive network can differ from the source token.
+     */
+    recipientNetworkOverride?: string;
     bridgeAssets?: BridgeAsset[];
     isBridgeAssetsLoading?: boolean;
     sendWarningMessage?: string | null;
@@ -99,6 +106,7 @@ export function PaymentFormSection<
     destinationNetworkName,
     destinationNetworkNameFieldName,
     hideRecipientNetwork = false,
+    recipientNetworkOverride,
     bridgeAssets = [],
     isBridgeAssetsLoading = false,
     sendWarningMessage,
@@ -135,7 +143,9 @@ export function PaymentFormSection<
     }) as unknown as [Token | null, string, string | undefined];
     const token = watched[0];
     const recipient = (watched[1] ?? "") as string;
-    const selectedNetworkName = (watched[2] ?? "") as string;
+    const selectedNetworkName = ((watched[2] ?? "") ||
+        recipientNetworkOverride ||
+        "") as string;
     const amountValue = useWatch({
         control,
         name: amountName,
@@ -190,10 +200,10 @@ export function PaymentFormSection<
         ];
     }, [selectedContact, tRecipientNetwork]);
 
-    // For bulk (hideRecipientNetwork=true) we still validate against token's
-    // chain. When the network selector is shown, the recipient input runs in
-    // "unknown" mode (no validation) and compatibility is surfaced through
-    // the network selector sections instead.
+    // For bulk (hideRecipientNetwork=true) validate against the receive
+    // network (override or form field), falling back to NEAR. When the
+    // network selector is shown, the recipient input runs in "unknown" mode
+    // and compatibility is surfaced through the network selector sections.
     const blockchainType = useMemo(() => {
         if (!hideRecipientNetwork) return "unknown";
         if (!selectedNetworkName) return NEAR_NETWORK_ID;

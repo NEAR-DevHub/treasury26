@@ -574,58 +574,31 @@ export default function BalanceWithGraph({
                                 : "••••••"}
                         </p>
                         {showBreakdown && (
-                            <>
-                                <div className="mt-2 hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-                                    {balanceBreakdownItems.map((item, idx) => (
-                                        <div
-                                            key={item.key}
-                                            className="contents"
-                                        >
-                                            {idx > 0 && (
-                                                <span
-                                                    aria-hidden="true"
-                                                    className="h-3 w-px bg-border"
-                                                />
-                                            )}
-                                            <span>
-                                                {t(
-                                                    `bucket${item.key[0].toUpperCase()}${item.key.slice(1)}` as
-                                                        | "bucketAvailable"
-                                                        | "bucketLocked"
-                                                        | "bucketEarning",
-                                                )}{" "}
-                                                <span className="font-semibold text-foreground">
-                                                    {formatCurrencyWithSubCent(
-                                                        item.value,
-                                                    )}
-                                                </span>
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="mt-4 border-t border-border/70 pt-3 space-y-3 md:hidden">
-                                    {balanceBreakdownItems.map((item) => (
-                                        <div
-                                            key={item.key}
-                                            className="flex items-center justify-between text-base"
-                                        >
-                                            <span className="text-muted-foreground">
-                                                {t(
-                                                    `bucket${item.key[0].toUpperCase()}${item.key.slice(1)}` as
-                                                        | "bucketAvailable"
-                                                        | "bucketLocked"
-                                                        | "bucketEarning",
-                                                )}
-                                            </span>
+                            <div className="mt-2 hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                                {balanceBreakdownItems.map((item, idx) => (
+                                    <div key={item.key} className="contents">
+                                        {idx > 0 && (
+                                            <span
+                                                aria-hidden="true"
+                                                className="h-3 w-px bg-border"
+                                            />
+                                        )}
+                                        <span>
+                                            {t(
+                                                `bucket${item.key[0].toUpperCase()}${item.key.slice(1)}` as
+                                                    | "bucketAvailable"
+                                                    | "bucketLocked"
+                                                    | "bucketEarning",
+                                            )}{" "}
                                             <span className="font-semibold text-foreground">
                                                 {formatCurrencyWithSubCent(
                                                     item.value,
                                                 )}
                                             </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         )}
                     </div>
                     {!isConfidential && (
@@ -755,6 +728,28 @@ export default function BalanceWithGraph({
                     )}
                     <HistoryRefreshButton />
                 </div>
+                {showBreakdown && (
+                    <div className="mt-4 border-t border-border/70 pt-3 space-y-3 md:hidden">
+                        {balanceBreakdownItems.map((item) => (
+                            <div
+                                key={item.key}
+                                className="flex items-center justify-between text-base"
+                            >
+                                <span className="text-muted-foreground">
+                                    {t(
+                                        `bucket${item.key[0].toUpperCase()}${item.key.slice(1)}` as
+                                            | "bucketAvailable"
+                                            | "bucketLocked"
+                                            | "bucketEarning",
+                                    )}
+                                </span>
+                                <span className="font-semibold text-foreground">
+                                    {formatCurrencyWithSubCent(item.value)}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-3 gap-2 md:gap-4">

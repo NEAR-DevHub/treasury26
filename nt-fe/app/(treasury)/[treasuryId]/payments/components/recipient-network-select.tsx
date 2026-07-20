@@ -56,6 +56,13 @@ interface RecipientNetworkSelectProps {
     invalid?: boolean;
     /** Error text shown under the network card. */
     errorMessage?: string | null;
+    /**
+     * When false (confidential bulk), the picker is available before any
+     * recipient address is entered and does not filter/clear by address
+     * compatibility — all recipients share one chosen receive network.
+     * Default true (single-payment flow).
+     */
+    requireRecipient?: boolean;
 }
 
 export type RecipientNetworkRuleOption = RecipientNetworkOption & {
@@ -88,7 +95,7 @@ function NetworkRow({
     return (
         <div
             className={cn(
-                "flex items-center gap-3 w-full",
+                "flex items-center gap-2 md:gap-3 w-full min-w-0",
                 disabled && "opacity-50",
             )}
         >
@@ -96,15 +103,15 @@ function NetworkRow({
                 src={option.icon}
                 alt={`${option.name} network`}
                 className={cn(
-                    "size-8 rounded-full object-cover",
+                    "size-6 md:size-8 rounded-full object-cover shrink-0",
                     option.networkName.toLowerCase() === NEAR_NETWORK_ID &&
                         "p-1",
                 )}
             />
-            <div className="flex flex-col items-start text-left">
+            <div className="flex flex-col items-start text-left min-w-0">
                 <span
                     className={cn(
-                        "text-base font-semibold",
+                        "text-sm md:text-base font-semibold truncate max-w-full",
                         getNetworkDisplayCaseClass(option.id),
                     )}
                 >
@@ -132,6 +139,7 @@ export function RecipientNetworkSelect({
     warningMessage,
     invalid = false,
     errorMessage = null,
+    requireRecipient = true,
 }: RecipientNetworkSelectProps) {
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
@@ -209,12 +217,13 @@ export function RecipientNetworkSelect({
     const enrichedOptions = useMemo(() => {
         return availableOptions.map((option) => ({
             ...option,
-            isCompatible: isAddressCompatibleWithNetwork(
-                recipient,
-                option.networkName,
-            ),
+            // Bulk confidential picks the receive network first; every option
+            // is available and CSV validation enforces the address type later.
+            isCompatible: requireRecipient
+                ? isAddressCompatibleWithNetwork(recipient, option.networkName)
+                : true,
         }));
-    }, [availableOptions, recipient]);
+    }, [availableOptions, recipient, requireRecipient]);
 
     const compatibleOptions = useMemo(
         () => enrichedOptions.filter((option) => option.isCompatible),
@@ -241,23 +250,34 @@ export function RecipientNetworkSelect({
     }, [enrichedOptions, sectionRules]);
 
     const hasCompatibleNetwork = compatibleOptions.length > 0;
-    const isDisabled =
-        !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork;
+    const isDisabled = requireRecipient
+        ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
+        : isBridgeAssetsLoading || availableOptions.length === 0;
 
     // Clear the selection when the address no longer matches it (e.g. user
-    // edited the address into a different chain's format).
+    // edited the address into a different chain's format). Skip in bulk mode
+    // where the receive network is chosen independently of any single address.
     useEffect(() => {
+        if (!requireRecipient) return;
         if (!value) return;
         if (availableOptions.length === 0) return;
         if (compatibleOptions.some((o) => o.id === value)) return;
         onChange("");
-    }, [value, availableOptions, compatibleOptions, onChange]);
+    }, [
+        value,
+        availableOptions,
+        compatibleOptions,
+        onChange,
+        requireRecipient,
+    ]);
 
-    const placeholderText = !recipient
-        ? t("enterAddressFirst")
-        : !hasCompatibleNetwork
-          ? t("noCompatibleNetwork")
-          : t("placeholder");
+    const placeholderText = requireRecipient
+        ? !recipient
+            ? t("enterAddressFirst")
+            : !hasCompatibleNetwork
+              ? t("noCompatibleNetwork")
+              : t("placeholder")
+        : t("placeholder");
 
     return (
         <>
@@ -272,16 +292,16 @@ export function RecipientNetworkSelect({
                     variant="ghost"
                     onClick={() => setOpen(true)}
                     disabled={isDisabled}
-                    className="w-full h-12 justify-between px-0! hover:bg-transparent dark:hover:bg-transparent focus-visible:bg-transparent dark:focus-visible:bg-transparent disabled:opacity-100"
+                    className="w-full h-11 md:h-12 justify-between px-0! hover:bg-transparent dark:hover:bg-transparent focus-visible:bg-transparent dark:focus-visible:bg-transparent disabled:opacity-100"
                 >
                     {selectedOption && !isDisabled ? (
                         <NetworkRow option={selectedOption} />
                     ) : (
-                        <span className="text-xl! font-normal text-muted-foreground">
+                        <span className="text-base md:text-xl! font-normal text-muted-foreground truncate">
                             {placeholderText}
                         </span>
                     )}
-                    <ChevronDown className="size-5 text-muted-foreground ml-auto" />
+                    <ChevronDown className="size-5 text-muted-foreground ml-auto shrink-0" />
                 </Button>
                 {warningMessage && (
                     <WarningMessage

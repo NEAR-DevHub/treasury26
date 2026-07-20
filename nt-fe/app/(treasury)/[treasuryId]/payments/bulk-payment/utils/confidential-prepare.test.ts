@@ -9,6 +9,8 @@ import {
     createPrepareController,
     deriveQuoteFees,
     isOutOfCreditsError,
+    maxQuotedRecipientFee,
+    needsFeeRepad,
     type PrepareState,
 } from "./confidential-prepare";
 
@@ -124,6 +126,46 @@ describe("deriveQuoteFees", () => {
     it("reports zero fees for pure intra-Intents transfers", () => {
         const fees = deriveQuoteFees(prepareResponse());
         expect(fees.totalNetworkFee.toString()).toBe("0");
+    });
+});
+
+describe("maxQuotedRecipientFee / needsFeeRepad", () => {
+    it("returns the largest per-recipient fee", () => {
+        const fees = deriveQuoteFees({
+            recipientQuotes: [
+                legQuote({
+                    amountInFormatted: "1.30",
+                    amountOutFormatted: "0.70",
+                }),
+                legQuote({
+                    amountInFormatted: "2.40",
+                    amountOutFormatted: "2.00",
+                }),
+            ],
+            headerQuote: legQuote({
+                amountInFormatted: "3.70",
+                amountOutFormatted: "3.70",
+            }),
+        });
+        expect(maxQuotedRecipientFee(fees).toString()).toBe("0.6");
+    });
+
+    it("needs re-pad when firm fee exceeds the current pad", () => {
+        const fees = deriveQuoteFees({
+            recipientQuotes: [
+                legQuote({
+                    amountInFormatted: "1.30",
+                    amountOutFormatted: "0.70",
+                }),
+            ],
+            headerQuote: legQuote({
+                amountInFormatted: "1.30",
+                amountOutFormatted: "1.30",
+            }),
+        });
+        expect(needsFeeRepad("0.3", fees)).toBe(true);
+        expect(needsFeeRepad("0.6", fees)).toBe(false);
+        expect(needsFeeRepad(null, fees)).toBe(true);
     });
 });
 

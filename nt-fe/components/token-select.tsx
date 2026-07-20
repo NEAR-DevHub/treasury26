@@ -390,7 +390,7 @@ export default function TokenSelect({
                     <ChevronDown className="size-4 text-muted-foreground ml-auto" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="flex flex-col max-w-md">
+            <DialogContent className="flex flex-col sm:max-w-md">
                 <DialogHeader centerTitle={true}>
                     <div className="flex items-center gap-2 w-full">
                         {step === "network" && (
@@ -436,7 +436,7 @@ export default function TokenSelect({
                                 ))}
                             </div>
                         ) : (
-                            <ScrollArea className="h-[400px]">
+                            <ScrollArea className="h-[min(400px,calc(80vh-10rem))]">
                                 {showPopularAssets &&
                                     popularTokens.length > 0 && (
                                         <div className="mb-3">
@@ -515,7 +515,7 @@ export default function TokenSelect({
                     </div>
                 )}
                 {step === "network" && selectedAsset && (
-                    <ScrollArea className="h-[400px]">
+                    <ScrollArea className="h-[min(400px,calc(80vh-10rem))]">
                         {(() => {
                             const hasBalance = (item: MergedNetwork) => {
                                 if (

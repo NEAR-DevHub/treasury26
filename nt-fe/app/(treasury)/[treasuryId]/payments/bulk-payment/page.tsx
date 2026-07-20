@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -48,6 +48,8 @@ import {
     buildPrepareRequest,
     deriveQuoteFees,
     isOutOfCreditsError,
+    maxQuotedRecipientFee,
+    needsFeeRepad,
 } from "./utils/confidential-prepare";
 import { useConfidentialPrepare } from "./utils/use-confidential-prepare";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -200,6 +202,25 @@ export default function BulkPaymentPage() {
             prepare.status === "success" ? deriveQuoteFees(prepare.data) : null,
         [prepare],
     );
+    // SDK pad can understate the firm 1Click fee. When that happens, bump the
+    // pad and re-prepare so EXACT_INPUT amountOut matches the typed amount —
+    // same numbers request details will show from stored quotes.
+    const padAdjustmentPending =
+        prepare.status === "success" &&
+        quoteFees != null &&
+        needsFeeRepad(networkFeePerRecipient, quoteFees);
+
+    useEffect(() => {
+        if (!padAdjustmentPending || !quoteFees) return;
+        setNetworkFeePerRecipient(maxQuotedRecipientFee(quoteFees).toFixed());
+    }, [padAdjustmentPending, quoteFees]);
+
+    const prepareReady = prepare.status === "success" && !padAdjustmentPending;
+    const prepareStatusForReview =
+        prepare.status === "success" && padAdjustmentPending
+            ? "loading"
+            : prepare.status;
+
     // The 402 branch is a race backstop: credits ran out between the
     // subscription check above and the prepare call landing.
     const outOfCredits =
@@ -270,8 +291,8 @@ export default function BulkPaymentPage() {
     const onSubmitConfidential = async () => {
         if (!selectedTreasury || paymentData.length === 0 || !selectedToken)
             return;
-        // Confirm is disabled until quotes load, so this only guards races.
-        if (prepare.status !== "success") return;
+        // Confirm is disabled until quotes load and any fee re-pad finishes.
+        if (!prepareReady || prepare.status !== "success") return;
         const prepared = prepare.data;
 
         const proposalBond = policy?.proposal_bond || "0";
@@ -605,13 +626,16 @@ export default function BulkPaymentPage() {
                 title={pageTitle}
                 description={t("description")}
             >
-                <div className="w-full max-w-[600px] mx-auto">
+                <div className="w-full max-w-[600px] mx-auto min-w-0">
                     <EditPaymentStep
                         handleBack={handleCancelEdit}
                         payment={payment}
                         paymentIndex={editingIndex}
                         selectedToken={selectedToken}
                         networkFeePerRecipient={networkFeePerRecipient}
+                        destinationNetwork={
+                            isConfidential ? destinationNetworkName : undefined
+                        }
                         onSave={handleSaveEdit}
                         onCancel={handleCancelEdit}
                     />
@@ -624,7 +648,7 @@ export default function BulkPaymentPage() {
         <PageComponentLayout title={pageTitle} description={t("description")}>
             <FormProvider {...form}>
                 <div
-                    className={`w-full mx-auto ${step === 1 ? "max-w-3xl" : "max-w-7xl"}`}
+                    className={`w-full mx-auto min-w-0 ${step === 1 ? "max-w-[600px]" : "max-w-7xl"}`}
                 >
                     {/* Step 0: Upload Data */}
                     {step === 0 && (
@@ -658,6 +682,9 @@ export default function BulkPaymentPage() {
                                             >[0]["token"]
                                         }
                                         recipient={firstRecipient}
+                                        // Pick receive network independently —
+                                        // CSV validation enforces address type.
+                                        requireRecipient={false}
                                         sectionRules={networkSectionRules}
                                         bridgeAssets={bridgeAssets}
                                         isBridgeAssetsLoading={
@@ -689,11 +716,36 @@ export default function BulkPaymentPage() {
                             onPaymentDataChange={setPaymentData}
                             onSubmit={onSubmit}
                             isSubmitting={isSubmittingProposal}
+                            destinationNetworkId={
+                                isConfidential
+                                    ? destinationNetworkId
+                                    : undefined
+                            }
+                            destinationNetworkName={
+                                isConfidential
+                                    ? destinationNetworkName
+                                    : undefined
+                            }
                             confidentialPrepare={
                                 isConfidential
                                     ? {
-                                          status: prepare.status,
-                                          fees: quoteFees,
+                                          status: prepareStatusForReview,
+                                          fees: prepareReady ? quoteFees : null,
+                                          quotes:
+                                              prepareReady &&
+                                              prepare.status === "success"
+                                                  ? {
+                                                        headerAmountInFormatted:
+                                                            prepare.data
+                                                                .headerQuote
+                                                                .amountInFormatted,
+                                                        recipientAmountOutFormatted:
+                                                            prepare.data.recipientQuotes.map(
+                                                                (q) =>
+                                                                    q.amountOutFormatted,
+                                                            ),
+                                                    }
+                                                  : null,
                                           retry: retryPrepare,
                                           outOfCredits,
                                       }

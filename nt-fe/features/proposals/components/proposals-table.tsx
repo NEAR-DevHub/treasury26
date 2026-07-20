@@ -393,7 +393,7 @@ export function ProposalsTable({
                 ),
             }),
         ],
-        [policy, accountId, treasuryId],
+        [policy, accountId, treasuryId, isMobile, router],
     );
 
     const table = useReactTable({

@@ -663,6 +663,10 @@ export function needsStorageDepositCheck(token: {
 
 /**
  * Validate accounts and check storage deposits
+ *
+ * `destinationNetwork` overrides the token's own network when deciding
+ * whether recipients are on NEAR (existence + storage checks). Used by
+ * confidential bulk where receive chain can differ from the source token.
  */
 export async function validateAccountsAndStorage(
     payments: BulkPaymentData[],
@@ -671,8 +675,10 @@ export async function validateAccountsAndStorage(
         BulkParsingLabels,
         "failedToValidateAccount" | "nearValidationError"
     >,
+    destinationNetwork?: string,
 ): Promise<BulkPaymentData[]> {
-    const isNear = isNearToken(selectedToken.network, selectedToken.residency);
+    const networkForNearCheck = destinationNetwork ?? selectedToken.network;
+    const isNear = isNearToken(networkForNearCheck, selectedToken.residency);
 
     // Step 1: Validate account existence (only for NEAR)
     if (isNear) {
@@ -763,6 +769,10 @@ export async function validateAccountsAndStorage(
 /**
  * Estimate network fee per recipient for cross-chain intents bulk payments.
  * Uses one validated recipient as representative (same destination chain).
+ *
+ * `destinationNetwork` overrides the token's own network for both the
+ * cross-chain check and the fee quote destination blockchain — required for
+ * confidential bulk where receive network ≠ send token network.
  */
 export async function validateIntentsFeeCoverage(
     payments: BulkPaymentData[],
@@ -777,8 +787,15 @@ export async function validateIntentsFeeCoverage(
         BulkParsingLabels,
         "feeEstimationFailed" | "feeEstimationFailedRow"
     >,
+    destinationNetwork?: string,
 ): Promise<{ payments: BulkPaymentData[]; networkFee: string | null }> {
-    if (!isIntentsCrossChainToken(selectedToken)) {
+    const networkForFee = destinationNetwork ?? selectedToken.network;
+    if (
+        !isIntentsCrossChainToken({
+            address: selectedToken.address,
+            network: networkForFee,
+        })
+    ) {
         return { payments, networkFee: null };
     }
 
@@ -797,7 +814,7 @@ export async function validateIntentsFeeCoverage(
             },
             destinationAddress: representativeAddress,
             destinationBlockchain: getBlockchainType(
-                selectedToken.network || "unknown",
+                networkForFee || "unknown",
             ),
         });
 

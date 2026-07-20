@@ -187,7 +187,7 @@ export function SelectModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="sm:max-w-md">
                 <DialogHeader centerTitle>
                     <DialogTitle>{title}</DialogTitle>
                 </DialogHeader>
@@ -204,7 +204,7 @@ export function SelectModal({
                     {isLoading ? (
                         <SelectListSkeleton />
                     ) : (
-                        <ScrollArea className="h-[400px]">
+                        <ScrollArea className="h-[min(400px,calc(80vh-10rem))]">
                             {sections?.length ? (
                                 filteredSections.length > 0 ? (
                                     filteredSections.map((section) => {

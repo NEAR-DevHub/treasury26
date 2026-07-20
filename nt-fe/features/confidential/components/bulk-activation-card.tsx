@@ -61,8 +61,8 @@ export function BulkActivationCard() {
     // settles): show a spinner rather than an empty page.
     if (isLoading || (!status && !isError)) {
         return (
-            <Card className="mx-auto w-full max-w-xl">
-                <CardContent className="text-muted-foreground flex items-center justify-center p-8">
+            <Card className="mx-auto w-full max-w-[600px] min-w-0">
+                <CardContent className="text-muted-foreground flex items-center justify-center p-4 sm:p-8">
                     <Loader2 className="size-6 animate-spin" />
                 </CardContent>
             </Card>
@@ -74,10 +74,12 @@ export function BulkActivationCard() {
     // `isLoading` false once it has errored).
     if (!status) {
         return (
-            <Card className="mx-auto w-full max-w-xl">
-                <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-                    <AlertTriangle className="text-destructive size-10" />
-                    <h3 className="text-lg font-semibold">{t("errorTitle")}</h3>
+            <Card className="mx-auto w-full max-w-[600px] min-w-0">
+                <CardContent className="flex flex-col items-center gap-3 sm:gap-4 p-4 sm:p-8 text-center">
+                    <AlertTriangle className="text-destructive size-8 sm:size-10" />
+                    <h3 className="text-base sm:text-lg font-semibold">
+                        {t("errorTitle")}
+                    </h3>
                     <p className="text-muted-foreground text-sm">
                         {tCommon("tryAgain")}
                     </p>
@@ -124,19 +126,19 @@ export function BulkActivationCard() {
     };
 
     return (
-        <Card className="mx-auto w-full max-w-xl">
-            <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+        <Card className="mx-auto w-full max-w-[600px] min-w-0">
+            <CardContent className="flex flex-col items-center gap-3 sm:gap-4 p-4 sm:p-8 text-center">
                 {awaitingApproval ? (
                     <>
-                        <Users className="text-primary size-10" />
-                        <h3 className="text-lg font-semibold">
+                        <Users className="text-primary size-8 sm:size-10" />
+                        <h3 className="text-base sm:text-lg font-semibold">
                             {t("awaitingTitle")}
                         </h3>
                         <p className="text-muted-foreground text-sm">
                             {t("awaitingDescription")}
                         </p>
                         <div className="text-muted-foreground flex items-center gap-2 text-xs">
-                            <CheckCircle2 className="size-4" />
+                            <CheckCircle2 className="size-4 shrink-0" />
                             {t("awaitingHint")}
                         </div>
                         <p className="text-muted-foreground text-xs">
@@ -145,8 +147,8 @@ export function BulkActivationCard() {
                     </>
                 ) : (
                     <>
-                        <ShieldCheck className="text-primary size-10" />
-                        <h3 className="text-lg font-semibold">
+                        <ShieldCheck className="text-primary size-8 sm:size-10" />
+                        <h3 className="text-base sm:text-lg font-semibold">
                             {t("introTitle")}
                         </h3>
                         <p className="text-muted-foreground text-sm">
