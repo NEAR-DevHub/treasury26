@@ -92,18 +92,50 @@ pub async fn run_price_sync_cycle<P: PriceProvider + Send + Sync>(
     ))
 }
 
-/// Get list of provider asset IDs that need syncing (latest price is before target date)
+/// Process-wide cache of the distinct token IDs seen across the balance and
+/// confidential gold tables.
 ///
-/// This function:
-/// 1. Queries distinct token IDs from public and confidential treasury tables
-/// 2. Maps them to unified asset IDs using token_id_to_unified_asset_id
-/// 3. Maps unified IDs to provider-specific asset IDs
-async fn get_all_provider_asset_ids<P: PriceProvider>(
+/// The underlying query is a four-way `DISTINCT … UNION` over `balance_changes`
+/// and the confidential gold tables — full scans that take several seconds and
+/// are heavy on database memory. Price sync runs every 60s, but this set barely
+/// changes (a token only appears when a treasury first sees it, and prices are
+/// end-of-day anyway), so re-running it every cycle was a needless recurring DB
+/// memory/CPU spike — a likely contributor to the backend OOM crashes that
+/// reset all connections. Caching it collapses that to one run per TTL.
+type SeenTokenIdsCache = std::sync::Mutex<Option<(std::time::Instant, Vec<String>)>>;
+static SEEN_TOKEN_IDS_CACHE: once_cell::sync::Lazy<SeenTokenIdsCache> =
+    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(None));
+
+/// TTL for [`SEEN_TOKEN_IDS_CACHE`] (`PRICE_SYNC_ASSET_LIST_CACHE_SECONDS`,
+/// default 900s / 15 min).
+fn seen_token_ids_ttl() -> Duration {
+    Duration::from_secs(
+        std::env::var("PRICE_SYNC_ASSET_LIST_CACHE_SECONDS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .filter(|s| *s >= 1)
+            .unwrap_or(900),
+    )
+}
+
+/// Distinct token IDs seen in balance/confidential data, cached per TTL.
+async fn load_seen_token_ids(
     pool: &PgPool,
-    provider: &P,
 ) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
-    // Get all unique token IDs/assets we have seen in public and confidential data.
-    let token_ids: Vec<(String,)> = sqlx::query_as(
+    // Fast path: return the cached list if still fresh. The guard is dropped
+    // before any `.await`.
+    {
+        let guard = SEEN_TOKEN_IDS_CACHE
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some((fetched_at, ids)) = guard.as_ref()
+            && fetched_at.elapsed() < seen_token_ids_ttl()
+        {
+            return Ok(ids.clone());
+        }
+    }
+
+    let rows: Vec<(String,)> = sqlx::query_as(
         r#"
         SELECT DISTINCT token_id
         FROM balance_changes
@@ -124,10 +156,34 @@ async fn get_all_provider_asset_ids<P: PriceProvider>(
     )
     .fetch_all(pool)
     .await?;
+    let ids: Vec<String> = rows.into_iter().map(|(token_id,)| token_id).collect();
+
+    {
+        let mut guard = SEEN_TOKEN_IDS_CACHE
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        *guard = Some((std::time::Instant::now(), ids.clone()));
+    }
+    Ok(ids)
+}
+
+/// Get list of provider asset IDs that need syncing (latest price is before target date)
+///
+/// This function:
+/// 1. Queries distinct token IDs from public and confidential treasury tables
+/// 2. Maps them to unified asset IDs using token_id_to_unified_asset_id
+/// 3. Maps unified IDs to provider-specific asset IDs
+async fn get_all_provider_asset_ids<P: PriceProvider>(
+    pool: &PgPool,
+    provider: &P,
+) -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+    // Get all unique token IDs/assets we have seen in public and confidential
+    // data (cached — see `load_seen_token_ids`).
+    let token_ids = load_seen_token_ids(pool).await?;
 
     // Map token_ids to provider asset IDs
     let mut provider_asset_ids: HashSet<String> = HashSet::new();
-    for (token_id,) in token_ids {
+    for token_id in token_ids {
         // Map token_id to unified asset ID
         if let Some(unified_id) = token_id_to_unified_asset_id(&token_id) {
             // Map unified ID to provider-specific asset ID
