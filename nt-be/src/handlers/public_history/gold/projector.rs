@@ -16,6 +16,7 @@ use super::repository::{
     earliest_silver_time, has_gold_before, load_dirty_accounts, load_silver_suffix,
     seed_ledger_before, upsert_gold_event, upsert_projection_error,
 };
+use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
 use crate::handlers::public_history::quotes::{
     QuoteProposalSnapshot, QuoteProposalType, proposal_quote_from_metadata, quote_amount_matches,
     quote_asset_matches_token, quote_status_str_is_failed, quote_status_value_from_metadata,
@@ -542,34 +543,15 @@ fn plan_exchange_pairs(
     })
 }
 
-/// USD value of a leg's decimal-adjusted amount at the event time. Lookup
-/// failures degrade to None (NULL in gold) rather than failing projection.
-async fn leg_amount_usd(
-    token_prices: &TokenPriceService,
-    leg: &SilverTransferLegRow,
-    event_time: chrono::DateTime<chrono::Utc>,
-) -> Option<BigDecimal> {
-    match token_prices
-        .price_for_valuation(&leg.token_id, event_time)
-        .await
-    {
-        Ok(price) => price.map(|price| &leg.amount * price),
-        Err(e) => {
-            tracing::warn!(
-                token_id = %leg.token_id,
-                error = %e,
-                "price lookup failed for gold usd valuation"
-            );
-            None
-        }
-    }
-}
-
-async fn public_gold_event_from_leg(
+/// Build a ledger event using only an optional, already-resolved current USD
+/// value. Historical lookup is deliberately outside this constructor and is
+/// handled by asynchronous enrichment. Exchange events keep their exact
+/// quote-provided USD values in the dedicated constructors below.
+fn public_gold_event_from_leg(
     leg: &SilverTransferLegRow,
     quote: Option<&ParsedQuoteMetadata>,
     ledger: &mut GoldLedger,
-    token_prices: &TokenPriceService,
+    amount_usd: Option<BigDecimal>,
     relayer_account: &str,
 ) -> Result<Option<GoldPublicHistoryEvent>, String> {
     let direction = leg_direction(leg)?;
@@ -582,7 +564,6 @@ async fn public_gold_event_from_leg(
 
     match direction {
         PublicTransferDirection::Incoming => {
-            let amount_in_usd = leg_amount_usd(token_prices, leg, event_time).await;
             let (before, after) = ledger.apply_in(&leg.token_id, &leg.amount);
             Ok(Some(GoldPublicHistoryEvent {
                 gold_event_key,
@@ -595,7 +576,7 @@ async fn public_gold_event_from_leg(
                 token_out: None,
                 amount_in: Some(leg.amount.clone()),
                 amount_out: None,
-                amount_in_usd,
+                amount_in_usd: amount_usd,
                 amount_out_usd: None,
                 usd_change: None,
                 token_in_balance_before: Some(before),
@@ -622,7 +603,6 @@ async fn public_gold_event_from_leg(
             }))
         }
         PublicTransferDirection::Outgoing => {
-            let amount_out_usd = leg_amount_usd(token_prices, leg, event_time).await;
             let quote_payment = is_quote_payment_outgoing(leg, quote, relayer_account)?;
             let (token_out_balance_before, token_out_balance_after) = if is_synthetic_quote_leg(leg)
             {
@@ -649,7 +629,7 @@ async fn public_gold_event_from_leg(
                 amount_in: None,
                 amount_out: Some(leg.amount.clone()),
                 amount_in_usd: None,
-                amount_out_usd,
+                amount_out_usd: amount_usd,
                 usd_change: None,
                 token_in_balance_before: None,
                 token_in_balance_after: None,
@@ -824,6 +804,10 @@ pub async fn project_public_gold_for_account(
     account_id: &str,
     relayer_account: &str,
 ) -> Result<GoldProjectionResult, sqlx::Error> {
+    if !is_public_history_backfill_complete(pool, account_id).await? {
+        return Ok(GoldProjectionResult::default());
+    }
+
     let mut tx = pool.begin().await?;
 
     let got_lock: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtext($1))")
@@ -988,9 +972,11 @@ pub async fn project_public_gold_for_account(
             continue;
         }
 
-        match public_gold_event_from_leg(&leg, quote, &mut ledger, token_prices, relayer_account)
-            .await
-        {
+        let event_time = leg.proposal_executed_at.unwrap_or(leg.block_time);
+        let amount_usd = token_prices
+            .latest_price_for_recent_event(&leg.token_id, event_time)
+            .map(|price| &leg.amount * price);
+        match public_gold_event_from_leg(&leg, quote, &mut ledger, amount_usd, relayer_account) {
             Ok(Some(event)) => {
                 preserve_keys.insert(event.gold_event_key.clone());
                 upsert_gold_event(&mut tx, &event).await?;
@@ -1011,6 +997,8 @@ pub async fn project_public_gold_for_account(
     let preserve_keys = preserve_keys.into_iter().collect::<Vec<_>>();
     stats.rows_deleted =
         delete_stale_gold_rows(&mut tx, account_id, recompute_from, &preserve_keys).await?;
+
+    super::repository::reconcile_latest_gold_balances(&mut tx, account_id).await?;
 
     clear_gold_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
     tx.commit().await?;
@@ -1233,6 +1221,44 @@ mod tests {
     }
 
     #[test]
+    fn ordinary_transfer_projection_defers_usd_enrichment() {
+        let incoming = leg("nep141", Some("alice.near"), "5");
+        let mut ledger = GoldLedger::default();
+        let deposit =
+            public_gold_event_from_leg(&incoming, None, &mut ledger, None, TEST_RELAYER_ACCOUNT)
+                .expect("valid deposit")
+                .expect("projectable deposit");
+        assert_eq!(deposit.amount_in, Some(decimal("5")));
+        assert_eq!(deposit.amount_in_usd, None);
+
+        let mut outgoing = incoming;
+        outgoing.direction = "outgoing".to_string();
+        outgoing.counterparty = Some("bob.near".to_string());
+        let sent =
+            public_gold_event_from_leg(&outgoing, None, &mut ledger, None, TEST_RELAYER_ACCOUNT)
+                .expect("valid send")
+                .expect("projectable send");
+        assert_eq!(sent.amount_out, Some(decimal("5")));
+        assert_eq!(sent.amount_out_usd, None);
+    }
+
+    #[test]
+    fn ordinary_transfer_projection_uses_resolved_current_usd() {
+        let incoming = leg("nep141", Some("alice.near"), "5");
+        let mut ledger = GoldLedger::default();
+        let deposit = public_gold_event_from_leg(
+            &incoming,
+            None,
+            &mut ledger,
+            Some(decimal("17.5")),
+            TEST_RELAYER_ACCOUNT,
+        )
+        .expect("valid deposit")
+        .expect("projectable deposit");
+        assert_eq!(deposit.amount_in_usd, Some(decimal("17.5")));
+    }
+
+    #[test]
     fn non_native_leg_from_sponsor_is_kept() {
         // Native-only guard: FT legs are never treated as native noise.
         let row = leg("nep141", Some(TEST_RELAYER_ACCOUNT), "5");
@@ -1433,6 +1459,30 @@ mod tests {
         assert_eq!(quote.amount_sent_usd, Some(decimal("1.23")));
         assert_eq!(quote.amount_received_usd, Some(decimal("1.25")));
         assert_eq!(quote_usd_change(Some(&quote)), Some(decimal("0.02")));
+    }
+
+    #[test]
+    fn exchange_projection_preserves_quote_usd_values() {
+        let outgoing = leg("nep141", Some("deposit.near"), "1");
+        let pending = PendingExchange {
+            outgoing,
+            token_out_balance_before: Some(decimal("10")),
+            token_out_balance_after: Some(decimal("9")),
+        };
+        let quote = ParsedQuoteMetadata {
+            proposal: None,
+            status: Some(ParsedQuoteStatus {
+                amount_sent_usd: Some(decimal("2.10")),
+                amount_received_usd: Some(decimal("2.08")),
+                ..Default::default()
+            }),
+        };
+
+        let event = pending_exchange_event_from_leg(&pending, Some(&quote))
+            .expect("valid pending exchange");
+        assert_eq!(event.amount_out_usd, Some(decimal("2.10")));
+        assert_eq!(event.amount_in_usd, Some(decimal("2.08")));
+        assert_eq!(event.usd_change, Some(decimal("-0.02")));
     }
 
     #[test]

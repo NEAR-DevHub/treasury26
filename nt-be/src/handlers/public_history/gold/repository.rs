@@ -18,6 +18,17 @@ pub async fn load_dirty_accounts(
             gold_recompute_from AS recompute_from
         FROM gold_public_history_cursors
         WHERE gold_dirty_since IS NOT NULL
+          AND (
+              SELECT COUNT(*)
+              FROM bronze_public_history_cursors bronze_cursor
+              WHERE bronze_cursor.account_id = gold_public_history_cursors.account_id
+                AND bronze_cursor.source IN (
+                    'nearblocks_ft'::public_history_source,
+                    'nearblocks_mt'::public_history_source,
+                    'nearblocks_receipt'::public_history_source
+                )
+                AND bronze_cursor.backfill_done = true
+          ) = 3
         ORDER BY gold_dirty_since ASC, account_id ASC
         "#,
     )
@@ -242,8 +253,20 @@ pub async fn upsert_gold_event(
             token_out = EXCLUDED.token_out,
             amount_in = EXCLUDED.amount_in,
             amount_out = EXCLUDED.amount_out,
-            amount_in_usd = EXCLUDED.amount_in_usd,
-            amount_out_usd = EXCLUDED.amount_out_usd,
+            amount_in_usd = CASE
+                WHEN gold_public_history_events.token_in IS NOT DISTINCT FROM EXCLUDED.token_in
+                 AND gold_public_history_events.amount_in IS NOT DISTINCT FROM EXCLUDED.amount_in
+                 AND gold_public_history_events.event_time = EXCLUDED.event_time
+                THEN COALESCE(EXCLUDED.amount_in_usd, gold_public_history_events.amount_in_usd)
+                ELSE EXCLUDED.amount_in_usd
+            END,
+            amount_out_usd = CASE
+                WHEN gold_public_history_events.token_out IS NOT DISTINCT FROM EXCLUDED.token_out
+                 AND gold_public_history_events.amount_out IS NOT DISTINCT FROM EXCLUDED.amount_out
+                 AND gold_public_history_events.event_time = EXCLUDED.event_time
+                THEN COALESCE(EXCLUDED.amount_out_usd, gold_public_history_events.amount_out_usd)
+                ELSE EXCLUDED.amount_out_usd
+            END,
             usd_change = EXCLUDED.usd_change,
             token_in_balance_before = EXCLUDED.token_in_balance_before,
             token_in_balance_after = EXCLUDED.token_in_balance_after,
@@ -372,6 +395,78 @@ pub async fn delete_stale_gold_rows(
     .execute(&mut **tx)
     .await?;
     Ok(result.rows_affected())
+}
+
+/// Reconcile only the newest visible gold balance for each asset against the
+/// legacy balance ledger. Historical rows keep the simple forward projection;
+/// the corrected tail is then used as the seed for future incremental rows.
+pub async fn reconcile_latest_gold_balances(
+    tx: &mut Transaction<'_, Postgres>,
+    dao_id: &str,
+) -> Result<u64, sqlx::Error> {
+    let token_in_result = sqlx::query(
+        r#"
+        WITH authoritative AS (
+            SELECT DISTINCT ON (token_id)
+                token_id,
+                balance_after
+            FROM balance_changes
+            WHERE account_id = $1
+            ORDER BY token_id, block_height DESC, id DESC
+        ),
+        latest_gold AS (
+            SELECT DISTINCT ON (token_in)
+                id,
+                token_in AS token_id
+            FROM gold_public_history_events
+            WHERE dao_id = $1
+              AND token_in IS NOT NULL
+            ORDER BY token_in, event_time DESC, id DESC
+        )
+        UPDATE gold_public_history_events gold
+        SET token_in_balance_after = authoritative.balance_after,
+            updated_at = NOW()
+        FROM latest_gold latest
+        JOIN authoritative ON authoritative.token_id = latest.token_id
+        WHERE gold.id = latest.id
+        "#,
+    )
+    .bind(dao_id)
+    .execute(&mut **tx)
+    .await?;
+
+    let token_out_result = sqlx::query(
+        r#"
+        WITH authoritative AS (
+            SELECT DISTINCT ON (token_id)
+                token_id,
+                balance_after
+            FROM balance_changes
+            WHERE account_id = $1
+            ORDER BY token_id, block_height DESC, id DESC
+        ),
+        latest_gold AS (
+            SELECT DISTINCT ON (token_out)
+                id,
+                token_out AS token_id
+            FROM gold_public_history_events
+            WHERE dao_id = $1
+              AND token_out IS NOT NULL
+            ORDER BY token_out, event_time DESC, id DESC
+        )
+        UPDATE gold_public_history_events gold
+        SET token_out_balance_after = authoritative.balance_after,
+            updated_at = NOW()
+        FROM latest_gold latest
+        JOIN authoritative ON authoritative.token_id = latest.token_id
+        WHERE gold.id = latest.id
+        "#,
+    )
+    .bind(dao_id)
+    .execute(&mut **tx)
+    .await?;
+
+    Ok(token_in_result.rows_affected() + token_out_result.rows_affected())
 }
 
 #[allow(dead_code)]

@@ -12,6 +12,7 @@ use crate::{AppState, auth, handlers};
 mod balance_changes;
 pub use balance_changes::{
     BalanceChangesQuery, EnrichedBalanceChange, SwapInfo, get_balance_changes_internal,
+    should_read_public_history,
 };
 
 mod monitored_accounts;
@@ -27,6 +28,7 @@ async fn health_check(
 
     let pool_size = state.db_pool.size();
     let idle_connections = state.db_pool.num_idle();
+    let background_jobs = state.background_jobs_status.snapshot().await;
 
     if !db_connected {
         return Err((
@@ -37,6 +39,10 @@ async fn health_check(
                 "database": {
                     "connected": false,
                     "error": "Database connection failed"
+                },
+                "background_jobs": {
+                    "local": background_jobs,
+                    "global": null
                 }
             })),
         ));
@@ -55,6 +61,11 @@ async fn health_check(
         None
     };
 
+    let global_background_jobs = crate::jobs::leadership::global_snapshot(&state.db_pool)
+        .await
+        .ok()
+        .flatten();
+
     Ok(Json(json!({
         "status": "healthy",
         "timestamp": chrono::Utc::now().to_rfc3339(),
@@ -62,6 +73,10 @@ async fn health_check(
             "connected": true,
             "pool_size": pool_size,
             "idle_connections": idle_connections
+        },
+        "background_jobs": {
+            "local": background_jobs,
+            "global": global_background_jobs
         },
         "goldsky_enrichment": {
             "enabled": state.goldsky_pool.is_some(),
@@ -442,4 +457,21 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::telegram::connect::get_status),
         )
         .with_state(state)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[sqlx::test]
+    async fn health_stays_healthy_when_local_process_is_not_leader(pool: sqlx::PgPool) {
+        let state = Arc::new(crate::utils::test_utils::build_test_state(pool));
+
+        let Json(body) = health_check(State(state))
+            .await
+            .expect("non-leader health response should remain successful");
+
+        assert_eq!(body["status"], "healthy");
+        assert_eq!(body["background_jobs"]["local"]["role"], "starting");
+    }
 }

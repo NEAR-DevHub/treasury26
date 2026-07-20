@@ -2,6 +2,31 @@ use sqlx::PgPool;
 
 use super::models::{PublicHistoryCursor, PublicHistorySource};
 
+/// A public DAO is projection-ready only after every NearBlocks source has
+/// walked to its terminal page. Missing cursor rows deliberately count as
+/// incomplete.
+pub async fn is_public_history_backfill_complete(
+    pool: &PgPool,
+    account_id: &str,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*) = 3
+        FROM bronze_public_history_cursors
+        WHERE account_id = $1
+          AND source IN (
+              'nearblocks_ft'::public_history_source,
+              'nearblocks_mt'::public_history_source,
+              'nearblocks_receipt'::public_history_source
+          )
+          AND backfill_done = true
+        "#,
+    )
+    .bind(account_id)
+    .fetch_one(pool)
+    .await
+}
+
 pub async fn load_public_history_cursor(
     pool: &PgPool,
     account_id: &str,
@@ -102,4 +127,35 @@ pub async fn record_public_history_poll_result(
     .await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[sqlx::test]
+    async fn backfill_is_complete_only_when_all_sources_are_done(pool: PgPool) -> sqlx::Result<()> {
+        let account_id = "backfill-readiness-test.sputnik-dao.near";
+        assert!(!is_public_history_backfill_complete(&pool, account_id).await?);
+
+        for source in [
+            PublicHistorySource::NearblocksFt,
+            PublicHistorySource::NearblocksMt,
+        ] {
+            save_public_backfill_progress(&pool, account_id, source, None, true).await?;
+        }
+        assert!(!is_public_history_backfill_complete(&pool, account_id).await?);
+
+        save_public_backfill_progress(
+            &pool,
+            account_id,
+            PublicHistorySource::NearblocksReceipt,
+            None,
+            true,
+        )
+        .await?;
+        assert!(is_public_history_backfill_complete(&pool, account_id).await?);
+
+        Ok(())
+    }
 }

@@ -56,12 +56,21 @@ pub async fn price_sync(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, 
     Ok(summary)
 }
 
-/// Backfills historical `token_prices` samples from DeFiLlama for the
-/// (token, 5-minute bucket) pairs `balance_changes` rows need.
-pub async fn token_price_backfill(
+/// Ordered gold USD enrichment:
+/// 1. fetch missing historical price buckets into `token_prices`;
+/// 2. fill NULL public USD amounts;
+/// 3. fill NULL confidential USD amounts.
+///
+/// Each fill is attempted even if an earlier stage fails, so already-cached
+/// prices still make progress. Any stage failures are returned together and
+/// retried by the next cron tick.
+pub async fn gold_usd_enrichment(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
+    let mut outcomes = Vec::new();
+    let mut errors = Vec::new();
+
     let backfill = crate::services::HistoricalPriceBackfill::new(
         state.http_client.clone(),
         state.env_vars.defillama_api_base_url.clone(),
@@ -69,8 +78,47 @@ pub async fn token_price_backfill(
         Arc::clone(&state.token_price_service),
         state.defillama_limiter.clone(),
     );
-    let summary = backfill.run().await?;
-    Ok(summary.to_string())
+    match backfill.run().await {
+        Ok(summary) => outcomes.push(format!("prices=[{summary}]")),
+        Err(error) => errors.push(format!("price loading failed: {error}")),
+    }
+
+    if state.env_vars.disable_gold_public_usd_backfill {
+        outcomes.push("public=disabled".to_string());
+    } else {
+        let backfill = crate::services::GoldPublicUsdBackfill::new(
+            state.db_pool.clone(),
+            Arc::clone(&state.token_price_service),
+        );
+        match backfill.run().await {
+            Ok(summary) => outcomes.push(format!("public=[{summary}]")),
+            Err(error) => errors.push(format!("public USD fill failed: {error}")),
+        }
+    }
+
+    if state.env_vars.disable_gold_confidential_usd_backfill {
+        outcomes.push("confidential=disabled".to_string());
+    } else {
+        let backfill = crate::services::GoldConfidentialUsdBackfill::new(
+            state.db_pool.clone(),
+            Arc::clone(&state.token_price_service),
+        );
+        match backfill.run().await {
+            Ok(summary) => outcomes.push(format!("confidential=[{summary}]")),
+            Err(error) => errors.push(format!("confidential USD fill failed: {error}")),
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(outcomes.join(" "))
+    } else {
+        Err(format!(
+            "{}; completed stages: {}",
+            errors.join("; "),
+            outcomes.join(" ")
+        )
+        .into())
+    }
 }
 
 /// Fills `balance_changes.usd_value` from the `token_prices` series.
@@ -79,30 +127,6 @@ pub async fn balance_changes_usd_backfill(
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
     let backfill = crate::services::BalanceChangesUsdBackfill::new(
-        state.db_pool.clone(),
-        Arc::clone(&state.token_price_service),
-    );
-    Ok(backfill.run().await?.to_string())
-}
-
-/// Fills NULL `amount_in_usd`/`amount_out_usd` on public gold events.
-pub async fn gold_public_usd_backfill(
-    _t: Tick,
-    state: Data<Arc<AppState>>,
-) -> Result<String, BoxDynError> {
-    let backfill = crate::services::GoldPublicUsdBackfill::new(
-        state.db_pool.clone(),
-        Arc::clone(&state.token_price_service),
-    );
-    Ok(backfill.run().await?.to_string())
-}
-
-/// Fills NULL `amount_in_usd`/`amount_out_usd` on confidential gold events.
-pub async fn gold_confidential_usd_backfill(
-    _t: Tick,
-    state: Data<Arc<AppState>>,
-) -> Result<String, BoxDynError> {
-    let backfill = crate::services::GoldConfidentialUsdBackfill::new(
         state.db_pool.clone(),
         Arc::clone(&state.token_price_service),
     );

@@ -3,7 +3,8 @@ pub mod events;
 pub mod models;
 
 pub use cursors::{
-    load_public_history_cursor, record_public_history_poll_result, save_public_backfill_progress,
+    is_public_history_backfill_complete, load_public_history_cursor,
+    record_public_history_poll_result, save_public_backfill_progress,
 };
 pub use events::upsert_public_history_events;
 pub use models::{

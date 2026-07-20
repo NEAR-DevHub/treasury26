@@ -11,12 +11,17 @@ use super::repository::{
     load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
     upsert_projection_errors, upsert_silver_legs,
 };
+use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
 const PUBLIC_SILVER_WORKERS: usize = 2;
 
 pub async fn project_public_silver_for_account(
     pool: &PgPool,
     account_id: &str,
 ) -> Result<SilverProjectionResult, sqlx::Error> {
+    if !is_public_history_backfill_complete(pool, account_id).await? {
+        return Ok(SilverProjectionResult::default());
+    }
+
     let mut tx = pool.begin().await?;
 
     let got_lock: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtext($1))")

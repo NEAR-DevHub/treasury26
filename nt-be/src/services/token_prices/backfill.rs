@@ -53,18 +53,19 @@ const RATE_LIMIT_MAX_BACKOFF: Duration = Duration::from_secs(30);
 const GOLD_RAW_IDS_SQL: &str = r#"
     SELECT DISTINCT token_in
     FROM gold_public_history_events
-    WHERE token_in IS NOT NULL
+    WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
     UNION
     SELECT DISTINCT token_out
     FROM gold_public_history_events
-    WHERE token_out IS NOT NULL
+    WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
     UNION
     SELECT DISTINCT origin_asset
     FROM gold_confidential_history_events
-    WHERE origin_asset IS NOT NULL
+    WHERE origin_asset IS NOT NULL AND amount_in_usd IS NULL
     UNION
     SELECT DISTINCT destination_asset
     FROM gold_confidential_history_events
+    WHERE amount_out_usd IS NULL
 "#;
 
 const GOLD_MISSING_PAIRS_SQL: &str = r#"
@@ -74,18 +75,19 @@ const GOLD_MISSING_PAIRS_SQL: &str = r#"
     sources(raw_token_id, at) AS (
         SELECT token_in, event_time
         FROM gold_public_history_events
-        WHERE token_in IS NOT NULL
+        WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
         UNION ALL
         SELECT token_out, event_time
         FROM gold_public_history_events
-        WHERE token_out IS NOT NULL
+        WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
         UNION ALL
         SELECT origin_asset, COALESCE(proposal_executed_at, quote_created_at)
         FROM gold_confidential_history_events
-        WHERE origin_asset IS NOT NULL
+        WHERE origin_asset IS NOT NULL AND amount_in_usd IS NULL
         UNION ALL
         SELECT destination_asset, COALESCE(proposal_executed_at, quote_created_at)
         FROM gold_confidential_history_events
+        WHERE amount_out_usd IS NULL
     ),
     needed AS (
         SELECT DISTINCT m.token_ref,
@@ -847,6 +849,8 @@ mod tests {
         assert!(GOLD_RAW_IDS_SQL.contains("destination_asset"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_public_history_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
+        assert!(GOLD_RAW_IDS_SQL.contains("amount_in_usd IS NULL"));
+        assert!(GOLD_RAW_IDS_SQL.contains("amount_out_usd IS NULL"));
         assert!(!GOLD_RAW_IDS_SQL.contains("balance_changes"));
     }
 
@@ -860,6 +864,8 @@ mod tests {
         assert!(GOLD_MISSING_PAIRS_SQL.contains("floor(extract(epoch FROM s.at) / 300) * 300"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("LEFT JOIN token_prices"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("token_price_backfill_misses"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_in_usd IS NULL"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_out_usd IS NULL"));
         assert!(!GOLD_MISSING_PAIRS_SQL.contains("balance_changes"));
     }
 

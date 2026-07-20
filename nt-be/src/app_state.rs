@@ -11,6 +11,7 @@ use crate::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
     },
     handlers::public_history::bronze::NearblocksPriority,
+    jobs::leadership::BackgroundJobsStatus,
     services::{DeFiLlamaClient, PriceLookupService, TokenPriceService},
     utils::{
         cache::{Cache, CacheKey, CacheTier},
@@ -106,6 +107,7 @@ pub struct AppState {
     /// None if GOLDSKY_DATABASE_URL is not configured.
     pub goldsky_pool: Option<PgPool>,
     pub event_tx: broadcast::Sender<AppEvent>,
+    pub background_jobs_status: Arc<BackgroundJobsStatus>,
     /// Wakes the treasury creation sweeper immediately (instead of waiting for
     /// its next poll tick) when an attempt fails, so a half-created treasury is
     /// retried within moments rather than seconds.
@@ -431,6 +433,7 @@ impl AppStateBuilder {
             neardata_client,
             goldsky_pool,
             event_tx,
+            background_jobs_status: Arc::new(BackgroundJobsStatus::new()),
             creation_sweep_notify: Arc::new(tokio::sync::Notify::new()),
         })
     }

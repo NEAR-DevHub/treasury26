@@ -13,10 +13,12 @@
 //!
 //! Schedules keep their old intervals/env-var overrides. Jobs that used to
 //! run once at startup (reconciliation, monthly reset, dashboard, FT
-//! lockup) get a task pushed at boot in addition to their cron schedule.
+//! lockup) get one deduplicated task when the process first becomes leader,
+//! in addition to their cron schedule.
 
 pub mod context;
 pub mod handlers;
+pub mod leadership;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -34,6 +36,7 @@ use apalis_postgres::{Config, PostgresStorage};
 use axum::Router;
 use cron::Schedule;
 use sqlx::PgPool;
+use tokio_util::sync::CancellationToken;
 
 use crate::AppState;
 
@@ -42,6 +45,7 @@ pub type TickStorage = PostgresStorage<Tick>;
 
 /// Storages of every registered queue, in registration order. Held so the
 /// board router can be built and manual/startup tasks can be pushed.
+#[derive(Clone)]
 pub struct JobQueues {
     pub entries: Vec<(&'static str, TickStorage)>,
 }
@@ -237,7 +241,7 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
     }
 }
 
-/// Registers one cron-scheduled apalis worker on the [`Monitor`]:
+/// Registers a queue and, when a monitor is present, its cron worker:
 /// schedule → postgres queue → handler.
 ///
 /// Failure containment, inside out:
@@ -256,67 +260,68 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
 ///    [`spawn_all`]); a clean exit on shutdown is honoured so in-flight
 ///    tasks drain instead of being fought by a restart.
 ///
-/// The `Monitor` is passed by value and reassigned (`register` is
+/// The optional `Monitor` is passed by value and reassigned (`register` is
 /// builder-style), so this must be used as `monitor = register_cron_worker!(monitor, …)`.
 macro_rules! register_cron_worker {
     ($monitor:expr, $queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
-        let store = storage(&$state.db_pool, $name);
-        $queues.push(($name, store.clone()));
-        let schedule = $schedule;
-        let state = $state.clone();
-        // `register` takes a factory `Fn(attempt) -> Worker`: the Monitor
-        // calls it to (re)build the worker, so a restart gets a fresh
-        // backend/connection.
-        $monitor.register(move |_attempt| {
-            WorkerBuilder::new($name)
-                .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
-                .data(state.clone())
-                .catch_panic()
-                // apalis's Sentry integration: captures a task failure once
-                // (after catch_panic has converted any panic to an error) with
-                // the task's queue / id / attempt as Sentry context, plus a
-                // per-task performance transaction. No-op when Sentry is off.
-                .layer(SentryLayer::new())
-                // The `task` span and its start/done events are created at
-                // INFO (apalis defaults them to DEBUG). Two reasons: the
-                // apalis-board dashboard only streams logs carrying a `task`
-                // span (its `/events` SSE filters `span.is_some()`), and a
-                // DEBUG span is disabled under the default `info` filter — so
-                // at INFO the span is live, task activity shows on the board,
-                // and every cycle's logs inherit the task_id/attempt context.
-                // Failures stay at WARN (not the default ERROR): a single
-                // failed cycle is retried by the next cron tick and is a
-                // warning, and this keeps the tracing→Sentry bridge
-                // (ERROR→event) from emitting a *second* event for the same
-                // failure the SentryLayer already captured.
-                .layer(
-                    TraceLayer::new()
-                        .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
-                        .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
-                        .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
-                        .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
-                )
-                .concurrency(1)
-                .build($handler)
-        })
+        let store = match $queues.storage($name) {
+            Some(store) => store.clone(),
+            None => {
+                let store = storage(&$state.db_pool, $name);
+                $queues.entries.push(($name, store.clone()));
+                store
+            }
+        };
+        match $monitor {
+            Some(monitor) => {
+                let schedule = $schedule;
+                let state = $state.clone();
+                // `register` takes a factory `Fn(attempt) -> Worker`: the Monitor
+                // calls it to (re)build the worker, so a restart gets a fresh
+                // backend/connection.
+                Some(monitor.register(move |_attempt| {
+                    WorkerBuilder::new($name)
+                        .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
+                        .data(state.clone())
+                        .catch_panic()
+                        // apalis's Sentry integration: captures a task failure once
+                        // (after catch_panic has converted any panic to an error) with
+                        // the task's queue / id / attempt as Sentry context, plus a
+                        // per-task performance transaction. No-op when Sentry is off.
+                        .layer(SentryLayer::new())
+                        // The `task` span and its start/done events are created at
+                        // INFO (apalis defaults them to DEBUG). Two reasons: the
+                        // apalis-board dashboard only streams logs carrying a `task`
+                        // span (its `/events` SSE filters `span.is_some()`), and a
+                        // DEBUG span is disabled under the default `info` filter — so
+                        // at INFO the span is live, task activity shows on the board,
+                        // and every cycle's logs inherit the task_id/attempt context.
+                        // Failures stay at WARN (not the default ERROR): a single
+                        // failed cycle is retried by the next cron tick and is a
+                        // warning, and this keeps the tracing→Sentry bridge
+                        // (ERROR→event) from emitting a *second* event for the same
+                        // failure the SentryLayer already captured.
+                        .layer(
+                            TraceLayer::new()
+                                .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
+                                .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
+                                .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
+                                .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
+                        )
+                        .concurrency(1)
+                        .build($handler)
+                }))
+            }
+            None => None,
+        }
     }};
 }
 
-/// Registers and spawns every background job. Returns the queue registry
-/// used to serve the apalis-board UI, plus the handle of the monitor task
-/// so `main` can await the graceful drain before letting the runtime drop
-/// (dropping the runtime would abort in-flight tasks mid-drain).
-pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHandle<()>) {
-    // apalis schema + tables (idempotent).
-    setup_apalis(&state.db_pool)
-        .await
-        .expect("failed to run apalis migrations");
-
-    let mut queues: Vec<(&'static str, TickStorage)> = Vec::new();
-
-    // apalis's own supervisor: runs every worker, restarts one that exits
-    // (backend/storage failure) via `should_restart`, and drains in-flight
-    // tasks on shutdown. Replaces the old per-worker `tokio::spawn` loops.
+fn job_monitor() -> Monitor {
+    // apalis's own supervisor: runs every cron worker, restarts one that
+    // exits (backend/storage failure) via `should_restart`, and drains
+    // in-flight tasks on shutdown. The two public-history payload consumers
+    // use their targeted supervisors below.
     //
     // The restart is immediate (the `should_restart` hook is synchronous, so
     // it can't back off). That doesn't hot-loop in practice: transient DB
@@ -331,7 +336,7 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
     // immediately, so restarting on GracefulExit hot-loops
     // stop→exit→restart→stop forever and the process never terminates after
     // SIGINT/SIGTERM. Same for any exit while shutdown is in progress.
-    let mut monitor = Monitor::new().should_restart(|ctx, err, attempt| {
+    Monitor::new().should_restart(|ctx, err, attempt| {
         if matches!(err, WorkerError::GracefulExit) || ctx.is_shutting_down() {
             tracing::info!(
                 worker = %ctx.name(),
@@ -346,7 +351,15 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
             "job worker exited; monitor restarting it"
         );
         true
-    });
+    })
+}
+
+fn configure_cron_runtime(
+    state: Arc<AppState>,
+    mut queues: JobQueues,
+    mut monitor: Option<Monitor>,
+) -> (Option<Monitor>, JobQueues) {
+    let preparing_queues = monitor.is_none();
 
     if !state.env_vars.disable_balance_monitoring {
         monitor = register_cron_worker!(
@@ -368,12 +381,6 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
     }
 
     if state.env_vars.nearblocks_api_key.is_some() {
-        crate::handlers::public_history::bronze::jobs::start_public_history_queue_workers(
-            state.clone(),
-        )
-        .await
-        .expect("failed to start public history queue workers");
-
         monitor = register_cron_worker!(
             monitor,
             queues,
@@ -415,7 +422,9 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
             handlers::public_quote_status_refresh
         );
     } else {
-        tracing::warn!("public history workers disabled: NEARBLOCKS_API_KEY missing");
+        if preparing_queues {
+            tracing::warn!("public history workers disabled: NEARBLOCKS_API_KEY missing");
+        }
     }
 
     monitor = register_cron_worker!(
@@ -436,15 +445,6 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
         handlers::token_price_ingest
     );
 
-    monitor = register_cron_worker!(
-        monitor,
-        queues,
-        state,
-        "token-price-backfill",
-        schedule_every_secs(env_secs("TOKEN_PRICE_BACKFILL_INTERVAL_SECONDS", 3600)),
-        handlers::token_price_backfill
-    );
-
     // Skipping this becuase balance_changs table will be depreceated and we will only use gold projections
 
     // if !state.env_vars.disable_balance_changes_usd_backfill {
@@ -460,28 +460,16 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
     //     );
     // }
 
-    if !state.env_vars.disable_gold_public_usd_backfill {
+    if !state.env_vars.disable_gold_public_usd_backfill
+        || !state.env_vars.disable_gold_confidential_usd_backfill
+    {
         monitor = register_cron_worker!(
             monitor,
             queues,
             state,
-            "gold-public-usd-backfill",
-            schedule_every_secs(env_secs("GOLD_PUBLIC_USD_BACKFILL_INTERVAL_SECONDS", 3600)),
-            handlers::gold_public_usd_backfill
-        );
-    }
-
-    if !state.env_vars.disable_gold_confidential_usd_backfill {
-        monitor = register_cron_worker!(
-            monitor,
-            queues,
-            state,
-            "gold-confidential-usd-backfill",
-            schedule_every_secs(env_secs(
-                "GOLD_CONFIDENTIAL_USD_BACKFILL_INTERVAL_SECONDS",
-                3600
-            )),
-            handlers::gold_confidential_usd_backfill
+            "gold-usd-enrichment",
+            schedule_every_secs(env_secs("GOLD_USD_ENRICHMENT_INTERVAL_SECONDS", 300)),
+            handlers::gold_usd_enrichment
         );
     }
 
@@ -531,15 +519,19 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
             handlers::goldsky_enrichment
         );
     } else {
-        tracing::info!("Goldsky enrichment worker disabled (GOLDSKY_DATABASE_URL not set)");
+        if preparing_queues {
+            tracing::info!("Goldsky enrichment worker disabled (GOLDSKY_DATABASE_URL not set)");
+        }
     }
 
     let sweeper_disabled = std::env::var("DISABLE_TREASURY_CREATION_SWEEPER")
         .is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
     if sweeper_disabled {
-        tracing::info!(
-            "Treasury creation sweeper disabled (DISABLE_TREASURY_CREATION_SWEEPER=true)"
-        );
+        if preparing_queues {
+            tracing::info!(
+                "Treasury creation sweeper disabled (DISABLE_TREASURY_CREATION_SWEEPER=true)"
+            );
+        }
     } else {
         monitor = register_cron_worker!(
             monitor,
@@ -549,23 +541,6 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
             schedule_every_secs(15),
             handlers::treasury_creation_sweeper
         );
-        // Event-driven wake: a failed creation attempt pings the Notify so
-        // the sweep runs within moments instead of waiting for the poll.
-        // Look the queue up by name — relying on `last()` breaks silently
-        // if another queue is later registered below this block.
-        if let Some(store) = queues
-            .iter()
-            .find(|(name, _)| *name == "treasury-creation-sweeper")
-            .map(|(_, s)| s.clone())
-        {
-            let notify = state.creation_sweep_notify.clone();
-            tokio::spawn(async move {
-                loop {
-                    notify.notified().await;
-                    push_now(&store, "treasury-creation-sweeper").await;
-                }
-            });
-        }
     }
 
     monitor = register_cron_worker!(
@@ -654,7 +629,9 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
             handlers::ft_lockup_refresh
         );
     } else {
-        tracing::info!("FT lockup scheduler disabled (DISABLE_FT_LOCKUP_SCHEDULER=true)");
+        if preparing_queues {
+            tracing::info!("FT lockup scheduler disabled (DISABLE_FT_LOCKUP_SCHEDULER=true)");
+        }
     }
 
     // Retention: prune finished apalis tasks so high-frequency queues don't
@@ -668,37 +645,196 @@ pub async fn spawn_all(state: Arc<AppState>) -> (JobQueues, tokio::task::JoinHan
         handlers::apalis_prune
     );
 
-    let queues = JobQueues { entries: queues };
+    (monitor, queues)
+}
 
-    // Jobs that previously ran once at startup, in addition to their cron
-    // schedule. Pushed as regular tasks so they show up on the board.
-    for queue in [
-        "confidential-gold-reconciliation",
-        "subscription-monthly-reset",
-        "public-dashboard-refresh",
-        "ft-lockup-refresh",
-        "token-price-backfill",
-        "balance-changes-usd-backfill",
-        "gold-public-usd-backfill",
-        "gold-confidential-usd-backfill",
-    ] {
-        if let Some(store) = queues.storage(queue) {
-            // Label the push with the real queue name so a failed push is
-            // attributed to the right queue in the logs.
-            push_now(store, queue).await;
+fn prepare_job_queues(state: Arc<AppState>) -> JobQueues {
+    configure_cron_runtime(
+        state,
+        JobQueues {
+            entries: Vec::new(),
+        },
+        None,
+    )
+    .1
+}
+
+fn build_cron_runtime(state: Arc<AppState>, queues: JobQueues) -> (Monitor, JobQueues) {
+    let (monitor, queues) = configure_cron_runtime(state, queues, Some(job_monitor()));
+    (
+        monitor.expect("cron monitor must be present when starting workers"),
+        queues,
+    )
+}
+
+const STARTUP_QUEUES: [&str; 6] = [
+    "confidential-gold-reconciliation",
+    "subscription-monthly-reset",
+    "public-dashboard-refresh",
+    "ft-lockup-refresh",
+    "balance-changes-usd-backfill",
+    "gold-usd-enrichment",
+];
+
+async fn push_startup_tasks(queues: &JobQueues, pool: &PgPool) {
+    for queue in STARTUP_QUEUES {
+        let Some(store) = queues.storage(queue) else {
+            continue;
+        };
+
+        let active = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS (
+                SELECT 1
+                FROM apalis.jobs
+                WHERE job_type = $1
+                  AND (
+                      status IN ('Pending', 'Queued', 'Running')
+                      OR (status = 'Failed' AND attempts < max_attempts)
+                  )
+            )",
+        )
+        .bind(queue)
+        .fetch_one(pool)
+        .await;
+
+        match active {
+            Ok(true) => {
+                tracing::info!(
+                    queue,
+                    "startup task already active; not enqueueing duplicate"
+                );
+            }
+            Ok(false) => push_now(store, queue).await,
+            Err(error) => {
+                tracing::error!(
+                    queue,
+                    error = %error,
+                    "failed to check for an active startup task; enqueue skipped"
+                );
+            }
         }
     }
+}
 
-    // Drive all workers under the monitor on one supervised task. It runs
-    // until a shutdown signal, then drains in-flight tasks (see
-    // `shutdown_timeout` if a bound is needed).
-    let monitor_handle = tokio::spawn(async move {
-        if let Err(e) = monitor.run_with_signal(shutdown_signal()).await {
-            tracing::error!(error = %e, "jobs monitor exited");
+fn install_treasury_sweeper_wakeup(
+    queues: &JobQueues,
+    state: &Arc<AppState>,
+    shutdown: CancellationToken,
+) {
+    let Some(store) = queues.storage("treasury-creation-sweeper").cloned() else {
+        return;
+    };
+    let notify = state.creation_sweep_notify.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = shutdown.cancelled() => return,
+                _ = notify.notified() => {
+                    push_now(&store, "treasury-creation-sweeper").await;
+                }
+            }
         }
     });
+}
 
-    (queues, monitor_handle)
+fn runtime_child_error(
+    result: Option<Result<Result<(), String>, tokio::task::JoinError>>,
+) -> String {
+    match result {
+        Some(Ok(Ok(()))) => "background job runtime child exited unexpectedly".to_string(),
+        Some(Ok(Err(error))) => error,
+        Some(Err(error)) => format!("background job runtime child failed: {error}"),
+        None => "background job runtime had no active children".to_string(),
+    }
+}
+
+async fn run_leader_runtime(
+    state: Arc<AppState>,
+    queues: JobQueues,
+    shutdown: CancellationToken,
+    run_startup_tasks: bool,
+) -> Result<(), String> {
+    let (monitor, queues) = build_cron_runtime(state.clone(), queues);
+    if run_startup_tasks {
+        push_startup_tasks(&queues, &state.db_pool).await;
+    }
+
+    let consumer_handles =
+        crate::handlers::public_history::bronze::jobs::spawn_public_history_queue_workers(
+            state,
+            shutdown.clone(),
+        );
+
+    let mut children = tokio::task::JoinSet::new();
+    let monitor_shutdown = shutdown.clone();
+    children.spawn(async move {
+        monitor
+            .run_with_signal(async move {
+                monitor_shutdown.cancelled().await;
+                Ok(())
+            })
+            .await
+            .map_err(|error| format!("jobs monitor exited: {error}"))
+    });
+
+    for handle in consumer_handles {
+        children.spawn(async move {
+            handle
+                .await
+                .map_err(|error| format!("public history consumer supervisor failed: {error}"))
+        });
+    }
+
+    let unexpected_error = tokio::select! {
+        _ = shutdown.cancelled() => None,
+        result = children.join_next() => Some(runtime_child_error(result)),
+    };
+
+    shutdown.cancel();
+    while children.join_next().await.is_some() {}
+
+    match unexpected_error {
+        Some(error) => Err(error),
+        None => Ok(()),
+    }
+}
+
+/// Prepares the board registry immediately, then starts all Apalis workers only
+/// inside the PostgreSQL-elected leadership session. Followers remain HTTP
+/// ready and never construct an active cron producer or payload consumer.
+pub async fn spawn_all(
+    state: Arc<AppState>,
+    shutdown: CancellationToken,
+) -> (JobQueues, tokio::task::JoinHandle<()>) {
+    setup_apalis(&state.db_pool)
+        .await
+        .expect("failed to run apalis migrations");
+    crate::handlers::public_history::bronze::jobs::setup_public_history_queue_workers(&state)
+        .await
+        .expect("failed to set up public history queue workers");
+
+    let queues = prepare_job_queues(state.clone());
+    install_treasury_sweeper_wakeup(&queues, &state, shutdown.clone());
+
+    let runtime_state = state.clone();
+    let runtime_queues = queues.clone();
+    let leadership_handle = leadership::spawn(
+        state.db_pool.clone(),
+        state.background_jobs_status.clone(),
+        shutdown,
+        Box::new(move |run_startup_tasks, session_shutdown| {
+            let state = runtime_state.clone();
+            let queues = runtime_queues.clone();
+            Box::pin(run_leader_runtime(
+                state,
+                queues,
+                session_shutdown,
+                run_startup_tasks,
+            ))
+        }),
+    );
+
+    (queues, leadership_handle)
 }
 
 const BOARD_AUTH_REALM: &str = "Trezu Jobs Board";

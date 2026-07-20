@@ -16,6 +16,17 @@ pub async fn load_dirty_accounts(
             silver_recompute_from AS recompute_from
         FROM silver_public_history_cursors
         WHERE silver_dirty_since IS NOT NULL
+          AND (
+              SELECT COUNT(*)
+              FROM bronze_public_history_cursors bronze_cursor
+              WHERE bronze_cursor.account_id = silver_public_history_cursors.account_id
+                AND bronze_cursor.source IN (
+                    'nearblocks_ft'::public_history_source,
+                    'nearblocks_mt'::public_history_source,
+                    'nearblocks_receipt'::public_history_source
+                )
+                AND bronze_cursor.backfill_done = true
+          ) = 3
         ORDER BY silver_dirty_since ASC, account_id ASC
         "#,
     )

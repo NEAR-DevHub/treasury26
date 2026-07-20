@@ -31,7 +31,10 @@ use crate::handlers::balance_changes::query_builder::{
 use crate::handlers::balance_changes::{confidential_list, public_list};
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
-use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, get_balance_changes_internal};
+use crate::routes::{
+    BalanceChangesQuery, EnrichedBalanceChange, get_balance_changes_internal,
+    should_read_public_history,
+};
 use crate::utils::serde::comma_separated;
 use crate::{AppState, auth::OptionalAuthUser};
 
@@ -130,6 +133,10 @@ pub async fn get_balance_chart(
         confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str())
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let use_public_history = !is_confidential
+        && should_read_public_history(&state, params.account_id.as_str())
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
@@ -141,17 +148,26 @@ pub async fn get_balance_chart(
     .flatten() // unwrap Option<Option<DateTime>> from fetch_optional
     .flatten(); // unwrap Option<DateTime> from nullable column
 
-    // Load prior balances (most recent balance_after for each token before start_time).
-    // Public chart reads are temporarily kept on legacy `balance_changes`; activity/export
-    // still route through the public gold adapter.
-    let prior_balances = load_prior_balances(
-        &state.db_pool,
-        params.account_id.as_str(),
-        params.start_time,
-        params.token_ids.as_ref(),
-    )
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    // Load prior balances from the same source selected for the chart rows.
+    let prior_balances = if use_public_history {
+        public_list::load_prior_balances(
+            &state.db_pool,
+            params.account_id.as_str(),
+            params.start_time,
+            params.token_ids.as_ref(),
+        )
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    } else {
+        load_prior_balances(
+            &state.db_pool,
+            params.account_id.as_str(),
+            params.start_time,
+            params.token_ids.as_ref(),
+        )
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    };
 
     // Compute interval timestamps up front so we can pass them to SQL for the
     // sponsor totals query — one cumulative sum per chart point, no per-snapshot scanning.
@@ -176,7 +192,7 @@ pub async fn get_balance_chart(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let changes: Vec<BalanceChange> = if is_confidential {
+    let changes: Vec<BalanceChange> = if is_confidential || use_public_history {
         let query = BalanceChangesQuery {
             account_id: params.account_id.clone(),
             limit: None,
@@ -1782,7 +1798,10 @@ pub async fn get_recent_activity(
 
     let total: i64 = if is_confidential {
         count_query.fetch_one(&state.db_pool).await.unwrap_or(0)
-    } else {
+    } else if should_read_public_history(&state, params.account_id.as_str())
+        .await
+        .unwrap_or(false)
+    {
         let count_query = BalanceChangesQuery {
             account_id: params.account_id.clone(),
             limit: None,
@@ -1810,6 +1829,8 @@ pub async fn get_recent_activity(
         public_list::count_balance_change_legs(&state.db_pool, &count_query)
             .await
             .unwrap_or(0)
+    } else {
+        count_query.fetch_one(&state.db_pool).await.unwrap_or(0)
     };
 
     // If min_usd_value filter is specified, we need to fetch more records and filter them
