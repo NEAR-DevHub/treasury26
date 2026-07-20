@@ -89,6 +89,7 @@ async fn insert_authoritative_balance(
     pool: &sqlx::PgPool,
     token_id: &str,
     block_height: i64,
+    block_time: chrono::DateTime<Utc>,
     balance: &str,
 ) {
     sqlx::query(
@@ -104,11 +105,13 @@ async fn insert_authoritative_balance(
             balance_before,
             balance_after
         )
-        VALUES ($1, $2, $2, NOW(), $3, 'SNAPSHOT', 0, $4::numeric, $4::numeric)
+        VALUES ($1, $2, $3, $4, $5, 'SNAPSHOT', 0, $6::numeric, $6::numeric)
         "#,
     )
     .bind(ACCOUNT_ID)
     .bind(block_height)
+    .bind(block_time.timestamp_nanos_opt().expect("valid block time"))
+    .bind(block_time)
     .bind(token_id)
     .bind(balance)
     .execute(pool)
@@ -366,12 +369,12 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     cleanup(&pool).await;
     mark_backfill_complete(&pool).await;
     let token_prices = TokenPriceService::new(pool.clone());
-    insert_authoritative_balance(&pool, "wrap.near", 100, "0.9").await;
-    insert_authoritative_balance(&pool, USDC_TOKEN_ID, 101, "0.492331").await;
 
     let outgoing_time = Utc.with_ymd_and_hms(2026, 7, 6, 8, 45, 36).unwrap();
     let incoming_time = outgoing_time + Duration::seconds(16);
     let proposal_executed_at = outgoing_time + Duration::seconds(1);
+    insert_authoritative_balance(&pool, "wrap.near", 100, outgoing_time, "0.9").await;
+    insert_authoritative_balance(&pool, USDC_TOKEN_ID, 101, incoming_time, "0.492331").await;
 
     let proposal_ref: i64 = sqlx::query_scalar(
         r#"
@@ -573,6 +576,50 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     .await
     .expect("count standalone incoming deposits");
     assert_eq!(standalone_deposits, 0);
+
+    // A later dirty boundary can land exactly on the fulfillment. The
+    // completed exchange must widen replay back to its outgoing leg instead
+    // of retaining the exchange and projecting the incoming leg as a deposit.
+    mark_gold_dirty(&pool, ACCOUNT_ID, Some(incoming_time))
+        .await
+        .expect("mark completed exchange dirty at fulfillment");
+    project_public_gold_for_account(&pool, &token_prices, ACCOUNT_ID, RELAYER_ACCOUNT)
+        .await
+        .expect("reproject completed delayed exchange from fulfillment");
+
+    let (row_count, exchange_count, deposit_count): (i64, i64, i64) = sqlx::query_as(
+        r#"
+        SELECT
+            COUNT(*),
+            COUNT(*) FILTER (WHERE transaction_type = 'exchange'),
+            COUNT(*) FILTER (WHERE transaction_type = 'deposit')
+        FROM gold_public_history_events
+        WHERE dao_id = $1
+        "#,
+    )
+    .bind(ACCOUNT_ID)
+    .fetch_one(&pool)
+    .await
+    .expect("count rows after completed exchange replay");
+    assert_eq!((row_count, exchange_count, deposit_count), (1, 1, 0));
+
+    let replayed_balances: (String, String) = sqlx::query_as(
+        r#"
+        SELECT
+            token_out_balance_after::text,
+            token_in_balance_after::text
+        FROM gold_public_history_events
+        WHERE dao_id = $1
+        "#,
+    )
+    .bind(ACCOUNT_ID)
+    .fetch_one(&pool)
+    .await
+    .expect("fetch balances after completed exchange replay");
+    assert_eq!(
+        replayed_balances,
+        ("0.9".to_string(), "0.492331".to_string())
+    );
 
     let error_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM gold_public_history_projection_errors WHERE dao_id = $1",

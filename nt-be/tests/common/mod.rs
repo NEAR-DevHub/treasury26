@@ -44,14 +44,16 @@ pub fn create_test_jwt(account_id: &str) -> String {
 static INIT: Once = Once::new();
 
 /// Load test environment variables. Safe to call multiple times - only runs once.
-/// Loads .env first, then .env.test which overrides (e.g., DATABASE_URL for test database).
+/// Preserves environment variables supplied by the test runner. Otherwise,
+/// loads `.env.test` first so test values take precedence, then fills any
+/// missing values from `.env`.
 ///
 /// NOTE: Keep in sync with `src/utils/test_utils.rs::load_test_env()` which serves
 /// unit tests. Integration tests can't access #[cfg(test)] items from the library.
 pub fn load_test_env() {
     INIT.call_once(|| {
+        dotenvy::from_filename(".env.test").ok();
         dotenvy::from_filename(".env").ok();
-        dotenvy::from_filename_override(".env.test").ok();
     });
 }
 

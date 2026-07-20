@@ -17,7 +17,28 @@ pub async fn load_dirty_accounts(
             COALESCE(gold_dirty_since, updated_at) AS dirty_since,
             gold_recompute_from AS recompute_from
         FROM gold_public_history_cursors
-        WHERE (gold_dirty_since IS NOT NULL OR projection_validation_pending = true)
+        WHERE (
+              gold_dirty_since IS NOT NULL
+              OR (
+                  projection_validation_pending = true
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM silver_public_history_projection_errors silver_error
+                      WHERE silver_error.account_id = gold_public_history_cursors.account_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM gold_public_history_projection_errors gold_error
+                      WHERE gold_error.dao_id = gold_public_history_cursors.account_id
+                  )
+              )
+          )
+          AND NOT EXISTS (
+              SELECT 1
+              FROM silver_public_history_cursors silver_cursor
+              WHERE silver_cursor.account_id = gold_public_history_cursors.account_id
+                AND silver_cursor.silver_dirty_since IS NOT NULL
+          )
           AND (
               SELECT COUNT(*)
               FROM bronze_public_history_cursors bronze_cursor
@@ -93,6 +114,48 @@ pub async fn earliest_pending_exchange_time(
     .await
 }
 
+/// Widen a suffix boundary until it no longer bisects any completed exchange.
+///
+/// Either leg may occur first, and widening for one exchange can expose an
+/// overlapping exchange that did not cross the original boundary. Iterate to
+/// a fixed point so every exchange included in the suffix is replayed whole.
+pub async fn widen_for_overlapping_completed_exchanges(
+    tx: &mut Transaction<'_, Postgres>,
+    dao_id: &str,
+    recompute_from: DateTime<Utc>,
+) -> Result<DateTime<Utc>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        WITH RECURSIVE exchange_intervals AS (
+            SELECT
+                LEAST(primary_leg.block_time, counter_leg.block_time) AS starts_at,
+                GREATEST(primary_leg.block_time, counter_leg.block_time) AS ends_at
+            FROM gold_public_history_events gold
+            JOIN silver_public_transfer_legs primary_leg
+              ON primary_leg.id = gold.primary_transfer_leg_id
+            JOIN silver_public_transfer_legs counter_leg
+              ON counter_leg.id = gold.counter_transfer_leg_id
+            WHERE gold.dao_id = $1
+              AND gold.transaction_type = 'exchange'
+        ), boundaries(boundary) AS (
+            SELECT $2::timestamptz
+            UNION
+            SELECT interval.starts_at
+            FROM boundaries current
+            JOIN exchange_intervals interval
+              ON interval.starts_at < current.boundary
+             AND interval.ends_at >= current.boundary
+        )
+        SELECT MIN(boundary)
+        FROM boundaries
+        "#,
+    )
+    .bind(dao_id)
+    .bind(recompute_from)
+    .fetch_one(&mut **tx)
+    .await
+}
+
 pub async fn seed_ledger_before(
     tx: &mut Transaction<'_, Postgres>,
     account_id: &str,
@@ -103,40 +166,47 @@ pub async fn seed_ledger_before(
         SELECT DISTINCT ON (asset) asset, balance
         FROM (
             SELECT
-                token_in AS asset,
-                token_in_balance_after AS balance,
-                event_time,
-                block_height,
-                id,
+                gold.token_in AS asset,
+                gold.token_in_balance_after AS balance,
+                COALESCE(counter_leg.block_time, primary_leg.block_time) AS leg_block_time,
+                COALESCE(counter_leg.block_height, primary_leg.block_height)
+                    AS leg_block_height,
+                gold.id,
                 1 AS leg_order
-            FROM gold_public_history_events
-            WHERE dao_id = $1
-              AND event_time < $2
-              AND token_in IS NOT NULL
-              AND token_in_balance_after IS NOT NULL
+            FROM gold_public_history_events gold
+            JOIN silver_public_transfer_legs primary_leg
+              ON primary_leg.id = gold.primary_transfer_leg_id
+            LEFT JOIN silver_public_transfer_legs counter_leg
+              ON counter_leg.id = gold.counter_transfer_leg_id
+            WHERE gold.dao_id = $1
+              AND COALESCE(counter_leg.block_time, primary_leg.block_time) < $2
+              AND gold.token_in IS NOT NULL
+              AND gold.token_in_balance_after IS NOT NULL
 
             UNION ALL
 
             SELECT
-                token_out AS asset,
-                token_out_balance_after AS balance,
-                event_time,
-                block_height,
-                id,
+                gold.token_out AS asset,
+                gold.token_out_balance_after AS balance,
+                primary_leg.block_time AS leg_block_time,
+                primary_leg.block_height AS leg_block_height,
+                gold.id,
                 0 AS leg_order
-            FROM gold_public_history_events
-            WHERE dao_id = $1
-              AND event_time < $2
-              AND token_out IS NOT NULL
-              AND token_out_balance_after IS NOT NULL
+            FROM gold_public_history_events gold
+            JOIN silver_public_transfer_legs primary_leg
+              ON primary_leg.id = gold.primary_transfer_leg_id
+            WHERE gold.dao_id = $1
+              AND primary_leg.block_time < $2
+              AND gold.token_out IS NOT NULL
+              AND gold.token_out_balance_after IS NOT NULL
         ) balances
         -- A completed exchange can contain two balance-bearing legs. Match the
         -- projector's apply order (out, then in) when both legs are for the
         -- same asset and share an event timestamp.
         ORDER BY
             asset,
-            event_time DESC,
-            block_height DESC NULLS LAST,
+            leg_block_time DESC,
+            leg_block_height DESC,
             id DESC,
             leg_order DESC
         "#,
@@ -397,7 +467,15 @@ pub async fn delete_stale_gold_rows(
         r#"
         DELETE FROM gold_public_history_events
         WHERE dao_id = $1
-          AND event_time >= $2
+          AND EXISTS (
+              SELECT 1
+              FROM silver_public_transfer_legs leg
+              WHERE leg.block_time >= $2
+                AND leg.id IN (
+                    gold_public_history_events.primary_transfer_leg_id,
+                    gold_public_history_events.counter_transfer_leg_id
+                )
+          )
           AND NOT (gold_event_key = ANY($3))
         "#,
     )
@@ -667,6 +745,163 @@ mod tests {
         Ok(())
     }
 
+    async fn insert_completed_exchange(
+        pool: &PgPool,
+        key: &str,
+        primary_leg_id: i64,
+        counter_leg_id: i64,
+        event_time: DateTime<Utc>,
+    ) -> sqlx::Result<()> {
+        sqlx::query(
+            r#"
+            INSERT INTO gold_public_history_events (
+                gold_event_key,
+                primary_transfer_leg_id,
+                counter_transfer_leg_id,
+                dao_id,
+                transaction_type,
+                token_in,
+                token_out,
+                amount_in,
+                amount_out,
+                token_in_balance_before,
+                token_in_balance_after,
+                token_out_balance_before,
+                token_out_balance_after,
+                event_time,
+                status,
+                raw_payload
+            )
+            VALUES (
+                $1, $2, $3, $4, 'exchange', 'token-in.near', 'token-out.near',
+                1, 1, 0, 1, 1, 0, $5, 'success', '{}'::jsonb
+            )
+            "#,
+        )
+        .bind(key)
+        .bind(primary_leg_id)
+        .bind(counter_leg_id)
+        .bind(DAO_ID)
+        .bind(event_time)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn completed_exchange_boundary_handles_incoming_before_outgoing(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let incoming_time = Utc.with_ymd_and_hms(2026, 7, 20, 9, 0, 0).unwrap();
+        let outgoing_time = Utc.with_ymd_and_hms(2026, 7, 20, 9, 1, 0).unwrap();
+        let incoming_leg = insert_silver_leg(
+            &pool,
+            "reverse-incoming",
+            "token-in.near",
+            "incoming",
+            10,
+            incoming_time,
+        )
+        .await?;
+        let outgoing_leg = insert_silver_leg(
+            &pool,
+            "reverse-outgoing",
+            "token-out.near",
+            "outgoing",
+            20,
+            outgoing_time,
+        )
+        .await?;
+        insert_completed_exchange(
+            &pool,
+            "reverse-exchange",
+            outgoing_leg,
+            incoming_leg,
+            outgoing_time,
+        )
+        .await?;
+
+        let mut tx = pool.begin().await?;
+        let boundary =
+            widen_for_overlapping_completed_exchanges(&mut tx, DAO_ID, outgoing_time).await?;
+        tx.rollback().await?;
+
+        assert_eq!(boundary, incoming_time);
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn completed_exchange_boundary_reaches_transitive_fixed_point(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let first_outgoing_time = Utc.with_ymd_and_hms(2026, 7, 20, 10, 0, 0).unwrap();
+        let second_outgoing_time = Utc.with_ymd_and_hms(2026, 7, 20, 10, 1, 0).unwrap();
+        let first_incoming_time = Utc.with_ymd_and_hms(2026, 7, 20, 10, 2, 0).unwrap();
+        let second_incoming_time = Utc.with_ymd_and_hms(2026, 7, 20, 10, 3, 0).unwrap();
+
+        let first_outgoing = insert_silver_leg(
+            &pool,
+            "transitive-first-outgoing",
+            "token-out-a.near",
+            "outgoing",
+            10,
+            first_outgoing_time,
+        )
+        .await?;
+        let second_outgoing = insert_silver_leg(
+            &pool,
+            "transitive-second-outgoing",
+            "token-out-b.near",
+            "outgoing",
+            20,
+            second_outgoing_time,
+        )
+        .await?;
+        let first_incoming = insert_silver_leg(
+            &pool,
+            "transitive-first-incoming",
+            "token-in-a.near",
+            "incoming",
+            30,
+            first_incoming_time,
+        )
+        .await?;
+        let second_incoming = insert_silver_leg(
+            &pool,
+            "transitive-second-incoming",
+            "token-in-b.near",
+            "incoming",
+            40,
+            second_incoming_time,
+        )
+        .await?;
+        insert_completed_exchange(
+            &pool,
+            "transitive-first-exchange",
+            first_outgoing,
+            first_incoming,
+            first_outgoing_time,
+        )
+        .await?;
+        insert_completed_exchange(
+            &pool,
+            "transitive-second-exchange",
+            second_outgoing,
+            second_incoming,
+            second_outgoing_time,
+        )
+        .await?;
+
+        let mut tx = pool.begin().await?;
+        let boundary =
+            widen_for_overlapping_completed_exchanges(&mut tx, DAO_ID, second_incoming_time)
+                .await?;
+        tx.rollback().await?;
+
+        assert_eq!(boundary, first_outgoing_time);
+        Ok(())
+    }
+
     #[sqlx::test]
     async fn reconciliation_skips_when_no_exact_legacy_snapshot_exists(
         pool: PgPool,
@@ -902,12 +1137,12 @@ mod tests {
         assert!(
             seeds
                 .iter()
-                .any(|seed| { seed.asset == token_in && seed.balance == BigDecimal::from(25) })
+                .any(|seed| seed.asset == token_in && seed.balance == 25)
         );
         assert!(
             seeds
                 .iter()
-                .any(|seed| { seed.asset == token_out && seed.balance == BigDecimal::from(42) })
+                .any(|seed| seed.asset == token_out && seed.balance == 42)
         );
 
         Ok(())

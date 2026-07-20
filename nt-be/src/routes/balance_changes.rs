@@ -148,23 +148,69 @@ pub struct EnrichedBalanceChange {
     pub proposal_id: Option<i64>,
 }
 
-/// Internal function to fetch and enrich balance changes
-/// This is the single source of truth for all balance change queries
+/// The backing store selected for one balance-history request.
+///
+/// Composite responses must keep this value for their entire request instead
+/// of checking projection readiness independently for each component query.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BalanceChangesReadSource {
+    Confidential,
+    PublicGold,
+    Legacy,
+}
+
+fn classify_balance_changes_read_source(
+    is_confidential: bool,
+    public_gold_ready: bool,
+) -> BalanceChangesReadSource {
+    if is_confidential {
+        BalanceChangesReadSource::Confidential
+    } else if public_gold_ready {
+        BalanceChangesReadSource::PublicGold
+    } else {
+        BalanceChangesReadSource::Legacy
+    }
+}
+
+pub(crate) async fn resolve_balance_changes_read_source(
+    state: &AppState,
+    account_id: &str,
+) -> Result<BalanceChangesReadSource, sqlx::Error> {
+    if confidential_list::is_confidential_dao(&state.db_pool, account_id).await? {
+        return Ok(classify_balance_changes_read_source(true, false));
+    }
+
+    let public_gold_ready = should_read_public_history(state, account_id).await?;
+    Ok(classify_balance_changes_read_source(
+        false,
+        public_gold_ready,
+    ))
+}
+
+pub(crate) async fn get_balance_changes_from_source(
+    state: &Arc<AppState>,
+    params: &BalanceChangesQuery,
+    source: BalanceChangesReadSource,
+) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
+    match source {
+        BalanceChangesReadSource::Confidential => {
+            confidential_list::fetch_balance_change_legs(state, params).await
+        }
+        BalanceChangesReadSource::PublicGold => {
+            public_list::fetch_balance_change_legs(state, params).await
+        }
+        BalanceChangesReadSource::Legacy => fetch_legacy_balance_changes(state, params).await,
+    }
+}
+
+/// Internal function to fetch and enrich balance changes.
+/// This is the single source of truth for one-query balance change reads.
 pub async fn get_balance_changes_internal(
     state: &Arc<AppState>,
     params: &BalanceChangesQuery,
 ) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
-    let is_confidential =
-        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str()).await?;
-    if is_confidential {
-        return confidential_list::fetch_balance_change_legs(state, params).await;
-    }
-
-    if should_read_public_history(state, params.account_id.as_str()).await? {
-        return public_list::fetch_balance_change_legs(state, params).await;
-    }
-
-    fetch_legacy_balance_changes(state, params).await
+    let source = resolve_balance_changes_read_source(state, params.account_id.as_str()).await?;
+    get_balance_changes_from_source(state, params, source).await
 
     //     // Parse dates
     //     let start_date = params
@@ -809,7 +855,25 @@ pub async fn get_completeness(
 
 #[cfg(test)]
 mod tests {
-    use super::legacy_amount_bounds;
+    use super::{
+        BalanceChangesReadSource, classify_balance_changes_read_source, legacy_amount_bounds,
+    };
+
+    #[test]
+    fn read_source_classification_is_explicit_and_confidential_takes_precedence() {
+        assert_eq!(
+            classify_balance_changes_read_source(true, true),
+            BalanceChangesReadSource::Confidential
+        );
+        assert_eq!(
+            classify_balance_changes_read_source(false, true),
+            BalanceChangesReadSource::PublicGold
+        );
+        assert_eq!(
+            classify_balance_changes_read_source(false, false),
+            BalanceChangesReadSource::Legacy
+        );
+    }
 
     #[test]
     fn legacy_amount_bounds_keep_decimal_adjusted_units() {

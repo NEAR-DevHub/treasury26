@@ -18,6 +18,7 @@ use super::repository::{
     clear_projection_error, delete_stale_gold_rows, earliest_pending_exchange_time,
     earliest_silver_time, has_gold_before, load_dirty_accounts, load_silver_suffix,
     seed_ledger_before, upsert_gold_event, upsert_projection_error,
+    widen_for_overlapping_completed_exchanges,
 };
 use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
 use crate::handlers::public_history::quotes::{
@@ -876,13 +877,20 @@ pub async fn project_public_gold_for_account(
     };
     let recompute_from = choose_recompute_from(earliest, cursor_recompute_from, has_prior_gold);
     let earliest_pending = earliest_pending_exchange_time(&mut tx, account_id).await?;
-    let widened_recompute_from = widen_for_pending_exchange(recompute_from, earliest_pending);
+    let pending_widened_recompute_from =
+        widen_for_pending_exchange(recompute_from, earliest_pending);
+    let widened_recompute_from = widen_for_overlapping_completed_exchanges(
+        &mut tx,
+        account_id,
+        pending_widened_recompute_from,
+    )
+    .await?;
     if widened_recompute_from < recompute_from {
         tracing::debug!(
             account_id = account_id,
             recompute_from = %widened_recompute_from,
             previous_recompute_from = %recompute_from,
-            "public gold recompute widened for pending exchange"
+            "public gold recompute widened to replay full exchange"
         );
     }
     let recompute_from = widened_recompute_from;
@@ -1174,12 +1182,52 @@ mod tests {
             .await?;
         assert!(!is_public_gold_projection_ready(&pool, account_id).await?);
 
+        let (dirty_cleared, validation_pending): (bool, bool) = sqlx::query_as(
+            r#"
+            SELECT
+                gold_dirty_since IS NULL,
+                projection_validation_pending
+            FROM gold_public_history_cursors
+            WHERE account_id = $1
+            "#,
+        )
+        .bind(account_id)
+        .fetch_one(&pool)
+        .await?;
+        assert!(dirty_cleared);
+        assert!(validation_pending);
+        let blocked_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            !blocked_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
+
         sqlx::query("DELETE FROM silver_public_history_projection_errors WHERE account_id = $1")
             .bind(account_id)
             .execute(&pool)
             .await?;
 
+        // No new source dirtiness is required: the durable pending marker
+        // makes scheduler discovery resume as soon as the blocking error has
+        // been resolved.
+        let recoverable_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            recoverable_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(is_public_gold_projection_ready(&pool, account_id).await?);
+
         mark_silver_dirty(&pool, account_id, None).await?;
+        let deferred_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            !deferred_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
         project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
             .await?;
         assert!(!is_public_gold_projection_ready(&pool, account_id).await?);

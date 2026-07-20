@@ -286,7 +286,10 @@ pub async fn clear_gold_dirty_if_not_advanced(
         UPDATE gold_public_history_cursors
         SET gold_dirty_since = NULL,
             gold_recompute_from = NULL,
-            projection_validation_pending = false,
+            -- Projection errors block readiness, but the durable validation
+            -- request must survive so deleting/fixing the error can make the
+            -- account discoverable again without another source event.
+            projection_validation_pending = true,
             updated_at = NOW()
         WHERE account_id = $1
           AND gold_dirty_since <= $2

@@ -14,6 +14,9 @@ pub use balance_changes::{
     BalanceChangesQuery, EnrichedBalanceChange, SwapInfo, get_balance_changes_internal,
     should_read_public_history,
 };
+pub(crate) use balance_changes::{
+    BalanceChangesReadSource, get_balance_changes_from_source, resolve_balance_changes_read_source,
+};
 
 mod monitored_accounts;
 
