@@ -36,6 +36,7 @@ use apalis_cron::{CronStream, Tick};
 use apalis_postgres::{Config, PostgresStorage};
 use axum::Router;
 use cron::Schedule;
+use futures::{StreamExt, stream::FuturesUnordered};
 use sqlx::PgPool;
 use tokio_util::sync::CancellationToken;
 
@@ -905,11 +906,13 @@ async fn run_leader_runtime(
     }
 
     let liveness_pool = state.db_pool.clone();
-    let consumer_handles =
-        crate::handlers::public_history::bronze::jobs::spawn_public_history_queue_workers(
+    let mut consumer_futures: FuturesUnordered<_> =
+        crate::handlers::public_history::bronze::jobs::public_history_queue_worker_futures(
             state,
             shutdown.clone(),
-        );
+        )
+        .into_iter()
+        .collect();
 
     let mut children = tokio::task::JoinSet::new();
     let monitor_shutdown = shutdown.clone();
@@ -923,14 +926,6 @@ async fn run_leader_runtime(
             .map_err(|error| format!("jobs monitor exited: {error}"))
     });
 
-    for handle in consumer_handles {
-        children.spawn(async move {
-            handle
-                .await
-                .map_err(|error| format!("public history consumer supervisor failed: {error}"))
-        });
-    }
-
     // Keep the liveness monitor outside the Apalis Monitor, but inside the
     // elected-leader session. It can still detect a parked worker fleet while
     // followers avoid independently restarting themselves for the leader's
@@ -942,10 +937,14 @@ async fn run_leader_runtime(
     let unexpected_error = tokio::select! {
         _ = shutdown.cancelled() => None,
         result = children.join_next() => Some(runtime_child_error(result)),
+        _ = consumer_futures.next(), if !consumer_futures.is_empty() => {
+            Some("public history consumer supervisor exited unexpectedly".to_string())
+        },
         _ = &mut liveness => Some("job liveness monitor exited unexpectedly".to_string()),
     };
 
     shutdown.cancel();
+    while consumer_futures.next().await.is_some() {}
     while children.join_next().await.is_some() {}
 
     match unexpected_error {

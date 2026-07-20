@@ -12,6 +12,7 @@ use axum::http::StatusCode;
 use sqlx::PgPool;
 use tokio_util::sync::CancellationToken;
 
+use super::PublicHistorySupervisorFuture;
 use super::model::PublicHistoryJob;
 use crate::AppState;
 use crate::handlers::public_history::bronze::NearblocksPriority;
@@ -606,68 +607,79 @@ async fn supervise_public_history_worker<F>(
     }
 }
 
-pub(crate) fn spawn_public_history_job_workers(
+fn public_history_supervisor_future<F>(
+    worker_name: &'static str,
+    shutdown: CancellationToken,
+    config: ConsumerSupervisorConfig,
+    run_worker: F,
+) -> PublicHistorySupervisorFuture
+where
+    F: FnMut(CancellationToken) -> WorkerRunFuture + Send + 'static,
+{
+    Box::pin(supervise_public_history_worker(
+        worker_name,
+        shutdown,
+        config,
+        run_worker,
+    ))
+}
+
+pub(crate) fn public_history_job_worker_futures(
     state: Arc<AppState>,
     shutdown: CancellationToken,
-) -> Vec<tokio::task::JoinHandle<()>> {
+) -> Vec<PublicHistorySupervisorFuture> {
     let config = ConsumerSupervisorConfig::production();
     let latest_state = state.clone();
     let latest_shutdown = shutdown.clone();
-    let latest_handle = tokio::spawn(async move {
-        supervise_public_history_worker(
-            PUBLIC_HISTORY_LATEST_WORKER,
-            latest_shutdown,
-            config,
-            move |worker_shutdown| {
-                let latest_state = latest_state.clone();
-                Box::pin(async move {
-                    let storage = latest_storage(latest_state.db_pool.clone());
-                    WorkerBuilder::new(PUBLIC_HISTORY_LATEST_WORKER)
-                        .backend(storage)
-                        .data(JobContext::new(latest_state))
-                        .timeout(crate::jobs::job_timeout())
-                        .enable_tracing()
-                        .concurrency(JOB_CONCURRENCY)
-                        .build(handle_latest_job)
-                        .run_until(async move {
-                            worker_shutdown.cancelled().await;
-                            Ok::<(), WorkerError>(())
-                        })
-                        .await
-                })
-            },
-        )
-        .await;
-    });
+    let latest = public_history_supervisor_future(
+        PUBLIC_HISTORY_LATEST_WORKER,
+        latest_shutdown,
+        config,
+        move |worker_shutdown| {
+            let latest_state = latest_state.clone();
+            Box::pin(async move {
+                let storage = latest_storage(latest_state.db_pool.clone());
+                WorkerBuilder::new(PUBLIC_HISTORY_LATEST_WORKER)
+                    .backend(storage)
+                    .data(JobContext::new(latest_state))
+                    .timeout(crate::jobs::job_timeout())
+                    .enable_tracing()
+                    .concurrency(JOB_CONCURRENCY)
+                    .build(handle_latest_job)
+                    .run_until(async move {
+                        worker_shutdown.cancelled().await;
+                        Ok::<(), WorkerError>(())
+                    })
+                    .await
+            })
+        },
+    );
 
-    let backfill_handle = tokio::spawn(async move {
-        supervise_public_history_worker(
-            PUBLIC_HISTORY_BACKFILL_WORKER,
-            shutdown,
-            config,
-            move |worker_shutdown| {
-                let state = state.clone();
-                Box::pin(async move {
-                    let storage = backfill_storage(state.db_pool.clone());
-                    WorkerBuilder::new(PUBLIC_HISTORY_BACKFILL_WORKER)
-                        .backend(storage)
-                        .data(JobContext::new(state))
-                        .timeout(crate::jobs::job_timeout())
-                        .enable_tracing()
-                        .concurrency(BACKFILL_JOB_CONCURRENCY)
-                        .build(handle_backfill_job)
-                        .run_until(async move {
-                            worker_shutdown.cancelled().await;
-                            Ok::<(), WorkerError>(())
-                        })
-                        .await
-                })
-            },
-        )
-        .await;
-    });
+    let backfill = public_history_supervisor_future(
+        PUBLIC_HISTORY_BACKFILL_WORKER,
+        shutdown,
+        config,
+        move |worker_shutdown| {
+            let state = state.clone();
+            Box::pin(async move {
+                let storage = backfill_storage(state.db_pool.clone());
+                WorkerBuilder::new(PUBLIC_HISTORY_BACKFILL_WORKER)
+                    .backend(storage)
+                    .data(JobContext::new(state))
+                    .timeout(crate::jobs::job_timeout())
+                    .enable_tracing()
+                    .concurrency(BACKFILL_JOB_CONCURRENCY)
+                    .build(handle_backfill_job)
+                    .run_until(async move {
+                        worker_shutdown.cancelled().await;
+                        Ok::<(), WorkerError>(())
+                    })
+                    .await
+            })
+        },
+    );
 
-    vec![latest_handle, backfill_handle]
+    vec![latest, backfill]
 }
 
 /// The two queue storages, typed for apalis-board registration.
@@ -677,9 +689,17 @@ pub(crate) fn board_storages(pool: PgPool) -> Vec<PostgresStorage<PublicHistoryJ
 
 #[cfg(test)]
 mod supervisor_tests {
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
     use super::*;
+
+    struct DropFlag(Arc<AtomicBool>);
+
+    impl Drop for DropFlag {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::SeqCst);
+        }
+    }
 
     #[test]
     fn restart_backoff_is_exponential_and_capped() {
@@ -790,5 +810,46 @@ mod supervisor_tests {
         shutdown.cancel();
         supervisor.await.expect("supervisor task should not panic");
         assert_eq!(calls.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn aborting_supervisor_owner_drops_active_worker_future() {
+        let shutdown = CancellationToken::new();
+        let started = Arc::new(AtomicBool::new(false));
+        let dropped = Arc::new(AtomicBool::new(false));
+        let runner_started = started.clone();
+        let runner_dropped = dropped.clone();
+        let config = ConsumerSupervisorConfig {
+            initial_backoff: Duration::from_secs(60),
+            max_backoff: Duration::from_secs(60),
+            stability_window: Duration::from_secs(1),
+        };
+
+        let supervisor =
+            public_history_supervisor_future("test-worker", shutdown, config, move |_| {
+                runner_started.store(true, Ordering::SeqCst);
+                let drop_flag = DropFlag(runner_dropped.clone());
+                Box::pin(async move {
+                    let _drop_flag = drop_flag;
+                    std::future::pending::<Result<(), WorkerError>>().await
+                })
+            });
+        let owner = tokio::spawn(supervisor);
+
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while !started.load(Ordering::SeqCst) {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("worker future should start");
+
+        owner.abort();
+        let error = owner.await.expect_err("owner should be cancelled");
+        assert!(error.is_cancelled());
+        assert!(
+            dropped.load(Ordering::SeqCst),
+            "the active worker future must not detach from its supervisor owner"
+        );
     }
 }

@@ -62,6 +62,7 @@ pub async fn project_public_silver_for_account(
 
     let earliest = earliest_bronze_time(&mut tx, account_id).await?;
     let Some(earliest) = earliest else {
+        mark_gold_dirty_for_silver_change(&mut tx, account_id, None).await?;
         clear_silver_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
         tx.commit().await?;
         return Ok(SilverProjectionResult::default());
@@ -118,9 +119,9 @@ pub async fn project_public_silver_for_account(
     stats.rows_deleted =
         delete_stale_silver_rows(&mut tx, account_id, recompute_from, &preserve_leg_keys).await?;
 
-    if stats.rows_projected > 0 || stats.rows_deleted > 0 {
-        mark_gold_dirty_for_silver_change(&mut tx, account_id, Some(recompute_from)).await?;
-    }
+    // Every successful silver cycle must schedule gold validation. Even a
+    // no-op cycle previously invalidated readiness when it became dirty.
+    mark_gold_dirty_for_silver_change(&mut tx, account_id, Some(recompute_from)).await?;
 
     clear_silver_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
     tx.commit().await?;

@@ -281,13 +281,21 @@ async fn sleep_or_shutdown(delay: Duration, shutdown: &CancellationToken) -> boo
 }
 
 async fn stop_runtime(runtime: &mut JoinHandle<Result<(), String>>, session: &CancellationToken) {
+    stop_runtime_with_timeout(runtime, session, RUNTIME_DRAIN_TIMEOUT).await;
+}
+
+async fn stop_runtime_with_timeout(
+    runtime: &mut JoinHandle<Result<(), String>>,
+    session: &CancellationToken,
+    drain_timeout: Duration,
+) {
     session.cancel();
-    if tokio::time::timeout(RUNTIME_DRAIN_TIMEOUT, &mut *runtime)
+    if tokio::time::timeout(drain_timeout, &mut *runtime)
         .await
         .is_err()
     {
         tracing::error!(
-            timeout_secs = RUNTIME_DRAIN_TIMEOUT.as_secs(),
+            timeout_secs = drain_timeout.as_secs(),
             "background job runtime drain timed out; aborting before leadership release"
         );
         runtime.abort();
@@ -511,12 +519,20 @@ pub fn spawn(
 #[cfg(test)]
 mod tests {
     use std::sync::Mutex;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
     use serial_test::serial;
     use sqlx::postgres::PgPoolOptions;
 
     use super::*;
+
+    struct DropFlag(Arc<AtomicBool>);
+
+    impl Drop for DropFlag {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::SeqCst);
+        }
+    }
 
     async fn wait_for_role(
         status: &BackgroundJobsStatus,
@@ -648,6 +664,30 @@ mod tests {
             .expect("backoff sleep should stop promptly")
             .expect("backoff task should not panic");
         assert!(interrupted);
+    }
+
+    #[tokio::test]
+    async fn forced_runtime_stop_waits_until_abort_has_dropped_runtime() {
+        let dropped = Arc::new(AtomicBool::new(false));
+        let runtime_dropped = dropped.clone();
+        let (started_tx, started_rx) = tokio::sync::oneshot::channel();
+        let mut runtime = tokio::spawn(async move {
+            let _drop_flag = DropFlag(runtime_dropped);
+            let _ = started_tx.send(());
+            std::future::pending::<()>().await;
+            Ok(())
+        });
+        started_rx.await.expect("runtime should start");
+
+        let session = CancellationToken::new();
+        stop_runtime_with_timeout(&mut runtime, &session, Duration::ZERO).await;
+
+        assert!(session.is_cancelled());
+        assert!(runtime.is_finished());
+        assert!(
+            dropped.load(Ordering::SeqCst),
+            "stop must await hard-abort completion before leadership can be released"
+        );
     }
 
     #[tokio::test]

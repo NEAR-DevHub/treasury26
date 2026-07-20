@@ -1,3 +1,5 @@
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use tokio_util::sync::CancellationToken;
@@ -18,6 +20,12 @@ pub(crate) const QUEUE_NAMES: [&str; 2] = [
     postgres::PUBLIC_HISTORY_BACKFILL_NAMESPACE,
 ];
 
+/// A public-history consumer supervisor owned and polled by the elected leader
+/// runtime. Keeping these as futures (rather than pre-spawned tasks) guarantees
+/// that aborting the leader runtime also drops the consumers before the
+/// advisory lock is released.
+pub(crate) type PublicHistorySupervisorFuture = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
+
 pub async fn setup_public_history_queue_workers(state: &AppState) -> Result<(), sqlx::Error> {
     if state.env_vars.nearblocks_api_key.is_none() {
         tracing::warn!("public history queue workers disabled: NEARBLOCKS_API_KEY missing");
@@ -28,12 +36,12 @@ pub async fn setup_public_history_queue_workers(state: &AppState) -> Result<(), 
     Ok(())
 }
 
-pub fn spawn_public_history_queue_workers(
+pub(crate) fn public_history_queue_worker_futures(
     state: Arc<AppState>,
     shutdown: CancellationToken,
-) -> Vec<tokio::task::JoinHandle<()>> {
+) -> Vec<PublicHistorySupervisorFuture> {
     if state.env_vars.nearblocks_api_key.is_none() {
         return Vec::new();
     }
-    worker::spawn_public_history_job_workers(state, shutdown)
+    worker::public_history_job_worker_futures(state, shutdown)
 }

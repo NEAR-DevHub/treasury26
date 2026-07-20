@@ -17,7 +17,7 @@ use crate::handlers::balance_changes::confidential_list;
 use crate::handlers::balance_changes::gap_filler;
 use crate::handlers::balance_changes::public_list;
 use crate::handlers::balance_changes::query_builder::*;
-use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
+use crate::handlers::public_history::gold::cursors::is_public_gold_projection_ready;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::utils::serde::comma_separated;
 use crate::{AppState, auth::OptionalAuthUser};
@@ -426,7 +426,8 @@ pub async fn get_balance_changes_internal(
 }
 
 /// Resolve the public read source once for all API adapters. The environment
-/// variable is the manual global switch; incomplete DAOs stay on legacy data.
+/// variable is the manual global switch; accounts stay on legacy data until a
+/// fully caught-up gold projection publishes its durable readiness marker.
 pub async fn should_read_public_history(
     state: &AppState,
     account_id: &str,
@@ -435,7 +436,7 @@ pub async fn should_read_public_history(
         return Ok(false);
     }
 
-    is_public_history_backfill_complete(&state.db_pool, account_id).await
+    is_public_gold_projection_ready(&state.db_pool, account_id).await
 }
 
 async fn fetch_legacy_balance_changes(
@@ -453,25 +454,11 @@ async fn fetch_legacy_balance_changes(
         .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
         .map(|dt| dt.with_timezone(&Utc));
 
-    let (min_amount_raw, max_amount_raw) =
-        if params.min_amount.is_some() || params.max_amount.is_some() {
-            if let Some(tokens) = params.token_ids.as_ref().filter(|tokens| tokens.len() == 1) {
-                let token_id = &tokens[0];
-                let metadata_map =
-                    fetch_tokens_with_fallback(state, std::slice::from_ref(token_id), false, false)
-                        .await;
-                let decimals = metadata_map.get(token_id).map(|m| m.decimals).unwrap_or(24);
-                let multiplier = 10_f64.powi(decimals as i32);
-                (
-                    params.min_amount.map(|value| value * multiplier),
-                    params.max_amount.map(|value| value * multiplier),
-                )
-            } else {
-                (None, None)
-            }
-        } else {
-            (None, None)
-        };
+    let (min_amount, max_amount) = legacy_amount_bounds(
+        params.token_ids.as_deref(),
+        params.min_amount,
+        params.max_amount,
+    );
 
     let filters = BalanceChangeFilters {
         account_id: params.account_id.clone(),
@@ -481,8 +468,8 @@ async fn fetch_legacy_balance_changes(
         token_ids: params.token_ids.clone(),
         exclude_token_ids: params.exclude_token_ids.clone(),
         transaction_types: params.transaction_types.clone(),
-        min_amount: min_amount_raw,
-        max_amount: max_amount_raw,
+        min_amount,
+        max_amount,
         transaction_hash_query: params.tx_hash.clone(),
         from_accounts: params.from_accounts.clone(),
         from_accounts_not: params.from_accounts_not.clone(),
@@ -646,6 +633,21 @@ async fn fetch_legacy_balance_changes(
     Ok(enriched_changes)
 }
 
+fn legacy_amount_bounds(
+    token_ids: Option<&[String]>,
+    min_amount: Option<f64>,
+    max_amount: Option<f64>,
+) -> (Option<f64>, Option<f64>) {
+    if token_ids.is_some_and(|tokens| tokens.len() == 1) {
+        // `balance_changes.amount` is already decimal-adjusted. Keep the API
+        // values in those same units instead of scaling them by token decimals.
+        (min_amount, max_amount)
+    } else {
+        // Amount filters are ambiguous across assets with different decimals.
+        (None, None)
+    }
+}
+
 pub async fn get_balance_changes(
     State(state): State<Arc<AppState>>,
     user: OptionalAuthUser,
@@ -802,5 +804,34 @@ pub async fn get_completeness(
                 })),
             ))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::legacy_amount_bounds;
+
+    #[test]
+    fn legacy_amount_bounds_keep_decimal_adjusted_units() {
+        let tokens = vec!["near".to_string()];
+
+        assert_eq!(
+            legacy_amount_bounds(Some(&tokens), Some(1.5), Some(100.0)),
+            (Some(1.5), Some(100.0))
+        );
+    }
+
+    #[test]
+    fn legacy_amount_bounds_require_exactly_one_token() {
+        let multiple_tokens = vec!["near".to_string(), "usdc.near".to_string()];
+
+        assert_eq!(
+            legacy_amount_bounds(Some(&multiple_tokens), Some(1.5), Some(100.0)),
+            (None, None)
+        );
+        assert_eq!(
+            legacy_amount_bounds(None, Some(1.5), Some(100.0)),
+            (None, None)
+        );
     }
 }
