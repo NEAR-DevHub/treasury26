@@ -1,10 +1,11 @@
 //! USD-value backfills that read the local `token_prices` series.
 //!
-//! Three independent jobs fill NULL USD columns from the 5-minute price
-//! series (no external API calls): `balance_changes.usd_value`, and
-//! `amount_in_usd`/`amount_out_usd` on the public and confidential gold
-//! history events. `usd_change` is left untouched — its semantics are
-//! event-type dependent and quote-anchored where it exists.
+//! Set-based stages fill NULL USD columns from the 5-minute price series (no
+//! external API calls): `balance_changes.usd_value`, and `amount_in_usd` /
+//! `amount_out_usd` on public and confidential gold history events. The gold
+//! stages run after historical price loading in one ordered background job.
+//! `usd_change` is left untouched — its semantics are event-type dependent
+//! and quote-anchored where it exists.
 //!
 //! Pricing is one set-based pass per chunk: the chunk's rows are merged
 //! with the price samples of their tokens, sorted by (token, time), and a
@@ -401,6 +402,11 @@ impl GoldConfidentialUsdBackfill {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use bigdecimal::BigDecimal;
+    use sqlx::PgPool;
+
     use super::*;
 
     #[test]
@@ -454,5 +460,113 @@ mod tests {
         assert!(rendered.contains("skipped_tokens=1"));
         assert!(rendered.contains("price_pending_rows=3"));
         assert!(rendered.contains("price_backfill_pending=true"));
+    }
+
+    #[sqlx::test]
+    async fn public_gold_backfill_fills_deferred_usd_amount(pool: PgPool) -> sqlx::Result<()> {
+        let token_ref: i32 = sqlx::query_scalar(
+            r#"
+            INSERT INTO tokens (
+                token_id, symbol, decimals, blockchain, contract_address,
+                coingecko_id, price_usd, price_updated_at
+            )
+            VALUES (
+                'nep141:wrap.near', 'wNEAR', 24, 'near', 'wrap.near',
+                'near', 3.5, '2026-07-10 08:05:00+00'
+            )
+            RETURNING id
+            "#,
+        )
+        .fetch_one(&pool)
+        .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO token_prices (token_ref, minute_at, price_usd)
+            VALUES ($1, '2026-07-10 08:00:00+00', 3.5)
+            "#,
+        )
+        .bind(token_ref)
+        .execute(&pool)
+        .await?;
+
+        let source_event_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO bronze_public_history_events (
+                account_id, source, source_event_key, block_height,
+                block_timestamp, block_time, affected_account_id, raw_payload
+            )
+            VALUES (
+                'usd-test.sputnik-dao.near', 'nearblocks_ft', 'usd-source', 1,
+                1, '2026-07-10 08:03:00+00', 'usd-test.sputnik-dao.near', '{}'
+            )
+            RETURNING id
+            "#,
+        )
+        .fetch_one(&pool)
+        .await?;
+        let leg_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO silver_public_transfer_legs (
+                account_id, leg_key, source_event_id, source, block_height,
+                block_time, token_standard, token_id, direction, amount_raw,
+                amount, decimals, leg_kind, raw_payload
+            )
+            VALUES (
+                'usd-test.sputnik-dao.near', 'usd-leg', $1, 'nearblocks_ft', 1,
+                '2026-07-10 08:03:00+00', 'nep141', 'wrap.near', 'incoming', 2,
+                2, 24, 'transfer', '{}'
+            )
+            RETURNING id
+            "#,
+        )
+        .bind(source_event_id)
+        .fetch_one(&pool)
+        .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO gold_public_history_events (
+                gold_event_key, primary_transfer_leg_id, dao_id,
+                transaction_type, token_in, amount_in, event_time, status,
+                raw_payload
+            )
+            VALUES (
+                'usd-gold', $1, 'usd-test.sputnik-dao.near',
+                'deposit', 'wrap.near', 2, '2026-07-10 08:03:00+00', 'success',
+                '{}'
+            )
+            "#,
+        )
+        .bind(leg_id)
+        .execute(&pool)
+        .await?;
+
+        let service = Arc::new(TokenPriceService::new(pool.clone()));
+        service.refresh_snapshot().await?;
+        assert_eq!(
+            service.latest_price_for_recent_event("wrap.near", chrono::Utc::now()),
+            Some("3.5".parse().expect("valid decimal"))
+        );
+        assert_eq!(
+            service.latest_price_for_recent_event(
+                "wrap.near",
+                "2026-07-10T08:03:00Z".parse().expect("valid timestamp"),
+            ),
+            None
+        );
+
+        let summary = GoldPublicUsdBackfill::new(pool.clone(), service)
+            .run()
+            .await
+            .expect("USD enrichment succeeds");
+        assert_eq!(summary.rows_updated, 1);
+
+        let amount_in_usd: Option<BigDecimal> = sqlx::query_scalar(
+            "SELECT amount_in_usd FROM gold_public_history_events WHERE gold_event_key = 'usd-gold'",
+        )
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(amount_in_usd, Some("7.0".parse().expect("valid decimal")));
+
+        Ok(())
     }
 }

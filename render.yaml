@@ -25,6 +25,10 @@ services:
         value: json
       - key: PORT
         value: 10000
+      - key: PUBLIC_HISTORY_MEDALLION_READS
+        value: "false"
+      - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
+        value: 300
       - key: JWT_SECRET
         sync: false
       - key: DATABASE_URL
@@ -36,6 +40,7 @@ services:
       - key: TESTING_NEAR_ACCOUNT_IDS
         sync: false
     healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 90
 
   # Frontend Service (Next.js)
   - type: web
@@ -108,6 +113,10 @@ services:
         value: json
       - key: PORT
         value: 10000
+      - key: PUBLIC_HISTORY_MEDALLION_READS
+        value: "false"
+      - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
+        value: 300
       - key: JWT_SECRET
         sync: false
       - key: DATABASE_URL
@@ -119,6 +128,7 @@ services:
       - key: TESTING_NEAR_ACCOUNT_IDS
         sync: false
     healthCheckPath: /api/health
+    maxShutdownDelaySeconds: 90
 
   # Staging Frontend Service (Next.js)
   - type: web

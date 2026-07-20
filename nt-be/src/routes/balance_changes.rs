@@ -6,19 +6,19 @@ use axum::{
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-// use sqlx::query_as; // legacy balance_changes path (commented out below)
+use sqlx::query_as;
 use sqlx::types::BigDecimal;
 use sqlx::types::chrono::{DateTime, Utc};
-// use std::collections::{HashMap, HashSet}; // legacy balance_changes path
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use crate::handlers::balance_changes::completeness;
 use crate::handlers::balance_changes::confidential_list;
 use crate::handlers::balance_changes::gap_filler;
 use crate::handlers::balance_changes::public_list;
-// use crate::handlers::balance_changes::query_builder::*; // legacy balance_changes path
-use crate::handlers::token::TokenMetadata;
-// use crate::handlers::token::fetch_tokens_with_fallback; // legacy balance_changes path
+use crate::handlers::balance_changes::query_builder::*;
+use crate::handlers::public_history::gold::cursors::is_public_gold_projection_ready;
+use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::utils::serde::comma_separated;
 use crate::{AppState, auth::OptionalAuthUser};
 
@@ -148,32 +148,69 @@ pub struct EnrichedBalanceChange {
     pub proposal_id: Option<i64>,
 }
 
-/// Internal function to fetch and enrich balance changes
-/// This is the single source of truth for all balance change queries
+/// The backing store selected for one balance-history request.
+///
+/// Composite responses must keep this value for their entire request instead
+/// of checking projection readiness independently for each component query.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BalanceChangesReadSource {
+    Confidential,
+    PublicGold,
+    Legacy,
+}
+
+fn classify_balance_changes_read_source(
+    is_confidential: bool,
+    public_gold_ready: bool,
+) -> BalanceChangesReadSource {
+    if is_confidential {
+        BalanceChangesReadSource::Confidential
+    } else if public_gold_ready {
+        BalanceChangesReadSource::PublicGold
+    } else {
+        BalanceChangesReadSource::Legacy
+    }
+}
+
+pub(crate) async fn resolve_balance_changes_read_source(
+    state: &AppState,
+    account_id: &str,
+) -> Result<BalanceChangesReadSource, sqlx::Error> {
+    if confidential_list::is_confidential_dao(&state.db_pool, account_id).await? {
+        return Ok(classify_balance_changes_read_source(true, false));
+    }
+
+    let public_gold_ready = should_read_public_history(state, account_id).await?;
+    Ok(classify_balance_changes_read_source(
+        false,
+        public_gold_ready,
+    ))
+}
+
+pub(crate) async fn get_balance_changes_from_source(
+    state: &Arc<AppState>,
+    params: &BalanceChangesQuery,
+    source: BalanceChangesReadSource,
+) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
+    match source {
+        BalanceChangesReadSource::Confidential => {
+            confidential_list::fetch_balance_change_legs(state, params).await
+        }
+        BalanceChangesReadSource::PublicGold => {
+            public_list::fetch_balance_change_legs(state, params).await
+        }
+        BalanceChangesReadSource::Legacy => fetch_legacy_balance_changes(state, params).await,
+    }
+}
+
+/// Internal function to fetch and enrich balance changes.
+/// This is the single source of truth for one-query balance change reads.
 pub async fn get_balance_changes_internal(
     state: &Arc<AppState>,
     params: &BalanceChangesQuery,
 ) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
-    let is_confidential =
-        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str()).await?;
-    if is_confidential {
-        return confidential_list::fetch_balance_change_legs(state, params).await;
-    }
-
-    let has_public_gold_rows: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM gold_public_history_events WHERE dao_id = $1)",
-    )
-    .bind(params.account_id.as_str())
-    .fetch_one(&state.db_pool)
-    .await?;
-
-    if has_public_gold_rows {
-        return public_list::fetch_balance_change_legs(state, params).await;
-    }
-
-    // No gold public history yet — return empty instead of falling back to
-    // the legacy `balance_changes` table (kept commented below).
-    Ok(Vec::new())
+    let source = resolve_balance_changes_read_source(state, params.account_id.as_str()).await?;
+    get_balance_changes_from_source(state, params, source).await
 
     //     // Parse dates
     //     let start_date = params
@@ -434,6 +471,229 @@ pub async fn get_balance_changes_internal(
     //     Ok(enriched_changes)
 }
 
+/// Resolve the public read source once for all API adapters. The environment
+/// variable is the manual global switch; accounts stay on legacy data until a
+/// fully caught-up gold projection publishes its durable readiness marker.
+pub async fn should_read_public_history(
+    state: &AppState,
+    account_id: &str,
+) -> Result<bool, sqlx::Error> {
+    if !state.env_vars.public_history_medallion_reads {
+        return Ok(false);
+    }
+
+    is_public_gold_projection_ready(&state.db_pool, account_id).await
+}
+
+async fn fetch_legacy_balance_changes(
+    state: &Arc<AppState>,
+    params: &BalanceChangesQuery,
+) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
+    let start_date = params
+        .start_time
+        .as_ref()
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc));
+    let end_date = params
+        .end_time
+        .as_ref()
+        .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+        .map(|dt| dt.with_timezone(&Utc));
+
+    let (min_amount, max_amount) = legacy_amount_bounds(
+        params.token_ids.as_deref(),
+        params.min_amount,
+        params.max_amount,
+    );
+
+    let filters = BalanceChangeFilters {
+        account_id: params.account_id.clone(),
+        date_cutoff: None,
+        start_date,
+        end_date,
+        token_ids: params.token_ids.clone(),
+        exclude_token_ids: params.exclude_token_ids.clone(),
+        transaction_types: params.transaction_types.clone(),
+        min_amount,
+        max_amount,
+        transaction_hash_query: params.tx_hash.clone(),
+        from_accounts: params.from_accounts.clone(),
+        from_accounts_not: params.from_accounts_not.clone(),
+        to_accounts: params.to_accounts.clone(),
+        to_accounts_not: params.to_accounts_not.clone(),
+        exclude_near_dust: params.exclude_near_dust,
+        exclude_swaps_from_direction: params.exclude_swaps_from_direction,
+    };
+
+    let select_fields = "id, account_id, block_height, block_time, token_id, receipt_id, transaction_hashes, counterparty, signer_id, receiver_id, amount, balance_before, balance_after, created_at, action_kind, method_name, actions, usd_value";
+    let with_pagination = params.limit.is_some() || params.offset.is_some();
+    let (query_str, _) = build_select_query(
+        &filters,
+        select_fields,
+        "block_height DESC, id DESC",
+        with_pagination,
+    );
+    let mut query = query_as::<_, BalanceChange>(&query_str).bind(filters.account_id.as_str());
+
+    if let Some(ref cutoff) = filters.date_cutoff {
+        query = query.bind(cutoff);
+    }
+    if let Some(ref start) = filters.start_date {
+        query = query.bind(start);
+    }
+    if let Some(ref end) = filters.end_date {
+        query = query.bind(end);
+    }
+    if let Some(ref tokens) = filters.token_ids {
+        query = query.bind(tokens);
+    } else if let Some(ref exclude_tokens) = filters.exclude_token_ids {
+        query = query.bind(exclude_tokens);
+    }
+    if let Some(min) = filters.min_amount {
+        query = query.bind(min);
+    }
+    if let Some(max) = filters.max_amount {
+        query = query.bind(max);
+    }
+    if let Some(ref tx_hash_query) = filters.transaction_hash_query {
+        query = query.bind(format!("%{}%", tx_hash_query));
+    }
+    if let Some(ref from_accounts) = filters.from_accounts {
+        query = query.bind(from_accounts);
+    }
+    if let Some(ref from_accounts_not) = filters.from_accounts_not {
+        query = query.bind(from_accounts_not);
+    }
+    if let Some(ref to_accounts) = filters.to_accounts {
+        query = query.bind(to_accounts);
+    }
+    if let Some(ref to_accounts_not) = filters.to_accounts_not {
+        query = query.bind(to_accounts_not);
+    }
+    if with_pagination {
+        query = query
+            .bind(params.limit.unwrap_or(100).min(1000))
+            .bind(params.offset.unwrap_or(0));
+    }
+
+    let changes = query.fetch_all(&state.db_pool).await?;
+    let mut enriched_changes: Vec<EnrichedBalanceChange> = changes
+        .into_iter()
+        .map(|change| {
+            let (token_id, counterparty, action_kind) = if change.token_id.starts_with("staking:") {
+                let pool_address = change
+                    .token_id
+                    .strip_prefix("staking:")
+                    .unwrap_or(&change.token_id);
+                (
+                    "near".to_string(),
+                    Some(pool_address.to_string()),
+                    Some("StakingReward".to_string()),
+                )
+            } else {
+                (
+                    change.token_id.clone(),
+                    change.counterparty.clone(),
+                    change.action_kind,
+                )
+            };
+
+            EnrichedBalanceChange {
+                id: change.id,
+                account_id: change.account_id,
+                block_height: change.block_height,
+                block_time: change.block_time,
+                token_id,
+                receipt_id: change.receipt_id,
+                transaction_hashes: change.transaction_hashes,
+                counterparty,
+                signer_id: change.signer_id,
+                receiver_id: change.receiver_id,
+                amount: change.amount,
+                balance_before: change.balance_before,
+                balance_after: change.balance_after,
+                created_at: change.created_at,
+                token_metadata: None,
+                swap: None,
+                action_kind,
+                method_name: change.method_name,
+                actions: change.actions,
+                usd_value: change.usd_value,
+                proposal_id: None,
+            }
+        })
+        .collect();
+
+    if params.include_metadata.unwrap_or(false) {
+        let token_ids = enriched_changes
+            .iter()
+            .map(|change| change.token_id.clone())
+            .collect::<Vec<_>>();
+        let metadata_map = fetch_tokens_with_fallback(
+            state,
+            &token_ids,
+            params.include_chain_metadata.unwrap_or(false),
+            false,
+        )
+        .await;
+        for change in &mut enriched_changes {
+            change.token_metadata = metadata_map.get(&change.token_id).cloned();
+        }
+    }
+
+    if params.include_prices.unwrap_or(false) {
+        let mut token_dates: HashMap<String, HashSet<chrono::NaiveDate>> = HashMap::new();
+        for change in &enriched_changes {
+            token_dates
+                .entry(change.token_id.clone())
+                .or_default()
+                .insert(change.block_time.date_naive());
+        }
+
+        let mut all_prices = HashMap::new();
+        for (token_id, dates) in token_dates {
+            match state
+                .price_service
+                .get_prices_batch(&token_id, &dates.into_iter().collect::<Vec<_>>())
+                .await
+            {
+                Ok(prices) => {
+                    all_prices.insert(token_id, prices);
+                }
+                Err(error) => {
+                    tracing::warn!(token_id, error = %error, "legacy price lookup failed");
+                }
+            }
+        }
+        for change in &mut enriched_changes {
+            if let Some(metadata) = change.token_metadata.as_mut()
+                && let Some(price) = all_prices
+                    .get(&change.token_id)
+                    .and_then(|prices| prices.get(&change.block_time.date_naive()))
+            {
+                metadata.price = Some(*price);
+            }
+        }
+    }
+
+    Ok(enriched_changes)
+}
+
+fn legacy_amount_bounds(
+    token_ids: Option<&[String]>,
+    min_amount: Option<f64>,
+    max_amount: Option<f64>,
+) -> (Option<f64>, Option<f64>) {
+    if token_ids.is_some_and(|tokens| tokens.len() == 1) {
+        // `balance_changes.amount` is already decimal-adjusted. Keep the API
+        // values in those same units instead of scaling them by token decimals.
+        (min_amount, max_amount)
+    } else {
+        // Amount filters are ambiguous across assets with different decimals.
+        (None, None)
+    }
+}
+
 pub async fn get_balance_changes(
     State(state): State<Arc<AppState>>,
     user: OptionalAuthUser,
@@ -590,5 +850,52 @@ pub async fn get_completeness(
                 })),
             ))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        BalanceChangesReadSource, classify_balance_changes_read_source, legacy_amount_bounds,
+    };
+
+    #[test]
+    fn read_source_classification_is_explicit_and_confidential_takes_precedence() {
+        assert_eq!(
+            classify_balance_changes_read_source(true, true),
+            BalanceChangesReadSource::Confidential
+        );
+        assert_eq!(
+            classify_balance_changes_read_source(false, true),
+            BalanceChangesReadSource::PublicGold
+        );
+        assert_eq!(
+            classify_balance_changes_read_source(false, false),
+            BalanceChangesReadSource::Legacy
+        );
+    }
+
+    #[test]
+    fn legacy_amount_bounds_keep_decimal_adjusted_units() {
+        let tokens = vec!["near".to_string()];
+
+        assert_eq!(
+            legacy_amount_bounds(Some(&tokens), Some(1.5), Some(100.0)),
+            (Some(1.5), Some(100.0))
+        );
+    }
+
+    #[test]
+    fn legacy_amount_bounds_require_exactly_one_token() {
+        let multiple_tokens = vec!["near".to_string(), "usdc.near".to_string()];
+
+        assert_eq!(
+            legacy_amount_bounds(Some(&multiple_tokens), Some(1.5), Some(100.0)),
+            (None, None)
+        );
+        assert_eq!(
+            legacy_amount_bounds(None, Some(1.5), Some(100.0)),
+            (None, None)
+        );
     }
 }

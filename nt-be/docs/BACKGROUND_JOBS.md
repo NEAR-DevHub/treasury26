@@ -17,10 +17,23 @@ What this replaces: 17 hand-rolled `tokio::spawn` + interval loops in
 
 ## Resilience
 
-All workers run under a single apalis `Monitor` (`spawn_all` in
-`src/jobs/mod.rs`) — the framework's own multi-worker supervisor, rather
-than a hand-rolled `tokio::spawn` loop per worker. It gives three layers of
-failure containment plus coordinated shutdown:
+Every web replica prepares the Apalis schema and queue registry, but only the
+replica holding the PostgreSQL session advisory lock `(0x54525A55, 1)` starts
+workers. The elected replica holds one pooled connection for its complete
+leadership session; followers release unsuccessful connections immediately,
+continue serving HTTP, and retry election with jittered exponential backoff
+(2s→30s). PostgreSQL automatically releases the lock if the leader process or
+connection dies.
+
+The leader runs all cron workers under one Apalis `Monitor` and starts the two
+public-history payload consumers (`public-history-latest` and
+`public-history-backfill`) in the same leadership session. This prevents a
+rolling deployment from creating a second scheduler or a second fixed-name
+payload worker. Startup tasks are pushed only on the first leadership
+acquisition per process and are skipped when an active task for that queue
+already exists.
+
+Failure containment and coordinated shutdown have four layers:
 
 1. **Task errors** — the failure is recorded and the next cron tick starts
    a fresh task. One bad cycle never stops the schedule. There is
@@ -38,14 +51,43 @@ failure containment plus coordinated shutdown:
    a restart. The whole set runs on one supervised task and stops together
    on **`SIGINT` or `SIGTERM`** (`run_with_signal`) — SIGTERM being what
    containers/systemd send for a graceful stop.
+4. **Replica exit or leadership loss** — a five-second heartbeat verifies the
+   lock-owning connection. A heartbeat failure or unexpected runtime exit
+   cancels and drains the complete worker runtime before leadership is
+   reacquired. Graceful shutdown explicitly unlocks before returning the
+   connection to the pool; any unlock failure closes the connection instead,
+   so a lock-bearing session is never reused.
 
-Restarts are immediate (apalis's `Monitor`'s `should_restart` hook is
-synchronous, so it can't back off). This doesn't hot-loop: transient DB
-outages are absorbed by apalis-postgres's own fetcher backoff (1s→5min)
-*inside* `worker.run()`, so a worker rarely exits on a blip; it only exits
-on a terminal condition, which is rare. If a cooldown on repeated exits is
-later wanted, apalis's native `circuit_breaker` worker ext (with a
-`recovery_timeout`) is the tool.
+Cron worker restarts remain immediate because apalis's `Monitor` hook is
+synchronous. The public-history payload consumers instead retry every
+unexpected worker-loop exit with jittered exponential backoff (2s→60s),
+including `WORKER_ALREADY_EXISTS` as a final safeguard and terminal
+database/TLS disconnects. Ordinary task-handler failures remain task results
+inside Apalis and do not restart a consumer. A shared shutdown token cancels
+election/backoff sleeps and lets active workers drain without delaying HTTP
+readiness or shared HTTP clients.
+
+The durable `background_job_leader` row records the current generation and
+heartbeat for operations; `/api/health` reports both the local role and global
+leadership record without making followers unhealthy. The leader reserves one
+slot from the 20-connection application pool, leaving up to 19 for application
+and worker queries.
+
+Leadership guarantees one active scheduler/runtime during normal operation.
+Task processing itself remains at-least-once: after a crash, Apalis may retry a
+task whose completion was not persisted, so handlers still need their existing
+idempotency and deduplication protections.
+
+Public silver and gold projection remain idle for a DAO until all three rows in
+`bronze_public_history_cursors` (`nearblocks_ft`, `nearblocks_mt`, and
+`nearblocks_receipt`) have `backfill_done = true`. Public API reads stay on
+legacy `balance_changes` by default; setting `PUBLIC_HISTORY_MEDALLION_READS=true`
+routes backfill-complete public DAOs to `gold_public_history_events`.
+
+Gold projection values recent ordinary transfers from the in-memory latest-price
+snapshot, without a database or external request. Historical rows and recent
+rows whose token has no cached price keep NULL USD amounts until the ordered
+`gold-usd-enrichment` job fills them. Exchange quote USD remains authoritative.
 
 Handlers that do several steps run **all** steps and aggregate failures
 rather than aborting on the first error (e.g. notifications detect +
@@ -94,9 +136,10 @@ returning a plain `404` (the board only owns `/api/v1`).
 | confidential-poll | every 300s | CONFIDENTIAL_POLL_INTERVAL_SECONDS | gated by DISABLE_BALANCE_MONITORING |
 | price-sync | every 60s | — | syncs DeFiLlama prices into `historical_prices` |
 | token-price-ingest | every 60s | — | refreshes `tokens` and 5-minute `token_prices` from Chaindefuser |
+| gold-usd-enrichment | every 5min + startup task | GOLD_USD_ENRICHMENT_INTERVAL_SECONDS | ordered historical-price load, then NULL public/confidential USD fill; projection never waits for prices |
 | public-history-scheduler | every 2s | — | enqueues public latest/backfill page jobs; latest enqueue skipped without GOLDSKY_DATABASE_URL |
-| public-silver-projection | every 5s | — | gated by NEARBLOCKS_API_KEY |
-| public-gold-projection | every 5s | — | gated by NEARBLOCKS_API_KEY |
+| public-silver-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
+| public-gold-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
 | public-proposal-reconciliation | every 10min | — | gated by NEARBLOCKS_API_KEY |
 | confidential-history-ingest | every 10s | — | |
 | confidential-snapshots | hourly | — | |

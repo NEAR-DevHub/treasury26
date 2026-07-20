@@ -6,7 +6,10 @@ use futures::StreamExt;
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
-use super::cursors::clear_gold_dirty_if_not_advanced;
+use super::cursors::{
+    clear_gold_dirty_if_not_advanced, complete_gold_projection_if_current,
+    ensure_gold_projection_scheduled_tx, has_public_history_projection_errors,
+};
 use super::models::{
     GoldLedger, GoldProjectionCycleStats, GoldProjectionResult, GoldPublicHistoryEvent,
     PublicHistoryEventStatus,
@@ -15,7 +18,9 @@ use super::repository::{
     clear_projection_error, delete_stale_gold_rows, earliest_pending_exchange_time,
     earliest_silver_time, has_gold_before, load_dirty_accounts, load_silver_suffix,
     seed_ledger_before, upsert_gold_event, upsert_projection_error,
+    widen_for_overlapping_completed_exchanges,
 };
+use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
 use crate::handlers::public_history::quotes::{
     QuoteProposalSnapshot, QuoteProposalType, proposal_quote_from_metadata, quote_amount_matches,
     quote_asset_matches_token, quote_status_str_is_failed, quote_status_value_from_metadata,
@@ -542,34 +547,15 @@ fn plan_exchange_pairs(
     })
 }
 
-/// USD value of a leg's decimal-adjusted amount at the event time. Lookup
-/// failures degrade to None (NULL in gold) rather than failing projection.
-async fn leg_amount_usd(
-    token_prices: &TokenPriceService,
-    leg: &SilverTransferLegRow,
-    event_time: chrono::DateTime<chrono::Utc>,
-) -> Option<BigDecimal> {
-    match token_prices
-        .price_for_valuation(&leg.token_id, event_time)
-        .await
-    {
-        Ok(price) => price.map(|price| &leg.amount * price),
-        Err(e) => {
-            tracing::warn!(
-                token_id = %leg.token_id,
-                error = %e,
-                "price lookup failed for gold usd valuation"
-            );
-            None
-        }
-    }
-}
-
-async fn public_gold_event_from_leg(
+/// Build a ledger event using only an optional, already-resolved current USD
+/// value. Historical lookup is deliberately outside this constructor and is
+/// handled by asynchronous enrichment. Exchange events keep their exact
+/// quote-provided USD values in the dedicated constructors below.
+fn public_gold_event_from_leg(
     leg: &SilverTransferLegRow,
     quote: Option<&ParsedQuoteMetadata>,
     ledger: &mut GoldLedger,
-    token_prices: &TokenPriceService,
+    amount_usd: Option<BigDecimal>,
     relayer_account: &str,
 ) -> Result<Option<GoldPublicHistoryEvent>, String> {
     let direction = leg_direction(leg)?;
@@ -582,7 +568,6 @@ async fn public_gold_event_from_leg(
 
     match direction {
         PublicTransferDirection::Incoming => {
-            let amount_in_usd = leg_amount_usd(token_prices, leg, event_time).await;
             let (before, after) = ledger.apply_in(&leg.token_id, &leg.amount);
             Ok(Some(GoldPublicHistoryEvent {
                 gold_event_key,
@@ -595,7 +580,7 @@ async fn public_gold_event_from_leg(
                 token_out: None,
                 amount_in: Some(leg.amount.clone()),
                 amount_out: None,
-                amount_in_usd,
+                amount_in_usd: amount_usd,
                 amount_out_usd: None,
                 usd_change: None,
                 token_in_balance_before: Some(before),
@@ -622,7 +607,6 @@ async fn public_gold_event_from_leg(
             }))
         }
         PublicTransferDirection::Outgoing => {
-            let amount_out_usd = leg_amount_usd(token_prices, leg, event_time).await;
             let quote_payment = is_quote_payment_outgoing(leg, quote, relayer_account)?;
             let (token_out_balance_before, token_out_balance_after) = if is_synthetic_quote_leg(leg)
             {
@@ -649,7 +633,7 @@ async fn public_gold_event_from_leg(
                 amount_in: None,
                 amount_out: Some(leg.amount.clone()),
                 amount_in_usd: None,
-                amount_out_usd,
+                amount_out_usd: amount_usd,
                 usd_change: None,
                 token_in_balance_before: None,
                 token_in_balance_after: None,
@@ -824,6 +808,10 @@ pub async fn project_public_gold_for_account(
     account_id: &str,
     relayer_account: &str,
 ) -> Result<GoldProjectionResult, sqlx::Error> {
+    if !is_public_history_backfill_complete(pool, account_id).await? {
+        return Ok(GoldProjectionResult::default());
+    }
+
     let mut tx = pool.begin().await?;
 
     let got_lock: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtext($1))")
@@ -838,15 +826,18 @@ pub async fn project_public_gold_for_account(
         });
     }
 
+    ensure_gold_projection_scheduled_tx(&mut tx, account_id).await?;
+
     let cursor = sqlx::query_as::<
         _,
         (
             chrono::DateTime<chrono::Utc>,
             Option<chrono::DateTime<chrono::Utc>>,
+            bool,
         ),
     >(
         r#"
-        SELECT gold_dirty_since, gold_recompute_from
+        SELECT gold_dirty_since, gold_recompute_from, gold_force_full_recompute
         FROM gold_public_history_cursors
         WHERE account_id = $1
           AND gold_dirty_since IS NOT NULL
@@ -857,18 +848,27 @@ pub async fn project_public_gold_for_account(
     .fetch_optional(&mut *tx)
     .await?;
 
-    let Some((dirty_since, cursor_recompute_from)) = cursor else {
+    let Some((dirty_since, cursor_recompute_from, force_full_recompute)) = cursor else {
         tx.commit().await?;
         return Ok(GoldProjectionResult::default());
     };
 
     let earliest = earliest_silver_time(&mut tx, account_id).await?;
     let Some(earliest) = earliest else {
-        clear_gold_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
+        if has_public_history_projection_errors(&mut tx, account_id).await? {
+            clear_gold_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
+        } else {
+            complete_gold_projection_if_current(&mut tx, account_id, dirty_since).await?;
+        }
         tx.commit().await?;
         return Ok(GoldProjectionResult::default());
     };
 
+    let cursor_recompute_from = if force_full_recompute {
+        None
+    } else {
+        cursor_recompute_from
+    };
     let initial_recompute_from = cursor_recompute_from.unwrap_or(earliest);
     let has_prior_gold = if earliest < initial_recompute_from {
         has_gold_before(&mut tx, account_id, initial_recompute_from).await?
@@ -877,13 +877,20 @@ pub async fn project_public_gold_for_account(
     };
     let recompute_from = choose_recompute_from(earliest, cursor_recompute_from, has_prior_gold);
     let earliest_pending = earliest_pending_exchange_time(&mut tx, account_id).await?;
-    let widened_recompute_from = widen_for_pending_exchange(recompute_from, earliest_pending);
+    let pending_widened_recompute_from =
+        widen_for_pending_exchange(recompute_from, earliest_pending);
+    let widened_recompute_from = widen_for_overlapping_completed_exchanges(
+        &mut tx,
+        account_id,
+        pending_widened_recompute_from,
+    )
+    .await?;
     if widened_recompute_from < recompute_from {
         tracing::debug!(
             account_id = account_id,
             recompute_from = %widened_recompute_from,
             previous_recompute_from = %recompute_from,
-            "public gold recompute widened for pending exchange"
+            "public gold recompute widened to replay full exchange"
         );
     }
     let recompute_from = widened_recompute_from;
@@ -988,9 +995,11 @@ pub async fn project_public_gold_for_account(
             continue;
         }
 
-        match public_gold_event_from_leg(&leg, quote, &mut ledger, token_prices, relayer_account)
-            .await
-        {
+        let event_time = leg.proposal_executed_at.unwrap_or(leg.block_time);
+        let amount_usd = token_prices
+            .latest_price_for_recent_event(&leg.token_id, event_time)
+            .map(|price| &leg.amount * price);
+        match public_gold_event_from_leg(&leg, quote, &mut ledger, amount_usd, relayer_account) {
             Ok(Some(event)) => {
                 preserve_keys.insert(event.gold_event_key.clone());
                 upsert_gold_event(&mut tx, &event).await?;
@@ -1012,7 +1021,14 @@ pub async fn project_public_gold_for_account(
     stats.rows_deleted =
         delete_stale_gold_rows(&mut tx, account_id, recompute_from, &preserve_keys).await?;
 
-    clear_gold_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
+    super::repository::reconcile_latest_gold_balances(&mut tx, account_id).await?;
+
+    let has_projection_errors = has_public_history_projection_errors(&mut tx, account_id).await?;
+    if stats.errors_written == 0 && !has_projection_errors {
+        complete_gold_projection_if_current(&mut tx, account_id, dirty_since).await?;
+    } else {
+        clear_gold_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
+    }
     tx.commit().await?;
 
     Ok(stats)
@@ -1080,11 +1096,285 @@ pub async fn project_public_gold_for_dirty_accounts(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::handlers::public_history::bronze::store::{
+        PublicHistorySource, save_public_backfill_progress,
+    };
+    use crate::handlers::public_history::gold::cursors::{
+        is_public_gold_projection_ready, mark_gold_dirty,
+    };
+    use crate::handlers::public_history::silver::cursors::mark_silver_dirty;
+    use crate::handlers::public_history::silver::worker::project_public_silver_for_account;
 
     const TEST_RELAYER_ACCOUNT: &str = "relayer.test.near";
 
     fn decimal(value: &str) -> BigDecimal {
         value.parse().expect("valid decimal")
+    }
+
+    #[sqlx::test]
+    async fn projection_readiness_waits_for_silver_and_invalidates_when_dirty(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let account_id = "projection-readiness-test.sputnik-dao.near";
+        for source in PublicHistorySource::all() {
+            save_public_backfill_progress(&pool, account_id, source, None, true).await?;
+        }
+
+        assert!(!is_public_gold_projection_ready(&pool, account_id).await?);
+        let token_prices = TokenPriceService::new(pool.clone());
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(is_public_gold_projection_ready(&pool, account_id).await?);
+
+        // A successful no-op silver pass still has to schedule gold validation
+        // because marking silver dirty invalidated the prior readiness marker.
+        mark_silver_dirty(&pool, account_id, None).await?;
+        project_public_silver_for_account(&pool, account_id).await?;
+        let gold_dirty_after_noop_silver: bool = sqlx::query_scalar(
+            "SELECT gold_dirty_since IS NOT NULL FROM gold_public_history_cursors WHERE account_id = $1",
+        )
+        .bind(account_id)
+        .fetch_one(&pool)
+        .await?;
+        assert!(gold_dirty_after_noop_silver);
+        assert!(!is_public_gold_projection_ready(&pool, account_id).await?);
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(is_public_gold_projection_ready(&pool, account_id).await?);
+
+        let source_event_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO bronze_public_history_events (
+                account_id,
+                source,
+                source_event_key,
+                block_height,
+                block_timestamp,
+                block_time,
+                affected_account_id,
+                raw_payload
+            )
+            VALUES ($1, 'nearblocks_ft', 'projection-readiness-error', 1, 1, NOW(), $1, '{}')
+            RETURNING id
+            "#,
+        )
+        .bind(account_id)
+        .fetch_one(&pool)
+        .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO silver_public_history_projection_errors (
+                source_event_id,
+                account_id,
+                reason,
+                raw_payload
+            )
+            VALUES ($1, $2, 'test projection error', '{}')
+            "#,
+        )
+        .bind(source_event_id)
+        .bind(account_id)
+        .execute(&pool)
+        .await?;
+
+        mark_gold_dirty(&pool, account_id, None).await?;
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(!is_public_gold_projection_ready(&pool, account_id).await?);
+
+        let (dirty_cleared, validation_pending): (bool, bool) = sqlx::query_as(
+            r#"
+            SELECT
+                gold_dirty_since IS NULL,
+                projection_validation_pending
+            FROM gold_public_history_cursors
+            WHERE account_id = $1
+            "#,
+        )
+        .bind(account_id)
+        .fetch_one(&pool)
+        .await?;
+        assert!(dirty_cleared);
+        assert!(validation_pending);
+        let blocked_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            !blocked_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
+
+        sqlx::query("DELETE FROM silver_public_history_projection_errors WHERE account_id = $1")
+            .bind(account_id)
+            .execute(&pool)
+            .await?;
+
+        // No new source dirtiness is required: the durable pending marker
+        // makes scheduler discovery resume as soon as the blocking error has
+        // been resolved.
+        let recoverable_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            recoverable_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(is_public_gold_projection_ready(&pool, account_id).await?);
+
+        mark_silver_dirty(&pool, account_id, None).await?;
+        let deferred_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            !deferred_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(!is_public_gold_projection_ready(&pool, account_id).await?);
+
+        sqlx::query(
+            r#"
+            UPDATE silver_public_history_cursors
+            SET silver_dirty_since = NULL,
+                silver_recompute_from = NULL
+            WHERE account_id = $1
+            "#,
+        )
+        .bind(account_id)
+        .execute(&pool)
+        .await?;
+
+        let recoverable_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            recoverable_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(is_public_gold_projection_ready(&pool, account_id).await?);
+
+        let transfer_leg_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO silver_public_transfer_legs (
+                account_id,
+                leg_key,
+                source_event_id,
+                source,
+                block_height,
+                block_time,
+                token_standard,
+                token_id,
+                direction,
+                counterparty,
+                amount_raw,
+                amount,
+                decimals,
+                leg_kind,
+                raw_payload
+            )
+            VALUES (
+                $1, 'projection-readiness-leg', $2, 'nearblocks_ft', 1, NOW(),
+                'nep141', 'token.near', 'incoming', 'alice.near', 1, 1, 0,
+                'transfer', '{}'
+            )
+            RETURNING id
+            "#,
+        )
+        .bind(account_id)
+        .bind(source_event_id)
+        .fetch_one(&pool)
+        .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO gold_public_history_projection_errors (
+                transfer_leg_id,
+                dao_id,
+                reason,
+                raw_payload
+            )
+            VALUES ($1, $2, 'test gold projection error', '{}')
+            "#,
+        )
+        .bind(transfer_leg_id)
+        .bind(account_id)
+        .execute(&pool)
+        .await?;
+        mark_gold_dirty(&pool, account_id, None).await?;
+
+        let dirty_since = sqlx::query_scalar(
+            "SELECT gold_dirty_since FROM gold_public_history_cursors WHERE account_id = $1",
+        )
+        .bind(account_id)
+        .fetch_one(&pool)
+        .await?;
+        let mut tx = pool.begin().await?;
+        assert!(!complete_gold_projection_if_current(&mut tx, account_id, dirty_since).await?);
+        tx.commit().await?;
+        assert!(!is_public_gold_projection_ready(&pool, account_id).await?);
+
+        sqlx::query("DELETE FROM gold_public_history_projection_errors WHERE dao_id = $1")
+            .bind(account_id)
+            .execute(&pool)
+            .await?;
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(is_public_gold_projection_ready(&pool, account_id).await?);
+
+        // Simulate an older binary: it dirties and clears only legacy cursor
+        // fields. Database triggers invalidate the epoch, while the durable
+        // pending bit lets a current projector recover the validation pass.
+        sqlx::query(
+            "UPDATE silver_public_history_cursors SET silver_dirty_since = NOW() WHERE account_id = $1",
+        )
+        .bind(account_id)
+        .execute(&pool)
+        .await?;
+        let (ready_version, validation_pending): (i32, bool) = sqlx::query_as(
+            r#"
+            SELECT projection_ready_version, projection_validation_pending
+            FROM gold_public_history_cursors
+            WHERE account_id = $1
+            "#,
+        )
+        .bind(account_id)
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(ready_version, 0);
+        assert!(validation_pending);
+
+        sqlx::query(
+            "UPDATE silver_public_history_cursors SET silver_dirty_since = NULL WHERE account_id = $1",
+        )
+        .bind(account_id)
+        .execute(&pool)
+        .await?;
+        sqlx::query(
+            r#"
+            UPDATE gold_public_history_cursors
+            SET gold_dirty_since = NULL,
+                gold_recompute_from = NULL
+            WHERE account_id = $1
+            "#,
+        )
+        .bind(account_id)
+        .execute(&pool)
+        .await?;
+
+        let recoverable_accounts = load_dirty_accounts(&pool).await?;
+        assert!(
+            recoverable_accounts
+                .iter()
+                .any(|account| account.account_id == account_id)
+        );
+        project_public_gold_for_account(&pool, &token_prices, account_id, TEST_RELAYER_ACCOUNT)
+            .await?;
+        assert!(is_public_gold_projection_ready(&pool, account_id).await?);
+
+        mark_gold_dirty(&pool, account_id, None).await?;
+        assert!(!is_public_gold_projection_ready(&pool, account_id).await?);
+
+        Ok(())
     }
 
     fn leg(token_standard: &str, counterparty: Option<&str>, amount: &str) -> SilverTransferLegRow {
@@ -1230,6 +1520,44 @@ mod tests {
         let row = leg("native", Some("alice.near"), "0.001");
         assert!(!is_noise_native_movement(&row, TEST_RELAYER_ACCOUNT));
         assert!(is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
+    }
+
+    #[test]
+    fn ordinary_transfer_projection_defers_usd_enrichment() {
+        let incoming = leg("nep141", Some("alice.near"), "5");
+        let mut ledger = GoldLedger::default();
+        let deposit =
+            public_gold_event_from_leg(&incoming, None, &mut ledger, None, TEST_RELAYER_ACCOUNT)
+                .expect("valid deposit")
+                .expect("projectable deposit");
+        assert_eq!(deposit.amount_in, Some(decimal("5")));
+        assert_eq!(deposit.amount_in_usd, None);
+
+        let mut outgoing = incoming;
+        outgoing.direction = "outgoing".to_string();
+        outgoing.counterparty = Some("bob.near".to_string());
+        let sent =
+            public_gold_event_from_leg(&outgoing, None, &mut ledger, None, TEST_RELAYER_ACCOUNT)
+                .expect("valid send")
+                .expect("projectable send");
+        assert_eq!(sent.amount_out, Some(decimal("5")));
+        assert_eq!(sent.amount_out_usd, None);
+    }
+
+    #[test]
+    fn ordinary_transfer_projection_uses_resolved_current_usd() {
+        let incoming = leg("nep141", Some("alice.near"), "5");
+        let mut ledger = GoldLedger::default();
+        let deposit = public_gold_event_from_leg(
+            &incoming,
+            None,
+            &mut ledger,
+            Some(decimal("17.5")),
+            TEST_RELAYER_ACCOUNT,
+        )
+        .expect("valid deposit")
+        .expect("projectable deposit");
+        assert_eq!(deposit.amount_in_usd, Some(decimal("17.5")));
     }
 
     #[test]
@@ -1433,6 +1761,30 @@ mod tests {
         assert_eq!(quote.amount_sent_usd, Some(decimal("1.23")));
         assert_eq!(quote.amount_received_usd, Some(decimal("1.25")));
         assert_eq!(quote_usd_change(Some(&quote)), Some(decimal("0.02")));
+    }
+
+    #[test]
+    fn exchange_projection_preserves_quote_usd_values() {
+        let outgoing = leg("nep141", Some("deposit.near"), "1");
+        let pending = PendingExchange {
+            outgoing,
+            token_out_balance_before: Some(decimal("10")),
+            token_out_balance_after: Some(decimal("9")),
+        };
+        let quote = ParsedQuoteMetadata {
+            proposal: None,
+            status: Some(ParsedQuoteStatus {
+                amount_sent_usd: Some(decimal("2.10")),
+                amount_received_usd: Some(decimal("2.08")),
+                ..Default::default()
+            }),
+        };
+
+        let event = pending_exchange_event_from_leg(&pending, Some(&quote))
+            .expect("valid pending exchange");
+        assert_eq!(event.amount_out_usd, Some(decimal("2.10")));
+        assert_eq!(event.amount_in_usd, Some(decimal("2.08")));
+        assert_eq!(event.usd_change, Some(decimal("-0.02")));
     }
 
     #[test]

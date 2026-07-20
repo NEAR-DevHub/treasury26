@@ -6,6 +6,7 @@ use axum::{
 };
 use sentry::integrations::tower::{NewSentryLayer, SentryHttpLayer};
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::{DefaultOnFailure, TraceLayer};
 
@@ -30,10 +31,18 @@ async fn async_main() {
             .expect("Failed to initialize application state"),
     );
 
+    let shutdown = CancellationToken::new();
+    let signal_shutdown = shutdown.clone();
+    tokio::spawn(async move {
+        let _ = nt_be::jobs::shutdown_signal().await;
+        signal_shutdown.cancel();
+    });
+
     // All background jobs run as apalis workers: cron schedules piped into
     // per-job Postgres queues (see src/jobs/). The returned registry backs
     // the apalis-board web UI, mounted below on the main HTTP service.
-    let (job_queues, jobs_monitor) = nt_be::jobs::spawn_all(state.clone()).await;
+    let (job_queues, jobs_leadership) =
+        nt_be::jobs::spawn_all(state.clone(), shutdown.clone()).await;
     let board = nt_be::jobs::board_router(&job_queues, state.clone());
 
     // Configure CORS - must specify exact origins, methods, and headers when using credentials
@@ -116,13 +125,13 @@ async fn async_main() {
 
     tracing::info!(addr = %addr, "server running");
 
-    // The jobs monitor installs tokio SIGINT/SIGTERM handlers, which replace
-    // the OS default "terminate on signal" for the whole process — so the
-    // HTTP server must observe the same signal itself, or Ctrl-C stops the
-    // jobs but the process lives forever.
+    // The shared signal watcher installs tokio SIGINT/SIGTERM handlers, which
+    // replace the OS default "terminate on signal" for the whole process —
+    // so the HTTP server and every background worker observe the same token.
+    let http_shutdown = shutdown.clone();
     axum::serve(listener, app)
-        .with_graceful_shutdown(async {
-            let _ = nt_be::jobs::shutdown_signal().await;
+        .with_graceful_shutdown(async move {
+            http_shutdown.cancelled().await;
             tracing::info!("shutdown signal received; stopping http server");
             // Graceful shutdown waits for open connections to close, and the
             // apalis-board dashboard holds an SSE stream open indefinitely —
@@ -132,8 +141,8 @@ async fn async_main() {
                     _ = nt_be::jobs::shutdown_signal() => {
                         tracing::warn!("second shutdown signal; forcing exit");
                     }
-                    _ = tokio::time::sleep(std::time::Duration::from_secs(60)) => {
-                        tracing::warn!("graceful shutdown exceeded 60s; forcing exit");
+                    _ = tokio::time::sleep(std::time::Duration::from_secs(80)) => {
+                        tracing::warn!("graceful shutdown exceeded 80s; forcing exit");
                     }
                 }
                 std::process::exit(0);
@@ -142,10 +151,10 @@ async fn async_main() {
         .await
         .unwrap();
 
-    // Server is down; give the jobs monitor a bounded window to finish
-    // draining in-flight tasks before the runtime (and its tasks) drop.
-    match tokio::time::timeout(std::time::Duration::from_secs(30), jobs_monitor).await {
-        Ok(_) => tracing::info!("jobs monitor drained; exiting"),
-        Err(_) => tracing::warn!("jobs monitor did not drain within 30s; exiting anyway"),
+    // Server is down; give leadership enough time to drain all workers and
+    // release its session lock before Render's 90-second hard limit.
+    match tokio::time::timeout(std::time::Duration::from_secs(50), jobs_leadership).await {
+        Ok(_) => tracing::info!("background jobs drained; exiting"),
+        Err(_) => tracing::warn!("background jobs did not drain within 50s; exiting anyway"),
     }
 }

@@ -152,6 +152,20 @@ impl TokenPriceService {
         Some((record.price_usd?, record.price_updated_at?))
     }
 
+    /// Latest cached USD price, but only when the event itself is recent
+    /// enough to value with a current price. This is synchronous and never
+    /// touches the database or an external provider.
+    pub fn latest_price_for_recent_event(
+        &self,
+        raw_token_id: &str,
+        at: DateTime<Utc>,
+    ) -> Option<BigDecimal> {
+        if Utc::now() - at > LATEST_PRICE_FRESH_WINDOW {
+            return None;
+        }
+        self.latest_price(raw_token_id).map(|(price, _)| price)
+    }
+
     /// USD price for valuing an event that happened at `at`: fresh events
     /// take the in-memory latest price (no DB hit — the common live-ingest
     /// case), older events (backfills, reprojections) resolve through the
@@ -161,9 +175,7 @@ impl TokenPriceService {
         raw_token_id: &str,
         at: DateTime<Utc>,
     ) -> Result<Option<BigDecimal>, sqlx::Error> {
-        if Utc::now() - at <= LATEST_PRICE_FRESH_WINDOW
-            && let Some((price, _)) = self.latest_price(raw_token_id)
-        {
+        if let Some(price) = self.latest_price_for_recent_event(raw_token_id, at) {
             return Ok(Some(price));
         }
         self.price_at(raw_token_id, at).await

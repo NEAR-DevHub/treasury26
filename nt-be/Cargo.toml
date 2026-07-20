@@ -8,6 +8,7 @@ default-run = "nt-be"
 async-trait = "0.1"
 axum = { version = "0.8.7", features = ["macros"] }
 tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 near-api = "0.8"
 near-account-id = "2.0"

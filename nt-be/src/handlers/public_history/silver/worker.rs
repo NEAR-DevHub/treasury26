@@ -11,12 +11,17 @@ use super::repository::{
     load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
     upsert_projection_errors, upsert_silver_legs,
 };
+use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
 const PUBLIC_SILVER_WORKERS: usize = 2;
 
 pub async fn project_public_silver_for_account(
     pool: &PgPool,
     account_id: &str,
 ) -> Result<SilverProjectionResult, sqlx::Error> {
+    if !is_public_history_backfill_complete(pool, account_id).await? {
+        return Ok(SilverProjectionResult::default());
+    }
+
     let mut tx = pool.begin().await?;
 
     let got_lock: bool = sqlx::query_scalar("SELECT pg_try_advisory_xact_lock(hashtext($1))")
@@ -57,6 +62,7 @@ pub async fn project_public_silver_for_account(
 
     let earliest = earliest_bronze_time(&mut tx, account_id).await?;
     let Some(earliest) = earliest else {
+        mark_gold_dirty_for_silver_change(&mut tx, account_id, None).await?;
         clear_silver_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
         tx.commit().await?;
         return Ok(SilverProjectionResult::default());
@@ -113,9 +119,9 @@ pub async fn project_public_silver_for_account(
     stats.rows_deleted =
         delete_stale_silver_rows(&mut tx, account_id, recompute_from, &preserve_leg_keys).await?;
 
-    if stats.rows_projected > 0 || stats.rows_deleted > 0 {
-        mark_gold_dirty_for_silver_change(&mut tx, account_id, Some(recompute_from)).await?;
-    }
+    // Every successful silver cycle must schedule gold validation. Even a
+    // no-op cycle previously invalidated readiness when it became dirty.
+    mark_gold_dirty_for_silver_change(&mut tx, account_id, Some(recompute_from)).await?;
 
     clear_silver_dirty_if_not_advanced(&mut tx, account_id, dirty_since).await?;
     tx.commit().await?;
