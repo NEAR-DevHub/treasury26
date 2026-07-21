@@ -8,7 +8,7 @@ import {
     Users,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,12 @@ export function BulkActivationCard() {
     const { status, isLoading, isError, prepare, refetch } =
         useBulkActivation();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    // Synchronous lock — `isSubmitting` alone can miss rapid clicks before
+    // React re-renders and disables the button.
+    const isSubmittingRef = useRef(false);
+    // After the wallet creates the proposal, show the awaiting UI immediately
+    // so a slow status refetch cannot re-enable "Start activation".
+    const [proposalSubmitted, setProposalSubmitted] = useState(false);
 
     // Only members with proposal rights can start activation (it creates a
     // proposal). Others — approvers, viewers — need to know they can't kick
@@ -91,11 +97,16 @@ export function BulkActivationCard() {
         );
     }
 
-    const awaitingApproval = status === "awaiting_approval";
+    const awaitingApproval =
+        status === "awaiting_approval" || proposalSubmitted;
     const failed = status === "failed";
 
     const startActivation = async () => {
-        if (!treasuryId) return;
+        if (!treasuryId || isSubmittingRef.current) return;
+
+        // Lock immediately (ref + state) so rapid clicks cannot create
+        // duplicate prepare/proposal requests before React re-renders.
+        isSubmittingRef.current = true;
         setIsSubmitting(true);
         try {
             // 1. Backend provisions the bulk subaccount (subsidized) and
@@ -114,13 +125,16 @@ export function BulkActivationCard() {
                 proposalBond: policy?.proposal_bond || "0",
             });
 
+            // Flip to awaiting UI before unlocking so the Start button cannot
+            // be clicked again while status is still catching up.
+            setProposalSubmitted(true);
             refetch();
         } catch (error) {
             console.error("Bulk activation failed", error);
             toast.error(
                 error instanceof Error ? error.message : t("activationFailed"),
             );
-        } finally {
+            isSubmittingRef.current = false;
             setIsSubmitting(false);
         }
     };

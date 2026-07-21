@@ -33,6 +33,7 @@ import { Policy } from "@/types/policy";
 import { getKindFromProposal } from "@/lib/config-utils";
 import { FunctionCallAction } from "@/lib/proposals-api";
 import { IntentsQuoteResponse } from "@/lib/api";
+import { extractConfidentialBulkDestinationAssetId } from "./confidential-bulk-utils";
 import {
     NEAR_COM_NETWORK_ID,
     NEAR_NETWORK_ID,
@@ -872,8 +873,12 @@ export function extractConfidentialRequestData(
         // Token + total come from the **header** quote — that's the actual
         // on-chain spend (DAO → sub). Recipients are downstream legs paid
         // out of the sub balance and are surfaced in the expanded view.
+        // Receive network comes from recipient-leg quotes (not the header,
+        // which is always intra-Intents DAO → sub).
         const tokenId = quoteMeta?.quoteRequest?.originAsset ?? "";
         const totalAmount = quoteMeta?.quote?.amountIn ?? "0";
+        const destinationAssetId =
+            extractConfidentialBulkDestinationAssetId(recipients);
 
         mapped = {
             type: "bulk",
@@ -882,6 +887,7 @@ export function extractConfidentialRequestData(
                 bulkStatus: bulk.status,
                 tokenId,
                 totalAmount,
+                destinationAssetId,
                 recipients,
                 notes: meta.notes,
             },

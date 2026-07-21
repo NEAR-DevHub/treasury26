@@ -167,6 +167,7 @@ export function ReviewPaymentsStep({
     }, []);
 
     const handleRemovePayment = (index: number) => {
+        if (isSubmitting) return;
         const updatedPayments = paymentData.filter((_, i) => i !== index);
         setPaymentData(updatedPayments);
         onPaymentDataChange(updatedPayments);
@@ -181,8 +182,14 @@ export function ReviewPaymentsStep({
     };
 
     const handleRemoveClick = (index: number, recipient: string) => {
+        if (isSubmitting) return;
         setRecipientToRemove({ index, recipient });
         setRemoveDialogOpen(true);
+    };
+
+    const handleEditClick = (index: number) => {
+        if (isSubmitting) return;
+        onEditPayment(index);
     };
 
     const handleProceedClick = () => {
@@ -206,6 +213,11 @@ export function ReviewPaymentsStep({
     const hasValidationErrors = paymentData.some(
         (payment) => payment.validationError,
     );
+    const isFetchingNetworkFees =
+        confidentialPrepare !== undefined &&
+        !confidentialPrepare.outOfCredits &&
+        (confidentialPrepare.status === "loading" ||
+            confidentialPrepare.status === "idle");
     const feePerRecipient = networkFeePerRecipient
         ? Big(networkFeePerRecipient)
         : null;
@@ -300,6 +312,7 @@ export function ReviewPaymentsStep({
             <ReviewStep
                 reviewingTitle={tPay("reviewYourPayment")}
                 handleBack={handleBack}
+                backDisabled={isSubmitting}
             >
                 {/* Total Summary */}
                 <AmountSummary
@@ -516,8 +529,11 @@ export function ReviewPaymentsStep({
                                                         size="sm"
                                                         className="text-muted-foreground hover:text-foreground px-0!"
                                                         onClick={() =>
-                                                            onEditPayment(index)
+                                                            handleEditClick(
+                                                                index,
+                                                            )
                                                         }
+                                                        disabled={isSubmitting}
                                                     >
                                                         <Edit2 className="w-4 h-4" />{" "}
                                                         {tBulk("edit")}
@@ -532,6 +548,7 @@ export function ReviewPaymentsStep({
                                                                 payment.recipient,
                                                             )
                                                         }
+                                                        disabled={isSubmitting}
                                                     >
                                                         <Trash2 className="w-4 h-4" />{" "}
                                                         {tBulk("remove")}
@@ -589,6 +606,7 @@ export function ReviewPaymentsStep({
                                 variant="outline"
                                 size="sm"
                                 onClick={confidentialPrepare.retry}
+                                disabled={isSubmitting}
                             >
                                 {tCommon("retry")}
                             </Button>
@@ -628,6 +646,7 @@ export function ReviewPaymentsStep({
                             rows={3}
                             borderless
                             className="resize-none"
+                            disabled={isSubmitting}
                         />
                     </div>
                 )}
@@ -645,16 +664,26 @@ export function ReviewPaymentsStep({
                             (confidentialPrepare !== undefined &&
                                 confidentialPrepare.status !== "success")
                         }
-                        isSubmitting={isSubmitting}
+                        isSubmitting={isSubmitting || isFetchingNetworkFees}
                         permissions={[{ kind: "call", action: "AddProposal" }]}
                         idleMessage={tPay("confirmSubmit")}
-                        loadingMessage={tBulk("submittingProposal")}
+                        loadingMessage={
+                            isFetchingNetworkFees
+                                ? tBulk("fetchingNetworkFees")
+                                : tBulk("submittingProposal")
+                        }
                     />
                 )}
             </ReviewStep>
 
             {/* Remove Recipient Confirmation Dialog */}
-            <Dialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+            <Dialog
+                open={removeDialogOpen && !isSubmitting}
+                onOpenChange={(open) => {
+                    if (isSubmitting) return;
+                    setRemoveDialogOpen(open);
+                }}
+            >
                 <DialogContent className="max-w-md gap-4">
                     <DialogHeader>
                         <DialogTitle className="text-left">
@@ -681,6 +710,7 @@ export function ReviewPaymentsStep({
                             type="button"
                             variant="destructive"
                             className="w-full"
+                            disabled={isSubmitting}
                             onClick={() =>
                                 recipientToRemove &&
                                 handleRemovePayment(recipientToRemove.index)

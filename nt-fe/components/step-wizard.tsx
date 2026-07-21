@@ -149,12 +149,15 @@ interface HandleBackWithTitleProps {
     title: ReactNode;
     description?: ReactNode;
     handleBack?: () => void;
+    /** Keeps the back control visible but non-interactive (e.g. while submitting). */
+    backDisabled?: boolean;
 }
 
 export function StepperHeader({
     title,
     description,
     handleBack,
+    backDisabled = false,
 }: HandleBackWithTitleProps) {
     return (
         <div className="flex items-center gap-2">
@@ -164,6 +167,7 @@ export function StepperHeader({
                     size={"icon"}
                     type="button"
                     onClick={handleBack}
+                    disabled={backDisabled}
                 >
                     {<ArrowLeftIcon className="size-4" />}
                 </Button>
@@ -224,16 +228,22 @@ interface ReviewStepProps {
     reviewingTitle: string;
     children: React.ReactNode;
     handleBack?: () => void;
+    backDisabled?: boolean;
 }
 
 export function ReviewStep({
     reviewingTitle,
     children,
     handleBack,
+    backDisabled = false,
 }: ReviewStepProps) {
     return (
         <div className="flex flex-col gap-4">
-            <StepperHeader title={reviewingTitle} handleBack={handleBack} />
+            <StepperHeader
+                title={reviewingTitle}
+                handleBack={handleBack}
+                backDisabled={backDisabled}
+            />
             {children}
         </div>
     );

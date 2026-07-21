@@ -1075,6 +1075,7 @@
         "submitListFailed": "No se pudo enviar la lista de pagos",
         "submitFailed": "No se pudo enviar el pago masivo",
         "quoteFetchFailed": "No se pudieron obtener las comisiones de transferencia. Inténtalo de nuevo.",
+        "fetchingNetworkFees": "Calculando tarifas…",
         "upload": {
             "pleaseUploadCsv": "Sube un archivo CSV",
             "fileSizeLimit": "El tamaño del archivo debe ser inferior a 1,5 MB",

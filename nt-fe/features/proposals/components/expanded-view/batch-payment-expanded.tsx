@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { useBatchPayment, useToken } from "@/hooks/use-treasury-queries";
 import { useBulkPaymentTransactionHash } from "@/hooks/use-bulk-payment-transactions";
 import { useIntentsWithdrawalFee } from "@/hooks/use-intents-withdrawal-fee";
@@ -7,7 +8,6 @@ import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { Amount } from "../amount";
 import { BatchPayment, PaymentStatus } from "@/lib/api";
 import { Button } from "@/components/button";
-import { useState } from "react";
 import {
     Collapsible,
     CollapsibleContent,
@@ -24,6 +24,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Proposal } from "@/lib/proposals-api";
 import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NetworkIconDisplay } from "@/components/token-display";
+import { useDestinationNetworkMeta } from "../../hooks/use-destination-network-meta";
 import { useRequestDisplayContext } from "./common/request-display-context";
 import { useTreasury } from "@/hooks/use-treasury";
 
@@ -33,6 +35,14 @@ interface PaymentDisplayProps {
     expanded: boolean;
     onExpandedClick: () => void;
     tokenId: string;
+    /**
+     * Asset id used for the amount row (icon / decimals / network badge).
+     * Confidential bulk passes the destination asset so the badge shows the
+     * receive network; defaults to `tokenId` (send/origin).
+     */
+    amountTokenId?: string;
+    /** Network name override for the amount tooltip / badge label. */
+    amountNetwork?: string;
     batchId: string;
     proposalId: number;
     showReceiptButton: boolean;
@@ -52,6 +62,8 @@ function PaymentDisplay({
     expanded,
     onExpandedClick,
     tokenId,
+    amountTokenId,
+    amountNetwork,
     batchId,
     proposalId,
     showReceiptButton,
@@ -62,6 +74,7 @@ function PaymentDisplay({
     const { treasuryId } = useTreasury();
     const status = paymentStatusToText(payment.status);
     const isPaid = status === "Paid";
+    const resolvedAmountTokenId = amountTokenId || tokenId;
     const { data: txData } = useBulkPaymentTransactionHash(
         isPaid ? batchId : null,
         isPaid ? payment.recipient : null,
@@ -91,7 +104,8 @@ function PaymentDisplay({
                 <Amount
                     amount={payment.amount.toString()}
                     showNetworkTooltip
-                    tokenId={tokenId}
+                    tokenId={resolvedAmountTokenId}
+                    network={amountNetwork}
                 />
             ),
         },
@@ -140,7 +154,8 @@ function PaymentDisplay({
                         amount={payment.amount.toString()}
                         textOnly
                         showNetworkTooltip
-                        tokenId={tokenId}
+                        tokenId={resolvedAmountTokenId}
+                        network={amountNetwork}
                         showUSDValue={false}
                     />
                     {showReceiptButton && (
@@ -202,6 +217,12 @@ interface BatchPaymentExpandedViewProps {
      * executed public and confidential bulk payments.
      */
     showReceiptButton?: boolean;
+    /**
+     * Confidential bulk receive-network asset id (bridge asset or near.com).
+     * When set, request details show Destination Network and recipient links
+     * use that chain — not the send/origin token network.
+     */
+    destinationAssetId?: string;
 }
 
 /**
@@ -218,12 +239,25 @@ export function BatchPaymentExpandedView({
     totalNetworkFeeOverride,
     proposalId,
     showReceiptButton = false,
+    destinationAssetId,
 }: BatchPaymentExpandedViewProps) {
     const t = useTranslations("proposals.expanded");
     const tIntents = useTranslations("intentsQuote");
     const [expanded, setExpanded] = useState<number[]>([]);
 
     const { data: tokenData } = useToken(tokenId);
+    const {
+        recipientChainName,
+        destinationNetworkMeta,
+        shouldShowDestinationNetworkSkeleton,
+        amountTokenId,
+        amountNetwork,
+    } = useDestinationNetworkMeta({
+        destinationAssetId,
+        originTokenId: tokenId,
+        originNetwork: tokenData?.network || NEAR_NETWORK_ID,
+        originChainIcons: tokenData?.chainIcons,
+    });
 
     const representativeRecipient = payments[0]?.recipient;
     const skipLiveFee = totalNetworkFeeOverride != null;
@@ -279,9 +313,30 @@ export function BatchPaymentExpandedView({
         {
             label: t("totalAmount"),
             value: (
-                <Amount showNetwork amount={totalAmount} tokenId={tokenId} />
+                <Amount
+                    showNetwork={!destinationAssetId}
+                    showNetworkTooltip
+                    amount={totalAmount}
+                    tokenId={tokenId}
+                />
             ),
         },
+        ...(destinationAssetId
+            ? [
+                  {
+                      label: t("destinationNetwork"),
+                      value: shouldShowDestinationNetworkSkeleton ? (
+                          <Skeleton className="h-5 w-28" />
+                      ) : (
+                          <NetworkIconDisplay
+                              chainIcons={destinationNetworkMeta.chainIcons}
+                              networkName={destinationNetworkMeta.name}
+                              networkNameClassName="font-normal"
+                          />
+                      ),
+                  } satisfies InfoItem,
+              ]
+            : []),
         ...(totalNetworkFee
             ? [
                   {
@@ -312,6 +367,8 @@ export function BatchPaymentExpandedView({
                     {payments.map((payment, index) => (
                         <PaymentDisplay
                             tokenId={tokenId}
+                            amountTokenId={amountTokenId}
+                            amountNetwork={amountNetwork}
                             number={index + 1}
                             key={index}
                             payment={payment}
@@ -320,7 +377,7 @@ export function BatchPaymentExpandedView({
                             batchId={batchId ?? ""}
                             proposalId={proposalId ?? 0}
                             showReceiptButton={showReceiptButton}
-                            chainName={tokenData?.network || NEAR_NETWORK_ID}
+                            chainName={recipientChainName}
                         />
                     ))}
                 </div>

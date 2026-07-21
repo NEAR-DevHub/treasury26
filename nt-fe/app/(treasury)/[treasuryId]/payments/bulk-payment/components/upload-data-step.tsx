@@ -140,6 +140,13 @@ export function UploadDataStep({
         }
     }, [destinationNetwork]);
 
+    // Address/network validation errors are tied to the selected token (and
+    // confidential receive network). Clear them when either changes so a
+    // fixed selection doesn't leave a stale Continue-time error on screen.
+    useEffect(() => {
+        setDataErrors(null);
+    }, [selectedToken?.address, selectedToken?.residency, destinationNetwork]);
+
     const handleFileUpload = (file: File) => {
         if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
             setDataErrors([{ row: 0, message: t("pleaseUploadCsv") }]);

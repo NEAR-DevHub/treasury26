@@ -44,6 +44,7 @@ import {
 } from "@/hooks/use-treasury-queries";
 import {
     getNearComChainIcons,
+    isNearComNetwork,
     isNearComPaymentRoute,
 } from "@/lib/intents-network";
 import {
@@ -172,15 +173,10 @@ function AsyncNetwork({
         return <ReceiptValueSkeleton width={width} />;
     }
 
-    const networkChainIcons = metadata.value?.network?.chainIcons ?? null;
     return (
         <div className="flex justify-start">
             <NetworkIconDisplay
-                chainIcons={
-                    networkChainIcons?.icon
-                        ? { icon: networkChainIcons.icon }
-                        : null
-                }
+                chainIcons={metadata.value?.network?.chainIcons ?? null}
                 networkName={networkName}
                 networkNameClassName="font-medium"
                 expandNearComLabel
@@ -394,8 +390,10 @@ function PaymentReceiptSections({
     const tReceipt = useTranslations("receiptPage");
     const tCommon = useTranslations("common");
     const { treasuryId } = useTreasury();
+    // Amount is what the recipient receives — use destination token/network
+    // for the badge (send network stays on the separate Network row).
     const { symbol: amountSymbol } = getTokenDisplayFields(
-        sourceToken.metadata,
+        destinationToken.metadata,
     );
 
     return (
@@ -457,12 +455,12 @@ function PaymentReceiptSections({
                         label={tReceipt("amountWithToken", {
                             token: amountSymbol,
                         })}
-                        metadata={sourceToken.metadata}
-                        amount={sourceToken.amount}
+                        metadata={destinationToken.metadata}
+                        amount={destinationToken.amount}
                     />
                     <ReceiptLabelValueRow
                         label={tReceipt("amountUsd")}
-                        value={<AsyncText value={sourceToken.usd} />}
+                        value={<AsyncText value={destinationToken.usd} />}
                         className="py-3"
                     />
                     <ReceiptLabelValueRow
@@ -568,6 +566,12 @@ interface BatchReceiptCardProps {
     paymentIndex: number;
     totalPayments: number;
     tokenData: ReturnType<typeof useToken>["data"];
+    /**
+     * Receive-network token metadata for Destination Network / amount badge.
+     * Falls back to `tokenData` (send/origin) when unset.
+     */
+    destinationTokenData?: ReturnType<typeof useToken>["data"];
+    destinationAssetId?: string;
     batchId: string;
     sourceHistoricalPriceUsd: number | null;
     transactionDate: Date | null;
@@ -580,6 +584,8 @@ function BatchReceiptCard({
     paymentIndex,
     totalPayments,
     tokenData,
+    destinationTokenData,
+    destinationAssetId,
     batchId,
     sourceHistoricalPriceUsd,
     transactionDate,
@@ -595,9 +601,16 @@ function BatchReceiptCard({
               timeFormat: "12",
           })
         : null;
+    const isNearComDestination = isNearComNetwork(destinationAssetId);
+    // Recipient amount is quote amountOut — use destination token decimals when
+    // the receive network is a bridge asset (near.com shares origin metadata).
+    const receiveToken =
+        !isNearComDestination && destinationTokenData
+            ? destinationTokenData
+            : tokenData;
     const sourceAmountDecimal = formatBalance(
         batchPayment.amount,
-        tokenData?.decimals ?? 24,
+        receiveToken?.decimals ?? 24,
     );
     const sourceAmountDisplayInput =
         formatTokenDisplayAmount(sourceAmountDecimal);
@@ -609,24 +622,45 @@ function BatchReceiptCard({
             sourceToken: {
                 amountDecimal: sourceAmountDecimal,
                 amountDisplay: sourceAmountDisplayInput,
-                symbol: tokenData?.symbol ?? "",
-                tokenPrice: tokenData?.price ?? null,
+                symbol: receiveToken?.symbol ?? "",
+                tokenPrice: receiveToken?.price ?? null,
                 historicalPriceUsd: sourceHistoricalPriceUsd,
             },
             destinationToken: {
                 amountDecimal: sourceAmountDecimal,
-                symbol: tokenData?.symbol ?? "",
-                tokenPrice: tokenData?.price ?? null,
+                symbol: receiveToken?.symbol ?? "",
+                tokenPrice: receiveToken?.price ?? null,
                 historicalPriceUsd: sourceHistoricalPriceUsd,
             },
         });
+
+    const sourceNetworkName = tokenData?.network || "NEAR";
+    const destinationNetworkName = isNearComDestination
+        ? NEAR_COM_NETWORK_ID
+        : (destinationTokenData?.network ??
+          destinationAssetId ??
+          sourceNetworkName);
+    const destinationChainIcons = isNearComDestination
+        ? getNearComChainIcons()
+        : (destinationTokenData?.chainIcons ?? tokenData?.chainIcons);
 
     const batchTokenInfo = buildTokenReceiptInfo({
         token: {
             ...tokenData,
             tokenId: batchId,
-            network: tokenData?.network || "NEAR",
+            network: sourceNetworkName,
             chainIcons: tokenData?.chainIcons,
+        },
+        amount: sourceAmountDisplay,
+        usdValue: sourceAmountUsd,
+    });
+    // Amount + Destination Network use receive-network metadata.
+    const destinationTokenInfo = buildTokenReceiptInfo({
+        token: {
+            ...receiveToken,
+            tokenId: destinationAssetId ?? batchId,
+            network: destinationNetworkName,
+            chainIcons: destinationChainIcons,
         },
         amount: sourceAmountDisplay,
         usdValue: sourceAmountUsd,
@@ -653,7 +687,7 @@ function BatchReceiptCard({
                         isLoading: false,
                     }}
                     sourceToken={batchTokenInfo}
-                    destinationToken={batchTokenInfo}
+                    destinationToken={destinationTokenInfo}
                     rate={{
                         value: rateLabel,
                         isLoading: false,
@@ -869,8 +903,18 @@ export default function RequestReceiptPage({
         : batchPaymentData?.tokenId?.toLowerCase() === "native"
           ? "near"
           : (batchReceiptData?.tokenId ?? batchPaymentData?.tokenId ?? "near");
+    const batchDestinationAssetId = isConfidentialBulkProposal
+        ? confidentialBulkReceiptData.destinationAssetId
+        : undefined;
+    const shouldFetchBatchDestinationToken =
+        !!batchDestinationAssetId && !isNearComNetwork(batchDestinationAssetId);
     const { data: batchTokenData } = useToken(
         !isHidden ? effectiveBatchTokenId : null,
+    );
+    const { data: batchDestinationTokenData } = useToken(
+        !isHidden && shouldFetchBatchDestinationToken
+            ? batchDestinationAssetId
+            : null,
     );
     const { data: batchHistoricalPrice } = useTokenPriceAtTimestamp(
         effectiveBatchTokenId,
@@ -1111,6 +1155,8 @@ export default function RequestReceiptPage({
                                 paymentIndex={index}
                                 totalPayments={paymentsToRender.length}
                                 tokenData={batchTokenData}
+                                destinationTokenData={batchDestinationTokenData}
+                                destinationAssetId={batchDestinationAssetId}
                                 batchId={effectiveBatchTokenId}
                                 sourceHistoricalPriceUsd={
                                     batchHistoricalPrice?.priceUsd ?? null

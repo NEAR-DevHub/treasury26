@@ -2,7 +2,7 @@ import { ConfidentialBulkData } from "../../types/index";
 import { BatchPayment, PaymentStatus } from "@/lib/api";
 import { BatchPaymentExpandedView } from "./batch-payment-expanded";
 import Big from "@/lib/big";
-import { mapConfidentialBulkRecipientPayment } from "../../utils/receipt-utils";
+import { mapConfidentialBulkRecipientPayment } from "../../utils/confidential-bulk-utils";
 import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ConfidentialBulkExpandedProps {
@@ -56,6 +56,7 @@ export function ConfidentialBulkExpanded({
             batchId={null}
             proposalId={proposalId}
             showReceiptButton={isExecuted}
+            destinationAssetId={data.destinationAssetId}
             totalNetworkFeeOverride={
                 totalFeeRaw.gt(0) ? totalFeeRaw.toFixed(0) : null
             }

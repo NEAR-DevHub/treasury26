@@ -1075,6 +1075,7 @@
         "submitListFailed": "Không thể gửi danh sách thanh toán",
         "submitFailed": "Không thể gửi thanh toán hàng loạt",
         "quoteFetchFailed": "Không thể lấy phí chuyển khoản. Vui lòng thử lại.",
+        "fetchingNetworkFees": "Đang tính phí…",
         "upload": {
             "pleaseUploadCsv": "Vui lòng tải lên một tệp CSV",
             "fileSizeLimit": "Kích thước tệp phải nhỏ hơn 1.5 MB",
