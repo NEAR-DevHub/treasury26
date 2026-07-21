@@ -233,7 +233,36 @@ async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
     drop(conn);
 
     ensure_board_indexes(pool).await;
+    tune_apalis_autovacuum(pool).await;
     Ok(())
+}
+
+/// Makes autovacuum far more aggressive on `apalis.jobs`.
+///
+/// The queues churn ~1M rows/day (insert → Running → Done, then pruned), so at
+/// Postgres's default `autovacuum_vacuum_scale_factor` of 0.2 (vacuum only once
+/// 20% of the table is dead) the table bloats badly — on testenv it grew to
+/// ~370 MB of dead tuples behind only ~70k live rows, which made the board's
+/// full-table aggregate queries (`/api/v1/overview`, `/api/v1/queues`) scan
+/// hundreds of MB and take >1s. Aggressive settings keep dead tuples low (so the
+/// heap stays compact) and the visibility map fresh (so the board's aggregates
+/// can use index-only scans). `insert_scale_factor` matters because this table
+/// is insert-heavy — it triggers vacuums that keep the VM current even when few
+/// rows are updated. Idempotent; a failure here only degrades board latency, so
+/// log and carry on rather than block startup.
+async fn tune_apalis_autovacuum(pool: &PgPool) {
+    use sqlx::Executor as _;
+
+    let ddl = "ALTER TABLE apalis.jobs SET (\
+         autovacuum_vacuum_scale_factor = 0.05, \
+         autovacuum_vacuum_threshold = 500, \
+         autovacuum_analyze_scale_factor = 0.05, \
+         autovacuum_analyze_threshold = 500, \
+         autovacuum_vacuum_insert_scale_factor = 0.05, \
+         autovacuum_vacuum_cost_delay = 2)";
+    if let Err(e) = pool.execute(ddl).await {
+        tracing::warn!(error = %e, "failed to tune apalis.jobs autovacuum");
+    }
 }
 
 /// Adds composite indexes that the apalis-board queries need but the apalis
