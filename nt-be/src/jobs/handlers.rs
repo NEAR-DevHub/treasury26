@@ -575,6 +575,20 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
         }
     }
 
+    // Reclaim the space the deletes (and the churn) leave behind and refresh the
+    // visibility map + stats. Without this the table keeps hundreds of MB of
+    // dead tuples behind a small live set, and the board's full-table aggregate
+    // queries scan all of it. Plain `VACUUM` (not `FULL`) takes only a
+    // SHARE UPDATE EXCLUSIVE lock, so workers keep polling; it can't run inside
+    // a transaction, so it goes out on a pooled connection in autocommit. A
+    // failure here shouldn't fail the prune.
+    if let Err(e) = sqlx::query("VACUUM (ANALYZE) apalis.jobs")
+        .execute(&state.db_pool)
+        .await
+    {
+        tracing::warn!(error = %e, "VACUUM apalis.jobs after prune failed");
+    }
+
     Ok(format!(
         "pruned {total} terminal tasks older than {retention_hours}h"
     ))
