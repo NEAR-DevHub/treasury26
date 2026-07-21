@@ -75,7 +75,7 @@ function NavLink({
     const content = (
         <div className="flex w-full min-w-0 items-center gap-2">
             <div className="flex min-w-0 items-center gap-3">
-                <Icon className="size-5 shrink-0" />
+                <Icon className="size-5.5 shrink-0" />
                 {showLabels && <span className="truncate">{label}</span>}
             </div>
             {showLabels && (showBadge || endAdornment) && (
@@ -98,11 +98,11 @@ function NavLink({
                 onClick={onClick}
                 asChild={!!href}
                 className={cn(
-                    "flex relative items-center group justify-between gap-3 text-sm font-medium transition-colors",
-                    showLabels ? "px-3 py-[5.5px]" : "px-3 justify-center",
+                    "flex relative h-auto items-center group justify-between gap-4 rounded-2xl text-base/5.5 font-semibold transition-colors",
+                    showLabels ? "p-3.5" : "justify-center p-2.5",
                     isActive
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        ? "bg-white/[0.07] text-white"
+                        : "text-gray-400 hover:bg-white/[0.07] hover:text-white",
                 )}
             >
                 {href ? <Link href={href}>{content}</Link> : content}
@@ -247,7 +247,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     if (!mounted) {
         // Render placeholder that preserves layout space
         return (
-            <div className="hidden lg:block lg:static lg:w-16 h-dvh lg:h-screen bg-card border-r" />
+            <div className="hidden lg:block lg:static lg:w-16 h-dvh lg:h-screen bg-[#262626]" />
         );
     }
 
@@ -264,20 +264,25 @@ export function Sidebar({ onClose }: SidebarProps) {
             {/* Sidebar */}
             <div
                 className={cn(
-                    "fixed left-0 top-0 z-40 flex gap-2 h-dvh lg:h-screen flex-col bg-card border-r lg:static lg:z-auto overflow-hidden max-lg:pt-[env(safe-area-inset-top)]",
+                    "dark fixed left-0 top-0 z-40 flex h-dvh lg:h-screen flex-col bg-[#262626] text-gray-400 lg:static lg:z-auto overflow-hidden max-lg:pt-[env(safe-area-inset-top)]",
                     hasInitialized &&
                         "transition-[width,transform] duration-300",
                     isMobile
                         ? isOpen
-                            ? "w-60 translate-x-0"
+                            ? "w-72 translate-x-0"
                             : "-translate-x-full"
                         : isOpen
-                          ? "w-60"
+                          ? "w-72"
                           : "w-16",
                 )}
             >
-                <div className="border-b">
-                    <div className="p-3.5 flex flex-col gap-2">
+                <div className="p-4">
+                    <div
+                        className={cn(
+                            "flex flex-col overflow-hidden rounded-2xl",
+                            !isReduced && "bg-card",
+                        )}
+                    >
                         <TreasurySelector
                             reducedMode={isReduced}
                             isOpen={dropdownOpen}
@@ -285,8 +290,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                         />
                         <div
                             className={cn(
-                                "px-3",
-                                isReduced ? "hidden" : "px-3.5",
+                                "border-t border-white/10 px-3.5 py-2.5",
+                                isReduced && "hidden",
                             )}
                         >
                             {isGuestTreasury && !isLoadingGuestTreasury ? (
@@ -336,8 +341,8 @@ export function Sidebar({ onClose }: SidebarProps) {
 
                 <nav
                     className={cn(
-                        "flex flex-col gap-1 pb-2 flex-1",
-                        isReduced ? "px-2" : "px-3.5",
+                        "flex flex-col gap-1 flex-1 overflow-y-auto border-y border-white/10 py-4",
+                        isReduced ? "px-2" : "px-4",
                     )}
                 >
                     {topNavLinks.map((link) => {
@@ -378,11 +383,11 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 can't be nested buttons. */}
                             <div
                                 className={cn(
-                                    "flex items-center rounded-md transition-colors",
+                                    "flex items-center rounded-2xl transition-colors",
                                     pathname ===
                                         `/${treasuryId}/custom-templates`
-                                        ? "bg-accent text-accent-foreground"
-                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                                        ? "bg-white/[0.07] text-white"
+                                        : "text-gray-400 hover:bg-white/[0.07] hover:text-white",
                                 )}
                             >
                                 <AnimateIcon animateOnHover="default" asChild>
@@ -402,10 +407,10 @@ export function Sidebar({ onClose }: SidebarProps) {
                                             // `justify-start` overrides the Button's base
                                             // `justify-center`, which would otherwise centre the icon
                                             // in the flex-1 width and shift it right when no chevron.
-                                            "flex min-w-0 flex-1 items-center justify-start gap-3 py-[5.5px] font-medium text-inherit text-sm hover:text-inherit",
+                                            "flex min-w-0 h-auto flex-1 items-center justify-start gap-3 p-3.5 font-semibold text-inherit text-base/5.5 hover:text-inherit",
                                             showLabels
-                                                ? "px-3"
-                                                : "justify-center px-3",
+                                                ? "px-3.5"
+                                                : "justify-center px-3.5",
                                         )}
                                     >
                                         <Link
@@ -414,7 +419,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                                 if (isMobile) onClose();
                                             }}
                                         >
-                                            <CodeXml className="size-5 shrink-0" />
+                                            <CodeXml className="size-5.5 shrink-0" />
                                             {showLabels && (
                                                 <span className="truncate">
                                                     {tCustom("pageTitle")}
@@ -437,7 +442,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                                 (value) => !value,
                                             )
                                         }
-                                        className="shrink-0 cursor-pointer px-2 py-[5.5px]"
+                                        className="shrink-0 cursor-pointer px-2 py-2.5"
                                     >
                                         <ChevronDown
                                             className={cn(

@@ -36,14 +36,19 @@ export function TreasuryLayoutClient({
         );
     }
     return (
-        <div className="flex h-dvh lg:h-screen overflow-hidden">
+        <div className="flex h-dvh lg:h-screen overflow-hidden bg-[#262626]">
             <AppEventsProvider scope={{ treasuryId }} />
             <PrimaryColorProvider treasuryId={treasuryId} />
             <Sidebar
                 isOpen={isSidebarOpen}
                 onClose={() => setSidebarOpen(false)}
             />
-            <main className="flex-1 overflow-y-auto bg-muted">{children}</main>
+            {/* Floating content panel: inset with a gap so the dark chrome frames it (defuse/NEAR shell look). */}
+            <main className="flex-1 overflow-hidden lg:p-2 lg:pl-0">
+                <div className="h-full overflow-y-auto bg-muted lg:rounded-3xl">
+                    {children}
+                </div>
+            </main>
         </div>
     );
 }
