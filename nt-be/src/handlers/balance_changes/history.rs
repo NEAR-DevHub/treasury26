@@ -1647,8 +1647,6 @@ pub async fn get_recent_activity(
                 Json(serde_json::json!({ "error": e.to_string() })),
             )
         })?;
-    let exclude_near_dust = read_source == BalanceChangesReadSource::Confidential;
-
     // Get account plan info and calculate date cutoff
     let account_plan = get_account_plan_info(&state.db_pool, params.account_id.as_str())
         .await
@@ -1758,7 +1756,7 @@ pub async fn get_recent_activity(
         from_accounts_not: params.from_account_not.clone(),
         to_accounts: params.to_account.clone(),
         to_accounts_not: params.to_account_not.clone(),
-        exclude_near_dust,
+        exclude_near_dust: true,
         exclude_swaps_from_direction: true, // Recent activity: exclude swaps from incoming/outgoing (separate tab)
     };
 
@@ -1819,7 +1817,7 @@ pub async fn get_recent_activity(
         include_metadata: Some(false),
         include_prices: Some(false),
         include_chain_metadata: Some(false),
-        exclude_near_dust,
+        exclude_near_dust: true,
         exclude_swaps_from_direction: true,
     };
     let total: i64 = match read_source {
@@ -1871,7 +1869,7 @@ pub async fn get_recent_activity(
         include_metadata: Some(true),
         include_prices: Some(true),
         include_chain_metadata: Some(false), // Recent activity doesn't need chain metadata here (will be added for swaps later)
-        exclude_near_dust,
+        exclude_near_dust: true,
         exclude_swaps_from_direction: true, // Recent activity: exclude swaps from incoming/outgoing (separate Exchange tab)
     };
 
