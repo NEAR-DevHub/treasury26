@@ -581,6 +581,12 @@ impl AppState {
         &self,
         date: DateTime<Utc>,
     ) -> Result<u64, Box<dyn std::error::Error>> {
+        // Max gap between the nearest indexed block and the requested
+        // timestamp for the indexed block to be used directly. NEAR produces
+        // ~1 block/sec, so 15s comfortably covers normal indexing granularity
+        // while catching quiet gaps where on-chain state may have changed.
+        const BLOCK_LOOKUP_TOLERANCE_NS: i64 = 15 * 1_000_000_000;
+
         // Convert DateTime to nanoseconds since Unix epoch (NEAR's timestamp format)
         let target_timestamp_ns = date.timestamp_nanos_opt().ok_or("Timestamp out of range")?;
 
@@ -595,15 +601,14 @@ impl AppState {
                 // Step 1: Find the nearest indexed block at-or-before the target
                 // timestamp. `balance_changes` is global (every monitored
                 // account) and continuously indexed, so for any timestamp within
-                // the indexed range this returns a block within moments of the
-                // target — instant via `idx_balance_changes_timestamp`. An exact
-                // timestamp match almost never existed, so the old query fell
-                // through to the RPC binary search (~20 sequential archival calls,
-                // ~6s), which made the proposal detail page — it resolves the
-                // policy at a proposal's submission block — slow on first load.
-                // A nearest-earlier block is safe for that use: on-chain state
-                // (policy, etc.) is identical from the last change up to the
-                // target, so a block a few moments earlier reads the same value.
+                // an active indexed range this returns a block within moments of
+                // the target — instant via `idx_balance_changes_timestamp`. An
+                // exact timestamp match almost never existed, so the old query
+                // fell through to the RPC binary search (~20 sequential archival
+                // calls, ~6s), which made the proposal detail page — it resolves
+                // the policy at a proposal's submission block — slow on first
+                // load. The gap to the target is validated below before the
+                // block is used.
                 let db_result = sqlx::query!(
                     r#"
                         SELECT block_height, block_timestamp
@@ -623,23 +628,46 @@ impl AppState {
                     )
                 })?;
 
+                // Nearest indexed block found: accept it directly only when it
+                // sits within `BLOCK_LOOKUP_TOLERANCE_NS` of the target. The
+                // indexer only records blocks in which a monitored account's
+                // balance changed, so during quiet periods the nearest earlier
+                // block can be far behind the target — far enough that on-chain
+                // state may have changed in between. In that case we fall back
+                // to the RPC binary search, but seed it with this block as the
+                // lower bound so it only scans the (small) range from here to
+                // the target instead of from genesis.
+                let mut search_lower_bound: Option<u64> = None;
                 if let Some(record) = db_result {
+                    let gap_ns = target_timestamp_ns - record.block_timestamp;
+                    if gap_ns <= BLOCK_LOOKUP_TOLERANCE_NS {
+                        tracing::info!(
+                            "Found nearest block {} in database for timestamp {} ({}ns away)",
+                            record.block_height,
+                            date,
+                            gap_ns
+                        );
+                        return Ok::<u64, (StatusCode, String)>(record.block_height as u64);
+                    }
+
                     tracing::info!(
-                        "Found nearest block {} in database for timestamp {}",
+                        "Nearest indexed block {} is {}ns before timestamp {} (> tolerance); \
+                         using it as binary-search lower bound",
                         record.block_height,
+                        gap_ns,
                         date
                     );
-                    return Ok::<u64, (StatusCode, String)>(record.block_height as u64);
+                    search_lower_bound = Some(record.block_height as u64);
+                } else {
+                    tracing::info!(
+                        "No indexed block at-or-before timestamp {}, using binary search via RPC",
+                        date
+                    );
                 }
-
-                tracing::info!(
-                    "No indexed block at-or-before timestamp {}, using binary search via RPC",
-                    date
-                );
 
                 // Step 2: Use binary search to find the block via RPC
                 let block_height = self
-                    .binary_search_block_by_timestamp(target_timestamp_ns)
+                    .binary_search_block_by_timestamp(target_timestamp_ns, search_lower_bound)
                     .await
                     .map_err(|e| {
                         (
@@ -676,6 +704,7 @@ impl AppState {
     async fn binary_search_block_by_timestamp(
         &self,
         timestamp_ns: i64,
+        lower_bound: Option<u64>,
     ) -> Result<u64, Box<dyn std::error::Error>> {
         use crate::handlers::balance_changes::utils::with_transport_retry;
         use near_api::{Chain, Reference};
@@ -686,8 +715,12 @@ impl AppState {
         })
         .await?;
 
-        // Sputnik DAO genesis block
-        let mut left = 129265430; // Genesis block
+        // Start from the caller-supplied lower bound (a known indexed block
+        // at-or-before the target) when available, otherwise the Sputnik DAO
+        // genesis block. A tighter lower bound shrinks the search range and
+        // saves archival RPC round-trips.
+        let genesis_block = 129265430u64;
+        let mut left = lower_bound.map_or(genesis_block, |b| b.max(genesis_block));
         let mut right = latest_block.header.height;
         let mut result = right;
 
