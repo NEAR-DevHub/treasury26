@@ -1,7 +1,9 @@
 use axum::http::StatusCode;
 use chrono::{DateTime, Utc};
 use near_api::{AccountId, NetworkConfig, RPCEndpoint, Signer};
+use sqlx::ConnectOptions as _;
 use sqlx::PgPool;
+use std::str::FromStr as _;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::broadcast;
 
@@ -511,6 +513,24 @@ impl AppState {
             .and_then(|v| v.parse::<u64>().ok())
             .filter(|v| *v >= 1)
             .unwrap_or(10);
+        // Slow-statement WARN threshold. sqlx defaults to 1s, which is too
+        // sensitive for this workload — the apalis-board admin pages run heavy
+        // full-table analytics over `apalis.jobs` (the `/overview` and `/queues`
+        // aggregates take ~1.5s) and legitimately warn on every load. Raise it
+        // (default 5s, `DB_SLOW_STATEMENT_THRESHOLD_SECONDS`) so routine
+        // multi-second analytics don't spam WARN while genuinely pathological
+        // statements (the seconds-long token/backfill queries) still surface.
+        let slow_statement_secs = std::env::var("DB_SLOW_STATEMENT_THRESHOLD_SECONDS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .filter(|v| *v >= 1)
+            .unwrap_or(5);
+        let connect_options = sqlx::postgres::PgConnectOptions::from_str(&env_vars.database_url)
+            .map_err(|e| format!("invalid DATABASE_URL: {e}"))?
+            .log_slow_statements(
+                log::LevelFilter::Warn,
+                Duration::from_secs(slow_statement_secs),
+            );
         tracing::info!(max_connections, "Connecting to database...");
         let db_pool = sqlx::postgres::PgPoolOptions::new()
             .max_connections(max_connections)
@@ -519,7 +539,7 @@ impl AppState {
             .idle_timeout(Duration::from_secs(600))
             .max_lifetime(Duration::from_secs(1800))
             .test_before_acquire(true)
-            .connect(&env_vars.database_url)
+            .connect_with(connect_options)
             .await?;
 
         tracing::info!("Running database migrations...");
