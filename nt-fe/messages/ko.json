@@ -1075,6 +1075,7 @@
         "submitListFailed": "결제 목록 제출에 실패했습니다",
         "submitFailed": "일괄 결제 제출에 실패했습니다",
         "quoteFetchFailed": "이체 수수료를 가져오지 못했습니다. 다시 시도해 주세요.",
+        "fetchingNetworkFees": "수수료 계산 중…",
         "upload": {
             "pleaseUploadCsv": "CSV 파일을 업로드해 주세요",
             "fileSizeLimit": "파일 크기는 1.5 MB 미만이어야 합니다",

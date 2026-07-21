@@ -5,12 +5,22 @@ import type {
     PaymentRequestData,
     SwapRequestData,
 } from "@/features/proposals/types/index";
+import {
+    extractConfidentialBulkDestinationAssetId,
+    mapConfidentialBulkRecipientPayment,
+} from "@/features/proposals/utils/confidential-bulk-utils";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import type {
     Proposal,
     SwapStatus,
     SwapStatusResponse,
 } from "@/lib/proposals-api";
+
+export type { ConfidentialBulkRecipientLeg } from "@/features/proposals/utils/confidential-bulk-utils";
+export {
+    extractConfidentialBulkDestinationAssetId,
+    mapConfidentialBulkRecipientPayment,
+} from "@/features/proposals/utils/confidential-bulk-utils";
 
 export interface ReceiptProposalData {
     variant: "payment" | "exchange";
@@ -24,14 +34,6 @@ export interface ReceiptProposalData {
     destinationAmountUsd?: number | null;
 }
 
-export interface ConfidentialBulkRecipientLeg {
-    recipient: string;
-    /** Gross amount charged for this leg (quote amountIn). */
-    amountIn: string;
-    /** Recipient net amount in smallest units (quote amountOut). */
-    amountOut: string;
-}
-
 /** Receipt/batch payment shape — net amount the recipient receives. */
 export interface ConfidentialBulkReceiptPayment {
     recipient: string;
@@ -41,31 +43,9 @@ export interface ConfidentialBulkReceiptPayment {
 
 export interface ConfidentialBulkReceiptData {
     tokenId: string;
+    /** Receive-network asset id (bridge asset or near.com), when known. */
+    destinationAssetId?: string;
     payments: ConfidentialBulkReceiptPayment[];
-}
-
-type BulkQuoteMetadata = {
-    quote?: {
-        amountIn?: string;
-        amountOut?: string;
-    };
-    quoteRequest?: {
-        recipient?: string;
-    };
-};
-
-/**
- * Map a confidential bulk recipient's stored 1Click quote into shared leg
- * fields (recipient + amountIn/amountOut) used by receipts and expanded view.
- */
-export function mapConfidentialBulkRecipientPayment(
-    quoteMetadata: Record<string, unknown> | null | undefined,
-): ConfidentialBulkRecipientLeg {
-    const quote = (quoteMetadata ?? {}) as BulkQuoteMetadata;
-    const amountIn = quote.quote?.amountIn ?? "0";
-    const amountOut = quote.quote?.amountOut ?? amountIn;
-    const recipient = quote.quoteRequest?.recipient ?? "";
-    return { recipient, amountIn, amountOut };
 }
 
 export function toConfidentialBulkReceiptData(
@@ -73,6 +53,9 @@ export function toConfidentialBulkReceiptData(
 ): ConfidentialBulkReceiptData {
     return {
         tokenId: data.tokenId,
+        destinationAssetId:
+            data.destinationAssetId ??
+            extractConfidentialBulkDestinationAssetId(data.recipients),
         payments: data.recipients.map((recipient) => {
             const leg = mapConfidentialBulkRecipientPayment(
                 recipient.quoteMetadata,

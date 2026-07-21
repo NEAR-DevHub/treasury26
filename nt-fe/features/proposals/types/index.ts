@@ -263,6 +263,11 @@ export interface ConfidentialBulkData {
     tokenId: string;
     /** Sum of recipient amounts in smallest units. */
     totalAmount: string;
+    /**
+     * Receive-network asset id from recipient-leg quotes (bridge asset id, or
+     * near.com for intra-Intents). Same field single confidential payment uses.
+     */
+    destinationAssetId?: string;
     /** Notes for the proposal */
     notes?: string;
     /** Per-recipient rows from the linked `confidential_intents` rows. */

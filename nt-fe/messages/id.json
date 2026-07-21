@@ -1075,6 +1075,7 @@
         "submitListFailed": "Gagal mengirim daftar pembayaran",
         "submitFailed": "Gagal mengirim pembayaran massal",
         "quoteFetchFailed": "Tidak dapat mengambil biaya transfer. Silakan coba lagi.",
+        "fetchingNetworkFees": "Menghitung biaya…",
         "upload": {
             "pleaseUploadCsv": "Silakan unggah file CSV",
             "fileSizeLimit": "Ukuran file harus kurang dari 1.5 MB",

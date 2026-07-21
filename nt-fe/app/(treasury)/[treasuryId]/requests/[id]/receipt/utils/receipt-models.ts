@@ -1,4 +1,4 @@
-import type { TokenMetadata } from "@/lib/api";
+import type { ChainIcons, TokenMetadata } from "@/lib/api";
 import type { SwapQuoteResponse } from "@/lib/proposals-api";
 import {
     formatCurrencyWithSubCent,
@@ -12,7 +12,7 @@ export interface AsyncValue<T> {
 
 interface ReceiptNetworkMetadata {
     name: string | null;
-    chainIcons: { icon?: string | null } | null;
+    chainIcons: ChainIcons | null;
 }
 
 interface ReceiptAssetMetadata {

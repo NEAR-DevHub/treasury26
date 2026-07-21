@@ -80,7 +80,14 @@ export function ReceiptTokenAmountRow({
             label={label}
             value={
                 <div className="flex items-center justify-start gap-2">
-                    <TokenDisplay symbol={symbol} icon={icon} iconSize="lg" />
+                    <TokenDisplay
+                        symbol={symbol}
+                        icon={icon}
+                        chainIcons={
+                            metadata.value?.network?.chainIcons ?? undefined
+                        }
+                        iconSize="lg"
+                    />
                     <span>{amount}</span>
                 </div>
             }

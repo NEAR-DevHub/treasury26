@@ -709,11 +709,20 @@ export default function BulkPaymentPage() {
                     {/* Step 1: Review Payments */}
                     {step === 1 && (
                         <ReviewPaymentsStep
-                            handleBack={() => setStep(0)}
+                            handleBack={() => {
+                                if (isSubmittingProposal) return;
+                                setStep(0);
+                            }}
                             initialPaymentData={paymentData}
                             networkFeePerRecipient={networkFeePerRecipient}
-                            onEditPayment={handleEditPayment}
-                            onPaymentDataChange={setPaymentData}
+                            onEditPayment={(index) => {
+                                if (isSubmittingProposal) return;
+                                handleEditPayment(index);
+                            }}
+                            onPaymentDataChange={(data) => {
+                                if (isSubmittingProposal) return;
+                                setPaymentData(data);
+                            }}
                             onSubmit={onSubmit}
                             isSubmitting={isSubmittingProposal}
                             destinationNetworkId={
