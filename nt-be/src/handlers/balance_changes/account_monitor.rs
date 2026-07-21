@@ -104,18 +104,31 @@ pub async fn run_maintenance_cycle(
     app_state: &AppState,
     up_to_block: i64,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Process all enabled, non-confidential accounts; dirty accounts first.
-    // Confidential DAOs are handled by a dedicated 5-minute poll worker
+    // Process a bounded batch of enabled, non-confidential accounts per cycle:
+    // dirty accounts first, then the least-recently-synced ones. Confidential
+    // DAOs are handled by a dedicated 5-minute poll worker
     // (`run_confidential_poll_cycle`) and have no on-chain pipeline to run.
+    //
+    // The batch bound is what keeps a cycle finishing well within the handler
+    // `job_timeout`. Processing *every* account each cycle made the total time
+    // O(accounts); once that exceeded 30 min the handler timed out mid-cycle,
+    // and the timed-out task was left orphaned in `Running` (its ack never
+    // landed) — those phantom rows piled up. Dirty accounts still get processed
+    // promptly (they sort first); non-dirty accounts rotate by `last_synced_at`
+    // across cycles (the cron fires every 60s).
+    let batch_size = maintenance_batch_size();
     let accounts: Vec<(String, Option<DateTime<Utc>>)> = sqlx::query_as(
         r#"
         SELECT account_id, dirty_at
         FROM monitored_accounts
         WHERE enabled = true
           AND is_confidential_account = false
-        ORDER BY dirty_at DESC NULLS LAST
+        ORDER BY dirty_at DESC NULLS LAST,
+                 last_synced_at ASC NULLS FIRST
+        LIMIT $1
         "#,
     )
+    .bind(batch_size)
     .fetch_all(&app_state.db_pool)
     .await?;
 
@@ -176,6 +189,21 @@ pub async fn run_maintenance_cycle(
 
     tracing::info!("Cycle complete");
     Ok(())
+}
+
+/// Max accounts processed per maintenance cycle
+/// (`ACCOUNT_MAINTENANCE_BATCH_SIZE`, default 25). Bounds the cycle's total time
+/// so it finishes well within the handler `job_timeout` (default 30 min): worst
+/// case is `batch / concurrency × per_account_timeout`, i.e. 25/4×120s ≈ 12.5 min
+/// with the defaults. Dirty accounts sort first so they're never starved by the
+/// bound; the rest rotate by `last_synced_at`. Raise it only while keeping that
+/// worst case under `job_timeout`.
+fn maintenance_batch_size() -> i64 {
+    std::env::var("ACCOUNT_MAINTENANCE_BATCH_SIZE")
+        .ok()
+        .and_then(|s| s.parse::<i64>().ok())
+        .filter(|&n| n >= 1)
+        .unwrap_or(25)
 }
 
 /// Bounded parallelism for per-account maintenance within one cycle

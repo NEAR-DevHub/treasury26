@@ -544,6 +544,42 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
         .unwrap_or(48)
         .clamp(0, 3650 * 24);
 
+    // Reclaim tasks stuck in `Running` well past the handler timeout. apalis's
+    // own orphan-reclaim only fires when the *worker's* heartbeat is stale, so a
+    // task whose ack never landed (e.g. the handler hit `job_timeout` during DB
+    // instability, or the ack UPDATE failed) is left `Running` forever while the
+    // worker stays alive — these phantom rows accumulate (one per timeout) and
+    // are never reclaimed or pruned. The threshold is at least 2× `job_timeout`,
+    // so a genuinely-running task (bounded by `job_timeout`) is never touched.
+    // Reclaimed rows become `Killed` (terminal, not retried) and are then
+    // removed by the retention sweep below once they age out.
+    let reclaim_secs: i64 = std::env::var("APALIS_STUCK_RUNNING_RECLAIM_SECONDS")
+        .ok()
+        .and_then(|s| s.parse::<i64>().ok())
+        .filter(|&n| n >= 1)
+        .unwrap_or(3600)
+        .max((crate::jobs::job_timeout().as_secs() as i64).saturating_mul(2));
+    let reclaimed = sqlx::query(
+        r#"UPDATE apalis.jobs
+           SET status = 'Killed',
+               done_at = NOW(),
+               last_result = '{"Err": "Reclaimed: stuck in Running past threshold (ack likely failed)"}'::jsonb
+           WHERE status = 'Running'
+             AND lock_at IS NOT NULL
+             AND lock_at < now() - make_interval(secs => $1::double precision)"#,
+    )
+    .bind(reclaim_secs)
+    .execute(&state.db_pool)
+    .await?;
+    let reclaimed = reclaimed.rows_affected();
+    if reclaimed > 0 {
+        tracing::warn!(
+            reclaimed,
+            reclaim_secs,
+            "reclaimed apalis tasks stuck in Running (orphaned locks)"
+        );
+    }
+
     const BATCH_SIZE: i64 = 10_000;
     // Backstop against a runaway loop; 100 batches = up to 1M rows per run.
     const MAX_BATCHES: usize = 100;
@@ -590,6 +626,6 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
     }
 
     Ok(format!(
-        "pruned {total} terminal tasks older than {retention_hours}h"
+        "reclaimed {reclaimed} stuck-Running, pruned {total} terminal tasks older than {retention_hours}h"
     ))
 }
