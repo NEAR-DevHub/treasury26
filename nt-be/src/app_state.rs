@@ -592,13 +592,24 @@ impl AppState {
         // Try to get from cache first (using LongTerm tier since block timestamps are immutable)
         self.cache
             .cached(CacheTier::LongTerm, cache_key.clone(), async {
-                // Step 1: Try to find a block in the database with a timestamp close to the target
+                // Step 1: Find the nearest indexed block at-or-before the target
+                // timestamp. `balance_changes` is global (every monitored
+                // account) and continuously indexed, so for any timestamp within
+                // the indexed range this returns a block within moments of the
+                // target — instant via `idx_balance_changes_timestamp`. An exact
+                // timestamp match almost never existed, so the old query fell
+                // through to the RPC binary search (~20 sequential archival calls,
+                // ~6s), which made the proposal detail page — it resolves the
+                // policy at a proposal's submission block — slow on first load.
+                // A nearest-earlier block is safe for that use: on-chain state
+                // (policy, etc.) is identical from the last change up to the
+                // target, so a block a few moments earlier reads the same value.
                 let db_result = sqlx::query!(
                     r#"
                         SELECT block_height, block_timestamp
                         FROM balance_changes
-                        WHERE block_timestamp = $1
-                        ORDER BY block_timestamp ASC
+                        WHERE block_timestamp <= $1
+                        ORDER BY block_timestamp DESC
                         LIMIT 1
                         "#,
                     target_timestamp_ns
@@ -614,7 +625,7 @@ impl AppState {
 
                 if let Some(record) = db_result {
                     tracing::info!(
-                        "Found block {} in database for timestamp {}",
+                        "Found nearest block {} in database for timestamp {}",
                         record.block_height,
                         date
                     );
@@ -622,7 +633,7 @@ impl AppState {
                 }
 
                 tracing::info!(
-                    "Block not found in database for timestamp {}, using binary search via RPC",
+                    "No indexed block at-or-before timestamp {}, using binary search via RPC",
                     date
                 );
 
