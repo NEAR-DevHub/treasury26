@@ -108,3 +108,21 @@ jobs:
           path: nt-fe/test-results/
           retention-days: 30
           if-no-files-found: ignore
+
+      # Record which PR this run belongs to so the fork-safe `e2e-report`
+      # workflow (triggered on workflow_run) can publish the report to that
+      # PR. `pull_request` runs from forks have a read-only token and cannot
+      # comment or push to gh-pages themselves.
+      - name: Save PR metadata
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          mkdir -p pr-meta
+          echo "${{ github.event.pull_request.number }}" > pr-meta/pr-number.txt
+
+      - name: Upload PR metadata
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-meta
+          path: pr-meta/
+          retention-days: 1

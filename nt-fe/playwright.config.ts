@@ -17,8 +17,12 @@ export default defineConfig({
 
     use: {
         baseURL: "http://localhost:3000",
+        // Record every test (pass or fail) so the published HTML report is a
+        // full visual walkthrough of the behaviour the PR produces, not just a
+        // failure debugging aid. The report embeds these videos so reviewers
+        // can watch them inline. See .github/workflows/e2e-report.yml.
         video: {
-            mode: process.env.CI ? "on-first-retry" : "on",
+            mode: "on",
             size: { width: 1280, height: 800 },
         },
         trace: "on-first-retry",
