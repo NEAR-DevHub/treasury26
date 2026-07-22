@@ -1,0 +1,44 @@
+name: Cleanup E2E Report
+
+# Removes a PR's published report from gh-pages when the PR is closed/merged.
+# `pull_request_target` runs in the base repo with a write token (fork-safe);
+# it never checks out or runs PR code — it only deletes a folder on gh-pages.
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gh-pages-e2e-report
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages
+        id: checkout
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+
+      - name: Remove PR report folder
+        if: steps.checkout.outcome == 'success'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          dir="pr-${PR_NUMBER}"
+          if [ ! -d "$dir" ]; then
+            echo "No report at $dir; nothing to clean up."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git rm -rf "$dir"
+          git commit -m "cleanup e2e report for PR #${PR_NUMBER}"
+          git push
