@@ -268,7 +268,7 @@ pub async fn poll_confidential_balances(
 ) -> Result<usize, Box<dyn std::error::Error>> {
     let account_id_ref: &near_account_id::AccountIdRef = account_id.try_into()?;
     let current_balances = match fetch_confidential_balances(state, account_id_ref).await {
-        Ok(b) => b,
+        Ok(b) => b.balances,
         Err((status, msg)) => {
             tracing::warn!(
                 "{}: fetch balances failed ({}): {}",

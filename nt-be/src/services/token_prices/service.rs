@@ -16,6 +16,12 @@ use sqlx::PgPool;
 /// (no DB hit); older events resolve through the minute time series.
 const LATEST_PRICE_FRESH_WINDOW: Duration = Duration::minutes(10);
 
+/// How often every process reloads the registry snapshot from the `tokens`
+/// table. The ingest cron that writes the table runs only on the jobs
+/// leader; without a per-process refresh, other instances hold an empty
+/// snapshot and every price lookup silently resolves nothing.
+const SNAPSHOT_REFRESH_INTERVAL: std::time::Duration = std::time::Duration::from_secs(60);
+
 /// One row of the `tokens` registry as held in the in-memory snapshot.
 #[derive(Debug, Clone)]
 pub struct TokenRecord {
@@ -117,6 +123,23 @@ impl TokenPriceService {
         });
         *self.snapshot.write().expect("token snapshot lock poisoned") = snapshot;
         Ok(count)
+    }
+
+    /// Keep this process's snapshot fresh regardless of cron leadership:
+    /// loads it once immediately, then reloads every
+    /// [`SNAPSHOT_REFRESH_INTERVAL`].
+    pub fn spawn_snapshot_refresher(self: &Arc<Self>) {
+        let service = Arc::clone(self);
+        tokio::spawn(async move {
+            let mut timer = tokio::time::interval(SNAPSHOT_REFRESH_INTERVAL);
+            timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            loop {
+                timer.tick().await;
+                if let Err(e) = service.refresh_snapshot().await {
+                    tracing::warn!("token snapshot refresh failed: {}", e);
+                }
+            }
+        });
     }
 
     fn snapshot(&self) -> Arc<TokenSnapshot> {
@@ -247,6 +270,56 @@ impl TokenPriceService {
             if let Some(raws) = ref_to_raw.get(&token_ref) {
                 for raw in raws {
                     result.insert((*raw).clone(), price.clone());
+                }
+            }
+        }
+        Ok(result)
+    }
+
+    /// Grid variant of [`Self::price_at`]: nearest-before price for every
+    /// (token, timestamp) pair in one round-trip. Keys of the returned map
+    /// are `(raw_id, timestamp)` for the raw ids passed in; pairs with no
+    /// stored sample at or before the timestamp are absent.
+    pub async fn prices_at_grid(
+        &self,
+        raw_token_ids: &[String],
+        at: &[DateTime<Utc>],
+    ) -> Result<HashMap<(String, DateTime<Utc>), BigDecimal>, sqlx::Error> {
+        let mut ref_to_raw: HashMap<i32, Vec<&String>> = HashMap::new();
+        for raw in raw_token_ids {
+            if let Some(record) = self.token(raw) {
+                ref_to_raw.entry(record.id).or_default().push(raw);
+            }
+        }
+        if ref_to_raw.is_empty() || at.is_empty() {
+            return Ok(HashMap::new());
+        }
+
+        let token_refs: Vec<i32> = ref_to_raw.keys().copied().collect();
+        let rows: Vec<(i32, DateTime<Utc>, BigDecimal)> = sqlx::query_as(
+            r#"
+            SELECT tok.token_ref, t.ts, p.price_usd
+            FROM unnest($1::int4[]) AS tok(token_ref)
+            CROSS JOIN unnest($2::timestamptz[]) AS t(ts)
+            CROSS JOIN LATERAL (
+                SELECT price_usd
+                FROM token_prices
+                WHERE token_ref = tok.token_ref AND minute_at <= t.ts
+                ORDER BY minute_at DESC
+                LIMIT 1
+            ) p
+            "#,
+        )
+        .bind(&token_refs)
+        .bind(at)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut result = HashMap::new();
+        for (token_ref, ts, price) in rows {
+            if let Some(raws) = ref_to_raw.get(&token_ref) {
+                for raw in raws {
+                    result.insert(((*raw).clone(), ts), price.clone());
                 }
             }
         }

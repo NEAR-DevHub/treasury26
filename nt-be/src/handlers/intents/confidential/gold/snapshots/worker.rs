@@ -1,20 +1,21 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use bigdecimal::{BigDecimal, FromPrimitive, Zero};
+use bigdecimal::{BigDecimal, Zero};
 use chrono::{Duration, Utc};
 use futures::{StreamExt, stream};
 use near_account_id::AccountIdRef;
 
 use super::repository::{
-    SnapshotRow, insert_snapshot_rows, latest_snapshot_at, load_latest_balances_per_asset,
+    SnapshotRow, has_outflow_events_since, insert_snapshot_rows, latest_snapshot_at,
+    load_latest_balances_per_asset,
 };
 use crate::AppState;
 use crate::constants::intents_tokens::get_defuse_tokens_map;
 use crate::handlers::intents::confidential::balances::fetch_confidential_balances;
 use crate::handlers::intents::confidential::bronze::store::load_confidential_history_accounts;
 
-const SNAPSHOT_DEDUP_WINDOW: Duration = Duration::seconds(3300);
+pub(crate) const SNAPSHOT_DEDUP_WINDOW: Duration = Duration::seconds(3300);
 const CONFIDENTIAL_BALANCE_SNAPSHOT_WORKERS: usize = 5;
 
 /// Write a snapshot row per non-zero asset plus zero tombstones for any asset
@@ -30,8 +31,8 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
         }
     };
 
-    let live_balances = match fetch_confidential_balances(state, account_ref).await {
-        Ok(balances) => balances,
+    let fetch = match fetch_confidential_balances(state, account_ref).await {
+        Ok(fetch) => fetch,
         Err((status, message)) => {
             tracing::warn!("fetch failed for {} ({}): {}", dao_id, status, message);
             return;
@@ -48,26 +49,16 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
 
     let defuse_map = get_defuse_tokens_map();
     let snapshot_at = Utc::now();
-    let live_balances: Vec<(String, String)> = live_balances.into_iter().collect();
-    let live_assets: Vec<String> = live_balances
-        .iter()
-        .map(|(asset, _)| asset.clone())
-        .collect();
-    let latest_prices = match state
-        .price_service
-        .get_cached_tokens_latest_price(&live_assets)
-        .await
-    {
-        Ok(prices) => prices,
-        Err(e) => {
-            tracing::warn!("{} batch snapshot price lookup failed: {}", dao_id, e);
-            std::collections::HashMap::new()
-        }
-    };
+    let live_balances: Vec<(String, String)> = fetch.balances;
     let mut rows: Vec<SnapshotRow> = Vec::with_capacity(live_balances.len());
     let mut seen_assets = std::collections::HashSet::with_capacity(live_balances.len());
+    // Assets the API reported but we could not turn into a row must never be
+    // treated as disappeared — a tombstone would record a false zero balance.
+    seen_assets.extend(fetch.unparseable_assets);
 
     for (asset, raw_available) in live_balances {
+        // Mark as seen before any skip below for the same reason.
+        seen_assets.insert(asset.clone());
         let raw_balance = match BigDecimal::from_str(&raw_available) {
             Ok(value) => value,
             Err(e) => {
@@ -90,24 +81,18 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
             acc * BigDecimal::from(10u32)
         });
         let balance = &raw_balance / &scale;
-        let price_usd = match latest_prices.get(&asset).copied() {
-            Some(price) => {
-                tracing::debug!(
-                    "{} {} resolved cached snapshot price: {}",
-                    dao_id,
-                    asset,
-                    price
-                );
-                BigDecimal::from_f64(price)
-            }
-            None => {
-                tracing::debug!("{} {} no snapshot USD price available", dao_id, asset);
-                None
-            }
-        };
+        // Priced exclusively from the 1Click-fed token registry snapshot
+        // (minute-fresh, covers every intents token). No price known yet
+        // stays NULL — charts re-price at read time from the same series.
+        let price_usd = state
+            .token_price_service
+            .latest_price(&asset)
+            .map(|(price, _)| price);
+        if price_usd.is_none() {
+            tracing::debug!("{} {} no snapshot USD price available", dao_id, asset);
+        }
         let value_usd = price_usd.as_ref().map(|price| &balance * price);
 
-        seen_assets.insert(asset.clone());
         rows.push(SnapshotRow {
             asset,
             raw_balance,
@@ -115,6 +100,35 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
             price_usd,
             value_usd,
         });
+    }
+
+    // A 200 response with no usable balances would tombstone every held asset
+    // to zero. That is indistinguishable from an upstream glitch, so only
+    // trust it when the event ledger records outflows since the last snapshot.
+    if seen_assets.is_empty() && prior_balances.values().any(|b| !b.is_zero()) {
+        let since = match latest_snapshot_at(&state.db_pool, dao_id).await {
+            Ok(at) => at.unwrap_or(chrono::DateTime::<Utc>::MIN_UTC),
+            Err(e) => {
+                tracing::warn!("{} latest_snapshot_at failed: {}", dao_id, e);
+                return;
+            }
+        };
+        match has_outflow_events_since(&state.db_pool, dao_id, since).await {
+            Ok(true) => {}
+            Ok(false) => {
+                tracing::warn!(
+                    "{} refusing full-wipeout snapshot: empty balances response \
+                     with no outflow events since {}",
+                    dao_id,
+                    since
+                );
+                return;
+            }
+            Err(e) => {
+                tracing::warn!("{} outflow corroboration check failed: {}", dao_id, e);
+                return;
+            }
+        }
     }
 
     for (prior_asset, prior_balance) in prior_balances {
@@ -201,7 +215,193 @@ mod tests {
 
     use super::*;
     use crate::utils::env::EnvVars;
+    use crate::utils::test_utils::build_test_state;
     use sqlx::postgres::PgPool;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    const DAO: &str = "guard-test.sputnik-dao.near";
+
+    async fn state_with_mock_api(pool: PgPool, mock: &MockServer) -> Arc<AppState> {
+        let mut state = build_test_state(pool);
+        state.env_vars.confidential_api_url = mock.uri();
+        Arc::new(state)
+    }
+
+    /// Monitored confidential account with a still-valid JWT so the balance
+    /// fetch goes straight to the (mocked) balances endpoint.
+    async fn seed_confidential_dao(pool: &PgPool) {
+        sqlx::query(
+            r#"
+            INSERT INTO monitored_accounts
+                (account_id, enabled, is_confidential_account,
+                 confidential_access_token, confidential_refresh_token,
+                 confidential_token_expires_at)
+            VALUES ($1, true, true, 'test-access', 'test-refresh', NOW() + INTERVAL '1 hour')
+            ON CONFLICT (account_id) DO UPDATE SET
+                is_confidential_account = true,
+                confidential_access_token = 'test-access',
+                confidential_refresh_token = 'test-refresh',
+                confidential_token_expires_at = NOW() + INTERVAL '1 hour'
+            "#,
+        )
+        .bind(DAO)
+        .execute(pool)
+        .await
+        .expect("seed monitored account");
+    }
+
+    async fn seed_snapshot(
+        pool: &PgPool,
+        asset: &str,
+        balance: &str,
+        at: chrono::DateTime<Utc>,
+    ) {
+        sqlx::query(
+            r#"
+            INSERT INTO gold_confidential_balance_snapshots
+                (dao_id, asset, snapshot_at, raw_balance, balance)
+            VALUES ($1, $2, $3, $4, $4)
+            "#,
+        )
+        .bind(DAO)
+        .bind(asset)
+        .bind(at)
+        .bind(BigDecimal::from_str(balance).unwrap())
+        .execute(pool)
+        .await
+        .expect("seed snapshot");
+    }
+
+    async fn seed_sent_event(pool: &PgPool, at: chrono::DateTime<Utc>) {
+        let bronze_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO bronze_confidential_history_events
+                (account_id, created_at_external, deposit_address, status,
+                 deposit_type, destination_asset, raw_payload)
+            VALUES ($1, $2, 'addr', 'SUCCESS', 'ORIGIN_CHAIN', 'nep141:wrap.near', '{}'::jsonb)
+            RETURNING id
+            "#,
+        )
+        .bind(DAO)
+        .bind(at)
+        .fetch_one(pool)
+        .await
+        .expect("seed bronze event");
+
+        sqlx::query(
+            r#"
+            INSERT INTO gold_confidential_history_events
+                (history_event_id, dao_id, transaction_type, destination_asset,
+                 amount_out, recipient, refund_to, counterparty, deposit_address,
+                 quote_created_at)
+            VALUES ($1, $2, 'sent', 'nep141:wrap.near', 1, 'bob.near', $2,
+                    'bob.near', 'addr', $3)
+            "#,
+        )
+        .bind(bronze_id)
+        .bind(DAO)
+        .bind(at)
+        .execute(pool)
+        .await
+        .expect("seed gold event");
+    }
+
+    async fn mock_balances(mock: &MockServer, entries: serde_json::Value) {
+        Mock::given(method("GET"))
+            .and(path("/v0/account/balances"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_json(serde_json::json!({ "balances": entries })),
+            )
+            .mount(mock)
+            .await;
+    }
+
+    async fn snapshots_after(
+        pool: &PgPool,
+        after: chrono::DateTime<Utc>,
+    ) -> Vec<(String, BigDecimal)> {
+        sqlx::query_as(
+            r#"
+            SELECT asset, balance
+            FROM gold_confidential_balance_snapshots
+            WHERE dao_id = $1 AND snapshot_at > $2
+            ORDER BY asset
+            "#,
+        )
+        .bind(DAO)
+        .bind(after)
+        .fetch_all(pool)
+        .await
+        .expect("read snapshots")
+    }
+
+    #[sqlx::test]
+    async fn empty_balances_without_outflows_is_refused(pool: PgPool) {
+        let mock = MockServer::start().await;
+        mock_balances(&mock, serde_json::json!([])).await;
+        let state = state_with_mock_api(pool.clone(), &mock).await;
+
+        seed_confidential_dao(&pool).await;
+        let baseline_at = Utc::now() - Duration::hours(2);
+        seed_snapshot(&pool, "nep141:wrap.near", "5", baseline_at).await;
+
+        snapshot_confidential_dao_balances(&state, DAO).await;
+
+        assert!(
+            snapshots_after(&pool, baseline_at).await.is_empty(),
+            "uncorroborated full wipeout must not write tombstones"
+        );
+    }
+
+    #[sqlx::test]
+    async fn empty_balances_with_outflows_writes_tombstones(pool: PgPool) {
+        let mock = MockServer::start().await;
+        mock_balances(&mock, serde_json::json!([])).await;
+        let state = state_with_mock_api(pool.clone(), &mock).await;
+
+        seed_confidential_dao(&pool).await;
+        let baseline_at = Utc::now() - Duration::hours(2);
+        seed_snapshot(&pool, "nep141:wrap.near", "5", baseline_at).await;
+        seed_sent_event(&pool, Utc::now() - Duration::minutes(30)).await;
+
+        snapshot_confidential_dao_balances(&state, DAO).await;
+
+        let rows = snapshots_after(&pool, baseline_at).await;
+        assert_eq!(rows.len(), 1, "corroborated wipeout writes the tombstone");
+        assert_eq!(rows[0].0, "nep141:wrap.near");
+        assert!(rows[0].1.is_zero());
+    }
+
+    #[sqlx::test]
+    async fn unparseable_balance_is_skipped_without_tombstone(pool: PgPool) {
+        let mock = MockServer::start().await;
+        mock_balances(
+            &mock,
+            serde_json::json!([
+                { "tokenId": "nep141:wrap.near", "available": "not-a-number" },
+                { "tokenId": "nep141:eth.omft.near", "available": "1000000000000000000" },
+            ]),
+        )
+        .await;
+        let state = state_with_mock_api(pool.clone(), &mock).await;
+
+        seed_confidential_dao(&pool).await;
+        let baseline_at = Utc::now() - Duration::hours(2);
+        seed_snapshot(&pool, "nep141:wrap.near", "5", baseline_at).await;
+
+        snapshot_confidential_dao_balances(&state, DAO).await;
+
+        let rows = snapshots_after(&pool, baseline_at).await;
+        assert_eq!(
+            rows.len(),
+            1,
+            "only the parseable asset writes a row; the unparseable one is neither written nor tombstoned"
+        );
+        assert_eq!(rows[0].0, "nep141:eth.omft.near");
+        assert!(!rows[0].1.is_zero());
+    }
 
     async fn create_real_api_state() -> Arc<AppState> {
         dotenvy::from_filename(".env").ok();

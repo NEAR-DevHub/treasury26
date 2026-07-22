@@ -446,7 +446,7 @@ pub async fn compute_user_assets(
     let ft_lockup_positions;
 
     if is_confidential {
-        intents_balances = fetch_confidential_balances(state, account).await?;
+        intents_balances = fetch_confidential_balances(state, account).await?.balances;
         ref_tokens_with_balances = Vec::new();
         near_balance = None;
         lockup_balance = None;

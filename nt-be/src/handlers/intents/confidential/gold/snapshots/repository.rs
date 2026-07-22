@@ -58,6 +58,32 @@ pub async fn latest_snapshot_at(
     .await
 }
 
+/// Corroboration check for full-wipeout snapshots: true when the event ledger
+/// records any outflow since `since`. An empty balances response is only
+/// trustworthy as a real full withdrawal when outflow events back it up;
+/// otherwise it is indistinguishable from an upstream glitch.
+pub async fn has_outflow_events_since(
+    pool: &PgPool,
+    dao_id: &str,
+    since: DateTime<Utc>,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM gold_confidential_history_events
+            WHERE dao_id = $1
+              AND transaction_type IN ('sent', 'exchange')
+              AND COALESCE(proposal_executed_at, quote_created_at) > $2
+        )
+        "#,
+    )
+    .bind(dao_id)
+    .bind(since)
+    .fetch_one(pool)
+    .await
+}
+
 /// Idempotent on replay via the `(dao_id, asset, snapshot_at)` unique constraint.
 pub async fn insert_snapshot_rows(
     pool: &PgPool,
