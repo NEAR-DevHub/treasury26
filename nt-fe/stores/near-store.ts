@@ -85,7 +85,7 @@ const ACT_PROPOSAL_OVERHEAD_GAS = ONE_TGAS.mul(10);
 const TX_GAS_BUDGET = ONE_TGAS.mul(1000);
 // Floor for a non-FunctionCall vote when the batch is already over budget, so
 // the action still carries valid (non-zero) gas even if the tx is rejected.
-const MIN_VOTE_GAS = ONE_TGAS.mul(1);
+const MIN_VOTE_GAS = ONE_TGAS.mul(10);
 
 /**
  * Required prepaid gas for an `act_proposal` on a FunctionCall proposal, in gas
@@ -136,7 +136,9 @@ function distributeVoteGas(proposalKinds: unknown[]): string[] {
     const perRemaining =
         remainingCount > 0 && remainingBudget.gt(MIN_VOTE_GAS)
             ? // Round down so rounding never pushes the batch over the budget.
-              remainingBudget.div(remainingCount).round(0, 0)
+              remainingBudget
+                  .div(remainingCount)
+                  .round(0, 0)
             : MIN_VOTE_GAS;
     return requiredGas.map((gas) => (gas ?? perRemaining).toFixed(0));
 }
