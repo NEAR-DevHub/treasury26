@@ -147,7 +147,8 @@ impl ConfidentialDepositCorrector {
             .await
             .map_err(|(status, message)| {
                 format!("live balance fetch failed ({status}): {message}")
-            })?;
+            })?
+            .balances;
         let mut live_raw: HashMap<String, BigDecimal> = HashMap::new();
         for (asset, raw) in live_balances {
             match BigDecimal::from_str(&raw) {

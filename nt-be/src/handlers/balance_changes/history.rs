@@ -110,6 +110,23 @@ pub struct BalanceSnapshot {
     pub value_usd: Option<f64>, // balance * price_usd (null if unavailable)
 }
 
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum ChartStatus {
+    Ok,
+    Stale,
+    Unavailable,
+}
+
+/// Freshness of the data source backing a chart response.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChartMeta {
+    pub status: ChartStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_snapshot_at: Option<DateTime<Utc>>,
+}
+
 /// Chart response with metadata
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -118,6 +135,8 @@ pub struct ChartResponse {
     pub data: HashMap<String, Vec<BalanceSnapshot>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_synced_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub chart_meta: Option<ChartMeta>,
 }
 
 /// Chart API - returns balance snapshots at intervals
@@ -134,6 +153,23 @@ pub async fn get_balance_chart(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
+    // Confidential charts are served from trusted balance snapshots — the
+    // event ledger can drift from real balances (missed deposits) and must
+    // not drive the chart.
+    if read_source == BalanceChangesReadSource::Confidential {
+        let response =
+            crate::handlers::intents::confidential::gold::snapshots::build_confidential_chart_response(
+                &state,
+                params.account_id.as_str(),
+                params.start_time,
+                params.end_time,
+                &params.interval,
+                params.token_ids.as_ref(),
+            )
+            .await?;
+        return Ok(Json(response));
+    }
+
     let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
     )
@@ -146,14 +182,9 @@ pub async fn get_balance_chart(
 
     // Load prior balances from the same source selected for the chart rows.
     let prior_balances = match read_source {
-        BalanceChangesReadSource::Confidential => confidential_list::load_prior_balances(
-            &state.db_pool,
-            params.account_id.as_str(),
-            params.start_time,
-            params.token_ids.as_ref(),
-        )
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?,
+        BalanceChangesReadSource::Confidential => {
+            unreachable!("confidential charts return early above")
+        }
         BalanceChangesReadSource::PublicGold => public_list::load_prior_balances(
             &state.db_pool,
             params.account_id.as_str(),
@@ -285,6 +316,7 @@ pub async fn get_balance_chart(
     Ok(Json(ChartResponse {
         data: snapshots,
         last_synced_at,
+        chart_meta: None,
     }))
 }
 

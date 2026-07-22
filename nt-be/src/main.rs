@@ -31,6 +31,11 @@ async fn async_main() {
             .expect("Failed to initialize application state"),
     );
 
+    // Every instance serves prices from the in-memory token snapshot; the
+    // ingest cron that writes the underlying table runs only on the jobs
+    // leader, so each process refreshes its own snapshot.
+    state.token_price_service.spawn_snapshot_refresher();
+
     let shutdown = CancellationToken::new();
     let signal_shutdown = shutdown.clone();
     tokio::spawn(async move {

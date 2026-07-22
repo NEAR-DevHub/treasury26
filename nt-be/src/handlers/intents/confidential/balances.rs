@@ -24,16 +24,26 @@ struct BalancesResponse {
     balances: Vec<BalanceEntry>,
 }
 
+/// Result of a confidential balance fetch. `unparseable_assets` lists tokens
+/// present in the response whose `available` amount was not a valid integer;
+/// callers must not treat them as zero/disappeared.
+#[derive(Debug, Default)]
+pub struct ConfidentialBalanceFetch {
+    pub balances: Vec<(String, String)>,
+    pub unparseable_assets: Vec<String>,
+}
+
 /// Fetch confidential balances from the 1Click `/v0/account/balances` endpoint.
 ///
-/// Returns `(token_id, available)` pairs where `token_id` is the raw intents
-/// token ID (e.g. `nep141:wrap.near`) and `available` is a base-10 string of
-/// the raw on-chain amount (pre-decimal-adjustment). Zero balances are filtered.
+/// `balances` holds `(token_id, available)` pairs where `token_id` is the raw
+/// intents token ID (e.g. `nep141:wrap.near`) and `available` is a base-10
+/// string of the raw on-chain amount (pre-decimal-adjustment). Zero balances
+/// are filtered.
 #[tracing::instrument(level = "debug", skip_all, fields(dao_id = %dao_id))]
 pub async fn fetch_confidential_balances(
     state: &AppState,
     dao_id: &AccountIdRef,
-) -> Result<Vec<(String, String)>, (StatusCode, String)> {
+) -> Result<ConfidentialBalanceFetch, (StatusCode, String)> {
     let access_token = refresh_dao_jwt(state, dao_id).await?;
 
     let url = format!(
@@ -80,10 +90,26 @@ pub async fn fetch_confidential_balances(
         )
     })?;
 
-    Ok(parsed
-        .balances
-        .into_iter()
-        .filter(|b| b.available.parse::<u128>().unwrap_or(0) > 0)
-        .map(|b| (b.token_id, b.available))
-        .collect())
+    let mut balances = Vec::with_capacity(parsed.balances.len());
+    let mut unparseable_assets = Vec::new();
+    for entry in parsed.balances {
+        match entry.available.parse::<u128>() {
+            Ok(0) => {}
+            Ok(_) => balances.push((entry.token_id, entry.available)),
+            Err(e) => {
+                tracing::warn!(
+                    "{} unparseable available amount for {}: {}",
+                    dao_id,
+                    entry.token_id,
+                    e
+                );
+                unparseable_assets.push(entry.token_id);
+            }
+        }
+    }
+
+    Ok(ConfidentialBalanceFetch {
+        balances,
+        unparseable_assets,
+    })
 }

@@ -104,6 +104,13 @@ fn get_symbol_map() -> &'static HashMap<&'static str, &'static str> {
         // Other tokens
         map.insert("SAFE", "coingecko:safe");
         map.insert("OKB", "coingecko:okb");
+        map.insert("RHEA", "coingecko:rhea");
+        map.insert("SPX", "coingecko:spx6900");
+        map.insert("ADI", "coingecko:adi-token");
+        map.insert("CFI", "coingecko:consumerfi-protocol");
+        map.insert("PUBLIC", "coingecko:publicai");
+        map.insert("ALEO", "coingecko:aleo");
+        map.insert("DASH", "coingecko:dash");
 
         map
     })
@@ -489,7 +496,17 @@ impl PriceProvider for DeFiLlamaClient {
         // The unified_asset_id is lowercase (e.g., "btc", "eth", "usdc")
         // Convert to uppercase for symbol lookup
         let upper = unified_asset_id.to_uppercase();
-        get_symbol_map().get(upper.as_str()).map(|s| s.to_string())
+        if let Some(id) = get_symbol_map().get(upper.as_str()) {
+            return Some(id.to_string());
+        }
+        // The map is keyed by token symbol, which can differ from the unified
+        // asset id (e.g. unified "zcash" vs symbol "ZEC") — retry via the
+        // tokens.json symbol before giving up.
+        let token = crate::constants::intents_tokens::get_tokens_map()
+            .get(&unified_asset_id.to_lowercase())?;
+        get_symbol_map()
+            .get(token.symbol.to_uppercase().as_str())
+            .map(|s| s.to_string())
     }
 
     async fn get_price_at_date(
@@ -630,6 +647,20 @@ mod tests {
     fn test_source_name() {
         let client = DeFiLlamaClient::new(Client::new());
         assert_eq!(client.source_name(), "defillama");
+    }
+
+    #[test]
+    fn test_translate_asset_id_symbol_fallback() {
+        let client = DeFiLlamaClient::new(Client::new());
+
+        // Zcash's tokens.json unifiedAssetId ("zcash") differs from its
+        // symbol ("ZEC"); the map is symbol-keyed, so this only resolves
+        // through the tokens.json symbol fallback.
+        assert_eq!(
+            client.translate_asset_id("zcash"),
+            Some("coingecko:zcash".to_string())
+        );
+        assert_eq!(client.translate_asset_id("not-a-real-token"), None);
     }
 
     #[test]
