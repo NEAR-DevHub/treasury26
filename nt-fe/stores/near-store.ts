@@ -77,6 +77,52 @@ function ensureBluetoothIframePermission() {
 const FALLBACK_PROPOSAL_STORAGE_BYTES = Big(500);
 const FALLBACK_VOTE_STORAGE_BYTES = Big(100);
 
+// Gas budgeting for `act_proposal` (gas units; 1 TGas = 1e12).
+const ONE_TGAS = Big("1000000000000");
+// When approving a FunctionCall proposal, `act_proposal` forwards each inner
+// action's own gas to the cross-contract call, so it must itself be prepaid
+// with the sum of those plus a small margin for running `act_proposal`. A flat
+// 300 TGas (the previous default) is not enough once the inner calls approach
+// that on their own, which surfaces on-chain as "Exceeded the prepaid gas".
+const ACT_PROPOSAL_OVERHEAD_GAS = ONE_TGAS.mul(10); // 10 TGas for act_proposal itself
+const MAX_ACT_PROPOSAL_GAS = ONE_TGAS.mul(1000); // hard ceiling: 1000 TGas
+// Non-FunctionCall votes (transfers, governance) are lightweight; keep the
+// prior behaviour of sharing a 300 TGas budget across a batch.
+const DEFAULT_VOTE_GAS_BUDGET = ONE_TGAS.mul(300);
+
+/**
+ * Gas to prepay for an `act_proposal` call, in gas units.
+ *
+ * For a FunctionCall proposal this is the sum of the proposal's inner action
+ * gas plus {@link ACT_PROPOSAL_OVERHEAD_GAS}, capped at
+ * {@link MAX_ACT_PROPOSAL_GAS}. For any other proposal kind it falls back to an
+ * even share of {@link DEFAULT_VOTE_GAS_BUDGET} across the batch.
+ */
+function actProposalGas(proposalKind: unknown, voteCount: number): string {
+    if (
+        proposalKind &&
+        typeof proposalKind === "object" &&
+        "FunctionCall" in proposalKind
+    ) {
+        const functionCall = (
+            proposalKind as {
+                FunctionCall?: { actions?: Array<{ gas?: string }> };
+            }
+        ).FunctionCall;
+        const actions = functionCall?.actions ?? [];
+        const innerGas = actions.reduce(
+            (sum, action) => sum.add(Big(action?.gas ?? "0")),
+            Big(0),
+        );
+        const required = innerGas.add(ACT_PROPOSAL_OVERHEAD_GAS);
+        const capped = required.gt(MAX_ACT_PROPOSAL_GAS)
+            ? MAX_ACT_PROPOSAL_GAS
+            : required;
+        return capped.toFixed(0);
+    }
+    return DEFAULT_VOTE_GAS_BUDGET.div(Math.max(voteCount, 1)).toFixed(0);
+}
+
 export interface CreateProposalParams {
     treasuryId: string;
     proposal: {
@@ -656,7 +702,6 @@ export const useNearStore = create<NearStore>((set, get) => ({
         }
 
         const { signAndSendDelegateAction } = get();
-        const gas = Big("300000000000000").div(votes.length).toFixed();
 
         let voteStorageBytes: Big;
         try {
@@ -687,7 +732,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     action: `Vote${vote.vote}`,
                     proposal: vote.proposal.kind,
                 },
-                gas: gas.toString(),
+                gas: actProposalGas(vote.proposal.kind, votes.length),
                 deposit: "0",
             },
         }));
