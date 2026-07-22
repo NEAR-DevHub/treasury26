@@ -772,6 +772,27 @@ async fn approve_existing_proposal(
         })?;
 
     let vote_debug = format!("{:?}", vote_outcome);
+    // `into_result()` only inspects the transaction's top-level status. A
+    // FunctionCall proposal's cross-contract call runs in a separate receipt
+    // whose failure (e.g. "Exceeded the prepaid gas") does not propagate to
+    // that status, so check the receipts explicitly and surface any failure.
+    if let Some(receipt_failure) =
+        crate::handlers::relay::sponsor::receipt_failure_message(&vote_outcome)
+    {
+        tracing::error!(
+            treasury = %treasury_id,
+            proposal_id,
+            kind = %kind_summary,
+            "act_proposal landed but a receipt failed on-chain: {receipt_failure}"
+        );
+        return Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!(
+                "Proposal #{} action failed: {}",
+                proposal_id, receipt_failure
+            ),
+        ));
+    }
     vote_outcome.into_result().map_err(|e| {
         tracing::error!(
             treasury = %treasury_id,

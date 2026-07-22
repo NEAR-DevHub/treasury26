@@ -18,7 +18,10 @@ use near_api::{
     AccountId, NearGas, NearToken, NetworkConfig, Signer, Tokens, Transaction,
     types::{
         Action,
-        transaction::{actions::FunctionCallAction, delegate_action::SignedDelegateAction},
+        transaction::{
+            actions::FunctionCallAction, delegate_action::SignedDelegateAction,
+            result::ExecutionFinalResult,
+        },
     },
 };
 
@@ -94,6 +97,9 @@ impl Sponsor {
             .await
             .map_err(|e| format!("Failed to relay: {}", e))?;
         let debug = format!("{:?}", outcome);
+        if let Some(receipt_failure) = receipt_failure_message(&outcome) {
+            return Err(receipt_failure);
+        }
         outcome
             .into_result()
             .map_err(|e| format!("Execution failed: {}", e))?;
@@ -122,6 +128,9 @@ impl Sponsor {
             .await
             .map_err(|e| format!("Failed to relay: {}", e))?;
         let debug = format!("{:?}", outcome);
+        if let Some(receipt_failure) = receipt_failure_message(&outcome) {
+            return Err(receipt_failure);
+        }
         outcome
             .into_result()
             .map_err(|e| format!("Execution failed: {}", e))?;
@@ -161,4 +170,31 @@ impl Sponsor {
             .await
             .map_err(|e| e.to_string())
     }
+}
+
+/// Detect a downstream receipt failure in a landed transaction.
+///
+/// `ExecutionFinalResult::into_result()` inspects only the transaction's
+/// top-level `FinalExecutionStatus`. Sputnik's `act_proposal` schedules a
+/// `FunctionCall` proposal's cross-contract call as an independent promise
+/// with no callback that re-raises its failure, so if that call runs out of
+/// gas ("Exceeded the prepaid gas") the receipt fails while the top-level
+/// status stays `Success`. Scan every receipt so such failures surface to the
+/// caller (flagged to the user and logged at ERROR → Sentry) instead of being
+/// silently swallowed.
+pub(crate) fn receipt_failure_message(outcome: &ExecutionFinalResult) -> Option<String> {
+    let failures = outcome.receipt_failures();
+    if failures.is_empty() {
+        return None;
+    }
+    let details = failures
+        .iter()
+        .map(|failure| format!("{:?}", failure))
+        .collect::<Vec<_>>()
+        .join("; ");
+    Some(format!(
+        "Relayed transaction landed but {} receipt(s) failed on-chain: {}",
+        failures.len(),
+        details
+    ))
 }
