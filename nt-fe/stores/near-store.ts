@@ -127,10 +127,9 @@ function functionCallProposalGas(proposalKind: unknown): Big | null {
  */
 function distributeVoteGas(proposalKinds: unknown[]): string[] {
     const requiredGas = proposalKinds.map(functionCallProposalGas);
-    const usedByFunctionCalls = requiredGas.reduce(
-        (sum, gas) => (gas ? sum.add(gas) : sum),
-        Big(0),
-    );
+    const usedByFunctionCalls = requiredGas
+        .filter((gas): gas is Big => gas !== null)
+        .reduce((sum, gas) => sum.add(gas), Big(0));
     const remainingCount = requiredGas.filter((gas) => gas === null).length;
     const remainingBudget = TX_GAS_BUDGET.sub(usedByFunctionCalls);
     const perRemaining =
