@@ -79,48 +79,66 @@ const FALLBACK_VOTE_STORAGE_BYTES = Big(100);
 
 // Gas budgeting for `act_proposal` (gas units; 1 TGas = 1e12).
 const ONE_TGAS = Big("1000000000000");
-// When approving a FunctionCall proposal, `act_proposal` forwards each inner
-// action's own gas to the cross-contract call, so it must itself be prepaid
-// with the sum of those plus a small margin for running `act_proposal`. A flat
-// 300 TGas (the previous default) is not enough once the inner calls approach
-// that on their own, which surfaces on-chain as "Exceeded the prepaid gas".
-const ACT_PROPOSAL_OVERHEAD_GAS = ONE_TGAS.mul(10); // 10 TGas for act_proposal itself
-const MAX_ACT_PROPOSAL_GAS = ONE_TGAS.mul(1000); // hard ceiling: 1000 TGas
-// Non-FunctionCall votes (transfers, governance) are lightweight; keep the
-// prior behaviour of sharing a 300 TGas budget across a batch.
-const DEFAULT_VOTE_GAS_BUDGET = ONE_TGAS.mul(300);
+// 10 TGas for running `act_proposal` itself, on top of the inner call gas.
+const ACT_PROPOSAL_OVERHEAD_GAS = ONE_TGAS.mul(10);
+// Hard per-transaction prepaid-gas budget (mainnet `max_total_prepaid_gas`).
+const TX_GAS_BUDGET = ONE_TGAS.mul(1000);
+// Floor for a non-FunctionCall vote when the batch is already over budget, so
+// the action still carries valid (non-zero) gas even if the tx is rejected.
+const MIN_VOTE_GAS = ONE_TGAS.mul(1);
 
 /**
- * Gas to prepay for an `act_proposal` call, in gas units.
- *
- * For a FunctionCall proposal this is the sum of the proposal's inner action
- * gas plus {@link ACT_PROPOSAL_OVERHEAD_GAS}, capped at
- * {@link MAX_ACT_PROPOSAL_GAS}. For any other proposal kind it falls back to an
- * even share of {@link DEFAULT_VOTE_GAS_BUDGET} across the batch.
+ * Required prepaid gas for an `act_proposal` on a FunctionCall proposal, in gas
+ * units: the sum of the proposal's inner action gas plus
+ * {@link ACT_PROPOSAL_OVERHEAD_GAS}. `act_proposal` forwards each inner action's
+ * own gas to its cross-contract call, reserving it from its own remaining
+ * budget, so it must itself be prepaid with at least that much or it fails
+ * on-chain with "Exceeded the prepaid gas". Returns null for non-FunctionCall
+ * proposals (transfers, governance), which are lightweight.
  */
-function actProposalGas(proposalKind: unknown, voteCount: number): string {
+function functionCallProposalGas(proposalKind: unknown): Big | null {
     if (
-        proposalKind &&
-        typeof proposalKind === "object" &&
-        "FunctionCall" in proposalKind
+        !proposalKind ||
+        typeof proposalKind !== "object" ||
+        !("FunctionCall" in proposalKind)
     ) {
-        const functionCall = (
-            proposalKind as {
-                FunctionCall?: { actions?: Array<{ gas?: string }> };
-            }
-        ).FunctionCall;
-        const actions = functionCall?.actions ?? [];
-        const innerGas = actions.reduce(
-            (sum, action) => sum.add(Big(action?.gas ?? "0")),
-            Big(0),
-        );
-        const required = innerGas.add(ACT_PROPOSAL_OVERHEAD_GAS);
-        const capped = required.gt(MAX_ACT_PROPOSAL_GAS)
-            ? MAX_ACT_PROPOSAL_GAS
-            : required;
-        return capped.toFixed(0);
+        return null;
     }
-    return DEFAULT_VOTE_GAS_BUDGET.div(Math.max(voteCount, 1)).toFixed(0);
+    const functionCall = (
+        proposalKind as { FunctionCall?: { actions?: Array<{ gas?: string }> } }
+    ).FunctionCall;
+    const actions = functionCall?.actions ?? [];
+    const innerGas = actions.reduce(
+        (sum, action) => sum.add(Big(action?.gas ?? "0")),
+        Big(0),
+    );
+    const required = innerGas.add(ACT_PROPOSAL_OVERHEAD_GAS);
+    // A single action can never carry more than the whole-transaction budget.
+    return required.gt(TX_GAS_BUDGET) ? TX_GAS_BUDGET : required;
+}
+
+/**
+ * Distribute the {@link TX_GAS_BUDGET} across a batch of `act_proposal` votes.
+ *
+ * FunctionCall proposals are accounted first — each gets exactly what its inner
+ * calls need (see {@link functionCallProposalGas}). The remaining budget is then
+ * split evenly across the rest of the votes. The gas per vote is returned in the
+ * same order as `proposalKinds`.
+ */
+function distributeVoteGas(proposalKinds: unknown[]): string[] {
+    const requiredGas = proposalKinds.map(functionCallProposalGas);
+    const usedByFunctionCalls = requiredGas.reduce(
+        (sum, gas) => (gas ? sum.add(gas) : sum),
+        Big(0),
+    );
+    const remainingCount = requiredGas.filter((gas) => gas === null).length;
+    const remainingBudget = TX_GAS_BUDGET.sub(usedByFunctionCalls);
+    const perRemaining =
+        remainingCount > 0 && remainingBudget.gt(MIN_VOTE_GAS)
+            ? // Round down so rounding never pushes the batch over the budget.
+              remainingBudget.div(remainingCount).round(0, 0)
+            : MIN_VOTE_GAS;
+    return requiredGas.map((gas) => (gas ?? perRemaining).toFixed(0));
 }
 
 export interface CreateProposalParams {
@@ -723,7 +741,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
             voteStorageBytes = FALLBACK_VOTE_STORAGE_BYTES.mul(votes.length);
         }
 
-        const votesActions = votes.map((vote) => ({
+        const voteGas = distributeVoteGas(
+            votes.map((vote) => vote.proposal.kind),
+        );
+        const votesActions = votes.map((vote, index) => ({
             type: "FunctionCall",
             params: {
                 methodName: "act_proposal",
@@ -732,7 +753,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     action: `Vote${vote.vote}`,
                     proposal: vote.proposal.kind,
                 },
-                gas: actProposalGas(vote.proposal.kind, votes.length),
+                gas: voteGas[index],
                 deposit: "0",
             },
         }));
