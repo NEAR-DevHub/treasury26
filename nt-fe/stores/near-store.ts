@@ -79,10 +79,15 @@ const FALLBACK_VOTE_STORAGE_BYTES = Big(100);
 
 // Gas budgeting for `act_proposal` (gas units; 1 TGas = 1e12).
 const ONE_TGAS = Big("1000000000000");
-// 10 TGas for running `act_proposal` itself, on top of the inner call gas.
-const ACT_PROPOSAL_OVERHEAD_GAS = ONE_TGAS.mul(10);
+// 25 TGas for running `act_proposal` itself plus its callback, on top of the
+// inner call gas it forwards.
+const ACT_PROPOSAL_OVERHEAD_GAS = ONE_TGAS.mul(25);
 // Hard per-transaction prepaid-gas budget (mainnet `max_total_prepaid_gas`).
 const TX_GAS_BUDGET = ONE_TGAS.mul(1000);
+// Non-FunctionCall votes (transfers, governance) are lightweight and don't
+// forward gas anywhere, so cap each at 100 TGas rather than handing them a
+// large share of the transaction budget.
+const NON_FUNCTION_CALL_VOTE_GAS = ONE_TGAS.mul(100);
 // Floor for a non-FunctionCall vote when the batch is already over budget, so
 // the action still carries valid (non-zero) gas even if the tx is rejected.
 const MIN_VOTE_GAS = ONE_TGAS.mul(10);
@@ -121,9 +126,10 @@ function functionCallProposalGas(proposalKind: unknown): Big | null {
  * Distribute the {@link TX_GAS_BUDGET} across a batch of `act_proposal` votes.
  *
  * FunctionCall proposals are accounted first — each gets exactly what its inner
- * calls need (see {@link functionCallProposalGas}). The remaining budget is then
- * split evenly across the rest of the votes. The gas per vote is returned in the
- * same order as `proposalKinds`.
+ * calls need (see {@link functionCallProposalGas}). Each remaining vote gets an
+ * even share of what's left of the budget, capped at
+ * {@link NON_FUNCTION_CALL_VOTE_GAS} and floored at {@link MIN_VOTE_GAS}. The gas
+ * per vote is returned in the same order as `proposalKinds`.
  */
 function distributeVoteGas(proposalKinds: unknown[]): string[] {
     const requiredGas = proposalKinds.map(functionCallProposalGas);
@@ -132,13 +138,16 @@ function distributeVoteGas(proposalKinds: unknown[]): string[] {
         .reduce((sum, gas) => sum.add(gas), Big(0));
     const remainingCount = requiredGas.filter((gas) => gas === null).length;
     const remainingBudget = TX_GAS_BUDGET.sub(usedByFunctionCalls);
-    const perRemaining =
-        remainingCount > 0 && remainingBudget.gt(MIN_VOTE_GAS)
-            ? // Round down so rounding never pushes the batch over the budget.
-              remainingBudget
-                  .div(remainingCount)
-                  .round(0, 0)
-            : MIN_VOTE_GAS;
+    let perRemaining = MIN_VOTE_GAS;
+    if (remainingCount > 0) {
+        // Round down so rounding never pushes the batch over the budget.
+        const evenShare = remainingBudget.div(remainingCount).round(0, 0);
+        if (evenShare.gt(NON_FUNCTION_CALL_VOTE_GAS)) {
+            perRemaining = NON_FUNCTION_CALL_VOTE_GAS;
+        } else if (evenShare.gt(MIN_VOTE_GAS)) {
+            perRemaining = evenShare;
+        }
+    }
     return requiredGas.map((gas) => (gas ?? perRemaining).toFixed(0));
 }
 
