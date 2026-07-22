@@ -3,17 +3,17 @@ use std::time::Duration;
 
 use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_json::Value;
 
 use crate::AppState;
-use crate::handlers::balance_changes::utils::block_timestamp_to_datetime;
 use crate::handlers::public_history::bronze::NearblocksPriority;
 use crate::handlers::public_history::bronze::store::{
     BronzePublicHistoryEvent, PublicHistorySource,
 };
 
-const NEARBLOCKS_V3_BASE_URL: &str = "https://api-beta.nearblocks.io";
+const NEARBLOCKS_V3_BASE_URL: &str = "https://api.nearblocks.io";
 
 #[derive(Debug, Clone)]
 pub struct NearblocksPage {
@@ -127,6 +127,18 @@ fn parse_i64(value: &str, field: &str) -> Result<i64, (StatusCode, String)> {
     })
 }
 
+fn parse_block_time(value: &str) -> Result<DateTime<Utc>, (StatusCode, String)> {
+    let timestamp_ns = parse_i64(value, "block_timestamp")?;
+    let seconds = timestamp_ns.div_euclid(1_000_000_000);
+    let nanoseconds = timestamp_ns.rem_euclid(1_000_000_000) as u32;
+    DateTime::from_timestamp(seconds, nanoseconds).ok_or_else(|| {
+        (
+            StatusCode::BAD_GATEWAY,
+            format!("NearBlocks block_timestamp is outside the supported range: {value}"),
+        )
+    })
+}
+
 fn block_timestamp<'a>(block: &'a NearblocksBlock, override_timestamp: Option<&'a str>) -> &'a str {
     override_timestamp.unwrap_or(&block.block_timestamp)
 }
@@ -175,21 +187,31 @@ async fn fetch_raw_page(
     limit: u32,
     priority: NearblocksPriority,
 ) -> Result<Value, (StatusCode, String)> {
+    let url = format!(
+        "{}/v3/accounts/{}/{}",
+        NEARBLOCKS_V3_BASE_URL, account_id, path
+    );
+    let mut params = vec![("limit", limit.to_string())];
+    if let Some(cursor) = cursor {
+        params.push(("next", cursor.to_string()));
+    }
+
+    fetch_raw_json(state, &url, &params, priority, path).await
+}
+
+async fn fetch_raw_json(
+    state: &AppState,
+    url: &str,
+    params: &[(&str, String)],
+    priority: NearblocksPriority,
+    operation: &str,
+) -> Result<Value, (StatusCode, String)> {
     let Some(api_key) = state.env_vars.nearblocks_api_key.as_ref() else {
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             "NEARBLOCKS_API_KEY is not configured".to_string(),
         ));
     };
-
-    let url = format!(
-        "{}/v3/accounts/{}/{}",
-        NEARBLOCKS_V3_BASE_URL, account_id, path
-    );
-    let mut params = vec![("per_page", limit.to_string())];
-    if let Some(cursor) = cursor {
-        params.push(("next", cursor.to_string()));
-    }
 
     let mut attempt = 0;
     loop {
@@ -202,7 +224,7 @@ async fn fetch_raw_page(
 
         let response = state
             .http_client
-            .get(&url)
+            .get(url)
             .query(&params)
             .header("accept", "application/json")
             .header("Authorization", format!("Bearer {}", api_key))
@@ -220,7 +242,7 @@ async fn fetch_raw_page(
         if status == StatusCode::TOO_MANY_REQUESTS && attempt < NEARBLOCKS_MAX_ATTEMPTS {
             let backoff = retry_after_delay(&response);
             tracing::warn!(
-                path = path,
+                operation = operation,
                 attempt,
                 backoff_secs = backoff.as_secs(),
                 "NearBlocks rate limited (429); backing off and retrying"
@@ -246,6 +268,36 @@ async fn fetch_raw_page(
     }
 }
 
+fn latest_indexed_block_height(raw: &Value) -> Result<i64, (StatusCode, String)> {
+    let height = raw
+        .get("data")
+        .and_then(Value::as_array)
+        .and_then(|blocks| blocks.first())
+        .and_then(|block| block.get("block_height"))
+        .and_then(Value::as_str)
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_GATEWAY,
+                "NearBlocks latest-block response missing data[0].block_height".to_string(),
+            )
+        })?;
+
+    parse_i64(height, "data[0].block_height")
+}
+
+/// Return the most recent block NearBlocks reports as indexed. Latest account
+/// refreshes use this as a preflight and persist the verified head after the
+/// source drain; an empty account event page alone cannot prove progress.
+pub(crate) async fn fetch_latest_indexed_block_height(
+    state: &AppState,
+    priority: NearblocksPriority,
+) -> Result<i64, (StatusCode, String)> {
+    let url = format!("{}/v3/blocks/latest", NEARBLOCKS_V3_BASE_URL);
+    let params = [("limit", "1".to_string())];
+    let raw = fetch_raw_json(state, &url, &params, priority, "blocks/latest").await?;
+    latest_indexed_block_height(&raw)
+}
+
 fn raw_items(raw: &Value) -> Result<&Vec<Value>, (StatusCode, String)> {
     raw.get("txns")
         .or_else(|| raw.get("data"))
@@ -258,10 +310,18 @@ fn raw_items(raw: &Value) -> Result<&Vec<Value>, (StatusCode, String)> {
         })
 }
 
-fn next_cursor(raw: &Value) -> Option<String> {
-    raw.get("meta")
-        .and_then(|meta| serde_json::from_value::<NearblocksMeta>(meta.clone()).ok())
-        .and_then(|meta| meta.next_page)
+fn next_cursor(raw: &Value) -> Result<Option<String>, (StatusCode, String)> {
+    let Some(meta) = raw.get("meta") else {
+        return Ok(None);
+    };
+    serde_json::from_value::<NearblocksMeta>(meta.clone())
+        .map(|meta| meta.next_page)
+        .map_err(|error| {
+            (
+                StatusCode::BAD_GATEWAY,
+                format!("NearBlocks pagination metadata is invalid: {error}"),
+            )
+        })
 }
 
 pub async fn fetch_ft_transfers(
@@ -302,7 +362,7 @@ pub async fn fetch_ft_transfers(
             event_index: Some(item.event_index),
             block_height,
             block_timestamp,
-            block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
+            block_time: parse_block_time(&timestamp)?,
             // Preserve NearBlocks account semantics: affected is the balance owner,
             // involved is the counterparty, contract is the FT token contract.
             affected_account_id: item.affected_account_id,
@@ -322,7 +382,7 @@ pub async fn fetch_ft_transfers(
 
     Ok(NearblocksPage {
         events,
-        next_cursor: next_cursor(&raw),
+        next_cursor: next_cursor(&raw)?,
     })
 }
 
@@ -365,7 +425,7 @@ pub async fn fetch_mt_transfers(
             event_index: Some(item.event_index),
             block_height,
             block_timestamp,
-            block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
+            block_time: parse_block_time(&timestamp)?,
             // Preserve NearBlocks account semantics: affected is the balance owner,
             // involved is the counterparty, contract is the MT token contract.
             affected_account_id: item.affected_account_id,
@@ -385,7 +445,7 @@ pub async fn fetch_mt_transfers(
 
     Ok(NearblocksPage {
         events,
-        next_cursor: next_cursor(&raw),
+        next_cursor: next_cursor(&raw)?,
     })
 }
 
@@ -454,7 +514,7 @@ pub async fn fetch_receipts(
                 event_index: Some(event_index),
                 block_height,
                 block_timestamp: block_timestamp.clone(),
-                block_time: block_timestamp_to_datetime(parse_i64(&timestamp, "block_timestamp")?),
+                block_time: parse_block_time(&timestamp)?,
                 // Receipts are not token balance rows: use receiver as affected/contract
                 // and predecessor as involved so proposal/linking code can reason over them.
                 affected_account_id: item
@@ -482,6 +542,63 @@ pub async fn fetch_receipts(
 
     Ok(NearblocksPage {
         events,
-        next_cursor: next_cursor(&raw),
+        next_cursor: next_cursor(&raw)?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_latest_indexed_block_height() {
+        let raw = serde_json::json!({
+            "data": [{ "block_height": "208014329" }]
+        });
+
+        assert_eq!(latest_indexed_block_height(&raw), Ok(208_014_329));
+    }
+
+    #[test]
+    fn rejects_unverifiable_latest_block_response() {
+        let missing = latest_indexed_block_height(&serde_json::json!({ "data": [] }));
+        assert!(missing.is_err());
+
+        let malformed = latest_indexed_block_height(&serde_json::json!({
+            "data": [{ "block_height": "not-a-height" }]
+        }));
+        assert!(malformed.is_err());
+    }
+
+    #[test]
+    fn pagination_metadata_is_optional_on_terminal_pages_and_strict_when_present() {
+        assert_eq!(
+            next_cursor(&serde_json::json!({
+                "data": [],
+                "meta": { "next_page": "opaque" }
+            }))
+            .unwrap(),
+            Some("opaque".to_string())
+        );
+        assert_eq!(
+            next_cursor(&serde_json::json!({ "data": [], "meta": {} })).unwrap(),
+            None
+        );
+        assert_eq!(
+            next_cursor(&serde_json::json!({ "data": [] })).unwrap(),
+            None
+        );
+        assert_eq!(
+            next_cursor(&serde_json::json!({ "data": [{ "event": "terminal" }] })).unwrap(),
+            None
+        );
+        assert!(next_cursor(&serde_json::json!({ "data": [], "meta": [] })).is_err());
+    }
+
+    #[test]
+    fn rejects_out_of_range_block_timestamps() {
+        assert!(parse_block_time("1784700737627294324").is_ok());
+        assert!(parse_block_time("not-a-timestamp").is_err());
+        assert!(parse_block_time("9223372036854775808").is_err());
+    }
 }

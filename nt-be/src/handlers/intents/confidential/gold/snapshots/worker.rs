@@ -251,12 +251,7 @@ mod tests {
         .expect("seed monitored account");
     }
 
-    async fn seed_snapshot(
-        pool: &PgPool,
-        asset: &str,
-        balance: &str,
-        at: chrono::DateTime<Utc>,
-    ) {
+    async fn seed_snapshot(pool: &PgPool, asset: &str, balance: &str, at: chrono::DateTime<Utc>) {
         sqlx::query(
             r#"
             INSERT INTO gold_confidential_balance_snapshots

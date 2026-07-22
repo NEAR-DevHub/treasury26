@@ -27,6 +27,8 @@ services:
         value: 10000
       - key: PUBLIC_HISTORY_MEDALLION_READS
         value: "false"
+      - key: PUBLIC_BALANCE_SNAPSHOT_READS
+        value: "false"
       - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
         value: 300
       - key: JWT_SECRET
@@ -114,6 +116,8 @@ services:
       - key: PORT
         value: 10000
       - key: PUBLIC_HISTORY_MEDALLION_READS
+        value: "false"
+      - key: PUBLIC_BALANCE_SNAPSHOT_READS
         value: "false"
       - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
         value: 300

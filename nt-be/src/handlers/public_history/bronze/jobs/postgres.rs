@@ -61,6 +61,33 @@ pub(crate) async fn active_public_history_job_exists(
     .await
 }
 
+pub(crate) async fn set_active_public_history_job_priority(
+    pool: &PgPool,
+    namespace: &str,
+    job_key: &str,
+    priority: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE apalis.jobs
+        SET priority = $3
+        WHERE job_type = $1
+          AND metadata->>'job_key' = $2
+          AND (
+              status IN ('Pending', 'Queued', 'Running')
+              OR (status = 'Failed' AND attempts < max_attempts)
+          )
+          AND priority IS DISTINCT FROM $3
+        "#,
+    )
+    .bind(namespace)
+    .bind(job_key)
+    .bind(priority)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub(crate) fn is_unique_violation_on(error: &sqlx::Error, constraint_name: &str) -> bool {
     match error {
         sqlx::Error::Database(db_error) => {

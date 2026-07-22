@@ -10,6 +10,7 @@ pub mod platform_metrics;
 pub mod price_lookup;
 pub mod price_provider;
 pub mod price_sync;
+pub mod public_balance_reader;
 pub mod public_dashboard;
 pub mod sponsor_alerts;
 pub mod testing_accounts;

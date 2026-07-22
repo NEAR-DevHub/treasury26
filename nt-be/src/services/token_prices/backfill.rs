@@ -1,8 +1,9 @@
 //! Historical token-price backfill from DefiLlama into `token_prices`.
 //!
 //! Fills the 5-minute price series for exactly the (token, bucket) pairs
-//! gold public/confidential history rows need: 100 events for one token inside
-//! one bucket cost one price point. Discovery is a single anti-join against
+//! gold public/confidential history and public balance snapshots need: 100
+//! rows for one token inside one bucket cost one price point. Discovery is a
+//! single anti-join against
 //! `token_prices` (plus a persistent miss list), so every run is idempotent
 //! and self-resuming — the database is the cursor. Points are grouped by
 //! `tokens.coingecko_id` (bridged variants share one upstream price), packed
@@ -66,6 +67,10 @@ const GOLD_RAW_IDS_SQL: &str = r#"
     SELECT DISTINCT destination_asset
     FROM gold_confidential_history_events
     WHERE amount_out_usd IS NULL
+    UNION
+    SELECT DISTINCT asset
+    FROM public_balance_snapshot
+    WHERE usd_value IS NULL
 "#;
 
 const GOLD_MISSING_PAIRS_SQL: &str = r#"
@@ -88,6 +93,10 @@ const GOLD_MISSING_PAIRS_SQL: &str = r#"
         SELECT destination_asset, COALESCE(proposal_executed_at, quote_created_at)
         FROM gold_confidential_history_events
         WHERE amount_out_usd IS NULL
+        UNION ALL
+        SELECT asset, block_time
+        FROM public_balance_snapshot
+        WHERE usd_value IS NULL
     ),
     needed AS (
         SELECT DISTINCT m.token_ref,
@@ -238,7 +247,7 @@ impl HistoricalPriceBackfill {
         Ok(summary)
     }
 
-    /// Create `token_prices` partitions from the first gold history month
+    /// Create `token_prices` partitions from the first history/snapshot month
     /// through the current month, skipping months that already have one.
     async fn ensure_partitions(&self) -> Result<(), sqlx::Error> {
         let earliest: Option<(Option<DateTime<Utc>>,)> = sqlx::query_as(
@@ -250,6 +259,9 @@ impl HistoricalPriceBackfill {
                 UNION ALL
                 SELECT MIN(COALESCE(proposal_executed_at, quote_created_at)) AS at
                 FROM gold_confidential_history_events
+                UNION ALL
+                SELECT MIN(block_time) AS at
+                FROM public_balance_snapshot
             ) earliest
             "#,
         )
@@ -842,20 +854,21 @@ mod tests {
     }
 
     #[test]
-    fn raw_id_discovery_reads_public_and_confidential_gold_tokens() {
+    fn raw_id_discovery_reads_gold_and_snapshot_tokens() {
         assert!(GOLD_RAW_IDS_SQL.contains("token_in"));
         assert!(GOLD_RAW_IDS_SQL.contains("token_out"));
         assert!(GOLD_RAW_IDS_SQL.contains("origin_asset"));
         assert!(GOLD_RAW_IDS_SQL.contains("destination_asset"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_public_history_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
+        assert!(GOLD_RAW_IDS_SQL.contains("public_balance_snapshot"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_out_usd IS NULL"));
         assert!(!GOLD_RAW_IDS_SQL.contains("balance_changes"));
     }
 
     #[test]
-    fn missing_pair_discovery_uses_gold_timestamps_and_dedupes_buckets() {
+    fn missing_pair_discovery_uses_history_timestamps_and_dedupes_buckets() {
         assert!(GOLD_MISSING_PAIRS_SQL.contains("SELECT DISTINCT m.token_ref"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("event_time"));
         assert!(
@@ -866,6 +879,8 @@ mod tests {
         assert!(GOLD_MISSING_PAIRS_SQL.contains("token_price_backfill_misses"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_out_usd IS NULL"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("public_balance_snapshot"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("usd_value IS NULL"));
         assert!(!GOLD_MISSING_PAIRS_SQL.contains("balance_changes"));
     }
 

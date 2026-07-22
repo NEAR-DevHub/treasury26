@@ -1,15 +1,23 @@
+use near_api::{Chain, Reference};
 use serde::Deserialize;
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 
-use super::worker::{enqueue_backfill_page_job, enqueue_latest_refresh_job};
+use super::worker::{
+    enqueue_backfill_page_job, enqueue_initial_snapshot_refresh_job, enqueue_latest_refresh_job,
+};
 use crate::AppState;
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
+use crate::handlers::public_history::snapshots::worker::{
+    SOURCE_REFRESH_BLOCK_LAG_ALLOWANCE, SOURCE_REFRESH_MAX_AGE_MINUTES,
+};
 use crate::services::goldsky_cursor::{load_goldsky_cursor, save_goldsky_cursor};
+use crate::services::public_balance_reader::with_transport_retry;
 
 const SCHEDULER_BATCH_SIZE: i64 = 2_000;
 const BACKFILL_SEED_LIMIT_PER_SOURCE: i64 = 100;
 const CONSUMER_NAME: &str = "public_history_scheduler";
+const INITIAL_SNAPSHOT_REFRESH_PRIORITY: i32 = 100_000;
 
 #[derive(Debug, Default)]
 pub(crate) struct PublicHistorySchedulerStats {
@@ -43,6 +51,30 @@ struct RefreshCandidate {
     source: PublicHistorySource,
     trigger_block_height: i64,
     trigger_transaction_hash: Option<String>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct InitialSnapshotRefreshRow {
+    account_id: String,
+    source: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct InitialSnapshotRefreshCandidate {
+    account_id: String,
+    source: PublicHistorySource,
+}
+
+impl TryFrom<InitialSnapshotRefreshRow> for InitialSnapshotRefreshCandidate {
+    type Error =
+        crate::handlers::public_history::bronze::store::models::PublicHistorySourceParseError;
+
+    fn try_from(row: InitialSnapshotRefreshRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            account_id: row.account_id,
+            source: PublicHistorySource::from_db(&row.source)?,
+        })
+    }
 }
 
 async fn load_monitored_accounts(pool: &PgPool) -> Result<HashSet<String>, sqlx::Error> {
@@ -81,22 +113,36 @@ fn classify_event_json(
     candidates: &mut Vec<RefreshCandidate>,
 ) {
     match event.standard.as_str() {
-        "nep141" if event.event == "ft_transfer" => {
+        "nep141" => {
             for datum in &event.data {
-                add_candidate(
-                    candidates,
-                    monitored,
-                    datum.get("old_owner_id").and_then(|value| value.as_str()),
-                    PublicHistorySource::NearblocksFt,
-                    outcome,
-                );
-                add_candidate(
-                    candidates,
-                    monitored,
-                    datum.get("new_owner_id").and_then(|value| value.as_str()),
-                    PublicHistorySource::NearblocksFt,
-                    outcome,
-                );
+                match event.event.as_str() {
+                    "ft_transfer" => {
+                        add_candidate(
+                            candidates,
+                            monitored,
+                            datum.get("old_owner_id").and_then(|value| value.as_str()),
+                            PublicHistorySource::NearblocksFt,
+                            outcome,
+                        );
+                        add_candidate(
+                            candidates,
+                            monitored,
+                            datum.get("new_owner_id").and_then(|value| value.as_str()),
+                            PublicHistorySource::NearblocksFt,
+                            outcome,
+                        );
+                    }
+                    "ft_mint" | "ft_burn" => {
+                        add_candidate(
+                            candidates,
+                            monitored,
+                            datum.get("owner_id").and_then(|value| value.as_str()),
+                            PublicHistorySource::NearblocksFt,
+                            outcome,
+                        );
+                    }
+                    _ => {}
+                }
             }
         }
         "nep245" => {
@@ -346,10 +392,103 @@ async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
     Ok(enqueued)
 }
 
+/// Durably refresh every source once after the snapshot migration. The FT
+/// refresh repairs mint/burn events that could have been missed before the
+/// scheduler learned to classify those NEP-141 events; all three markers also
+/// provide the snapshot readiness coverage proof.
+///
+/// The existing Apalis job key makes repeated scheduler cycles idempotent
+/// while a refresh is pending or retryable. A successful drain writes
+/// `latest_refresh_at`; the 15-minute freshness window prevents rapid
+/// re-enqueueing while still allowing a long initial build to refresh its
+/// verified provider-head marker.
+async fn load_initial_snapshot_refresh_candidates(
+    pool: &PgPool,
+) -> Result<Vec<InitialSnapshotRefreshCandidate>, Box<dyn std::error::Error + Send + Sync>> {
+    let source_names = PublicHistorySource::all()
+        .map(PublicHistorySource::as_str)
+        .to_vec();
+    let rows: Vec<InitialSnapshotRefreshRow> = sqlx::query_as(
+        r#"
+        SELECT ma.account_id, requested.source
+        FROM monitored_accounts ma
+        JOIN public_balance_snapshot_cursors snapshot_cursor
+          ON snapshot_cursor.account_id = ma.account_id
+        CROSS JOIN UNNEST($1::text[]) WITH ORDINALITY
+          AS requested(source, source_order)
+        LEFT JOIN bronze_public_history_cursors cursor
+          ON cursor.account_id = ma.account_id
+         AND cursor.source = requested.source::public_history_source
+        WHERE ma.enabled = true
+          AND COALESCE(ma.is_confidential_account, false) = false
+          AND snapshot_cursor.snapshot_dirty_generation
+                > snapshot_cursor.snapshot_applied_generation
+          AND (
+              cursor.latest_refresh_at IS NULL
+              OR cursor.latest_refresh_at
+                    < NOW() - make_interval(mins => $2::integer)
+          )
+        ORDER BY ma.account_id, requested.source_order
+        "#,
+    )
+    .bind(&source_names)
+    .bind(SOURCE_REFRESH_MAX_AGE_MINUTES as i32)
+    .fetch_all(pool)
+    .await?;
+
+    rows.into_iter()
+        .map(InitialSnapshotRefreshCandidate::try_from)
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(Into::into)
+}
+
+async fn seed_initial_snapshot_refresh_jobs(
+    state: &AppState,
+) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    // Keep each account's three sources adjacent in the queue. Snapshot
+    // readiness requires all three freshness markers at once, so source-major
+    // scheduling can never satisfy the freshness window on a rate-limited API.
+    let candidates = load_initial_snapshot_refresh_candidates(&state.db_pool).await?;
+
+    if candidates.is_empty() {
+        return Ok(0);
+    }
+
+    // Every job in this seed pass carries the same lag-adjusted finalized
+    // cutoff. A successful drain persists its preflight provider head, letting
+    // snapshot publication compare verified coverage with its own anchor.
+    let final_block = with_transport_retry("snapshot_refresh_final_block", || {
+        Chain::block()
+            .at(Reference::Final)
+            .fetch_from(&state.archival_network)
+    })
+    .await?;
+    let cutoff = i64::try_from(final_block.header.height)
+        .map_err(|_| std::io::Error::other("final block height exceeds i64"))?
+        .saturating_sub(SOURCE_REFRESH_BLOCK_LAG_ALLOWANCE);
+
+    let mut enqueued = 0;
+    for (index, candidate) in candidates.into_iter().enumerate() {
+        let priority = INITIAL_SNAPSHOT_REFRESH_PRIORITY.saturating_sub(index as i32);
+        if enqueue_initial_snapshot_refresh_job(
+            &state.db_pool,
+            candidate.account_id,
+            candidate.source,
+            cutoff,
+            priority,
+        )
+        .await?
+        {
+            enqueued += 1;
+        }
+    }
+    Ok(enqueued)
+}
+
 pub(crate) async fn run_public_history_scheduler_cycle(
     state: &AppState,
 ) -> Result<PublicHistorySchedulerStats, Box<dyn std::error::Error + Send + Sync>> {
-    let latest_enqueued = if let Some(goldsky_pool) = state.goldsky_pool.as_ref() {
+    let goldsky_latest_enqueued = if let Some(goldsky_pool) = state.goldsky_pool.as_ref() {
         tick_goldsky_scheduler(state, goldsky_pool).await?
     } else {
         tracing::debug!(
@@ -357,6 +496,8 @@ pub(crate) async fn run_public_history_scheduler_cycle(
         );
         0
     };
+    let initial_refreshes_enqueued = seed_initial_snapshot_refresh_jobs(state).await?;
+    let latest_enqueued = goldsky_latest_enqueued + initial_refreshes_enqueued;
 
     let backfill_enqueued = seed_backfill_jobs(state).await?;
     Ok(PublicHistorySchedulerStats {
@@ -368,6 +509,18 @@ pub(crate) async fn run_public_history_scheduler_cycle(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn outcome() -> IndexedDaoOutcome {
+        IndexedDaoOutcome {
+            id: "outcome".to_string(),
+            executor_id: "token.near".to_string(),
+            logs: None,
+            transaction_hash: Some("tx".to_string()),
+            signer_id: None,
+            receiver_id: None,
+            trigger_block_height: 42,
+        }
+    }
 
     #[test]
     fn coalesces_by_account_and_source() {
@@ -399,5 +552,93 @@ mod tests {
                 && candidate.trigger_block_height == 11
                 && candidate.trigger_transaction_hash.as_deref() == Some("b")
         }));
+    }
+
+    #[test]
+    fn nep141_mint_and_burn_refresh_the_owner() {
+        let monitored = HashSet::from(["dao.near".to_string()]);
+        let outcome = outcome();
+
+        for event_name in ["ft_mint", "ft_burn"] {
+            let event = EventJson {
+                standard: "nep141".to_string(),
+                event: event_name.to_string(),
+                data: vec![serde_json::json!({
+                    "owner_id": "dao.near",
+                    "amount": "100"
+                })],
+            };
+            let mut candidates = Vec::new();
+
+            classify_event_json(&event, &monitored, &outcome, &mut candidates);
+
+            assert_eq!(candidates.len(), 1, "{event_name} should enqueue once");
+            assert_eq!(candidates[0].account_id, "dao.near");
+            assert_eq!(candidates[0].source, PublicHistorySource::NearblocksFt);
+        }
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn initial_snapshot_refreshes_are_loaded_account_first(pool: PgPool) {
+        sqlx::query(
+            r#"
+            INSERT INTO monitored_accounts (
+                account_id, enabled, is_confidential_account
+            )
+            VALUES
+                ('b.sputnik-dao.near', true, false),
+                ('a.sputnik-dao.near', true, false)
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            r#"
+            INSERT INTO public_balance_snapshot_cursors (
+                account_id, snapshot_dirty_generation
+            )
+            VALUES
+                ('b.sputnik-dao.near', 1),
+                ('a.sputnik-dao.near', 1)
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let candidates = load_initial_snapshot_refresh_candidates(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            candidates,
+            vec![
+                InitialSnapshotRefreshCandidate {
+                    account_id: "a.sputnik-dao.near".to_string(),
+                    source: PublicHistorySource::NearblocksFt,
+                },
+                InitialSnapshotRefreshCandidate {
+                    account_id: "a.sputnik-dao.near".to_string(),
+                    source: PublicHistorySource::NearblocksMt,
+                },
+                InitialSnapshotRefreshCandidate {
+                    account_id: "a.sputnik-dao.near".to_string(),
+                    source: PublicHistorySource::NearblocksReceipt,
+                },
+                InitialSnapshotRefreshCandidate {
+                    account_id: "b.sputnik-dao.near".to_string(),
+                    source: PublicHistorySource::NearblocksFt,
+                },
+                InitialSnapshotRefreshCandidate {
+                    account_id: "b.sputnik-dao.near".to_string(),
+                    source: PublicHistorySource::NearblocksMt,
+                },
+                InitialSnapshotRefreshCandidate {
+                    account_id: "b.sputnik-dao.near".to_string(),
+                    source: PublicHistorySource::NearblocksReceipt,
+                },
+            ]
+        );
     }
 }

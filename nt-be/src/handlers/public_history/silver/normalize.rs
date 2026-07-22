@@ -6,7 +6,6 @@ use super::models::{
     PublicTransferDirection, PublicTransferLegKind,
 };
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
-use crate::services::token_prices::canonicalize_token_id;
 
 fn proposal_link(row: &BronzePublicHistoryRow) -> Option<ProposalLink> {
     Some(ProposalLink {
@@ -102,6 +101,10 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         .token_id
         .clone()
         .ok_or_else(|| "MT event missing token_id".to_string())?;
+    let contract = row
+        .contract_account_id
+        .as_deref()
+        .ok_or_else(|| "MT event missing contract_account_id".to_string())?;
     let decimals = row
         .decimals
         .ok_or_else(|| "MT event missing decimals".to_string())?;
@@ -114,10 +117,10 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
         PublicTransferDirection::Internal
     };
     let amount = PublicAmount::from_raw(delta.abs(), decimals);
-    let asset = if row.contract_account_id.as_deref() == Some("v2_1.omni.hot.tg") {
-        PublicAsset::nep245(canonical_hot_omni_token_id(&token_id))
-    } else {
+    let asset = if contract == "intents.near" {
         PublicAsset::intents(token_id)
+    } else {
+        PublicAsset::nep245(canonical_nep245_token_id(contract, &token_id))
     };
 
     Ok(Some(NormalizedTransferLeg {
@@ -139,15 +142,17 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
     }))
 }
 
-fn canonical_hot_omni_token_id(token_id: &str) -> String {
-    if token_id.starts_with("nep245:")
-        || token_id.starts_with("nep141:")
-        || token_id.starts_with("intents.near:")
-        || token_id.starts_with("v2_1.omni.hot.tg:")
-    {
-        return canonicalize_token_id(token_id);
+fn canonical_nep245_token_id(contract: &str, token_id: &str) -> String {
+    if token_id.starts_with("nep245:") {
+        return token_id.to_string();
     }
-    canonicalize_token_id(&format!("v2_1.omni.hot.tg:{token_id}"))
+
+    let contract_prefix = format!("{contract}:");
+    if token_id.starts_with(&contract_prefix) {
+        return format!("nep245:{token_id}");
+    }
+
+    format!("nep245:{contract}:{token_id}")
 }
 
 fn normalize_receipt(
@@ -340,6 +345,52 @@ mod tests {
             .expect("mt row should create a leg");
 
         assert_eq!(leg.asset.token_id(), "nep245:v2_1.omni.hot.tg:1117_");
+    }
+
+    #[test]
+    fn arbitrary_mt_contract_uses_canonical_nep245_asset_id() {
+        let mut row = base_row(PublicHistorySource::NearblocksMt);
+        row.contract_account_id = Some("collectibles.example.near".to_string());
+        row.token_id = Some("collection:token:7".to_string());
+
+        let leg = normalize_bronze_row(&row)
+            .expect("normalization should succeed")
+            .expect("mt row should create a leg");
+
+        assert_eq!(leg.asset.token_standard(), PublicTokenStandard::Nep245);
+        assert_eq!(
+            leg.asset.token_id(),
+            "nep245:collectibles.example.near:collection:token:7"
+        );
+    }
+
+    #[test]
+    fn mt_contract_prefix_is_not_duplicated() {
+        let mut row = base_row(PublicHistorySource::NearblocksMt);
+        row.contract_account_id = Some("collectibles.example.near".to_string());
+        row.token_id = Some("collectibles.example.near:token:7".to_string());
+
+        let leg = normalize_bronze_row(&row)
+            .expect("normalization should succeed")
+            .expect("mt row should create a leg");
+
+        assert_eq!(
+            leg.asset.token_id(),
+            "nep245:collectibles.example.near:token:7"
+        );
+    }
+
+    #[test]
+    fn intents_mt_asset_keeps_intents_namespace() {
+        let mut row = base_row(PublicHistorySource::NearblocksMt);
+        row.contract_account_id = Some("intents.near".to_string());
+        row.token_id = Some("nep141:eth.omft.near".to_string());
+
+        let leg = normalize_bronze_row(&row)
+            .expect("normalization should succeed")
+            .expect("mt row should create a leg");
+
+        assert_eq!(leg.asset.token_id(), "intents.near:nep141:eth.omft.near");
     }
 
     #[test]

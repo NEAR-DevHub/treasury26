@@ -16,6 +16,7 @@ use super::PublicHistorySupervisorFuture;
 use super::model::PublicHistoryJob;
 use crate::AppState;
 use crate::handlers::public_history::bronze::NearblocksPriority;
+use crate::handlers::public_history::bronze::api::fetch_latest_indexed_block_height;
 use crate::handlers::public_history::bronze::ingest_worker::{
     HandlerResult, fetch_source_page, latest_seen,
 };
@@ -31,6 +32,7 @@ use crate::jobs::context::JobContext;
 use super::postgres::{
     PUBLIC_HISTORY_BACKFILL_NAMESPACE, PUBLIC_HISTORY_INFLIGHT_INDEX, PUBLIC_HISTORY_JOB_KEY_FIELD,
     PUBLIC_HISTORY_LATEST_NAMESPACE, active_public_history_job_exists, is_unique_violation_on,
+    set_active_public_history_job_priority,
 };
 
 pub(crate) const JOB_CONCURRENCY: usize = 2;
@@ -94,7 +96,7 @@ fn public_history_storage(
     PostgresStorage::new_with_config(&pool, &config)
 }
 
-fn task_with_job_key(job: PublicHistoryJob) -> PgTask<PublicHistoryJob> {
+fn task_with_job_key(job: PublicHistoryJob, priority: i32) -> PgTask<PublicHistoryJob> {
     let mut metadata = serde_json::Map::new();
     metadata.insert(
         PUBLIC_HISTORY_JOB_KEY_FIELD.to_string(),
@@ -102,15 +104,16 @@ fn task_with_job_key(job: PublicHistoryJob) -> PgTask<PublicHistoryJob> {
     );
 
     Task::builder(job)
-        .with_ctx(PgContext::new().with_meta(metadata))
+        .with_ctx(PgContext::new().with_meta(metadata).with_priority(priority))
         .build()
 }
 
 async fn push_job(
     storage: &mut PublicHistoryStorage,
     job: PublicHistoryJob,
+    priority: i32,
 ) -> Result<bool, sqlx::Error> {
-    match storage.push_task(task_with_job_key(job)).await {
+    match storage.push_task(task_with_job_key(job, priority)).await {
         Ok(_) => Ok(true),
         Err(TaskSinkError::PushError(error))
             if is_unique_violation_on(&error, PUBLIC_HISTORY_INFLIGHT_INDEX) =>
@@ -136,7 +139,30 @@ pub(crate) async fn enqueue_latest_refresh_job(
         trigger_transaction_hash,
     );
     let mut storage = latest_storage(pool.clone());
-    push_job(&mut storage, job).await
+    push_job(&mut storage, job, 0).await
+}
+
+pub(crate) async fn enqueue_initial_snapshot_refresh_job(
+    pool: &PgPool,
+    account_id: String,
+    source: PublicHistorySource,
+    trigger_block_height: i64,
+    priority: i32,
+) -> Result<bool, sqlx::Error> {
+    let job = PublicHistoryJob::refresh_latest(account_id, source, trigger_block_height, None);
+    let job_key = job.job_key().to_string();
+    let mut storage = latest_storage(pool.clone());
+    let inserted = push_job(&mut storage, job, priority).await?;
+    if !inserted {
+        set_active_public_history_job_priority(
+            pool,
+            PUBLIC_HISTORY_LATEST_NAMESPACE,
+            &job_key,
+            priority,
+        )
+        .await?;
+    }
+    Ok(inserted)
 }
 
 async fn consume_backfill_budget(
@@ -195,7 +221,7 @@ pub(crate) async fn enqueue_backfill_page_job(
     }
 
     let mut storage = backfill_storage(pool.clone());
-    push_job(&mut storage, job).await
+    push_job(&mut storage, job, 0).await
 }
 
 async fn ingest_page(
@@ -223,11 +249,53 @@ async fn ingest_page(
     ))
 }
 
+async fn trigger_transaction_is_ingested(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+    transaction_hash: &str,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM bronze_public_history_events
+            WHERE account_id = $1
+              AND source = $2::public_history_source
+              AND transaction_hash = $3
+        )
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .bind(transaction_hash)
+    .fetch_one(pool)
+    .await
+}
+
 async fn run_latest_refresh(
     state: &AppState,
     account_id: &str,
     source: PublicHistorySource,
+    refresh_cutoff_block_height: i64,
+    trigger_transaction_hash: Option<&str>,
 ) -> HandlerResult<(u64, u64, u64)> {
+    // An inactive account can legitimately have no new events, so prove the
+    // provider has reached the lag-adjusted cutoff before reading this source.
+    // Starting the drain only after this preflight avoids certifying an account
+    // page that was read before the provider crossed the boundary.
+    let provider_head =
+        fetch_latest_indexed_block_height(state, NearblocksPriority::Latest).await?;
+    if provider_head < refresh_cutoff_block_height {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!(
+                "NearBlocks indexed head {} has not reached refresh cutoff {}",
+                provider_head, refresh_cutoff_block_height
+            ),
+        ));
+    }
+
     let watermark = load_public_history_cursor(&state.db_pool, account_id, source)
         .await
         .map_err(|error| {
@@ -241,6 +309,19 @@ async fn run_latest_refresh(
     let mut cursor: Option<String> = None;
     let mut totals = (0, 0, 0);
     let mut max_seen_height: Option<i64> = None;
+    let mut trigger_ingested = match trigger_transaction_hash {
+        Some(transaction_hash) => {
+            trigger_transaction_is_ingested(&state.db_pool, account_id, source, transaction_hash)
+                .await
+                .map_err(|error| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("trigger transaction verification failed: {error}"),
+                    )
+                })?
+        }
+        None => true,
+    };
 
     loop {
         let page = fetch_source_page(
@@ -260,6 +341,12 @@ async fn run_latest_refresh(
         if page_height > max_seen_height {
             max_seen_height = page_height;
         }
+        if let Some(transaction_hash) = trigger_transaction_hash {
+            trigger_ingested |= page
+                .events
+                .iter()
+                .any(|event| event.transaction_hash.as_deref() == Some(transaction_hash));
+        }
 
         // NearBlocks only paginates newest→older, so a refresh walks from the
         // head until it overlaps history it has already seen. An event strictly
@@ -271,9 +358,9 @@ async fn run_latest_refresh(
                 .events
                 .iter()
                 .any(|event| event.block_height < watermark),
-            // First refresh seeds the watermark from one page; backfill owns
-            // the rest of history.
-            None => true,
+            // A periodic first refresh seeds the watermark from one page;
+            // event-triggered work keeps paging until it finds its transaction.
+            None => trigger_ingested,
         };
         if page.events.is_empty() || page.next_cursor.is_none() || reached_watermark {
             break;
@@ -281,17 +368,35 @@ async fn run_latest_refresh(
         cursor = page.next_cursor;
     }
 
-    // One poll record per drain: the block-height watermark (GREATEST upsert)
-    // advances only after every fetched page ingested successfully, so a
-    // failed drain retries from an unmoved watermark.
-    record_public_history_poll_result(&state.db_pool, account_id, source, max_seen_height)
-        .await
-        .map_err(|error| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("public poll schedule update failed: {}", error),
-            )
-        })?;
+    if let Some(transaction_hash) = trigger_transaction_hash {
+        if !trigger_ingested {
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                format!(
+                    "NearBlocks {} refresh has not indexed triggering transaction {}",
+                    source, transaction_hash
+                ),
+            ));
+        }
+    }
+
+    // One poll record per verified drain: the block-height watermark (GREATEST
+    // upsert) advances only after every fetched page ingested successfully, so
+    // a failed drain retries from an unmoved watermark.
+    record_public_history_poll_result(
+        &state.db_pool,
+        account_id,
+        source,
+        max_seen_height,
+        provider_head,
+    )
+    .await
+    .map_err(|error| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("public poll schedule update failed: {}", error),
+        )
+    })?;
 
     Ok(totals)
 }
@@ -370,20 +475,30 @@ async fn handle_latest_job(
     context: Data<JobContext>,
 ) -> Result<(), BoxDynError> {
     let PublicHistoryJob::RefreshLatest {
-        account_id, source, ..
+        account_id,
+        source,
+        trigger_block_height,
+        trigger_transaction_hash,
+        ..
     } = job
     else {
         return Ok(());
     };
 
-    let (touched, inserted, changed) = run_latest_refresh(&context.state, &account_id, source)
-        .await
-        .map_err(|(status, message)| {
-            public_history_error(format!(
-                "public latest refresh failed ({}): {}",
-                status, message
-            ))
-        })?;
+    let (touched, inserted, changed) = run_latest_refresh(
+        &context.state,
+        &account_id,
+        source,
+        trigger_block_height,
+        trigger_transaction_hash.as_deref(),
+    )
+    .await
+    .map_err(|(status, message)| {
+        public_history_error(format!(
+            "public latest refresh failed ({}): {}",
+            status, message
+        ))
+    })?;
 
     tracing::info!(
         account_id = account_id,
@@ -428,6 +543,29 @@ async fn handle_latest_job(
 
     if !silver_ready {
         return Ok(());
+    }
+
+    // The Silver transaction has committed and its trigger owns the cursor
+    // generation bump. This is only a low-latency durable queue nudge; the
+    // periodic snapshot sweeper recovers any enqueue failure.
+    match crate::handlers::public_history::snapshots::jobs::enqueue_snapshot_job_if_dirty(
+        &context.state.db_pool,
+        &account_id,
+    )
+    .await
+    {
+        Ok(true) => tracing::debug!(
+            account_id,
+            source = %source,
+            "public latest refresh enqueued balance snapshot"
+        ),
+        Ok(false) => {}
+        Err(error) => tracing::warn!(
+            account_id,
+            source = %source,
+            error = %error,
+            "public latest refresh could not nudge balance snapshot queue"
+        ),
     }
 
     match project_public_gold_for_account(

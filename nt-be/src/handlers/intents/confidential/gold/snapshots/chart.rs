@@ -124,15 +124,9 @@ pub async fn build_confidential_chart_response(
     interval: &Interval,
     token_ids: Option<&Vec<String>>,
 ) -> Result<ChartResponse, (StatusCode, String)> {
-    let data = build_confidential_chart_data(
-        state,
-        account_id,
-        start_time,
-        end_time,
-        interval,
-        token_ids,
-    )
-    .await?;
+    let data =
+        build_confidential_chart_data(state, account_id, start_time, end_time, interval, token_ids)
+            .await?;
 
     let last_snapshot_at = latest_snapshot_at(&state.db_pool, account_id)
         .await
@@ -159,6 +153,7 @@ pub async fn build_confidential_chart_response(
         chart_meta: Some(ChartMeta {
             status,
             last_snapshot_at,
+            coverage_start: None,
         }),
     })
 }
@@ -315,7 +310,13 @@ mod tests {
         let state = Arc::new(build_test_state(pool.clone()));
         let now = Utc::now();
         seed_snapshot(&pool, "nep141:wrap.near", "5", now - Duration::days(2)).await;
-        seed_snapshot(&pool, "nep141:eth.omft.near", "1", now - Duration::minutes(10)).await;
+        seed_snapshot(
+            &pool,
+            "nep141:eth.omft.near",
+            "1",
+            now - Duration::minutes(10),
+        )
+        .await;
 
         let response = build_confidential_chart_response(
             &state,
@@ -330,7 +331,11 @@ mod tests {
 
         // Series keys use the same shape the public history sources emit.
         assert!(response.data.contains_key("intents.near:nep141:wrap.near"));
-        assert!(response.data.contains_key("intents.near:nep141:eth.omft.near"));
+        assert!(
+            response
+                .data
+                .contains_key("intents.near:nep141:eth.omft.near")
+        );
 
         let meta = response.chart_meta.expect("chart meta present");
         assert_eq!(meta.status, ChartStatus::Ok);
@@ -345,7 +350,13 @@ mod tests {
         let state = Arc::new(build_test_state(pool.clone()));
         let now = Utc::now();
         seed_snapshot(&pool, "nep141:wrap.near", "5", now - Duration::minutes(10)).await;
-        seed_snapshot(&pool, "nep141:eth.omft.near", "1", now - Duration::minutes(10)).await;
+        seed_snapshot(
+            &pool,
+            "nep141:eth.omft.near",
+            "1",
+            now - Duration::minutes(10),
+        )
+        .await;
 
         let filter = vec!["intents.near:nep141:wrap.near".to_string()];
         let data = build_confidential_chart_data(

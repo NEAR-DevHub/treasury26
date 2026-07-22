@@ -112,6 +112,8 @@ pub struct PublicHistoryCursor {
     pub backward_cursor: Option<String>,
     pub backfill_done: bool,
     pub last_seen_block_height: Option<i64>,
+    pub latest_refresh_at: Option<DateTime<Utc>>,
+    pub latest_refresh_cutoff_block_height: Option<i64>,
 }
 
 pub fn min_datetime(

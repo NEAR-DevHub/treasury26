@@ -207,16 +207,68 @@ pub async fn public_silver_projection(
             &state.db_pool,
         )
         .await?;
+    // Silver and snapshot cursors commit together in the Rust repository;
+    // enqueueing only wakes the durable per-DAO consumer promptly.
+    let snapshot_jobs =
+        crate::handlers::public_history::snapshots::jobs::enqueue_dirty_snapshot_jobs(
+            &state.db_pool,
+        )
+        .await?;
     Ok(format!(
-        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={}",
+        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={} snapshot_jobs={}",
         stats.accounts_seen,
         stats.accounts_projected,
         stats.accounts_skipped_locked,
         stats.accounts_failed,
         stats.rows_projected,
         stats.rows_deleted,
-        stats.errors_written
+        stats.errors_written,
+        snapshot_jobs
     ))
+}
+
+/// Recovers snapshot cursor updates whose post-commit queue nudge was lost.
+pub async fn public_balance_snapshot_sweeper(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let enqueued = crate::handlers::public_history::snapshots::jobs::enqueue_dirty_snapshot_jobs(
+        &state.db_pool,
+    )
+    .await?;
+    Ok(format!("enqueued={enqueued}"))
+}
+
+/// Advances clean cursors after a UTC day boundary and wakes the same durable
+/// per-DAO workers. Monday's fixed grid includes the new weekly checkpoint.
+pub async fn public_balance_snapshot_checkpoints(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let marked =
+        crate::handlers::public_history::snapshots::repository::mark_due_checkpoint_generations(
+            &state.db_pool,
+        )
+        .await?;
+    let enqueued = crate::handlers::public_history::snapshots::jobs::enqueue_dirty_snapshot_jobs(
+        &state.db_pool,
+    )
+    .await?;
+    Ok(format!("marked={marked} enqueued={enqueued}"))
+}
+
+/// Price repair is deliberately generation-neutral: missing historical
+/// prices never make an otherwise authoritative balance dataset unready.
+pub async fn public_balance_snapshot_usd_repair(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let repaired = crate::handlers::public_history::snapshots::worker::repair_missing_public_snapshot_usd_values(
+        state.as_ref(),
+    )
+    .await
+    .map_err(erase)?;
+    Ok(format!("repaired={repaired}"))
 }
 
 /// Public history gold projection for dirty accounts.

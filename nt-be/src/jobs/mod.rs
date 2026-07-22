@@ -218,7 +218,7 @@ fn cron_every_secs(secs: u64) -> String {
 /// are fully schema-qualified (`apalis.*`), so only the bookkeeping table's
 /// placement matters — pointing the connection's `search_path` at a private
 /// schema keeps the two migration lineages isolated.
-async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub(crate) async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
     use sqlx::Executor as _;
 
     pool.execute("CREATE SCHEMA IF NOT EXISTS apalis_migrations")
@@ -572,6 +572,30 @@ fn configure_cron_runtime(
             schedule_every_secs(env_secs("PUBLIC_QUOTE_REFRESH_INTERVAL_SECONDS", 120)),
             handlers::public_quote_status_refresh
         );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-balance-snapshot-sweeper",
+            schedule_every_secs(60),
+            handlers::public_balance_snapshot_sweeper
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-balance-snapshot-checkpoints",
+            Schedule::from_str("0 1 0 * * *").expect("valid cron"),
+            handlers::public_balance_snapshot_checkpoints
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-balance-snapshot-usd-repair",
+            schedule_every_secs(3600),
+            handlers::public_balance_snapshot_usd_repair
+        );
     } else {
         if preparing_queues {
             tracing::warn!("public history workers disabled: NEARBLOCKS_API_KEY missing");
@@ -822,6 +846,11 @@ fn prepare_job_queues(state: Arc<AppState>) -> (JobQueues, Vec<watchdog::JobSpec
                     kind: watchdog::QueueKind::Queue,
                 }),
         );
+        registry.specs.push(watchdog::JobSpec {
+            queue:
+                crate::handlers::public_history::snapshots::jobs::PUBLIC_BALANCE_SNAPSHOT_NAMESPACE,
+            kind: watchdog::QueueKind::Queue,
+        });
     }
 
     let QueueRegistry { entries, specs } = registry;
@@ -842,13 +871,14 @@ fn build_cron_runtime(state: Arc<AppState>, queues: JobQueues) -> (Monitor, JobQ
     )
 }
 
-const STARTUP_QUEUES: [&str; 6] = [
+const STARTUP_QUEUES: [&str; 7] = [
     "confidential-gold-reconciliation",
     "subscription-monthly-reset",
     "public-dashboard-refresh",
     "ft-lockup-refresh",
     "balance-changes-usd-backfill",
     "gold-usd-enrichment",
+    "public-balance-snapshot-checkpoints",
 ];
 
 async fn push_startup_tasks(queues: &JobQueues, pool: &PgPool) {
@@ -935,13 +965,20 @@ async fn run_leader_runtime(
     }
 
     let liveness_pool = state.db_pool.clone();
-    let mut consumer_futures: FuturesUnordered<_> =
+    let mut payload_consumers =
         crate::handlers::public_history::bronze::jobs::public_history_queue_worker_futures(
-            state,
+            state.clone(),
             shutdown.clone(),
-        )
-        .into_iter()
-        .collect();
+        );
+    if state.env_vars.nearblocks_api_key.is_some() {
+        payload_consumers.push(
+            crate::handlers::public_history::snapshots::jobs::snapshot_queue_worker_future(
+                state,
+                shutdown.clone(),
+            ),
+        );
+    }
+    let mut consumer_futures: FuturesUnordered<_> = payload_consumers.into_iter().collect();
 
     let mut children = tokio::task::JoinSet::new();
     let monitor_shutdown = shutdown.clone();
@@ -995,6 +1032,11 @@ pub async fn spawn_all(
     crate::handlers::public_history::bronze::jobs::setup_public_history_queue_workers(&state)
         .await
         .expect("failed to set up public history queue workers");
+    crate::handlers::public_history::snapshots::jobs::setup_public_balance_snapshot_jobs(
+        &state.db_pool,
+    )
+    .await
+    .expect("failed to set up public balance snapshot queue worker");
 
     let (queues, watchdog_specs) = prepare_job_queues(state.clone());
     watchdog::install(watchdog_specs);
@@ -1129,6 +1171,9 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
         {
             api = api.register(store);
         }
+        api = api.register(
+            crate::handlers::public_history::snapshots::jobs::board_storage(state.db_pool.clone()),
+        );
     }
 
     // The board registers an `/api/v1/events` SSE route (apalis-board's

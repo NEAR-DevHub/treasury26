@@ -285,6 +285,26 @@ impl TokenPriceService {
         raw_token_ids: &[String],
         at: &[DateTime<Utc>],
     ) -> Result<HashMap<(String, DateTime<Utc>), BigDecimal>, sqlx::Error> {
+        self.prices_at_grid_inner(raw_token_ids, at, false).await
+    }
+
+    /// Snapshot valuation variant that refuses to carry a minute price from
+    /// a previous UTC day. Missing pairs can then use the explicit EOD
+    /// fallback instead of silently persisting an arbitrarily stale quote.
+    pub async fn prices_at_same_day_grid(
+        &self,
+        raw_token_ids: &[String],
+        at: &[DateTime<Utc>],
+    ) -> Result<HashMap<(String, DateTime<Utc>), BigDecimal>, sqlx::Error> {
+        self.prices_at_grid_inner(raw_token_ids, at, true).await
+    }
+
+    async fn prices_at_grid_inner(
+        &self,
+        raw_token_ids: &[String],
+        at: &[DateTime<Utc>],
+        same_utc_day_only: bool,
+    ) -> Result<HashMap<(String, DateTime<Utc>), BigDecimal>, sqlx::Error> {
         let mut ref_to_raw: HashMap<i32, Vec<&String>> = HashMap::new();
         for raw in raw_token_ids {
             if let Some(record) = self.token(raw) {
@@ -304,7 +324,12 @@ impl TokenPriceService {
             CROSS JOIN LATERAL (
                 SELECT price_usd
                 FROM token_prices
-                WHERE token_ref = tok.token_ref AND minute_at <= t.ts
+                WHERE token_ref = tok.token_ref
+                  AND minute_at <= t.ts
+                  AND (
+                      NOT $3::boolean
+                      OR minute_at >= date_trunc('day', t.ts)
+                  )
                 ORDER BY minute_at DESC
                 LIMIT 1
             ) p
@@ -312,6 +337,7 @@ impl TokenPriceService {
         )
         .bind(&token_refs)
         .bind(at)
+        .bind(same_utc_day_only)
         .fetch_all(&self.pool)
         .await?;
 
