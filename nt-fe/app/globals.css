@@ -84,7 +84,6 @@
     --general-info-border: rgb(191, 219, 254);
     --general-info-foreground: rgb(29, 78, 216);
     --general-warning-background-faded: rgb(254, 252, 232);
-    --general-warning-border: rgb(254, 240, 138);
     --general-warning-foreground: rgb(161, 98, 7);
     --general-tertiary: rgb(250, 250, 249);
     --chart-area-fill: rgb(2, 7, 6);
@@ -92,22 +91,8 @@
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgb(245, 245, 245);
     --general-unofficial-ghost-hover: rgba(0, 0, 0, 0.05);
-    --onboarding-primary: rgb(0, 150, 96);
-    --brand-blue: rgb(0, 150, 96);
+    --brand-green: rgb(0, 150, 96);
     --general-unofficial-outline: rgba(255, 255, 255, 0.1);
-    --chart-1: rgb(164, 246, 204);
-    --chart-2: rgb(106, 235, 178);
-    --chart-3: rgb(10, 191, 122);
-    --chart-4: rgb(0, 161, 103);
-    --chart-5: rgb(0, 124, 83);
-    --sidebar: rgb(250, 250, 250);
-    --sidebar-foreground: rgb(25, 25, 26);
-    --sidebar-primary: rgb(242, 242, 242);
-    --sidebar-primary-foreground: rgb(250, 250, 250);
-    --sidebar-accent: rgb(245, 245, 245);
-    --sidebar-accent-foreground: rgb(15, 23, 42);
-    --sidebar-border: rgb(229, 229, 229);
-    --sidebar-ring: rgb(161, 161, 161);
     --font-sans:
         var(--font-figtree), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
@@ -157,20 +142,7 @@
     --general-border: rgba(64, 64, 64);
     --input: rgb(52, 52, 52);
     --ring: rgb(0, 236, 151);
-    --chart-1: rgb(112, 255, 205); /* green-300 */
-    --chart-2: rgb(43, 253, 177); /* green-400 */
-    --chart-3: rgb(0, 236, 151); /* green-500 */
-    --chart-4: rgb(0, 192, 118); /* green-600 */
-    --chart-5: rgb(0, 150, 96); /* green-700 */
     --chart-area-fill: rgb(243, 243, 243);
-    --sidebar: rgb(25, 25, 26);
-    --sidebar-foreground: rgb(250, 250, 250);
-    --sidebar-primary: rgb(0, 236, 151);
-    --sidebar-primary-foreground: rgb(250, 250, 250);
-    --sidebar-accent: rgb(38, 38, 38);
-    --sidebar-accent-foreground: rgb(250, 250, 250);
-    --sidebar-border: rgb(30, 30, 30);
-    --sidebar-ring: rgb(82, 82, 82);
     --general-success-background-faded: rgb(11, 46, 37);
     --general-success-foreground: rgb(34, 197, 94);
     --general-destructive-background-faded: rgb(69, 10, 10);
@@ -182,7 +154,6 @@
     --general-info-border: rgb(30, 58, 138);
     --general-info-foreground: rgb(147, 197, 253);
     --general-warning-background-faded: rgb(66, 32, 6);
-    --general-warning-border: rgb(113, 63, 18);
     --general-warning-foreground: rgb(250, 204, 21);
     --general-tertiary: rgb(31, 31, 31);
     --general-unofficial-border: rgba(64, 64, 64);
@@ -193,8 +164,7 @@
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgba(38, 38, 38);
     --general-unofficial-ghost-hover: rgba(255, 255, 255, 0.1);
-    --onboarding-primary: rgb(0, 150, 96);
-    --brand-blue: rgb(0, 150, 96);
+    --brand-green: rgb(0, 150, 96);
     --general-unofficial-outline: rgba(255, 255, 255, 0.05);
     --font-sans:
         var(--font-figtree), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -286,7 +256,6 @@
     --color-general-warning-background-faded: var(
         --general-warning-background-faded
     );
-    --color-general-warning-border: var(--general-warning-border);
     --color-general-warning-foreground: var(--general-warning-foreground);
     --color-general-tertiary: var(--general-tertiary);
     --color-general-unofficial-border: var(--general-unofficial-border);
@@ -301,8 +270,7 @@
     --color-general-unofficial-ghost-hover: var(
         --general-unofficial-ghost-hover
     );
-    --color-onboarding-primary: var(--onboarding-primary);
-    --color-brand-blue: var(--brand-blue);
+    --color-brand-green: var(--brand-green);
     --color-general-unofficial-outline: var(--general-unofficial-outline);
     --color-general-orange-background: var(--general-orange-background);
     --color-general-orange-background-faded: var(
@@ -310,20 +278,7 @@
     );
     --color-general-orange-foreground: var(--general-orange-foreground);
 
-    --color-chart-1: var(--chart-1);
-    --color-chart-2: var(--chart-2);
-    --color-chart-3: var(--chart-3);
-    --color-chart-4: var(--chart-4);
-    --color-chart-5: var(--chart-5);
     --color-chart-area-fill: var(--chart-area-fill);
-    --color-sidebar: var(--sidebar);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-ring: var(--sidebar-ring);
 
     --font-sans: var(--font-figtree), var(--font-geist-sans), var(--font-sans);
     --font-mono: var(--font-geist-mono), var(--font-mono);
@@ -354,8 +309,9 @@
     }
 
     html {
-        font-family: var(--font-figtree), ui-sans-serif, system-ui,
-            -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        font-family:
+            var(--font-figtree), ui-sans-serif, system-ui, -apple-system,
+            BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     body {
