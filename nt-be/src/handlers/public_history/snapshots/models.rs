@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 
@@ -45,6 +43,22 @@ impl SnapshotAsset {
             kind: SnapshotAssetKind::Staking,
         }
     }
+
+    /// Parse a stored `public_balance_snapshot.asset` id back into a typed
+    /// asset. Stored ids are canonical by construction, so every stored
+    /// value round-trips.
+    pub fn from_stored_id(id: &str) -> Self {
+        if id == "near" {
+            return Self::near();
+        }
+        if let Some(pool) = id.strip_prefix("staking:") {
+            return Self::staking(pool);
+        }
+        if id.contains(':') {
+            return Self::multi_token(id);
+        }
+        Self::fungible(id)
+    }
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -54,6 +68,7 @@ pub struct SnapshotCursor {
     pub snapshot_applied_generation: i64,
     pub snapshot_recompute_from: Option<DateTime<Utc>>,
     pub snapshot_applied_at: Option<DateTime<Utc>>,
+    pub snapshot_seeded_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -78,25 +93,30 @@ pub struct PublicBalanceSnapshotRow {
     pub usd_value: Option<BigDecimal>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SnapshotUsdScanCursor {
+    pub block_time: DateTime<Utc>,
+    pub dao_id: String,
+    pub asset: String,
+    pub block_height: i64,
+}
+
+impl From<&PublicBalanceSnapshotRow> for SnapshotUsdScanCursor {
+    fn from(row: &PublicBalanceSnapshotRow) -> Self {
+        Self {
+            block_time: row.block_time,
+            dao_id: row.dao_id.clone(),
+            asset: row.asset.clone(),
+            block_height: row.block_height,
+        }
+    }
+}
+
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct SnapshotChartRow {
     pub asset: String,
     pub bucket: DateTime<Utc>,
-    pub block_height: i64,
     pub balance: BigDecimal,
-    pub usd_value: Option<BigDecimal>,
-}
-
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct SilverSnapshotLeg {
-    pub token_standard: String,
-    pub token_id: String,
-    pub direction: String,
-    pub leg_kind: String,
-    pub block_height: i64,
-    pub block_time: DateTime<Utc>,
-    pub amount_raw: BigDecimal,
-    pub decimals: i32,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -116,120 +136,6 @@ impl HistoricalAssetRow {
     }
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
-pub struct BronzeSnapshotCoordinate {
-    pub block_height: i64,
-    pub block_time: DateTime<Utc>,
-    pub contract_account_id: Option<String>,
-    pub method_name: Option<String>,
-}
-
-impl SilverSnapshotLeg {
-    pub fn asset(&self) -> Result<SnapshotAsset, String> {
-        match self.token_standard.as_str() {
-            "native" => Ok(SnapshotAsset::near()),
-            "nep141" => Ok(SnapshotAsset::fungible(self.token_id.clone())),
-            "nep245" => Ok(SnapshotAsset::multi_token(self.token_id.clone())),
-            other => Err(format!("unsupported token standard {other}")),
-        }
-    }
-
-    /// Silver records FT mint/burn as `internal`; those two kinds are the
-    /// only internal movements that form a valid replay delta. MT directions
-    /// are already sign-based and therefore use the normal branches.
-    pub fn signed_amount_raw(&self) -> Result<BigDecimal, String> {
-        match (
-            self.token_standard.as_str(),
-            self.direction.as_str(),
-            self.leg_kind.as_str(),
-        ) {
-            ("nep141", "internal", "mint") => Ok(self.amount_raw.clone()),
-            ("nep141", "internal", "burn") => Ok(-self.amount_raw.clone()),
-            (_, "incoming", _) => Ok(self.amount_raw.clone()),
-            (_, "outgoing", _) => Ok(-self.amount_raw.clone()),
-            _ => Err(format!(
-                "unsupported internal movement standard={} kind={}",
-                self.token_standard, self.leg_kind
-            )),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct EventDelta {
-    pub block_height: i64,
-    pub block_time: DateTime<Utc>,
-    pub delta_raw: BigDecimal,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct AssetEventLedger {
-    pub decimals: i32,
-    pub events: Vec<EventDelta>,
-}
-
-/// Group same-asset, same-block legs before applying them. The stored point is
-/// the balance after every movement in that block has completed.
-pub fn group_event_deltas(
-    legs: impl IntoIterator<Item = SilverSnapshotLeg>,
-) -> Result<BTreeMap<SnapshotAsset, AssetEventLedger>, String> {
-    let mut grouped: BTreeMap<(SnapshotAsset, i64), (DateTime<Utc>, BigDecimal, i32)> =
-        BTreeMap::new();
-
-    for leg in legs {
-        let asset = leg.asset()?;
-        if asset.kind == SnapshotAssetKind::Near {
-            // Native history is authoritative RPC-only. Silver's explicit
-            // transfer subset is not sufficient for a native ledger.
-            continue;
-        }
-        let signed = leg.signed_amount_raw()?;
-        let entry = grouped
-            .entry((asset, leg.block_height))
-            .or_insert_with(|| (leg.block_time, BigDecimal::from(0), leg.decimals));
-        if entry.2 != leg.decimals {
-            return Err(format!(
-                "asset decimals changed within block: {} != {}",
-                entry.2, leg.decimals
-            ));
-        }
-        entry.0 = entry.0.max(leg.block_time);
-        entry.1 += signed;
-    }
-
-    let mut by_asset: BTreeMap<SnapshotAsset, AssetEventLedger> = BTreeMap::new();
-    for ((asset, block_height), (block_time, delta_raw, decimals)) in grouped {
-        let ledger = by_asset.entry(asset).or_insert_with(|| AssetEventLedger {
-            decimals,
-            events: Vec::new(),
-        });
-        if ledger.decimals != decimals {
-            return Err(format!(
-                "asset decimals changed across history: {} != {}",
-                ledger.decimals, decimals
-            ));
-        }
-        ledger.events.push(EventDelta {
-            block_height,
-            block_time,
-            delta_raw,
-        });
-    }
-    for ledger in by_asset.values_mut() {
-        ledger
-            .events
-            .sort_by_key(|event| (event.block_height, event.block_time));
-    }
-    Ok(by_asset)
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct AuthoritativePoint {
-    pub block_height: i64,
-    pub block_time: DateTime<Utc>,
-    pub balance: BigDecimal,
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SnapshotCycleStats {
     pub accounts_seen: usize,
@@ -237,65 +143,31 @@ pub struct SnapshotCycleStats {
     pub accounts_skipped: usize,
     pub accounts_failed: usize,
     pub rows_written: u64,
-    pub replay_segments_repaired: u64,
     pub usd_values_repaired: u64,
 }
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
-
     use super::*;
 
-    fn at() -> DateTime<Utc> {
-        DateTime::parse_from_rfc3339("2026-07-22T00:00:00Z")
-            .unwrap()
-            .with_timezone(&Utc)
-    }
-
-    fn leg(standard: &str, direction: &str, kind: &str, amount: &str) -> SilverSnapshotLeg {
-        SilverSnapshotLeg {
-            token_standard: standard.to_string(),
-            token_id: "token.near".to_string(),
-            direction: direction.to_string(),
-            leg_kind: kind.to_string(),
-            block_height: 10,
-            block_time: at(),
-            amount_raw: BigDecimal::from_str(amount).unwrap(),
-            decimals: 0,
-        }
-    }
-
     #[test]
-    fn restores_ft_mint_and_burn_signs_only() {
+    fn stored_asset_ids_round_trip_to_typed_assets() {
+        assert_eq!(SnapshotAsset::from_stored_id("near"), SnapshotAsset::near());
         assert_eq!(
-            leg("nep141", "internal", "mint", "3")
-                .signed_amount_raw()
-                .unwrap(),
-            BigDecimal::from(3)
+            SnapshotAsset::from_stored_id("staking:astro-stakers.poolv1.near"),
+            SnapshotAsset::staking("astro-stakers.poolv1.near")
         );
         assert_eq!(
-            leg("nep141", "internal", "burn", "3")
-                .signed_amount_raw()
-                .unwrap(),
-            BigDecimal::from(-3)
+            SnapshotAsset::from_stored_id("wrap.near"),
+            SnapshotAsset::fungible("wrap.near")
         );
-        assert!(
-            leg("nep245", "internal", "mint", "3")
-                .signed_amount_raw()
-                .is_err()
+        assert_eq!(
+            SnapshotAsset::from_stored_id("intents.near:nep141:eth.omft.near"),
+            SnapshotAsset::multi_token("intents.near:nep141:eth.omft.near")
         );
-    }
-
-    #[test]
-    fn groups_all_legs_at_block_into_one_delta() {
-        let grouped = group_event_deltas([
-            leg("nep141", "incoming", "transfer", "5"),
-            leg("nep141", "outgoing", "transfer", "2"),
-        ])
-        .unwrap();
-        let ledger = grouped.values().next().unwrap();
-        assert_eq!(ledger.events.len(), 1);
-        assert_eq!(ledger.events[0].delta_raw, BigDecimal::from(3));
+        assert_eq!(
+            SnapshotAsset::from_stored_id("nep245:v2_1.omni.hot.tg:137_abc"),
+            SnapshotAsset::multi_token("nep245:v2_1.omni.hot.tg:137_abc")
+        );
     }
 }

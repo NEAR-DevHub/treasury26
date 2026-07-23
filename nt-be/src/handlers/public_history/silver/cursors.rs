@@ -112,6 +112,90 @@ pub async fn mark_silver_dirty(
     Ok(())
 }
 
+pub async fn mark_silver_dirty_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    account_id: &str,
+    recompute_from: Option<DateTime<Utc>>,
+) -> Result<(), sqlx::Error> {
+    // Serialize both new and existing cursor rows with the Silver projector.
+    // Row locking alone cannot protect two concurrent first inserts.
+    lock_silver_cursor_tx(tx, account_id).await?;
+
+    let prior = sqlx::query_as::<_, SilverDirtyState>(
+        r#"
+        SELECT
+            silver.silver_dirty_since,
+            silver.silver_recompute_from,
+            EXISTS (
+                SELECT 1
+                FROM public_balance_snapshot_cursors snapshot
+                WHERE snapshot.account_id = silver.account_id
+            ) AS snapshot_cursor_exists
+        FROM silver_public_history_cursors silver
+        WHERE silver.account_id = $1
+        FOR UPDATE OF silver
+        "#,
+    )
+    .bind(account_id)
+    .fetch_optional(&mut **tx)
+    .await?;
+
+    // One snapshot generation represents one Silver dirty window. Repeated
+    // marks in that window bump the generation only when they expand the
+    // required history to an earlier boundary or to a full rebuild.
+    let snapshot_change = classify_snapshot_dirty_change(prior.as_ref(), recompute_from);
+
+    sqlx::query(MARK_SILVER_DIRTY_SQL)
+        .bind(account_id)
+        .bind(recompute_from)
+        .execute(&mut **tx)
+        .await?;
+
+    if snapshot_change.should_bump_generation() {
+        sqlx::query(MARK_SNAPSHOT_DIRTY_SQL)
+            .bind(account_id)
+            .bind(recompute_from)
+            .execute(&mut **tx)
+            .await?;
+    }
+
+    invalidate_gold_projection_ready_tx(tx, account_id).await?;
+    Ok(())
+}
+
+pub async fn lock_silver_cursor_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    account_id: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
+        .bind(format!("public-silver:{account_id}"))
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
+}
+
+pub async fn clear_silver_dirty_if_not_advanced(
+    tx: &mut Transaction<'_, Postgres>,
+    account_id: &str,
+    dirty_since: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE silver_public_history_cursors
+        SET silver_dirty_since = NULL,
+            silver_recompute_from = NULL,
+            updated_at = NOW()
+        WHERE account_id = $1
+          AND silver_dirty_since <= $2
+        "#,
+    )
+    .bind(account_id)
+    .bind(dirty_since)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::{TimeZone, Utc};
@@ -253,88 +337,4 @@ mod tests {
         assert!(matches!(error, sqlx::Error::Database(_)));
         Ok(())
     }
-}
-
-pub async fn mark_silver_dirty_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    account_id: &str,
-    recompute_from: Option<DateTime<Utc>>,
-) -> Result<(), sqlx::Error> {
-    // Serialize both new and existing cursor rows with the Silver projector.
-    // Row locking alone cannot protect two concurrent first inserts.
-    lock_silver_cursor_tx(tx, account_id).await?;
-
-    let prior = sqlx::query_as::<_, SilverDirtyState>(
-        r#"
-        SELECT
-            silver.silver_dirty_since,
-            silver.silver_recompute_from,
-            EXISTS (
-                SELECT 1
-                FROM public_balance_snapshot_cursors snapshot
-                WHERE snapshot.account_id = silver.account_id
-            ) AS snapshot_cursor_exists
-        FROM silver_public_history_cursors silver
-        WHERE silver.account_id = $1
-        FOR UPDATE OF silver
-        "#,
-    )
-    .bind(account_id)
-    .fetch_optional(&mut **tx)
-    .await?;
-
-    // One snapshot generation represents one Silver dirty window. Repeated
-    // marks in that window bump the generation only when they expand the
-    // required history to an earlier boundary or to a full rebuild.
-    let snapshot_change = classify_snapshot_dirty_change(prior.as_ref(), recompute_from);
-
-    sqlx::query(MARK_SILVER_DIRTY_SQL)
-        .bind(account_id)
-        .bind(recompute_from)
-        .execute(&mut **tx)
-        .await?;
-
-    if snapshot_change.should_bump_generation() {
-        sqlx::query(MARK_SNAPSHOT_DIRTY_SQL)
-            .bind(account_id)
-            .bind(recompute_from)
-            .execute(&mut **tx)
-            .await?;
-    }
-
-    invalidate_gold_projection_ready_tx(tx, account_id).await?;
-    Ok(())
-}
-
-pub async fn lock_silver_cursor_tx(
-    tx: &mut Transaction<'_, Postgres>,
-    account_id: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
-        .bind(format!("public-silver:{account_id}"))
-        .execute(&mut **tx)
-        .await?;
-    Ok(())
-}
-
-pub async fn clear_silver_dirty_if_not_advanced(
-    tx: &mut Transaction<'_, Postgres>,
-    account_id: &str,
-    dirty_since: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r#"
-        UPDATE silver_public_history_cursors
-        SET silver_dirty_since = NULL,
-            silver_recompute_from = NULL,
-            updated_at = NOW()
-        WHERE account_id = $1
-          AND silver_dirty_since <= $2
-        "#,
-    )
-    .bind(account_id)
-    .bind(dirty_since)
-    .execute(&mut **tx)
-    .await?;
-    Ok(())
 }

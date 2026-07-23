@@ -16,7 +16,9 @@ use super::PublicHistorySupervisorFuture;
 use super::model::PublicHistoryJob;
 use crate::AppState;
 use crate::handlers::public_history::bronze::NearblocksPriority;
-use crate::handlers::public_history::bronze::api::fetch_latest_indexed_block_height;
+use crate::handlers::public_history::bronze::api::{
+    NearblocksCursor, fetch_latest_indexed_block_height,
+};
 use crate::handlers::public_history::bronze::ingest_worker::{
     HandlerResult, fetch_source_page, latest_seen,
 };
@@ -37,7 +39,7 @@ use super::postgres::{
 
 pub(crate) const JOB_CONCURRENCY: usize = 2;
 pub(crate) const BACKFILL_JOB_CONCURRENCY: usize = 2;
-pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 20;
+pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 50;
 
 const PUBLIC_HISTORY_LATEST_WORKER: &str = "public-history-latest";
 const PUBLIC_HISTORY_BACKFILL_WORKER: &str = "public-history-backfill";
@@ -306,7 +308,7 @@ async fn run_latest_refresh(
         })?
         .and_then(|cursor| cursor.last_seen_block_height);
 
-    let mut cursor: Option<String> = None;
+    let mut cursor: Option<NearblocksCursor> = None;
     let mut totals = (0, 0, 0);
     let mut max_seen_height: Option<i64> = None;
     let mut trigger_ingested = match trigger_transaction_hash {
@@ -328,7 +330,7 @@ async fn run_latest_refresh(
             state,
             account_id,
             source,
-            cursor.as_deref(),
+            cursor.as_ref(),
             NearblocksPriority::Latest,
         )
         .await?;
@@ -368,16 +370,16 @@ async fn run_latest_refresh(
         cursor = page.next_cursor;
     }
 
-    if let Some(transaction_hash) = trigger_transaction_hash {
-        if !trigger_ingested {
-            return Err((
-                StatusCode::BAD_GATEWAY,
-                format!(
-                    "NearBlocks {} refresh has not indexed triggering transaction {}",
-                    source, transaction_hash
-                ),
-            ));
-        }
+    if let Some(transaction_hash) = trigger_transaction_hash
+        && !trigger_ingested
+    {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!(
+                "NearBlocks {} refresh has not indexed triggering transaction {}",
+                source, transaction_hash
+            ),
+        ));
     }
 
     // One poll record per verified drain: the block-height watermark (GREATEST
@@ -427,11 +429,13 @@ async fn run_backfill_page(
         return Ok((0, 0, 0));
     }
 
+    let request_cursor = job_cursor.clone().and_then(NearblocksCursor::new);
+
     let page = fetch_source_page(
         state,
         account_id,
         source,
-        job_cursor.as_deref(),
+        request_cursor.as_ref(),
         NearblocksPriority::Backfill,
     )
     .await?;
@@ -439,13 +443,14 @@ async fn run_backfill_page(
     let page_is_empty = page.events.is_empty();
     let (touched, inserted, changed) = ingest_page(state, source, &page.events).await?;
 
-    let backfill_done =
-        page_is_empty || next_cursor.is_none() || next_cursor.as_deref() == job_cursor.as_deref();
+    let backfill_done = page_is_empty
+        || next_cursor.is_none()
+        || next_cursor.as_ref().map(NearblocksCursor::as_str) == job_cursor.as_deref();
     save_public_backfill_progress(
         &state.db_pool,
         account_id,
         source,
-        next_cursor.as_deref(),
+        next_cursor.as_ref().map(NearblocksCursor::as_str),
         backfill_done,
     )
     .await
@@ -457,14 +462,19 @@ async fn run_backfill_page(
     })?;
 
     if !backfill_done {
-        enqueue_backfill_page_job(&state.db_pool, account_id.to_string(), source, next_cursor)
-            .await
-            .map_err(|error| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("public next backfill enqueue failed: {}", error),
-                )
-            })?;
+        enqueue_backfill_page_job(
+            &state.db_pool,
+            account_id.to_string(),
+            source,
+            next_cursor.map(NearblocksCursor::into_string),
+        )
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public next backfill enqueue failed: {}", error),
+            )
+        })?;
     }
 
     Ok((touched, inserted, changed))

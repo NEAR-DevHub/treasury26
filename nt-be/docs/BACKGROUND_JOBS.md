@@ -137,7 +137,9 @@ returning a plain `404` (the board only owns `/api/v1`).
 | price-sync | every 60s | — | syncs DeFiLlama prices into `historical_prices` |
 | token-price-ingest | every 60s | — | refreshes `tokens` and 5-minute `token_prices` from Chaindefuser |
 | gold-usd-enrichment | every 5min + startup task | GOLD_USD_ENRICHMENT_INTERVAL_SECONDS | ordered historical-price load, then NULL public/confidential USD fill; projection never waits for prices |
-| public-history-scheduler | every 2s | — | enqueues public latest/backfill page jobs; latest enqueue skipped without GOLDSKY_DATABASE_URL |
+| public-history-scheduler | every 2s | — | latency-sensitive Goldsky detector; enqueues public latest-refresh jobs only |
+| public-history-readiness-scheduler | every 60s | — | schedules FT/MT/receipt coverage refreshes for dirty public snapshot cursors |
+| public-history-backfill-scheduler | every 10s | — | schedules incomplete public Bronze history pages from Bronze cursors |
 | public-silver-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
 | public-gold-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
 | public-proposal-reconciliation | every 10min | — | gated by NEARBLOCKS_API_KEY |

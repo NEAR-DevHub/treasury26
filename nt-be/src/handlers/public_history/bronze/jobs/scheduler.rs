@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use near_api::{Chain, Reference};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -8,21 +9,26 @@ use super::worker::{
 };
 use crate::AppState;
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
-use crate::handlers::public_history::snapshots::worker::{
-    SOURCE_REFRESH_BLOCK_LAG_ALLOWANCE, SOURCE_REFRESH_MAX_AGE_MINUTES,
-};
 use crate::services::goldsky_cursor::{load_goldsky_cursor, save_goldsky_cursor};
 use crate::services::public_balance_reader::with_transport_retry;
 
 const SCHEDULER_BATCH_SIZE: i64 = 2_000;
+const SCHEDULER_MAX_BATCHES: usize = 5;
 const BACKFILL_SEED_LIMIT_PER_SOURCE: i64 = 100;
 const CONSUMER_NAME: &str = "public_history_scheduler";
 const INITIAL_SNAPSHOT_REFRESH_PRIORITY: i32 = 100_000;
+/// Freshness window on `latest_refresh_at` before a dirty snapshot cursor
+/// triggers another priority drain of the NearBlocks sources.
+pub const SOURCE_REFRESH_MAX_AGE_MINUTES: i64 = 15;
+/// Lag allowance subtracted from the finalized head when recording the
+/// verified provider cutoff for a drain.
+pub const SOURCE_REFRESH_BLOCK_LAG_ALLOWANCE: i64 = 1_200;
 
 #[derive(Debug, Default)]
-pub(crate) struct PublicHistorySchedulerStats {
+pub(crate) struct PublicHistoryDetectorStats {
+    pub outcomes_seen: usize,
+    pub batches_processed: usize,
     pub latest_enqueued: usize,
-    pub backfill_enqueued: usize,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -34,6 +40,7 @@ struct IndexedDaoOutcome {
     signer_id: Option<String>,
     receiver_id: Option<String>,
     trigger_block_height: i64,
+    trigger_block_timestamp: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -293,10 +300,10 @@ async fn fetch_next_outcomes(
             transaction_hash,
             signer_id,
             receiver_id,
-            trigger_block_height
+            trigger_block_height,
+            trigger_block_timestamp
         FROM indexed_dao_outcomes
-        WHERE trigger_block_height > $1
-           OR (trigger_block_height = $1 AND id > $2)
+        WHERE (trigger_block_height, id) > ($1, $2)
         ORDER BY trigger_block_height ASC, id ASC
         LIMIT $3
         "#,
@@ -308,58 +315,83 @@ async fn fetch_next_outcomes(
     .await
 }
 
+fn log_detection_latency(outcome: &IndexedDaoOutcome, now: DateTime<Utc>) {
+    let Some(block_time) = DateTime::from_timestamp_millis(outcome.trigger_block_timestamp) else {
+        tracing::warn!(
+            block_height = outcome.trigger_block_height,
+            trigger_block_timestamp = outcome.trigger_block_timestamp,
+            "Goldsky outcome has an invalid trigger timestamp"
+        );
+        return;
+    };
+
+    tracing::info!(
+        block_height = outcome.trigger_block_height,
+        chain_to_detection_lag_ms = (now - block_time).num_milliseconds(),
+        "public history Goldsky outcome batch detected"
+    );
+}
+
 async fn tick_goldsky_scheduler(
     state: &AppState,
     goldsky_pool: &PgPool,
-) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    let cursor = load_goldsky_cursor(&state.db_pool, goldsky_pool, CONSUMER_NAME).await?;
-    let outcomes = fetch_next_outcomes(
-        goldsky_pool,
-        cursor.last_processed_block,
-        &cursor.last_processed_id,
-    )
-    .await?;
-
-    if outcomes.is_empty() {
-        return Ok(0);
-    }
-
+) -> Result<PublicHistoryDetectorStats, Box<dyn std::error::Error + Send + Sync>> {
+    let mut cursor = load_goldsky_cursor(&state.db_pool, goldsky_pool, CONSUMER_NAME).await?;
     let monitored = load_monitored_accounts(&state.db_pool).await?;
-    let mut all_candidates = Vec::new();
-    let mut last_processed_id = cursor.last_processed_id;
-    let mut last_processed_block = cursor.last_processed_block;
+    let mut stats = PublicHistoryDetectorStats::default();
 
-    for outcome in &outcomes {
-        all_candidates.extend(classify_outcome(outcome, &monitored));
-        last_processed_id = outcome.id.clone();
-        last_processed_block = outcome.trigger_block_height;
-    }
-
-    let candidates = coalesce_candidates(all_candidates);
-    let mut enqueued = 0usize;
-    for candidate in candidates {
-        if enqueue_latest_refresh_job(
-            &state.db_pool,
-            candidate.account_id,
-            candidate.source,
-            candidate.trigger_block_height,
-            candidate.trigger_transaction_hash,
+    for _ in 0..SCHEDULER_MAX_BATCHES {
+        let outcomes = fetch_next_outcomes(
+            goldsky_pool,
+            cursor.last_processed_block,
+            &cursor.last_processed_id,
         )
-        .await?
-        {
-            enqueued += 1;
+        .await?;
+        if outcomes.is_empty() {
+            break;
+        }
+
+        let batch_size = outcomes.len();
+        let mut all_candidates = Vec::new();
+        for outcome in &outcomes {
+            all_candidates.extend(classify_outcome(outcome, &monitored));
+        }
+
+        for candidate in coalesce_candidates(all_candidates) {
+            if enqueue_latest_refresh_job(
+                &state.db_pool,
+                candidate.account_id,
+                candidate.source,
+                candidate.trigger_block_height,
+                candidate.trigger_transaction_hash,
+            )
+            .await?
+            {
+                stats.latest_enqueued += 1;
+            }
+        }
+
+        let latest = outcomes.last().expect("non-empty batch");
+        save_goldsky_cursor(
+            &state.db_pool,
+            CONSUMER_NAME,
+            &latest.id,
+            latest.trigger_block_height,
+        )
+        .await?;
+        cursor.last_processed_id.clone_from(&latest.id);
+        cursor.last_processed_block = latest.trigger_block_height;
+
+        stats.outcomes_seen += batch_size;
+        stats.batches_processed += 1;
+        log_detection_latency(latest, Utc::now());
+
+        if batch_size < SCHEDULER_BATCH_SIZE as usize {
+            break;
         }
     }
 
-    save_goldsky_cursor(
-        &state.db_pool,
-        CONSUMER_NAME,
-        &last_processed_id,
-        last_processed_block,
-    )
-    .await?;
-
-    Ok(enqueued)
+    Ok(stats)
 }
 
 async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
@@ -485,25 +517,30 @@ async fn seed_initial_snapshot_refresh_jobs(
     Ok(enqueued)
 }
 
-pub(crate) async fn run_public_history_scheduler_cycle(
+pub(crate) async fn run_public_history_detector_cycle(
     state: &AppState,
-) -> Result<PublicHistorySchedulerStats, Box<dyn std::error::Error + Send + Sync>> {
-    let goldsky_latest_enqueued = if let Some(goldsky_pool) = state.goldsky_pool.as_ref() {
+) -> Result<PublicHistoryDetectorStats, Box<dyn std::error::Error + Send + Sync>> {
+    let stats = if let Some(goldsky_pool) = state.goldsky_pool.as_ref() {
         tick_goldsky_scheduler(state, goldsky_pool).await?
     } else {
         tracing::debug!(
             "public history Goldsky latest scheduler skipped (GOLDSKY_DATABASE_URL not set)"
         );
-        0
+        PublicHistoryDetectorStats::default()
     };
-    let initial_refreshes_enqueued = seed_initial_snapshot_refresh_jobs(state).await?;
-    let latest_enqueued = goldsky_latest_enqueued + initial_refreshes_enqueued;
+    Ok(stats)
+}
 
-    let backfill_enqueued = seed_backfill_jobs(state).await?;
-    Ok(PublicHistorySchedulerStats {
-        latest_enqueued,
-        backfill_enqueued,
-    })
+pub(crate) async fn run_public_history_readiness_scheduler_cycle(
+    state: &AppState,
+) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    seed_initial_snapshot_refresh_jobs(state).await
+}
+
+pub(crate) async fn run_public_history_backfill_scheduler_cycle(
+    state: &AppState,
+) -> Result<usize, sqlx::Error> {
+    seed_backfill_jobs(state).await
 }
 
 #[cfg(test)]
@@ -519,6 +556,7 @@ mod tests {
             signer_id: None,
             receiver_id: None,
             trigger_block_height: 42,
+            trigger_block_timestamp: 1_700_000_000_000,
         }
     }
 
@@ -552,6 +590,37 @@ mod tests {
                 && candidate.trigger_block_height == 11
                 && candidate.trigger_transaction_hash.as_deref() == Some("b")
         }));
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn outcome_pagination_orders_by_block_then_id(pool: PgPool) {
+        sqlx::query(
+            r#"
+            INSERT INTO indexed_dao_outcomes (
+                id,
+                executor_id,
+                trigger_block_height,
+                trigger_block_timestamp
+            )
+            VALUES
+                ('z', 'token.near', 41, 1700000000000),
+                ('a', 'token.near', 42, 1700000001000),
+                ('b', 'token.near', 42, 1700000002000),
+                ('c', 'token.near', 43, 1700000003000)
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let outcomes = fetch_next_outcomes(&pool, 42, "a").await.unwrap();
+        assert_eq!(
+            outcomes
+                .into_iter()
+                .map(|outcome| outcome.id)
+                .collect::<Vec<_>>(),
+            vec!["b", "c"]
+        );
     }
 
     #[test]

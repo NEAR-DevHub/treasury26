@@ -174,7 +174,7 @@ pub async fn get_balance_chart(
         return Ok(Json(response));
     }
 
-    if state.env_vars.public_balance_snapshot_reads {
+    if state.env_vars.public_history_medallion_reads {
         let response =
             crate::handlers::public_history::snapshots::chart::build_public_chart_response(
                 &state,

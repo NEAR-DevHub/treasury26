@@ -70,12 +70,22 @@ const GOLD_RAW_IDS_SQL: &str = r#"
     UNION
     SELECT DISTINCT asset
     FROM public_balance_snapshot
-    WHERE usd_value IS NULL
 "#;
 
 const GOLD_MISSING_PAIRS_SQL: &str = r#"
     WITH mapping(raw_token_id, token_ref) AS (
         SELECT * FROM UNNEST($1::text[], $2::int4[])
+    ),
+    snapshot_assets(raw_token_id) AS (
+        SELECT DISTINCT asset
+        FROM public_balance_snapshot
+    ),
+    snapshot_chart_grid(at) AS (
+        SELECT date_trunc('day', NOW()) - grid_offset.value * INTERVAL '1 day'
+        FROM generate_series(0, 89) AS grid_offset(value)
+        UNION
+        SELECT date_trunc('week', NOW()) - grid_offset.value * INTERVAL '1 week'
+        FROM generate_series(0, 52) AS grid_offset(value)
     ),
     sources(raw_token_id, at) AS (
         SELECT token_in, event_time
@@ -97,6 +107,10 @@ const GOLD_MISSING_PAIRS_SQL: &str = r#"
         SELECT asset, block_time
         FROM public_balance_snapshot
         WHERE usd_value IS NULL
+        UNION ALL
+        SELECT snapshot_assets.raw_token_id, snapshot_chart_grid.at
+        FROM snapshot_assets
+        CROSS JOIN snapshot_chart_grid
     ),
     needed AS (
         SELECT DISTINCT m.token_ref,
@@ -862,6 +876,7 @@ mod tests {
         assert!(GOLD_RAW_IDS_SQL.contains("gold_public_history_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("public_balance_snapshot"));
+        assert!(!GOLD_RAW_IDS_SQL.contains("public_balance_snapshot\n    WHERE"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_out_usd IS NULL"));
         assert!(!GOLD_RAW_IDS_SQL.contains("balance_changes"));
@@ -881,6 +896,9 @@ mod tests {
         assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_out_usd IS NULL"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("public_balance_snapshot"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("usd_value IS NULL"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("generate_series(0, 89)"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("generate_series(0, 52)"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("CROSS JOIN snapshot_chart_grid"));
         assert!(!GOLD_MISSING_PAIRS_SQL.contains("balance_changes"));
     }
 
@@ -891,5 +909,39 @@ mod tests {
         assert_eq!(bucket(1719878400), 1719878400); // exact boundary
         assert_eq!(bucket(1719878400 + 299), 1719878400); // 12:04:59 -> 12:00
         assert_eq!(bucket(1719878400 + 300), 1719878700); // 12:05:00 -> 12:05
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn missing_pair_discovery_includes_snapshot_chart_grid(pool: PgPool) {
+        sqlx::query(
+            r#"
+            INSERT INTO public_balance_snapshot (
+                dao_id, asset, block_height, block_time, balance, usd_value
+            )
+            VALUES (
+                'price-grid.sputnik-dao.near', 'near', 1,
+                '2020-01-01T00:00:00Z', 1, NULL
+            )
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let pairs: Vec<(i32, DateTime<Utc>)> = sqlx::query_as(GOLD_MISSING_PAIRS_SQL)
+            .bind(vec!["near"])
+            .bind(vec![1_i32])
+            .bind(MAX_MISS_ATTEMPTS)
+            .bind(MAX_POINTS_PER_RUN)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+        assert!(pairs.len() >= 130);
+        assert!(pairs.iter().any(|(_, at)| {
+            *at == DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&Utc)
+        }));
     }
 }

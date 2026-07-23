@@ -226,10 +226,31 @@ async fn handle_snapshot_job(
     };
 
     match result {
-        Some((rows, repaired)) => Ok(format!(
-            "account={} generation={} rows={} repaired_segments={}",
-            job.account_id, job.generation, rows, repaired
-        )),
+        Some(outcome) => {
+            if outcome.seeded_rows > 0 {
+                match crate::jobs::push_now_if_not_queued(
+                    &context.state.db_pool,
+                    "public-balance-snapshot-usd-repair",
+                )
+                .await
+                {
+                    Ok(true) => tracing::info!(
+                        account_id = job.account_id,
+                        "queued snapshot USD enrichment after historical seed"
+                    ),
+                    Ok(false) => {}
+                    Err(error) => tracing::warn!(
+                        account_id = job.account_id,
+                        error = %error,
+                        "could not queue snapshot USD enrichment after historical seed"
+                    ),
+                }
+            }
+            Ok(format!(
+                "account={} generation={} rows={} seeded_rows={}",
+                job.account_id, job.generation, outcome.rows_written, outcome.seeded_rows
+            ))
+        }
         None => Ok(format!(
             "account={} generation={} obsolete_or_already_applied",
             job.account_id, job.generation

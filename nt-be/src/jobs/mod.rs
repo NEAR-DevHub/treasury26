@@ -385,6 +385,43 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
     }
 }
 
+/// Coalesces event-driven wakeups for a cron queue. Running work is not a
+/// substitute for the queued follow-up because it may already have scanned
+/// past rows committed by the caller.
+pub(crate) async fn push_now_if_not_queued(
+    pool: &PgPool,
+    queue: &'static str,
+) -> Result<bool, BoxDynError> {
+    let mut tx = pool.begin().await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
+        .bind(format!("apalis-cron-wakeup:{queue}"))
+        .execute(&mut *tx)
+        .await?;
+
+    let queued: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM apalis.jobs
+            WHERE job_type = $1
+              AND status IN ('Pending', 'Queued')
+        )
+        "#,
+    )
+    .bind(queue)
+    .fetch_one(&mut *tx)
+    .await?;
+    if queued {
+        tx.commit().await?;
+        return Ok(false);
+    }
+
+    let mut sink = storage(pool, queue);
+    sink.push(Tick::new(chrono::Utc::now())).await?;
+    tx.commit().await?;
+    Ok(true)
+}
+
 /// Registers a queue and, when a monitor is present, its cron worker:
 /// schedule → postgres queue → handler.
 ///
@@ -544,6 +581,22 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            "public-history-readiness-scheduler",
+            schedule_every_secs(60),
+            handlers::public_history_readiness_scheduler
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-history-backfill-scheduler",
+            schedule_every_secs(10),
+            handlers::public_history_backfill_scheduler
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
             "public-silver-projection",
             schedule_every_secs(5),
             handlers::public_silver_projection
@@ -577,16 +630,19 @@ fn configure_cron_runtime(
             queues,
             state,
             "public-balance-snapshot-sweeper",
-            schedule_every_secs(60),
+            schedule_every_secs(env_secs(
+                "PUBLIC_BALANCE_SNAPSHOT_REFRESH_INTERVAL_SECONDS",
+                3600
+            )),
             handlers::public_balance_snapshot_sweeper
         );
         monitor = register_cron_worker!(
             monitor,
             queues,
             state,
-            "public-balance-snapshot-checkpoints",
+            "public-balance-snapshot-staking-refresh",
             Schedule::from_str("0 1 0 * * *").expect("valid cron"),
-            handlers::public_balance_snapshot_checkpoints
+            handlers::public_balance_snapshot_staking_refresh
         );
         monitor = register_cron_worker!(
             monitor,
@@ -871,14 +927,15 @@ fn build_cron_runtime(state: Arc<AppState>, queues: JobQueues) -> (Monitor, JobQ
     )
 }
 
-const STARTUP_QUEUES: [&str; 7] = [
+const STARTUP_QUEUES: [&str; 8] = [
     "confidential-gold-reconciliation",
     "subscription-monthly-reset",
     "public-dashboard-refresh",
     "ft-lockup-refresh",
     "balance-changes-usd-backfill",
     "gold-usd-enrichment",
-    "public-balance-snapshot-checkpoints",
+    "public-balance-snapshot-sweeper",
+    "public-balance-snapshot-usd-repair",
 ];
 
 async fn push_startup_tasks(queues: &JobQueues, pool: &PgPool) {
@@ -1200,7 +1257,85 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
 
 #[cfg(test)]
 mod tests {
-    use super::{cron_every_secs, is_foreign_api_path, schedule_every_secs};
+    use super::{STARTUP_QUEUES, cron_every_secs, is_foreign_api_path, schedule_every_secs};
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn public_history_scheduler_queues_have_independent_watchdog_cadences(
+        pool: sqlx::PgPool,
+    ) {
+        let env = crate::utils::env::EnvVars {
+            nearblocks_api_key: Some("test".to_string()),
+            goldsky_database_url: None,
+            ..Default::default()
+        };
+        let state = std::sync::Arc::new(
+            crate::AppState::builder()
+                .db_pool(pool)
+                .env_vars(env)
+                .build()
+                .await
+                .unwrap(),
+        );
+
+        let (queues, specs) = super::prepare_job_queues(state);
+        for (queue, interval_secs) in [
+            ("public-history-scheduler", 2),
+            ("public-history-readiness-scheduler", 60),
+            ("public-history-backfill-scheduler", 10),
+        ] {
+            assert!(
+                queues.storage(queue).is_some(),
+                "{queue} must be registered"
+            );
+            let spec = specs
+                .iter()
+                .find(|spec| spec.queue == queue)
+                .unwrap_or_else(|| panic!("{queue} must be watched"));
+            assert!(matches!(
+                spec.kind,
+                super::watchdog::QueueKind::Cron {
+                    interval_secs: actual
+                } if actual == interval_secs
+            ));
+        }
+    }
+
+    #[test]
+    fn snapshot_usd_repair_runs_at_startup_once() {
+        assert_eq!(
+            STARTUP_QUEUES
+                .iter()
+                .filter(|queue| **queue == "public-balance-snapshot-usd-repair")
+                .count(),
+            1
+        );
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn snapshot_usd_startup_wakeup_deduplicates_active_job(pool: sqlx::PgPool) {
+        super::setup_apalis(&pool).await.unwrap();
+        let queue = "public-balance-snapshot-usd-repair";
+        let queues = super::JobQueues {
+            entries: vec![(queue, super::storage(&pool, queue))],
+        };
+
+        super::push_startup_tasks(&queues, &pool).await;
+        super::push_startup_tasks(&queues, &pool).await;
+
+        let active: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM apalis.jobs
+            WHERE job_type = $1
+              AND status IN ('Pending', 'Queued', 'Running')
+            "#,
+        )
+        .bind(queue)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(active, 1);
+    }
 
     #[test]
     fn cron_every_secs_expressible_intervals() {

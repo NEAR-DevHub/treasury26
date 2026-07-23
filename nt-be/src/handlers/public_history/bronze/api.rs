@@ -18,7 +18,24 @@ const NEARBLOCKS_V3_BASE_URL: &str = "https://api.nearblocks.io";
 #[derive(Debug, Clone)]
 pub struct NearblocksPage {
     pub events: Vec<BronzePublicHistoryEvent>,
-    pub next_cursor: Option<String>,
+    pub next_cursor: Option<NearblocksCursor>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NearblocksCursor(String);
+
+impl NearblocksCursor {
+    pub fn new(value: String) -> Option<Self> {
+        (!value.is_empty()).then_some(Self(value))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn into_string(self) -> String {
+        self.0
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -183,7 +200,7 @@ async fn fetch_raw_page(
     state: &AppState,
     account_id: &str,
     path: &str,
-    cursor: Option<&str>,
+    cursor: Option<&NearblocksCursor>,
     limit: u32,
     priority: NearblocksPriority,
 ) -> Result<Value, (StatusCode, String)> {
@@ -193,7 +210,7 @@ async fn fetch_raw_page(
     );
     let mut params = vec![("limit", limit.to_string())];
     if let Some(cursor) = cursor {
-        params.push(("next", cursor.to_string()));
+        params.push(("next", cursor.as_str().to_string()));
     }
 
     fetch_raw_json(state, &url, &params, priority, path).await
@@ -229,13 +246,34 @@ async fn fetch_raw_json(
             .header("accept", "application/json")
             .header("Authorization", format!("Bearer {}", api_key))
             .send()
-            .await
-            .map_err(|e| {
-                (
+            .await;
+
+        let response = match response {
+            Ok(response) => response,
+            Err(error) if attempt < NEARBLOCKS_MAX_ATTEMPTS => {
+                tracing::warn!(
+                    operation,
+                    attempt,
+                    error = %error,
+                    is_connect = error.is_connect(),
+                    is_timeout = error.is_timeout(),
+                    "NearBlocks transport failed; backing off and retrying"
+                );
+                tokio::time::sleep(NEARBLOCKS_DEFAULT_BACKOFF).await;
+                continue;
+            }
+            Err(error) => {
+                return Err((
                     StatusCode::BAD_GATEWAY,
-                    format!("NearBlocks request failed: {}", e),
-                )
-            })?;
+                    format!(
+                        "NearBlocks request failed after {attempt} attempts \
+                         (connect={}, timeout={}): {error}",
+                        error.is_connect(),
+                        error.is_timeout()
+                    ),
+                ));
+            }
+        };
 
         let status = response.status();
 
@@ -248,6 +286,17 @@ async fn fetch_raw_json(
                 "NearBlocks rate limited (429); backing off and retrying"
             );
             tokio::time::sleep(backoff).await;
+            continue;
+        }
+
+        if status.is_server_error() && attempt < NEARBLOCKS_MAX_ATTEMPTS {
+            tracing::warn!(
+                operation,
+                attempt,
+                status = %status,
+                "NearBlocks server error; backing off and retrying"
+            );
+            tokio::time::sleep(NEARBLOCKS_DEFAULT_BACKOFF).await;
             continue;
         }
 
@@ -310,12 +359,12 @@ fn raw_items(raw: &Value) -> Result<&Vec<Value>, (StatusCode, String)> {
         })
 }
 
-fn next_cursor(raw: &Value) -> Result<Option<String>, (StatusCode, String)> {
+fn next_cursor(raw: &Value) -> Result<Option<NearblocksCursor>, (StatusCode, String)> {
     let Some(meta) = raw.get("meta") else {
         return Ok(None);
     };
     serde_json::from_value::<NearblocksMeta>(meta.clone())
-        .map(|meta| meta.next_page)
+        .map(|meta| meta.next_page.and_then(NearblocksCursor::new))
         .map_err(|error| {
             (
                 StatusCode::BAD_GATEWAY,
@@ -327,7 +376,7 @@ fn next_cursor(raw: &Value) -> Result<Option<String>, (StatusCode, String)> {
 pub async fn fetch_ft_transfers(
     state: &AppState,
     account_id: &str,
-    cursor: Option<&str>,
+    cursor: Option<&NearblocksCursor>,
     limit: u32,
     priority: NearblocksPriority,
 ) -> Result<NearblocksPage, (StatusCode, String)> {
@@ -389,7 +438,7 @@ pub async fn fetch_ft_transfers(
 pub async fn fetch_mt_transfers(
     state: &AppState,
     account_id: &str,
-    cursor: Option<&str>,
+    cursor: Option<&NearblocksCursor>,
     limit: u32,
     priority: NearblocksPriority,
 ) -> Result<NearblocksPage, (StatusCode, String)> {
@@ -452,7 +501,7 @@ pub async fn fetch_mt_transfers(
 pub async fn fetch_receipts(
     state: &AppState,
     account_id: &str,
-    cursor: Option<&str>,
+    cursor: Option<&NearblocksCursor>,
     limit: u32,
     priority: NearblocksPriority,
 ) -> Result<NearblocksPage, (StatusCode, String)> {
@@ -578,7 +627,7 @@ mod tests {
                 "meta": { "next_page": "opaque" }
             }))
             .unwrap(),
-            Some("opaque".to_string())
+            NearblocksCursor::new("opaque".to_string())
         );
         assert_eq!(
             next_cursor(&serde_json::json!({ "data": [], "meta": {} })).unwrap(),
@@ -590,6 +639,14 @@ mod tests {
         );
         assert_eq!(
             next_cursor(&serde_json::json!({ "data": [{ "event": "terminal" }] })).unwrap(),
+            None
+        );
+        assert_eq!(
+            next_cursor(&serde_json::json!({
+                "data": [],
+                "meta": { "next_page": "" }
+            }))
+            .unwrap(),
             None
         );
         assert!(next_cursor(&serde_json::json!({ "data": [], "meta": [] })).is_err());

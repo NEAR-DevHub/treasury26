@@ -21,14 +21,10 @@ pub struct EnvVars {
     pub disable_balance_changes_usd_backfill: bool,
     pub disable_gold_public_usd_backfill: bool,
     pub disable_gold_confidential_usd_backfill: bool,
-    /// Global public read switch. False keeps public APIs on the legacy
-    /// `balance_changes` table; true enables gold reads for DAOs whose bronze
-    /// backfill is complete.
+    /// Global public medallion read switch. False keeps public activity and
+    /// charts on their legacy paths; true enables Gold activity reads for
+    /// ready DAOs and public balance-snapshot charts.
     pub public_history_medallion_reads: bool,
-    /// Global public balance-chart switch. False preserves the existing
-    /// Legacy/PublicGold chart behavior; true serves public charts only from
-    /// `public_balance_snapshot`, with no per-account legacy fallback.
-    pub public_balance_snapshot_reads: bool,
     pub monitor_interval_seconds: u64,
     pub telegram_bot_token: Option<String>,
     /// General notifications channel (user creation, treasury creation, etc.)
@@ -153,10 +149,6 @@ impl Default for EnvVars {
             .parse()
             .unwrap_or(false),
             public_history_medallion_reads: std::env::var("PUBLIC_HISTORY_MEDALLION_READS")
-                .unwrap_or_else(|_| "false".to_string())
-                .parse()
-                .unwrap_or(false),
-            public_balance_snapshot_reads: std::env::var("PUBLIC_BALANCE_SNAPSHOT_READS")
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),

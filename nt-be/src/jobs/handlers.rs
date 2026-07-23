@@ -6,9 +6,12 @@ use std::sync::Arc;
 
 use apalis::prelude::*;
 use apalis_cron::Tick;
+use chrono::{DateTime, Utc};
 use tokio::sync::{Mutex, OnceCell};
 
 use crate::AppState;
+
+const PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS: i64 = 60;
 
 /// Converts a non-Send boxed error (several legacy cycles return
 /// `Box<dyn Error>`) into an apalis-compatible one.
@@ -183,18 +186,57 @@ pub async fn confidential_history_ingest(
     ))
 }
 
-/// Public history bronze scheduler: Goldsky latest refresh enqueue + backfill seeding.
+fn public_history_tick_age_ms(tick: &Tick, now: DateTime<Utc>) -> i64 {
+    (now - tick.get_timestamp()).num_milliseconds().max(0)
+}
+
+/// Latency-sensitive Goldsky detector. Old ticks carry no unique payload:
+/// one current scan resumes from the durable cursor and covers all of them.
 pub async fn public_history_scheduler(
-    _t: Tick,
+    tick: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
+    let tick_age_ms = public_history_tick_age_ms(&tick, Utc::now());
+    if tick_age_ms > PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS * 1_000 {
+        return Ok(format!("skipped_stale_tick age_ms={tick_age_ms}"));
+    }
+
     let stats =
-        crate::handlers::public_history::bronze::jobs::run_public_history_scheduler_cycle(&state)
+        crate::handlers::public_history::bronze::jobs::run_public_history_detector_cycle(&state)
             .await?;
     Ok(format!(
-        "latest_enqueued={} backfill_enqueued={}",
-        stats.latest_enqueued, stats.backfill_enqueued
+        "outcomes={} batches={} latest_enqueued={}",
+        stats.outcomes_seen, stats.batches_processed, stats.latest_enqueued
     ))
+}
+
+/// Snapshot source-readiness scheduler. It deliberately runs outside the
+/// Goldsky detector so finalized-block RPC and provider coverage work cannot
+/// delay recent activity detection.
+pub async fn public_history_readiness_scheduler(
+    _tick: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let enqueued =
+        crate::handlers::public_history::bronze::jobs::run_public_history_readiness_scheduler_cycle(
+            &state,
+        )
+        .await?;
+    Ok(format!("enqueued={enqueued}"))
+}
+
+/// Historical Bronze page scheduler. Backfill cursor scans are independent
+/// from both the Goldsky cursor and the recent-activity detector.
+pub async fn public_history_backfill_scheduler(
+    _tick: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let enqueued =
+        crate::handlers::public_history::bronze::jobs::run_public_history_backfill_scheduler_cycle(
+            &state,
+        )
+        .await?;
+    Ok(format!("enqueued={enqueued}"))
 }
 
 /// Public history silver projection for dirty accounts.
@@ -207,15 +249,10 @@ pub async fn public_silver_projection(
             &state.db_pool,
         )
         .await?;
-    // Silver and snapshot cursors commit together in the Rust repository;
-    // enqueueing only wakes the durable per-DAO consumer promptly.
-    let snapshot_jobs =
-        crate::handlers::public_history::snapshots::jobs::enqueue_dirty_snapshot_jobs(
-            &state.db_pool,
-        )
-        .await?;
+    // Silver only marks cursors dirty; the hourly sweeper batches every
+    // change inside the window into one sparse refresh row.
     Ok(format!(
-        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={} snapshot_jobs={}",
+        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={}",
         stats.accounts_seen,
         stats.accounts_projected,
         stats.accounts_skipped_locked,
@@ -223,30 +260,38 @@ pub async fn public_silver_projection(
         stats.rows_projected,
         stats.rows_deleted,
         stats.errors_written,
-        snapshot_jobs
     ))
 }
 
-/// Recovers snapshot cursor updates whose post-commit queue nudge was lost.
+/// Hourly refresh driver: seeds cursors for newly monitored DAOs, then
+/// enqueues one durable per-DAO payload for every buildable dirty cursor.
 pub async fn public_balance_snapshot_sweeper(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
+    let bootstrap =
+        crate::handlers::public_history::snapshots::repository::bootstrap_public_balance_snapshot_cursors(
+            &state.db_pool,
+        )
+        .await?;
     let enqueued = crate::handlers::public_history::snapshots::jobs::enqueue_dirty_snapshot_jobs(
         &state.db_pool,
     )
     .await?;
-    Ok(format!("enqueued={enqueued}"))
+    Ok(format!(
+        "bootstrapped={} enqueued={enqueued}",
+        bootstrap.cursors_seeded
+    ))
 }
 
-/// Advances clean cursors after a UTC day boundary and wakes the same durable
-/// per-DAO workers. Monday's fixed grid includes the new weekly checkpoint.
-pub async fn public_balance_snapshot_checkpoints(
+/// Staking rewards accrue without on-chain events from the account, so DAOs
+/// holding staking assets are re-dirtied once per UTC day.
+pub async fn public_balance_snapshot_staking_refresh(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
     let marked =
-        crate::handlers::public_history::snapshots::repository::mark_due_checkpoint_generations(
+        crate::handlers::public_history::snapshots::repository::mark_staking_holdings_dirty(
             &state.db_pool,
         )
         .await?;
@@ -263,12 +308,43 @@ pub async fn public_balance_snapshot_usd_repair(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let repaired = crate::handlers::public_history::snapshots::worker::repair_missing_public_snapshot_usd_values(
+    let mut outcomes = Vec::new();
+    let mut errors = Vec::new();
+
+    let backfill = crate::services::HistoricalPriceBackfill::new(
+        state.http_client.clone(),
+        state.env_vars.defillama_api_base_url.clone(),
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+        state.defillama_limiter.clone(),
+    );
+    match backfill.run().await {
+        Ok(summary) => outcomes.push(format!(
+            "prices_fetched={} prices=[{summary}]",
+            summary.rows_inserted
+        )),
+        Err(error) => errors.push(format!("price loading failed: {error}")),
+    }
+
+    match crate::handlers::public_history::snapshots::worker::repair_missing_public_snapshot_usd_values(
         state.as_ref(),
     )
     .await
-    .map_err(erase)?;
-    Ok(format!("repaired={repaired}"))
+    {
+        Ok(summary) => outcomes.push(format!("snapshots=[{summary}]")),
+        Err(error) => errors.push(format!("snapshot USD repair failed: {error}")),
+    }
+
+    if errors.is_empty() {
+        Ok(outcomes.join(" "))
+    } else {
+        Err(format!(
+            "{}; completed stages: {}",
+            errors.join("; "),
+            outcomes.join(" ")
+        )
+        .into())
+    }
 }
 
 /// Public history gold projection for dirty accounts.
@@ -680,4 +756,26 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
     Ok(format!(
         "reclaimed {reclaimed} stuck-Running, pruned {total} terminal tasks older than {retention_hours}h"
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_history_tick_age_is_never_negative() {
+        let now = Utc::now();
+        assert_eq!(
+            public_history_tick_age_ms(&Tick::new(now + chrono::Duration::seconds(1)), now),
+            0
+        );
+    }
+
+    #[test]
+    fn public_history_tick_age_identifies_stale_ticks() {
+        let now = Utc::now();
+        let age_ms =
+            public_history_tick_age_ms(&Tick::new(now - chrono::Duration::seconds(11)), now);
+        assert!(age_ms > PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS * 1_000);
+    }
 }

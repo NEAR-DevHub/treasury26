@@ -43,18 +43,13 @@ async fn snapshot_chart_queries_work_without_the_legacy_balance_table(pool: PgPo
         .expect("load snapshot inventory");
     assert_eq!(assets, vec!["near", "wrap.near"]);
 
-    let rows = load_chart_rows(
-        &pool,
-        "snapshot-only.sputnik-dao.near",
-        &[bucket],
-        &[bucket - Duration::days(1)],
-    )
-    .await
-    .expect("load snapshot chart rows");
+    let rows = load_chart_rows(&pool, "snapshot-only.sputnik-dao.near", &[bucket])
+        .await
+        .expect("load snapshot chart rows");
     assert_eq!(rows.len(), 2);
-    assert!(rows.iter().all(|row| row.block_height == 100));
+    assert!(rows.iter().all(|row| row.bucket == bucket));
 
-    let repair_page = load_missing_usd_rows(&pool, 1)
+    let repair_page = load_missing_usd_rows(&pool, None, 1)
         .await
         .expect("load rotating USD repair page");
     assert_eq!(repair_page.len(), 1);

@@ -26,8 +26,12 @@ CREATE TABLE public_balance_snapshot_cursors (
     snapshot_applied_generation BIGINT NOT NULL DEFAULT 0,
     snapshot_recompute_from TIMESTAMPTZ,
     snapshot_applied_at TIMESTAMPTZ,
+    snapshot_seeded_at TIMESTAMPTZ,
     CHECK (snapshot_applied_generation <= snapshot_dirty_generation)
 );
+
+COMMENT ON COLUMN public_balance_snapshot_cursors.snapshot_seeded_at IS
+    'Set once after the one-time historical seed from trusted legacy balance history; NULL means the next refresh must seed first.';
 
 -- Runtime cursor bootstrap, invalidation and historical reprojection are
 -- implemented in the typed Rust repositories. This migration is DDL-only.

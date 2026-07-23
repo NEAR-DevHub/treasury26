@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use crate::AppState;
 use crate::handlers::public_history::bronze::NearblocksPriority;
 use crate::handlers::public_history::bronze::api::{
-    NearblocksPage, fetch_ft_transfers, fetch_mt_transfers, fetch_receipts,
+    NearblocksCursor, NearblocksPage, fetch_ft_transfers, fetch_mt_transfers, fetch_receipts,
 };
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
 
@@ -21,7 +21,7 @@ pub(crate) async fn fetch_source_page(
     state: &AppState,
     account_id: &str,
     source: PublicHistorySource,
-    cursor: Option<&str>,
+    cursor: Option<&NearblocksCursor>,
     priority: NearblocksPriority,
 ) -> HandlerResult<NearblocksPage> {
     match source {

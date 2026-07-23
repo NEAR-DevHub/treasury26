@@ -1,19 +1,18 @@
-//! Authoritative public balance history.
+//! Sparse, effective-dated public balance history.
 //!
-//! Silver supplies asset and event coordinates. Balances are materialized at
-//! those coordinates and at the fixed chart grid from archival chain state.
-//! Public chart/backfill code in this module intentionally has no legacy
-//! balance-ledger fallback.
+//! History is seeded once per DAO from the trusted legacy balance ledger
+//! (the seed module is its only sanctioned reader); afterwards balances move
+//! forward only, refreshed for event-affected assets at one finalized block
+//! per DAO. A snapshot row exists only where a balance changed; charts carry
+//! rows forward and price each bucket from the stored price series. Missing
+//! history is never represented as zero.
 
-pub mod block_resolver;
 pub mod chart;
 pub mod grid;
 pub mod jobs;
 pub mod models;
 pub mod repository;
+pub mod seed;
 pub mod worker;
 
-pub use models::SnapshotCycleStats;
-pub use worker::{
-    project_dirty_public_balance_snapshots, project_public_balance_snapshot_generation,
-};
+pub use worker::project_public_balance_snapshot_generation;
