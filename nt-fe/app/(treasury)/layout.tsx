@@ -10,9 +10,9 @@ import { GoogleTagManager } from "@/components/google-tag-manager";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-import { WarningsProvider } from "@/components/warnings-provider";
 import { Toaster } from "@/components/toaster";
 import { TourProvider } from "@/features/onboarding/components/tour-provider";
+import { WarningsProvider } from "@/hooks/use-warnings";
 
 const figtree = Figtree({
     variable: "--font-figtree",

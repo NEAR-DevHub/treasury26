@@ -8,7 +8,7 @@ import { AuthProvider } from "@/components/auth-provider";
 import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/toaster";
-import { WarningsProvider } from "@/components/warnings-provider";
+import { WarningsProvider } from "@/hooks/use-warnings";
 
 const figtree = Figtree({
     variable: "--font-figtree",

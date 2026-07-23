@@ -1,79 +1,41 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import * as z from "zod";
-import { PageComponentLayout } from "@/components/page-component-layout";
-import { PageCard } from "@/components/card";
-import { Button } from "@/components/button";
+import {
+    type ColumnDef,
+    createColumnHelper,
+    flexRender,
+    getCoreRowModel,
+    useReactTable,
+} from "@tanstack/react-table";
+import { endOfDay, format, startOfDay, subDays, subMonths } from "date-fns";
 import {
     ArrowLeft,
     Calendar,
-    Coins,
-    Mail,
-    Clock,
-    FileX,
     ChevronDown,
+    Clock,
+    Coins,
+    Download,
+    FileX,
     Info,
+    Loader2,
+    Mail,
 } from "lucide-react";
-import { useTreasury } from "@/hooks/use-treasury";
-import { useNear } from "@/stores/near-store";
-import { useSubscription } from "@/hooks/use-subscription";
-import { useExportHistory } from "@/hooks/use-treasury-queries";
-import { APP_CONTACT_US_URL } from "@/constants/config";
-import {
-    DatePickerPopover,
-    useDefaultDatePresets,
-} from "@/components/datepicker";
-import { Input } from "@/components/input";
-import {
-    FormField,
-    FormMessage,
-    FormControl,
-    FormItem,
-    FormLabel,
-    FormDescription,
-    Form,
-} from "@/components/ui/form";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { isTrialPlan } from "@/lib/subscription-api";
-import {
-    DropdownMenu,
-    DropdownMenuCheckboxItem,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAssets, useAggregatedTokens } from "@/hooks/use-assets";
-import { cn } from "@/lib/utils";
-import { endOfDay, startOfDay, subMonths, subDays } from "date-fns";
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/underline-tabs";
-import { EmptyState } from "@/components/empty-state";
-import { ScrollContainer } from "@/components/scroll-container";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
-import { useFormatHistoryDuration } from "@/features/activity";
-import { format } from "date-fns";
-import { ExportHistoryItem } from "@/lib/api";
-import { Download, Loader2 } from "lucide-react";
-import { User } from "@/components/user";
-import { FormattedDate } from "@/components/formatted-date";
+import * as z from "zod";
+import { Button } from "@/components/button";
+import { PageCard } from "@/components/card";
 import { CreditsQuotaDisplay } from "@/components/credits-quota-display";
-import { getBalanceHistoryTokenIds } from "@/lib/balance-history-token-ids";
-import {
-    useReactTable,
-    getCoreRowModel,
-    flexRender,
-    createColumnHelper,
-    ColumnDef,
-} from "@tanstack/react-table";
+import { EmptyState } from "@/components/empty-state";
+import { FormattedDate } from "@/components/formatted-date";
+import { Input } from "@/components/input";
+import { PageComponentLayout } from "@/components/page-component-layout";
+import { ScrollContainer } from "@/components/scroll-container";
 import {
     Table,
     TableBody,
@@ -82,7 +44,45 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+    DatePickerPopover,
+    useDefaultDatePresets,
+} from "@/components/ui/datepicker";
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/underline-tabs";
+import { User } from "@/components/user";
+import { APP_CONTACT_US_URL } from "@/constants/config";
+import { useFormatHistoryDuration } from "@/features/activity";
+import { useAggregatedTokens, useAssets } from "@/hooks/use-assets";
+import { useSubscription } from "@/hooks/use-subscription";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useExportHistory } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
+import type { ExportHistoryItem } from "@/lib/api";
+import { getBalanceHistoryTokenIds } from "@/lib/balance-history-token-ids";
+import { isTrialPlan } from "@/lib/subscription-api";
+import { cn } from "@/lib/utils";
+import { useNear } from "@/stores/near-store";
 
 type DocumentType = "csv" | "json" | "xlsx";
 type TransactionType = "all" | "outgoing" | "incoming" | "staking_rewards";

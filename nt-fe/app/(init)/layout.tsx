@@ -9,7 +9,7 @@ import { GoogleTagManager } from "@/components/google-tag-manager";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/toaster";
-import { WarningsProvider } from "@/components/warnings-provider";
+import { WarningsProvider } from "@/hooks/use-warnings";
 
 const figtree = Figtree({
     variable: "--font-figtree",
