@@ -136,8 +136,9 @@ pub async fn enqueue_snapshot_job(
     push_job(pool, PublicBalanceSnapshotJob::new(account_id, generation)).await
 }
 
-/// Enqueue every currently buildable dirty cursor. This is both the periodic
-/// crash-recovery sweep and the cheap post-Silver commit nudge.
+/// Enqueue every currently buildable dirty cursor. The periodic sweeper is the
+/// only activity-driven scheduler so all Silver changes inside its interval
+/// collapse into one balance refresh per DAO.
 pub async fn enqueue_dirty_snapshot_jobs(pool: &PgPool) -> Result<usize, sqlx::Error> {
     let cursors = load_dirty_snapshot_cursors(pool).await?;
     let mut enqueued = 0usize;
@@ -147,22 +148,6 @@ pub async fn enqueue_dirty_snapshot_jobs(pool: &PgPool) -> Result<usize, sqlx::E
         }
     }
     Ok(enqueued)
-}
-
-/// Account-scoped nudge used after the inline latest-refresh Silver
-/// projection commits. Readiness filtering prevents premature archival work.
-pub async fn enqueue_snapshot_job_if_dirty(
-    pool: &PgPool,
-    account_id: &str,
-) -> Result<bool, sqlx::Error> {
-    let Some(cursor) = load_dirty_snapshot_cursors(pool)
-        .await?
-        .into_iter()
-        .find(|cursor| cursor.account_id == account_id)
-    else {
-        return Ok(false);
-    };
-    enqueue_snapshot_job(pool, cursor.account_id, cursor.snapshot_dirty_generation).await
 }
 
 pub async fn setup_public_balance_snapshot_jobs(pool: &PgPool) -> Result<(), sqlx::Error> {

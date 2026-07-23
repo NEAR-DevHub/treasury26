@@ -175,6 +175,15 @@ impl TokenPriceService {
         Some((record.price_usd?, record.price_updated_at?))
     }
 
+    /// Latest cached USD price, but only while the feed itself is fresh. A
+    /// dead feed's last price must not be valued as current; callers leave
+    /// the value unset and let historical repair price it from the series.
+    pub fn fresh_latest_price(&self, raw_token_id: &str) -> Option<BigDecimal> {
+        self.latest_price(raw_token_id)
+            .filter(|(_, updated_at)| Utc::now() - *updated_at <= LATEST_PRICE_FRESH_WINDOW)
+            .map(|(price, _)| price)
+    }
+
     /// Latest cached USD price, but only when the event itself is recent
     /// enough to value with a current price. This is synchronous and never
     /// touches the database or an external provider.

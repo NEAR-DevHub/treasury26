@@ -289,6 +289,12 @@ pub async fn project_public_balance_snapshot_generation(
             .await?
             .into_iter()
             .collect();
+    // Rows are refresh-dated: every changed balance carries the shared
+    // finalized block, not the triggering event's block. A change and its
+    // refresh crossing a daily bucket boundary (or a long pipeline outage)
+    // therefore shifts to the refresh date. Accepted tradeoff — balances are
+    // only ever read authoritatively at one block; per-event dating would
+    // require archival reads per event.
     let rows: Vec<PublicBalanceSnapshotRow> = live
         .into_iter()
         .filter(|(asset, balance)| latest.get(&asset.id) != Some(balance))
@@ -296,10 +302,13 @@ pub async fn project_public_balance_snapshot_generation(
             let usd_value = if balance.is_zero() {
                 Some(BigDecimal::zero())
             } else {
+                // A stale feed's last price is never baked in: the repair job
+                // only revisits NULL values, so a wrong price here would be
+                // permanent.
                 state
                     .token_price_service
-                    .latest_price(&asset.id)
-                    .map(|(price, _)| &balance * price)
+                    .fresh_latest_price(&asset.id)
+                    .map(|price| &balance * price)
             };
             PublicBalanceSnapshotRow {
                 dao_id: account_id.to_string(),

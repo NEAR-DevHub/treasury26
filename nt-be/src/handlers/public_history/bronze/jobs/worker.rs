@@ -555,28 +555,9 @@ async fn handle_latest_job(
         return Ok(());
     }
 
-    // The Silver transaction has committed and its trigger owns the cursor
-    // generation bump. This is only a low-latency durable queue nudge; the
-    // periodic snapshot sweeper recovers any enqueue failure.
-    match crate::handlers::public_history::snapshots::jobs::enqueue_snapshot_job_if_dirty(
-        &context.state.db_pool,
-        &account_id,
-    )
-    .await
-    {
-        Ok(true) => tracing::debug!(
-            account_id,
-            source = %source,
-            "public latest refresh enqueued balance snapshot"
-        ),
-        Ok(false) => {}
-        Err(error) => tracing::warn!(
-            account_id,
-            source = %source,
-            error = %error,
-            "public latest refresh could not nudge balance snapshot queue"
-        ),
-    }
+    // Silver has committed the snapshot cursor generation bump. Do not enqueue
+    // an RPC balance refresh here: the hourly snapshot sweeper intentionally
+    // batches every activity signal received during the interval into one job.
 
     match project_public_gold_for_account(
         &context.state.db_pool,

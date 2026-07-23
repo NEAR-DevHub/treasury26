@@ -143,6 +143,9 @@ returning a plain `404` (the board only owns `/api/v1`).
 | public-silver-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
 | public-gold-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
 | public-proposal-reconciliation | every 10min | — | gated by NEARBLOCKS_API_KEY |
+| public-balance-snapshot-sweeper | hourly + startup task | PUBLIC_BALANCE_SNAPSHOT_REFRESH_INTERVAL_SECONDS | batches dirty Silver activity into at most one RPC balance refresh per DAO per interval |
+| public-balance-snapshot-staking-refresh | daily 00:01 UTC | — | marks staking holdings dirty so reward-only balance changes are refreshed |
+| public-balance-snapshot-usd-repair | hourly + startup task | — | fills missing snapshot USD values after historical price enrichment |
 | confidential-history-ingest | every 10s | — | |
 | confidential-snapshots | hourly | — | |
 | confidential-gold-reconciliation | daily + startup task | — | |
