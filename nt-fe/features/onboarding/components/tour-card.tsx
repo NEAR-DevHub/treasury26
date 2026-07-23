@@ -15,7 +15,6 @@ import {
 } from "@/features/onboarding/feature-announcement-queue";
 import { TOUR_NAMES, SELECTOR_IDS } from "../steps/dashboard";
 import {
-    EARN_ANNOUNCEMENT,
     PAYMENTS_BULK_ANNOUNCEMENT,
     PAYMENTS_PENDING_ANNOUNCEMENT,
 } from "../steps/page-tours";
@@ -32,11 +31,6 @@ const TREASURY_SELECTOR_MAP: Record<string, readonly number[]> = {
 };
 
 const TOUR_ACTIONS = {
-    [EARN_ANNOUNCEMENT.tourName]: {
-        getHref: (treasuryId?: string | null) =>
-            EARN_ANNOUNCEMENT.href(treasuryId),
-        ctaKey: EARN_ANNOUNCEMENT.ctaLabelKey,
-    },
     [PAYMENTS_BULK_ANNOUNCEMENT.tourName]: {
         getHref: (treasuryId?: string | null) =>
             PAYMENTS_BULK_ANNOUNCEMENT.href(treasuryId),

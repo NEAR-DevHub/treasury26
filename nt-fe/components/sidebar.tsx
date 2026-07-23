@@ -27,7 +27,6 @@ import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { ArrowUpDown } from "./animate-ui/icons/arrow-up-down";
 import { Bookmark } from "./animate-ui/icons/bookmark";
 import { ChartColumn } from "./animate-ui/icons/chart-column";
-import { ChartNoAxesCombined } from "./animate-ui/icons/chart-no-axes-combined";
 import { CodeXml } from "./animate-ui/icons/code-xml";
 import { ContactRound } from "./animate-ui/icons/contact-round";
 import { CreditCard } from "./animate-ui/icons/credit-card";
@@ -116,7 +115,6 @@ type NavTranslationKey =
     | "requests"
     | "payments"
     | "exchange"
-    | "earn"
     | "addressBook"
     | "members"
     | "settings";
@@ -145,11 +143,12 @@ const topNavLinks: {
         roleRequired: true,
     },
     {
-        path: "earn",
-        labelKey: "earn",
-        icon: ChartNoAxesCombined,
-        id: "earn-new",
+        path: "members",
+        labelKey: "members",
+        icon: Users,
+        id: "dashboard-step4",
     },
+    { path: "settings", labelKey: "settings", icon: Settings },
 ];
 
 const bottomNavLinks: {
@@ -167,13 +166,6 @@ const bottomNavLinks: {
         id: "address-book-link",
         memberRequired: true,
     },
-    {
-        path: "members",
-        labelKey: "members",
-        icon: Users,
-        id: "dashboard-step4",
-    },
-    { path: "settings", labelKey: "settings", icon: Settings },
 ];
 
 interface SidebarProps {
@@ -190,7 +182,6 @@ export function Sidebar({ onClose }: SidebarProps) {
     const [templatesExpanded, setTemplatesExpanded] = useState(true);
     const { accountId } = useNear();
     const tNav = useTranslations("nav");
-    const tPages = useTranslations("pages");
     const tCommon = useTranslations("common");
     const tCustom = useTranslations("customTemplates");
     const { currentTour } = useNextStep();
@@ -227,7 +218,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     useGuestSaveTour(accountId ?? undefined, isSaved ?? false);
 
     // Dashboard tour step 5 opens treasury selector; close it once that tour ends
-    // so follow-up tours (e.g. Earn announcement) are not hidden behind dropdown.
+    // so follow-up tours are not hidden behind dropdown.
     useEffect(() => {
         if (currentTour !== TOUR_NAMES.DASHBOARD) {
             setDropdownOpen(false);
@@ -360,11 +351,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 key={link.path}
                                 isActive={isActive}
                                 icon={link.icon}
-                                label={
-                                    link.labelKey === "earn"
-                                        ? tPages("earn.title")
-                                        : tNav(link.labelKey)
-                                }
+                                label={tNav(link.labelKey)}
                                 showBadge={showBadge}
                                 badgeCount={proposals?.total ?? 0}
                                 showLabels={showLabels}

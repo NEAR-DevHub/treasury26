@@ -93,7 +93,7 @@
         "dashboard": "Dashboard",
         "requests": "Requests",
         "payments": "Payments",
-        "exchange": "Exchange",
+        "exchange": "Swap",
         "addressBook": "Address Book",
         "members": "Members",
         "settings": "Settings",
@@ -198,9 +198,9 @@
             "description": "Send funds safely and securely."
         },
         "exchange": {
-            "title": "Exchange",
-            "confidentialTitle": "Confidential Exchange",
-            "description": "Exchange your tokens securely and efficiently"
+            "title": "Swap",
+            "confidentialTitle": "Confidential Swap",
+            "description": "Swap your tokens securely and efficiently"
         },
         "vesting": {
             "title": "Vesting",
@@ -313,7 +313,7 @@
         "weight": "Weight",
         "source": "Source",
         "send": "Send",
-        "exchange": "Exchange",
+        "exchange": "Swap",
         "comingSoon": "Coming soon",
         "vesting": "Vesting",
         "vestedPercent": "{percent}% Vested",
@@ -565,7 +565,7 @@
             "title": "Create your first request",
             "description": "Requests for payments, exchanges, and other actions will appear here once created.",
             "send": "Send",
-            "exchange": "Exchange"
+            "exchange": "Swap"
         },
         "actions": {
             "approve": "Approve",
@@ -589,7 +589,7 @@
             "allCaughtUp": "All caught up!",
             "noPending": "There are no pending requests.",
             "send": "Send",
-            "exchange": "Exchange",
+            "exchange": "Swap",
             "requestsSelected": "{count, plural, one {# Request Selected} other {# Requests Selected}}",
             "bulkApproveDisabled": "This request can't be approved because the treasury has insufficient balance."
         },
@@ -1174,8 +1174,8 @@
         "validation": {
             "amountPositive": "Amount must be greater than 0"
         },
-        "requestSubmitted": "Exchange request submitted",
-        "heading": "Exchange",
+        "requestSubmitted": "Swap request submitted",
+        "heading": "Swap",
         "sell": "Sell",
         "receive": "Receive",
         "slippageTolerance": "Slippage Tolerance",
@@ -1866,7 +1866,7 @@
         "allTokens": "All Tokens",
         "deposit": "Deposit",
         "send": "Send",
-        "exchange": "Exchange",
+        "exchange": "Swap",
         "chartNow": "Now",
         "totalBalance": "Total Balance",
         "excludedTokens": "Excluded tokens:",
@@ -2078,7 +2078,7 @@
         "unlockedToken": "Unlocked Token",
         "lockedToken": "Locked Token",
         "lockupStakingPool": "Lockup staking pool",
-        "exchange": "Exchange",
+        "exchange": "Swap",
         "send": "Send",
         "details": "Details",
         "columnToken": "Token",
@@ -2296,7 +2296,7 @@
             },
             "features_paused": {
                 "payments": "### Payments are temporarily paused.\nWe're working on it.",
-                "exchange": "### Exchange is temporarily paused.\nWe're working on it.",
+                "exchange": "### Swap is temporarily paused.\nWe're working on it.",
                 "deposit": "### Deposits are temporarily paused.\nWe're working on it.",
                 "features": "### Some features are temporarily paused.\nWe're working on it."
             },

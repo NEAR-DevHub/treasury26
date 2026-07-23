@@ -5,11 +5,6 @@ import { useEffect, useState } from "react";
 import { create } from "zustand";
 
 export const FEATURE_DEFINITIONS = {
-    earn: {
-        storageKey: "earn-feature-shown",
-        version: 1,
-        tourName: "EARN_ANNOUNCEMENT_1",
-    },
     notifications: {
         storageKey: "notifications-feature-shown",
         version: 1,
@@ -17,13 +12,12 @@ export const FEATURE_DEFINITIONS = {
 } as const;
 
 export type FeatureDefinitionKey = keyof typeof FEATURE_DEFINITIONS;
-export const EARN_ANNOUNCEMENT_TOUR_NAME = FEATURE_DEFINITIONS.earn.tourName;
 const WELCOME_DISMISSED_KEY = "welcome-dismissed";
 const DASHBOARD_TOUR_COMPLETED_KEY = "dashboard-tour-completed";
 const FEATURE_FLAGS_UPDATED_EVENT = "feature-announcement-flags-updated";
 
 type QueueItem = {
-    // Stable unique feature key (e.g. "feature-announcement-earn").
+    // Stable unique feature key (e.g. "feature-announcement-notifications").
     id: string;
     // Lower number = higher precedence in the queue.
     priority: number;

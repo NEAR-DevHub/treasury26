@@ -4,13 +4,6 @@ import { useTranslations } from "next-intl";
 import type { Tour } from "nextstepjs";
 import { useNextStep } from "nextstepjs";
 import { useCallback, useEffect, useRef } from "react";
-import {
-    EARN_ANNOUNCEMENT_TOUR_NAME,
-    FEATURE_DEFINITIONS,
-    hasSeenFeature,
-    useFeatureAnnouncementQueueSlot,
-    useFeatureAnnouncementsUnlocked,
-} from "@/features/onboarding/feature-announcement-queue";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 
@@ -28,11 +21,6 @@ function PageTourContent({ k }: { k: PageTourKey }) {
     return <>{t(k)}</>;
 }
 
-function PageTourContentRich({ k }: { k: "newFeature" }) {
-    const t = useTranslations("pageTours");
-    return <>{t(`${k}Rich`)}</>;
-}
-
 // Tour names
 export const PAGE_TOUR_NAMES = {
     PAYMENTS_BULK: "payments-bulk",
@@ -40,7 +28,6 @@ export const PAGE_TOUR_NAMES = {
     EXCHANGE_SETTINGS: "exchange-settings",
     MEMBERS_PENDING: "members-pending",
     GUEST_SAVE: "guest-save",
-    EARN_ANNOUNCEMENT: EARN_ANNOUNCEMENT_TOUR_NAME,
     REQUEST_TEMPLATES: "request-templates",
 } as const;
 
@@ -67,15 +54,6 @@ export const PAGE_TOUR_SELECTORS = {
     GUEST_BADGE: "#guest-badge",
     GUEST_SAVE_BTN: "#guest-save-btn",
     REQUEST_TEMPLATES_NAV: "#request-templates-nav",
-} as const;
-
-export const EARN_ANNOUNCEMENT = {
-    tourName: EARN_ANNOUNCEMENT_TOUR_NAME,
-    selector: "#earn-new",
-    ctaLabelKey: "newFeatureCta" as const,
-    href: (treasuryId?: string | null) =>
-        treasuryId ? `/${treasuryId}/earn` : "/earn",
-    content: <PageTourContentRich k="newFeature" />,
 } as const;
 
 export const PAYMENTS_BULK_ANNOUNCEMENT = {
@@ -167,18 +145,6 @@ export const GUEST_SAVE_TOUR: Tour = {
             ...defaultStepProps,
             content: <PageTourContent k="guestSaveAction" />,
             selector: PAGE_TOUR_SELECTORS.GUEST_SAVE_BTN,
-            side: "right",
-        },
-    ],
-};
-
-export const NEW_FEATURE_TOUR: Tour = {
-    tour: EARN_ANNOUNCEMENT.tourName,
-    steps: [
-        {
-            ...defaultStepProps,
-            content: EARN_ANNOUNCEMENT.content,
-            selector: EARN_ANNOUNCEMENT.selector,
             side: "right",
         },
     ],
@@ -308,44 +274,6 @@ export function usePageTour(
 
     // Return triggerTour for manual triggering (e.g., after form submit)
     return { triggerTour };
-}
-
-export function useNewFeatureTour(enabled = true) {
-    const { currentTour } = useNextStep();
-    const hadActiveNewFeatureTour = useRef(false);
-    const featuresUnlocked = useFeatureAnnouncementsUnlocked();
-    const alreadySeen = hasSeenFeature("earn");
-
-    const queueSlot = useFeatureAnnouncementQueueSlot({
-        id: "feature-announcement-earn",
-        priority: 1,
-        eligible: enabled && featuresUnlocked && !alreadySeen,
-    });
-    const releaseQueueSlot = queueSlot.release;
-
-    const pageTour = usePageTour(
-        EARN_ANNOUNCEMENT.tourName,
-        FEATURE_DEFINITIONS.earn.storageKey,
-        {
-            version: FEATURE_DEFINITIONS.earn.version,
-            enabled: enabled && queueSlot.isActive,
-        },
-    );
-
-    useEffect(() => {
-        if (currentTour === EARN_ANNOUNCEMENT.tourName) {
-            hadActiveNewFeatureTour.current = true;
-            return;
-        }
-
-        if (!hadActiveNewFeatureTour.current) return;
-        hadActiveNewFeatureTour.current = false;
-        // Keep a short cooldown to avoid lower-priority announcement flash
-        // while route transitions (e.g. clicking "Try It" for Earn).
-        releaseQueueSlot(2000);
-    }, [currentTour, releaseQueueSlot]);
-
-    return pageTour;
 }
 
 /**

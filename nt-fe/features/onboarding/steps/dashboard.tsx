@@ -451,7 +451,6 @@ export function NotificationsTooltip() {
         !!treasuryId && !!(statusResult?.isLoading || statusResult?.isPending);
 
     const hidden = isMobile && isSidebarOpen;
-    const hasSeenEarnFeature = hasSeenFeature("earn");
     const notificationsShown = hasSeenFeature("notifications");
 
     const isNotificationsFeatureEligible =
@@ -461,7 +460,6 @@ export function NotificationsTooltip() {
         !!treasuryId &&
         !!accountId &&
         featuresUnlocked &&
-        hasSeenEarnFeature &&
         !notificationsShown &&
         !isLoadingTelegram &&
         !telegramConnected;
