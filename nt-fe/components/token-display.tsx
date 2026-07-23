@@ -1,12 +1,12 @@
 import { useTranslations } from "next-intl";
-import { ChainIcons, TreasuryAsset } from "@/lib/api";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
-import Big from "@/lib/big";
-import {
-    getNetworkDisplayCaseClass,
-    getLocalizedNetworkDisplayName,
-} from "@/lib/intents-network";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import type { ChainIcons, TreasuryAsset } from "@/lib/api";
+import type Big from "@/lib/big";
+import {
+    getLocalizedNetworkDisplayName,
+    getNetworkDisplayCaseClass,
+} from "@/lib/intents-network";
+import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
 
 interface NetworkIconDisplayProps {
@@ -108,7 +108,7 @@ export const NetworkIconDisplay = ({
                     className="size-6 rounded-full object-cover"
                 />
             ) : (
-                <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
+                <div className="size-6 rounded-full bg-brand-green flex items-center justify-center text-white text-xs font-normal">
                     {networkName.charAt(0)}
                 </div>
             )}

@@ -1,10 +1,10 @@
 "use client";
 
-import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { ScrollArea } from "./ui/scroll-area";
-import { cn } from "@/lib/utils";
 
 export interface SelectListItem {
     id: string;
@@ -93,7 +93,7 @@ export function SelectListIcon({
                 className={cn(
                     "rounded-full flex items-center justify-center text-white font-normal",
                     fallbackSizeClass,
-                    gradient || "bg-brand-blue",
+                    gradient || "bg-brand-green",
                 )}
             >
                 <span>{icon}</span>

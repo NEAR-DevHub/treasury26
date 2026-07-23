@@ -7,9 +7,8 @@ import {
     Shield,
     TriangleAlert,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { trackEvent } from "@/lib/analytics";
+import { useTranslations } from "next-intl";
 import {
     useCallback,
     useEffect,
@@ -22,36 +21,36 @@ import { useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
 import { z } from "zod";
 import { Button } from "@/components/button";
-import { SlotWarning, WarningMessage } from "@/components/warning-message";
-import {
-    isTokenOrNetworkScopedWarning,
-    useScopedSlotWarning,
-} from "@/hooks/use-warnings";
+import { PageCard } from "@/components/card";
 import { CopyButton } from "@/components/copy-button";
 import { InputBlock } from "@/components/input-block";
 import { getNetworkDisplayName } from "@/components/token-display";
+import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsList, TabsTrigger } from "@/components/underline-tabs";
+import { SlotWarning, WarningMessage } from "@/components/warning-message";
 import {
-    NEAR_NETWORK_ID,
     NEAR_COM_DIRECT_NETWORK_ID,
     NEAR_COM_NETWORK_NAME,
+    NEAR_NETWORK_ID,
 } from "@/constants/network-ids";
 import { NEAR_CHAIN_ICONS } from "@/constants/token";
-import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { PageCard } from "@/components/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import {
     type AggregatedAsset,
     useAggregatedTokens,
     useAssets,
 } from "@/hooks/use-assets";
-import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import { type BridgeNetwork, useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useNear } from "@/stores/near-store";
-import { isAxiosErrorWithStatus } from "@/lib/query-retry";
+import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
+import {
+    isTokenOrNetworkScopedWarning,
+    useScopedSlotWarning,
+} from "@/hooks/use-warnings";
+import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
+import { isAxiosErrorWithStatus } from "@/lib/query-retry";
 import { buildSectionedOptions } from "@/lib/section-rules";
 import {
     canonicalizeTokenIdForMatch,
@@ -61,6 +60,7 @@ import {
     formatSmartAmount,
     normalizeNearAssetId,
 } from "@/lib/utils";
+import { useNear } from "@/stores/near-store";
 import { SelectModal } from "./select-modal";
 
 interface DepositPageContentProps {
@@ -309,7 +309,7 @@ function OptionIcon({
         <div
             className={cn(
                 "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-normal shrink-0",
-                gradient ?? "bg-brand-blue",
+                gradient ?? "bg-brand-green",
             )}
         >
             {icon}
@@ -582,7 +582,7 @@ export function DepositModal({
             id: "other",
             name: t("otherAssetName"),
             icon: "O",
-            gradient: "bg-brand-blue",
+            gradient: "bg-brand-green",
             networks: [
                 {
                     id: "other:near",
@@ -634,7 +634,7 @@ export function DepositModal({
                 name: asset.name,
                 symbol: asset.networks[0]?.symbol,
                 icon: asset.icon,
-                gradient: "bg-brand-blue",
+                gradient: "bg-brand-green",
                 networks: asset.networks,
             };
 

@@ -49,13 +49,13 @@ import type { TreasuryAsset } from "@/lib/api";
 import { availableBalance, lockedBalance } from "@/lib/balance";
 import Big from "@/lib/big";
 import { getDashboardBucketVisibility } from "@/lib/dashboard-balance-view";
+import { buildTokenQueryParam } from "@/lib/token-query-param";
 import {
     cn,
     formatBalance,
     formatCurrencyWithSubCent,
     formatSmartAmount,
 } from "@/lib/utils";
-import { buildTokenQueryParam } from "@/lib/token-query-param";
 import { EarningPoolDetailsModal } from "./earning-pool-details-modal";
 import { LockupDetailsModal } from "./lockup-details-modal";
 import { BalanceCell, NetworkDisplay } from "./token-display";
@@ -923,7 +923,7 @@ function LockedView({
                                         className="size-6 shrink-0 rounded-full"
                                     />
                                 ) : (
-                                    <div className="size-6 shrink-0 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
+                                    <div className="size-6 shrink-0 rounded-full bg-brand-green flex items-center justify-center text-white text-xs font-normal">
                                         {network.symbol.charAt(0).toUpperCase()}
                                     </div>
                                 )}

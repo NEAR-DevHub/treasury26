@@ -1,31 +1,31 @@
 "use client";
 
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { endOfDay, format, isSameDay, startOfDay } from "date-fns";
+import { ChevronDown, Plus } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
-import { Plus, ChevronDown } from "lucide-react";
+import { Input } from "@/components/input";
+import { OperationSelect } from "@/components/operation-select";
+import { TokenSelectPopover } from "@/components/token-select-popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { DateTimePicker } from "@/components/ui/datepicker";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/input";
-import { DateTimePicker } from "@/components/ui/datepicker";
-import { endOfDay, format, isSameDay, startOfDay } from "date-fns";
-import { OperationSelect } from "@/components/operation-select";
-import { TokenSelectPopover } from "@/components/token-select-popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { BaseFilterPopover } from "./base-filter-popover";
-import { useFilterState } from "../hooks/use-filter-state";
-import { parseFilterData } from "../types/filter-types";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipUser, User } from "@/components/user";
 import { useRecentAddresses } from "@/hooks/use-recent-addresses";
 import { useTreasury } from "@/hooks/use-treasury";
+import { cn } from "@/lib/utils";
+import { type UserListType, useDaoUsers } from "../hooks/use-dao-users";
+import { useFilterState } from "../hooks/use-filter-state";
+import { parseFilterData } from "../types/filter-types";
+import { BaseFilterPopover } from "./base-filter-popover";
 import { CheckboxFilterContent } from "./checkbox-filter-content";
-import { useDaoUsers, UserListType } from "../hooks/use-dao-users";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 const PROPOSAL_TYPE_OPTIONS = [
     "Payments",
@@ -387,7 +387,7 @@ function FilterPill({
                             className="w-4 h-4 rounded-full object-contain"
                         />
                     ) : (
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-normal bg-brand-blue">
+                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-normal bg-brand-green">
                             <span>{token.icon}</span>
                         </div>
                     )}

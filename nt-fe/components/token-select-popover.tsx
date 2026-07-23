@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useTranslations } from "next-intl";
 import { ChevronDown, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/button";
+import { Input } from "@/components/input";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/input";
-import { cn } from "@/lib/utils";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
+import { cn } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
 
 interface TokenOption {
@@ -63,7 +63,7 @@ export function TokenSelectPopover({
                             icon: hasValidIcon
                                 ? asset.icon
                                 : asset.symbol?.charAt(0) || "?",
-                            gradient: "bg-brand-blue",
+                            gradient: "bg-brand-green",
                         });
                     }
                 });
@@ -117,7 +117,7 @@ export function TokenSelectPopover({
                                     className="w-5 h-5 rounded-full object-contain"
                                 />
                             ) : (
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-blue">
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-green">
                                     <span>{selectedToken.icon}</span>
                                 </div>
                             )}
@@ -181,7 +181,7 @@ export function TokenSelectPopover({
                                                 className="w-5 h-5 rounded-full object-contain shrink-0"
                                             />
                                         ) : (
-                                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-blue shrink-0">
+                                            <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-green shrink-0">
                                                 <span>{token.icon}</span>
                                             </div>
                                         )}
