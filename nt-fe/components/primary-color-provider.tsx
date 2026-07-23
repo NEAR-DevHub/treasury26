@@ -1,7 +1,7 @@
 "use client";
 
-import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useEffect } from "react";
+import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
 
 interface PrimaryColorProviderProps {
     treasuryId?: string;

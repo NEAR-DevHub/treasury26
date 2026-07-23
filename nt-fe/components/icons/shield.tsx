@@ -1,8 +1,14 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
 import { Globe, Shield } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type TreasuryType = "confidential" | "public";
+
+// This badge is a fixed decorative mark (no dark: variant) — it intentionally
+// does not follow the light/dark theme tokens, so these stay raw hex rather
+// than referencing --secondary/--muted/etc (which would change color in
+// light mode). Named here once instead of repeated 30+ times inline.
+const DOT_FILL = "#262626";
 
 const treasuryTypeIconVariants = cva(
     "flex items-center justify-center bg-general-tertiary rounded-full",
@@ -39,7 +45,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.27"
                 />
                 <rect
@@ -48,7 +54,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.58"
                 />
                 <rect
@@ -57,7 +63,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.29"
                 />
                 <rect
@@ -66,7 +72,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.3"
                 />
                 <rect
@@ -75,7 +81,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.58"
                 />
                 <rect
@@ -84,7 +90,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="20.0742"
@@ -92,7 +98,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="20.0742"
@@ -100,7 +106,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.35"
                 />
                 <rect
@@ -109,7 +115,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.22"
                 />
                 <rect
@@ -118,7 +124,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.28"
                 />
                 <rect
@@ -127,7 +133,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.46"
                 />
                 <rect
@@ -136,7 +142,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.46"
                 />
                 <rect
@@ -145,7 +151,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.58"
                 />
                 <rect
@@ -154,7 +160,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="25.8519"
@@ -162,7 +168,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.58"
                 />
                 <rect
@@ -171,7 +177,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="20.0742"
@@ -179,7 +185,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="20.0742"
@@ -187,7 +193,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.46"
                 />
                 <rect
@@ -196,7 +202,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.46"
                 />
                 <rect
@@ -205,7 +211,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.21"
                 />
                 <rect
@@ -214,7 +220,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="-1.55542"
@@ -222,7 +228,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.02"
                 />
                 <rect
@@ -231,7 +237,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.58"
                 />
                 <rect
@@ -240,7 +246,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="3.74091"
@@ -248,7 +254,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="3.74091"
@@ -256,7 +262,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.31"
                 />
                 <rect
@@ -265,7 +271,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.27"
                 />
                 <rect
@@ -274,7 +280,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="9.51862"
@@ -282,7 +288,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.21"
                 />
                 <rect
@@ -291,7 +297,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.46"
                 />
                 <rect
@@ -300,7 +306,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.58"
                 />
                 <rect
@@ -309,7 +315,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="9.51862"
@@ -317,7 +323,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.58"
                 />
                 <rect
@@ -326,7 +332,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="3.74091"
@@ -334,7 +340,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                 />
                 <rect
                     x="3.74091"
@@ -342,7 +348,7 @@ function ConfidentialIconWithPattern({ size }: { size?: IconSize }) {
                     width="4.33333"
                     height="4.33333"
                     rx="1.08333"
-                    fill="#262626"
+                    fill={DOT_FILL}
                     fillOpacity="0.46"
                 />
                 <path
