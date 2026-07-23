@@ -534,7 +534,7 @@ export function RecentActivity() {
 
     return (
         <>
-            <Card className="gap-3 border-none shadow-none">
+            <Card className="gap-3 shadow-none">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 px-4">
                     <div className="space-y-1">
                         <StepperHeader

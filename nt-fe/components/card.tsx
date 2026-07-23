@@ -8,7 +8,7 @@ export function PageCard({
     return (
         <div
             className={cn(
-                "flex flex-col gap-4 rounded-[14px] bg-card p-4",
+                "flex flex-col gap-4 rounded-8 border border-input bg-card p-4",
                 className,
             )}
             {...props}
