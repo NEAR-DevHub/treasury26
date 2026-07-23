@@ -35,6 +35,35 @@ pub fn increment(at: DateTime<Utc>, interval: SnapshotGridInterval) -> DateTime<
     }
 }
 
+/// O(1) size of the grid `requested_grid` would produce, computed from the
+/// aligned boundary distance instead of stepping bucket by bucket.
+///
+/// Callers must reject oversized ranges with this BEFORE calling
+/// `requested_grid`: the range comes from unauthenticated query parameters,
+/// and materializing first would let a single request with a huge date range
+/// (e.g. year 1 to year 9999) force millions of loop iterations and a
+/// multi-MB allocation before any validation runs.
+pub fn bucket_count(
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+    interval: SnapshotGridInterval,
+) -> usize {
+    if end < start {
+        return 0;
+    }
+    let first = ceil_boundary(start, interval);
+    let last = floor_boundary(end, interval);
+    if last < first {
+        return 0;
+    }
+    // Both boundaries are period-aligned, so the day distance divides evenly.
+    let periods = match interval {
+        SnapshotGridInterval::Daily => (last - first).num_days(),
+        SnapshotGridInterval::Weekly => (last - first).num_days() / 7,
+    };
+    periods as usize + 1
+}
+
 pub fn requested_grid(
     start: DateTime<Utc>,
     end: DateTime<Utc>,
@@ -43,9 +72,9 @@ pub fn requested_grid(
     if end < start {
         return Vec::new();
     }
+    let mut result = Vec::with_capacity(bucket_count(start, end, interval));
     let mut current = ceil_boundary(start, interval);
     let end = floor_boundary(end, interval);
-    let mut result = Vec::new();
     while current <= end {
         result.push(current);
         current = increment(current, interval);
@@ -81,5 +110,33 @@ mod tests {
             floor_boundary(ts("2026-07-22T12:00:00Z"), SnapshotGridInterval::Weekly),
             ts("2026-07-20T00:00:00Z")
         );
+    }
+
+    #[test]
+    fn bucket_count_matches_the_materialized_grid() {
+        let ranges = [
+            ("2026-07-20T12:30:00Z", "2026-07-22T19:00:00Z"),
+            ("2026-07-20T00:00:00Z", "2026-07-20T00:00:00Z"),
+            ("2026-07-20T06:00:00Z", "2026-07-20T18:00:00Z"),
+            ("2026-07-22T19:00:00Z", "2026-07-20T12:30:00Z"),
+            ("2026-01-01T00:00:00Z", "2026-12-31T23:59:59Z"),
+        ];
+        for interval in [SnapshotGridInterval::Daily, SnapshotGridInterval::Weekly] {
+            for (start, end) in ranges {
+                assert_eq!(
+                    bucket_count(ts(start), ts(end), interval),
+                    requested_grid(ts(start), ts(end), interval).len(),
+                    "{start}..{end} {interval:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn oversized_range_is_counted_without_materializing_the_grid() {
+        let start = ts("0001-01-01T00:00:00Z");
+        let end = Utc.with_ymd_and_hms(262142, 1, 1, 0, 0, 0).unwrap();
+        assert!(bucket_count(start, end, SnapshotGridInterval::Daily) > DAILY_BUCKET_LIMIT);
+        assert!(bucket_count(start, end, SnapshotGridInterval::Weekly) > WEEKLY_BUCKET_LIMIT);
     }
 }

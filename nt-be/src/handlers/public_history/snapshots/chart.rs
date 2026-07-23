@@ -5,7 +5,9 @@ use axum::http::StatusCode;
 use bigdecimal::{BigDecimal, ToPrimitive, Zero, num_traits::Signed};
 use chrono::{DateTime, NaiveDate, Utc};
 
-use super::grid::{DAILY_BUCKET_LIMIT, SnapshotGridInterval, WEEKLY_BUCKET_LIMIT, requested_grid};
+use super::grid::{
+    DAILY_BUCKET_LIMIT, SnapshotGridInterval, WEEKLY_BUCKET_LIMIT, bucket_count, requested_grid,
+};
 use super::models::SnapshotChartRow;
 use super::repository::{
     earliest_snapshot_block_time, latest_snapshot_block_time, load_chart_rows, load_snapshot_cursor,
@@ -152,13 +154,19 @@ pub async fn build_public_chart_response(
         ));
     }
 
-    let buckets = requested_grid(start_time, end_time, interval);
-    if !bucket_count_is_valid(buckets.len(), interval) {
+    // Reject oversized ranges via the O(1) count before materializing the
+    // grid. Ordering matters: this is a public endpoint, so building the grid
+    // first would turn one huge attacker-chosen date range into millions of
+    // loop iterations and a large allocation per request before the bucket
+    // limit was ever checked.
+    if !bucket_count_is_valid(bucket_count(start_time, end_time, interval), interval) {
         return Err((
             StatusCode::BAD_REQUEST,
             "requested public snapshot chart range is invalid or too large".to_string(),
         ));
     }
+    let buckets = requested_grid(start_time, end_time, interval);
+    debug_assert!(bucket_count_is_valid(buckets.len(), interval));
     let cursor = load_snapshot_cursor(&state.db_pool, account_id)
         .await
         .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;

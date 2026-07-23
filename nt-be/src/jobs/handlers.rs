@@ -774,8 +774,8 @@ mod tests {
     #[test]
     fn public_history_tick_age_identifies_stale_ticks() {
         let now = Utc::now();
-        let age_ms =
-            public_history_tick_age_ms(&Tick::new(now - chrono::Duration::seconds(11)), now);
+        let stale = chrono::Duration::seconds(PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS + 1);
+        let age_ms = public_history_tick_age_ms(&Tick::new(now - stale), now);
         assert!(age_ms > PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS * 1_000);
     }
 }

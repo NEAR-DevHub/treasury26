@@ -672,7 +672,7 @@ pub async fn publish_sparse_snapshot_refresh(
 
 #[cfg(test)]
 mod tests {
-    use chrono::Duration;
+    use chrono::{Duration, DurationRound as _};
 
     use super::*;
 
@@ -689,7 +689,11 @@ mod tests {
     ) -> sqlx::Result<()> {
         let multi_token_account = "snapshot-bootstrap-mt.sputnik-dao.near";
         let plain_account = "snapshot-bootstrap-plain.sputnik-dao.near";
-        let earliest = Utc::now() - Duration::days(30);
+        // Truncate to timestamptz precision so the value survives the
+        // Postgres round-trip intact.
+        let earliest = (Utc::now() - Duration::days(30))
+            .duration_trunc(Duration::microseconds(1))
+            .expect("valid truncation");
 
         sqlx::query(
             r#"
