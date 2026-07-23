@@ -4,7 +4,8 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useState } from "react";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { TabGroup } from "@/components/tab-group";
+import { Pill } from "@/components/pill";
+import { ResponsiveTabs } from "@/components/responsive-tabs";
 import { features } from "@/constants/features";
 import { useTreasury } from "@/hooks/use-treasury";
 import { DeveloperTab } from "./components/developer-tab";
@@ -16,6 +17,7 @@ import { VotingTab } from "./components/voting-tab";
 function SettingsPageContent() {
     const t = useTranslations("pages.settings");
     const tTabs = useTranslations("settings.tabs");
+    const tNew = useTranslations("newBadge");
     const searchParams = useSearchParams();
     const tabFromUrl = searchParams.get("tab");
     // The Developer tab only does anything for a signed-in member (its Enable action is
@@ -61,7 +63,13 @@ function SettingsPageContent() {
                   {
                       value: "integrations",
                       label: tTabs("integrations"),
-                      showNewPill: true,
+                      trigger: (
+                          <Pill
+                              variant="info"
+                              title={tNew("label")}
+                              className="px-1.5 py-0.5 text-xs shrink-0 pointer-events-none"
+                          />
+                      ),
                   },
               ]
             : []),
@@ -74,10 +82,10 @@ function SettingsPageContent() {
         <PageComponentLayout title={t("title")} description={t("description")}>
             <div className="w-full max-w-4xl mx-auto">
                 <div className="flex mb-6">
-                    <TabGroup
+                    <ResponsiveTabs
                         tabs={tabs}
-                        activeTab={activeTab}
-                        onTabChange={setActiveTab}
+                        value={activeTab}
+                        onValueChange={setActiveTab}
                     />
                 </div>
 
