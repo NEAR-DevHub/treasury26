@@ -1,0 +1,124 @@
+name: Publish E2E Report
+
+# Runs after "Frontend E2E Tests" completes and publishes its Playwright HTML
+# report (with inline videos, traces and screenshots) to GitHub Pages under a
+# per-PR path, then posts/updates a sticky comment linking it.
+#
+# This is a separate `workflow_run` workflow on purpose: `pull_request` runs
+# from forks get a read-only token and cannot push to gh-pages or comment.
+# `workflow_run` always executes in the base repo with the base repo's token,
+# so it works for fork PRs too. It only ever publishes an already-built static
+# report — it never checks out or runs PR code.
+
+on:
+  workflow_run:
+    workflows: ["Frontend E2E Tests"]
+    types: [completed]
+
+permissions:
+  contents: write # push the report to the gh-pages branch
+  pull-requests: write # post/update the sticky comment
+  actions: read # download artifacts from the triggering run
+
+# Serialize gh-pages deploys across all PRs so concurrent runs don't clash on
+# the branch.
+concurrency:
+  group: gh-pages-e2e-report
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish report to Pages
+    # Only for PR-triggered E2E runs (pushes to main don't need a PR comment).
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Playwright report
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download PR metadata
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-meta
+          path: pr-meta
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # A run that died before uploading (e.g. a build failure) leaves no
+      # report. Skip quietly in that case instead of failing this workflow.
+      - name: Resolve PR number and validate report
+        id: pr
+        run: |
+          if [ ! -f pr-meta/pr-number.txt ] || [ ! -f playwright-report/index.html ]; then
+            echo "Report or PR metadata missing; nothing to publish."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          num="$(tr -dc '0-9' < pr-meta/pr-number.txt)"
+          if [ -z "$num" ]; then
+            echo "No PR number found; nothing to publish."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "number=$num" >> "$GITHUB_OUTPUT"
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to gh-pages
+        if: steps.pr.outputs.ok == 'true'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: playwright-report
+          target-folder: pr-${{ steps.pr.outputs.number }}
+          clean: false
+          commit-message: "e2e report for PR #${{ steps.pr.outputs.number }} @ ${{ github.event.workflow_run.head_sha }}"
+
+      - name: Comment report link on PR
+        if: steps.pr.outputs.ok == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = Number('${{ steps.pr.outputs.number }}');
+            const run = context.payload.workflow_run;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const url = `https://${owner.toLowerCase()}.github.io/${repo}/pr-${prNumber}/`;
+
+            const passed = run.conclusion === 'success';
+            const status = passed
+              ? '✅ E2E tests passed'
+              : `⚠️ E2E run \`${run.conclusion}\``;
+            const marker = '<!-- e2e-report -->';
+            const body = [
+              marker,
+              '## 🎬 E2E report — visual review',
+              '',
+              `${status} · commit \`${run.head_sha.slice(0, 7)}\``,
+              '',
+              `**[▶ Open the live report](${url})** — every test recorded as a`,
+              'video, plus traces and screenshots. Videos stream in the browser;',
+              'no download needed. Use it to review the behaviour this PR produces.',
+              '',
+              `<sub>Rebuilt on every push to this PR · [workflow run](${run.html_url})</sub>`,
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: prNumber, body,
+              });
+            }

@@ -1,6 +1,6 @@
 # Analytics Events
 
-Most events are fired via `trackEvent()` from `nt-fe/lib/analytics.ts`, which sends to both **PostHog** and **Google Tag Manager** (`dataLayer`) simultaneously. Marketing configures GA4 conversion tracking and ad pixels inside GTM.
+Most events are fired via `trackEvent()` from `nt-fe/lib/analytics.ts`, which sends to **PostHog**, **Google Tag Manager** (`dataLayer`), and **Google Analytics** (GA4 via `gtag`) simultaneously. Marketing configures conversion tracking and ad pixels inside GTM; GA4 also receives events directly.
 
 Some onboarding survey events are provider-specific and are sent directly with `posthog.capture()` (PostHog-only).
 

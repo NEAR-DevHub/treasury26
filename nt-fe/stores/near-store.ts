@@ -77,6 +77,80 @@ function ensureBluetoothIframePermission() {
 const FALLBACK_PROPOSAL_STORAGE_BYTES = Big(500);
 const FALLBACK_VOTE_STORAGE_BYTES = Big(100);
 
+// Gas budgeting for `act_proposal` (gas units; 1 TGas = 1e12).
+const ONE_TGAS = Big("1000000000000");
+// 25 TGas for running `act_proposal` itself plus its callback, on top of the
+// inner call gas it forwards.
+const ACT_PROPOSAL_OVERHEAD_GAS = ONE_TGAS.mul(25);
+// Hard per-transaction prepaid-gas budget (mainnet `max_total_prepaid_gas`).
+const TX_GAS_BUDGET = ONE_TGAS.mul(1000);
+// Non-FunctionCall votes (transfers, governance) are lightweight and don't
+// forward gas anywhere, so cap each at 100 TGas rather than handing them a
+// large share of the transaction budget.
+const NON_FUNCTION_CALL_VOTE_GAS = ONE_TGAS.mul(100);
+// Floor for a non-FunctionCall vote when the batch is already over budget, so
+// the action still carries valid (non-zero) gas even if the tx is rejected.
+const MIN_VOTE_GAS = ONE_TGAS.mul(10);
+
+/**
+ * Required prepaid gas for an `act_proposal` on a FunctionCall proposal, in gas
+ * units: the sum of the proposal's inner action gas plus
+ * {@link ACT_PROPOSAL_OVERHEAD_GAS}. `act_proposal` forwards each inner action's
+ * own gas to its cross-contract call, reserving it from its own remaining
+ * budget, so it must itself be prepaid with at least that much or it fails
+ * on-chain with "Exceeded the prepaid gas". Returns null for non-FunctionCall
+ * proposals (transfers, governance), which are lightweight.
+ */
+function functionCallProposalGas(proposalKind: unknown): Big | null {
+    if (
+        !proposalKind ||
+        typeof proposalKind !== "object" ||
+        !("FunctionCall" in proposalKind)
+    ) {
+        return null;
+    }
+    const functionCall = (
+        proposalKind as { FunctionCall?: { actions?: Array<{ gas?: string }> } }
+    ).FunctionCall;
+    const actions = functionCall?.actions ?? [];
+    const innerGas = actions.reduce(
+        (sum, action) => sum.add(Big(action?.gas ?? "0")),
+        Big(0),
+    );
+    const required = innerGas.add(ACT_PROPOSAL_OVERHEAD_GAS);
+    // A single action can never carry more than the whole-transaction budget.
+    return required.gt(TX_GAS_BUDGET) ? TX_GAS_BUDGET : required;
+}
+
+/**
+ * Distribute the {@link TX_GAS_BUDGET} across a batch of `act_proposal` votes.
+ *
+ * FunctionCall proposals are accounted first — each gets exactly what its inner
+ * calls need (see {@link functionCallProposalGas}). Each remaining vote gets an
+ * even share of what's left of the budget, capped at
+ * {@link NON_FUNCTION_CALL_VOTE_GAS} and floored at {@link MIN_VOTE_GAS}. The gas
+ * per vote is returned in the same order as `proposalKinds`.
+ */
+function distributeVoteGas(proposalKinds: unknown[]): string[] {
+    const requiredGas = proposalKinds.map(functionCallProposalGas);
+    const usedByFunctionCalls = requiredGas
+        .filter((gas): gas is Big => gas !== null)
+        .reduce((sum, gas) => sum.add(gas), Big(0));
+    const remainingCount = requiredGas.filter((gas) => gas === null).length;
+    const remainingBudget = TX_GAS_BUDGET.sub(usedByFunctionCalls);
+    let perRemaining = MIN_VOTE_GAS;
+    if (remainingCount > 0) {
+        // Round down so rounding never pushes the batch over the budget.
+        const evenShare = remainingBudget.div(remainingCount).round(0, 0);
+        if (evenShare.gt(NON_FUNCTION_CALL_VOTE_GAS)) {
+            perRemaining = NON_FUNCTION_CALL_VOTE_GAS;
+        } else if (evenShare.gt(MIN_VOTE_GAS)) {
+            perRemaining = evenShare;
+        }
+    }
+    return requiredGas.map((gas) => (gas ?? perRemaining).toFixed(0));
+}
+
 export interface CreateProposalParams {
     treasuryId: string;
     proposal: {
@@ -656,7 +730,6 @@ export const useNearStore = create<NearStore>((set, get) => ({
         }
 
         const { signAndSendDelegateAction } = get();
-        const gas = Big("300000000000000").div(votes.length).toFixed();
 
         let voteStorageBytes: Big;
         try {
@@ -678,7 +751,10 @@ export const useNearStore = create<NearStore>((set, get) => ({
             voteStorageBytes = FALLBACK_VOTE_STORAGE_BYTES.mul(votes.length);
         }
 
-        const votesActions = votes.map((vote) => ({
+        const voteGas = distributeVoteGas(
+            votes.map((vote) => vote.proposal.kind),
+        );
+        const votesActions = votes.map((vote, index) => ({
             type: "FunctionCall",
             params: {
                 methodName: "act_proposal",
@@ -687,7 +763,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     action: `Vote${vote.vote}`,
                     proposal: vote.proposal.kind,
                 },
-                gas: gas.toString(),
+                gas: voteGas[index],
                 deposit: "0",
             },
         }));

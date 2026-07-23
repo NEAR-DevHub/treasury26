@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 
-// The Passkey executor ships from the frol-ai/near-connect-passkey main branch
+// The Passkey executor ships from the NEAR-DevHub/near-connect-passkey main branch
 // (served via raw.githubusercontent.com — see lib/passkey-wallet.ts). The spec
 // route-mocks that URL with a locally-built artifact from a sibling checkout of
 // the executor repo, and skips when it isn't present (e.g. CI without the
