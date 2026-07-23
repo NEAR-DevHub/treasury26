@@ -25,6 +25,7 @@ import {
 } from "@/features/proposal-templates/manifest";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { cn, NARROW_CONTENT_MAX_WIDTH } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
 export default function CustomTemplatePage() {
@@ -91,7 +92,12 @@ export default function CustomTemplatePage() {
             title={t("pageTitle")}
             description={t("pageDescription")}
         >
-            <div className="mx-auto flex w-full max-w-[600px] flex-col gap-4">
+            <div
+                className={cn(
+                    "mx-auto flex w-full flex-col gap-4",
+                    NARROW_CONTENT_MAX_WIDTH,
+                )}
+            >
                 {isLoading ? (
                     <PageCard>
                         <p className="text-muted-foreground text-sm">

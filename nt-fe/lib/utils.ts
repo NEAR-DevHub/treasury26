@@ -1,12 +1,19 @@
-import Big from "@/lib/big";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { clsx, type ClassValue } from "clsx";
+import { type ClassValue, clsx } from "clsx";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import Big from "@/lib/big";
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
+
+/**
+ * The app's standard max-width for a centered, single-column content flow
+ * (forms, onboarding steps, confidential activation cards, etc). Previously
+ * copy-pasted as the literal `max-w-[600px]` in ~20 places.
+ */
+export const NARROW_CONTENT_MAX_WIDTH = "max-w-[600px]";
 
 // Built-in btoa() JS function fails on UTF8 inputs.
 // `Buffer` polyfill brings +30kb to the minified bundle.
