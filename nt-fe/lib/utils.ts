@@ -449,9 +449,10 @@ export function formatBalance(
     } else {
         parsedBalance = balance;
     }
+    // Round down so the displayed balance never exceeds the true amount.
     return parsedBalance
         .div(Big(10).pow(decimals))
-        .toFixed(displayDecimals, 3)
+        .toFixed(displayDecimals, Big.roundDown)
         .replace(/\.?0+$/, "");
 }
 
