@@ -348,6 +348,9 @@ export function PaymentFormSection<
                     locked: tokenLocked,
                     disabled: tokenLocked,
                     showOnlyOwnedAssets: false,
+                    // Page owns default (highest-USD owned → USDC NEAR) and
+                    // ?token= / ?networks= overrides — don't fight it here.
+                    autoSelect: false,
                 }}
                 warningMessage={sendWarningMessage}
                 showInsufficientBalance={

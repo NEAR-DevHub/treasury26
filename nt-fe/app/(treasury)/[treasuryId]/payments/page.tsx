@@ -30,6 +30,8 @@ import { type Token, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
 import { default_near_token } from "@/constants/token";
 import { useAddressBook } from "@/features/address-book";
+import { useMergedTokens } from "@/hooks/use-merged-tokens";
+import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
 import {
     PAGE_TOUR_NAMES,
     PAGE_TOUR_STORAGE_KEYS,
@@ -676,7 +678,6 @@ export default function PaymentsPage() {
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [step, setStep] = useState(0);
     const searchParams = useSearchParams();
-    const autoSelectedTokenKeyRef = useRef<string | null>(null);
     // Cached quote + context key — avoids re-fetching while preventing stale reuse.
     const cachedQuoteRef = useRef<CachedQuote | null>(null);
     const [isAddressBookRecipientSelected, setIsAddressBookRecipientSelected] =
@@ -691,20 +692,18 @@ export default function PaymentsPage() {
                 .filter(Boolean),
         [searchParams],
     );
-    const autoSelectionKey = useMemo(
-        () => preferredNetworks.join(","),
-        [preferredNetworks],
-    );
     const {
         data: bridgeAssets = [],
         isLoading: isBridgeAssetsLoading,
         isFetching: isBridgeAssetsFetching,
     } = useBridgeTokens(true);
-
-    const defaultToken = useMemo(() => {
-        const fallbackToken = default_near_token(isConfidential);
-        return parseTokenQueryParam(tokenParam, fallbackToken);
-    }, [tokenParam, isConfidential]);
+    // Owned holdings from the assets cache (dashboard etc.) drive the default
+    // token: highest USD network, else USDC on NEAR. Wait until assets are
+    // ready so we never flash USDC and then swap.
+    const { tokens: mergedTokens, isAssetsReady } = useMergedTokens({
+        enabled: true,
+        showOnlyOwned: false,
+    });
 
     const compatibleDefaultToken = useMemo(() => {
         if (tokenParam || preferredNetworks.length === 0) {
@@ -713,6 +712,34 @@ export default function PaymentsPage() {
 
         return pickCompatibleFallbackToken(preferredNetworks, bridgeAssets);
     }, [bridgeAssets, preferredNetworks, tokenParam]);
+
+    const defaultToken = useMemo(() => {
+        if (tokenParam) {
+            return parseTokenQueryParam(
+                tokenParam,
+                pickDefaultSelectedToken(mergedTokens, { isConfidential }),
+            );
+        }
+        // Wait for assets (and bridge when ?networks= is present) so the first
+        // painted token is the final one — no USDC→owned flash.
+        if (!isAssetsReady) return null;
+        if (preferredNetworks.length > 0) {
+            if (isBridgeAssetsLoading) return null;
+            return (
+                compatibleDefaultToken ??
+                pickDefaultSelectedToken(mergedTokens, { isConfidential })
+            );
+        }
+        return pickDefaultSelectedToken(mergedTokens, { isConfidential });
+    }, [
+        tokenParam,
+        isConfidential,
+        mergedTokens,
+        isAssetsReady,
+        preferredNetworks.length,
+        isBridgeAssetsLoading,
+        compatibleDefaultToken,
+    ]);
 
     const preferredBlockchainTypes = useMemo(() => {
         const set = new Set<string>();
@@ -747,7 +774,8 @@ export default function PaymentsPage() {
             address: "",
             amount: "",
             memo: "",
-            token: defaultToken,
+            // Null until assets resolve — avoids USDC→owned flash.
+            token: defaultToken as PaymentFormValues["token"],
             destinationNetwork: "",
             destinationNetworkName: "",
         },
@@ -993,8 +1021,19 @@ export default function PaymentsPage() {
     // ── Effects ───────────────────────────────────────────────────────────────
 
     useEffect(() => {
-        form.setValue("token", defaultToken);
-    }, [defaultToken, form]);
+        if (!defaultToken) return;
+
+        if (tokenParam) {
+            form.setValue("token", defaultToken);
+            return;
+        }
+
+        const currentToken = form.getValues("token");
+        // Only seed once assets are ready and the field is still empty.
+        if (!currentToken) {
+            form.setValue("token", defaultToken);
+        }
+    }, [defaultToken, form, tokenParam]);
 
     useEffect(() => {
         if (!compatibleDestination) return;
@@ -1022,28 +1061,6 @@ export default function PaymentsPage() {
             shouldValidate: true,
         });
     }, [defaultAddress, watchedDestinationNetwork, form]);
-
-    useEffect(() => {
-        if (!compatibleDefaultToken || tokenParam) {
-            return;
-        }
-
-        const currentToken = form.getValues("token");
-        const defaultNearToken = default_near_token(isConfidential);
-        const isStillDefaultNearToken =
-            currentToken?.address === defaultNearToken.address &&
-            currentToken?.network === defaultNearToken.network;
-
-        if (
-            !isStillDefaultNearToken ||
-            autoSelectedTokenKeyRef.current === autoSelectionKey
-        ) {
-            return;
-        }
-
-        form.setValue("token", compatibleDefaultToken);
-        autoSelectedTokenKeyRef.current = autoSelectionKey;
-    }, [autoSelectionKey, compatibleDefaultToken, form, tokenParam]);
 
     // ── Submit ────────────────────────────────────────────────────────────────
 

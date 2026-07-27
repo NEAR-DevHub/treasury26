@@ -298,7 +298,10 @@ export function useMergedTokens({
 }: UseMergedTokensOptions = {}) {
     const { treasuryId, isConfidential } = useTreasury();
 
-    const { data: { tokens: rawTokens = [] } = {} } = useAssets(treasuryId, {
+    const {
+        data: { tokens: rawTokens = [] } = {},
+        isPending: isAssetsPending,
+    } = useAssets(treasuryId, {
         onlyPositiveBalance: false,
         onlySupportedTokens: true,
     });
@@ -340,5 +343,11 @@ export function useMergedTokens({
         ];
     }, [aggregatedTokens, bridgeAssets, showOnlyOwned]);
 
-    return { tokens, aggregatedTokens, isLoading };
+    return {
+        tokens,
+        aggregatedTokens,
+        isLoading,
+        /** False until treasury assets resolve from cache or network — use before defaulting tokens. */
+        isAssetsReady: !isAssetsPending,
+    };
 }

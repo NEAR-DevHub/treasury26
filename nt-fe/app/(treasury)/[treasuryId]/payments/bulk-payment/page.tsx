@@ -78,17 +78,18 @@ export default function BulkPaymentPage() {
         useBridgeTokens(true);
 
     const [step, setStep] = useState(0);
+    // Empty until the user adds a recipient address and picks a network —
+    // RecipientNetworkSelect stays disabled until firstRecipient is set.
     const [destinationNetworkId, setDestinationNetworkId] =
-        useState<string>(NEAR_COM_NETWORK_ID);
+        useState<string>("");
     const [destinationAssetId, setDestinationAssetId] = useState<string | null>(
         null,
     );
     // Raw bridge network name ("near", "eth", "sol", ...). Drives address
     // validation for ALL recipients regardless of which one filtered the
-    // network picker. Empty string when no network is selected (e.g. address
-    // has no compatible network).
+    // network picker. Empty string when no network is selected.
     const [destinationNetworkName, setDestinationNetworkName] =
-        useState<string>("near");
+        useState<string>("");
 
     const form = useForm<BulkPaymentFormValues>({
         resolver: zodResolver(bulkPaymentFormSchema),
@@ -682,9 +683,9 @@ export default function BulkPaymentPage() {
                                             >[0]["token"]
                                         }
                                         recipient={firstRecipient}
-                                        // Pick receive network independently —
-                                        // CSV validation enforces address type.
-                                        requireRecipient={false}
+                                        // Disabled until payment data includes
+                                        // a recipient; then filters by address
+                                        // compatibility of the first row.
                                         sectionRules={networkSectionRules}
                                         bridgeAssets={bridgeAssets}
                                         isBridgeAssetsLoading={

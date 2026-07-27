@@ -90,6 +90,11 @@ interface TokenInputProps<
             network: string;
             residency?: string;
         }) => boolean;
+        /**
+         * When false, skips the shared default-token auto-select
+         * (highest-USD owned → USDC on NEAR). Exchange sets this false.
+         */
+        autoSelect?: boolean;
     };
     readOnly?: boolean;
     loading?: boolean;
@@ -385,6 +390,9 @@ export function TokenInput<
                                                 }
                                                 filterTokens={
                                                     tokenSelect?.filterTokens
+                                                }
+                                                autoSelect={
+                                                    tokenSelect?.autoSelect
                                                 }
                                             />
                                         );

@@ -37,6 +37,7 @@ import {
 } from "@/constants/network-ids";
 import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
+import { Skeleton } from "@/components/ui/skeleton";
 import { PageCard } from "@/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import {
@@ -346,6 +347,7 @@ export function DepositModal({
     const searchParams = useSearchParams();
     const {
         data: { tokens: treasuryAssets } = { tokens: STABLE_EMPTY_ARRAY },
+        isPending: isAssetsPending,
     } = useAssets(treasuryId, {
         onlyPositiveBalance: false,
         onlySupportedTokens: true,
@@ -739,8 +741,10 @@ export function DepositModal({
         >();
 
         // Auto-select asset:
-        // 1) explicit prefill token, 2) owned USDC, 3) first token in "Your Assets",
-        // 4) any USDC option, 5) first available
+        // 1) explicit prefill token/network
+        // 2) highest-USD owned asset (yourAssets is USD-sorted)
+        // 3) USDC (NEAR network preferred below)
+        // 4) first available
         let targetAsset: SelectOption | undefined;
         let networkFromTokenPrefill: SelectOption | null = null;
         if (prefillTokenId) {
@@ -797,11 +801,10 @@ export function DepositModal({
                 }
             }
         }
-        if (!targetAsset) {
+        // Wait for treasury assets so we don't flash USDC then swap to the
+        // highest-USD owned holding when the cache/fetch lands.
+        if (!targetAsset && !isAssetsPending) {
             targetAsset =
-                yourAssets.find(
-                    (asset) => asset.id?.toLowerCase() === "usdc",
-                ) ||
                 yourAssets[0] ||
                 formattedAssets.find(
                     (asset) => asset.id?.toLowerCase() === "usdc",
@@ -843,6 +846,35 @@ export function DepositModal({
                 if (prefillNetwork) networkToSelect = prefillNetwork;
             }
 
+            // Prefer the owned network with the highest USD balance for this asset.
+            if (!networkToSelect && !isNetworkSelectionRestricted) {
+                const balances =
+                    networkBalancesByAssetId.get(targetAsset.id) || new Map();
+                let bestUsd = -1;
+                for (const network of availableNetworks) {
+                    const usd = balances.get(network.id)?.amountUSD ?? 0;
+                    if (usd > bestUsd) {
+                        bestUsd = usd;
+                        networkToSelect = network;
+                    }
+                }
+                if (bestUsd <= 0) {
+                    networkToSelect = null;
+                }
+            }
+
+            // No owned balance — fall back to USDC on NEAR when that asset is selected.
+            if (
+                !networkToSelect &&
+                !isNetworkSelectionRestricted &&
+                targetAsset.id?.toLowerCase() === "usdc"
+            ) {
+                networkToSelect =
+                    availableNetworks.find(
+                        (n) => n.name.toLowerCase() === NEAR_NETWORK_ID,
+                    ) ?? null;
+            }
+
             if (
                 !networkToSelect &&
                 availableNetworks.length === 1 &&
@@ -880,6 +912,7 @@ export function DepositModal({
     }, [
         bridgeAssets,
         aggregatedTreasuryTokens,
+        isAssetsPending,
         prefillTokenId,
         prefillNetworkId,
         popularAssets,
@@ -1232,12 +1265,22 @@ export function DepositModal({
                                         type="button"
                                         onClick={() => setModalType("asset")}
                                         variant="unstyled"
-                                        disabled={depositSelectorsDisabled}
+                                        disabled={
+                                            depositSelectorsDisabled ||
+                                            (isAssetsPending && !selectedAsset)
+                                        }
                                         data-testid="deposit-asset-selector"
                                         className="w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0! mt-1"
                                     >
                                         <div className="w-full flex items-center justify-between py-1">
-                                            {selectedAsset ? (
+                                            {isAssetsPending &&
+                                            !selectedAsset ? (
+                                                // Same footprint as OptionIcon (size-6) + asset name.
+                                                <div className="flex items-center gap-2">
+                                                    <Skeleton className="size-6 rounded-full shrink-0" />
+                                                    <Skeleton className="h-5 w-24" />
+                                                </div>
+                                            ) : selectedAsset ? (
                                                 <div className="flex items-center gap-2">
                                                     <OptionIcon
                                                         icon={
