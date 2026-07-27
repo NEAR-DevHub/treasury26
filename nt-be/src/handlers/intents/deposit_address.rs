@@ -36,13 +36,13 @@ async fn get_confidential_deposit_address(
     mut amount: u128,
 ) -> Result<DepositAddressResult, (StatusCode, String)> {
     let access_token = super::confidential::refresh_dao_jwt(state, account_id).await?;
+    let deadline = super::quote::quote_deadline_for_dao(state, account_id)
+        .await?
+        .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+        .to_string();
     let account_id = account_id.as_str();
 
     let url = format!("{}/v0/quote", state.env_vars.confidential_api_url);
-
-    let deadline = (chrono::Utc::now() + chrono::Duration::hours(24))
-        .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-        .to_string();
 
     // Try with the FE-provided amount, retrying with 10x increases if too low.
     // Max 5 retries (amount * 10^5) to avoid infinite loops.

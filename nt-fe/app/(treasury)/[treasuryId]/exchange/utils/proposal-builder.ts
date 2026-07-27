@@ -48,7 +48,9 @@ export function buildProposalDescription(
     receiveToken: Token,
     slippageTolerance: number,
 ): string {
-    const deadline = proposalData.quote.deadline;
+    // Use quoteRequest.deadline (voting-period aligned). quote.deadline from
+    // 1Click can be a longer deposit-address window and must not drive UI expiry.
+    const deadline = proposalData.quoteRequest.deadline;
     return encodeToMarkdown({
         proposal_action: "asset-exchange",
         notes: `**Must be executed before ${deadline}** for transferring tokens to 1Click's deposit address for swap execution.`,

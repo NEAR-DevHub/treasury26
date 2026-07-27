@@ -1089,6 +1089,10 @@ export default function PaymentsPage() {
             let proposalKind: FunctionCallKind | TransferKind;
 
             if (shouldUseIntents) {
+                const proposalPeriod = policy?.proposal_period;
+                if (!proposalPeriod) {
+                    throw new Error(tPay("failed1ClickQuote"));
+                }
                 const quoteAmountDecimals = getDestinationAmountDecimals(
                     tokenClassification.tokenForIntentsQuote,
                     data.destinationNetwork,
@@ -1123,7 +1127,7 @@ export default function PaymentsPage() {
                             trimmedAddress,
                             quoteAmount,
                             isConfidential,
-                            policy?.proposal_period,
+                            proposalPeriod,
                             undefined,
                             data.destinationNetwork,
                             true, // isPayment

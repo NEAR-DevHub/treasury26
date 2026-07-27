@@ -204,9 +204,11 @@ interface BatchPaymentExpandedViewProps {
      */
     batchId?: string | null;
     /**
-     * Pre-computed total network fee in smallest units. Confidential bulk
-     * passes the sum of `(amountIn - minAmountOut)` from each recipient's
+     * Pre-computed total network fee in human-readable token units.
+     * Confidential bulk passes the sum of
+     * `(amountInFormatted - amountOutFormatted)` from each recipient's
      * stored 1Click quote — the actual fee the DAO already committed to.
+     * Formatted amounts are required when origin/destination decimals differ.
      * When provided, skips the live SDK estimate.
      */
     totalNetworkFeeOverride?: string | null;
@@ -282,14 +284,12 @@ export function BatchPaymentExpandedView({
         isIntentsCrossChainToken &&
         !hasFeeError &&
         !!dynamicFeeData?.networkFee;
-    // Confidential bulk passes a pre-summed override (smallest units, decoded
-    // to the token's display scale here). Public bulk falls back to the live
+    // Confidential bulk passes a pre-summed override already in token units
+    // (from formatted quote amounts). Public bulk falls back to the live
     // SDK estimate × recipient count.
     const totalNetworkFee = skipLiveFee
         ? Big(totalNetworkFeeOverride).gt(0)
-            ? Big(totalNetworkFeeOverride).div(
-                  Big(10).pow(tokenData?.decimals ?? 0),
-              )
+            ? Big(totalNetworkFeeOverride)
             : null
         : hasLiveFeeData
           ? Big(dynamicFeeData.networkFee).mul(payments.length)
