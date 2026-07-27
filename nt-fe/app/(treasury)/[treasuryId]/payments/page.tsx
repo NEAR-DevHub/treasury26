@@ -28,9 +28,8 @@ import { Textarea } from "@/components/textarea";
 import { Tooltip } from "@/components/tooltip";
 import { type Token, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
+import { default_usdc_near_token } from "@/constants/token";
 import { useAddressBook } from "@/features/address-book";
-import { useMergedTokens } from "@/hooks/use-merged-tokens";
-import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
 import {
     PAGE_TOUR_NAMES,
     PAGE_TOUR_STORAGE_KEYS,
@@ -143,6 +142,8 @@ interface Step1Props extends StepProps {
     paymentsSlotBlocked?: boolean;
     sendWarningMessage?: string | null;
     recipientNetworkWarningMessage?: string | null;
+    /** False when the page seeds token from ?token= / ?networks=. */
+    tokenAutoSelect?: boolean;
 }
 
 function Step1({
@@ -159,6 +160,7 @@ function Step1({
     paymentsSlotBlocked = false,
     sendWarningMessage = null,
     recipientNetworkWarningMessage = null,
+    tokenAutoSelect = true,
 }: Step1Props) {
     const tPay = useTranslations("payments");
     const tCreate = useTranslations("createRequestButton");
@@ -265,6 +267,7 @@ function Step1({
                     recipientNetworkWarningMessage={
                         recipientNetworkWarningMessage
                     }
+                    tokenAutoSelect={tokenAutoSelect}
                 />
             </PageCard>
         </>
@@ -719,14 +722,8 @@ export default function PaymentsPage() {
         isLoading: isBridgeAssetsLoading,
         isFetching: isBridgeAssetsFetching,
     } = useBridgeTokens(true);
-    // Owned holdings from the assets cache (dashboard etc.) drive the default
-    // token: highest USD network, else USDC on NEAR. Wait until assets are
-    // ready so we never flash USDC and then swap.
-    const { tokens: mergedTokens, isAssetsReady } = useMergedTokens({
-        enabled: true,
-        showOnlyOwned: false,
-    });
-
+    // Generic default (highest-USD → USDC) lives in TokenSelect.autoSelect.
+    // Page only seeds from URL overrides so the two don't fight.
     const compatibleDefaultToken = useMemo(() => {
         if (tokenParam || preferredNetworks.length === 0) {
             return null;
@@ -735,31 +732,26 @@ export default function PaymentsPage() {
         return pickCompatibleFallbackToken(preferredNetworks, bridgeAssets);
     }, [bridgeAssets, preferredNetworks, tokenParam]);
 
-    const defaultToken = useMemo(() => {
+    const urlOverrideToken = useMemo(() => {
         if (tokenParam) {
-            return parseTokenQueryParam(
-                tokenParam,
-                pickDefaultSelectedToken(mergedTokens),
-            );
+            return parseTokenQueryParam(tokenParam, default_usdc_near_token());
         }
-        // Wait for assets (and bridge when ?networks= is present) so the first
-        // painted token is the final one — no USDC→owned flash.
-        if (!isAssetsReady) return null;
-        if (preferredNetworks.length > 0) {
-            if (isBridgeAssetsLoading) return null;
-            return (
-                compatibleDefaultToken ?? pickDefaultSelectedToken(mergedTokens)
-            );
-        }
-        return pickDefaultSelectedToken(mergedTokens);
+        if (preferredNetworks.length === 0) return null;
+        if (isBridgeAssetsLoading) return null;
+        return compatibleDefaultToken;
     }, [
         tokenParam,
-        mergedTokens,
-        isAssetsReady,
         preferredNetworks.length,
         isBridgeAssetsLoading,
         compatibleDefaultToken,
     ]);
+
+    // Let TokenSelect pick when there's no URL token and no compatible
+    // ?networks= match (or no networks param at all).
+    const tokenAutoSelect =
+        !tokenParam &&
+        (preferredNetworks.length === 0 ||
+            (!isBridgeAssetsLoading && !compatibleDefaultToken));
 
     const preferredBlockchainTypes = useMemo(() => {
         const set = new Set<string>();
@@ -794,8 +786,8 @@ export default function PaymentsPage() {
             address: "",
             amount: "",
             memo: "",
-            // Null until assets resolve — avoids USDC→owned flash.
-            token: defaultToken,
+            // Null until TokenSelect auto-selects or a URL override seeds.
+            token: null,
             destinationNetwork: "",
             destinationNetworkName: "",
         },
@@ -1051,20 +1043,18 @@ export default function PaymentsPage() {
 
     // ── Effects ───────────────────────────────────────────────────────────────
 
+    // Seed only URL overrides; TokenSelect.autoSelect handles the rest.
     useEffect(() => {
-        if (!defaultToken) return;
-
+        if (!urlOverrideToken) return;
         if (tokenParam) {
-            form.setValue("token", defaultToken);
+            form.setValue("token", urlOverrideToken);
             return;
         }
-
         const currentToken = form.getValues("token");
-        // Only seed once assets are ready and the field is still empty.
         if (!currentToken) {
-            form.setValue("token", defaultToken);
+            form.setValue("token", urlOverrideToken);
         }
-    }, [defaultToken, form, tokenParam]);
+    }, [urlOverrideToken, form, tokenParam]);
 
     useEffect(() => {
         if (!compatibleDestination) return;
@@ -1296,6 +1286,7 @@ export default function PaymentsPage() {
                     paymentsSlotBlocked,
                     sendWarningMessage,
                     recipientNetworkWarningMessage,
+                    tokenAutoSelect,
                 },
             },
             {
@@ -1330,6 +1321,7 @@ export default function PaymentsPage() {
             paymentsSlotBlocked,
             sendWarningMessage,
             recipientNetworkWarningMessage,
+            tokenAutoSelect,
             quoteContextKey,
         ],
     );

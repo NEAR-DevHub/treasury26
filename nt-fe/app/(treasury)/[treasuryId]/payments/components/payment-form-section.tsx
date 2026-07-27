@@ -83,6 +83,11 @@ interface PaymentFormSectionProps<
     recipientNetworkWarningMessage?: string | null;
     /** True when payments are blocked by a critical warning (not warning/info). */
     slotBlocked?: boolean;
+    /**
+     * When true (default), TokenSelect picks highest-USD owned → USDC NEAR.
+     * Set false when the page seeds from ?token= / ?networks=.
+     */
+    tokenAutoSelect?: boolean;
 }
 
 export function PaymentFormSection<
@@ -112,6 +117,7 @@ export function PaymentFormSection<
     sendWarningMessage,
     recipientNetworkWarningMessage,
     slotBlocked = false,
+    tokenAutoSelect = true,
 }: PaymentFormSectionProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("paymentFormSection");
     const tRecipientNetwork = useTranslations("recipientNetworkSelect");
@@ -348,9 +354,7 @@ export function PaymentFormSection<
                     locked: tokenLocked,
                     disabled: tokenLocked,
                     showOnlyOwnedAssets: false,
-                    // Page owns default (highest-USD owned → USDC NEAR) and
-                    // ?token= / ?networks= overrides — don't fight it here.
-                    autoSelect: false,
+                    autoSelect: tokenAutoSelect,
                 }}
                 warningMessage={sendWarningMessage}
                 showInsufficientBalance={

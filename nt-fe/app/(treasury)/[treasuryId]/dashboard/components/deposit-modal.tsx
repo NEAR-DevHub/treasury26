@@ -909,14 +909,24 @@ export function DepositModal({
                 },
             });
 
-            // Always leave network for the user to pick (including single-option).
-            form.setValue("network", null);
+            // Auto-select network only when there is exactly one option and the
+            // user is actually allowed to select a network (guests on confidential
+            // treasuries have network selection disabled).
+            if (
+                availableNetworks.length === 1 &&
+                !isNetworkSelectionRestricted
+            ) {
+                form.setValue("network", availableNetworks[0]);
+            } else {
+                form.setValue("network", null);
+            }
         },
         [
             form,
             assetNetworksMap,
             networkBalancesByAsset,
             invalidatePendingAddressRequest,
+            isNetworkSelectionRestricted,
         ],
     );
 
