@@ -9,7 +9,6 @@ import {
     type MergedToken,
 } from "@/hooks/use-merged-tokens";
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/hooks/use-treasury";
 import type { ChainIcons } from "@/lib/api";
 import Big from "@/lib/big";
 import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
@@ -48,6 +47,8 @@ export interface SelectedTokenData {
     residency?: string;
     minWithdrawalAmount?: string;
     minDepositAmount?: string;
+    balance?: string;
+    price?: number;
 }
 
 interface TokenSelectProps {
@@ -114,7 +115,6 @@ export default function TokenSelect({
 }: TokenSelectProps) {
     const t = useTranslations("tokenSelectDialog");
     const tDepositSections = useTranslations("depositModal.sections");
-    const { isConfidential } = useTreasury();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedAsset, setSelectedAsset] = useState<MergedToken | null>(
@@ -138,7 +138,6 @@ export default function TokenSelect({
         setSelectedToken(
             pickDefaultSelectedToken(tokens, {
                 disableTokens,
-                isConfidential,
             }),
         );
     }, [
@@ -149,7 +148,6 @@ export default function TokenSelect({
         locked,
         setSelectedToken,
         disableTokens,
-        isConfidential,
     ]);
 
     // Source-agnostic list for rendering/selecting.
@@ -273,6 +271,8 @@ export default function TokenSelect({
                 residency: network.residency,
                 minWithdrawalAmount: network.minWithdrawalAmount,
                 minDepositAmount: network.minDepositAmount,
+                balance: network.balance,
+                price: network.price,
             });
 
             setOpen(false);

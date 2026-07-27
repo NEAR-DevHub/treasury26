@@ -41,7 +41,7 @@ interface PaymentFormSectionProps<
     control: Control<TFieldValues>;
     amountName: Path<TFieldValues>;
     tokenName: TTokenPath extends Path<TFieldValues>
-        ? PathValue<TFieldValues, TTokenPath> extends Token
+        ? NonNullable<PathValue<TFieldValues, TTokenPath>> extends Token
             ? TTokenPath
             : never
         : never;

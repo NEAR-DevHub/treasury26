@@ -41,10 +41,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PageCard } from "@/components/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/underline-tabs";
 import {
+    DEFAULT_ASSETS_QUERY,
     type AggregatedAsset,
     useAggregatedTokens,
     useAssets,
 } from "@/hooks/use-assets";
+import { pickDefaultDepositAsset } from "@/lib/pick-default-token";
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import { type BridgeNetwork, useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -348,10 +350,7 @@ export function DepositModal({
     const {
         data: { tokens: treasuryAssets } = { tokens: STABLE_EMPTY_ARRAY },
         isPending: isAssetsPending,
-    } = useAssets(treasuryId, {
-        onlyPositiveBalance: false,
-        onlySupportedTokens: true,
-    });
+    } = useAssets(treasuryId, DEFAULT_ASSETS_QUERY);
     const aggregatedTreasuryTokens = useAggregatedTokens(treasuryAssets);
     // Prevent old async responses from updating state.
     const latestAddressRequestRef = useRef(0);
@@ -740,11 +739,10 @@ export function DepositModal({
             NetworkBalanceDisplay
         >();
 
-        // Auto-select asset:
+        // Auto-select asset only (network stays empty unless URL prefill):
         // 1) explicit prefill token/network
         // 2) highest-USD owned asset (yourAssets is USD-sorted)
-        // 3) USDC (NEAR network preferred below)
-        // 4) first available
+        // 3) USDC, else first available
         let targetAsset: SelectOption | undefined;
         let networkFromTokenPrefill: SelectOption | null = null;
         if (prefillTokenId) {
@@ -804,12 +802,7 @@ export function DepositModal({
         // Wait for treasury assets so we don't flash USDC then swap to the
         // highest-USD owned holding when the cache/fetch lands.
         if (!targetAsset && !isAssetsPending) {
-            targetAsset =
-                yourAssets[0] ||
-                formattedAssets.find(
-                    (asset) => asset.id?.toLowerCase() === "usdc",
-                ) ||
-                formattedAssets[0];
+            targetAsset = pickDefaultDepositAsset(yourAssets, formattedAssets);
         }
 
         if (targetAsset) {
@@ -829,6 +822,9 @@ export function DepositModal({
             nextSelectedNetworkBalances =
                 networkBalancesByAssetId.get(targetAsset.id) || new Map();
 
+            // Network is never inferred from balances / USDC / single-option.
+            // Only apply an explicit URL prefill; otherwise leave empty so the
+            // user picks. Don't clear a network the user already chose.
             let networkToSelect: SelectOption | null = networkFromTokenPrefill;
 
             if (prefillNetworkId) {
@@ -846,43 +842,6 @@ export function DepositModal({
                 if (prefillNetwork) networkToSelect = prefillNetwork;
             }
 
-            // Prefer the owned network with the highest USD balance for this asset.
-            if (!networkToSelect && !isNetworkSelectionRestricted) {
-                const balances =
-                    networkBalancesByAssetId.get(targetAsset.id) || new Map();
-                let bestUsd = -1;
-                for (const network of availableNetworks) {
-                    const usd = balances.get(network.id)?.amountUSD ?? 0;
-                    if (usd > bestUsd) {
-                        bestUsd = usd;
-                        networkToSelect = network;
-                    }
-                }
-                if (bestUsd <= 0) {
-                    networkToSelect = null;
-                }
-            }
-
-            // No owned balance — fall back to USDC on NEAR when that asset is selected.
-            if (
-                !networkToSelect &&
-                !isNetworkSelectionRestricted &&
-                targetAsset.id?.toLowerCase() === "usdc"
-            ) {
-                networkToSelect =
-                    availableNetworks.find(
-                        (n) => n.name.toLowerCase() === NEAR_NETWORK_ID,
-                    ) ?? null;
-            }
-
-            if (
-                !networkToSelect &&
-                availableNetworks.length === 1 &&
-                !isNetworkSelectionRestricted
-            ) {
-                networkToSelect = availableNetworks[0];
-            }
-
             // Guests (and logged-out users) on confidential treasuries may not
             // select or restore any network.
             if (isNetworkSelectionRestricted) {
@@ -890,9 +849,15 @@ export function DepositModal({
             }
 
             const currentNetwork = form.getValues("network");
-            const nextNetworkId = networkToSelect?.id ?? null;
-            if ((currentNetwork?.id ?? null) !== nextNetworkId) {
-                form.setValue("network", networkToSelect);
+            if (isNetworkSelectionRestricted) {
+                if (currentNetwork) form.setValue("network", null);
+            } else if (networkToSelect) {
+                if (currentNetwork?.id !== networkToSelect.id) {
+                    form.setValue("network", networkToSelect);
+                }
+            } else if (currentAsset?.id !== targetAsset.id) {
+                // Default asset just changed — clear any prior network.
+                if (currentNetwork) form.setValue("network", null);
             }
         }
 
@@ -944,24 +909,14 @@ export function DepositModal({
                 },
             });
 
-            // Auto-select network only when there is exactly one option and the
-            // user is actually allowed to select a network (guests on confidential
-            // treasuries have network selection disabled).
-            if (
-                availableNetworks.length === 1 &&
-                !isNetworkSelectionRestricted
-            ) {
-                form.setValue("network", availableNetworks[0]);
-            } else {
-                form.setValue("network", null);
-            }
+            // Always leave network for the user to pick (including single-option).
+            form.setValue("network", null);
         },
         [
             form,
             assetNetworksMap,
             networkBalancesByAsset,
             invalidatePendingAddressRequest,
-            isNetworkSelectionRestricted,
         ],
     );
 

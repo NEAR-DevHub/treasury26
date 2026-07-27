@@ -36,20 +36,18 @@ export const default_near_token = (isConfidential: boolean) => {
 
 /**
  * Fallback when treasury assets aren't cached yet — USDC on NEAR (Intents).
- * Same asset id/residency for confidential and public; matches the bridge
- * token picker selection (nep141:17208628… / Intents / near).
+ * Same for confidential and public; matches the bridge token picker
+ * (nep141:17208628… / Intents / near).
  */
-export const default_usdc_near_token = (_isConfidential?: boolean) => {
-    return {
-        symbol: "USDC",
-        address: NEP141_USDC_NEAR_ASSET_ID,
-        network: NEAR_NETWORK_ID,
-        decimals: 6,
-        icon: USDC_ICON,
-        name: "USD Coin",
-        chainIcons: NEAR_CHAIN_ICONS,
-        residency: "Intents",
-        minWithdrawalAmount: "1",
-        minDepositAmount: "1",
-    } satisfies Token;
-};
+export const default_usdc_near_token = (): Token => ({
+    symbol: "USDC",
+    address: NEP141_USDC_NEAR_ASSET_ID,
+    network: NEAR_NETWORK_ID,
+    decimals: 6,
+    icon: USDC_ICON,
+    name: "USD Coin",
+    chainIcons: NEAR_CHAIN_ICONS,
+    residency: "Intents",
+    minWithdrawalAmount: "1",
+    minDepositAmount: "1",
+});

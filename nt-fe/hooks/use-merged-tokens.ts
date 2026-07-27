@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
     useAggregatedTokens,
+    DEFAULT_ASSETS_QUERY,
     useAssets,
     type AggregatedAsset,
 } from "@/hooks/use-assets";
@@ -301,10 +302,7 @@ export function useMergedTokens({
     const {
         data: { tokens: rawTokens = [] } = {},
         isPending: isAssetsPending,
-    } = useAssets(treasuryId, {
-        onlyPositiveBalance: false,
-        onlySupportedTokens: true,
-    });
+    } = useAssets(treasuryId, DEFAULT_ASSETS_QUERY);
 
     const aggregatedTokens = useAggregatedTokens(rawTokens);
 

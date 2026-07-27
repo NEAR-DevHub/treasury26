@@ -1,13 +1,8 @@
 import type { SelectedTokenData } from "@/components/token-select";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import {
-    default_usdc_near_token,
-    NEP141_USDC_NEAR_ASSET_ID,
-    USDC_NEAR_CONTRACT_ID,
-} from "@/constants/token";
+import { default_usdc_near_token } from "@/constants/token";
 import type { MergedNetwork, MergedToken } from "@/hooks/use-merged-tokens";
 import Big from "@/lib/big";
-import { canonicalizeTokenIdForMatch } from "@/lib/utils";
 
 export type DefaultTokenFilter = (token: {
     address: string;
@@ -40,6 +35,9 @@ function toSelected(
         residency: network.residency,
         minWithdrawalAmount: network.minWithdrawalAmount,
         minDepositAmount: network.minDepositAmount,
+        // Seed balance/price so TokenInput can show them immediately.
+        balance: network.balance,
+        price: network.price,
     };
 }
 
@@ -67,7 +65,6 @@ function isUsdcSymbol(symbol: string): boolean {
 
 /**
  * Highest USD-value owned network across cached treasury assets.
- * Tokens should already be sorted by totalBalanceUSD desc when from useMergedTokens.
  */
 export function pickHighestUsdOwnedToken(
     tokens: MergedToken[],
@@ -114,7 +111,7 @@ export function pickUsdcNearFromTokens(
 }
 
 /**
- * Default token for Deposit / Payments / Bulk (not Exchange):
+ * Default token for Payments / Bulk / TokenSelect (not Exchange, not Deposit):
  * 1) most USD-valuable owned network from cached assets
  * 2) USDC on NEAR from the available list
  * 3) static USDC-on-NEAR fallback
@@ -123,7 +120,6 @@ export function pickDefaultSelectedToken(
     tokens: MergedToken[],
     options?: {
         disableTokens?: DefaultTokenFilter;
-        isConfidential?: boolean;
     },
 ): SelectedTokenData {
     const owned = pickHighestUsdOwnedToken(tokens, options?.disableTokens);
@@ -132,29 +128,21 @@ export function pickDefaultSelectedToken(
     const usdcNear = pickUsdcNearFromTokens(tokens, options?.disableTokens);
     if (usdcNear) return usdcNear;
 
-    return default_usdc_near_token(options?.isConfidential ?? false);
+    return default_usdc_near_token();
 }
 
-/** True when the selection matches the static USDC-on-NEAR fallback. */
-export function isDefaultUsdcNearSelection(
-    token:
-        | Pick<SelectedTokenData, "address" | "symbol" | "network">
-        | null
-        | undefined,
-    isConfidential: boolean,
-): boolean {
-    if (!token) return false;
-    if (!isUsdcSymbol(token.symbol) || !isNearNetworkName(token.network)) {
-        return false;
-    }
-    const fallback = default_usdc_near_token(isConfidential);
-    const a = canonicalizeTokenIdForMatch(token.address);
-    const b = canonicalizeTokenIdForMatch(fallback.address);
-    // Also accept either public or intents form of the same USDC contract.
-    const accepted = new Set([
-        b,
-        canonicalizeTokenIdForMatch(USDC_NEAR_CONTRACT_ID),
-        canonicalizeTokenIdForMatch(NEP141_USDC_NEAR_ASSET_ID),
-    ]);
-    return accepted.has(a);
+/**
+ * Default deposit asset only (network stays empty for the user to pick):
+ * 1) first of yourAssets (caller must USD-sort)
+ * 2) USDC in allAssets
+ * 3) first available
+ */
+export function pickDefaultDepositAsset<T extends { id: string }>(
+    yourAssets: readonly T[],
+    allAssets: readonly T[],
+): T | undefined {
+    if (yourAssets[0]) return yourAssets[0];
+    const usdc = allAssets.find((asset) => asset.id.toLowerCase() === "usdc");
+    if (usdc) return usdc;
+    return allAssets[0];
 }

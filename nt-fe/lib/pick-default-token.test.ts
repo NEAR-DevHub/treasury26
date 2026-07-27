@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { MergedToken } from "@/hooks/use-merged-tokens";
 import {
-    isDefaultUsdcNearSelection,
+    pickDefaultDepositAsset,
     pickDefaultSelectedToken,
     pickHighestUsdOwnedToken,
 } from "./pick-default-token";
@@ -50,12 +50,11 @@ const ethWeth: MergedToken = {
 
 describe("pickDefaultSelectedToken", () => {
     it("picks the highest USD owned network when assets are cached", () => {
-        const picked = pickDefaultSelectedToken([nearUsdc, ethWeth], {
-            isConfidential: true,
-        });
+        const picked = pickDefaultSelectedToken([nearUsdc, ethWeth]);
         expect(picked.symbol).toBe("WETH");
         expect(picked.network).toBe("eth");
         expect(picked.address).toBe(ethWeth.networks[0].id);
+        expect(picked.balance).toBe("100000000000000000");
         expect(pickHighestUsdOwnedToken([nearUsdc, ethWeth])?.address).toBe(
             ethWeth.networks[0].id,
         );
@@ -71,26 +70,41 @@ describe("pickDefaultSelectedToken", () => {
                 balanceUSD: undefined,
             })),
         };
-        const picked = pickDefaultSelectedToken([listedOnly], {
-            isConfidential: true,
-        });
+        const picked = pickDefaultSelectedToken([listedOnly]);
         expect(picked.symbol).toBe("USDC");
         expect(picked.network).toBe("near");
     });
 
     it("falls back to static USDC on NEAR when the list is empty", () => {
-        const picked = pickDefaultSelectedToken([], { isConfidential: true });
+        const picked = pickDefaultSelectedToken([]);
         expect(picked.symbol).toBe("USDC");
         expect(picked.network).toBe("near");
-        expect(isDefaultUsdcNearSelection(picked, true)).toBe(true);
+        expect(picked.address).toContain("17208628");
     });
 
     it("respects disableTokens when picking owned holdings", () => {
         const picked = pickDefaultSelectedToken([nearUsdc, ethWeth], {
-            isConfidential: true,
             disableTokens: (t) => t.symbol === "WETH",
         });
         expect(picked.symbol).toBe("USDC");
         expect(picked.network).toBe("near");
+    });
+});
+
+describe("pickDefaultDepositAsset", () => {
+    it("prefers the first owned asset (USD-sorted by caller)", () => {
+        const picked = pickDefaultDepositAsset(
+            [{ id: "btc" }, { id: "usdc" }],
+            [{ id: "btc" }, { id: "usdc" }, { id: "eth" }],
+        );
+        expect(picked?.id).toBe("btc");
+    });
+
+    it("falls back to USDC then first available when none owned", () => {
+        expect(
+            pickDefaultDepositAsset([], [{ id: "eth" }, { id: "usdc" }])?.id,
+        ).toBe("usdc");
+        expect(pickDefaultDepositAsset([], [{ id: "eth" }])?.id).toBe("eth");
+        expect(pickDefaultDepositAsset([], [])).toBeUndefined();
     });
 });

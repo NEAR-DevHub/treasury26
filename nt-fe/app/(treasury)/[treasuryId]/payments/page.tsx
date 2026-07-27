@@ -28,7 +28,6 @@ import { Textarea } from "@/components/textarea";
 import { Tooltip } from "@/components/tooltip";
 import { type Token, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
-import { default_near_token } from "@/constants/token";
 import { useAddressBook } from "@/features/address-book";
 import { useMergedTokens } from "@/hooks/use-merged-tokens";
 import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
@@ -93,6 +92,7 @@ function buildPaymentFormSchema(messages: {
     recipientMax: string;
     amountGreaterThanZero: string;
     recipientSameAsToken: string;
+    selectToken: string;
 }) {
     return z
         .object({
@@ -108,9 +108,18 @@ function buildPaymentFormSchema(messages: {
                     message: messages.amountGreaterThanZero,
                 }),
             memo: z.string().optional(),
-            token: tokenSchema,
+            // Null while assets load before seeding the default token.
+            token: tokenSchema.nullable(),
         })
         .superRefine((data, ctx) => {
+            if (!data.token) {
+                ctx.addIssue({
+                    code: "custom",
+                    path: ["token"],
+                    message: messages.selectToken,
+                });
+                return;
+            }
             if (data.address === data.token.address) {
                 ctx.addIssue({
                     code: "custom",
@@ -285,7 +294,7 @@ function Step2({
         control: form.control,
         name: ["token", "amount", "address", "destinationNetwork"],
     }) as [PaymentFormValues["token"], string, string, string];
-    const { data: tokenData } = useToken(token.address);
+    const { data: tokenData } = useToken(token?.address);
     // Chain icons for the destination network (for the review token icon overlay)
     const destinationChainIcons = useMemo(() => {
         if (!destinationNetwork) {
@@ -314,6 +323,16 @@ function Step2({
         estimatedUSDValue,
         recipientEstimatedUSDValue,
     } = useMemo(() => {
+        if (!token) {
+            return {
+                totalAmountWithFees: Big(0),
+                recipientAmount: Big(0),
+                displayNetworkFee: Big(0),
+                estimatedUSDValue: Big(0),
+                recipientEstimatedUSDValue: Big(0),
+            };
+        }
+
         const enteredAmount = Big(amount || "0");
         const price = tokenData?.price ?? 0;
 
@@ -358,10 +377,12 @@ function Step2({
                 ? enteredAmount.mul(price)
                 : Big(0),
         };
-    }, [amount, liveQuote, token.decimals, tokenData?.price]);
+    }, [amount, liveQuote, token, tokenData?.price]);
 
     const isQuoteLoading =
         isViaIntents && (isLoadingLiveQuote || isFetchingLiveQuote);
+
+    if (!token) return null;
 
     return (
         <PageCard>
@@ -669,6 +690,7 @@ export default function PaymentsPage() {
                 recipientMax: tValidation("recipientMax"),
                 amountGreaterThanZero: tValidation("amountGreaterThanZero"),
                 recipientSameAsToken: tValidation("recipientSameAsToken"),
+                selectToken: tValidation("selectToken"),
             }),
         [tValidation],
     );
@@ -717,7 +739,7 @@ export default function PaymentsPage() {
         if (tokenParam) {
             return parseTokenQueryParam(
                 tokenParam,
-                pickDefaultSelectedToken(mergedTokens, { isConfidential }),
+                pickDefaultSelectedToken(mergedTokens),
             );
         }
         // Wait for assets (and bridge when ?networks= is present) so the first
@@ -726,14 +748,12 @@ export default function PaymentsPage() {
         if (preferredNetworks.length > 0) {
             if (isBridgeAssetsLoading) return null;
             return (
-                compatibleDefaultToken ??
-                pickDefaultSelectedToken(mergedTokens, { isConfidential })
+                compatibleDefaultToken ?? pickDefaultSelectedToken(mergedTokens)
             );
         }
-        return pickDefaultSelectedToken(mergedTokens, { isConfidential });
+        return pickDefaultSelectedToken(mergedTokens);
     }, [
         tokenParam,
-        isConfidential,
         mergedTokens,
         isAssetsReady,
         preferredNetworks.length,
@@ -775,7 +795,7 @@ export default function PaymentsPage() {
             amount: "",
             memo: "",
             // Null until assets resolve — avoids USDC→owned flash.
-            token: defaultToken as PaymentFormValues["token"],
+            token: defaultToken,
             destinationNetwork: "",
             destinationNetworkName: "",
         },
@@ -819,12 +839,16 @@ export default function PaymentsPage() {
         : null;
 
     const watchedTokenClassification = useMemo(
-        () => classifyPaymentToken(watchedToken, watchedDestinationNetwork),
+        () =>
+            watchedToken
+                ? classifyPaymentToken(watchedToken, watchedDestinationNetwork)
+                : null,
         [watchedToken, watchedDestinationNetwork],
     );
     const isWatchedNearNativeToken =
-        watchedTokenClassification.isNearNativeToken;
-    const isWatchedNearFtToken = watchedTokenClassification.isNearFtToken;
+        watchedTokenClassification?.isNearNativeToken ?? false;
+    const isWatchedNearFtToken =
+        watchedTokenClassification?.isNearFtToken ?? false;
 
     const normalizedWatchedAddress = watchedAddress.trim().toLowerCase();
     const isWatchedEthImplicit = isEthImplicitNearAddress(
@@ -833,7 +857,8 @@ export default function PaymentsPage() {
     const isWatchedNearRecipient =
         isValidNearAddressFormat(normalizedWatchedAddress) &&
         !isWatchedEthImplicit;
-    const isWatchedNearComRoute = watchedTokenClassification.isNearComRoute;
+    const isWatchedNearComRoute =
+        watchedTokenClassification?.isNearComRoute ?? false;
 
     // True when we'll send via a direct Transfer (not through Intents).
     const isWatchedDirectTransfer =
@@ -844,7 +869,9 @@ export default function PaymentsPage() {
 
     // Token object to use for the 1Click quote. For native NEAR and NEAR FT we
     // swap in the nep141: prefix so the hook enables and shows a fee preview.
-    const quoteToken = useMemo((): Token => {
+    // Null while assets load (before default token is seeded).
+    const quoteToken = useMemo((): Token | null => {
+        if (!watchedToken || !watchedTokenClassification) return null;
         if (isConfidential || isWatchedDirectTransfer) return watchedToken;
         return watchedTokenClassification.tokenForIntentsQuote;
     }, [
@@ -855,17 +882,17 @@ export default function PaymentsPage() {
     ]);
 
     // Whether this payment will go through the Intents protocol.
-    const isViaIntents = isIntentsToken(quoteToken);
+    const isViaIntents = !!quoteToken && isIntentsToken(quoteToken);
     const quoteContextKey = useMemo(
         () =>
             buildQuoteContextKey({
-                tokenAddress: quoteToken.address,
+                tokenAddress: quoteToken?.address ?? "",
                 amount: watchedAmount ?? "",
                 address: watchedAddress ?? "",
                 destinationNetwork: watchedDestinationNetwork,
             }),
         [
-            quoteToken.address,
+            quoteToken?.address,
             watchedAmount,
             watchedAddress,
             watchedDestinationNetwork,
@@ -874,11 +901,13 @@ export default function PaymentsPage() {
 
     const destinationAmountDecimals = useMemo(
         () =>
-            getDestinationAmountDecimals(
-                quoteToken,
-                watchedDestinationNetwork,
-                bridgeAssets,
-            ),
+            quoteToken
+                ? getDestinationAmountDecimals(
+                      quoteToken,
+                      watchedDestinationNetwork,
+                      bridgeAssets,
+                  )
+                : undefined,
         [bridgeAssets, quoteToken, watchedDestinationNetwork],
     );
 
@@ -905,8 +934,8 @@ export default function PaymentsPage() {
         destinationNetwork: watchedDestinationNetwork,
         isPayment: true,
         // Paused payment (critical warning on token/network or app-wide): don't
-        // fetch the quote.
-        enabled: !paymentsSlotBlocked,
+        // fetch the quote. Also wait until the default token is ready.
+        enabled: !paymentsSlotBlocked && !!quoteToken,
     });
 
     const paymentNetworkFee = useMemo(() => {
@@ -927,7 +956,7 @@ export default function PaymentsPage() {
     useEffect(() => {
         cachedQuoteRef.current = null;
     }, [
-        watchedToken.address,
+        watchedToken?.address,
         watchedAmount,
         watchedAddress,
         watchedDestinationNetwork,
@@ -942,7 +971,7 @@ export default function PaymentsPage() {
         form.clearErrors("amount");
     }, [
         form,
-        watchedToken.address,
+        watchedToken?.address,
         watchedAmount,
         watchedAddress,
         watchedDestinationNetwork,
@@ -983,6 +1012,8 @@ export default function PaymentsPage() {
     // ── Ensure quote is fresh before entering the review step ─────────────────
 
     const ensureQuoteBeforeReview = useCallback(async (): Promise<boolean> => {
+        if (!quoteToken) return false;
+
         const formValues = form.getValues();
         const ensureRequestKey = buildQuoteContextKey({
             tokenAddress: quoteToken.address,
@@ -1069,15 +1100,17 @@ export default function PaymentsPage() {
             if (sendScopeMessage) toast.error(sendScopeMessage);
             return;
         }
+        const token = data.token;
+        if (!token) return;
 
         try {
             const proposalBond = policy?.proposal_bond || "0";
             const trimmedAddress = data.address.trim();
-            const normalizedNearAddress = trimmedAddress.toLowerCase();
             const tokenClassification = classifyPaymentToken(
-                data.token,
+                token,
                 data.destinationNetwork,
             );
+            const normalizedNearAddress = trimmedAddress.toLowerCase();
             const { isNearNativeToken, isNearFtToken, isNearComRoute } =
                 tokenClassification;
 
@@ -1095,11 +1128,11 @@ export default function PaymentsPage() {
                 (isNearNativeToken || isNearFtToken);
 
             const shouldUseIntents = isConfidential
-                ? isIntentsToken(data.token)
+                ? isIntentsToken(token)
                 : !shouldUseDirectTransfer;
 
             const directTransferAmount = Big(data.amount)
-                .mul(Big(10).pow(data.token.decimals))
+                .mul(Big(10).pow(token.decimals))
                 .toFixed();
 
             let description = encodeToMarkdown({ notes: data.memo || "" });
@@ -1178,9 +1211,9 @@ export default function PaymentsPage() {
                     description = buildIntentTransferDescription(data, quote);
                     const { depositAddress, amountIn } = quote.quote;
 
-                    if (isIntentsToken(data.token)) {
+                    if (isIntentsToken(token)) {
                         proposalKind = buildIntentsTransferProposal(
-                            data.token.address,
+                            token.address,
                             depositAddress,
                             amountIn,
                         );
@@ -1191,7 +1224,7 @@ export default function PaymentsPage() {
                         );
                     } else {
                         proposalKind = buildNearFtIntentsKind(
-                            data.token.address,
+                            token.address,
                             depositAddress,
                             amountIn,
                         );
@@ -1201,7 +1234,7 @@ export default function PaymentsPage() {
                 // Direct NEAR or NEAR FT transfer
                 proposalKind = buildDirectTransferKind(
                     trimmedAddress,
-                    data.token,
+                    token,
                     directTransferAmount,
                     isConfidential,
                 );
@@ -1220,7 +1253,7 @@ export default function PaymentsPage() {
                 .then(() => {
                     trackEvent("payment-submitted", {
                         treasury_id: treasuryId ?? "",
-                        token_symbol: data.token.symbol,
+                        token_symbol: token.symbol,
                         amount: data.amount,
                     });
                     form.reset();
