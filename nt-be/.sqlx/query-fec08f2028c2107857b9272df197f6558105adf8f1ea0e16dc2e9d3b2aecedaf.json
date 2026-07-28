@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE member_invite_links\n        SET used_at = NOW(), used_by_account_id = $2\n        WHERE token = $1 AND used_at IS NULL\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fec08f2028c2107857b9272df197f6558105adf8f1ea0e16dc2e9d3b2aecedaf"
+}

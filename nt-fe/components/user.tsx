@@ -24,6 +24,15 @@ export const sizeClasses = {
 
 type UserSize = keyof typeof sizeClasses;
 
+/** How to render the user row. */
+export type UserVariant =
+    /** Avatar + name + address (default) */
+    | "full"
+    /** Avatar only */
+    | "avatar"
+    /** Name + address only */
+    | "details";
+
 const avatarTextSizeClasses = {
     sm: "text-[10px]",
     md: "text-xs",
@@ -128,21 +137,24 @@ const skeletonSizeClasses = {
 };
 
 export function UserSkeleton({
-    iconOnly = false,
+    variant = "full",
     size = "sm",
-    withName = true,
 }: {
-    iconOnly?: boolean;
+    variant?: UserVariant;
     size?: UserSize;
-    withName?: boolean;
 }) {
     const s = skeletonSizeClasses[size];
+    const showAvatar = variant !== "details";
+    const showDetails = variant !== "avatar";
+
     return (
         <div className="flex items-center gap-1.5">
-            <Skeleton className={cn("rounded-full shrink-0", s.avatar)} />
-            {!iconOnly && (
+            {showAvatar && (
+                <Skeleton className={cn("rounded-full shrink-0", s.avatar)} />
+            )}
+            {showDetails && (
                 <div className="flex flex-col items-start gap-1 min-w-0">
-                    {withName && <Skeleton className={s.name} />}
+                    <Skeleton className={s.name} />
                     <Skeleton className={s.address} />
                 </div>
             )}
@@ -156,7 +168,7 @@ interface UserWithDataProps {
     name: string;
     address: string;
     imageUrl?: string;
-    iconOnly?: boolean;
+    variant?: UserVariant;
     truncatePrimaryAddress?: boolean;
     size?: UserSize;
     withLink?: boolean;
@@ -170,7 +182,7 @@ export function UserWithData({
     address,
     imageUrl,
     size = "sm",
-    iconOnly = false,
+    variant = "full",
     truncatePrimaryAddress = false,
     withLink = true,
     withHoverCard = false,
@@ -178,16 +190,20 @@ export function UserWithData({
     useAddressBook = false,
 }: UserWithDataProps) {
     const explorerUrl = getExplorerAddressUrl(chainName, address);
+    const showAvatar = variant !== "details";
+    const showDetails = variant !== "avatar";
 
     const content = (
         <>
-            <UserAvatar
-                name={name}
-                address={address}
-                imageUrl={imageUrl}
-                size={size}
-            />
-            {!iconOnly && (
+            {showAvatar && (
+                <UserAvatar
+                    name={name}
+                    address={address}
+                    imageUrl={imageUrl}
+                    size={size}
+                />
+            )}
+            {showDetails && (
                 <div className="flex flex-col items-start max-w-60 md:max-w-80 min-w-0">
                     {truncatePrimaryAddress && name === address ? (
                         <Address
@@ -324,10 +340,9 @@ interface UserProps {
     name?: string;
     /** Prefer treasury address-book name when available */
     useAddressBook?: boolean;
-    iconOnly?: boolean;
+    variant?: UserVariant;
     /** Use address-style truncation for the primary line when name equals address */
     truncatePrimaryAddress?: boolean;
-    withName?: boolean;
     size?: UserSize;
     withLink?: boolean;
     withHoverCard?: boolean;
@@ -338,20 +353,17 @@ export function User({
     accountId,
     name: nameProp,
     useAddressBook = false,
-    iconOnly = false,
+    variant = "full",
     truncatePrimaryAddress = false,
     size = "sm",
     withLink = true,
-    withName = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
 }: UserProps) {
     const { data: profile, isLoading } = useProfile(accountId);
 
-    if (isLoading && withName && !nameProp) {
-        return (
-            <UserSkeleton iconOnly={iconOnly} size={size} withName={withName} />
-        );
+    if (isLoading && !nameProp) {
+        return <UserSkeleton variant={variant} size={size} />;
     }
 
     const resolvedName =
@@ -368,7 +380,7 @@ export function User({
             imageUrl={resolveProfileImageUrl(profile?.image)}
             useAddressBook={useAddressBook}
             size={size}
-            iconOnly={iconOnly}
+            variant={variant}
             truncatePrimaryAddress={truncatePrimaryAddress}
             withLink={withLink}
             withHoverCard={withHoverCard}

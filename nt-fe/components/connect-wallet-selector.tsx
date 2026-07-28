@@ -3,7 +3,7 @@
 import { Check, Fingerprint, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SlotWarning } from "@/components/warning-message";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -103,6 +103,9 @@ interface ConnectWalletSelectorProps {
     showCreateTreasuryCta?: boolean;
     onCreateTreasuryClick?: () => void;
     onConnectSupported: (walletId?: string) => Promise<void> | void;
+    /** Optional context shown above the standard "Choose how to sign in" header. */
+    introTitle?: string;
+    introDescription?: ReactNode;
 }
 
 export function ConnectWalletSelector({
@@ -115,6 +118,8 @@ export function ConnectWalletSelector({
     showCreateTreasuryCta = true,
     onCreateTreasuryClick,
     onConnectSupported,
+    introTitle,
+    introDescription,
 }: ConnectWalletSelectorProps) {
     const router = useRouter();
     const t = useTranslations("createTreasury");
@@ -314,6 +319,14 @@ export function ConnectWalletSelector({
     return (
         <>
             <PageCard>
+                {(introTitle || introDescription) && (
+                    <div className="mb-1">
+                        <StepperHeader
+                            title={introTitle ?? ""}
+                            description={introDescription}
+                        />
+                    </div>
+                )}
                 <StepperHeader
                     title={headerTitle}
                     description={headerDescription}

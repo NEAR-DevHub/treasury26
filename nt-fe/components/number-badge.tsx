@@ -31,17 +31,19 @@ export function NumberBadge({
     variant = "default",
     sizes = "default",
     ariaLabel,
+    className,
 }: {
     number: number;
     variant?: "default" | "secondary" | "accent" | "error";
     sizes?: "default" | "sm";
     ariaLabel?: string;
+    className?: string;
 }) {
     const t = useTranslations("numberBadge");
     return (
         <span
             aria-label={ariaLabel ?? t("pendingRequests", { count: number })}
-            className={styles({ variant, sizes })}
+            className={cn(styles({ variant, sizes }), className)}
         >
             {number}
         </span>

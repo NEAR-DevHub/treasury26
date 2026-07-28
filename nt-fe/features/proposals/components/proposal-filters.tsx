@@ -510,11 +510,7 @@ function FilterPill({
                                 className="cursor-pointer"
                                 style={{ marginLeft: index > 0 ? "-6px" : "0" }}
                             >
-                                <User
-                                    accountId={accountId}
-                                    iconOnly
-                                    withName={false}
-                                />
+                                <User accountId={accountId} variant="avatar" />
                             </div>
                         </TooltipUser>
                     ))}
@@ -1084,7 +1080,6 @@ function UserFilterContent({
                                             <div className="min-w-0">
                                                 <User
                                                     accountId={accountId}
-                                                    iconOnly={false}
                                                     withLink={false}
                                                     size="sm"
                                                 />

@@ -139,5 +139,19 @@ pub async fn get_profile(
         }
     }
 
+    // Local display names override NEAR Social names; query after cache so they stay fresh.
+    if let Ok(Some(local_name)) = sqlx::query_scalar!(
+        "SELECT display_name FROM user_profiles WHERE account_id = $1",
+        params.account_id.trim()
+    )
+    .fetch_optional(&state.db_pool)
+    .await
+        && local_name
+            .as_ref()
+            .is_some_and(|name| !name.trim().is_empty())
+    {
+        profile.name = local_name;
+    }
+
     Ok(Json(profile))
 }

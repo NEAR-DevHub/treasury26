@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
+import { useCallback, useMemo } from "react";
 
 interface Member {
     accountId: string;
@@ -164,7 +164,9 @@ export function useMemberValidation(
             // Only check roles that are present in members being removed
             const rolesToCheck = new Set<string>();
             membersToCheck.forEach((member) => {
-                member.roles.forEach((role) => rolesToCheck.add(role));
+                for (const role of member.roles) {
+                    rolesToCheck.add(role);
+                }
             });
 
             for (const roleName of rolesToCheck) {
@@ -211,36 +213,8 @@ export function useMemberValidation(
         ],
     );
 
-    // Check if a single role change for a member would leave any role empty
-    // This is used for inline validation in the edit modal
-    const canRemoveRoleFromMember = useCallback(
-        (accountId: string, roleToRemove: string): ValidationResult => {
-            // Check if removing this role would leave it empty
-            const membersWithRole = roleMembersMap.get(roleToRemove);
-            if (!membersWithRole) return { canModify: true };
-
-            // If this member has the role and is the only one, prevent removal
-            if (membersWithRole.size === 1 && membersWithRole.has(accountId)) {
-                const hasGovernance = hasGovernanceRole([roleToRemove]);
-                const reason = hasGovernance
-                    ? tMembers("cannotRemoveRoleGov", { role: roleToRemove })
-                    : tMembers("cannotRemoveRole", { role: roleToRemove });
-
-                return {
-                    canModify: false,
-                    reason,
-                };
-            }
-
-            return { canModify: true };
-        },
-        [roleMembersMap, hasGovernanceRole, tMembers],
-    );
-
     return {
         canModifyMember,
         canDeleteBulk,
-        getRoleMemberCount,
-        canRemoveRoleFromMember,
     };
 }

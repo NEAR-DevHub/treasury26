@@ -275,7 +275,7 @@ export function CsvUploadPanel({
                         borderless
                         placeholder={pastePlaceholder}
                         rows={8}
-                        className={`resize-none font-mono text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap min-h-41 ${
+                        className={`resize-none font-mono text-base md:text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap min-h-41 ${
                             hasErrors
                                 ? "border border-destructive bg-destructive/5! focus:border-destructive!"
                                 : "bg-muted"
