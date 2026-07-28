@@ -69,7 +69,7 @@ const GOLD_RAW_IDS_SQL: &str = r#"
     WHERE amount_out_usd IS NULL
     UNION
     SELECT DISTINCT asset
-    FROM public_balance_snapshot
+    FROM silver_balance_history
 "#;
 
 const GOLD_MISSING_PAIRS_SQL: &str = r#"
@@ -78,7 +78,7 @@ const GOLD_MISSING_PAIRS_SQL: &str = r#"
     ),
     snapshot_assets(raw_token_id) AS (
         SELECT DISTINCT asset
-        FROM public_balance_snapshot
+        FROM silver_balance_history
     ),
     snapshot_chart_grid(at) AS (
         SELECT date_trunc('day', NOW()) - grid_offset.value * INTERVAL '1 day'
@@ -105,8 +105,7 @@ const GOLD_MISSING_PAIRS_SQL: &str = r#"
         WHERE amount_out_usd IS NULL
         UNION ALL
         SELECT asset, block_time
-        FROM public_balance_snapshot
-        WHERE usd_value IS NULL
+        FROM silver_balance_history
         UNION ALL
         SELECT snapshot_assets.raw_token_id, snapshot_chart_grid.at
         FROM snapshot_assets
@@ -275,7 +274,7 @@ impl HistoricalPriceBackfill {
                 FROM gold_confidential_history_events
                 UNION ALL
                 SELECT MIN(block_time) AS at
-                FROM public_balance_snapshot
+                FROM silver_balance_history
             ) earliest
             "#,
         )
@@ -868,15 +867,15 @@ mod tests {
     }
 
     #[test]
-    fn raw_id_discovery_reads_gold_and_snapshot_tokens() {
+    fn raw_id_discovery_reads_gold_and_ledger_tokens() {
         assert!(GOLD_RAW_IDS_SQL.contains("token_in"));
         assert!(GOLD_RAW_IDS_SQL.contains("token_out"));
         assert!(GOLD_RAW_IDS_SQL.contains("origin_asset"));
         assert!(GOLD_RAW_IDS_SQL.contains("destination_asset"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_public_history_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
-        assert!(GOLD_RAW_IDS_SQL.contains("public_balance_snapshot"));
-        assert!(!GOLD_RAW_IDS_SQL.contains("public_balance_snapshot\n    WHERE"));
+        assert!(GOLD_RAW_IDS_SQL.contains("silver_balance_history"));
+        assert!(!GOLD_RAW_IDS_SQL.contains("silver_balance_history\n    WHERE"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_out_usd IS NULL"));
         assert!(!GOLD_RAW_IDS_SQL.contains("balance_changes"));
@@ -894,8 +893,7 @@ mod tests {
         assert!(GOLD_MISSING_PAIRS_SQL.contains("token_price_backfill_misses"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_out_usd IS NULL"));
-        assert!(GOLD_MISSING_PAIRS_SQL.contains("public_balance_snapshot"));
-        assert!(GOLD_MISSING_PAIRS_SQL.contains("usd_value IS NULL"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("silver_balance_history"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("generate_series(0, 89)"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("generate_series(0, 52)"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("CROSS JOIN snapshot_chart_grid"));
@@ -915,12 +913,17 @@ mod tests {
     async fn missing_pair_discovery_includes_snapshot_chart_grid(pool: PgPool) {
         sqlx::query(
             r#"
-            INSERT INTO public_balance_snapshot (
-                dao_id, asset, block_height, block_time, balance, usd_value
+            INSERT INTO silver_balance_history (
+                account_id, asset, token_standard, entry_key, source,
+                block_height, block_time, intra_block_seq,
+                delta_raw, delta, decimals, balance_before, balance_after,
+                affects_user_balance, user_balance_after
             )
             VALUES (
-                'price-grid.sputnik-dao.near', 'near', 1,
-                '2020-01-01T00:00:00Z', 1, NULL
+                'price-grid.sputnik-dao.near', 'near', 'native',
+                'native:price-grid.sputnik-dao.near:r1', 'nearblocks_receipt',
+                1, '2020-01-01T00:00:00Z', 0, 1, 1, 24, 0, 1,
+                TRUE, 1
             )
             "#,
         )

@@ -3,7 +3,9 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{PgPool, Postgres, Transaction};
 
-use super::models::{DirtyPublicGoldAccount, GoldBalanceSeedRow, GoldPublicHistoryEvent};
+use super::models::{
+    BalanceStampRow, BalanceStamps, DirtyPublicGoldAccount, GoldPublicHistoryEvent,
+};
 use crate::handlers::public_history::quotes::QUOTE_LEG_MATCH_SQL;
 use crate::handlers::public_history::silver::models::SilverTransferLegRow;
 
@@ -156,65 +158,28 @@ pub async fn widen_for_overlapping_completed_exchanges(
     .await
 }
 
-pub async fn seed_ledger_before(
+/// Loads absolute balance stamps for every ledger movement in the recompute
+/// window. One batched read per projection pass; stamps are absolute values,
+/// so partial recomputes need no seeding.
+pub async fn load_balance_stamps(
     tx: &mut Transaction<'_, Postgres>,
     account_id: &str,
     recompute_from: DateTime<Utc>,
-) -> Result<Vec<GoldBalanceSeedRow>, sqlx::Error> {
-    sqlx::query_as::<_, GoldBalanceSeedRow>(
+) -> Result<BalanceStamps, sqlx::Error> {
+    let rows = sqlx::query_as::<_, BalanceStampRow>(
         r#"
-        SELECT DISTINCT ON (asset) asset, balance
-        FROM (
-            SELECT
-                gold.token_in AS asset,
-                gold.token_in_balance_after AS balance,
-                COALESCE(counter_leg.block_time, primary_leg.block_time) AS leg_block_time,
-                COALESCE(counter_leg.block_height, primary_leg.block_height)
-                    AS leg_block_height,
-                gold.id,
-                1 AS leg_order
-            FROM gold_public_history_events gold
-            JOIN silver_public_transfer_legs primary_leg
-              ON primary_leg.id = gold.primary_transfer_leg_id
-            LEFT JOIN silver_public_transfer_legs counter_leg
-              ON counter_leg.id = gold.counter_transfer_leg_id
-            WHERE gold.dao_id = $1
-              AND COALESCE(counter_leg.block_time, primary_leg.block_time) < $2
-              AND gold.token_in IS NOT NULL
-              AND gold.token_in_balance_after IS NOT NULL
-
-            UNION ALL
-
-            SELECT
-                gold.token_out AS asset,
-                gold.token_out_balance_after AS balance,
-                primary_leg.block_time AS leg_block_time,
-                primary_leg.block_height AS leg_block_height,
-                gold.id,
-                0 AS leg_order
-            FROM gold_public_history_events gold
-            JOIN silver_public_transfer_legs primary_leg
-              ON primary_leg.id = gold.primary_transfer_leg_id
-            WHERE gold.dao_id = $1
-              AND primary_leg.block_time < $2
-              AND gold.token_out IS NOT NULL
-              AND gold.token_out_balance_after IS NOT NULL
-        ) balances
-        -- A completed exchange can contain two balance-bearing legs. Match the
-        -- projector's apply order (out, then in) when both legs are for the
-        -- same asset and share an event timestamp.
-        ORDER BY
-            asset,
-            leg_block_time DESC,
-            leg_block_height DESC,
-            id DESC,
-            leg_order DESC
+        SELECT entry_key, token_standard::text AS token_standard, receipt_id,
+               balance_before, balance_after
+        FROM silver_balance_history
+        WHERE account_id = $1
+          AND block_time >= $2
         "#,
     )
     .bind(account_id)
     .bind(recompute_from)
     .fetch_all(&mut **tx)
-    .await
+    .await?;
+    Ok(BalanceStamps::from_rows(rows))
 }
 
 pub async fn load_silver_suffix(
@@ -487,146 +452,6 @@ pub async fn delete_stale_gold_rows(
     Ok(result.rows_affected())
 }
 
-/// Reconcile only the newest balance-bearing gold leg for each asset against
-/// the legacy balance ledger. Historical rows keep the forward projection;
-/// the corrected tail is then used as the seed for future incremental rows.
-pub async fn reconcile_latest_gold_balances(
-    tx: &mut Transaction<'_, Postgres>,
-    dao_id: &str,
-) -> Result<u64, sqlx::Error> {
-    let result = sqlx::query(
-        r#"
-        WITH gold_legs AS (
-            SELECT
-                gold.id AS gold_id,
-                gold.token_in AS token_id,
-                gold.amount_in AS amount,
-                COALESCE(counter_leg.block_time, primary_leg.block_time) AS leg_block_time,
-                COALESCE(counter_leg.block_height, primary_leg.block_height)
-                    AS leg_block_height,
-                'in'::text AS direction,
-                1 AS leg_order
-            FROM gold_public_history_events gold
-            JOIN silver_public_transfer_legs primary_leg
-              ON primary_leg.id = gold.primary_transfer_leg_id
-            LEFT JOIN silver_public_transfer_legs counter_leg
-              ON counter_leg.id = gold.counter_transfer_leg_id
-            WHERE gold.dao_id = $1
-              AND gold.token_in IS NOT NULL
-              AND gold.amount_in IS NOT NULL
-              AND gold.token_in_balance_after IS NOT NULL
-
-            UNION ALL
-
-            SELECT
-                gold.id AS gold_id,
-                gold.token_out AS token_id,
-                gold.amount_out AS amount,
-                primary_leg.block_time AS leg_block_time,
-                primary_leg.block_height AS leg_block_height,
-                'out'::text AS direction,
-                0 AS leg_order
-            FROM gold_public_history_events gold
-            JOIN silver_public_transfer_legs primary_leg
-              ON primary_leg.id = gold.primary_transfer_leg_id
-            WHERE gold.dao_id = $1
-              AND gold.token_out IS NOT NULL
-              AND gold.amount_out IS NOT NULL
-              AND gold.token_out_balance_after IS NOT NULL
-        ),
-        latest_gold AS (
-            SELECT DISTINCT ON (token_id)
-                gold_id,
-                token_id,
-                amount,
-                leg_block_time,
-                leg_block_height,
-                direction
-            FROM gold_legs
-            ORDER BY
-                token_id,
-                leg_block_time DESC,
-                leg_block_height DESC,
-                gold_id DESC,
-                leg_order DESC
-        ),
-        aligned AS (
-            SELECT
-                latest.gold_id,
-                latest.direction,
-                authoritative.balance_after,
-                CASE latest.direction
-                    WHEN 'in' THEN authoritative.balance_after - latest.amount
-                    ELSE authoritative.balance_after + latest.amount
-                END AS balance_before
-            FROM latest_gold latest
-            CROSS JOIN LATERAL (
-                SELECT balance.balance_after
-                FROM balance_changes balance
-                WHERE balance.account_id = $1
-                  AND balance.token_id = latest.token_id
-                  -- A snapshot from either side of this exact leg cannot be
-                  -- assigned as the leg's after-balance without replaying the
-                  -- intervening movement. Skip reconciliation unless both
-                  -- pieces of chain chronology align.
-                  AND balance.block_height = latest.leg_block_height
-                  AND balance.block_time = latest.leg_block_time
-                ORDER BY
-                    balance.id DESC
-                LIMIT 1
-            ) authoritative
-        ),
-        reconciled_events AS (
-            -- One exchange row can be the latest row for two different
-            -- assets. Pivot those two reconciliations before UPDATE so both
-            -- sides are changed deterministically in a single write.
-            SELECT
-                gold_id,
-                BOOL_OR(direction = 'in') AS update_token_in,
-                MAX(balance_before) FILTER (WHERE direction = 'in')
-                    AS token_in_balance_before,
-                MAX(balance_after) FILTER (WHERE direction = 'in')
-                    AS token_in_balance_after,
-                BOOL_OR(direction = 'out') AS update_token_out,
-                MAX(balance_before) FILTER (WHERE direction = 'out')
-                    AS token_out_balance_before,
-                MAX(balance_after) FILTER (WHERE direction = 'out')
-                    AS token_out_balance_after
-            FROM aligned
-            GROUP BY gold_id
-        )
-        UPDATE gold_public_history_events gold
-        SET token_in_balance_before = CASE
-                WHEN reconciled.update_token_in
-                    THEN reconciled.token_in_balance_before
-                ELSE gold.token_in_balance_before
-            END,
-            token_in_balance_after = CASE
-                WHEN reconciled.update_token_in
-                    THEN reconciled.token_in_balance_after
-                ELSE gold.token_in_balance_after
-            END,
-            token_out_balance_before = CASE
-                WHEN reconciled.update_token_out
-                    THEN reconciled.token_out_balance_before
-                ELSE gold.token_out_balance_before
-            END,
-            token_out_balance_after = CASE
-                WHEN reconciled.update_token_out
-                    THEN reconciled.token_out_balance_after
-                ELSE gold.token_out_balance_after
-            END,
-            updated_at = NOW()
-        FROM reconciled_events reconciled
-        WHERE gold.id = reconciled.gold_id
-        "#,
-    )
-    .bind(dao_id)
-    .execute(&mut **tx)
-    .await?;
-
-    Ok(result.rows_affected())
-}
 
 #[allow(dead_code)]
 pub fn zero() -> BigDecimal {
@@ -709,40 +534,6 @@ mod tests {
         .bind(direction)
         .fetch_one(pool)
         .await
-    }
-
-    async fn insert_legacy_balance(
-        pool: &PgPool,
-        token_id: &str,
-        block_height: i64,
-        block_time: DateTime<Utc>,
-        balance_after: i64,
-    ) -> sqlx::Result<()> {
-        sqlx::query(
-            r#"
-            INSERT INTO balance_changes (
-                account_id,
-                block_height,
-                block_timestamp,
-                block_time,
-                token_id,
-                counterparty,
-                amount,
-                balance_before,
-                balance_after
-            )
-            VALUES ($1, $2, $3, $4, $5, 'SNAPSHOT', 0, $6, $6)
-            "#,
-        )
-        .bind(DAO_ID)
-        .bind(block_height)
-        .bind(block_time.timestamp_nanos_opt().expect("valid test time"))
-        .bind(block_time)
-        .bind(token_id)
-        .bind(BigDecimal::from(balance_after))
-        .execute(pool)
-        .await?;
-        Ok(())
     }
 
     async fn insert_completed_exchange(
@@ -903,248 +694,80 @@ mod tests {
     }
 
     #[sqlx::test]
-    async fn reconciliation_skips_when_no_exact_legacy_snapshot_exists(
+    async fn balance_stamps_resolve_token_legs_by_key_and_native_by_receipt(
         pool: PgPool,
     ) -> sqlx::Result<()> {
-        let outgoing_time = Utc.with_ymd_and_hms(2026, 7, 20, 10, 0, 0).unwrap();
-        let incoming_time = Utc.with_ymd_and_hms(2026, 7, 20, 10, 1, 0).unwrap();
-        let later_time = Utc.with_ymd_and_hms(2026, 7, 20, 10, 2, 0).unwrap();
-        let token_id = "token-a.near";
-
-        let outgoing_leg = insert_silver_leg(
-            &pool,
-            "reconcile-outgoing",
-            token_id,
-            "outgoing",
-            10,
-            outgoing_time,
-        )
-        .await?;
-        let incoming_leg = insert_silver_leg(
-            &pool,
-            "reconcile-incoming",
-            token_id,
-            "incoming",
-            20,
-            incoming_time,
-        )
-        .await?;
-
+        let block_time = Utc.with_ymd_and_hms(2026, 7, 20, 9, 0, 0).unwrap();
         sqlx::query(
             r#"
-            INSERT INTO gold_public_history_events (
-                gold_event_key,
-                primary_transfer_leg_id,
-                dao_id,
-                transaction_type,
-                token_out,
-                amount_out,
-                token_out_balance_before,
-                token_out_balance_after,
-                block_height,
-                event_time,
-                status,
-                raw_payload
+            INSERT INTO silver_balance_history (
+                account_id, asset, token_standard, entry_key, source,
+                receipt_id, block_height, block_time, intra_block_seq,
+                delta_raw, delta, decimals, balance_before, balance_after,
+                affects_user_balance, user_balance_after
             )
-            VALUES (
-                'gold-reconcile-outgoing', $1, $2, 'sent', $3,
-                10, 100, 90, 10, $4, 'success', '{}'::jsonb
-            )
+            VALUES
+                ($1, 'token.near', 'nep141', 'nearblocks_ft:ft-key', 'nearblocks_ft',
+                 'r-token', 10, $2, 0, 1000000, 1, 6, 0, 1, TRUE, 1),
+                ($1, 'near', 'native', 'native-entry', 'nearblocks_receipt',
+                 'r-native', 10, $2, 1, 5, 5, 24, 2, 7, TRUE, 7)
             "#,
         )
-        .bind(outgoing_leg)
         .bind(DAO_ID)
-        .bind(token_id)
-        .bind(outgoing_time)
+        .bind(block_time)
         .execute(&pool)
         .await?;
 
-        sqlx::query(
-            r#"
-            INSERT INTO gold_public_history_events (
-                gold_event_key,
-                primary_transfer_leg_id,
-                dao_id,
-                transaction_type,
-                token_in,
-                amount_in,
-                token_in_balance_before,
-                token_in_balance_after,
-                block_height,
-                event_time,
-                status,
-                raw_payload
-            )
-            VALUES (
-                'gold-reconcile-incoming', $1, $2, 'deposit', $3,
-                5, 90, 95, 20, $4, 'success', '{}'::jsonb
-            )
-            "#,
-        )
-        .bind(incoming_leg)
-        .bind(DAO_ID)
-        .bind(token_id)
-        .bind(incoming_time)
-        .execute(&pool)
-        .await?;
-
-        // Neither an earlier block nor the same block at a different timestamp
-        // describes this leg's after-balance exactly.
-        insert_legacy_balance(&pool, token_id, 19, outgoing_time, 105).await?;
-        insert_legacy_balance(&pool, token_id, 20, later_time, 777).await?;
-        insert_legacy_balance(&pool, token_id, 21, outgoing_time, 999).await?;
-
         let mut tx = pool.begin().await?;
-        assert_eq!(reconcile_latest_gold_balances(&mut tx, DAO_ID).await?, 0);
-        tx.commit().await?;
-
-        let outgoing_balances: (Option<BigDecimal>, Option<BigDecimal>) = sqlx::query_as(
-            r#"
-            SELECT token_out_balance_before, token_out_balance_after
-            FROM gold_public_history_events
-            WHERE gold_event_key = 'gold-reconcile-outgoing'
-            "#,
-        )
-        .fetch_one(&pool)
-        .await?;
-        assert_eq!(outgoing_balances.0, Some(BigDecimal::from(100)));
-        assert_eq!(outgoing_balances.1, Some(BigDecimal::from(90)));
-
-        let incoming_balances: (Option<BigDecimal>, Option<BigDecimal>) = sqlx::query_as(
-            r#"
-            SELECT token_in_balance_before, token_in_balance_after
-            FROM gold_public_history_events
-            WHERE gold_event_key = 'gold-reconcile-incoming'
-            "#,
-        )
-        .fetch_one(&pool)
-        .await?;
-        assert_eq!(incoming_balances.0, Some(BigDecimal::from(90)));
-        assert_eq!(incoming_balances.1, Some(BigDecimal::from(95)));
-
-        let mut tx = pool.begin().await?;
-        let seeds = seed_ledger_before(&mut tx, DAO_ID, later_time).await?;
+        let stamps = load_balance_stamps(&mut tx, DAO_ID, block_time).await?;
         tx.rollback().await?;
-        assert_eq!(seeds.len(), 1);
-        assert_eq!(seeds[0].asset, token_id);
-        assert_eq!(seeds[0].balance, BigDecimal::from(95));
+
+        let token_leg = stamp_probe_leg("ft-leg", "nearblocks_ft:ft-key", "nep141", "r-other");
+        let token_stamp = stamps.for_leg(&token_leg).expect("token stamp by leg_key");
+        assert_eq!(token_stamp.balance_after, BigDecimal::from(1));
+
+        let native_leg = stamp_probe_leg("native-leg", "some-other-key", "native", "r-native");
+        let native_stamp = stamps
+            .for_leg(&native_leg)
+            .expect("native stamp by receipt_id");
+        assert_eq!(native_stamp.balance_before, BigDecimal::from(2));
+        assert_eq!(native_stamp.balance_after, BigDecimal::from(7));
 
         Ok(())
     }
 
-    #[sqlx::test]
-    async fn reconciliation_updates_both_assets_on_one_exchange_row(
-        pool: PgPool,
-    ) -> sqlx::Result<()> {
-        let outgoing_time = Utc.with_ymd_and_hms(2026, 7, 20, 11, 0, 0).unwrap();
-        let incoming_time = Utc.with_ymd_and_hms(2026, 7, 20, 11, 5, 0).unwrap();
-        let seed_time = Utc.with_ymd_and_hms(2026, 7, 20, 11, 6, 0).unwrap();
-        let token_in = "token-in.near";
-        let token_out = "token-out.near";
-        let primary_leg = insert_silver_leg(
-            &pool,
-            "reconcile-exchange",
-            token_out,
-            "outgoing",
-            30,
-            outgoing_time,
-        )
-        .await?;
-        let counter_leg = insert_silver_leg(
-            &pool,
-            "reconcile-exchange-incoming",
-            token_in,
-            "incoming",
-            40,
-            incoming_time,
-        )
-        .await?;
-
-        sqlx::query(
-            r#"
-            INSERT INTO gold_public_history_events (
-                gold_event_key,
-                primary_transfer_leg_id,
-                counter_transfer_leg_id,
-                dao_id,
-                transaction_type,
-                token_in,
-                token_out,
-                amount_in,
-                amount_out,
-                token_in_balance_before,
-                token_in_balance_after,
-                token_out_balance_before,
-                token_out_balance_after,
-                block_height,
-                event_time,
-                status,
-                raw_payload
-            )
-            VALUES (
-                'gold-reconcile-exchange', $1, $2, $3, 'exchange', $4, $5,
-                5, 10, 15, 20, 50, 40, 30, $6, 'success', '{}'::jsonb
-            )
-            "#,
-        )
-        .bind(primary_leg)
-        .bind(counter_leg)
-        .bind(DAO_ID)
-        .bind(token_in)
-        .bind(token_out)
-        // The flattened exchange row intentionally retains the outgoing
-        // display time. Reconciliation must still use the incoming counter
-        // leg's later chain chronology for token_in.
-        .bind(outgoing_time)
-        .execute(&pool)
-        .await?;
-
-        insert_legacy_balance(&pool, token_in, 30, outgoing_time, 999).await?;
-        insert_legacy_balance(&pool, token_in, 40, incoming_time, 25).await?;
-        insert_legacy_balance(&pool, token_out, 30, outgoing_time, 42).await?;
-
-        let mut tx = pool.begin().await?;
-        assert_eq!(reconcile_latest_gold_balances(&mut tx, DAO_ID).await?, 1);
-        tx.commit().await?;
-
-        let balances: (
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-            Option<BigDecimal>,
-        ) = sqlx::query_as(
-            r#"
-            SELECT
-                token_in_balance_before,
-                token_in_balance_after,
-                token_out_balance_before,
-                token_out_balance_after
-            FROM gold_public_history_events
-            WHERE gold_event_key = 'gold-reconcile-exchange'
-            "#,
-        )
-        .fetch_one(&pool)
-        .await?;
-        assert_eq!(balances.0, Some(BigDecimal::from(20)));
-        assert_eq!(balances.1, Some(BigDecimal::from(25)));
-        assert_eq!(balances.2, Some(BigDecimal::from(52)));
-        assert_eq!(balances.3, Some(BigDecimal::from(42)));
-
-        let mut tx = pool.begin().await?;
-        let seeds = seed_ledger_before(&mut tx, DAO_ID, seed_time).await?;
-        tx.rollback().await?;
-        assert_eq!(seeds.len(), 2);
-        assert!(
-            seeds
-                .iter()
-                .any(|seed| seed.asset == token_in && seed.balance == 25)
-        );
-        assert!(
-            seeds
-                .iter()
-                .any(|seed| seed.asset == token_out && seed.balance == 42)
-        );
-
-        Ok(())
+    fn stamp_probe_leg(
+        token_id: &str,
+        leg_key: &str,
+        token_standard: &str,
+        receipt_id: &str,
+    ) -> SilverTransferLegRow {
+        SilverTransferLegRow {
+            id: 1,
+            account_id: DAO_ID.to_string(),
+            leg_key: leg_key.to_string(),
+            proposal_ref: None,
+            proposal_id: None,
+            transaction_hash: None,
+            receipt_id: Some(receipt_id.to_string()),
+            block_height: 10,
+            block_time: Utc.with_ymd_and_hms(2026, 7, 20, 9, 0, 0).unwrap(),
+            token_standard: token_standard.to_string(),
+            token_id: token_id.to_string(),
+            direction: "incoming".to_string(),
+            counterparty: None,
+            amount_raw: BigDecimal::from(1),
+            amount: BigDecimal::from(1),
+            decimals: 6,
+            leg_kind: "transfer".to_string(),
+            raw_payload: serde_json::json!({}),
+            proposal_status: None,
+            proposal_created_at: None,
+            proposal_executed_at: None,
+            proposal_execution_block_height: None,
+            proposal_execution_transaction_hash: None,
+            quote_metadata: None,
+            quote_deposit_address: None,
+        }
     }
 }

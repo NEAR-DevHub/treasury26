@@ -144,7 +144,7 @@ pub(crate) async fn enqueue_latest_refresh_job(
     push_job(&mut storage, job, 0).await
 }
 
-pub(crate) async fn enqueue_initial_snapshot_refresh_job(
+pub(crate) async fn enqueue_preverification_refresh_job(
     pool: &PgPool,
     account_id: String,
     source: PublicHistorySource,
@@ -209,16 +209,6 @@ pub(crate) async fn enqueue_backfill_page_job(
     if active_public_history_job_exists(pool, PUBLIC_HISTORY_BACKFILL_NAMESPACE, job.job_key())
         .await?
     {
-        return Ok(false);
-    }
-
-    let PublicHistoryJob::BackfillPage {
-        account_id, source, ..
-    } = &job
-    else {
-        unreachable!("constructed backfill job must be BackfillPage")
-    };
-    if !consume_backfill_budget(pool, account_id, *source).await? {
         return Ok(false);
     }
 
@@ -429,6 +419,21 @@ async fn run_backfill_page(
         return Ok((0, 0, 0));
     }
 
+    // Budget is consumed here, immediately before the provider request, so a
+    // job that dies before fetching (or scheduler re-enqueue churn) cannot
+    // burn the daily page allowance without ingesting anything.
+    let has_budget = consume_backfill_budget(&state.db_pool, account_id, source)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public backfill budget check failed: {}", error),
+            )
+        })?;
+    if !has_budget {
+        return Ok((0, 0, 0));
+    }
+
     let request_cursor = job_cursor.clone().and_then(NearblocksCursor::new);
 
     let page = fetch_source_page(
@@ -520,7 +525,13 @@ async fn handle_latest_job(
     );
 
     let silver_ready =
-        match project_public_silver_for_account(&context.state.db_pool, &account_id).await {
+        match project_public_silver_for_account(
+            &context.state.db_pool,
+            &account_id,
+            context.state.signer_id.as_str(),
+        )
+        .await
+        {
             Ok(silver_stats) if silver_stats.skipped_locked => {
                 tracing::debug!(
                     account_id = account_id,
@@ -555,10 +566,6 @@ async fn handle_latest_job(
         return Ok(());
     }
 
-    // Silver has committed the snapshot cursor generation bump. Do not enqueue
-    // an RPC balance refresh here: the hourly snapshot sweeper intentionally
-    // batches every activity signal received during the interval into one job.
-
     match project_public_gold_for_account(
         &context.state.db_pool,
         &context.state.token_price_service,
@@ -587,6 +594,29 @@ async fn handle_latest_job(
                 context
                     .state
                     .publish_treasury_projection_updated(account_id.clone());
+            }
+
+            // First verification is event-driven: a freshly projected
+            // treasury gets its gate immediately (charts + ledger-fed
+            // dashboard in the same pass), instead of waiting up to a full
+            // verification cron interval. No-op for already-gated accounts.
+            let verifier = crate::handlers::public_history::verification::BalanceVerifier::new(
+                &context.state.db_pool,
+                &context.state.archival_network,
+                context.state.env_vars.public_native_verification_tolerance_near,
+            );
+            match verifier.nudge_account_gate(&account_id).await {
+                Ok(true) => {
+                    tracing::info!(account_id, "first balance verification passed via nudge");
+                }
+                Ok(false) => {}
+                Err(error) => {
+                    tracing::warn!(
+                        account_id,
+                        %error,
+                        "verification nudge failed; cron will retry"
+                    );
+                }
             }
         }
         Err(error) => {

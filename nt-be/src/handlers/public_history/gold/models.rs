@@ -4,7 +4,9 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-use crate::handlers::public_history::silver::models::PublicTransactionType;
+use crate::handlers::public_history::silver::models::{
+    PublicTransactionType, SilverTransferLegRow,
+};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct DirtyPublicGoldAccount {
@@ -13,46 +15,62 @@ pub struct DirtyPublicGoldAccount {
     pub recompute_from: Option<DateTime<Utc>>,
 }
 
+/// Absolute balances around one ledger movement, read from
+/// `silver_balance_history`. Gold no longer maintains its own running total —
+/// it stamps these onto events, so feed-hidden movements (sponsor top-ups,
+/// wraps) are still absorbed into the next visible event's balance_before.
+#[derive(Debug, Clone)]
+pub struct BalanceStamp {
+    pub balance_before: BigDecimal,
+    pub balance_after: BigDecimal,
+}
+
 #[derive(Debug, Clone, sqlx::FromRow)]
-pub struct GoldBalanceSeedRow {
-    pub asset: String,
-    pub balance: BigDecimal,
+pub struct BalanceStampRow {
+    pub entry_key: String,
+    pub token_standard: String,
+    pub receipt_id: Option<String>,
+    pub balance_before: BigDecimal,
+    pub balance_after: BigDecimal,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct GoldLedger {
-    balances: HashMap<String, BigDecimal>,
+#[derive(Debug, Default)]
+pub struct BalanceStamps {
+    /// FT/MT movements: ledger entry_key equals the silver leg_key.
+    by_entry_key: HashMap<String, BalanceStamp>,
+    /// Native movements are one-per-receipt in the ledger while silver may
+    /// hold one leg per action row, so native legs resolve via receipt_id.
+    by_receipt: HashMap<String, BalanceStamp>,
 }
 
-impl GoldLedger {
-    pub fn from_seed(rows: Vec<GoldBalanceSeedRow>) -> Self {
-        let balances = rows
-            .into_iter()
-            .map(|row| (row.asset, row.balance))
-            .collect();
-        Self { balances }
+impl BalanceStamps {
+    pub fn from_rows(rows: Vec<BalanceStampRow>) -> Self {
+        let mut stamps = Self::default();
+        for row in rows {
+            let stamp = BalanceStamp {
+                balance_before: row.balance_before,
+                balance_after: row.balance_after,
+            };
+            if row.token_standard == "native"
+                && let Some(receipt_id) = row.receipt_id
+            {
+                stamps.by_receipt.insert(receipt_id, stamp);
+                continue;
+            }
+            stamps.by_entry_key.insert(row.entry_key, stamp);
+        }
+        stamps
     }
 
-    pub fn apply_in(&mut self, token_id: &str, amount: &BigDecimal) -> (BigDecimal, BigDecimal) {
-        let before = self
-            .balances
-            .get(token_id)
-            .cloned()
-            .unwrap_or_else(|| BigDecimal::from(0));
-        let after = before.clone() + amount.clone();
-        self.balances.insert(token_id.to_string(), after.clone());
-        (before, after)
-    }
-
-    pub fn apply_out(&mut self, token_id: &str, amount: &BigDecimal) -> (BigDecimal, BigDecimal) {
-        let before = self
-            .balances
-            .get(token_id)
-            .cloned()
-            .unwrap_or_else(|| BigDecimal::from(0));
-        let after = before.clone() - amount.clone();
-        self.balances.insert(token_id.to_string(), after.clone());
-        (before, after)
+    pub fn for_leg(&self, leg: &SilverTransferLegRow) -> Option<BalanceStamp> {
+        if leg.token_standard == "native" {
+            leg.receipt_id
+                .as_deref()
+                .and_then(|receipt_id| self.by_receipt.get(receipt_id))
+                .cloned()
+        } else {
+            self.by_entry_key.get(&leg.leg_key).cloned()
+        }
     }
 }
 

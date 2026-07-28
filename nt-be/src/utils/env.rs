@@ -25,6 +25,14 @@ pub struct EnvVars {
     /// charts on their legacy paths; true enables Gold activity reads for
     /// ready DAOs and public balance-snapshot charts.
     pub public_history_medallion_reads: bool,
+    /// True serves public activity reads (balanceBefore/After as user-owned
+    /// balances) from `gold_treasury_ledger_events`. Public charts already
+    /// read that table under the medallion flag.
+    pub unified_gold_ledger_reads: bool,
+    /// Allowed absolute drift (in NEAR) between the bronze-derived native
+    /// ledger head and the on-chain balance before verification fails. Drift
+    /// within tolerance is absorbed by a hidden reconciliation rebase.
+    pub public_native_verification_tolerance_near: f64,
     pub monitor_interval_seconds: u64,
     pub telegram_bot_token: Option<String>,
     /// General notifications channel (user creation, treasury creation, etc.)
@@ -152,6 +160,16 @@ impl Default for EnvVars {
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
+            unified_gold_ledger_reads: std::env::var("UNIFIED_GOLD_LEDGER_READS")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            public_native_verification_tolerance_near: std::env::var(
+                "PUBLIC_NATIVE_VERIFICATION_TOLERANCE_NEAR",
+            )
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(0.1),
             monitor_interval_seconds: std::env::var("MONITOR_INTERVAL_SECONDS")
                 .ok()
                 .and_then(|s| s.parse().ok())

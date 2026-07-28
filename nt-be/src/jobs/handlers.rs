@@ -247,6 +247,7 @@ pub async fn public_silver_projection(
     let stats =
         crate::handlers::public_history::silver::worker::project_public_silver_for_dirty_accounts(
             &state.db_pool,
+            state.signer_id.as_str(),
         )
         .await?;
     // Silver only marks cursors dirty; the hourly sweeper batches every
@@ -263,54 +264,36 @@ pub async fn public_silver_projection(
     ))
 }
 
-/// Hourly refresh driver: seeds cursors for newly monitored DAOs, then
-/// enqueues one durable per-DAO payload for every buildable dirty cursor.
-pub async fn public_balance_snapshot_sweeper(
+/// On-chain verification of the public balance ledger: full-history gates
+/// for unverified DAOs, head drift checks for verified ones.
+pub async fn public_balance_verification(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let bootstrap =
-        crate::handlers::public_history::snapshots::repository::bootstrap_public_balance_snapshot_cursors(
-            &state.db_pool,
-        )
-        .await?;
-    let enqueued = crate::handlers::public_history::snapshots::jobs::enqueue_dirty_snapshot_jobs(
+    let verifier = crate::handlers::public_history::verification::BalanceVerifier::new(
         &state.db_pool,
-    )
-    .await?;
+        &state.archival_network,
+        state.env_vars.public_native_verification_tolerance_near,
+    );
+    let stats = verifier.run_cycle().await?;
     Ok(format!(
-        "bootstrapped={} enqueued={enqueued}",
-        bootstrap.cursors_seeded
+        "gates_run={} passed={} failed={} skipped_stale={} head_checks={} head_failed={} rebases={}",
+        stats.gates_run,
+        stats.gates_passed,
+        stats.gates_failed,
+        stats.gates_skipped_stale_watermark,
+        stats.head_checks_run,
+        stats.head_checks_failed,
+        stats.rebases_written,
     ))
 }
 
-/// Staking rewards accrue without on-chain events from the account, so DAOs
-/// holding staking assets are re-dirtied once per UTC day.
-pub async fn public_balance_snapshot_staking_refresh(
+/// Historical chart prices. Deliberately readiness-neutral: missing prices
+/// never make an otherwise authoritative balance dataset unready.
+pub async fn price_history_backfill(
     _t: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
-    let marked =
-        crate::handlers::public_history::snapshots::repository::mark_staking_holdings_dirty(
-            &state.db_pool,
-        )
-        .await?;
-    let enqueued = crate::handlers::public_history::snapshots::jobs::enqueue_dirty_snapshot_jobs(
-        &state.db_pool,
-    )
-    .await?;
-    Ok(format!("marked={marked} enqueued={enqueued}"))
-}
-
-/// Price repair is deliberately generation-neutral: missing historical
-/// prices never make an otherwise authoritative balance dataset unready.
-pub async fn public_balance_snapshot_usd_repair(
-    _t: Tick,
-    state: Data<Arc<AppState>>,
-) -> Result<String, BoxDynError> {
-    let mut outcomes = Vec::new();
-    let mut errors = Vec::new();
-
     let backfill = crate::services::HistoricalPriceBackfill::new(
         state.http_client.clone(),
         state.env_vars.defillama_api_base_url.clone(),
@@ -318,33 +301,11 @@ pub async fn public_balance_snapshot_usd_repair(
         Arc::clone(&state.token_price_service),
         state.defillama_limiter.clone(),
     );
-    match backfill.run().await {
-        Ok(summary) => outcomes.push(format!(
-            "prices_fetched={} prices=[{summary}]",
-            summary.rows_inserted
-        )),
-        Err(error) => errors.push(format!("price loading failed: {error}")),
-    }
-
-    match crate::handlers::public_history::snapshots::worker::repair_missing_public_snapshot_usd_values(
-        state.as_ref(),
-    )
-    .await
-    {
-        Ok(summary) => outcomes.push(format!("snapshots=[{summary}]")),
-        Err(error) => errors.push(format!("snapshot USD repair failed: {error}")),
-    }
-
-    if errors.is_empty() {
-        Ok(outcomes.join(" "))
-    } else {
-        Err(format!(
-            "{}; completed stages: {}",
-            errors.join("; "),
-            outcomes.join(" ")
-        )
-        .into())
-    }
+    let summary = backfill.run().await?;
+    Ok(format!(
+        "prices_fetched={} prices=[{summary}]",
+        summary.rows_inserted
+    ))
 }
 
 /// Public history gold projection for dirty accounts.

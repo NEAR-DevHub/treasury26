@@ -17,7 +17,6 @@ use crate::handlers::balance_changes::confidential_list;
 use crate::handlers::balance_changes::gap_filler;
 use crate::handlers::balance_changes::public_list;
 use crate::handlers::balance_changes::query_builder::*;
-use crate::handlers::public_history::gold::cursors::is_public_gold_projection_ready;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::utils::serde::comma_separated;
 use crate::{AppState, auth::OptionalAuthUser};
@@ -474,15 +473,16 @@ pub async fn get_balance_changes_internal(
 /// Resolve the public read source once for all API adapters. The environment
 /// variable is the manual global switch; accounts stay on legacy data until a
 /// fully caught-up gold projection publishes its durable readiness marker.
+/// One path per flag state, no per-account mixing: with medallion reads on,
+/// every public account reads the gold ledger — a not-yet-projected account
+/// serves an empty (soon-filled) history rather than silently switching to
+/// the legacy source with its different balance semantics. Flag off keeps
+/// everything on legacy.
 pub async fn should_read_public_history(
     state: &AppState,
-    account_id: &str,
+    _account_id: &str,
 ) -> Result<bool, sqlx::Error> {
-    if !state.env_vars.public_history_medallion_reads {
-        return Ok(false);
-    }
-
-    is_public_gold_projection_ready(&state.db_pool, account_id).await
+    Ok(state.env_vars.public_history_medallion_reads)
 }
 
 async fn fetch_legacy_balance_changes(

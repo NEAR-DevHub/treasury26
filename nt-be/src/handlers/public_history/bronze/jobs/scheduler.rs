@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 
 use super::worker::{
-    enqueue_backfill_page_job, enqueue_initial_snapshot_refresh_job, enqueue_latest_refresh_job,
+    enqueue_backfill_page_job, enqueue_preverification_refresh_job, enqueue_latest_refresh_job,
 };
 use crate::AppState;
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
@@ -16,8 +16,8 @@ const SCHEDULER_BATCH_SIZE: i64 = 2_000;
 const SCHEDULER_MAX_BATCHES: usize = 5;
 const BACKFILL_SEED_LIMIT_PER_SOURCE: i64 = 100;
 const CONSUMER_NAME: &str = "public_history_scheduler";
-const INITIAL_SNAPSHOT_REFRESH_PRIORITY: i32 = 100_000;
-/// Freshness window on `latest_refresh_at` before a dirty snapshot cursor
+const PREVERIFICATION_REFRESH_PRIORITY: i32 = 100_000;
+/// Freshness window on `latest_refresh_at` before an unverified account
 /// triggers another priority drain of the NearBlocks sources.
 pub const SOURCE_REFRESH_MAX_AGE_MINUTES: i64 = 15;
 /// Lag allowance subtracted from the finalized head when recording the
@@ -61,22 +61,22 @@ struct RefreshCandidate {
 }
 
 #[derive(Debug, sqlx::FromRow)]
-struct InitialSnapshotRefreshRow {
+struct PreverificationRefreshRow {
     account_id: String,
     source: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct InitialSnapshotRefreshCandidate {
+struct PreverificationRefreshCandidate {
     account_id: String,
     source: PublicHistorySource,
 }
 
-impl TryFrom<InitialSnapshotRefreshRow> for InitialSnapshotRefreshCandidate {
+impl TryFrom<PreverificationRefreshRow> for PreverificationRefreshCandidate {
     type Error =
         crate::handlers::public_history::bronze::store::models::PublicHistorySourceParseError;
 
-    fn try_from(row: InitialSnapshotRefreshRow) -> Result<Self, Self::Error> {
+    fn try_from(row: PreverificationRefreshRow) -> Result<Self, Self::Error> {
         Ok(Self {
             account_id: row.account_id,
             source: PublicHistorySource::from_db(&row.source)?,
@@ -85,10 +85,16 @@ impl TryFrom<InitialSnapshotRefreshRow> for InitialSnapshotRefreshCandidate {
 }
 
 async fn load_monitored_accounts(pool: &PgPool) -> Result<HashSet<String>, sqlx::Error> {
-    let accounts: Vec<String> =
-        sqlx::query_scalar("SELECT account_id FROM monitored_accounts WHERE enabled = true")
-            .fetch_all(pool)
-            .await?;
+    let accounts: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT account_id
+        FROM monitored_accounts
+        WHERE enabled = true
+          AND COALESCE(is_confidential_account, false) = false
+        "#,
+    )
+    .fetch_all(pool)
+    .await?;
     Ok(accounts.into_iter().collect())
 }
 
@@ -405,6 +411,7 @@ async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
               ON c.account_id = ma.account_id
              AND c.source = $1::public_history_source
             WHERE ma.enabled = true
+              AND COALESCE(ma.is_confidential_account, false) = false
               AND COALESCE(c.backfill_done, false) = false
             ORDER BY c.updated_at ASC NULLS FIRST, ma.account_id ASC
             LIMIT $2
@@ -424,28 +431,26 @@ async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
     Ok(enqueued)
 }
 
-/// Durably refresh every source once after the snapshot migration. The FT
-/// refresh repairs mint/burn events that could have been missed before the
-/// scheduler learned to classify those NEP-141 events; all three markers also
-/// provide the snapshot readiness coverage proof.
+/// Durably refresh every source for accounts that have not yet passed
+/// on-chain balance verification. A successful drain of all three sources
+/// writes `latest_refresh_at`/`latest_refresh_cutoff_block_height`, which is
+/// exactly the "bronze covered through block B" proof the verifier needs
+/// before comparing ledger balances against chain.
 ///
 /// The existing Apalis job key makes repeated scheduler cycles idempotent
-/// while a refresh is pending or retryable. A successful drain writes
-/// `latest_refresh_at`; the 15-minute freshness window prevents rapid
-/// re-enqueueing while still allowing a long initial build to refresh its
-/// verified provider-head marker.
-async fn load_initial_snapshot_refresh_candidates(
+/// while a refresh is pending or retryable. The 15-minute freshness window
+/// prevents rapid re-enqueueing while still allowing a long initial build to
+/// refresh its verified provider-head marker.
+async fn load_preverification_refresh_candidates(
     pool: &PgPool,
-) -> Result<Vec<InitialSnapshotRefreshCandidate>, Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<Vec<PreverificationRefreshCandidate>, Box<dyn std::error::Error + Send + Sync>> {
     let source_names = PublicHistorySource::all()
         .map(PublicHistorySource::as_str)
         .to_vec();
-    let rows: Vec<InitialSnapshotRefreshRow> = sqlx::query_as(
+    let rows: Vec<PreverificationRefreshRow> = sqlx::query_as(
         r#"
         SELECT ma.account_id, requested.source
         FROM monitored_accounts ma
-        JOIN public_balance_snapshot_cursors snapshot_cursor
-          ON snapshot_cursor.account_id = ma.account_id
         CROSS JOIN UNNEST($1::text[]) WITH ORDINALITY
           AS requested(source, source_order)
         LEFT JOIN bronze_public_history_cursors cursor
@@ -453,8 +458,12 @@ async fn load_initial_snapshot_refresh_candidates(
          AND cursor.source = requested.source::public_history_source
         WHERE ma.enabled = true
           AND COALESCE(ma.is_confidential_account, false) = false
-          AND snapshot_cursor.snapshot_dirty_generation
-                > snapshot_cursor.snapshot_applied_generation
+          AND NOT EXISTS (
+              SELECT 1
+              FROM public_balance_verification_cursors verification
+              WHERE verification.account_id = ma.account_id
+                AND verification.status = 'passed'
+          )
           AND (
               cursor.latest_refresh_at IS NULL
               OR cursor.latest_refresh_at
@@ -469,18 +478,18 @@ async fn load_initial_snapshot_refresh_candidates(
     .await?;
 
     rows.into_iter()
-        .map(InitialSnapshotRefreshCandidate::try_from)
+        .map(PreverificationRefreshCandidate::try_from)
         .collect::<Result<Vec<_>, _>>()
         .map_err(Into::into)
 }
 
-async fn seed_initial_snapshot_refresh_jobs(
+async fn seed_preverification_refresh_jobs(
     state: &AppState,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    // Keep each account's three sources adjacent in the queue. Snapshot
-    // readiness requires all three freshness markers at once, so source-major
+    // Keep each account's three sources adjacent in the queue. Verification
+    // requires all three freshness markers at once, so source-major
     // scheduling can never satisfy the freshness window on a rate-limited API.
-    let candidates = load_initial_snapshot_refresh_candidates(&state.db_pool).await?;
+    let candidates = load_preverification_refresh_candidates(&state.db_pool).await?;
 
     if candidates.is_empty() {
         return Ok(0);
@@ -488,8 +497,8 @@ async fn seed_initial_snapshot_refresh_jobs(
 
     // Every job in this seed pass carries the same lag-adjusted finalized
     // cutoff. A successful drain persists its preflight provider head, letting
-    // snapshot publication compare verified coverage with its own anchor.
-    let final_block = with_transport_retry("snapshot_refresh_final_block", || {
+    // the balance verifier compare verified coverage with its own anchor.
+    let final_block = with_transport_retry("preverification_refresh_final_block", || {
         Chain::block()
             .at(Reference::Final)
             .fetch_from(&state.archival_network)
@@ -501,8 +510,8 @@ async fn seed_initial_snapshot_refresh_jobs(
 
     let mut enqueued = 0;
     for (index, candidate) in candidates.into_iter().enumerate() {
-        let priority = INITIAL_SNAPSHOT_REFRESH_PRIORITY.saturating_sub(index as i32);
-        if enqueue_initial_snapshot_refresh_job(
+        let priority = PREVERIFICATION_REFRESH_PRIORITY.saturating_sub(index as i32);
+        if enqueue_preverification_refresh_job(
             &state.db_pool,
             candidate.account_id,
             candidate.source,
@@ -534,7 +543,7 @@ pub(crate) async fn run_public_history_detector_cycle(
 pub(crate) async fn run_public_history_readiness_scheduler_cycle(
     state: &AppState,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    seed_initial_snapshot_refresh_jobs(state).await
+    seed_preverification_refresh_jobs(state).await
 }
 
 pub(crate) async fn run_public_history_backfill_scheduler_cycle(
@@ -648,7 +657,7 @@ mod tests {
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn initial_snapshot_refreshes_are_loaded_account_first(pool: PgPool) {
+    async fn preverification_refreshes_are_loaded_account_first(pool: PgPool) {
         sqlx::query(
             r#"
             INSERT INTO monitored_accounts (
@@ -662,48 +671,35 @@ mod tests {
         .execute(&pool)
         .await
         .unwrap();
-        sqlx::query(
-            r#"
-            INSERT INTO public_balance_snapshot_cursors (
-                account_id, snapshot_dirty_generation
-            )
-            VALUES
-                ('b.sputnik-dao.near', 1),
-                ('a.sputnik-dao.near', 1)
-            "#,
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
 
-        let candidates = load_initial_snapshot_refresh_candidates(&pool)
+        let candidates = load_preverification_refresh_candidates(&pool)
             .await
             .unwrap();
 
         assert_eq!(
             candidates,
             vec![
-                InitialSnapshotRefreshCandidate {
+                PreverificationRefreshCandidate {
                     account_id: "a.sputnik-dao.near".to_string(),
                     source: PublicHistorySource::NearblocksFt,
                 },
-                InitialSnapshotRefreshCandidate {
+                PreverificationRefreshCandidate {
                     account_id: "a.sputnik-dao.near".to_string(),
                     source: PublicHistorySource::NearblocksMt,
                 },
-                InitialSnapshotRefreshCandidate {
+                PreverificationRefreshCandidate {
                     account_id: "a.sputnik-dao.near".to_string(),
                     source: PublicHistorySource::NearblocksReceipt,
                 },
-                InitialSnapshotRefreshCandidate {
+                PreverificationRefreshCandidate {
                     account_id: "b.sputnik-dao.near".to_string(),
                     source: PublicHistorySource::NearblocksFt,
                 },
-                InitialSnapshotRefreshCandidate {
+                PreverificationRefreshCandidate {
                     account_id: "b.sputnik-dao.near".to_string(),
                     source: PublicHistorySource::NearblocksMt,
                 },
-                InitialSnapshotRefreshCandidate {
+                PreverificationRefreshCandidate {
                     account_id: "b.sputnik-dao.near".to_string(),
                     source: PublicHistorySource::NearblocksReceipt,
                 },

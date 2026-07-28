@@ -385,42 +385,6 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
     }
 }
 
-/// Coalesces event-driven wakeups for a cron queue. Running work is not a
-/// substitute for the queued follow-up because it may already have scanned
-/// past rows committed by the caller.
-pub(crate) async fn push_now_if_not_queued(
-    pool: &PgPool,
-    queue: &'static str,
-) -> Result<bool, BoxDynError> {
-    let mut tx = pool.begin().await?;
-    sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
-        .bind(format!("apalis-cron-wakeup:{queue}"))
-        .execute(&mut *tx)
-        .await?;
-
-    let queued: bool = sqlx::query_scalar(
-        r#"
-        SELECT EXISTS (
-            SELECT 1
-            FROM apalis.jobs
-            WHERE job_type = $1
-              AND status IN ('Pending', 'Queued')
-        )
-        "#,
-    )
-    .bind(queue)
-    .fetch_one(&mut *tx)
-    .await?;
-    if queued {
-        tx.commit().await?;
-        return Ok(false);
-    }
-
-    let mut sink = storage(pool, queue);
-    sink.push(Tick::new(chrono::Utc::now())).await?;
-    tx.commit().await?;
-    Ok(true)
-}
 
 /// Registers a queue and, when a monitor is present, its cron worker:
 /// schedule → postgres queue → handler.
@@ -629,28 +593,20 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
-            "public-balance-snapshot-sweeper",
+            "public-balance-verification",
             schedule_every_secs(env_secs(
-                "PUBLIC_BALANCE_SNAPSHOT_REFRESH_INTERVAL_SECONDS",
-                3600
+                "PUBLIC_BALANCE_VERIFICATION_INTERVAL_SECONDS",
+                300
             )),
-            handlers::public_balance_snapshot_sweeper
+            handlers::public_balance_verification
         );
         monitor = register_cron_worker!(
             monitor,
             queues,
             state,
-            "public-balance-snapshot-staking-refresh",
-            Schedule::from_str("0 1 0 * * *").expect("valid cron"),
-            handlers::public_balance_snapshot_staking_refresh
-        );
-        monitor = register_cron_worker!(
-            monitor,
-            queues,
-            state,
-            "public-balance-snapshot-usd-repair",
+            "price-history-backfill",
             schedule_every_secs(3600),
-            handlers::public_balance_snapshot_usd_repair
+            handlers::price_history_backfill
         );
     } else {
         if preparing_queues {
@@ -902,11 +858,6 @@ fn prepare_job_queues(state: Arc<AppState>) -> (JobQueues, Vec<watchdog::JobSpec
                     kind: watchdog::QueueKind::Queue,
                 }),
         );
-        registry.specs.push(watchdog::JobSpec {
-            queue:
-                crate::handlers::public_history::snapshots::jobs::PUBLIC_BALANCE_SNAPSHOT_NAMESPACE,
-            kind: watchdog::QueueKind::Queue,
-        });
     }
 
     let QueueRegistry { entries, specs } = registry;
@@ -927,15 +878,14 @@ fn build_cron_runtime(state: Arc<AppState>, queues: JobQueues) -> (Monitor, JobQ
     )
 }
 
-const STARTUP_QUEUES: [&str; 8] = [
+const STARTUP_QUEUES: [&str; 7] = [
     "confidential-gold-reconciliation",
     "subscription-monthly-reset",
     "public-dashboard-refresh",
     "ft-lockup-refresh",
     "balance-changes-usd-backfill",
     "gold-usd-enrichment",
-    "public-balance-snapshot-sweeper",
-    "public-balance-snapshot-usd-repair",
+    "price-history-backfill",
 ];
 
 async fn push_startup_tasks(queues: &JobQueues, pool: &PgPool) {
@@ -1022,19 +972,11 @@ async fn run_leader_runtime(
     }
 
     let liveness_pool = state.db_pool.clone();
-    let mut payload_consumers =
+    let payload_consumers =
         crate::handlers::public_history::bronze::jobs::public_history_queue_worker_futures(
             state.clone(),
             shutdown.clone(),
         );
-    if state.env_vars.nearblocks_api_key.is_some() {
-        payload_consumers.push(
-            crate::handlers::public_history::snapshots::jobs::snapshot_queue_worker_future(
-                state,
-                shutdown.clone(),
-            ),
-        );
-    }
     let mut consumer_futures: FuturesUnordered<_> = payload_consumers.into_iter().collect();
 
     let mut children = tokio::task::JoinSet::new();
@@ -1089,11 +1031,6 @@ pub async fn spawn_all(
     crate::handlers::public_history::bronze::jobs::setup_public_history_queue_workers(&state)
         .await
         .expect("failed to set up public history queue workers");
-    crate::handlers::public_history::snapshots::jobs::setup_public_balance_snapshot_jobs(
-        &state.db_pool,
-    )
-    .await
-    .expect("failed to set up public balance snapshot queue worker");
 
     let (queues, watchdog_specs) = prepare_job_queues(state.clone());
     watchdog::install(watchdog_specs);
@@ -1228,9 +1165,6 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
         {
             api = api.register(store);
         }
-        api = api.register(
-            crate::handlers::public_history::snapshots::jobs::board_storage(state.db_pool.clone()),
-        );
     }
 
     // The board registers an `/api/v1/events` SSE route (apalis-board's
@@ -1301,20 +1235,20 @@ mod tests {
     }
 
     #[test]
-    fn snapshot_usd_repair_runs_at_startup_once() {
+    fn price_history_backfill_runs_at_startup_once() {
         assert_eq!(
             STARTUP_QUEUES
                 .iter()
-                .filter(|queue| **queue == "public-balance-snapshot-usd-repair")
+                .filter(|queue| **queue == "price-history-backfill")
                 .count(),
             1
         );
     }
 
     #[sqlx::test(migrations = "./migrations")]
-    async fn snapshot_usd_startup_wakeup_deduplicates_active_job(pool: sqlx::PgPool) {
+    async fn price_backfill_startup_wakeup_deduplicates_active_job(pool: sqlx::PgPool) {
         super::setup_apalis(&pool).await.unwrap();
-        let queue = "public-balance-snapshot-usd-repair";
+        let queue = "price-history-backfill";
         let queues = super::JobQueues {
             entries: vec![(queue, super::storage(&pool, queue))],
         };

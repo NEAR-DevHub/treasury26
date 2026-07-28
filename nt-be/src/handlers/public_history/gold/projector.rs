@@ -11,13 +11,13 @@ use super::cursors::{
     ensure_gold_projection_scheduled_tx, has_public_history_projection_errors,
 };
 use super::models::{
-    GoldLedger, GoldProjectionCycleStats, GoldProjectionResult, GoldPublicHistoryEvent,
-    PublicHistoryEventStatus,
+    BalanceStamp, BalanceStamps, GoldProjectionCycleStats, GoldProjectionResult,
+    GoldPublicHistoryEvent, PublicHistoryEventStatus,
 };
 use super::repository::{
     clear_projection_error, delete_stale_gold_rows, earliest_pending_exchange_time,
-    earliest_silver_time, has_gold_before, load_dirty_accounts, load_silver_suffix,
-    seed_ledger_before, upsert_gold_event, upsert_projection_error,
+    earliest_silver_time, has_gold_before, load_balance_stamps, load_dirty_accounts,
+    load_silver_suffix, upsert_gold_event, upsert_projection_error,
     widen_for_overlapping_completed_exchanges,
 };
 use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
@@ -212,9 +212,16 @@ fn leg_kind(leg: &SilverTransferLegRow) -> Result<PublicTransferLegKind, String>
 
 /// Native NEAR movements that are relayer/protocol noise, never real
 /// treasury activity: proposal-storage top-ups & bonds fronted by the
-/// sponsor, the initial DAO creation funding receipt, and gas-fee rewards
+/// sponsor, the platform-funded DAO creation receipt, and gas-fee rewards
 /// credited by `system`. Hidden from the public history feed to match
 /// `balance_changes`.
+///
+/// Must stay in lockstep with the ledger's ownership deny-list
+/// (`silver::balance_history::ownership`): the sponsor is the environment's
+/// `SIGNER_ID` (threaded as `relayer_account`, never a hardcoded list), and
+/// creation deposits above `MAX_PLATFORM_CREATION_DEPOSIT_YOCTO` are founder
+/// capital that stays visible as a real deposit. If the two rule sets drift,
+/// history shows movements the balance excludes (or vice versa).
 fn is_noise_native_movement(leg: &SilverTransferLegRow, relayer_account: &str) -> bool {
     if leg.token_standard != "native" {
         return false;
@@ -266,6 +273,15 @@ fn receipt_signer_is_relayer_if_present(receipt: &Value, relayer_account: &str) 
 
 fn is_treasury_creation_native_deposit(leg: &SilverTransferLegRow, relayer_account: &str) -> bool {
     if leg.direction != PublicTransferDirection::Incoming.as_str() {
+        return false;
+    }
+    // Creation deposits above the platform's fixed funding amount are founder
+    // capital and stay visible as real deposits.
+    if leg.amount_raw
+        > bigdecimal::BigDecimal::from(
+            crate::handlers::public_history::silver::balance_history::ownership::MAX_PLATFORM_CREATION_DEPOSIT_YOCTO,
+        )
+    {
         return false;
     }
     let Some(receipt) = leg.raw_payload.get("receipt") else {
@@ -551,10 +567,25 @@ fn plan_exchange_pairs(
 /// value. Historical lookup is deliberately outside this constructor and is
 /// handled by asynchronous enrichment. Exchange events keep their exact
 /// quote-provided USD values in the dedicated constructors below.
+/// The ledger stamp for a visible leg. A missing stamp on a non-synthetic
+/// leg means the balance ledger and the transfer legs disagree — that must
+/// surface as a projection error blocking readiness, never as a NULL balance.
+fn required_stamp_for_leg(
+    stamps: &BalanceStamps,
+    leg: &SilverTransferLegRow,
+) -> Result<BalanceStamp, String> {
+    stamps.for_leg(leg).ok_or_else(|| {
+        format!(
+            "no balance ledger entry for leg {} (token {})",
+            leg.leg_key, leg.token_id
+        )
+    })
+}
+
 fn public_gold_event_from_leg(
     leg: &SilverTransferLegRow,
     quote: Option<&ParsedQuoteMetadata>,
-    ledger: &mut GoldLedger,
+    stamps: &BalanceStamps,
     amount_usd: Option<BigDecimal>,
     relayer_account: &str,
 ) -> Result<Option<GoldPublicHistoryEvent>, String> {
@@ -568,7 +599,10 @@ fn public_gold_event_from_leg(
 
     match direction {
         PublicTransferDirection::Incoming => {
-            let (before, after) = ledger.apply_in(&leg.token_id, &leg.amount);
+            let BalanceStamp {
+                balance_before: before,
+                balance_after: after,
+            } = required_stamp_for_leg(stamps, leg)?;
             Ok(Some(GoldPublicHistoryEvent {
                 gold_event_key,
                 primary_transfer_leg_id: leg.id,
@@ -612,8 +646,8 @@ fn public_gold_event_from_leg(
             {
                 (None, None)
             } else {
-                let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
-                (Some(before), Some(after))
+                let stamp = required_stamp_for_leg(stamps, leg)?;
+                (Some(stamp.balance_before), Some(stamp.balance_after))
             };
             let recipient = outgoing_recipient(quote_payment.as_ref(), leg);
             let status = if quote_payment.is_some() {
@@ -728,17 +762,19 @@ fn completed_exchange_event_from_legs(
     pending: &PendingExchange,
     incoming: &SilverTransferLegRow,
     quote: Option<&ParsedQuoteMetadata>,
-    ledger: &mut GoldLedger,
-) -> GoldPublicHistoryEvent {
+    stamps: &BalanceStamps,
+) -> Result<GoldPublicHistoryEvent, String> {
     let outgoing = &pending.outgoing;
-    let (token_in_balance_before, token_in_balance_after) =
-        ledger.apply_in(&incoming.token_id, &incoming.amount);
+    let BalanceStamp {
+        balance_before: token_in_balance_before,
+        balance_after: token_in_balance_after,
+    } = required_stamp_for_leg(stamps, incoming)?;
     let status_quote = quote.and_then(|quote| quote.status.as_ref());
     let amount_in_usd = status_quote.and_then(|quote| quote.amount_received_usd.clone());
     let amount_out_usd = status_quote.and_then(|quote| quote.amount_sent_usd.clone());
     let usd_change = quote_usd_change(status_quote);
 
-    GoldPublicHistoryEvent {
+    Ok(GoldPublicHistoryEvent {
         gold_event_key: format!("silver-leg:{}", outgoing.leg_key),
         primary_transfer_leg_id: outgoing.id,
         counter_transfer_leg_id: Some(incoming.id),
@@ -776,7 +812,7 @@ fn completed_exchange_event_from_legs(
             "outgoing_leg": outgoing.raw_payload.clone(),
             "incoming_leg": incoming.raw_payload.clone(),
         }),
-    }
+    })
 }
 
 async fn persist_completed_exchange(
@@ -784,7 +820,7 @@ async fn persist_completed_exchange(
     pending: PendingExchange,
     incoming: &SilverTransferLegRow,
     quote_by_proposal_ref: &HashMap<i64, ParsedQuoteMetadata>,
-    ledger: &mut GoldLedger,
+    stamps: &BalanceStamps,
     preserve_keys: &mut HashSet<String>,
     stats: &mut GoldProjectionResult,
 ) -> Result<(), sqlx::Error> {
@@ -793,12 +829,21 @@ async fn persist_completed_exchange(
         .proposal_ref
         .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
     let outgoing_id = pending.outgoing.id;
-    let event = completed_exchange_event_from_legs(&pending, incoming, quote, ledger);
-    preserve_keys.insert(event.gold_event_key.clone());
-    upsert_gold_event(tx, &event).await?;
-    clear_projection_error(tx, outgoing_id).await?;
-    clear_projection_error(tx, incoming.id).await?;
-    stats.rows_projected += 1;
+    let account_id = pending.outgoing.account_id.clone();
+    match completed_exchange_event_from_legs(&pending, incoming, quote, stamps) {
+        Ok(event) => {
+            preserve_keys.insert(event.gold_event_key.clone());
+            upsert_gold_event(tx, &event).await?;
+            clear_projection_error(tx, outgoing_id).await?;
+            clear_projection_error(tx, incoming.id).await?;
+            stats.rows_projected += 1;
+        }
+        Err(reason) => {
+            upsert_projection_error(tx, incoming.id, &account_id, &reason, &incoming.raw_payload)
+                .await?;
+            stats.errors_written += 1;
+        }
+    }
     Ok(())
 }
 
@@ -895,8 +940,7 @@ pub async fn project_public_gold_for_account(
     }
     let recompute_from = widened_recompute_from;
 
-    let seed_rows = seed_ledger_before(&mut tx, account_id, recompute_from).await?;
-    let mut ledger = GoldLedger::from_seed(seed_rows);
+    let stamps = load_balance_stamps(&mut tx, account_id, recompute_from).await?;
     let rows = load_silver_suffix(&mut tx, account_id, recompute_from).await?;
     let quote_by_proposal_ref = build_quote_map(&rows);
     let exchange_pairs = match plan_exchange_pairs(&rows, relayer_account) {
@@ -928,8 +972,21 @@ pub async fn project_public_gold_for_account(
                 if is_synthetic_quote_leg(&leg) {
                     (None, None)
                 } else {
-                    let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
-                    (Some(before), Some(after))
+                    match required_stamp_for_leg(&stamps, &leg) {
+                        Ok(stamp) => (Some(stamp.balance_before), Some(stamp.balance_after)),
+                        Err(reason) => {
+                            upsert_projection_error(
+                                &mut tx,
+                                leg.id,
+                                account_id,
+                                &reason,
+                                &leg.raw_payload,
+                            )
+                            .await?;
+                            stats.errors_written += 1;
+                            continue;
+                        }
+                    }
                 };
             let pending = PendingExchange {
                 outgoing: leg.clone(),
@@ -947,7 +1004,7 @@ pub async fn project_public_gold_for_account(
                         pending,
                         &incoming,
                         &quote_by_proposal_ref,
-                        &mut ledger,
+                        &stamps,
                         &mut preserve_keys,
                         &mut stats,
                     )
@@ -984,7 +1041,7 @@ pub async fn project_public_gold_for_account(
                     pending,
                     &leg,
                     &quote_by_proposal_ref,
-                    &mut ledger,
+                    &stamps,
                     &mut preserve_keys,
                     &mut stats,
                 )
@@ -999,7 +1056,7 @@ pub async fn project_public_gold_for_account(
         let amount_usd = token_prices
             .latest_price_for_recent_event(&leg.token_id, event_time)
             .map(|price| &leg.amount * price);
-        match public_gold_event_from_leg(&leg, quote, &mut ledger, amount_usd, relayer_account) {
+        match public_gold_event_from_leg(&leg, quote, &stamps, amount_usd, relayer_account) {
             Ok(Some(event)) => {
                 preserve_keys.insert(event.gold_event_key.clone());
                 upsert_gold_event(&mut tx, &event).await?;
@@ -1021,7 +1078,9 @@ pub async fn project_public_gold_for_account(
     stats.rows_deleted =
         delete_stale_gold_rows(&mut tx, account_id, recompute_from, &preserve_keys).await?;
 
-    super::repository::reconcile_latest_gold_balances(&mut tx, account_id).await?;
+    // Dual-projection: mirror the recomputed window into the unified ledger
+    // table inside the same transaction, so both read paths stay consistent.
+    super::unified::sync_unified_for_account(&mut tx, account_id, recompute_from).await?;
 
     let has_projection_errors = has_public_history_projection_errors(&mut tx, account_id).await?;
     if stats.errors_written == 0 && !has_projection_errors {
@@ -1099,6 +1158,7 @@ mod tests {
     use crate::handlers::public_history::bronze::store::{
         PublicHistorySource, save_public_backfill_progress,
     };
+    use crate::handlers::public_history::gold::models::BalanceStampRow;
     use crate::handlers::public_history::gold::cursors::{
         is_public_gold_projection_ready, mark_gold_dirty,
     };
@@ -1129,7 +1189,7 @@ mod tests {
         // A successful no-op silver pass still has to schedule gold validation
         // because marking silver dirty invalidated the prior readiness marker.
         mark_silver_dirty(&pool, account_id, None).await?;
-        project_public_silver_for_account(&pool, account_id).await?;
+        project_public_silver_for_account(&pool, account_id, TEST_RELAYER_ACCOUNT).await?;
         let gold_dirty_after_noop_silver: bool = sqlx::query_scalar(
             "SELECT gold_dirty_since IS NOT NULL FROM gold_public_history_cursors WHERE account_id = $1",
         )
@@ -1254,8 +1314,9 @@ mod tests {
             .await?;
         assert!(is_public_gold_projection_ready(&pool, account_id).await?);
 
-        let transfer_leg_id: i64 = sqlx::query_scalar(
-            r#"
+        let (transfer_leg_id, leg_block_time): (i64, chrono::DateTime<chrono::Utc>) =
+            sqlx::query_as(
+                r#"
             INSERT INTO silver_public_transfer_legs (
                 account_id,
                 leg_key,
@@ -1278,12 +1339,33 @@ mod tests {
                 'nep141', 'token.near', 'incoming', 'alice.near', 1, 1, 0,
                 'transfer', '{}'
             )
-            RETURNING id
+            RETURNING id, block_time
+            "#,
+            )
+            .bind(account_id)
+            .bind(source_event_id)
+            .fetch_one(&pool)
+            .await?;
+        // Gold stamps balances from the ledger, so a visible leg must have a
+        // matching ledger entry or projection (correctly) errors.
+        sqlx::query(
+            r#"
+            INSERT INTO silver_balance_history (
+                account_id, asset, token_standard, entry_key, source,
+                source_event_id, block_height, block_time, intra_block_seq,
+                delta_raw, delta, decimals, balance_before, balance_after,
+                affects_user_balance, user_balance_after
+            )
+            VALUES (
+                $1, 'token.near', 'nep141', 'projection-readiness-leg',
+                'nearblocks_ft', $2, 1, $3, 0, 1, 1, 0, 0, 1, TRUE, 1
+            )
             "#,
         )
         .bind(account_id)
         .bind(source_event_id)
-        .fetch_one(&pool)
+        .bind(leg_block_time)
+        .execute(&pool)
         .await?;
         sqlx::query(
             r#"
@@ -1522,42 +1604,72 @@ mod tests {
         assert!(is_projectable_transfer(&row, TEST_RELAYER_ACCOUNT).unwrap());
     }
 
+    fn stamps_for(entries: &[(&SilverTransferLegRow, &str, &str)]) -> BalanceStamps {
+        BalanceStamps::from_rows(
+            entries
+                .iter()
+                .map(|(leg, before, after)| BalanceStampRow {
+                    entry_key: leg.leg_key.clone(),
+                    token_standard: leg.token_standard.clone(),
+                    receipt_id: leg.receipt_id.clone(),
+                    balance_before: decimal(before),
+                    balance_after: decimal(after),
+                })
+                .collect(),
+        )
+    }
+
     #[test]
     fn ordinary_transfer_projection_defers_usd_enrichment() {
         let incoming = leg("nep141", Some("alice.near"), "5");
-        let mut ledger = GoldLedger::default();
+        let stamps = stamps_for(&[(&incoming, "0", "5")]);
         let deposit =
-            public_gold_event_from_leg(&incoming, None, &mut ledger, None, TEST_RELAYER_ACCOUNT)
+            public_gold_event_from_leg(&incoming, None, &stamps, None, TEST_RELAYER_ACCOUNT)
                 .expect("valid deposit")
                 .expect("projectable deposit");
         assert_eq!(deposit.amount_in, Some(decimal("5")));
         assert_eq!(deposit.amount_in_usd, None);
+        assert_eq!(deposit.token_in_balance_before, Some(decimal("0")));
+        assert_eq!(deposit.token_in_balance_after, Some(decimal("5")));
 
         let mut outgoing = incoming;
         outgoing.direction = "outgoing".to_string();
         outgoing.counterparty = Some("bob.near".to_string());
-        let sent =
-            public_gold_event_from_leg(&outgoing, None, &mut ledger, None, TEST_RELAYER_ACCOUNT)
-                .expect("valid send")
-                .expect("projectable send");
+        let stamps = stamps_for(&[(&outgoing, "5", "0")]);
+        let sent = public_gold_event_from_leg(&outgoing, None, &stamps, None, TEST_RELAYER_ACCOUNT)
+            .expect("valid send")
+            .expect("projectable send");
         assert_eq!(sent.amount_out, Some(decimal("5")));
         assert_eq!(sent.amount_out_usd, None);
+        assert_eq!(sent.token_out_balance_after, Some(decimal("0")));
     }
 
     #[test]
     fn ordinary_transfer_projection_uses_resolved_current_usd() {
         let incoming = leg("nep141", Some("alice.near"), "5");
-        let mut ledger = GoldLedger::default();
+        let stamps = stamps_for(&[(&incoming, "0", "5")]);
         let deposit = public_gold_event_from_leg(
             &incoming,
             None,
-            &mut ledger,
+            &stamps,
             Some(decimal("17.5")),
             TEST_RELAYER_ACCOUNT,
         )
         .expect("valid deposit")
         .expect("projectable deposit");
         assert_eq!(deposit.amount_in_usd, Some(decimal("17.5")));
+    }
+
+    #[test]
+    fn missing_stamp_on_real_leg_is_projection_error() {
+        let incoming = leg("nep141", Some("alice.near"), "5");
+        let stamps = BalanceStamps::default();
+
+        let error =
+            public_gold_event_from_leg(&incoming, None, &stamps, None, TEST_RELAYER_ACCOUNT)
+                .expect_err("missing ledger entry must not project silently");
+
+        assert!(error.contains("no balance ledger entry"));
     }
 
     #[test]
@@ -1683,7 +1795,7 @@ mod tests {
             plan_exchange_pairs(&rows, TEST_RELAYER_ACCOUNT).expect("exchange pair plan");
         let mut pending_exchanges: HashMap<i64, PendingExchange> = HashMap::new();
         let mut deferred_incoming: HashMap<i64, SilverTransferLegRow> = HashMap::new();
-        let mut ledger = GoldLedger::default();
+        let stamps = stamps_for(&[(&outgoing, "1", "0"), (&incoming, "0", "2")]);
         let mut emitted = Vec::new();
 
         for leg in rows {
@@ -1692,11 +1804,11 @@ mod tests {
                 .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
             if is_quote_matched_exchange_deposit(&leg, quote, TEST_RELAYER_ACCOUNT).unwrap_or(false)
             {
-                let (before, after) = ledger.apply_out(&leg.token_id, &leg.amount);
+                let stamp = stamps.for_leg(&leg).expect("outgoing stamp");
                 let pending = PendingExchange {
                     outgoing: leg.clone(),
-                    token_out_balance_before: Some(before),
-                    token_out_balance_after: Some(after),
+                    token_out_balance_before: Some(stamp.balance_before),
+                    token_out_balance_after: Some(stamp.balance_after),
                 };
                 pending_exchanges.insert(leg.id, pending);
                 if let Some(incoming) = deferred_incoming.remove(&leg.id)
@@ -1707,7 +1819,8 @@ mod tests {
                         .proposal_ref
                         .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
                     let event =
-                        completed_exchange_event_from_legs(&pending, &incoming, quote, &mut ledger);
+                        completed_exchange_event_from_legs(&pending, &incoming, quote, &stamps)
+                            .expect("completed exchange event");
                     emitted.push(event.transaction_type.as_str());
                 }
                 continue;
@@ -1719,8 +1832,8 @@ mod tests {
                         .outgoing
                         .proposal_ref
                         .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
-                    let event =
-                        completed_exchange_event_from_legs(&pending, &leg, quote, &mut ledger);
+                    let event = completed_exchange_event_from_legs(&pending, &leg, quote, &stamps)
+                        .expect("completed exchange event");
                     emitted.push(event.transaction_type.as_str());
                 } else {
                     deferred_incoming.insert(*outgoing_id, leg);

@@ -55,6 +55,37 @@ pub async fn validate_staking_pool_at_block(
     }
 }
 
+/// Gross native balance (`total`, storage stake NOT subtracted) at an exact
+/// block. The bronze-derived ledger tracks the account's total owned NEAR,
+/// so verification must compare against the same quantity — the display
+/// reader's `total - storage_locked` would show storage-sized phantom drift.
+pub async fn get_public_gross_native_balance_at_block(
+    network: &NetworkConfig,
+    account_id: &str,
+    block_height: u64,
+) -> Result<BigDecimal, String> {
+    use near_api::{AccountId, Reference, Tokens};
+    use std::str::FromStr;
+
+    let account_id = AccountId::from_str(account_id).map_err(|error| error.to_string())?;
+    match with_transport_retry("near_gross_balance", || {
+        Tokens::account(account_id.clone())
+            .near_balance()
+            .at(Reference::AtBlock(block_height))
+            .fetch_from(network)
+    })
+    .await
+    {
+        Ok(balance) => {
+            let yocto = BigDecimal::from_str(&balance.total.as_yoctonear().to_string())
+                .map_err(|error| error.to_string())?;
+            Ok(yocto / BigDecimal::from_str("1000000000000000000000000").expect("1e24"))
+        }
+        Err(error) if is_proven_nonexistence(&error.to_string()) => Ok(BigDecimal::from(0)),
+        Err(error) => Err(error.to_string()),
+    }
+}
+
 pub async fn get_public_balance_at_block(
     pool: &PgPool,
     network: &NetworkConfig,

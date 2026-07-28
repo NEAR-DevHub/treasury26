@@ -377,6 +377,91 @@ fn build_intents_tokens(
 
 pub const MIN_NEAR_DISPLAY_BALANCE: NearToken = NearToken::from_millinear(1);
 
+/// Override live NEAR/FT/intents balances with the verified ledger's
+/// user-owned balances (`gold_treasury_ledger_events`), so the dashboard's
+/// current balance is definitionally the chart's latest point. Applies only
+/// when unified reads are enabled and the account's ledger is projection-
+/// ready and chain-verified; any failure leaves the live values untouched.
+async fn apply_ledger_balances(
+    state: &Arc<AppState>,
+    account: &AccountId,
+    tokens: &mut [(SimplifiedToken, U128)],
+) {
+    use crate::handlers::balance_changes::public_list;
+    use crate::handlers::public_history::charts::repository::load_chart_readiness;
+    use crate::handlers::user::assets::TokenResidency;
+
+    if !state.env_vars.unified_gold_ledger_reads {
+        return;
+    }
+    let ready = match load_chart_readiness(&state.db_pool, account.as_str()).await {
+        Ok(readiness) => readiness.projection_ready && readiness.verification_passed,
+        Err(error) => {
+            tracing::warn!(account = %account, %error, "ledger readiness check failed; keeping live balances");
+            return;
+        }
+    };
+    if !ready {
+        return;
+    }
+
+    let ledger = match public_list::load_prior_balances(
+        &state.db_pool,
+        account.as_str(),
+        chrono::Utc::now(),
+        None,
+        true,
+    )
+    .await
+    {
+        Ok(balances) => balances,
+        Err(error) => {
+            tracing::warn!(account = %account, %error, "ledger balance load failed; keeping live balances");
+            return;
+        }
+    };
+
+    for (token, raw_balance) in tokens.iter_mut() {
+        let ledger_value = match token.residency {
+            TokenResidency::Near => ledger.get("near"),
+            TokenResidency::Ft => token
+                .contract_id
+                .as_deref()
+                .and_then(|contract| ledger.get(contract)),
+            TokenResidency::Intents => ledger.get(&token.id).or_else(|| {
+                (!token.id.starts_with("intents.near:"))
+                    .then(|| ledger.get(&format!("intents.near:{}", token.id)))
+                    .flatten()
+            }),
+            _ => None,
+        };
+        let Some(ledger_value) = ledger_value else {
+            continue;
+        };
+        if ledger_value.sign() == bigdecimal::num_bigint::Sign::Minus {
+            continue;
+        }
+
+        let scale = (0..token.decimals).fold(BigDecimal::from(1u32), |acc, _| {
+            acc * BigDecimal::from(10u32)
+        });
+        let Some(mut raw) = (ledger_value * &scale).with_scale(0).to_u128() else {
+            continue;
+        };
+        if matches!(token.residency, TokenResidency::Near)
+            && raw < MIN_NEAR_DISPLAY_BALANCE.as_yoctonear()
+        {
+            raw = 0;
+        }
+
+        token.balance = Balance::Standard {
+            total: raw.to_string(),
+            locked: "0".to_string(),
+        };
+        *raw_balance = raw.into();
+    }
+}
+
 /// Fetch NEAR balance for an account
 pub async fn fetch_near_balance(
     state: &Arc<AppState>,
@@ -804,6 +889,12 @@ pub async fn compute_user_assets(
             },
             near_bal.balance,
         ));
+    }
+
+    // Verified public treasuries serve the same user-owned balances the
+    // chart's latest point shows; live reads stay for everything else.
+    if !is_confidential {
+        apply_ledger_balances(state, account, &mut all_simplified_tokens).await;
     }
 
     // Sort combined list by balance (highest first)

@@ -8,10 +8,8 @@ use chrono::{DateTime, NaiveDate, Utc};
 use super::grid::{
     DAILY_BUCKET_LIMIT, SnapshotGridInterval, WEEKLY_BUCKET_LIMIT, bucket_count, requested_grid,
 };
-use super::models::SnapshotChartRow;
-use super::repository::{
-    earliest_snapshot_block_time, latest_snapshot_block_time, load_chart_rows, load_snapshot_cursor,
-};
+use super::models::{ChartReadiness, GoldBalancePoint};
+use super::repository::{load_chart_readiness, load_gold_balance_points};
 use crate::AppState;
 use crate::services::public_balance_reader::{
     BalanceSnapshot, ChartMeta, ChartResponse, ChartStatus, Interval,
@@ -20,8 +18,8 @@ use crate::services::public_balance_reader::{
 const INTENTS_PREFIX: &str = "intents.near:";
 const NEP245_PREFIX: &str = "nep245:";
 
-/// Keep the existing frontend token-id contract while snapshot storage uses
-/// canonical NEP-245 IDs internally.
+/// Keep the existing frontend token-id contract while gold stores canonical
+/// NEP-245 IDs internally.
 fn chart_asset_id(asset: &str) -> String {
     if asset.starts_with(NEP245_PREFIX) {
         format!("{INTENTS_PREFIX}{asset}")
@@ -43,7 +41,7 @@ fn chart_interval(interval: &Interval) -> Result<SnapshotGridInterval, (StatusCo
         Interval::Weekly => Ok(SnapshotGridInterval::Weekly),
         Interval::Hourly | Interval::Monthly => Err((
             StatusCode::BAD_REQUEST,
-            "public snapshot charts support daily and weekly intervals only".to_string(),
+            "public charts support daily and weekly intervals only".to_string(),
         )),
     }
 }
@@ -56,26 +54,21 @@ fn bucket_count_is_valid(bucket_count: usize, interval: SnapshotGridInterval) ->
     bucket_count <= maximum
 }
 
-fn unavailable_response(
-    applied_at: Option<DateTime<Utc>>,
-    last_snapshot_at: Option<DateTime<Utc>>,
-    coverage_start: Option<DateTime<Utc>>,
-) -> ChartResponse {
+fn unavailable_response(readiness: &ChartReadiness) -> ChartResponse {
     ChartResponse {
         data: HashMap::new(),
-        last_synced_at: applied_at,
+        last_synced_at: readiness.projection_ready_at,
         chart_meta: Some(ChartMeta {
             status: ChartStatus::Unavailable,
-            last_snapshot_at,
-            coverage_start,
+            last_snapshot_at: readiness.ledger_head_time,
+            coverage_start: readiness.ledger_coverage_start,
         }),
     }
 }
 
 /// Bucket-time USD prices for every (stored asset, bucket) pair: the stored
 /// 5-minute series first (same-day constrained), the daily EOD cache as the
-/// historical fallback. Native and staking assets resolve through the same
-/// canonical mapping to the NEAR price.
+/// historical fallback.
 struct BucketPrices {
     minute_grid: HashMap<(String, DateTime<Utc>), BigDecimal>,
     eod_by_asset: HashMap<String, HashMap<NaiveDate, f64>>,
@@ -134,10 +127,42 @@ impl BucketPrices {
     }
 }
 
-/// Snapshot-only public chart builder. Callers choose this entry point only
+/// Per-asset carry-forward over the requested grid: each bucket takes the
+/// latest balance-bearing gold leg at or before it. Buckets before an
+/// asset's first point emit nothing — missing history is never zero. Points
+/// arrive in chain chronology, so one forward pass per asset covers all
+/// buckets.
+fn carry_forward_balances(
+    points: Vec<GoldBalancePoint>,
+    buckets: &[DateTime<Utc>],
+) -> Vec<(String, DateTime<Utc>, BigDecimal)> {
+    let mut points_per_asset: HashMap<String, Vec<GoldBalancePoint>> = HashMap::new();
+    for point in points {
+        points_per_asset
+            .entry(point.asset.clone())
+            .or_default()
+            .push(point);
+    }
+
+    let mut rows = Vec::new();
+    for (asset, asset_points) in points_per_asset {
+        let mut next_point = 0usize;
+        let mut current: Option<&BigDecimal> = None;
+        for bucket in buckets {
+            while next_point < asset_points.len() && asset_points[next_point].at_time <= *bucket {
+                current = Some(&asset_points[next_point].balance);
+                next_point += 1;
+            }
+            if let Some(balance) = current {
+                rows.push((asset.clone(), *bucket, balance.clone()));
+            }
+        }
+    }
+    rows
+}
+
+/// Gold-only public chart builder. Callers choose this entry point only
 /// after the rollout flag is enabled; it deliberately has no fallback path.
-/// Every bucket carries the latest snapshot at or before it forward; buckets
-/// before an asset's first trusted row emit nothing, never zero.
 pub async fn build_public_chart_response(
     state: &Arc<AppState>,
     account_id: &str,
@@ -150,7 +175,7 @@ pub async fn build_public_chart_response(
     if end_time < start_time {
         return Err((
             StatusCode::BAD_REQUEST,
-            "requested public snapshot chart range is invalid or too large".to_string(),
+            "requested public chart range is invalid or too large".to_string(),
         ));
     }
 
@@ -162,40 +187,27 @@ pub async fn build_public_chart_response(
     if !bucket_count_is_valid(bucket_count(start_time, end_time, interval), interval) {
         return Err((
             StatusCode::BAD_REQUEST,
-            "requested public snapshot chart range is invalid or too large".to_string(),
+            "requested public chart range is invalid or too large".to_string(),
         ));
     }
     let buckets = requested_grid(start_time, end_time, interval);
     debug_assert!(bucket_count_is_valid(buckets.len(), interval));
-    let cursor = load_snapshot_cursor(&state.db_pool, account_id)
-        .await
-        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-    let last_snapshot_at = latest_snapshot_block_time(&state.db_pool, account_id)
-        .await
-        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-    let coverage_start = earliest_snapshot_block_time(&state.db_pool, account_id)
-        .await
-        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
-    let Some(cursor) = cursor else {
-        return Ok(unavailable_response(None, last_snapshot_at, coverage_start));
-    };
-    let Some(applied_at) = cursor.snapshot_applied_at else {
-        return Ok(unavailable_response(None, last_snapshot_at, coverage_start));
-    };
-    if cursor.snapshot_applied_generation == 0 || cursor.snapshot_seeded_at.is_none() {
-        return Ok(unavailable_response(None, last_snapshot_at, coverage_start));
+    let readiness = load_chart_readiness(&state.db_pool, account_id)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    // Chart-ready means: backfill complete, gold projection ready, and the
+    // ledger verified against chain. Anything less serves Unavailable — no
+    // silently wrong data, no fallback.
+    if !readiness.projection_ready || !readiness.verification_passed {
+        return Ok(unavailable_response(&readiness));
     }
 
-    let mut rows = load_chart_rows(&state.db_pool, account_id, &buckets)
+    let mut points = load_gold_balance_points(&state.db_pool, account_id)
         .await
         .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-    if rows.is_empty() {
-        return Ok(unavailable_response(
-            Some(applied_at),
-            last_snapshot_at,
-            coverage_start,
-        ));
+    if points.is_empty() {
+        return Ok(unavailable_response(&readiness));
     }
 
     if let Some(wanted) = token_ids.filter(|ids| !ids.is_empty()) {
@@ -203,24 +215,19 @@ pub async fn build_public_chart_response(
             .iter()
             .map(|asset| stored_asset_id(asset))
             .collect::<HashSet<_>>();
-        rows.retain(|row| wanted.contains(row.asset.as_str()));
+        points.retain(|point| wanted.contains(point.asset.as_str()));
     }
 
-    let assets = rows
+    let assets = points
         .iter()
-        .map(|row| row.asset.clone())
+        .map(|point| point.asset.clone())
         .collect::<HashSet<_>>()
         .into_iter()
         .collect::<Vec<_>>();
     let prices = BucketPrices::load(state.as_ref(), &assets, &buckets).await;
 
     let mut data: HashMap<String, Vec<BalanceSnapshot>> = HashMap::new();
-    for SnapshotChartRow {
-        asset,
-        bucket,
-        balance,
-    } in rows
-    {
+    for (asset, bucket, balance) in carry_forward_balances(points, &buckets) {
         let price_usd = prices.price(&asset, bucket);
         let value_usd = if balance.is_zero() {
             Some(0.0)
@@ -236,19 +243,22 @@ pub async fn build_public_chart_response(
                 value_usd,
             });
     }
+    for snapshots in data.values_mut() {
+        snapshots.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+    }
 
-    let status = if cursor.snapshot_dirty_generation > cursor.snapshot_applied_generation {
+    let status = if readiness.gold_dirty || readiness.head_check_failed {
         ChartStatus::Stale
     } else {
         ChartStatus::Ok
     };
     Ok(ChartResponse {
         data,
-        last_synced_at: Some(applied_at),
+        last_synced_at: readiness.projection_ready_at,
         chart_meta: Some(ChartMeta {
             status,
-            last_snapshot_at,
-            coverage_start,
+            last_snapshot_at: readiness.ledger_head_time,
+            coverage_start: readiness.ledger_coverage_start,
         }),
     })
 }
@@ -278,12 +288,45 @@ mod tests {
         );
     }
 
+    fn point(asset: &str, at_epoch: i64, balance: i64) -> GoldBalancePoint {
+        GoldBalancePoint {
+            asset: asset.to_string(),
+            balance: BigDecimal::from(balance),
+            at_time: DateTime::<Utc>::from_timestamp(at_epoch, 0).unwrap(),
+            at_height: at_epoch,
+            gold_id: at_epoch,
+            leg_order: 0,
+        }
+    }
+
     #[test]
-    fn status_is_unavailable_without_an_applied_generation() {
-        let response = unavailable_response(None, None, None);
-        assert_eq!(
-            response.chart_meta.expect("metadata").status,
-            ChartStatus::Unavailable
-        );
+    fn carry_forward_holds_latest_balance_and_skips_pre_history_buckets() {
+        let buckets = vec![
+            DateTime::<Utc>::from_timestamp(100, 0).unwrap(),
+            DateTime::<Utc>::from_timestamp(200, 0).unwrap(),
+            DateTime::<Utc>::from_timestamp(300, 0).unwrap(),
+        ];
+        let points = vec![point("near", 150, 7), point("near", 250, 3)];
+
+        let rows = carry_forward_balances(points, &buckets);
+
+        assert_eq!(rows.len(), 2, "bucket before first point emits nothing");
+        assert_eq!(rows[0].2, BigDecimal::from(7));
+        assert_eq!(rows[1].2, BigDecimal::from(3));
+    }
+
+    #[test]
+    fn carry_forward_takes_latest_point_within_a_bucket() {
+        let buckets = vec![DateTime::<Utc>::from_timestamp(300, 0).unwrap()];
+        let points = vec![
+            point("near", 100, 1),
+            point("near", 200, 2),
+            point("near", 300, 9),
+        ];
+
+        let rows = carry_forward_balances(points, &buckets);
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].2, BigDecimal::from(9));
     }
 }

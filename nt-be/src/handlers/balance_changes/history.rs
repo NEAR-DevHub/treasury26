@@ -176,7 +176,7 @@ pub async fn get_balance_chart(
 
     if state.env_vars.public_history_medallion_reads {
         let response =
-            crate::handlers::public_history::snapshots::chart::build_public_chart_response(
+            crate::handlers::public_history::charts::chart::build_public_chart_response(
                 &state,
                 params.account_id.as_str(),
                 params.start_time,
@@ -214,6 +214,7 @@ pub async fn get_balance_chart(
             params.account_id.as_str(),
             params.start_time,
             params.token_ids.as_ref(),
+            state.env_vars.unified_gold_ledger_reads,
         )
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?,
@@ -1883,9 +1884,13 @@ pub async fn get_recent_activity(
                 .unwrap_or(0)
         }
         BalanceChangesReadSource::PublicGold => {
-            public_list::count_balance_change_legs(&state.db_pool, &source_count_query)
-                .await
-                .unwrap_or(0)
+            public_list::count_balance_change_legs(
+                &state.db_pool,
+                &source_count_query,
+                state.env_vars.unified_gold_ledger_reads,
+            )
+            .await
+            .unwrap_or(0)
         }
         BalanceChangesReadSource::Legacy => {
             count_query.fetch_one(&state.db_pool).await.unwrap_or(0)

@@ -142,7 +142,7 @@ fn normalize_mt(row: &BronzePublicHistoryRow) -> Result<Option<NormalizedTransfe
     }))
 }
 
-fn canonical_nep245_token_id(contract: &str, token_id: &str) -> String {
+pub(crate) fn canonical_nep245_token_id(contract: &str, token_id: &str) -> String {
     if token_id.starts_with("nep245:") {
         return token_id.to_string();
     }
@@ -181,6 +181,15 @@ fn normalize_receipt(
     if direction == PublicTransferDirection::Internal {
         return Ok(None);
     }
+    // The counterparty is the OTHER side of the movement: NearBlocks reports
+    // affected = receiver and involved = predecessor, so an outgoing leg's
+    // involved account is the monitored account itself — using it verbatim
+    // displayed payouts as "to <treasury>" instead of the real recipient.
+    let counterparty = if row.affected_account_id == row.account_id {
+        row.involved_account_id.clone()
+    } else {
+        Some(row.affected_account_id.clone())
+    };
 
     Ok(Some(NormalizedTransferLeg {
         account_id: row.account_id.clone(),
@@ -194,7 +203,7 @@ fn normalize_receipt(
         block_time: row.block_time,
         asset: PublicAsset::native_near(),
         direction,
-        counterparty: row.involved_account_id.clone(),
+        counterparty,
         amount: PublicAmount::from_raw(deposit, 24),
         leg_kind: PublicTransferLegKind::Transfer,
         raw_payload: row.raw_payload.clone(),
@@ -391,6 +400,39 @@ mod tests {
             .expect("mt row should create a leg");
 
         assert_eq!(leg.asset.token_id(), "intents.near:nep141:eth.omft.near");
+    }
+
+    #[test]
+    fn outgoing_native_leg_counterparty_is_the_receiver() {
+        // A proposal payout: receipt receiver (affected) = the real recipient,
+        // predecessor (involved) = the treasury itself. The counterparty must
+        // be the receiver, never the treasury.
+        let mut row = base_row(PublicHistorySource::NearblocksReceipt);
+        row.action_kind = Some("TRANSFER".to_string());
+        row.deposit_raw = Some(BigDecimal::from(1000));
+        row.affected_account_id = "iamtobi.near".to_string();
+        row.involved_account_id = Some("dao.near".to_string());
+
+        let leg = normalize_bronze_row(&row)
+            .expect("valid outgoing receipt")
+            .expect("produces a leg");
+
+        assert_eq!(leg.direction, PublicTransferDirection::Outgoing);
+        assert_eq!(leg.counterparty.as_deref(), Some("iamtobi.near"));
+    }
+
+    #[test]
+    fn incoming_native_leg_counterparty_is_the_sender() {
+        let mut row = base_row(PublicHistorySource::NearblocksReceipt);
+        row.action_kind = Some("TRANSFER".to_string());
+        row.deposit_raw = Some(BigDecimal::from(1000));
+
+        let leg = normalize_bronze_row(&row)
+            .expect("valid incoming receipt")
+            .expect("produces a leg");
+
+        assert_eq!(leg.direction, PublicTransferDirection::Incoming);
+        assert_eq!(leg.counterparty.as_deref(), Some("alice.near"));
     }
 
     #[test]
