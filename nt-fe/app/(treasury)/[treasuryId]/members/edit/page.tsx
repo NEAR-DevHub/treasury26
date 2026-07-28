@@ -10,10 +10,7 @@ import * as z from "zod";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { StepWizard } from "@/components/step-wizard";
-import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useTreasuryMembers } from "@/hooks/use-treasury-members";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
@@ -22,7 +19,8 @@ import {
     type MemberFormData,
 } from "../components/member-form-step";
 import { MemberReviewStep } from "../components/member-review-step";
-import { getDisabledRolesForMemberEdit } from "../utils/disabled-roles";
+import { useDisabledMemberRoles } from "../hooks/use-disabled-member-roles";
+import { useMemberPolicyGate } from "../hooks/use-member-policy-gate";
 import { applyMemberRolesToPolicy } from "../utils/policy-helpers";
 
 export default function EditMemberPage() {
@@ -34,41 +32,19 @@ export default function EditMemberPage() {
     const searchParams = useSearchParams();
     const queryClient = useQueryClient();
     const { createProposal } = useNear();
-    const { data: policy, isLoading: isLoadingPolicy } = useTreasuryPolicy(
-        treasuryId || "",
-    );
-    const { members: existingMembers, isLoading: isLoadingMembers } =
-        useTreasuryMembers(treasuryId);
-    const isLoading = isLoadingPolicy || isLoadingMembers;
+    const {
+        policy,
+        isLoadingPolicy,
+        isLoadingMembers,
+        existingMembers,
+        hasPendingMemberRequest,
+        isMemberDataReady,
+        isMemberActionsDisabled,
+        availableRoles,
+    } = useMemberPolicyGate(treasuryId);
 
     const [step, setStep] = useState(0);
     const hasSeededMembers = useRef(false);
-
-    const { data: pendingProposals } = useProposals(treasuryId, {
-        statuses: ["InProgress"],
-        proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
-        sort_direction: "desc",
-        sort_by: "CreationTime",
-    });
-
-    const hasPendingMemberRequest = useMemo(() => {
-        if (!pendingProposals?.proposals) return false;
-        return pendingProposals.proposals.length > 0;
-    }, [pendingProposals]);
-
-    const isMemberDataReady = !isLoading && pendingProposals !== undefined;
-    const isMemberActionsDisabled =
-        !isMemberDataReady || hasPendingMemberRequest;
-
-    const availableRoles = useMemo(() => {
-        if (!policy?.roles) return [];
-        return policy.roles.filter(
-            (role) =>
-                typeof role.kind === "object" &&
-                "Group" in role.kind &&
-                role.name.toLowerCase() !== "all",
-        );
-    }, [policy]);
 
     const memberIdsFromUrl = useMemo(() => {
         const raw = searchParams.get("members") || "";
@@ -172,26 +148,10 @@ export default function EditMemberPage() {
     }, [router, treasuryId]);
 
     const membersInForm = form.watch("members") || [];
-
-    const getDisabledRoles = useCallback(
-        (memberAccountId: string, currentRoles: string[]) =>
-            getDisabledRolesForMemberEdit(
-                memberAccountId,
-                currentRoles,
-                membersInForm,
-                existingMembers,
-                availableRoles,
-                {
-                    requestorOnlyTooltip: tMembers("requestorOnlyTooltip"),
-                    cannotRemoveRoleAfter: (role) =>
-                        tMembers("validation.cannotRemoveRoleAfter", { role }),
-                    cannotRemoveRoleAfterGov: (role) =>
-                        tMembers("validation.cannotRemoveRoleAfterGov", {
-                            role,
-                        }),
-                },
-            ),
-        [membersInForm, existingMembers, availableRoles, tMembers],
+    const getDisabledRoles = useDisabledMemberRoles(
+        membersInForm,
+        existingMembers,
+        availableRoles,
     );
 
     const handleReviewRequest = useCallback(async () => {

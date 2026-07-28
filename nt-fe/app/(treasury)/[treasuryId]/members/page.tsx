@@ -4,12 +4,9 @@ import { useTranslations } from "next-intl";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import Link from "next/link";
 import { APP_DOCS_URL } from "@/constants/config";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { hasPermission } from "@/lib/config-utils";
-import { useProposals } from "@/hooks/use-proposals";
 import { useQueryClient } from "@tanstack/react-query";
 import { encodeToMarkdown } from "@/lib/utils";
 import { DeleteConfirmationModal } from "./components/modals/delete-confirmation-modal";
@@ -55,8 +52,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
+import { useMemberPolicyGate } from "./hooks/use-member-policy-gate";
 import { useMemberValidation } from "./hooks/use-member-validation";
-import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { AuthButton } from "@/components/auth-button";
 import type { RolePermission } from "@/types/policy";
 import { sortRolesByOrder } from "@/lib/role-utils";
@@ -131,8 +128,18 @@ export default function MembersPage() {
     const tMembers = useTranslations("members");
     const tMemberValidation = useTranslations("memberValidation");
     const { treasuryId } = useTreasury();
-    const { data: policy, isLoading } = useTreasuryPolicy(treasuryId || "");
-    const { accountId, createProposal } = useNear();
+    const { createProposal } = useNear();
+    const {
+        policy,
+        isLoading,
+        accountId,
+        existingMembers,
+        hasPendingMemberRequest,
+        isMemberDataReady,
+        isMemberActionsDisabled,
+        canAddMember,
+        availableRoles,
+    } = useMemberPolicyGate(treasuryId);
     const queryClient = useQueryClient();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -150,37 +157,10 @@ export default function MembersPage() {
     // Track if we've already processed URL params to avoid re-navigating
     const hasProcessedUrlParams = useRef(false);
 
-    // Fetch pending proposals to check for active member requests
-    const { data: pendingProposals } = useProposals(treasuryId, {
-        statuses: ["InProgress"],
-        proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
-        sort_direction: "desc",
-        sort_by: "CreationTime",
-    });
-
-    // Check if there are pending member-related proposals
-    const hasPendingMemberRequest = useMemo(() => {
-        if (!pendingProposals?.proposals) return false;
-        return pendingProposals.proposals.length > 0;
-    }, [pendingProposals]);
-
-    // Block member actions until policy + pending-request status are known.
-    // Otherwise a reload can briefly treat "no data yet" as "no pending request".
-    const isMemberDataReady = !isLoading && pendingProposals !== undefined;
-    const isMemberActionsDisabled =
-        !isMemberDataReady || hasPendingMemberRequest;
     const memberActionsDisabledReason = hasPendingMemberRequest
         ? tMemberValidation("pendingRequest")
         : undefined;
 
-    // Check if user has permission to add members
-    const canAddMember = useMemo(() => {
-        if (!policy || !accountId) return false;
-        return hasPermission(policy, accountId, "policy", "AddProposal");
-    }, [policy, accountId]);
-
-    // Extract unique members from policy roles
-    const { members: existingMembers } = useTreasuryMembers(treasuryId);
     const { data: joinRequests = [] } = useMemberJoinRequests(
         canAddMember ? treasuryId : undefined,
     );
@@ -224,17 +204,6 @@ export default function MembersPage() {
         if (typeof window === "undefined") return;
         window.localStorage.setItem(MEMBERS_INFO_DISMISSED_STORAGE_KEY, "true");
     }, []);
-
-    // Available roles from policy (excluding "all" role)
-    const availableRoles = useMemo(() => {
-        if (!policy?.roles) return [];
-        return policy.roles.filter(
-            (role) =>
-                typeof role.kind === "object" &&
-                "Group" in role.kind &&
-                role.name.toLowerCase() !== "all",
-        );
-    }, [policy]);
 
     // Deep-link: /members?member=...&roles=... → /members/add
     useEffect(() => {

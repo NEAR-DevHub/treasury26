@@ -28,18 +28,15 @@ import {
     useCancelMemberJoinRequest,
     useMemberJoinRequests,
 } from "@/hooks/use-member-invites";
-import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useTreasuryMembers } from "@/hooks/use-treasury-members";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { hasPermission } from "@/lib/config-utils";
 import { sortRolesByOrder } from "@/lib/role-utils";
 import { useRoleDescription } from "@/lib/use-role-description";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import type { MemberFormData } from "../components/member-form-step";
 import { MemberReviewStep } from "../components/member-review-step";
-import { getDisabledRolesForMemberEdit } from "../utils/disabled-roles";
+import { useDisabledMemberRoles } from "../hooks/use-disabled-member-roles";
+import { useMemberPolicyGate } from "../hooks/use-member-policy-gate";
 import { applyMemberRolesToPolicy } from "../utils/policy-helpers";
 
 type AssignStepProps = StepProps & {
@@ -179,9 +176,15 @@ export default function JoinRequestsPage() {
     const { treasuryId } = useTreasury();
     const router = useRouter();
     const queryClient = useQueryClient();
-    const { accountId, createProposal } = useNear();
-    const { data: policy, isLoading } = useTreasuryPolicy(treasuryId || "");
-    const { members: existingMembers } = useTreasuryMembers(treasuryId);
+    const { createProposal } = useNear();
+    const {
+        policy,
+        isLoading,
+        existingMembers,
+        hasPendingMemberRequest,
+        canAddMember,
+        availableRoles,
+    } = useMemberPolicyGate(treasuryId);
     const { data: joinRequests = [], isLoading: isLoadingRequests } =
         useMemberJoinRequests(treasuryId);
     const cancelRequest = useCancelMemberJoinRequest(treasuryId);
@@ -192,23 +195,9 @@ export default function JoinRequestsPage() {
     const [step, setStep] = useState(0);
     const [requestIds, setRequestIds] = useState<string[]>([]);
 
-    const { data: pendingProposals } = useProposals(treasuryId, {
-        statuses: ["InProgress"],
-        proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
-        sort_direction: "desc",
-        sort_by: "CreationTime",
-    });
-
-    const hasPendingMemberRequest =
-        (pendingProposals?.proposals.length ?? 0) > 0;
     const reviewDisabledReason = hasPendingMemberRequest
         ? tJoin("pendingPolicyRequest")
         : undefined;
-
-    const canAddMember =
-        !!policy &&
-        !!accountId &&
-        hasPermission(policy, accountId, "policy", "AddProposal");
 
     // Keep this page reachable while a ChangePolicy is pending so users can
     // view/remove join requests; only block submitting a new add-members proposal.
@@ -259,16 +248,6 @@ export default function JoinRequestsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [joinRequests, isLoadingRequests]);
 
-    const availableRoles = useMemo(() => {
-        if (!policy?.roles) return [];
-        return policy.roles.filter(
-            (role) =>
-                typeof role.kind === "object" &&
-                "Group" in role.kind &&
-                role.name.toLowerCase() !== "all",
-        );
-    }, [policy]);
-
     const mappedRoles = useMemo(() => {
         const mapped = availableRoles.map((r) => ({
             id: r.name,
@@ -284,26 +263,10 @@ export default function JoinRequestsPage() {
     }, [router, treasuryId]);
 
     const membersInForm = form.watch("members") || [];
-
-    const getDisabledRoles = useCallback(
-        (memberAccountId: string, currentRoles: string[]) =>
-            getDisabledRolesForMemberEdit(
-                memberAccountId,
-                currentRoles,
-                membersInForm,
-                existingMembers,
-                availableRoles,
-                {
-                    requestorOnlyTooltip: tMembers("requestorOnlyTooltip"),
-                    cannotRemoveRoleAfter: (role) =>
-                        tMembers("validation.cannotRemoveRoleAfter", { role }),
-                    cannotRemoveRoleAfterGov: (role) =>
-                        tMembers("validation.cannotRemoveRoleAfterGov", {
-                            role,
-                        }),
-                },
-            ),
-        [membersInForm, existingMembers, availableRoles, tMembers],
+    const getDisabledRoles = useDisabledMemberRoles(
+        membersInForm,
+        existingMembers,
+        availableRoles,
     );
 
     const handleRemove = useCallback(

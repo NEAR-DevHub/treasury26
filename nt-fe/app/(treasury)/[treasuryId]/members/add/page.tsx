@@ -10,17 +10,13 @@ import * as z from "zod";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { StepWizard } from "@/components/step-wizard";
-import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useTreasuryMembers } from "@/hooks/use-treasury-members";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
 import {
     isValidNearAddressFormat,
     validateNearAddress,
 } from "@/lib/near-validation";
 import { translateNearValidationError } from "@/lib/near-validation-i18n";
-import { hasPermission } from "@/lib/config-utils";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import {
@@ -28,7 +24,8 @@ import {
     type MemberFormData,
 } from "../components/member-form-step";
 import { MemberReviewStep } from "../components/member-review-step";
-import { getDisabledRolesForMemberEdit } from "../utils/disabled-roles";
+import { useDisabledMemberRoles } from "../hooks/use-disabled-member-roles";
+import { useMemberPolicyGate } from "../hooks/use-member-policy-gate";
 import { applyMemberRolesToPolicy } from "../utils/policy-helpers";
 
 export default function AddMemberPage() {
@@ -40,44 +37,21 @@ export default function AddMemberPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const queryClient = useQueryClient();
-    const { accountId, createProposal } = useNear();
-    const { data: policy, isLoading } = useTreasuryPolicy(treasuryId || "");
-    const { members: existingMembers } = useTreasuryMembers(treasuryId);
+    const { createProposal } = useNear();
+    const {
+        policy,
+        isLoading,
+        existingMembers,
+        hasPendingMemberRequest,
+        isMemberDataReady,
+        isMemberActionsDisabled,
+        canAddMember,
+        availableRoles,
+    } = useMemberPolicyGate(treasuryId);
 
     const [step, setStep] = useState(0);
     const [isValidatingAddresses, setIsValidatingAddresses] = useState(false);
     const hasProcessedUrlParams = useRef(false);
-
-    const { data: pendingProposals } = useProposals(treasuryId, {
-        statuses: ["InProgress"],
-        proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
-        sort_direction: "desc",
-        sort_by: "CreationTime",
-    });
-
-    const hasPendingMemberRequest = useMemo(() => {
-        if (!pendingProposals?.proposals) return false;
-        return pendingProposals.proposals.length > 0;
-    }, [pendingProposals]);
-
-    const isMemberDataReady = !isLoading && pendingProposals !== undefined;
-    const isMemberActionsDisabled =
-        !isMemberDataReady || hasPendingMemberRequest;
-
-    const canAddMember = useMemo(() => {
-        if (!policy || !accountId) return false;
-        return hasPermission(policy, accountId, "policy", "AddProposal");
-    }, [policy, accountId]);
-
-    const availableRoles = useMemo(() => {
-        if (!policy?.roles) return [];
-        return policy.roles.filter(
-            (role) =>
-                typeof role.kind === "object" &&
-                "Group" in role.kind &&
-                role.name.toLowerCase() !== "all",
-        );
-    }, [policy]);
 
     const getAccountValidationMessage = useCallback(
         (errorCode: Parameters<typeof translateNearValidationError>[1]) =>
@@ -230,27 +204,10 @@ export default function AddMemberPage() {
     }, [router, treasuryId]);
 
     const membersInForm = form.watch("members") || [];
-
-    // Same NEARN requestor lock as edit: only AddProposal (or :*) roles selectable.
-    const getDisabledRoles = useCallback(
-        (memberAccountId: string, currentRoles: string[]) =>
-            getDisabledRolesForMemberEdit(
-                memberAccountId,
-                currentRoles,
-                membersInForm,
-                existingMembers,
-                availableRoles,
-                {
-                    requestorOnlyTooltip: tMembers("requestorOnlyTooltip"),
-                    cannotRemoveRoleAfter: (role) =>
-                        tMembers("validation.cannotRemoveRoleAfter", { role }),
-                    cannotRemoveRoleAfterGov: (role) =>
-                        tMembers("validation.cannotRemoveRoleAfterGov", {
-                            role,
-                        }),
-                },
-            ),
-        [membersInForm, existingMembers, availableRoles, tMembers],
+    const getDisabledRoles = useDisabledMemberRoles(
+        membersInForm,
+        existingMembers,
+        availableRoles,
     );
 
     const handleReviewRequest = useCallback(async () => {

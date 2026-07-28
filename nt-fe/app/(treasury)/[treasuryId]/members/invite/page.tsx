@@ -12,34 +12,26 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { StepperHeader } from "@/components/step-wizard";
 import { useCreateMemberInvite } from "@/hooks/use-member-invites";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { hasPermission } from "@/lib/config-utils";
-import { useNear } from "@/stores/near-store";
+import { useMemberPolicyGate } from "../hooks/use-member-policy-gate";
 
 export default function InviteMemberPage() {
     const t = useTranslations("pages.members");
     const tInvite = useTranslations("members.invite");
     const { treasuryId } = useTreasury();
     const router = useRouter();
-    const { accountId } = useNear();
-    const { data: policy, isLoading } = useTreasuryPolicy(treasuryId || "");
+    const { isLoadingPolicy, canAddMember } = useMemberPolicyGate(treasuryId);
     const createInvite = useCreateMemberInvite(treasuryId);
 
     const [step, setStep] = useState(0);
     const [inviteUrl, setInviteUrl] = useState<string | null>(null);
 
-    const canAddMember =
-        !!policy &&
-        !!accountId &&
-        hasPermission(policy, accountId, "policy", "AddProposal");
-
     // Invite links do not create a ChangePolicy proposal, so they stay available
     // while a policy change is pending. Only permission gates this page.
     useEffect(() => {
-        if (!isLoading && !canAddMember && treasuryId) {
+        if (!isLoadingPolicy && !canAddMember && treasuryId) {
             router.replace(`/${treasuryId}/members`);
         }
-    }, [isLoading, canAddMember, router, treasuryId]);
+    }, [isLoadingPolicy, canAddMember, router, treasuryId]);
 
     const exitToMembers = useCallback(() => {
         router.push(`/${treasuryId}/members`);
