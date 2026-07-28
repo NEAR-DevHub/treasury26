@@ -57,10 +57,9 @@ interface RecipientNetworkSelectProps {
     /** Error text shown under the network card. */
     errorMessage?: string | null;
     /**
-     * When false (confidential bulk), the picker is available before any
-     * recipient address is entered and does not filter/clear by address
-     * compatibility — all recipients share one chosen receive network.
-     * Default true (single-payment flow).
+     * When true (default), the picker stays disabled until a recipient
+     * address is entered and filters/clears by address compatibility.
+     * When false, every option is available immediately (no address gate).
      */
     requireRecipient?: boolean;
 }
@@ -217,8 +216,6 @@ export function RecipientNetworkSelect({
     const enrichedOptions = useMemo(() => {
         return availableOptions.map((option) => ({
             ...option,
-            // Bulk confidential picks the receive network first; every option
-            // is available and CSV validation enforces the address type later.
             isCompatible: requireRecipient
                 ? isAddressCompatibleWithNetwork(recipient, option.networkName)
                 : true,
@@ -254,17 +251,21 @@ export function RecipientNetworkSelect({
         ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
         : isBridgeAssetsLoading || availableOptions.length === 0;
 
-    // Clear the selection when the address no longer matches it (e.g. user
-    // edited the address into a different chain's format). Skip in bulk mode
-    // where the receive network is chosen independently of any single address.
+    // Clear selection when the address is removed or no longer matches the
+    // chosen network (e.g. user edited into a different chain's format).
     useEffect(() => {
         if (!requireRecipient) return;
         if (!value) return;
+        if (!recipient) {
+            onChange("");
+            return;
+        }
         if (availableOptions.length === 0) return;
         if (compatibleOptions.some((o) => o.id === value)) return;
         onChange("");
     }, [
         value,
+        recipient,
         availableOptions,
         compatibleOptions,
         onChange,

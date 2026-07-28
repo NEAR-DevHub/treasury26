@@ -9,8 +9,9 @@ import {
 import { useTranslations } from "next-intl";
 import { Button } from "./button";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useAssets } from "@/hooks/use-assets";
+import { DEFAULT_ASSETS_QUERY, useAssets } from "@/hooks/use-assets";
 import { availableBalance } from "@/lib/balance";
+import { findMatchingTreasuryAsset } from "@/lib/match-treasury-asset";
 import { cn, formatBalance, formatCurrency } from "@/lib/utils";
 import TokenSelect, { SelectedTokenData } from "./token-select";
 import { WarningMessage } from "./warning-message";
@@ -66,7 +67,7 @@ interface TokenInputProps<
     title?: string;
     amountName: Path<TFieldValues>;
     tokenName: TTokenPath extends Path<TFieldValues>
-        ? PathValue<TFieldValues, TTokenPath> extends Token
+        ? NonNullable<PathValue<TFieldValues, TTokenPath>> extends Token
             ? TTokenPath
             : never
         : never;
@@ -90,6 +91,11 @@ interface TokenInputProps<
             network: string;
             residency?: string;
         }) => boolean;
+        /**
+         * When false, skips the shared default-token auto-select
+         * (highest-USD owned → USDC on NEAR). Exchange sets this false.
+         */
+        autoSelect?: boolean;
     };
     readOnly?: boolean;
     loading?: boolean;
@@ -145,35 +151,33 @@ export function TokenInput<
     const { treasuryId } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
-    const token = useWatch({ control, name: tokenName }) as Token;
+    // Null while payments waits for assets to seed a default token.
+    const token = useWatch({ control, name: tokenName }) as Token | null;
 
-    // Use balance & price from useAssets (passed through token-select)
-    const { data: assetsData } = useAssets(treasuryId, {
-        enabled: true,
-        onlySupportedTokens: true,
-    });
+    // Shared DEFAULT_ASSETS_QUERY so we hit the same cache as useMergedTokens.
+    const { data: assetsData, isPending: isAssetsPending } = useAssets(
+        treasuryId,
+        DEFAULT_ASSETS_QUERY,
+    );
 
-    // Find the matching asset from useAssets to get fresh balance/price
-    const matchedAsset = useMemo(() => {
-        if (!assetsData?.tokens || !token?.address) return null;
-        return assetsData.tokens.find(
-            (t) =>
-                (t.contractId ?? t.id) === token.address &&
-                t.network === token.network,
-        );
-    }, [assetsData?.tokens, token?.address, token?.network]);
+    const matchedAsset = useMemo(
+        () => findMatchingTreasuryAsset(assetsData?.tokens, token),
+        [assetsData?.tokens, token],
+    );
 
-    // Treat missing balance as zero so unsupported/unowned selections show the
-    // same insufficient-assets feedback as low-balance selections.
+    // Prefer live assets balance; fall back to the form token's balance.
+    // Never invent "0" while assets are still loading (avoids Balance: 0 flash).
     const tokenBalance = matchedAsset
         ? availableBalance(matchedAsset.balance).toFixed(0)
-        : (token?.balance ?? "0");
+        : (token?.balance ?? (isAssetsPending ? null : "0"));
     const tokenPrice = matchedAsset?.price ?? token?.price;
     const tokenDecimals = matchedAsset?.decimals ?? token?.decimals;
 
     const balanceWarning = useMemo(() => {
-        if (!showInsufficientBalance) return null;
-        if (!tokenBalance || !amount || isNaN(amount) || amount <= 0) {
+        if (!showInsufficientBalance || !token || tokenBalance == null) {
+            return null;
+        }
+        if (!amount || isNaN(amount) || amount <= 0) {
             return null;
         }
 
@@ -197,11 +201,11 @@ export function TokenInput<
         });
     }, [
         showInsufficientBalance,
+        token,
         tokenBalance,
         amount,
         tokenDecimals,
         networkFee,
-        token.symbol,
     ]);
 
     const estimatedUSDValue = useMemo(() => {
@@ -292,30 +296,32 @@ export function TokenInput<
                         invalid={!!displayError}
                         topRightContent={
                             <div className="flex items-center gap-2">
-                                {tokenBalance && tokenDecimals && (
-                                    <>
-                                        <p className="text-xs text-muted-foreground">
-                                            {t("balance", {
-                                                amount: formatBalance(
-                                                    tokenBalance,
-                                                    tokenDecimals,
-                                                ),
-                                                symbol: token.symbol.toUpperCase(),
-                                            })}
-                                        </p>
-                                        {!readOnly && (
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                className="bg-muted-foreground/10 hover:bg-muted-foreground/20"
-                                                size="sm"
-                                                onClick={handleMaxClick}
-                                            >
-                                                {t("max")}
-                                            </Button>
-                                        )}
-                                    </>
-                                )}
+                                {token &&
+                                    tokenBalance != null &&
+                                    tokenDecimals != null && (
+                                        <>
+                                            <p className="text-xs text-muted-foreground">
+                                                {t("balance", {
+                                                    amount: formatBalance(
+                                                        tokenBalance,
+                                                        tokenDecimals,
+                                                    ),
+                                                    symbol: token.symbol.toUpperCase(),
+                                                })}
+                                            </p>
+                                            {!readOnly && (
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    className="bg-muted-foreground/10 hover:bg-muted-foreground/20"
+                                                    size="sm"
+                                                    onClick={handleMaxClick}
+                                                >
+                                                    {t("max")}
+                                                </Button>
+                                            )}
+                                        </>
+                                    )}
                             </div>
                         }
                     >
@@ -385,6 +391,9 @@ export function TokenInput<
                                                 }
                                                 filterTokens={
                                                     tokenSelect?.filterTokens
+                                                }
+                                                autoSelect={
+                                                    tokenSelect?.autoSelect
                                                 }
                                             />
                                         );

@@ -380,8 +380,14 @@ export function ReviewPaymentsStep({
                                     index,
                                     payment.amount,
                                 );
-                                // Calculate estimated USD value from the
-                                // amount shown (net amountOut once quoted).
+                                // Total includes fee when present (matches the
+                                // info-tooltip breakdown); USD stays on the
+                                // net recipient amount.
+                                const rowTotalAmount = recipientFee
+                                    ? Big(displayAmount || "0").add(
+                                          recipientFee,
+                                      )
+                                    : Big(displayAmount || "0");
                                 let estimatedUSDValue = 0;
                                 if (selectedTokenData?.price && balance) {
                                     try {
@@ -476,14 +482,40 @@ export function ReviewPaymentsStep({
                                                             iconSize="md"
                                                         />
                                                         <div className="flex flex-col gap-[3px] items-end">
-                                                            <p className="text-sm font-semibold whitespace-nowrap leading-5">
-                                                                {formatTokenDisplayAmount(
-                                                                    displayAmount,
-                                                                )}{" "}
-                                                                {
-                                                                    selectedToken.symbol
-                                                                }
-                                                            </p>
+                                                            <div className="flex items-center gap-1">
+                                                                <p className="text-sm font-semibold whitespace-nowrap leading-5">
+                                                                    {formatTokenDisplayAmount(
+                                                                        rowTotalAmount,
+                                                                    )}{" "}
+                                                                    {
+                                                                        selectedToken.symbol
+                                                                    }
+                                                                </p>
+                                                                {recipientFee && (
+                                                                    <Tooltip
+                                                                        content={
+                                                                            <div className="text-left">
+                                                                                <p>
+                                                                                    {`${formatTokenDisplayAmount(displayAmount)} ${selectedToken.symbol} + ${formatTokenDisplayAmount(recipientFee)}${selectedToken.symbol}`}
+                                                                                </p>
+                                                                                <p className="lowercase">
+                                                                                    {tPay(
+                                                                                        "networkFee",
+                                                                                    )}
+                                                                                </p>
+                                                                            </div>
+                                                                        }
+                                                                        side="right"
+                                                                    >
+                                                                        <Info
+                                                                            className="size-3.5 shrink-0 text-muted-foreground"
+                                                                            aria-label={tPay(
+                                                                                "networkFeeInfo",
+                                                                            )}
+                                                                        />
+                                                                    </Tooltip>
+                                                                )}
+                                                            </div>
                                                             <p className="text-xs text-muted-foreground whitespace-nowrap">
                                                                 ≈ $
                                                                 {estimatedUSDValue.toFixed(
@@ -500,27 +532,6 @@ export function ReviewPaymentsStep({
                                                             payment.validationError
                                                         }
                                                     </div>
-                                                )}
-
-                                                {confidentialPrepare?.status ===
-                                                "loading" ? (
-                                                    <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                                                        {tPay("networkFee")}:
-                                                        <span className="inline-block h-4 w-16 bg-muted animate-pulse rounded" />
-                                                    </div>
-                                                ) : (
-                                                    recipientFee && (
-                                                        <div className="text-xs text-muted-foreground text-right">
-                                                            {tPay("networkFee")}
-                                                            :{" "}
-                                                            {formatTokenDisplayAmount(
-                                                                recipientFee,
-                                                            )}{" "}
-                                                            {
-                                                                selectedToken.symbol
-                                                            }
-                                                        </div>
-                                                    )
                                                 )}
 
                                                 <div className="flex items-center gap-3 justify-end">

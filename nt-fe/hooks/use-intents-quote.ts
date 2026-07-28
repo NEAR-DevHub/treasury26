@@ -153,7 +153,8 @@ function isInvalidRecipientAddressError(message: string): boolean {
 
 interface UseIntentsQuoteParams {
     treasuryId: string | undefined;
-    token: Token;
+    /** Null while the page waits to seed a default token. */
+    token: Token | null;
     amount: string;
     destinationAmountDecimals?: number;
     address: string;
@@ -182,7 +183,7 @@ export function useIntentsQuote({
     enabled = true,
 }: UseIntentsQuoteParams) {
     const t = useTranslations("intentsQuote");
-    const isIntents = isIntentsToken(token);
+    const isIntents = !!token && isIntentsToken(token);
     const normalizedAddress = address.trim();
     const [debouncedAddress] = useDebounce(normalizedAddress, 300);
     const [debouncedAmount] = useDebounce(amount, 400);
@@ -193,13 +194,16 @@ export function useIntentsQuote({
         !isNearComNetwork(destinationNetwork);
     const requestAmountDecimals = requiresDestinationAmountDecimals
         ? destinationAmountDecimals
-        : token.decimals;
+        : token?.decimals;
 
     const isRecipientReady =
-        !!debouncedAddress && isAddressValidForToken(debouncedAddress, token);
+        !!token &&
+        !!debouncedAddress &&
+        isAddressValidForToken(debouncedAddress, token);
     const requiresDestinationSelectionForPayment = isPayment && isIntents;
     const isQuoteReady =
         enabled &&
+        !!token &&
         isIntents &&
         !!treasuryId &&
         isRecipientReady &&
@@ -231,7 +235,7 @@ export function useIntentsQuote({
         queryKey: [
             "paymentLiveQuote",
             treasuryId,
-            token.address,
+            token?.address,
             debouncedAmount,
             debouncedAddress,
             amountMode,
@@ -239,7 +243,7 @@ export function useIntentsQuote({
             isPayment,
         ],
         queryFn: async ({ signal }): Promise<IntentsQuoteResponse | null> => {
-            if (!isQuoteReady) return null;
+            if (!isQuoteReady || !token) return null;
             if (requestAmountDecimals === undefined) {
                 captureMissingDestinationDecimals(token.address);
                 throw new Error(t("fetchFailed"));
@@ -275,7 +279,7 @@ export function useIntentsQuote({
             return t("fetchFailed");
         }
 
-        if (!hasQueryError || !error) return null;
+        if (!hasQueryError || !error || !token) return null;
         const msg =
             error instanceof Error
                 ? error.message
@@ -291,7 +295,7 @@ export function useIntentsQuote({
         hasQueryError,
         error,
         requestAmountDecimals,
-        token.symbol,
+        token,
         t,
     ]);
 
