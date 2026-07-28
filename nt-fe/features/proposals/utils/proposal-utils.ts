@@ -14,11 +14,6 @@ import { decodeArgs, decodeProposalDescription, nanosToMs } from "@/lib/utils";
 import { extractProposalData } from "./proposal-extractors";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
-// Exchange custom deadline (capped by proposal_period).
-// Pure wrap/unwrap (single wrap.near near_deposit/near_withdraw) uses normal proposal period.
-export const EXCHANGE_EXPIRY_HOURS = 24;
-export const EXCHANGE_EXPIRY_MS = EXCHANGE_EXPIRY_HOURS * 60 * 60 * 1000; // 24 hours in milliseconds
-
 const BULK_PAYMENT_CONTRACT_ID =
     process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || "bulkpayment.near";
 
@@ -316,43 +311,50 @@ export type UIProposalStatus =
     | "Removed"
     | "Moved";
 
-function isNormalPeriodWrapProposal(proposal: Proposal): boolean {
-    if (!("FunctionCall" in proposal.kind)) return false;
-
-    const functionCall = proposal.kind.FunctionCall;
-    const actions = functionCall.actions ?? [];
-
-    if (
-        functionCall.receiver_id !== WRAP_NEAR_TOKEN_ID ||
-        actions.length !== 1
-    ) {
-        return false;
-    }
-
-    const methodName = actions[0]?.method_name;
-    return methodName === "near_deposit" || methodName === "near_withdraw";
+/** ISO quote deadline from proposal description, when present. */
+export function getQuoteDeadlineMs(proposal: Proposal): number | undefined {
+    const raw = decodeProposalDescription(
+        "quoteDeadline",
+        proposal.description,
+    );
+    if (!raw || typeof raw !== "string") return undefined;
+    const ms = Date.parse(raw);
+    return Number.isFinite(ms) ? ms : undefined;
 }
 
-export function isShortExpiryExchangeProposal(proposal: Proposal): boolean {
-    const isExchangeProposal = getProposalUIKind(proposal) === "Exchange";
-    return isExchangeProposal && !isNormalPeriodWrapProposal(proposal);
-}
-
-function getEffectiveExpiryPeriodMs(
+/**
+ * Effective UI expiry: min(voting period end, quoteDeadline).
+ * Older quotes used a 24h deadline stored in the description; new quotes
+ * align with proposal_period, so this stays correct for both.
+ */
+export function getEffectiveExpiryMs(
     proposal: Proposal,
     policy: Policy,
 ): number {
-    const proposalPeriodMs = nanosToMs(policy.proposal_period);
-    if (!isShortExpiryExchangeProposal(proposal)) return proposalPeriodMs;
-    return Math.min(proposalPeriodMs, EXCHANGE_EXPIRY_MS);
+    const byPeriod =
+        nanosToMs(proposal.submission_time) + nanosToMs(policy.proposal_period);
+    const quoteDeadlineMs = getQuoteDeadlineMs(proposal);
+    if (quoteDeadlineMs === undefined) return byPeriod;
+    return Math.min(byPeriod, quoteDeadlineMs);
+}
+
+/** True when the quote expires meaningfully sooner than the voting period. */
+export function isQuoteDeadlineBeforeVotingPeriod(
+    proposal: Proposal,
+    policy: Policy,
+): boolean {
+    const quoteDeadlineMs = getQuoteDeadlineMs(proposal);
+    if (quoteDeadlineMs === undefined) return false;
+    const byPeriod =
+        nanosToMs(proposal.submission_time) + nanosToMs(policy.proposal_period);
+    // Ignore small gaps from quote-time → submit-time lag on new proposals.
+    return byPeriod - quoteDeadlineMs > 2 * 60 * 60 * 1000;
 }
 
 export function getProposalStatus(
     proposal: Proposal,
     policy: Policy,
 ): UIProposalStatus {
-    const submissionTimeMs = nanosToMs(proposal.submission_time);
-
     switch (proposal.status) {
         case "Approved":
             return "Executed";
@@ -361,11 +363,7 @@ export function getProposalStatus(
         case "Failed":
             return "Failed";
         case "InProgress":
-            if (
-                submissionTimeMs +
-                    getEffectiveExpiryPeriodMs(proposal, policy) <
-                Date.now()
-            ) {
+            if (getEffectiveExpiryMs(proposal, policy) < Date.now()) {
                 return "Expired";
             }
 
@@ -392,10 +390,11 @@ export function getProposalStatusDateInfo(
     const uiStatus = getProposalStatus(proposal, policy);
 
     if (uiStatus === "Pending") {
-        const expiryDate = new Date(
-            submissionTimeMs + getEffectiveExpiryPeriodMs(proposal, policy),
-        );
-        return { date: expiryDate, isFuture: true, labelKey: "expires" };
+        return {
+            date: new Date(getEffectiveExpiryMs(proposal, policy)),
+            isFuture: true,
+            labelKey: "expires",
+        };
     }
 
     // For all resolved statuses, use submission_time as a fallback since
@@ -422,11 +421,8 @@ export function getProposalStatusDateInfo(
                 labelKey: "created",
             };
         case "Expired": {
-            const expiredDate = new Date(
-                submissionTimeMs + getEffectiveExpiryPeriodMs(proposal, policy),
-            );
             return {
-                date: expiredDate,
+                date: new Date(getEffectiveExpiryMs(proposal, policy)),
                 isFuture: false,
                 labelKey: "expired",
             };

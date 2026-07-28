@@ -37,14 +37,12 @@ export function buildIntentsQuoteRequest(
     address: string,
     parsedAmount: string,
     isConfidential: boolean,
-    proposalPeriod?: string,
+    proposalPeriod: string,
     amountMode: IntentsAmountMode = "recipient",
     destinationNetwork?: string,
     isPayment: boolean = false,
 ) {
-    const deadlineMs = proposalPeriod
-        ? nanosToMs(proposalPeriod)
-        : 24 * 60 * 60 * 1000;
+    const deadlineMs = nanosToMs(proposalPeriod);
 
     // ORIGIN_CHAIN for native-NEAR/NEAR-FT tokens (funds arrive via ft_transfer
     // on the NEAR blockchain).  INTENTS for Intents tokens (funds arrive via

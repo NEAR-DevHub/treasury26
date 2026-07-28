@@ -16,6 +16,7 @@ import {
 } from "../utils";
 import { formatQuoteErrorMessage, isAbortError } from "../quote-errors";
 import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
+import { nanosToMs } from "@/lib/utils";
 
 export type ExchangeSwapType = "EXACT_INPUT" | "EXACT_OUTPUT";
 
@@ -31,6 +32,8 @@ interface UseExchangeQuoteParams {
     isDryRun: boolean;
     refetchInterval: number;
     isConfidential?: boolean;
+    /** DAO proposal_period in nanoseconds — used as the quote deadline. */
+    proposalPeriod?: string;
 }
 
 /**
@@ -48,6 +51,7 @@ export function useExchangeQuote({
     isDryRun,
     refetchInterval,
     isConfidential,
+    proposalPeriod,
 }: UseExchangeQuoteParams) {
     const tEx = useTranslations("exchangeErrors");
     const amountToken = swapType === "EXACT_INPUT" ? sellToken : receiveToken;
@@ -62,9 +66,14 @@ export function useExchangeQuote({
             swapType,
             slippageTolerance,
             isConfidential,
+            proposalPeriod,
         ],
         queryFn: async ({ signal }): Promise<IntentsQuoteResponse | null> => {
-            if (!selectedTreasury) return null;
+            if (!selectedTreasury || !proposalPeriod) return null;
+
+            const deadline = new Date(
+                Date.now() + nanosToMs(proposalPeriod),
+            ).toISOString();
 
             try {
                 const isDeposit = isNEARDeposit(sellToken, receiveToken);
@@ -95,12 +104,8 @@ export function useExchangeQuote({
                             minAmountOut: amountInRaw,
                             timeEstimate: 0,
                             depositAddress: selectedTreasury,
-                            deadline: new Date(
-                                Date.now() + 24 * 60 * 60 * 1000,
-                            ).toISOString(),
-                            timeWhenInactive: new Date(
-                                Date.now() + 24 * 60 * 60 * 1000,
-                            ).toISOString(),
+                            deadline,
+                            timeWhenInactive: deadline,
                         },
                         quoteRequest: {
                             swapType,
@@ -117,9 +122,7 @@ export function useExchangeQuote({
                             refundType: "DESTINATION_CHAIN",
                             recipient: selectedTreasury,
                             recipientType: "DESTINATION_CHAIN",
-                            deadline: new Date(
-                                Date.now() + 24 * 60 * 60 * 1000,
-                            ).toISOString(),
+                            deadline,
                         },
                         signature: "",
                         timestamp: new Date().toISOString(),
@@ -157,9 +160,7 @@ export function useExchangeQuote({
                         refundType: depositAndRefundType,
                         recipient: selectedTreasury,
                         recipientType: recipientType,
-                        deadline: new Date(
-                            Date.now() + 24 * 60 * 60 * 1000,
-                        ).toISOString(),
+                        deadline,
                         quoteWaitingTimeMs: isDryRun ? 0 : 3000,
                     },
                     isDryRun,
@@ -175,7 +176,7 @@ export function useExchangeQuote({
                 );
             }
         },
-        enabled,
+        enabled: enabled && !!proposalPeriod,
         refetchInterval,
         staleTime: refetchInterval,
         refetchIntervalInBackground: false,

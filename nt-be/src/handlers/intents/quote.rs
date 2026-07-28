@@ -1,4 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
+use near_account_id::AccountIdRef;
 use near_api::AccountId;
 use serde::Deserialize;
 use serde_json::Value;
@@ -7,6 +8,28 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::auth::OptionalAuthUser;
+use crate::handlers::treasury::policy::fetch_treasury_policy_cached;
+
+/// Default DAO proposal period (7 days) used when policy is unavailable.
+const DEFAULT_PROPOSAL_PERIOD_NS: u64 = 604_800_000_000_000;
+
+/// Quote deadline aligned with the DAO's proposal voting period.
+pub async fn quote_deadline_for_dao(
+    state: &Arc<AppState>,
+    dao_id: &AccountIdRef,
+) -> Result<chrono::DateTime<chrono::Utc>, (StatusCode, String)> {
+    let policy = fetch_treasury_policy_cached(state, dao_id, None).await?;
+    let period_ns = policy
+        .get("proposal_period")
+        .and_then(|v| {
+            v.as_str()
+                .and_then(|s| s.parse::<u64>().ok())
+                .or_else(|| v.as_u64())
+        })
+        .unwrap_or(DEFAULT_PROPOSAL_PERIOD_NS);
+    let period_ms = (period_ns / 1_000_000) as i64;
+    Ok(chrono::Utc::now() + chrono::Duration::milliseconds(period_ms))
+}
 
 /// Quote request body - matches 1click API /v0/quote
 /// Client-provided appFees and referral are ignored and overridden by server config

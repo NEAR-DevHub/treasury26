@@ -10,7 +10,6 @@ import { useFormatDate } from "@/components/formatted-date";
 import { InfoDisplay } from "@/components/info-display";
 import { ReviewStep, type StepProps } from "@/components/step-wizard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WarningAlert } from "@/components/warning-alert";
 import { useTreasury } from "@/hooks/use-treasury";
 import {
     calculateExchangeFeeAmount,
@@ -299,10 +298,6 @@ export function Step2({ handleBack }: StepProps) {
                         </div>
                     </>
                 ) : null}
-
-                <WarningAlert message={tEx("approveWithin24h")} />
-
-                <></>
             </ReviewStep>
 
             <div className="rounded-lg border bg-card p-0 overflow-hidden">
