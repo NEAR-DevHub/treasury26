@@ -96,8 +96,7 @@ async fn insert_ledger_entries(
     let balances_before: Vec<BigDecimal> =
         entries.iter().map(|e| e.balance_before.clone()).collect();
     let balances_after: Vec<BigDecimal> = entries.iter().map(|e| e.balance_after.clone()).collect();
-    let affects_user_balances: Vec<bool> =
-        entries.iter().map(|e| e.affects_user_balance).collect();
+    let affects_user_balances: Vec<bool> = entries.iter().map(|e| e.affects_user_balance).collect();
     let user_balances_after: Vec<BigDecimal> = entries
         .iter()
         .map(|e| e.user_balance_after.clone())

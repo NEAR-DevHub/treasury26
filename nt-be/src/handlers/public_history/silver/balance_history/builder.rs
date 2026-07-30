@@ -8,10 +8,8 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use std::str::FromStr;
 
-use super::models::{
-    BalanceLedgerEntry, BalanceSeedRow, LedgerBuildResult, LedgerProjectionError,
-};
-use super::ownership::native_movement_affects_user_balance;
+use super::models::{BalanceLedgerEntry, BalanceSeedRow, LedgerBuildResult, LedgerProjectionError};
+use super::ownership::{native_movement_affects_user_balance, one_yocto_attachment_yoctos};
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
 use crate::handlers::public_history::silver::models::{
     BronzePublicHistoryRow, PublicAmount, PublicAsset,
@@ -108,7 +106,10 @@ impl<'r> ReceiptDepositGroup<'r> {
 }
 
 fn aggregate_deposit(raw_payload: &Value) -> Option<BigDecimal> {
-    let deposit = raw_payload.get("receipt")?.get("actions_agg")?.get("deposit")?;
+    let deposit = raw_payload
+        .get("receipt")?
+        .get("actions_agg")?
+        .get("deposit")?;
     match deposit {
         Value::String(text) => BigDecimal::from_str(text).ok(),
         Value::Number(number) => BigDecimal::from_str(&number.to_string()).ok(),
@@ -172,14 +173,14 @@ impl<'a> BalanceLedgerBuilder<'a> {
                     Some(receipt_id) => receipt_rows.entry(receipt_id).or_default().push(row),
                     None => keyless_receipt_rows.push(row),
                 },
-                Ok(PublicHistorySource::QuoteProjection) => {}
                 Err(error) => result.errors.push(projection_error(row, error.to_string())),
             }
         }
         for row in keyless_receipt_rows {
-            result
-                .errors
-                .push(projection_error(row, "receipt row missing receipt_id".to_string()));
+            result.errors.push(projection_error(
+                row,
+                "receipt row missing receipt_id".to_string(),
+            ));
         }
 
         for group_rows in receipt_rows.into_values() {
@@ -187,9 +188,8 @@ impl<'a> BalanceLedgerBuilder<'a> {
             if group.is_failed() {
                 continue;
             }
-            match self.native_movement(&group) {
-                Ok(Some(movement)) => movements.push(movement),
-                Ok(None) => {}
+            match self.native_movements(&group) {
+                Ok(receipt_movements) => movements.extend(receipt_movements),
                 Err(reason) => result.errors.push(projection_error(group.first(), reason)),
             }
         }
@@ -255,12 +255,18 @@ impl<'a> BalanceLedgerBuilder<'a> {
         }))
     }
 
-    fn native_movement(
+    /// One receipt yields one movement, except a user-owned outflow whose
+    /// deposit includes mandatory 1-yocto attachments: those yoctos split
+    /// into a separate non-user movement, so the chain balance still counts
+    /// the full deposit while the user balance only counts value moved.
+    /// Without the split, every token-transfer call leaks 1 yocto of
+    /// sponsor-funded plumbing into the user series and drifts it negative.
+    fn native_movements(
         &self,
         group: &ReceiptDepositGroup<'_>,
-    ) -> Result<Option<LedgerMovement>, String> {
+    ) -> Result<Vec<LedgerMovement>, String> {
         let Some(delta_raw) = group.signed_delta_raw(self.account_id)? else {
-            return Ok(None);
+            return Ok(Vec::new());
         };
         let first = group.first();
         let receipt_id = first
@@ -275,21 +281,44 @@ impl<'a> BalanceLedgerBuilder<'a> {
             self.relayer_account,
             delta_raw.is_positive().then_some(&delta_raw),
         );
+        let movement =
+            |entry_key: String, delta_raw: BigDecimal, affects_user_balance: bool| LedgerMovement {
+                asset: PublicAsset::native_near(),
+                entry_key,
+                source: PublicHistorySource::NearblocksReceipt,
+                source_event_id: first.id,
+                receipt_id: Some(receipt_id.clone()),
+                transaction_hash: first.transaction_hash.clone(),
+                counterparty: counterparty.clone(),
+                block_height: first.block_height,
+                block_time: first.block_time,
+                delta_raw,
+                decimals: NATIVE_DECIMALS,
+                affects_user_balance,
+            };
+        let base_key = format!("native:{}:{}", self.account_id, receipt_id);
 
-        Ok(Some(LedgerMovement {
-            asset: PublicAsset::native_near(),
-            entry_key: format!("native:{}:{}", self.account_id, receipt_id),
-            source: PublicHistorySource::NearblocksReceipt,
-            source_event_id: first.id,
-            receipt_id: Some(receipt_id),
-            transaction_hash: first.transaction_hash.clone(),
-            counterparty,
-            block_height: first.block_height,
-            block_time: first.block_time,
-            delta_raw,
-            decimals: NATIVE_DECIMALS,
-            affects_user_balance,
-        }))
+        if affects_user_balance && delta_raw.is_negative() {
+            let magnitude = -delta_raw.clone();
+            let attachments =
+                BigDecimal::from(one_yocto_attachment_yoctos(&first.raw_payload, &magnitude))
+                    .min(magnitude);
+            if attachments.is_positive() {
+                let user_delta = &delta_raw + &attachments;
+                let mut movements = Vec::new();
+                if !user_delta.is_zero() {
+                    movements.push(movement(base_key.clone(), user_delta, true));
+                }
+                movements.push(movement(
+                    format!("{base_key}:attachment"),
+                    -attachments,
+                    false,
+                ));
+                return Ok(movements);
+            }
+        }
+
+        Ok(vec![movement(base_key, delta_raw, affects_user_balance)])
     }
 
     fn assign_running_balances(
@@ -550,7 +579,10 @@ mod tests {
         let sponsor = &result.entries[1];
         assert!(!sponsor.affects_user_balance);
         assert_eq!(sponsor.user_balance_after, deposit.user_balance_after);
-        assert_eq!(sponsor.balance_after, &deposit.balance_after + &sponsor.delta);
+        assert_eq!(
+            sponsor.balance_after,
+            &deposit.balance_after + &sponsor.delta
+        );
 
         let sent = &result.entries[2];
         assert!(sent.affects_user_balance);
@@ -663,9 +695,36 @@ mod tests {
         let technical_cost = "10000000000000000000000"; // 0.01
         let two = "2000000000000000000000000"; // 2
         let rows = vec![
-            receipt_row(1, "r-deposit", 0, 100, DAO, Some("alice.near"), Some(ten), None),
-            receipt_row(2, "r-sponsor", 0, 101, DAO, Some(RELAYER), Some(sponsor_topup), None),
-            receipt_row(3, "r-cost", 0, 102, RELAYER, Some(DAO), Some(technical_cost), None),
+            receipt_row(
+                1,
+                "r-deposit",
+                0,
+                100,
+                DAO,
+                Some("alice.near"),
+                Some(ten),
+                None,
+            ),
+            receipt_row(
+                2,
+                "r-sponsor",
+                0,
+                101,
+                DAO,
+                Some(RELAYER),
+                Some(sponsor_topup),
+                None,
+            ),
+            receipt_row(
+                3,
+                "r-cost",
+                0,
+                102,
+                RELAYER,
+                Some(DAO),
+                Some(technical_cost),
+                None,
+            ),
             receipt_row(4, "r-send", 0, 103, "bob.near", Some(DAO), Some(two), None),
         ];
 
@@ -681,9 +740,122 @@ mod tests {
             .iter()
             .map(|entry| entry.user_balance_after.clone())
             .collect();
-        assert_eq!(user_series, vec![near(ten), near(ten), near(ten), near("8000000000000000000000000")]);
+        assert_eq!(
+            user_series,
+            vec![
+                near(ten),
+                near(ten),
+                near(ten),
+                near("8000000000000000000000000")
+            ]
+        );
         let chain_head = &result.entries[3].balance_after;
         assert_eq!(chain_head, &near("8090000000000000000000000"));
+    }
+
+    #[test]
+    fn standalone_one_yocto_transfer_attachment_is_not_user_owned() {
+        // mt_transfer to intents.near: the whole receipt deposit is the
+        // mandatory 1-yocto attachment. Chain balance moves; user must not.
+        let mut row = receipt_row(1, "r1", 0, 100, "intents.near", Some(DAO), None, Some("1"));
+        row.raw_payload = serde_json::json!({
+            "receipt": {
+                "actions": [{ "action": "FUNCTION_CALL", "method": "mt_transfer" }],
+                "actions_agg": { "deposit": "1" }
+            }
+        });
+
+        let result = build(&[row]);
+
+        assert!(result.errors.is_empty());
+        assert_eq!(result.entries.len(), 1);
+        let entry = &result.entries[0];
+        assert!(!entry.affects_user_balance);
+        assert_eq!(entry.entry_key, format!("native:{DAO}:r1:attachment"));
+        assert_eq!(entry.delta_raw, BigDecimal::from(-1));
+        assert_eq!(
+            entry.balance_after,
+            PublicAmount::from_raw(BigDecimal::from(-1), NATIVE_DECIMALS).amount
+        );
+        assert_eq!(entry.user_balance_after, BigDecimal::zero());
+    }
+
+    #[test]
+    fn one_yocto_deposit_on_any_function_call_is_an_attachment() {
+        // `sign` on v1.signer / `add_public_key` on intents.near: methods
+        // outside the known list, but the whole deposit is 1 yocto —
+        // universal `assert_one_yocto`, never user value (observed drifting
+        // beyond.sputnik-dao.near negative).
+        let mut row = receipt_row(1, "r1", 0, 100, "v1.signer", Some(DAO), None, Some("1"));
+        row.raw_payload = serde_json::json!({
+            "receipt": {
+                "actions": [{ "action": "FUNCTION_CALL", "method": "sign" }],
+                "actions_agg": { "deposit": "1" }
+            }
+        });
+
+        let result = build(&[row]);
+
+        assert_eq!(result.entries.len(), 1);
+        assert!(!result.entries[0].affects_user_balance);
+        assert_eq!(result.entries[0].user_balance_after, BigDecimal::zero());
+    }
+
+    #[test]
+    fn wrap_receipt_splits_attachment_from_user_outflow() {
+        // near_deposit(0.2) + ft_transfer share one aggregate deposit of
+        // 0.2 NEAR + 1 yocto. The user spent exactly 0.2; the extra yocto is
+        // the ft_transfer attachment.
+        let two_tenths = "200000000000000000000000";
+        let mut wrap = receipt_row(
+            2,
+            "r-wrap",
+            0,
+            101,
+            "wrap.near",
+            Some(DAO),
+            None,
+            Some("200000000000000000000001"),
+        );
+        wrap.raw_payload = serde_json::json!({
+            "receipt": {
+                "actions": [
+                    { "action": "FUNCTION_CALL", "method": "near_deposit" },
+                    { "action": "FUNCTION_CALL", "method": "ft_transfer" }
+                ],
+                "actions_agg": { "deposit": "200000000000000000000001" }
+            }
+        });
+        let rows = vec![
+            receipt_row(
+                1,
+                "r-in",
+                0,
+                100,
+                DAO,
+                Some("alice.near"),
+                Some(two_tenths),
+                None,
+            ),
+            wrap,
+        ];
+
+        let result = build(&rows);
+
+        assert!(result.errors.is_empty());
+        assert_eq!(result.entries.len(), 3);
+        let near = |value: &str| {
+            PublicAmount::from_raw(BigDecimal::from_str(value).unwrap(), NATIVE_DECIMALS).amount
+        };
+        let user_part = &result.entries[1];
+        assert!(user_part.affects_user_balance);
+        assert_eq!(user_part.delta, near("-200000000000000000000000"));
+        let attachment = &result.entries[2];
+        assert!(!attachment.affects_user_balance);
+        assert_eq!(attachment.delta, near("-1"));
+        // User spent exactly the deposit; the yocto stays out of the series.
+        assert_eq!(attachment.user_balance_after, BigDecimal::zero());
+        assert_eq!(attachment.balance_after, near("-1"));
     }
 
     #[test]
@@ -704,7 +876,16 @@ mod tests {
         // spurious negative dip.
         let rows = vec![
             receipt_row(1, "r-out", 0, 100, "bob.near", Some(DAO), Some("400"), None),
-            receipt_row(2, "r-in", 0, 100, DAO, Some("alice.near"), Some("400"), None),
+            receipt_row(
+                2,
+                "r-in",
+                0,
+                100,
+                DAO,
+                Some("alice.near"),
+                Some("400"),
+                None,
+            ),
         ];
 
         let result = build(&rows);

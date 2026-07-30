@@ -146,6 +146,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/balance-history/export",
             get(handlers::balance_changes::history::export_balance),
         )
+        .route(
+            "/api/proposals/refresh",
+            post(handlers::public_history::proposals::refresh::refresh_public_proposal),
+        )
         // Token endpoints
         .route(
             "/api/token/metadata",

@@ -341,24 +341,30 @@ pub async fn load_prior_balances(
     token_ids: Option<&Vec<String>>,
     unified: bool,
 ) -> Result<HashMap<String, BigDecimal>, sqlx::Error> {
-    let (table, in_balance, out_balance) = if unified {
+    // Latest is chain order (block, then intra-block source order), not
+    // event_time: same-transaction legs share one event_time, and an id
+    // tiebreak there can surface the balance from before the final leg.
+    let (table, in_balance, out_balance, source_order) = if unified {
         (
             "gold_treasury_ledger_events",
             "token_in_user_balance_after",
             "token_out_user_balance_after",
+            "source_order",
         )
     } else {
         (
             "gold_public_history_events",
             "token_in_balance_after",
             "token_out_balance_after",
+            "0 AS source_order",
         )
     };
     let mut builder = QueryBuilder::<sqlx::Postgres>::new(format!(
         r#"
         SELECT DISTINCT ON (asset) asset, balance
         FROM (
-            SELECT token_in AS asset, {in_balance} AS balance, event_time, id
+            SELECT token_in AS asset, {in_balance} AS balance,
+                   block_height, {source_order}, event_time, id
             FROM {table}
             WHERE dao_id = "#,
     ));
@@ -378,7 +384,8 @@ pub async fn load_prior_balances(
     builder.push(format!(
         r#"
             UNION ALL
-            SELECT token_out AS asset, {out_balance} AS balance, event_time, id
+            SELECT token_out AS asset, {out_balance} AS balance,
+                   block_height, {source_order}, event_time, id
             FROM {table}
             WHERE dao_id = "#,
     ));
@@ -398,7 +405,8 @@ pub async fn load_prior_balances(
     builder.push(
         r#"
         ) balances
-        ORDER BY asset, event_time DESC, id DESC
+        ORDER BY asset, block_height DESC NULLS LAST, source_order DESC,
+                 event_time DESC, id DESC
         "#,
     );
 
@@ -493,11 +501,7 @@ pub async fn fetch_balance_change_legs(
     let mut builder = bind_public_filters(builder, params, false, unified);
     let rows: Vec<PublicGoldRow> = builder.build_query_as().fetch_all(&state.db_pool).await?;
 
-    let expand_exchange_balances = params.include_metadata != Some(true);
-    let legs: Vec<LegRow> = rows
-        .into_iter()
-        .flat_map(|row| LegRow::from_gold(row, expand_exchange_balances))
-        .collect();
+    let legs: Vec<LegRow> = rows.into_iter().flat_map(LegRow::from_gold).collect();
 
     let metadata_map = {
         let ids = collect_token_ids(&legs);
@@ -584,7 +588,7 @@ impl LegRow {
         hashes
     }
 
-    fn from_gold(row: PublicGoldRow, expand_exchange_balances: bool) -> Vec<Self> {
+    fn from_gold(row: PublicGoldRow) -> Vec<Self> {
         match row.transaction_type.as_str() {
             "deposit" => row
                 .token_in
@@ -628,9 +632,9 @@ impl LegRow {
                     }]
                 })
                 .unwrap_or_default(),
-            "sent" if expand_exchange_balances && row.token_out_balance_after.is_none() => {
-                Vec::new()
-            }
+            // Pending payment rows (approved proposal, transfer not indexed
+            // yet) have no balances but must render — they disappear only by
+            // being replaced with the real indexed row.
             "sent" => row
                 .token_out
                 .clone()
@@ -865,7 +869,7 @@ mod tests {
         row.token_in_balance_before = Some(decimal("2.5"));
         row.token_in_balance_after = Some(decimal("15"));
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdc.near");
@@ -884,7 +888,7 @@ mod tests {
         row.token_out_balance_after = Some(decimal("5"));
         row.recipient = Some("bob.near".to_string());
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdc.near");
@@ -906,7 +910,7 @@ mod tests {
         row.token_out_balance_before = Some(decimal("20"));
         row.token_out_balance_after = Some(decimal("10"));
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdt.near");
@@ -933,7 +937,7 @@ mod tests {
         row.token_out_balance_before = Some(decimal("20"));
         row.token_out_balance_after = Some(decimal("10"));
 
-        let legs = LegRow::from_gold(row, true);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdt.near");
@@ -949,7 +953,7 @@ mod tests {
         row.token_out = Some("nep141:usdc.near".to_string());
         row.amount_out = Some(decimal("10"));
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdc.near");

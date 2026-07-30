@@ -385,7 +385,6 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
     }
 }
 
-
 /// Registers a queue and, when a monitor is present, its cron worker:
 /// schedule → postgres queue → handler.
 ///
@@ -599,6 +598,14 @@ fn configure_cron_runtime(
                 300
             )),
             handlers::public_balance_verification
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "staking-observation",
+            schedule_every_secs(env_secs("STAKING_OBSERVATION_INTERVAL_SECONDS", 900)),
+            handlers::staking_observation
         );
         monitor = register_cron_worker!(
             monitor,

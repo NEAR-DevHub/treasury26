@@ -29,6 +29,7 @@ use crate::handlers::public_history::bronze::store::{
 use crate::handlers::public_history::gold::projector::project_public_gold_for_account;
 use crate::handlers::public_history::proposals::linker::link_public_proposal_receipts;
 use crate::handlers::public_history::silver::worker::project_public_silver_for_account;
+use crate::handlers::public_history::verification::BalanceVerifier;
 use crate::jobs::context::JobContext;
 
 use super::postgres::{
@@ -524,43 +525,42 @@ async fn handle_latest_job(
         "public latest refresh job finished"
     );
 
-    let silver_ready =
-        match project_public_silver_for_account(
-            &context.state.db_pool,
-            &account_id,
-            context.state.signer_id.as_str(),
-        )
-        .await
-        {
-            Ok(silver_stats) if silver_stats.skipped_locked => {
-                tracing::debug!(
-                    account_id = account_id,
-                    source = %source,
-                    "public latest refresh projection nudge skipped silver lock"
-                );
-                false
-            }
-            Ok(silver_stats) => {
-                tracing::debug!(
-                    account_id = account_id,
-                    source = %source,
-                    rows_projected = silver_stats.rows_projected,
-                    rows_deleted = silver_stats.rows_deleted,
-                    errors_written = silver_stats.errors_written,
-                    "public latest refresh projection nudge finished silver"
-                );
-                true
-            }
-            Err(error) => {
-                tracing::warn!(
-                    account_id = account_id,
-                    source = %source,
-                    error = %error,
-                    "public latest refresh projection nudge failed silver"
-                );
-                false
-            }
-        };
+    let silver_ready = match project_public_silver_for_account(
+        &context.state.db_pool,
+        &account_id,
+        context.state.signer_id.as_str(),
+    )
+    .await
+    {
+        Ok(silver_stats) if silver_stats.skipped_locked => {
+            tracing::debug!(
+                account_id = account_id,
+                source = %source,
+                "public latest refresh projection nudge skipped silver lock"
+            );
+            false
+        }
+        Ok(silver_stats) => {
+            tracing::debug!(
+                account_id = account_id,
+                source = %source,
+                rows_projected = silver_stats.rows_projected,
+                rows_deleted = silver_stats.rows_deleted,
+                errors_written = silver_stats.errors_written,
+                "public latest refresh projection nudge finished silver"
+            );
+            true
+        }
+        Err(error) => {
+            tracing::warn!(
+                account_id = account_id,
+                source = %source,
+                error = %error,
+                "public latest refresh projection nudge failed silver"
+            );
+            false
+        }
+    };
 
     if !silver_ready {
         return Ok(());
@@ -600,10 +600,13 @@ async fn handle_latest_job(
             // treasury gets its gate immediately (charts + ledger-fed
             // dashboard in the same pass), instead of waiting up to a full
             // verification cron interval. No-op for already-gated accounts.
-            let verifier = crate::handlers::public_history::verification::BalanceVerifier::new(
+            let verifier = BalanceVerifier::new(
                 &context.state.db_pool,
                 &context.state.archival_network,
-                context.state.env_vars.public_native_verification_tolerance_near,
+                context
+                    .state
+                    .env_vars
+                    .public_native_verification_tolerance_near,
             );
             match verifier.nudge_account_gate(&account_id).await {
                 Ok(true) => {

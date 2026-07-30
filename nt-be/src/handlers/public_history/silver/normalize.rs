@@ -224,9 +224,6 @@ pub fn normalize_bronze_row(
         PublicHistorySource::NearblocksFt => normalize_ft(row),
         PublicHistorySource::NearblocksMt => normalize_mt(row),
         PublicHistorySource::NearblocksReceipt => normalize_receipt(row),
-        PublicHistorySource::QuoteProjection => {
-            Err("quote projection rows are synthetic".to_string())
-        }
     }
 }
 

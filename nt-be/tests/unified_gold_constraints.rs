@@ -19,7 +19,12 @@ async fn seed_account(pool: &PgPool) {
     .expect("seed monitored account");
 }
 
-async fn insert_row(pool: &PgPool, dao_id: &str, key: &str, with_leg: bool) -> Result<(), sqlx::Error> {
+async fn insert_row(
+    pool: &PgPool,
+    dao_id: &str,
+    key: &str,
+    with_leg: bool,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT INTO gold_treasury_ledger_events (

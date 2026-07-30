@@ -22,6 +22,9 @@ pub struct ChartReadiness {
     pub gold_dirty: bool,
     pub verification_passed: bool,
     pub head_check_failed: bool,
+    /// False while a validated staking pool still has uncovered chart-horizon
+    /// boundaries — a partially backfilled staked series would be misleading.
+    pub staking_ready: bool,
     pub ledger_coverage_start: Option<DateTime<Utc>>,
     pub ledger_head_time: Option<DateTime<Utc>>,
 }

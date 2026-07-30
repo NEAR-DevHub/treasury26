@@ -11,7 +11,6 @@ pub enum PublicHistorySource {
     NearblocksFt,
     NearblocksMt,
     NearblocksReceipt,
-    QuoteProjection,
 }
 
 impl PublicHistorySource {
@@ -20,7 +19,6 @@ impl PublicHistorySource {
             Self::NearblocksFt => "nearblocks_ft",
             Self::NearblocksMt => "nearblocks_mt",
             Self::NearblocksReceipt => "nearblocks_receipt",
-            Self::QuoteProjection => "quote_projection",
         }
     }
 
@@ -37,7 +35,6 @@ impl PublicHistorySource {
             "nearblocks_ft" => Ok(Self::NearblocksFt),
             "nearblocks_mt" => Ok(Self::NearblocksMt),
             "nearblocks_receipt" => Ok(Self::NearblocksReceipt),
-            "quote_projection" => Ok(Self::QuoteProjection),
             other => Err(PublicHistorySourceParseError(other.to_string())),
         }
     }

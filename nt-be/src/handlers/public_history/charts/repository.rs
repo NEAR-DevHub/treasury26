@@ -128,6 +128,13 @@ pub async fn load_chart_readiness(
                 WHERE verification.account_id = $1
                   AND verification.last_head_check_passed = false
             ) AS head_check_failed,
+            NOT EXISTS (
+                SELECT 1
+                FROM staking_observation_cursors staking
+                WHERE staking.account_id = $1
+                  AND staking.validated = true
+                  AND staking.backfill_done = false
+            ) AS staking_ready,
             (
                 SELECT MIN(block_time)
                 FROM silver_balance_history

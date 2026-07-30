@@ -123,6 +123,12 @@ pub async fn load_asset_ledger_heads(
             decimals
         FROM silver_balance_history
         WHERE account_id = $1
+          -- Verification is native-NEAR only. Staking series ARE
+          -- authoritative RPC readings (observations), and FT/MT balances
+          -- can accrue without transfer events (venear.dao vote-escrow), so
+          -- an exact-drift chain check would fail ledgers that are correct.
+          AND token_standard = 'native'::public_token_standard
+          AND asset NOT LIKE 'staking:%'
         ORDER BY asset, block_time DESC, block_height DESC, intra_block_seq DESC
         "#,
     )
@@ -270,18 +276,31 @@ pub async fn insert_rebase_entry(
     Ok(result.rows_affected())
 }
 
-pub async fn latest_ledger_time(
+const NATIVE_LEDGER_HEAD_SQL: &str = r#"
+    SELECT balance_after, user_balance_after, block_height
+    FROM silver_balance_history
+    WHERE account_id = $1 AND asset = 'near'
+    ORDER BY block_time DESC, block_height DESC, intra_block_seq DESC
+    LIMIT 1
+"#;
+
+/// The native ledger head: (chain-side balance, user-owned balance, block).
+pub async fn load_native_ledger_head(
+    pool: &PgPool,
+    account_id: &str,
+) -> Result<Option<(BigDecimal, BigDecimal, i64)>, sqlx::Error> {
+    sqlx::query_as(NATIVE_LEDGER_HEAD_SQL)
+        .bind(account_id)
+        .fetch_optional(pool)
+        .await
+}
+
+pub async fn load_native_ledger_head_tx(
     tx: &mut Transaction<'_, Postgres>,
     account_id: &str,
-) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
-    sqlx::query_scalar(
-        r#"
-        SELECT MAX(block_time)
-        FROM silver_balance_history
-        WHERE account_id = $1
-        "#,
-    )
-    .bind(account_id)
-    .fetch_one(&mut **tx)
-    .await
+) -> Result<Option<(BigDecimal, BigDecimal, i64)>, sqlx::Error> {
+    sqlx::query_as(NATIVE_LEDGER_HEAD_SQL)
+        .bind(account_id)
+        .fetch_optional(&mut **tx)
+        .await
 }

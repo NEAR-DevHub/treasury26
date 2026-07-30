@@ -452,7 +452,6 @@ pub async fn delete_stale_gold_rows(
     Ok(result.rows_affected())
 }
 
-
 #[allow(dead_code)]
 pub fn zero() -> BigDecimal {
     BigDecimal::from(0)

@@ -55,9 +55,5 @@ pub(crate) async fn fetch_source_page(
             )
             .await
         }
-        PublicHistorySource::QuoteProjection => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "quote_projection is not a NearBlocks ingest source".to_string(),
-        )),
     }
 }

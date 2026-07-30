@@ -379,33 +379,30 @@ pub const MIN_NEAR_DISPLAY_BALANCE: NearToken = NearToken::from_millinear(1);
 
 /// Override live NEAR/FT/intents balances with the verified ledger's
 /// user-owned balances (`gold_treasury_ledger_events`), so the dashboard's
-/// current balance is definitionally the chart's latest point. Applies only
-/// when unified reads are enabled and the account's ledger is projection-
-/// ready and chain-verified; any failure leaves the live values untouched.
+/// current balance is definitionally the chart's latest point. Once a
+/// treasury's ledger is chain-verified it stays authoritative — recompute
+/// windows serve the last projected balances (stale, never a silent switch
+/// back to live reads), and a failed ledger read fails the request. Live
+/// reads remain only for treasuries whose ledger was never verified.
 async fn apply_ledger_balances(
     state: &Arc<AppState>,
     account: &AccountId,
     tokens: &mut [(SimplifiedToken, U128)],
-) {
+) -> Result<(), (StatusCode, String)> {
     use crate::handlers::balance_changes::public_list;
     use crate::handlers::public_history::charts::repository::load_chart_readiness;
-    use crate::handlers::user::assets::TokenResidency;
 
     if !state.env_vars.unified_gold_ledger_reads {
-        return;
+        return Ok(());
     }
-    let ready = match load_chart_readiness(&state.db_pool, account.as_str()).await {
-        Ok(readiness) => readiness.projection_ready && readiness.verification_passed,
-        Err(error) => {
-            tracing::warn!(account = %account, %error, "ledger readiness check failed; keeping live balances");
-            return;
-        }
-    };
-    if !ready {
-        return;
+    let readiness = load_chart_readiness(&state.db_pool, account.as_str())
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    if !readiness.verification_passed {
+        return Ok(());
     }
 
-    let ledger = match public_list::load_prior_balances(
+    let ledger = public_list::load_prior_balances(
         &state.db_pool,
         account.as_str(),
         chrono::Utc::now(),
@@ -413,13 +410,7 @@ async fn apply_ledger_balances(
         true,
     )
     .await
-    {
-        Ok(balances) => balances,
-        Err(error) => {
-            tracing::warn!(account = %account, %error, "ledger balance load failed; keeping live balances");
-            return;
-        }
-    };
+    .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
     for (token, raw_balance) in tokens.iter_mut() {
         let ledger_value = match token.residency {
@@ -428,25 +419,35 @@ async fn apply_ledger_balances(
                 .contract_id
                 .as_deref()
                 .and_then(|contract| ledger.get(contract)),
-            TokenResidency::Intents => ledger.get(&token.id).or_else(|| {
-                (!token.id.starts_with("intents.near:"))
-                    .then(|| ledger.get(&format!("intents.near:{}", token.id)))
-                    .flatten()
+            // The ledger stores canonical asset ids (same convention as the
+            // chart's stored_asset_id): intents-held NEP-141s prefixed with
+            // the custodian, NEP-245s bare. `token.id` is the display id
+            // ("usdc") and must never key the lookup.
+            TokenResidency::Intents => token.contract_id.as_deref().and_then(|contract| {
+                if contract.starts_with("nep245:") {
+                    ledger.get(contract)
+                } else {
+                    ledger.get(&format!("intents.near:{contract}"))
+                }
             }),
             _ => None,
         };
         let Some(ledger_value) = ledger_value else {
             continue;
         };
-        if ledger_value.sign() == bigdecimal::num_bigint::Sign::Minus {
-            continue;
-        }
 
-        let scale = (0..token.decimals).fold(BigDecimal::from(1u32), |acc, _| {
-            acc * BigDecimal::from(10u32)
-        });
-        let Some(mut raw) = (ledger_value * &scale).with_scale(0).to_u128() else {
-            continue;
+        let scale = crate::handlers::public_history::silver::models::decimal_denominator(
+            i32::from(token.decimals),
+        );
+        // Yocto-scale negatives are ledger drift, not holdings: display zero,
+        // still ledger-sourced.
+        let mut raw = if ledger_value.sign() == bigdecimal::num_bigint::Sign::Minus {
+            0
+        } else {
+            let Some(raw) = (ledger_value * &scale).with_scale(0).to_u128() else {
+                continue;
+            };
+            raw
         };
         if matches!(token.residency, TokenResidency::Near)
             && raw < MIN_NEAR_DISPLAY_BALANCE.as_yoctonear()
@@ -460,6 +461,7 @@ async fn apply_ledger_balances(
         };
         *raw_balance = raw.into();
     }
+    Ok(())
 }
 
 /// Fetch NEAR balance for an account
@@ -892,9 +894,10 @@ pub async fn compute_user_assets(
     }
 
     // Verified public treasuries serve the same user-owned balances the
-    // chart's latest point shows; live reads stay for everything else.
+    // chart's latest point shows; live reads stay only for never-verified
+    // treasuries.
     if !is_confidential {
-        apply_ledger_balances(state, account, &mut all_simplified_tokens).await;
+        apply_ledger_balances(state, account, &mut all_simplified_tokens).await?;
     }
 
     // Sort combined list by balance (highest first)

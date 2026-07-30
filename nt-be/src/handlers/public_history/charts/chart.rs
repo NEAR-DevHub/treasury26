@@ -74,8 +74,24 @@ struct BucketPrices {
     eod_by_asset: HashMap<String, HashMap<NaiveDate, f64>>,
 }
 
+/// Staking series are denominated in NEAR; price them from the native feed.
+fn price_asset(asset: &str) -> &str {
+    if asset.starts_with("staking:") {
+        "near"
+    } else {
+        asset
+    }
+}
+
 impl BucketPrices {
     async fn load(state: &AppState, assets: &[String], buckets: &[DateTime<Utc>]) -> Self {
+        let assets: Vec<String> = assets
+            .iter()
+            .map(|asset| price_asset(asset).to_string())
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+        let assets = assets.as_slice();
         let minute_grid = match state
             .token_price_service
             .prices_at_same_day_grid(assets, buckets)
@@ -113,6 +129,7 @@ impl BucketPrices {
     }
 
     fn price(&self, asset: &str, bucket: DateTime<Utc>) -> Option<f64> {
+        let asset = price_asset(asset);
         self.minute_grid
             .get(&(asset.to_string(), bucket))
             .filter(|price| !price.is_negative())
@@ -196,10 +213,12 @@ pub async fn build_public_chart_response(
     let readiness = load_chart_readiness(&state.db_pool, account_id)
         .await
         .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-    // Chart-ready means: backfill complete, gold projection ready, and the
-    // ledger verified against chain. Anything less serves Unavailable — no
-    // silently wrong data, no fallback.
-    if !readiness.projection_ready || !readiness.verification_passed {
+    // Unavailable is reserved for ledgers that have never been fully built:
+    // not yet chain-verified (verification passes only after a complete
+    // backfill + projection, and never revokes), or a validated staking pool
+    // still backfilling. A verified ledger keeps serving through recompute
+    // windows — the response degrades to Stale, never to empty.
+    if !readiness.verification_passed || !readiness.staking_ready {
         return Ok(unavailable_response(&readiness));
     }
 
@@ -247,11 +266,12 @@ pub async fn build_public_chart_response(
         snapshots.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
     }
 
-    let status = if readiness.gold_dirty || readiness.head_check_failed {
-        ChartStatus::Stale
-    } else {
-        ChartStatus::Ok
-    };
+    let status =
+        if !readiness.projection_ready || readiness.gold_dirty || readiness.head_check_failed {
+            ChartStatus::Stale
+        } else {
+            ChartStatus::Ok
+        };
     Ok(ChartResponse {
         data,
         last_synced_at: readiness.projection_ready_at,

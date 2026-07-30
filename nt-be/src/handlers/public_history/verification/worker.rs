@@ -12,9 +12,9 @@ use super::models::{
     VerificationStatus, VerificationWatermark,
 };
 use super::repository::{
-    insert_rebase_entry, load_asset_ledger_heads, load_gate_candidates,
-    load_head_check_candidates, load_watermark, record_check_results, set_gate_status,
-    set_head_check_result,
+    insert_rebase_entry, load_asset_ledger_heads, load_gate_candidates, load_head_check_candidates,
+    load_native_ledger_head, load_native_ledger_head_tx, load_watermark, record_check_results,
+    set_gate_status, set_head_check_result,
 };
 use crate::services::public_balance_reader::{
     get_public_balance_at_block, get_public_gross_native_balance_at_block,
@@ -22,6 +22,9 @@ use crate::services::public_balance_reader::{
 
 const FAILED_RETRY_AFTER_HOURS: i64 = 6;
 const WATERMARK_MAX_AGE_MINUTES: i64 = 15;
+/// Bound on archival head-anchor reads per silver cycle so a mass-dirty
+/// event cannot turn one tick into an unbounded sequential RPC sweep.
+const HEAD_ANCHORS_PER_CYCLE: usize = 25;
 
 #[derive(Debug)]
 pub struct VerificationError(String);
@@ -62,8 +65,17 @@ impl<'a> BalanceVerifier<'a> {
         archival_network: &'a NetworkConfig,
         native_tolerance_near: f64,
     ) -> Self {
+        // Unparseable config degrades to zero tolerance — the strict
+        // direction (every nonzero drift fails), never a silent widening.
         let native_tolerance = BigDecimal::from_str(&format!("{native_tolerance_near}"))
-            .unwrap_or_else(|_| BigDecimal::from(0));
+            .unwrap_or_else(|error| {
+                tracing::error!(
+                    native_tolerance_near,
+                    %error,
+                    "invalid native verification tolerance; using zero"
+                );
+                BigDecimal::from(0)
+            });
         Self {
             pool,
             archival_network,
@@ -147,6 +159,130 @@ impl<'a> BalanceVerifier<'a> {
             self.verify_account_gate(account_id, &mut stats).await?,
             AccountGateOutcome::Passed
         ))
+    }
+
+    /// Anchor every account whose ledger changed this silver cycle, capped
+    /// per cycle. Returns how many heads were anchored; per-account errors
+    /// are logged and skipped so one flaky archival read cannot stall the
+    /// rest of the sweep.
+    pub async fn anchor_changed_account_heads(&self, account_ids: &[String]) -> usize {
+        let mut anchored = 0;
+        for account_id in account_ids.iter().take(HEAD_ANCHORS_PER_CYCLE) {
+            match self.anchor_native_head(account_id).await {
+                Ok(true) => anchored += 1,
+                Ok(false) => {}
+                Err(error) => tracing::warn!(
+                    account_id,
+                    error = %error,
+                    "native head anchor check errored"
+                ),
+            }
+        }
+        if account_ids.len() > HEAD_ANCHORS_PER_CYCLE {
+            tracing::warn!(
+                total = account_ids.len(),
+                cap = HEAD_ANCHORS_PER_CYCLE,
+                "head anchor sweep capped; remaining accounts anchor on their next change or the hourly head check"
+            );
+        }
+        anchored
+    }
+
+    /// Per-transaction head anchor for verified accounts: compare the
+    /// native ledger head against chain at that exact block right after a
+    /// live silver cycle changes the ledger. Bounded drift (gas rebates the
+    /// receipt feed cannot itemize) is absorbed immediately by the same
+    /// reconciliation rebase the hourly head check uses, instead of waiting
+    /// for it; drift beyond tolerance marks the head check failed so the
+    /// chart degrades to Stale. RPC stays a verification authority only —
+    /// the user-owned series is never rewritten from chain reads. Untouched
+    /// during initial builds: silver only projects after backfill completes,
+    /// and unverified accounts are skipped so the full-history gate measures
+    /// unanchored drift.
+    pub async fn anchor_native_head(&self, account_id: &str) -> Result<bool, VerificationError> {
+        let verified: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS (
+                SELECT 1 FROM public_balance_verification_cursors
+                WHERE account_id = $1 AND status = 'passed'
+            )
+            "#,
+        )
+        .bind(account_id)
+        .fetch_one(self.pool)
+        .await?;
+        if !verified {
+            return Ok(false);
+        }
+        let Some((ledger_balance, user_balance, head_block)) =
+            load_native_ledger_head(self.pool, account_id).await?
+        else {
+            return Ok(false);
+        };
+
+        let chain_balance = get_public_gross_native_balance_at_block(
+            self.archival_network,
+            account_id,
+            head_block as u64,
+        )
+        .await
+        .map_err(VerificationError)?;
+        let drift = &chain_balance - &ledger_balance;
+        if drift.is_zero() {
+            return Ok(false);
+        }
+
+        let mut tx = self.pool.begin().await?;
+        // The archival read happened outside any lock; a concurrent silver
+        // recompute (nudge queue) may have rewritten the ledger since.
+        // Serialize on the silver projection lock and re-verify the head is
+        // the one that was measured — an anchor against a moved head would
+        // sort as the new head with a balance from the wrong block.
+        sqlx::query("SELECT pg_advisory_xact_lock(hashtext($1))")
+            .bind(format!("public-silver:{account_id}"))
+            .execute(&mut *tx)
+            .await?;
+        let head_now = load_native_ledger_head_tx(&mut tx, account_id).await?;
+        if head_now != Some((ledger_balance.clone(), user_balance.clone(), head_block)) {
+            tx.rollback().await.ok();
+            return Ok(false);
+        }
+        let anchored = if drift.abs() <= self.native_tolerance {
+            let written = insert_rebase_entry(
+                &mut tx,
+                account_id,
+                "near",
+                "native",
+                head_block,
+                24,
+                &ledger_balance,
+                &chain_balance,
+                &user_balance,
+            )
+            .await?;
+            if written > 0 {
+                tracing::info!(
+                    account_id,
+                    head_block,
+                    drift = %drift,
+                    "native head anchored to chain within tolerance"
+                );
+            }
+            written > 0
+        } else {
+            set_head_check_result(&mut tx, account_id, head_block, false).await?;
+            tracing::error!(
+                account_id,
+                head_block,
+                ledger_balance = %ledger_balance,
+                chain_balance = %chain_balance,
+                drift = %drift,
+                "native head drift beyond tolerance at ledger head; chart marked stale"
+            );
+            false
+        };
+        tx.commit().await?;
+        Ok(anchored)
     }
 
     /// Full-history gate: every asset's ledger head must match chain at the

@@ -91,7 +91,8 @@ async fn ledger_replay_is_nonnegative_and_matches_recorded_chain_balances() {
         .await
         .expect("load bronze rows");
 
-        let result = BalanceLedgerBuilder::new(account_id, RELAYER_ACCOUNT, Vec::new()).build(&rows);
+        let result =
+            BalanceLedgerBuilder::new(account_id, RELAYER_ACCOUNT, Vec::new()).build(&rows);
         assert!(
             result.errors.is_empty(),
             "{account_id}: ledger projection errors: {:?}",
@@ -119,14 +120,16 @@ async fn ledger_replay_is_nonnegative_and_matches_recorded_chain_balances() {
                 entry.user_balance_after
             );
             assert!(
-                entry.user_balance_after <= entry.balance_after
-                    || entry.asset.token_id() != "near",
+                entry.user_balance_after <= entry.balance_after || entry.asset.token_id() != "near",
                 "{account_id}: native user balance {} exceeds chain balance {} at block {}",
                 entry.user_balance_after,
                 entry.balance_after,
                 entry.block_height
             );
-            head_by_asset.insert(entry.asset.token_id().to_string(), entry.balance_after.clone());
+            head_by_asset.insert(
+                entry.asset.token_id().to_string(),
+                entry.balance_after.clone(),
+            );
         }
         println!(
             "{account_id}: {} entries, {} assets, native head = {:?}",

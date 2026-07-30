@@ -62,6 +62,78 @@ pub fn native_movement_affects_user_balance(
     true
 }
 
+/// Methods whose standards mandate an attached deposit of exactly
+/// 1 yoctoNEAR (`assert_one_yocto`): NEP-141/145/245 transfer and withdraw
+/// calls, plus wrap.near's `near_withdraw`. A call with any other deposit
+/// panics, and failed receipts never reach the ledger — so each occurrence
+/// in a successful receipt contributed exactly 1 yocto to the receipt's
+/// aggregate deposit.
+///
+/// The list only matters for receipts that also move real value (a wrap's
+/// `near_deposit` + `ft_transfer` share one aggregate deposit); a receipt
+/// whose ENTIRE deposit is 1 yocto is classified as an attachment without
+/// consulting it — `assert_one_yocto` is a universal security pattern
+/// (`sign` on v1.signer, `add_public_key` on intents.near, …) and 1 yocto
+/// is never a real payment.
+const ONE_YOCTO_METHODS: &[&str] = &[
+    "ft_transfer",
+    "ft_transfer_call",
+    "ft_withdraw",
+    "near_withdraw",
+    "mt_transfer",
+    "mt_batch_transfer",
+    "mt_transfer_call",
+    "mt_batch_transfer_call",
+    "mt_withdraw",
+    "storage_withdraw",
+    "storage_unregister",
+];
+
+/// Yoctos of a receipt's outgoing deposit that are mandatory 1-yocto
+/// security attachments rather than value moved. These are plumbing: the
+/// sponsor top-ups that fund them are excluded from the user ledger, so
+/// counting the attachments as user outflows drifts the user balance
+/// negative by 1 yocto per token-transfer call.
+pub fn one_yocto_attachment_yoctos(raw_payload: &Value, deposit_magnitude: &BigDecimal) -> u32 {
+    let actions = raw_payload
+        .get("receipt")
+        .and_then(|receipt| receipt.get("actions"))
+        .and_then(Value::as_array);
+    let function_call = |entry: &Value| {
+        entry
+            .get("action")
+            .and_then(Value::as_str)
+            .is_some_and(|action| action.eq_ignore_ascii_case("FUNCTION_CALL"))
+    };
+
+    // A function-call receipt whose whole deposit is 1 yocto is pure
+    // attachment, whatever the method.
+    if *deposit_magnitude == BigDecimal::from(1u32)
+        && actions.is_some_and(|actions| actions.iter().any(function_call))
+    {
+        return 1;
+    }
+
+    actions
+        .map(|actions| {
+            actions
+                .iter()
+                .filter(|entry| {
+                    function_call(entry)
+                        && entry
+                            .get("method")
+                            .and_then(Value::as_str)
+                            .is_some_and(|method| {
+                                ONE_YOCTO_METHODS
+                                    .iter()
+                                    .any(|expected| method.eq_ignore_ascii_case(expected))
+                            })
+                })
+                .count() as u32
+        })
+        .unwrap_or(0)
+}
+
 fn receipt_field<'a>(receipt: &'a Value, key: &str) -> Option<&'a str> {
     receipt.get(key).and_then(Value::as_str)
 }

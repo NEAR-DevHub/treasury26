@@ -250,10 +250,22 @@ pub async fn public_silver_projection(
             state.signer_id.as_str(),
         )
         .await?;
+
+    // Every ledger change on a verified account is immediately anchored
+    // against chain at the new head block — the per-transaction extra check
+    // on top of the hourly watermark head check.
+    let heads_anchored = crate::handlers::public_history::verification::BalanceVerifier::new(
+        &state.db_pool,
+        &state.archival_network,
+        state.env_vars.public_native_verification_tolerance_near,
+    )
+    .anchor_changed_account_heads(&stats.changed_accounts)
+    .await;
+
     // Silver only marks cursors dirty; the hourly sweeper batches every
     // change inside the window into one sparse refresh row.
     Ok(format!(
-        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={}",
+        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={} heads_anchored={}",
         stats.accounts_seen,
         stats.accounts_projected,
         stats.accounts_skipped_locked,
@@ -261,6 +273,27 @@ pub async fn public_silver_projection(
         stats.rows_projected,
         stats.rows_deleted,
         stats.errors_written,
+        heads_anchored,
+    ))
+}
+
+/// Staking pool observations: 90-day archival backfill plus daily capture.
+/// Rewards accrue without transactions, so this is the only periodic
+/// balance source; everything else stays transaction-triggered.
+pub async fn staking_observation(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::observations::run_staking_observation_cycle(&state)
+            .await?;
+    Ok(format!(
+        "pools_discovered={} validated={} observations={} boundaries_skipped={} reads_failed={}",
+        stats.pools_discovered,
+        stats.pools_validated,
+        stats.observations_written,
+        stats.boundaries_skipped,
+        stats.reads_failed
     ))
 }
 

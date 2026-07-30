@@ -470,14 +470,12 @@ pub async fn get_balance_changes_internal(
     //     Ok(enriched_changes)
 }
 
-/// Resolve the public read source once for all API adapters. The environment
-/// variable is the manual global switch; accounts stay on legacy data until a
-/// fully caught-up gold projection publishes its durable readiness marker.
-/// One path per flag state, no per-account mixing: with medallion reads on,
-/// every public account reads the gold ledger — a not-yet-projected account
-/// serves an empty (soon-filled) history rather than silently switching to
-/// the legacy source with its different balance semantics. Flag off keeps
-/// everything on legacy.
+/// Resolve the public read source once for all API adapters. One path per
+/// flag state, no per-account mixing: with medallion reads on, every public
+/// account reads the gold ledger — a not-yet-projected account serves an
+/// empty (soon-filled) history rather than silently switching to the legacy
+/// source with its different balance semantics. Flag off keeps everything
+/// on legacy.
 pub async fn should_read_public_history(
     state: &AppState,
     _account_id: &str,

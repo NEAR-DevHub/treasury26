@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 
 use super::worker::{
-    enqueue_backfill_page_job, enqueue_preverification_refresh_job, enqueue_latest_refresh_job,
+    enqueue_backfill_page_job, enqueue_latest_refresh_job, enqueue_preverification_refresh_job,
 };
 use crate::AppState;
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
@@ -431,16 +431,10 @@ async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
     Ok(enqueued)
 }
 
-/// Durably refresh every source for accounts that have not yet passed
-/// on-chain balance verification. A successful drain of all three sources
-/// writes `latest_refresh_at`/`latest_refresh_cutoff_block_height`, which is
-/// exactly the "bronze covered through block B" proof the verifier needs
-/// before comparing ledger balances against chain.
-///
-/// The existing Apalis job key makes repeated scheduler cycles idempotent
-/// while a refresh is pending or retryable. The 15-minute freshness window
-/// prevents rapid re-enqueueing while still allowing a long initial build to
-/// refresh its verified provider-head marker.
+/// Sources needing a refresh for accounts that have not yet passed on-chain
+/// balance verification. The 15-minute freshness window prevents rapid
+/// re-enqueueing while still allowing a long initial build to refresh its
+/// verified provider-head marker.
 async fn load_preverification_refresh_candidates(
     pool: &PgPool,
 ) -> Result<Vec<PreverificationRefreshCandidate>, Box<dyn std::error::Error + Send + Sync>> {
@@ -483,6 +477,13 @@ async fn load_preverification_refresh_candidates(
         .map_err(Into::into)
 }
 
+/// Durably refresh every source for accounts that have not yet passed
+/// on-chain balance verification. A successful drain of all three sources
+/// writes `latest_refresh_at`/`latest_refresh_cutoff_block_height`, which is
+/// exactly the "bronze covered through block B" proof the verifier needs
+/// before comparing ledger balances against chain. The existing Apalis job
+/// key makes repeated scheduler cycles idempotent while a refresh is pending
+/// or retryable.
 async fn seed_preverification_refresh_jobs(
     state: &AppState,
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {

@@ -175,16 +175,15 @@ pub async fn get_balance_chart(
     }
 
     if state.env_vars.public_history_medallion_reads {
-        let response =
-            crate::handlers::public_history::charts::chart::build_public_chart_response(
-                &state,
-                params.account_id.as_str(),
-                params.start_time,
-                params.end_time,
-                &params.interval,
-                params.token_ids.as_ref(),
-            )
-            .await?;
+        let response = crate::handlers::public_history::charts::chart::build_public_chart_response(
+            &state,
+            params.account_id.as_str(),
+            params.start_time,
+            params.end_time,
+            &params.interval,
+            params.token_ids.as_ref(),
+        )
+        .await?;
         return Ok(Json(response));
     }
 
@@ -1883,15 +1882,13 @@ pub async fn get_recent_activity(
                 .await
                 .unwrap_or(0)
         }
-        BalanceChangesReadSource::PublicGold => {
-            public_list::count_balance_change_legs(
-                &state.db_pool,
-                &source_count_query,
-                state.env_vars.unified_gold_ledger_reads,
-            )
-            .await
-            .unwrap_or(0)
-        }
+        BalanceChangesReadSource::PublicGold => public_list::count_balance_change_legs(
+            &state.db_pool,
+            &source_count_query,
+            state.env_vars.unified_gold_ledger_reads,
+        )
+        .await
+        .unwrap_or(0),
         BalanceChangesReadSource::Legacy => {
             count_query.fetch_one(&state.db_pool).await.unwrap_or(0)
         }

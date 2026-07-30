@@ -7,7 +7,6 @@ use super::balance_history::repository::{replace_ledger_suffix, seed_balances_be
 use super::cursors::clear_silver_dirty_if_not_advanced;
 use super::models::{SilverProjectionCycleStats, SilverProjectionResult};
 use super::normalize::normalize_bronze_row;
-use super::quote_pending::build_quote_pending_legs;
 use super::repository::{
     clear_projection_errors, delete_stale_silver_rows, earliest_bronze_time, has_silver_before,
     load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
@@ -122,12 +121,6 @@ pub async fn project_public_silver_for_account(
         .collect();
 
     upsert_silver_legs(&mut tx, &legs).await?;
-    let quote_pending_legs = build_quote_pending_legs(&mut tx, account_id, recompute_from).await?;
-    for leg in &quote_pending_legs {
-        preserve_leg_keys.insert(leg.leg_key.clone());
-    }
-    stats.rows_projected += quote_pending_legs.len() as u64;
-    upsert_silver_legs(&mut tx, &quote_pending_legs).await?;
     clear_projection_errors(&mut tx, &clear_error_source_event_ids).await?;
     upsert_projection_errors(&mut tx, account_id, &projection_errors).await?;
 
@@ -184,6 +177,9 @@ pub async fn project_public_silver_for_dirty_accounts(
                 stats.rows_projected += account_stats.rows_projected;
                 stats.rows_deleted += account_stats.rows_deleted;
                 stats.errors_written += account_stats.errors_written;
+                if account_stats.rows_projected > 0 || account_stats.rows_deleted > 0 {
+                    stats.changed_accounts.push(account_id);
+                }
             }
             Err(e) => {
                 stats.accounts_failed += 1;

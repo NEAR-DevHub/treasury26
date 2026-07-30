@@ -15,7 +15,7 @@ import { APP_WALLET_SETUP_URL } from "@/constants/config";
 import { markPaymentPending } from "@/features/onboarding/payment-pending";
 import { getNearStoreMessages } from "@/i18n/store-messages";
 import { trackEvent } from "@/lib/analytics";
-import { markDaoDirty, relayDelegateAction } from "@/lib/api";
+import { markDaoDirty, refreshProposal, relayDelegateAction } from "@/lib/api";
 import {
     type AuthUserInfo,
     acceptTerms as apiAcceptTerms,
@@ -29,7 +29,11 @@ import {
     getKindFromProposal,
     type ProposalPermissionKind,
 } from "@/lib/config-utils";
-import type { Proposal, Vote as ProposalVote } from "@/lib/proposals-api";
+import {
+    getLastProposalId,
+    type Proposal,
+    type Vote as ProposalVote,
+} from "@/lib/proposals-api";
 import { ensurePasskeyWallet } from "@/lib/passkey-wallet";
 import { clearSessionQueries } from "@/lib/session-query-cleanup";
 import {
@@ -837,6 +841,13 @@ export const useNear = () => {
         showToast: boolean = true,
     ) => {
         await storeCreateProposal(params);
+        // Nudge the backend about the new proposal (fire-and-forget): it
+        // re-fetches from chain RPC and projects it, so history reflects the
+        // proposal seconds after submission instead of at indexer speed. The
+        // newest proposal's id is the DAO's counter minus one.
+        void getLastProposalId(params.treasuryId)
+            .then((count) => refreshProposal(params.treasuryId, count - 1))
+            .catch(() => {});
         // Signal the onboarding flow that a payment request was just made so it
         // can poll for it while the backend indexer catches up.
         if (params.proposalType === "payment") {
@@ -878,6 +889,12 @@ export const useNear = () => {
 
     const voteProposals = async (treasuryId: string, votes: Vote[]) => {
         await storeVoteProposals(treasuryId, votes);
+        // An approving vote may have just executed the proposal — nudge the
+        // backend (fire-and-forget) so the pending payment/exchange row
+        // appears in history before the indexer catches up.
+        for (const vote of votes) {
+            refreshProposal(treasuryId, vote.proposalId);
+        }
         // Invalidate queries after delay and show toast simultaneously
         await new Promise((resolve) => setTimeout(resolve, 2000));
 

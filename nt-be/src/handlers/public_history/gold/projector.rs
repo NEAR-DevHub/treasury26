@@ -409,10 +409,6 @@ fn quote_event_status(quote: Option<&ParsedQuoteMetadata>) -> PublicHistoryEvent
     }
 }
 
-fn is_synthetic_quote_leg(leg: &SilverTransferLegRow) -> bool {
-    leg.leg_kind == PublicTransferLegKind::QuotePending.as_str()
-}
-
 fn is_exchange_fulfillment_candidate(
     leg: &SilverTransferLegRow,
     relayer_account: &str,
@@ -563,13 +559,9 @@ fn plan_exchange_pairs(
     })
 }
 
-/// Build a ledger event using only an optional, already-resolved current USD
-/// value. Historical lookup is deliberately outside this constructor and is
-/// handled by asynchronous enrichment. Exchange events keep their exact
-/// quote-provided USD values in the dedicated constructors below.
-/// The ledger stamp for a visible leg. A missing stamp on a non-synthetic
-/// leg means the balance ledger and the transfer legs disagree — that must
-/// surface as a projection error blocking readiness, never as a NULL balance.
+/// The ledger stamp for a visible leg. A missing stamp means the balance
+/// ledger and the transfer legs disagree — that must surface as a
+/// projection error blocking readiness, never as a NULL balance.
 fn required_stamp_for_leg(
     stamps: &BalanceStamps,
     leg: &SilverTransferLegRow,
@@ -582,6 +574,10 @@ fn required_stamp_for_leg(
     })
 }
 
+/// Build a ledger event using only an optional, already-resolved current USD
+/// value. Historical lookup is deliberately outside this constructor and is
+/// handled by asynchronous enrichment. Exchange events keep their exact
+/// quote-provided USD values in the dedicated constructors below.
 fn public_gold_event_from_leg(
     leg: &SilverTransferLegRow,
     quote: Option<&ParsedQuoteMetadata>,
@@ -642,13 +638,9 @@ fn public_gold_event_from_leg(
         }
         PublicTransferDirection::Outgoing => {
             let quote_payment = is_quote_payment_outgoing(leg, quote, relayer_account)?;
-            let (token_out_balance_before, token_out_balance_after) = if is_synthetic_quote_leg(leg)
-            {
-                (None, None)
-            } else {
-                let stamp = required_stamp_for_leg(stamps, leg)?;
-                (Some(stamp.balance_before), Some(stamp.balance_after))
-            };
+            let stamp = required_stamp_for_leg(stamps, leg)?;
+            let (token_out_balance_before, token_out_balance_after) =
+                (Some(stamp.balance_before), Some(stamp.balance_after));
             let recipient = outgoing_recipient(quote_payment.as_ref(), leg);
             let status = if quote_payment.is_some() {
                 quote_event_status(quote)
@@ -967,25 +959,22 @@ pub async fn project_public_gold_for_account(
         let quote = leg
             .proposal_ref
             .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
+
         if is_quote_matched_exchange_deposit(&leg, quote, relayer_account).unwrap_or(false) {
             let (token_out_balance_before, token_out_balance_after) =
-                if is_synthetic_quote_leg(&leg) {
-                    (None, None)
-                } else {
-                    match required_stamp_for_leg(&stamps, &leg) {
-                        Ok(stamp) => (Some(stamp.balance_before), Some(stamp.balance_after)),
-                        Err(reason) => {
-                            upsert_projection_error(
-                                &mut tx,
-                                leg.id,
-                                account_id,
-                                &reason,
-                                &leg.raw_payload,
-                            )
-                            .await?;
-                            stats.errors_written += 1;
-                            continue;
-                        }
+                match required_stamp_for_leg(&stamps, &leg) {
+                    Ok(stamp) => (Some(stamp.balance_before), Some(stamp.balance_after)),
+                    Err(reason) => {
+                        upsert_projection_error(
+                            &mut tx,
+                            leg.id,
+                            account_id,
+                            &reason,
+                            &leg.raw_payload,
+                        )
+                        .await?;
+                        stats.errors_written += 1;
+                        continue;
                     }
                 };
             let pending = PendingExchange {
@@ -1158,10 +1147,10 @@ mod tests {
     use crate::handlers::public_history::bronze::store::{
         PublicHistorySource, save_public_backfill_progress,
     };
-    use crate::handlers::public_history::gold::models::BalanceStampRow;
     use crate::handlers::public_history::gold::cursors::{
         is_public_gold_projection_ready, mark_gold_dirty,
     };
+    use crate::handlers::public_history::gold::models::BalanceStampRow;
     use crate::handlers::public_history::silver::cursors::mark_silver_dirty;
     use crate::handlers::public_history::silver::worker::project_public_silver_for_account;
 
