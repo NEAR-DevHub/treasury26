@@ -4,7 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -39,20 +39,16 @@ export default function JoinInvitePage() {
     const [submitted, setSubmitted] = useState(false);
     const [joinedDaoId, setJoinedDaoId] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (hasExistingName) {
-            setDisplayName(existingName);
-        }
-    }, [existingName, hasExistingName]);
-
     const handleAskJoin = async () => {
         if (!token) return;
         try {
             const result = await joinMutation.mutateAsync({
                 token,
-                // Persist NEAR Social / local profile names onto user_profiles
-                // so join-request lists show the same name.
-                displayName: hasExistingName ? existingName : displayName,
+                // Only send a name when the user entered one; existing profile
+                // names are already available via useProfile / User.
+                ...(hasExistingName
+                    ? {}
+                    : { displayName: displayName.trim() || undefined }),
             });
             setJoinedDaoId(result.daoId);
             setSubmitted(true);
