@@ -916,7 +916,8 @@
             "alreadyAdded": "Ce membre a déjà été ajouté ci-dessus",
             "alreadyInTreasury": "Ce membre existe déjà dans la trésorerie",
             "cannotRemoveRoleAfter": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Après tous vos changements, il serait la seule personne attribuée à ce rôle.",
-            "cannotRemoveRoleAfterGov": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Après tous vos changements, il serait le seul membre {role}, et sans ce rôle, vous ne pourrez plus gérer les membres de l'équipe ni configurer le vote."
+            "cannotRemoveRoleAfterGov": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Après tous vos changements, il serait le seul membre {role}, et sans ce rôle, vous ne pourrez plus gérer les membres de l'équipe ni configurer le vote.",
+            "validateAddressesFailed": "Échec de la validation des adresses. Veuillez réessayer."
         },
         "policy": {
             "addMembers": "Mettre à jour la politique - Ajouter de nouveaux membres",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "Demande de mise à jour groupée des rôles des membres créée avec succès",
             "removeMember": "Mettre à jour la politique - Supprimer un membre",
             "removeMembers": "Mettre à jour la politique - Supprimer des membres",
-            "removeMemberSuccess": "Demande de suppression de membre créée avec succès"
+            "removeMemberSuccess": "Demande de suppression de membre créée avec succès",
+            "createProposalFailed": "Échec de la création de la demande de membre. Veuillez réessayer."
         },
         "infoSection": {
             "title": "Pourquoi ajouter plus de membres ?",

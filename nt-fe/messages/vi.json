@@ -916,7 +916,8 @@
             "alreadyAdded": "Thành viên này đã được thêm ở trên",
             "alreadyInTreasury": "Thành viên này đã có trong ngân quỹ",
             "cannotRemoveRoleAfter": "Bạn không thể xóa vai trò {role} của thành viên này. Sau tất cả các thay đổi, họ sẽ là người duy nhất được gán vai trò này.",
-            "cannotRemoveRoleAfterGov": "Bạn không thể xóa vai trò {role} của thành viên này. Sau tất cả các thay đổi, họ sẽ là thành viên {role} duy nhất, và không có vai trò này bạn sẽ không thể quản lý thành viên đội hay cấu hình bỏ phiếu."
+            "cannotRemoveRoleAfterGov": "Bạn không thể xóa vai trò {role} của thành viên này. Sau tất cả các thay đổi, họ sẽ là thành viên {role} duy nhất, và không có vai trò này bạn sẽ không thể quản lý thành viên đội hay cấu hình bỏ phiếu.",
+            "validateAddressesFailed": "Không thể xác thực địa chỉ. Vui lòng thử lại."
         },
         "policy": {
             "addMembers": "Cập nhật chính sách - Thêm thành viên mới",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "Đã tạo thành công yêu cầu cập nhật vai trò hàng loạt",
             "removeMember": "Cập nhật chính sách - Xóa thành viên",
             "removeMembers": "Cập nhật chính sách - Xóa các thành viên",
-            "removeMemberSuccess": "Đã tạo thành công yêu cầu xóa thành viên"
+            "removeMemberSuccess": "Đã tạo thành công yêu cầu xóa thành viên",
+            "createProposalFailed": "Không thể tạo yêu cầu thành viên. Vui lòng thử lại."
         },
         "infoSection": {
             "title": "Vì sao nên thêm thành viên?",

@@ -916,7 +916,8 @@
             "alreadyAdded": "该成员已在上方添加",
             "alreadyInTreasury": "该成员已存在于金库中",
             "cannotRemoveRoleAfter": "您不能从此成员中移除 {role} 角色。在所有更改之后,他们将是唯一被分配此角色的人。",
-            "cannotRemoveRoleAfterGov": "您不能从此成员中移除 {role} 角色。在所有更改之后,他们将是唯一的 {role} 成员,缺少此角色将无法管理团队成员或配置投票。"
+            "cannotRemoveRoleAfterGov": "您不能从此成员中移除 {role} 角色。在所有更改之后,他们将是唯一的 {role} 成员,缺少此角色将无法管理团队成员或配置投票。",
+            "validateAddressesFailed": "地址验证失败。请重试。"
         },
         "policy": {
             "addMembers": "更新策略 - 添加新成员",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "批量成员角色更新请求已成功创建",
             "removeMember": "更新策略 - 移除成员",
             "removeMembers": "更新策略 - 移除成员",
-            "removeMemberSuccess": "成员移除请求已成功创建"
+            "removeMemberSuccess": "成员移除请求已成功创建",
+            "createProposalFailed": "创建成员请求失败。请重试。"
         },
         "infoSection": {
             "title": "为什么要添加更多成员？",

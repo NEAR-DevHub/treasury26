@@ -916,7 +916,8 @@
             "alreadyAdded": "This member has already been added above",
             "alreadyInTreasury": "This member already exists in the treasury",
             "cannotRemoveRoleAfter": "You can't remove the {role} role from this member. After all your changes, they would be the only person assigned to this role.",
-            "cannotRemoveRoleAfterGov": "You can't remove the {role} role from this member. After all your changes, they would be the only {role} member, and without this role you won't be able to manage team members or configure voting."
+            "cannotRemoveRoleAfterGov": "You can't remove the {role} role from this member. After all your changes, they would be the only {role} member, and without this role you won't be able to manage team members or configure voting.",
+            "validateAddressesFailed": "Failed to validate addresses. Please try again."
         },
         "policy": {
             "addMembers": "Update Policy - Add New Members",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "Bulk member roles update request created successfully",
             "removeMember": "Update Policy - Remove Member",
             "removeMembers": "Update Policy - Remove Members",
-            "removeMemberSuccess": "Member removal request created successfully"
+            "removeMemberSuccess": "Member removal request created successfully",
+            "createProposalFailed": "Failed to create member request. Please try again."
         },
         "infoSection": {
             "title": "Why add more members?",

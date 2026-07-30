@@ -916,7 +916,8 @@
             "alreadyAdded": "このメンバーはすでに上記に追加されています",
             "alreadyInTreasury": "このメンバーはすでにトレジャリーに存在します",
             "cannotRemoveRoleAfter": "このメンバーから{role}ロールを削除できません。すべての変更後、このロールに割り当てられる唯一の人物となります。",
-            "cannotRemoveRoleAfterGov": "このメンバーから{role}ロールを削除できません。すべての変更後、唯一の{role}メンバーとなり、このロールがないとチームメンバーの管理や投票設定ができなくなります。"
+            "cannotRemoveRoleAfterGov": "このメンバーから{role}ロールを削除できません。すべての変更後、唯一の{role}メンバーとなり、このロールがないとチームメンバーの管理や投票設定ができなくなります。",
+            "validateAddressesFailed": "アドレスの検証に失敗しました。もう一度お試しください。"
         },
         "policy": {
             "addMembers": "ポリシー更新 - 新しいメンバーを追加",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "一括メンバーロール更新リクエストが正常に作成されました",
             "removeMember": "ポリシー更新 - メンバーを削除",
             "removeMembers": "ポリシー更新 - メンバーを削除",
-            "removeMemberSuccess": "メンバー削除リクエストが正常に作成されました"
+            "removeMemberSuccess": "メンバー削除リクエストが正常に作成されました",
+            "createProposalFailed": "メンバーリクエストの作成に失敗しました。もう一度お試しください。"
         },
         "infoSection": {
             "title": "なぜメンバーを増やすのですか？",

@@ -6,12 +6,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import * as z from "zod";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { StepWizard } from "@/components/step-wizard";
 import { useTreasury } from "@/hooks/use-treasury";
 import { trackEvent } from "@/lib/analytics";
+import { reportError } from "@/lib/report-error";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import {
@@ -218,7 +220,8 @@ export default function EditMemberPage() {
 
             router.push(`/${treasuryId}/members`);
         } catch (error) {
-            console.error("Failed to edit members:", error);
+            reportError(error, "Failed to edit members");
+            toast.error(tMembers("policy.createProposalFailed"));
         }
     }, [
         policy,
@@ -275,11 +278,11 @@ export default function EditMemberPage() {
         <PageComponentLayout title={t("title")} description={t("description")}>
             <div className="max-w-xl mx-auto w-full">
                 <FormProvider {...form}>
-                    {!membersReady || originalMembers.length === 0 ? (
+                    {!membersReady ? (
                         <PageCard>
                             <div className="h-40 animate-pulse bg-muted rounded-lg" />
                         </PageCard>
-                    ) : (
+                    ) : originalMembers.length === 0 ? null : (
                         <StepWizard
                             step={step}
                             onStepChange={setStep}

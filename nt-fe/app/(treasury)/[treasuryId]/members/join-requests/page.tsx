@@ -29,6 +29,7 @@ import {
     useMemberJoinRequests,
 } from "@/hooks/use-member-invites";
 import { useTreasury } from "@/hooks/use-treasury";
+import { reportError } from "@/lib/report-error";
 import { sortRolesByOrder } from "@/lib/role-utils";
 import { useRoleDescription } from "@/lib/use-role-description";
 import { encodeToMarkdown } from "@/lib/utils";
@@ -284,7 +285,7 @@ export default function JoinRequestsPage() {
                     router.push(`/${treasuryId}/members`);
                 }
             } catch (error) {
-                console.error(error);
+                reportError(error, "Failed to remove join request");
                 toast.error(tJoin("removeFailed"));
             }
         },
@@ -328,7 +329,8 @@ export default function JoinRequestsPage() {
             });
         } catch (error) {
             // Wallet rejected / proposal failed — stay on review to retry.
-            console.error("Failed to create add-members proposal:", error);
+            reportError(error, "Failed to create add-members proposal");
+            toast.error(tMembers("policy.createProposalFailed"));
             return;
         }
 
@@ -339,7 +341,8 @@ export default function JoinRequestsPage() {
         } catch (error) {
             // Proposal already succeeded; leave the page so retry can't
             // create a second ChangePolicy for the same accounts.
-            console.error("Failed to mark join requests approved:", error);
+            // Non-blocking for the user — still report for observability.
+            reportError(error, "Failed to mark join requests approved");
         }
 
         queryClient.invalidateQueries({

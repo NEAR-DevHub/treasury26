@@ -916,7 +916,8 @@
             "alreadyAdded": "Bu üye yukarıda zaten eklenmiş",
             "alreadyInTreasury": "Bu üye zaten hazinede mevcut",
             "cannotRemoveRoleAfter": "Bu üyeden {role} rolünü kaldıramazsınız. Tüm değişikliklerinizden sonra, bu role atanan tek kişi olacaklar.",
-            "cannotRemoveRoleAfterGov": "Bu üyeden {role} rolünü kaldıramazsınız. Tüm değişikliklerinizden sonra, tek {role} üyesi olacaklar ve bu rol olmadan ekip üyelerini yönetemez veya oylamayı yapılandıramazsınız."
+            "cannotRemoveRoleAfterGov": "Bu üyeden {role} rolünü kaldıramazsınız. Tüm değişikliklerinizden sonra, tek {role} üyesi olacaklar ve bu rol olmadan ekip üyelerini yönetemez veya oylamayı yapılandıramazsınız.",
+            "validateAddressesFailed": "Adresler doğrulanamadı. Lütfen tekrar deneyin."
         },
         "policy": {
             "addMembers": "Politikayı Güncelle - Yeni Üyeler Ekle",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "Toplu üye rolleri güncelleme talebi başarıyla oluşturuldu",
             "removeMember": "Politikayı Güncelle - Üye Kaldır",
             "removeMembers": "Politikayı Güncelle - Üyeleri Kaldır",
-            "removeMemberSuccess": "Üye kaldırma talebi başarıyla oluşturuldu"
+            "removeMemberSuccess": "Üye kaldırma talebi başarıyla oluşturuldu",
+            "createProposalFailed": "Üye talebi oluşturulamadı. Lütfen tekrar deneyin."
         },
         "infoSection": {
             "title": "Neden daha fazla üye eklemelisiniz?",

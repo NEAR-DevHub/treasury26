@@ -916,7 +916,8 @@
             "alreadyAdded": "Anggota ini sudah ditambahkan di atas",
             "alreadyInTreasury": "Anggota ini sudah ada di treasury",
             "cannotRemoveRoleAfter": "Anda tidak dapat menghapus peran {role} dari anggota ini. Setelah semua perubahan Anda, mereka akan menjadi satu-satunya orang yang ditugaskan ke peran ini.",
-            "cannotRemoveRoleAfterGov": "Anda tidak dapat menghapus peran {role} dari anggota ini. Setelah semua perubahan Anda, mereka akan menjadi satu-satunya anggota {role}, dan tanpa peran ini Anda tidak akan dapat mengelola anggota tim atau mengonfigurasi pemungutan suara."
+            "cannotRemoveRoleAfterGov": "Anda tidak dapat menghapus peran {role} dari anggota ini. Setelah semua perubahan Anda, mereka akan menjadi satu-satunya anggota {role}, dan tanpa peran ini Anda tidak akan dapat mengelola anggota tim atau mengonfigurasi pemungutan suara.",
+            "validateAddressesFailed": "Gagal memvalidasi alamat. Silakan coba lagi."
         },
         "policy": {
             "addMembers": "Perbarui Kebijakan - Tambah Anggota Baru",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "Permintaan pembaruan peran anggota massal berhasil dibuat",
             "removeMember": "Perbarui Kebijakan - Hapus Anggota",
             "removeMembers": "Perbarui Kebijakan - Hapus Anggota",
-            "removeMemberSuccess": "Permintaan penghapusan anggota berhasil dibuat"
+            "removeMemberSuccess": "Permintaan penghapusan anggota berhasil dibuat",
+            "createProposalFailed": "Gagal membuat permintaan anggota. Silakan coba lagi."
         },
         "infoSection": {
             "title": "Mengapa menambahkan lebih banyak anggota?",

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
+import { toast } from "sonner";
 import * as z from "zod";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -17,6 +18,7 @@ import {
     validateNearAddress,
 } from "@/lib/near-validation";
 import { translateNearValidationError } from "@/lib/near-validation-i18n";
+import { reportError } from "@/lib/report-error";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import {
@@ -250,7 +252,8 @@ export default function AddMemberPage() {
             setIsValidatingAddresses(false);
             setStep(1);
         } catch (error) {
-            console.error("Error validating addresses:", error);
+            reportError(error, "Error validating addresses");
+            toast.error(tMembers("validation.validateAddressesFailed"));
             setIsValidatingAddresses(false);
         }
     }, [form, treasuryId, getAccountValidationMessage, tMembers]);
@@ -306,7 +309,8 @@ export default function AddMemberPage() {
 
             router.push(`/${treasuryId}/members`);
         } catch (error) {
-            console.error("Failed to add members:", error);
+            reportError(error, "Failed to add members");
+            toast.error(tMembers("policy.createProposalFailed"));
         }
     }, [
         policy,

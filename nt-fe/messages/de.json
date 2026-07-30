@@ -916,7 +916,8 @@
             "alreadyAdded": "Dieses Mitglied wurde oben bereits hinzugefügt",
             "alreadyInTreasury": "Dieses Mitglied existiert bereits in der Treasury",
             "cannotRemoveRoleAfter": "Sie können die {role}-Rolle diesem Mitglied nicht entziehen. Nach all Ihren Änderungen wäre es die einzige Person mit dieser Rolle.",
-            "cannotRemoveRoleAfterGov": "Sie können die {role}-Rolle diesem Mitglied nicht entziehen. Nach all Ihren Änderungen wäre es das einzige Mitglied mit der Rolle {role}, und ohne diese Rolle können Sie keine Teammitglieder verwalten oder die Abstimmung konfigurieren."
+            "cannotRemoveRoleAfterGov": "Sie können die {role}-Rolle diesem Mitglied nicht entziehen. Nach all Ihren Änderungen wäre es das einzige Mitglied mit der Rolle {role}, und ohne diese Rolle können Sie keine Teammitglieder verwalten oder die Abstimmung konfigurieren.",
+            "validateAddressesFailed": "Adressen konnten nicht validiert werden. Bitte versuche es erneut."
         },
         "policy": {
             "addMembers": "Richtlinie aktualisieren - Neue Mitglieder hinzufügen",
@@ -927,7 +928,8 @@
             "editMembersSuccess": "Sammelanfrage zur Aktualisierung der Mitgliederrollen erfolgreich erstellt",
             "removeMember": "Richtlinie aktualisieren - Mitglied entfernen",
             "removeMembers": "Richtlinie aktualisieren - Mitglieder entfernen",
-            "removeMemberSuccess": "Anfrage zur Mitgliederentfernung erfolgreich erstellt"
+            "removeMemberSuccess": "Anfrage zur Mitgliederentfernung erfolgreich erstellt",
+            "createProposalFailed": "Mitgliederanfrage konnte nicht erstellt werden. Bitte versuche es erneut."
         },
         "infoSection": {
             "title": "Warum mehr Mitglieder hinzufügen?",

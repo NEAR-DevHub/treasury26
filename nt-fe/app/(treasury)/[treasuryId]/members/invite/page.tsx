@@ -12,6 +12,7 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { StepperHeader } from "@/components/step-wizard";
 import { useCreateMemberInvite } from "@/hooks/use-member-invites";
 import { useTreasury } from "@/hooks/use-treasury";
+import { reportError } from "@/lib/report-error";
 import { useMemberPolicyGate } from "../hooks/use-member-policy-gate";
 
 export default function InviteMemberPage() {
@@ -43,7 +44,7 @@ export default function InviteMemberPage() {
             setInviteUrl(result.url);
             setStep(1);
         } catch (error) {
-            console.error("Failed to create invite:", error);
+            reportError(error, "Failed to create invite");
             toast.error(tInvite("generateFailed"));
         }
     }, [createInvite, tInvite]);

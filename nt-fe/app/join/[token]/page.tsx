@@ -4,7 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -17,6 +17,8 @@ import { StepperHeader } from "@/components/step-wizard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";
 import { useJoinViaInvite, useMemberInvite } from "@/hooks/use-member-invites";
+import { useProfile } from "@/hooks/use-treasury-queries";
+import { reportError } from "@/lib/report-error";
 import { useNear } from "@/stores/near-store";
 
 export default function JoinInvitePage() {
@@ -27,22 +29,35 @@ export default function JoinInvitePage() {
     const { accountId, isInitializing, isAuthenticating, connect } = useNear();
     const { data: invite, isLoading, isError } = useMemberInvite(token);
     const joinMutation = useJoinViaInvite();
+    const { data: profile, isLoading: isProfileLoading } =
+        useProfile(accountId);
+
+    const existingName = profile?.name?.trim() || "";
+    const hasExistingName = existingName.length > 0;
 
     const [displayName, setDisplayName] = useState("");
     const [submitted, setSubmitted] = useState(false);
     const [joinedDaoId, setJoinedDaoId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (hasExistingName) {
+            setDisplayName(existingName);
+        }
+    }, [existingName, hasExistingName]);
 
     const handleAskJoin = async () => {
         if (!token) return;
         try {
             const result = await joinMutation.mutateAsync({
                 token,
-                displayName,
+                // Persist NEAR Social / local profile names onto user_profiles
+                // so join-request lists show the same name.
+                displayName: hasExistingName ? existingName : displayName,
             });
             setJoinedDaoId(result.daoId);
             setSubmitted(true);
         } catch (err: unknown) {
-            console.error(err);
+            reportError(err, "Failed to join via invite");
             const message =
                 (err as { response?: { data?: string } })?.response?.data ||
                 t("joinFailed");
@@ -55,7 +70,7 @@ export default function JoinInvitePage() {
     const treasuryName = invite?.treasuryName || t("treasuryFallback");
     const showLogin = !accountId && invite?.status === "valid" && !submitted;
     // Keep ask / success / used / expired / invalid cards the same footprint.
-    const formCardClassName = "gap-4 min-h-[360px]";
+    const formCardClassName = "gap-4 min-h-[340px]";
 
     return (
         <PageComponentLayout
@@ -178,24 +193,39 @@ export default function JoinInvitePage() {
                             </div>
                         </InputBlock>
 
-                        <InputBlock
-                            title={t("nameLabel")}
-                            invalid={false}
-                            interactive
-                        >
-                            <LargeInput
-                                id="display-name"
-                                borderless
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                                placeholder={t("namePlaceholder")}
-                            />
-                        </InputBlock>
+                        {isProfileLoading ? (
+                            <Skeleton className="h-16 w-full" />
+                        ) : (
+                            <InputBlock
+                                title={t("nameLabel")}
+                                invalid={false}
+                                interactive={!hasExistingName}
+                                disabled={hasExistingName}
+                            >
+                                <LargeInput
+                                    id="display-name"
+                                    borderless
+                                    value={
+                                        hasExistingName
+                                            ? existingName
+                                            : displayName
+                                    }
+                                    onChange={(e) =>
+                                        setDisplayName(e.target.value)
+                                    }
+                                    placeholder={t("namePlaceholder")}
+                                    disabled={hasExistingName}
+                                    readOnly={hasExistingName}
+                                />
+                            </InputBlock>
+                        )}
 
                         <Button
-                            className="w-full mt-auto"
+                            className="w-full"
                             onClick={() => void handleAskJoin()}
-                            disabled={joinMutation.isPending}
+                            disabled={
+                                joinMutation.isPending || isProfileLoading
+                            }
                         >
                             {joinMutation.isPending
                                 ? t("submitting")

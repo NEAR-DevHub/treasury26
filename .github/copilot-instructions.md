@@ -144,6 +144,38 @@ cargo fmt
 cargo clippy --all-targets
 ```
 
+## Frontend Error Reporting
+
+Errors that block the user flow and cannot be resolved automatically (for example
+wallet rejection is retryable in place, but a failed submit that leaves the UI
+stuck with no feedback is not) must be reported to the user — typically via
+`toast.error` with a clear message.
+
+Also send those failures to Sentry with `reportError` from `nt-fe/lib/report-error.ts`
+(or `Sentry.captureException`). Do not rely on `console.error` alone; it does not
+reliably surface in Sentry and is invisible to users.
+
+Not every `catch` needs a toast. Background or best-effort side effects that fail
+after the primary action already succeeded (for example marking join requests
+approved after a proposal is already on-chain) may stay silent for the user, but
+must still be reported to Sentry.
+
+**Do:**
+```ts
+} catch (error) {
+    reportError(error, "Failed to add members");
+    toast.error(t("createProposalFailed"));
+}
+```
+
+**Don't:**
+```ts
+} catch (error) {
+    console.error("Failed to add members:", error);
+    // user sees nothing; we may never learn about the failure
+}
+```
+
 ## Pull Request Guidelines
 
 ### Conventional Commits

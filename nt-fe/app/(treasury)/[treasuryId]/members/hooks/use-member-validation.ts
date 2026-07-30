@@ -164,9 +164,7 @@ export function useMemberValidation(
             // Only check roles that are present in members being removed
             const rolesToCheck = new Set<string>();
             membersToCheck.forEach((member) => {
-                for (const role of member.roles) {
-                    rolesToCheck.add(role);
-                }
+                member.roles.forEach((role) => rolesToCheck.add(role));
             });
 
             for (const roleName of rolesToCheck) {

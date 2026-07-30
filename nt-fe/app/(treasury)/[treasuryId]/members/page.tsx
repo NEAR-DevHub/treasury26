@@ -8,6 +8,8 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { reportError } from "@/lib/report-error";
 import { encodeToMarkdown } from "@/lib/utils";
 import { DeleteConfirmationModal } from "./components/modals/delete-confirmation-modal";
 import { User } from "@/components/user";
@@ -275,7 +277,8 @@ export default function MembersPage() {
                 queryKey: ["proposals", treasuryId],
             });
         } catch (error) {
-            console.error("Failed to create proposal:", error);
+            reportError(error, "Failed to create proposal");
+            toast.error(tMembers("policy.createProposalFailed"));
             throw error;
         }
     };
@@ -330,7 +333,7 @@ export default function MembersPage() {
             setMemberToDelete(null);
             setSelectedMembers([]);
         } catch {
-            // Error already handled in createPolicyChangeProposal
+            // Toast + Sentry already handled in createPolicyChangeProposal
         }
     };
 
@@ -721,7 +724,7 @@ export default function MembersPage() {
                                     </span>
                                     <UserRoundPlus className="size-4 sm:hidden" />
                                     <NumberBadge
-                                        className="rounded-full"
+                                        shape="pill"
                                         number={joinRequestCount}
                                     />
                                 </AuthButton>
