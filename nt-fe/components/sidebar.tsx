@@ -21,6 +21,7 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useSaveTreasuryMutation } from "@/hooks/use-treasury-mutations";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
@@ -364,6 +365,11 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 badgeCount={proposals?.total ?? 0}
                                 showLabels={showLabels}
                                 onClick={() => {
+                                    trackEvent("nav-click", {
+                                        destination: link.path || "dashboard",
+                                        source: "sidebar",
+                                        treasury_id: treasuryId,
+                                    });
                                     router.push(href);
                                     if (isMobile) onClose();
                                 }}
@@ -539,6 +545,11 @@ export function Sidebar({ onClose }: SidebarProps) {
                                     label={tNav(link.labelKey)}
                                     showLabels={!isReduced}
                                     onClick={() => {
+                                        trackEvent("nav-click", {
+                                            destination: link.path,
+                                            source: "sidebar",
+                                            treasury_id: treasuryId,
+                                        });
                                         router.push(href);
                                         if (isMobile) onClose();
                                     }}
