@@ -92,7 +92,6 @@ function PaymentDisplay({
             value: (
                 <User
                     useAddressBook
-                    withName={chainName === NEAR_NETWORK_ID}
                     accountId={payment.recipient}
                     chainName={chainName}
                 />

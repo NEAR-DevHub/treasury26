@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useRef } from "react";
 import type { ReactNode } from "react";
 import { Button } from "./button";
 import { ArrowLeftIcon, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
+
 export interface StepProps {
     handleBack?: () => void;
     handleNext?: () => void;
@@ -69,23 +70,28 @@ export function StepWizard({
     onStepChange,
     stepLabelClassName,
 }: StepWizardProps) {
-    const [direction, setDirection] = useState<1 | -1>(1);
     const isTransitioningRef = useRef(false);
+    // Derive direction from step changes so external setStep(n) (e.g. Review
+    // after Back) still gets the correct forward/back animation.
+    const prevStepRef = useRef(step);
+    const directionRef = useRef<1 | -1>(1);
+    if (prevStepRef.current !== step) {
+        directionRef.current = step > prevStepRef.current ? 1 : -1;
+        prevStepRef.current = step;
+    }
+    const direction = directionRef.current;
 
     const CurrentStep = steps[step];
 
-    // Handle next step (validate current step)
     const handleNext = async () => {
         if (isTransitioningRef.current || step >= steps.length - 1) return;
         isTransitioningRef.current = true;
-        setDirection(1);
         onStepChange(Math.min(step + 1, steps.length - 1));
     };
 
     const handleBack = () => {
         if (isTransitioningRef.current || step <= 0) return;
         isTransitioningRef.current = true;
-        setDirection(-1);
         onStepChange(Math.max(step - 1, 0));
     };
 

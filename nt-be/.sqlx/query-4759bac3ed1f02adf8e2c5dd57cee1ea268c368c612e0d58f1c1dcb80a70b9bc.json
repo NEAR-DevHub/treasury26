@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT mjr.id, mjr.account_id, mjr.created_at, up.display_name\n        FROM member_join_requests mjr\n        LEFT JOIN user_profiles up ON up.account_id = mjr.account_id\n        WHERE mjr.dao_id = $1 AND mjr.status = 'pending'\n        ORDER BY mjr.created_at ASC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "account_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "display_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "4759bac3ed1f02adf8e2c5dd57cee1ea268c368c612e0d58f1c1dcb80a70b9bc"
+}

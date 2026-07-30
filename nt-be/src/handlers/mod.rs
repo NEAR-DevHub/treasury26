@@ -7,6 +7,7 @@ pub mod dao;
 pub mod events;
 pub mod intents;
 pub mod lookup;
+pub mod member_invites;
 pub mod notifications;
 pub mod proposal_templates;
 pub mod proposals;

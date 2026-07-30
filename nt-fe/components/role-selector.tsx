@@ -124,9 +124,15 @@ export function RoleSelector({
                     <ChevronDown className="size-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
+            {/*
+              Align to the trailing edge so label width changes don't shift the
+              menu horizontally. Keep collision handling so the last row can
+              flip above when there's no room below.
+            */}
             <PopoverContent
                 className="w-80 p-1 gap-1 flex flex-col"
-                align="start"
+                align="end"
+                collisionPadding={16}
             >
                 {translatedRoles.map((role) => {
                     const disabledInfo = disabledRoles.find(

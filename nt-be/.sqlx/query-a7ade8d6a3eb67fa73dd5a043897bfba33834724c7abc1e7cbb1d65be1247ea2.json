@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE member_join_requests\n        SET status = 'cancelled'\n        WHERE id = $1 AND dao_id = $2 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a7ade8d6a3eb67fa73dd5a043897bfba33834724c7abc1e7cbb1d65be1247ea2"
+}
