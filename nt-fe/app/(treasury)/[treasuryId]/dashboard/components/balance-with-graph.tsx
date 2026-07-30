@@ -47,6 +47,7 @@ import {
     getDashboardBreakdownItems,
     getDashboardBucketVisibility,
 } from "@/lib/dashboard-balance-view";
+import { trackEvent } from "@/lib/analytics";
 import { cn, formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
 import BalanceChart from "./chart";
 
@@ -754,7 +755,14 @@ export default function BalanceWithGraph({
 
             <div className="grid grid-cols-3 gap-2 md:gap-4">
                 <Button
-                    onClick={onDepositClick}
+                    onClick={() => {
+                        trackEvent("nav-click", {
+                            destination: "deposit",
+                            source: "dashboard",
+                            treasury_id: treasuryId,
+                        });
+                        onDepositClick();
+                    }}
                     id="dashboard-step1"
                     className="text-xs md:text-base"
                 >
@@ -765,7 +773,14 @@ export default function BalanceWithGraph({
                     permissionAction="AddProposal"
                     className="w-full text-xs md:text-base"
                     id="dashboard-step2"
-                    onClick={() => router.push(`/${treasuryId}/payments`)}
+                    onClick={() => {
+                        trackEvent("nav-click", {
+                            destination: "payments",
+                            source: "dashboard",
+                            treasury_id: treasuryId,
+                        });
+                        router.push(`/${treasuryId}/payments`);
+                    }}
                 >
                     <ArrowUpRightIcon className="md:size-4 size-3" />
                     {t("send")}
@@ -775,7 +790,14 @@ export default function BalanceWithGraph({
                     permissionAction="AddProposal"
                     className="w-full text-xs md:text-base"
                     id="dashboard-step3"
-                    onClick={() => router.push(`/${treasuryId}/exchange`)}
+                    onClick={() => {
+                        trackEvent("nav-click", {
+                            destination: "exchange",
+                            source: "dashboard",
+                            treasury_id: treasuryId,
+                        });
+                        router.push(`/${treasuryId}/exchange`);
+                    }}
                 >
                     <ArrowLeftRight className="md:size-4 size-3" />{" "}
                     {t("exchange")}
