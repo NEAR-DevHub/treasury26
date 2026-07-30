@@ -1,5 +1,4 @@
 use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
 use sqlx::{PgPool, Postgres, Transaction};
 
 use super::models::{

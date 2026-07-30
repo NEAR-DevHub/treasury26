@@ -22,7 +22,7 @@
 //! `SIGNER_ID` to that environment's sponsor, or its drips count as user
 //! deposits — and deposits from the local signer get excluded.
 
-use bigdecimal::BigDecimal;
+use bigdecimal::{BigDecimal, num_traits::One};
 use serde_json::Value;
 
 const SYSTEM_ACCOUNT: &str = "system";
@@ -40,6 +40,13 @@ const SYSTEM_ACCOUNT: &str = "system";
 /// founder deposit).
 pub const MAX_PLATFORM_CREATION_DEPOSIT_YOCTO: u128 = 200_000_000_000_000_000_000_000;
 
+/// The threshold as a BigDecimal, allocated once — comparison sites must not
+/// build an owned instance per call (clippy::cmp_owned).
+pub fn max_platform_creation_deposit() -> &'static BigDecimal {
+    static THRESHOLD: std::sync::OnceLock<BigDecimal> = std::sync::OnceLock::new();
+    THRESHOLD.get_or_init(|| BigDecimal::from(MAX_PLATFORM_CREATION_DEPOSIT_YOCTO))
+}
+
 /// Whether a native movement's signed delta belongs to the user balance.
 /// The relayer/sponsor account is environment configuration: each system's
 /// `SIGNER_ID` is its sponsor, threaded here as `relayer_account`.
@@ -54,7 +61,7 @@ pub fn native_movement_affects_user_balance(
         return false;
     }
     if let Some(inflow_raw) = inflow_raw
-        && inflow_raw <= &BigDecimal::from(MAX_PLATFORM_CREATION_DEPOSIT_YOCTO)
+        && inflow_raw <= max_platform_creation_deposit()
         && is_treasury_creation_receipt(raw_payload, account_id, relayer_account)
     {
         return false;
@@ -108,7 +115,7 @@ pub fn one_yocto_attachment_yoctos(raw_payload: &Value, deposit_magnitude: &BigD
 
     // A function-call receipt whose whole deposit is 1 yocto is pure
     // attachment, whatever the method.
-    if *deposit_magnitude == BigDecimal::from(1u32)
+    if deposit_magnitude.is_one()
         && actions.is_some_and(|actions| actions.iter().any(function_call))
     {
         return 1;

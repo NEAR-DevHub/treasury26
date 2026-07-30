@@ -277,10 +277,8 @@ fn is_treasury_creation_native_deposit(leg: &SilverTransferLegRow, relayer_accou
     }
     // Creation deposits above the platform's fixed funding amount are founder
     // capital and stay visible as real deposits.
-    if leg.amount_raw
-        > bigdecimal::BigDecimal::from(
-            crate::handlers::public_history::silver::balance_history::ownership::MAX_PLATFORM_CREATION_DEPOSIT_YOCTO,
-        )
+    if &leg.amount_raw
+        > crate::handlers::public_history::silver::balance_history::ownership::max_platform_creation_deposit()
     {
         return false;
     }
