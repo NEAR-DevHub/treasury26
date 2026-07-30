@@ -18,9 +18,8 @@ import { Alert, AlertDescription } from "@/components/alert";
 import { ProposalTypeIcon } from "@/features/proposals/components/proposal-type-icon";
 import { TransactionCell } from "@/features/proposals/components/transaction-cell";
 import {
-    EXCHANGE_EXPIRY_MS,
+    getQuoteDeadlineMs,
     getProposalUIKind,
-    isShortExpiryExchangeProposal,
 } from "@/features/proposals/utils/proposal-utils";
 import { useProposalKindLabel } from "@/features/proposals/hooks/use-proposal-kind-label";
 import { FormattedDate } from "@/components/formatted-date";
@@ -73,23 +72,15 @@ export function VotingDurationImpactModal({
         return activeProposals
             .map((proposal): ProposalImpact => {
                 const submissionTimeMs = nanosToMs(proposal.submission_time);
-                const isShortExpiryExchange =
-                    isShortExpiryExchangeProposal(proposal);
-
-                // Short-expiry exchanges are unaffected by
-                // voting-duration policy changes.
-                const oldExpiryDate = new Date(
-                    isShortExpiryExchange
-                        ? submissionTimeMs +
-                              Math.min(currentDurationMs, EXCHANGE_EXPIRY_MS)
-                        : submissionTimeMs + currentDurationMs,
-                );
-                const newExpiryDate = new Date(
-                    isShortExpiryExchange
-                        ? submissionTimeMs +
-                              Math.min(newDurationMs, EXCHANGE_EXPIRY_MS)
-                        : submissionTimeMs + newDurationMs,
-                );
+                const quoteDeadlineMs = getQuoteDeadlineMs(proposal);
+                const cappedExpiry = (periodMs: number) => {
+                    const byPeriod = submissionTimeMs + periodMs;
+                    return quoteDeadlineMs === undefined
+                        ? byPeriod
+                        : Math.min(byPeriod, quoteDeadlineMs);
+                };
+                const oldExpiryDate = new Date(cappedExpiry(currentDurationMs));
+                const newExpiryDate = new Date(cappedExpiry(newDurationMs));
 
                 const wasExpiredBefore = oldExpiryDate.getTime() <= now;
                 const willBeExpiredAfter = newExpiryDate.getTime() <= now;

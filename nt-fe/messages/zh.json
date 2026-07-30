@@ -819,6 +819,67 @@
         "activeMembers": "活跃成员",
         "noActiveMembers": "未找到活跃成员。",
         "addNewMember": "添加成员",
+        "addManually": "手动添加",
+        "inviteMember": "邀请成员",
+        "wantsToJoin": "希望加入",
+        "invite": {
+            "title": "邀请成员",
+            "howItWorks": {
+                "title": "如何运作",
+                "generateTitle": "你生成链接",
+                "generateDescription": "发给你想添加的人——Telegram、邮件或任何渠道。",
+                "joinTitle": "对方申请加入",
+                "joinDescription": "他们打开链接、连接钱包，并把信息发给你。",
+                "voteTitle": "你发起投票",
+                "voteDescription": "信息会预填好。你创建请求，团队进行投票。"
+            },
+            "generateLink": "生成邀请链接",
+            "generating": "生成中...",
+            "generateFailed": "生成邀请链接失败，请重试。",
+            "readyTitle": "邀请链接已就绪",
+            "readyDescription": "发给你想添加的人。对方会连接钱包并申请加入。",
+            "onceTitle": "此链接仅限一人、一次使用",
+            "onceDescription": "每位成员请重新生成。",
+            "yourLink": "你的邀请链接",
+            "copyLink": "复制链接",
+            "linkCopied": "已复制邀请链接",
+            "generateNewLink": "生成新链接"
+        },
+        "joinRequests": {
+            "title": "希望加入",
+            "memberAddress": "成员地址",
+            "empty": "暂无待处理的加入请求。",
+            "setRolesRequired": "请为每位成员设置角色",
+            "removeFailed": "移除加入请求失败",
+            "pendingPolicyRequest": "存在进行中的策略变更请求时无法添加成员。请先批准或拒绝。"
+        },
+        "join": {
+            "metaTitle": "加入金库 | Trezu",
+            "metaDescription": "通过邀请链接申请加入 Trezu 金库",
+            "pageTitle": "加入金库",
+            "pageDescription": "请求加入金库",
+            "treasuryFallback": "此金库",
+            "connectTitle": "加入 {treasury} 金库",
+            "connectDescription": "连接钱包以申请加入。此时不会转移资金，也不会立刻添加你——团队先投票。",
+            "askTitle": "申请加入 {treasury} 金库",
+            "askDescription": "在你能查看或批准任何内容之前，团队会先审核你的请求。",
+            "walletConnected": "钱包已连接",
+            "nameLabel": "你的姓名（可选）",
+            "namePlaceholder": "方便团队认出你",
+            "askJoin": "申请加入",
+            "submitting": "提交中...",
+            "successTitle": "快要加入了",
+            "successDescription": "团队审核你的请求后，\n你就可以加入。现在无需再做任何事。",
+            "seeTreasury": "查看金库",
+            "invalidTitle": "未找到邀请",
+            "invalidDescription": "此邀请链接无效或已不可用。",
+            "usedTitle": "邀请已使用",
+            "usedDescription": "此邀请链接已被使用。",
+            "expiredTitle": "邀请已过期",
+            "expiredDescription": "此邀请链接已过期。请向团队索取新链接。",
+            "goHome": "返回首页",
+            "joinFailed": "提交加入请求失败，请重试。"
+        },
         "membersSelected": "已选择 {count, plural, =0 {无成员} other {# 名成员}}",
         "remove": "移除",
         "edit": "编辑",
@@ -827,7 +888,6 @@
             "editRoles": "编辑角色",
             "addNewMember": "添加成员",
             "validatingAddresses": "正在验证地址...",
-            "creatingProposal": "正在创建提案...",
             "reviewRequest": "审核请求",
             "noChanges": "未对成员角色进行任何更改"
         },
@@ -856,7 +916,8 @@
             "alreadyAdded": "该成员已在上方添加",
             "alreadyInTreasury": "该成员已存在于金库中",
             "cannotRemoveRoleAfter": "您不能从此成员中移除 {role} 角色。在所有更改之后,他们将是唯一被分配此角色的人。",
-            "cannotRemoveRoleAfterGov": "您不能从此成员中移除 {role} 角色。在所有更改之后,他们将是唯一的 {role} 成员,缺少此角色将无法管理团队成员或配置投票。"
+            "cannotRemoveRoleAfterGov": "您不能从此成员中移除 {role} 角色。在所有更改之后,他们将是唯一的 {role} 成员,缺少此角色将无法管理团队成员或配置投票。",
+            "validateAddressesFailed": "地址验证失败。请重试。"
         },
         "policy": {
             "addMembers": "更新策略 - 添加新成员",
@@ -867,7 +928,8 @@
             "editMembersSuccess": "批量成员角色更新请求已成功创建",
             "removeMember": "更新策略 - 移除成员",
             "removeMembers": "更新策略 - 移除成员",
-            "removeMemberSuccess": "成员移除请求已成功创建"
+            "removeMemberSuccess": "成员移除请求已成功创建",
+            "createProposalFailed": "创建成员请求失败。请重试。"
         },
         "infoSection": {
             "title": "为什么要添加更多成员？",
@@ -1559,9 +1621,7 @@
         "cannotRemoveMember": "无法移除此成员。他们是唯一被分配 {roles} {count, plural, other {角色}}的成员。",
         "cannotRemoveMemberGov": "无法移除此成员。他们是唯一被分配 {roles} {count, plural, other {角色,而该角色}}的成员,该角色用于管理团队成员和配置投票。",
         "cannotBulkRemove": "无法移除这些成员。这将使 {roles} {count, plural, other {角色}}变空。",
-        "cannotBulkRemoveGov": "无法移除这些成员。这将使 {roles} {count, plural, other {角色,而该角色}}变空,该角色用于管理团队成员和配置投票。",
-        "cannotRemoveRole": "您不能从此成员中移除 {role} 角色。他们是唯一被分配此角色的人。",
-        "cannotRemoveRoleGov": "您不能从此成员中移除 {role} 角色。他们是唯一的 {role} 成员,缺少此角色将无法管理团队成员或配置投票。"
+        "cannotBulkRemoveGov": "无法移除这些成员。这将使 {roles} {count, plural, other {角色,而该角色}}变空,该角色用于管理团队成员和配置投票。"
     },
     "roleSelector": {
         "setRole": "设置角色",

@@ -929,7 +929,7 @@ export function extractConfidentialRequestData(
                     slippage: (
                         (quoteRequest.slippageTolerance ?? 0) / 100
                     ).toString(),
-                    quoteDeadline: quote.deadline,
+                    quoteDeadline: quoteRequest.deadline,
                 } as SwapRequestData,
             };
             title = "Confidential Exchange";

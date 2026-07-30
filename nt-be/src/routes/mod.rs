@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::State,
     http::StatusCode,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 use serde_json::{Value, json};
 use std::sync::Arc;
@@ -438,6 +438,31 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/treasury/{dao_id}/custom-requests",
             get(handlers::treasury::custom_requests::get_custom_requests_setting)
                 .put(handlers::treasury::custom_requests::set_custom_requests_setting),
+        )
+        // Member invite + join request endpoints
+        .route(
+            "/api/treasury/{dao_id}/member-invites",
+            post(handlers::member_invites::create_member_invite),
+        )
+        .route(
+            "/api/member-invites/{token}",
+            get(handlers::member_invites::get_member_invite),
+        )
+        .route(
+            "/api/member-invites/{token}/join",
+            post(handlers::member_invites::join_via_invite),
+        )
+        .route(
+            "/api/treasury/{dao_id}/member-join-requests",
+            get(handlers::member_invites::list_member_join_requests),
+        )
+        .route(
+            "/api/treasury/{dao_id}/member-join-requests/approve",
+            post(handlers::member_invites::approve_member_join_requests),
+        )
+        .route(
+            "/api/treasury/{dao_id}/member-join-requests/{id}",
+            delete(handlers::member_invites::cancel_member_join_request),
         )
         // DAO endpoints
         .route(

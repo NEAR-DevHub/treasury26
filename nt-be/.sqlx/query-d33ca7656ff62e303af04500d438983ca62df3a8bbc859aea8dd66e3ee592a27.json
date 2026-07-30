@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT 1 AS ok FROM dao_members\n        WHERE dao_id = $1 AND account_id = $2 AND is_policy_member = true\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ok",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "d33ca7656ff62e303af04500d438983ca62df3a8bbc859aea8dd66e3ee592a27"
+}

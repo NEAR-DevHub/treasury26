@@ -886,7 +886,7 @@ fn request_quote(
         .as_deref()
         .and_then(|p| p.parse::<u64>().ok())
         .map(|nanos| nanos / 1_000_000)
-        .unwrap_or(24 * 60 * 60 * 1000);
+        .unwrap_or(7 * 24 * 60 * 60 * 1000); // default DAO proposal period (7 days)
     let deadline = chrono::Utc::now() + chrono::Duration::milliseconds(deadline_ms as i64);
 
     let quote_request = serde_json::json!({

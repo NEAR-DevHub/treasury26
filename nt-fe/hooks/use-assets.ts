@@ -28,6 +28,16 @@ const isTokenValidByOptions = (
 };
 
 /**
+ * Shared options for payments / deposit / token pickers so every observer
+ * hits the same React Query cache entry (onlyPositiveBalance must not be
+ * omitted — `undefined` vs `false` used to split the key and refetch).
+ */
+export const DEFAULT_ASSETS_QUERY = {
+    onlyPositiveBalance: false,
+    onlySupportedTokens: true,
+} as const;
+
+/**
  * Query hook to get whitelisted tokens with balances and prices
  * Fetches from backend which aggregates data from Ref Finance and FastNear
  */
@@ -39,8 +49,12 @@ export function useAssets(
         enabled?: boolean;
     },
 ) {
+    // Normalize so callers that omit onlyPositiveBalance share cache with
+    // those that pass `false` explicitly.
+    const onlyPositiveBalance = options?.onlyPositiveBalance ?? false;
+
     return useQuery({
-        queryKey: ["treasuryAssets", treasuryId, options?.onlyPositiveBalance],
+        queryKey: ["treasuryAssets", treasuryId, onlyPositiveBalance],
         queryFn: () => getTreasuryAssets(treasuryId!),
         enabled: !!treasuryId && (options?.enabled ?? true),
         staleTime: 1000 * 5, // 5 seconds (assets change frequently)
@@ -48,7 +62,10 @@ export function useAssets(
             return {
                 ...data,
                 tokens: data.tokens.filter((token) =>
-                    isTokenValidByOptions(token, options),
+                    isTokenValidByOptions(token, {
+                        ...options,
+                        onlyPositiveBalance,
+                    }),
                 ),
             };
         },

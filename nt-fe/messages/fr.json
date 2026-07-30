@@ -819,6 +819,67 @@
         "activeMembers": "Membres actifs",
         "noActiveMembers": "Aucun membre actif trouvé.",
         "addNewMember": "Ajouter un membre",
+        "addManually": "Ajouter manuellement",
+        "inviteMember": "Inviter un membre",
+        "wantsToJoin": "Souhaite rejoindre",
+        "invite": {
+            "title": "Inviter un membre",
+            "howItWorks": {
+                "title": "Comment ça marche",
+                "generateTitle": "Vous générez un lien",
+                "generateDescription": "Envoyez-le à la personne à ajouter — Telegram, e-mail, où vous voulez.",
+                "joinTitle": "Ils demandent à rejoindre",
+                "joinDescription": "Ils ouvrent le lien, connectent un portefeuille et vous envoient leurs infos.",
+                "voteTitle": "Vous le mettez au vote",
+                "voteDescription": "Leurs infos arrivent préremplies. Vous créez la demande, l’équipe vote."
+            },
+            "generateLink": "Générer le lien d’invitation",
+            "generating": "Génération…",
+            "generateFailed": "Échec de la génération du lien d’invitation. Réessayez.",
+            "readyTitle": "Votre lien d’invitation est prêt",
+            "readyDescription": "Envoyez-le à la personne à ajouter. Elle connectera un portefeuille et demandera à rejoindre.",
+            "onceTitle": "Ce lien ne fonctionne qu’une fois, pour une personne",
+            "onceDescription": "Générez-en un nouveau pour chaque membre.",
+            "yourLink": "Votre lien d’invitation",
+            "copyLink": "Copier le lien",
+            "linkCopied": "Lien d’invitation copié",
+            "generateNewLink": "Générer un nouveau lien"
+        },
+        "joinRequests": {
+            "title": "Souhaite rejoindre",
+            "memberAddress": "Adresse du membre",
+            "empty": "Aucune demande d’adhésion en attente.",
+            "setRolesRequired": "Définissez un rôle pour chaque membre",
+            "removeFailed": "Échec de la suppression de la demande d’adhésion",
+            "pendingPolicyRequest": "Vous ne pouvez pas ajouter de membres tant qu’une demande de modification de politique est active. Approuvez-la ou rejetez-la d’abord."
+        },
+        "join": {
+            "metaTitle": "Rejoindre le treasury | Trezu",
+            "metaDescription": "Demander à rejoindre un treasury Trezu via un lien d’invitation",
+            "pageTitle": "Rejoindre le treasury",
+            "pageDescription": "Demander à rejoindre un treasury",
+            "treasuryFallback": "ce treasury",
+            "connectTitle": "Rejoindre le treasury {treasury}",
+            "connectDescription": "Connectez un portefeuille pour demander à rejoindre. Cela ne déplace pas encore de fonds et ne vous ajoute pas — l’équipe vote d’abord.",
+            "askTitle": "Demander à rejoindre le treasury {treasury}",
+            "askDescription": "L’équipe examine votre demande avant que vous puissiez voir ou approuver quoi que ce soit.",
+            "walletConnected": "Portefeuille connecté",
+            "nameLabel": "Votre nom (facultatif)",
+            "namePlaceholder": "Pour que l’équipe vous reconnaisse",
+            "askJoin": "Demander à rejoindre",
+            "submitting": "Envoi…",
+            "successTitle": "Vous y êtes presque",
+            "successDescription": "Vous pourrez rejoindre une fois que l’équipe aura examiné\nvotre demande. Rien d’autre à faire pour l’instant.",
+            "seeTreasury": "Voir le treasury",
+            "invalidTitle": "Invitation introuvable",
+            "invalidDescription": "Ce lien d’invitation est invalide ou n’est plus disponible.",
+            "usedTitle": "Invitation déjà utilisée",
+            "usedDescription": "Ce lien d’invitation a déjà été utilisé.",
+            "expiredTitle": "Invitation expirée",
+            "expiredDescription": "Ce lien d’invitation a expiré. Demandez-en un nouveau à l’équipe.",
+            "goHome": "Retour à l’accueil",
+            "joinFailed": "Échec de l’envoi de la demande. Réessayez."
+        },
         "membersSelected": "{count, plural, =0 {aucun membre} one {# membre} other {# membres}} sélectionné{count, plural, =0 {} one {} other {s}}",
         "remove": "Supprimer",
         "edit": "Modifier",
@@ -827,7 +888,6 @@
             "editRoles": "Modifier les rôles",
             "addNewMember": "Ajouter un membre",
             "validatingAddresses": "Validation des adresses...",
-            "creatingProposal": "Création de la proposition...",
             "reviewRequest": "Vérifier la demande",
             "noChanges": "Aucun changement n'a été apporté aux rôles des membres"
         },
@@ -856,7 +916,8 @@
             "alreadyAdded": "Ce membre a déjà été ajouté ci-dessus",
             "alreadyInTreasury": "Ce membre existe déjà dans la trésorerie",
             "cannotRemoveRoleAfter": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Après tous vos changements, il serait la seule personne attribuée à ce rôle.",
-            "cannotRemoveRoleAfterGov": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Après tous vos changements, il serait le seul membre {role}, et sans ce rôle, vous ne pourrez plus gérer les membres de l'équipe ni configurer le vote."
+            "cannotRemoveRoleAfterGov": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Après tous vos changements, il serait le seul membre {role}, et sans ce rôle, vous ne pourrez plus gérer les membres de l'équipe ni configurer le vote.",
+            "validateAddressesFailed": "Échec de la validation des adresses. Veuillez réessayer."
         },
         "policy": {
             "addMembers": "Mettre à jour la politique - Ajouter de nouveaux membres",
@@ -867,7 +928,8 @@
             "editMembersSuccess": "Demande de mise à jour groupée des rôles des membres créée avec succès",
             "removeMember": "Mettre à jour la politique - Supprimer un membre",
             "removeMembers": "Mettre à jour la politique - Supprimer des membres",
-            "removeMemberSuccess": "Demande de suppression de membre créée avec succès"
+            "removeMemberSuccess": "Demande de suppression de membre créée avec succès",
+            "createProposalFailed": "Échec de la création de la demande de membre. Veuillez réessayer."
         },
         "infoSection": {
             "title": "Pourquoi ajouter plus de membres ?",
@@ -1576,9 +1638,7 @@
         "cannotRemoveMember": "Impossible de supprimer ce membre. Il est la seule personne attribuée au {count, plural, one {rôle} other {rôles}} {roles}.",
         "cannotRemoveMemberGov": "Impossible de supprimer ce membre. Il est la seule personne attribuée au {count, plural, one {rôle, qui est} other {rôles, qui sont}} {roles} requis pour gérer les membres de l'équipe et configurer le vote.",
         "cannotBulkRemove": "Impossible de supprimer ces membres. Cela laisserait le {count, plural, one {rôle} other {rôles}} {roles} vide.",
-        "cannotBulkRemoveGov": "Impossible de supprimer ces membres. Cela laisserait le {count, plural, one {rôle, qui est} other {rôles, qui sont}} {roles} vide, requis pour gérer les membres de l'équipe et configurer le vote.",
-        "cannotRemoveRole": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Il est la seule personne attribuée à ce rôle.",
-        "cannotRemoveRoleGov": "Vous ne pouvez pas supprimer le rôle {role} de ce membre. Il est le seul membre {role}, et sans ce rôle, vous ne pourrez plus gérer les membres de l'équipe ni configurer le vote."
+        "cannotBulkRemoveGov": "Impossible de supprimer ces membres. Cela laisserait le {count, plural, one {rôle, qui est} other {rôles, qui sont}} {roles} vide, requis pour gérer les membres de l'équipe et configurer le vote."
     },
     "roleSelector": {
         "setRole": "Définir le rôle",

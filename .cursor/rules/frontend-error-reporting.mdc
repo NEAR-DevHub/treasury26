@@ -1,0 +1,15 @@
+---
+description: User-facing and Sentry error reporting for frontend failures
+globs: nt-fe/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Error Reporting
+
+Errors that block the user flow and cannot be resolved automatically must be
+reported to the user (usually `toast.error`) and to Sentry via `reportError`
+from `nt-fe/lib/report-error.ts`.
+
+Do not leave empty catches or `console.error`-only handlers for user-blocking
+failures. Best-effort side effects after a successful primary action may omit
+the toast, but still call `reportError`.

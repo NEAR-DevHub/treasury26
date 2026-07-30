@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT 1 AS ok FROM member_join_requests\n        WHERE dao_id = $1 AND account_id = $2 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ok",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "284e685ffa4293411aeb63c79cfcd6faecc44bf60737744f9e72479161fbfb19"
+}

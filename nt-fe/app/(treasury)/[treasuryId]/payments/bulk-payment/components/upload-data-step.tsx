@@ -223,9 +223,8 @@ export function UploadDataStep({
         }
 
         // Confidential bulk requires a picked recipient network — its raw name
-        // drives address validation for ALL recipients. RecipientNetworkSelect
-        // auto-picks when only one option matches the first address, but the
-        // user may have wiped the selection (no compatible network) — block here.
+        // drives address validation for ALL recipients. The picker is gated on
+        // having payment data; block Continue if they haven't chosen one yet.
         if (isConfidential && !destinationNetwork) {
             setNetworkError(t("selectRecipientNetwork"));
             return;
@@ -761,7 +760,7 @@ export function UploadDataStep({
                                                     borderless
                                                     placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
                                                     rows={8}
-                                                    className={`w-full max-w-full resize-none font-mono text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap wrap-anywhere overflow-x-hidden min-h-32 md:min-h-41 ${
+                                                    className={`w-full max-w-full resize-none font-mono text-base md:text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap wrap-anywhere overflow-x-hidden min-h-32 md:min-h-41 ${
                                                         dataErrors &&
                                                         dataErrors.length > 0
                                                             ? "border border-destructive bg-destructive/5! focus:border-destructive!"

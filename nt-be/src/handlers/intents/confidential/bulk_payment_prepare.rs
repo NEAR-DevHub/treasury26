@@ -23,12 +23,12 @@
 //! consume a batch-payment credit.
 
 use axum::{Json, extract::State, http::StatusCode};
-use chrono::Duration;
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::sync::Arc;
 
+use crate::handlers::intents::quote::quote_deadline_for_dao;
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::treasury::confidential_setup::derive_bulk_subaccount_id;
 use crate::{AppState, auth::AuthUser};
@@ -125,12 +125,6 @@ fn extract_leg_quote(quote_response: &Value, leg: &str) -> Result<LegQuote, (Sta
         amount_out: field("amountOut")?,
         amount_out_formatted: field("amountOutFormatted")?,
     })
-}
-
-/// Default deadline for confidential bulk quotes/intents — long enough that
-/// the proposal can wait through the DAO voting period.
-fn default_deadline() -> chrono::DateTime<chrono::Utc> {
-    chrono::Utc::now() + Duration::hours(24)
 }
 
 /// Build a 1Click quote body for a recipient leg (sub → recipient).
@@ -415,7 +409,8 @@ pub async fn bulk_payment_prepare(
         crate::handlers::intents::confidential::refresh_bulk_dao_jwt(&state, &request.dao_id)
             .await?;
 
-    let deadline = default_deadline()
+    let deadline = quote_deadline_for_dao(&state, &dao_account)
+        .await?
         .format("%Y-%m-%dT%H:%M:%S%.3fZ")
         .to_string();
     let slippage = request.slippage_tolerance.unwrap_or(100);
