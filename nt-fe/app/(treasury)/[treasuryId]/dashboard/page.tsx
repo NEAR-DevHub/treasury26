@@ -40,7 +40,7 @@ export default function AppPage() {
     };
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
+        <PageComponentLayout title={t("title")}>
             <HistoryRefreshIndicatorProvider>
                 <div className="flex flex-col lg:flex-row gap-5">
                     <div className="flex flex-col gap-5 lg:w-2/3 w-full">
