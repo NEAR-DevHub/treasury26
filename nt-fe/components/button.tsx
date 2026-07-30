@@ -46,20 +46,9 @@ export function Button({
             break;
     }
 
-    let sizeClassName = "";
-    switch (size) {
-        case "sm":
-            sizeClassName = "py-0.5 px-2.5 h-5 text-xs";
-            break;
-        case "lg":
-            sizeClassName = "h-13 font-semibold text-lg";
-            break;
-        case "icon-sm":
-            sizeClassName = "p-2 h-8";
-            break;
-        case "default":
-            sizeClassName = "py-[5.5px]! px-5! gap-1.5 rounded-[8px]";
-    }
+    // Geometry (height/padding/radius) is owned by `ui/button`'s cva. This
+    // wrapper only layers variant colors on top — emitting geometry here would
+    // win the `twMerge` and defeat the design system's sizes at every call site.
     const shadcnVariant: ShadcnVariant =
         variant === "outline-destructive"
             ? "outline"
@@ -70,7 +59,7 @@ export function Button({
     const button = (
         <ShadcnButton
             variant={shadcnVariant}
-            className={cn(className, sizeClassName, classNameOverride)}
+            className={cn(className, classNameOverride)}
             size={size}
             {...props}
         />

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getLocaleDirection } from "@/i18n/config";
@@ -12,8 +12,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/toaster";
 import { WarningsProvider } from "@/components/warnings-provider";
 
-const geistSans = Geist({
-    variable: "--font-geist-sans",
+const figtree = Figtree({
+    variable: "--font-figtree",
     subsets: ["latin"],
 });
 
@@ -62,7 +62,7 @@ export default async function RootLayout({
             lang={locale}
             dir={dir}
             suppressHydrationWarning
-            className={`${geistSans.variable} ${geistMono.variable}`}
+            className={`${figtree.variable} ${geistMono.variable}`}
         >
             <head>
                 <link
@@ -79,7 +79,7 @@ export default async function RootLayout({
                 />
             </head>
             <body
-                className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+                className={`${figtree.variable} ${geistMono.variable} antialiased`}
             >
                 <NextIntlClientProvider locale={locale} messages={messages}>
                     <ThemeProvider>

@@ -121,7 +121,7 @@ function DialogHeader({
         >
             <div className={cn(centerTitle && "flex-1")}>{children}</div>
             {closeButton && (
-                <BaseDialogClose className="ring-offset-background focus-visible:ring-ring inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none">
+                <BaseDialogClose className="ring-offset-background focus-visible:ring-ring inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none">
                     <XIcon className="size-4" />
                     <span className="sr-only">{t("close")}</span>
                 </BaseDialogClose>
@@ -190,12 +190,12 @@ function DialogContent({
             className={cn(
                 "bg-card p-3.5 flex flex-col",
                 // Mobile: bottom drawer (full width, no margins)
-                "max-w-none! w-full inset-x-0 left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 max-h-[80vh] rounded-t-2xl rounded-b-none",
+                "max-w-none! w-full inset-x-0 left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 max-h-[80vh] rounded-t-3xl rounded-b-none",
                 "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
                 "data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100",
                 // Desktop: centered modal
                 "sm:max-w-lg! sm:inset-x-auto sm:top-[50%] sm:left-[50%] sm:bottom-auto sm:right-auto",
-                "sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg",
+                "sm:w-full sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-3xl",
                 "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
                 "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
                 "overflow-y-auto scrollbar-hide",

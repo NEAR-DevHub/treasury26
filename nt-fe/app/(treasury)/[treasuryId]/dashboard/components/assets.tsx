@@ -6,7 +6,6 @@ import { AssetsTable, AssetsTableSkeleton } from "@/components/assets-table";
 import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
-import { StepperHeader } from "@/components/step-wizard";
 import { Tooltip } from "@/components/tooltip";
 import { useIsHistoryRefreshing } from "@/features/activity";
 import { useAggregatedTokens } from "@/hooks/use-assets";
@@ -31,20 +30,30 @@ export default function Assets({ tokens, state }: Props) {
 
     const renderContent = () => {
         if (state === "hidden") {
-            return <ConfidentialState skeleton={<AssetsTableSkeleton />} />;
+            return (
+                <div className="px-4 pb-4">
+                    <ConfidentialState skeleton={<AssetsTableSkeleton />} />
+                </div>
+            );
         }
 
         if (state === "loading" || isHistoryRefreshing) {
-            return <AssetsTableSkeleton />;
+            return (
+                <div className="px-4 pb-4">
+                    <AssetsTableSkeleton />
+                </div>
+            );
         }
 
         if (aggregatedTokens.length === 0) {
             return (
-                <EmptyState
-                    icon={Coins}
-                    title={t("noAssetsTitle")}
-                    description={t("noAssetsDescription")}
-                />
+                <div className="px-4 pb-4">
+                    <EmptyState
+                        icon={Coins}
+                        title={t("noAssetsTitle")}
+                        description={t("noAssetsDescription")}
+                    />
+                </div>
             );
         }
 
@@ -52,33 +61,21 @@ export default function Assets({ tokens, state }: Props) {
     };
 
     return (
-        <PageCard
-            className={
-                hasTabs ? "flex flex-col gap-0 p-0" : "flex flex-col gap-5"
-            }
-        >
+        <PageCard className="flex flex-col gap-0 overflow-hidden p-0">
             {!hasTabs && (
-                <div className="flex justify-between">
-                    <StepperHeader
-                        title={
-                            showConfidentialShield ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                    <span>{t("title")}</span>
-                                    <Tooltip
-                                        content={tCommon(
-                                            "confidentialDataTooltip",
-                                        )}
-                                    >
-                                        <span className="inline-flex">
-                                            <Shield className="size-4 fill-foreground" />
-                                        </span>
-                                    </Tooltip>
+                <div className="flex justify-between px-4 pt-4 pb-3">
+                    <h2 className="flex items-center gap-1.5 font-bold text-2xl tracking-tight">
+                        {t("title")}
+                        {showConfidentialShield && (
+                            <Tooltip
+                                content={tCommon("confidentialDataTooltip")}
+                            >
+                                <span className="inline-flex">
+                                    <Shield className="size-4 fill-foreground" />
                                 </span>
-                            ) : (
-                                t("title")
-                            )
-                        }
-                    />
+                            </Tooltip>
+                        )}
+                    </h2>
                 </div>
             )}
             {renderContent()}

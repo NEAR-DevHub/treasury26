@@ -5,7 +5,6 @@ import {
     useNoVoteMessage,
 } from "@/components/auth-button";
 import { PageCard } from "@/components/card";
-import { NumberBadge } from "@/components/number-badge";
 import { SlotWarning } from "@/components/warning-message";
 import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,7 +35,7 @@ import { useRouter } from "next/navigation";
 const MAX_DISPLAYED_REQUESTS = 3;
 
 function PendingRequestItemSkeleton() {
-    return <Skeleton className="h-16 w-full rounded-lg" />;
+    return <Skeleton className="h-16 w-full rounded-2xl" />;
 }
 
 function PendingRequestsGridSkeleton() {
@@ -52,12 +51,14 @@ function PendingRequestsGridSkeleton() {
 function PendingRequestsSkeleton() {
     const t = useTranslations("requests.pending");
     return (
-        <div className="border bg-general-tertiary border-border rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
+        <div className="flex h-fit min-h-[300px] w-full flex-col gap-3">
             <div className="flex justify-between">
                 <div className="flex items-center gap-1">
-                    <h1 className="font-semibold text-nowrap">{t("title")}</h1>
+                    <h2 className="text-nowrap font-bold text-2xl tracking-tight">
+                        {t("title")}
+                    </h2>
                 </div>
-                <Button variant="ghost" className="flex gap-2" disabled>
+                <Button variant="pill" size="sm" disabled>
                     {t("viewAll")}
                     <ChevronRight className="size-4" />
                 </Button>
@@ -111,7 +112,10 @@ export function PendingRequestItem({
 
     return (
         <Link href={`/${treasuryId}/requests/${proposal.id}`}>
-            <PageCard className="flex relative flex-row gap-3.5 justify-between w-full overflow-hidden group">
+            <PageCard
+                radius="2xl"
+                className="group relative flex w-full flex-row justify-between gap-3.5 overflow-hidden transition-colors hover:border-gray-300"
+            >
                 <ProposalTypeIcon proposal={proposal} treasuryId={treasuryId} />
                 <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span className="max-w-full truncate leading-none font-semibold">
@@ -262,12 +266,12 @@ export function PendingRequests() {
 
     if (isHidden) {
         return (
-            <div className="bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
+            <div className="flex h-fit min-h-[300px] w-full flex-col gap-3">
                 <div className="flex justify-between">
                     <div className="flex items-center gap-1">
-                        <h1 className="font-semibold text-nowrap">
+                        <h2 className="text-nowrap font-bold text-2xl tracking-tight">
                             {t("title")}
-                        </h1>
+                        </h2>
                     </div>
                 </div>
                 <ConfidentialState skeleton={<PendingRequestsGridSkeleton />} />
@@ -285,25 +289,25 @@ export function PendingRequests() {
         <>
             <div
                 className={cn(
-                    "bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit",
+                    "flex h-fit w-full flex-col gap-3",
                     !hasPendingRequests ? "min-h-[300px]" : "min-h-[100px]",
                 )}
             >
                 <div className="flex justify-between">
-                    <div className="flex items-center gap-1">
-                        <h1 className="font-semibold text-nowrap">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-nowrap font-bold text-2xl tracking-tight">
                             {t("title")}
-                        </h1>
+                        </h2>
                         {hasPendingRequests && (
-                            <NumberBadge
-                                number={pendingRequests?.proposals?.length ?? 0}
-                            />
+                            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-general-orange-background-faded px-2 font-bold text-general-orange-foreground text-xs tabular-nums">
+                                {pendingRequests?.proposals?.length ?? 0}
+                            </span>
                         )}
                     </div>
 
                     {hasPendingRequests && (
                         <Link href={`/${treasuryId}/requests`}>
-                            <Button variant="ghost" className="flex gap-2">
+                            <Button variant="pill" size="sm">
                                 {t("viewAll")}
                                 <ChevronRight className="size-4" />
                             </Button>

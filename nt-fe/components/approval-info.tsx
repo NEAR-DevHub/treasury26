@@ -1,10 +1,10 @@
-import { useTranslations } from "next-intl";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/hooks/use-treasury";
-import { getApproversAndThreshold } from "@/lib/config-utils";
 import { Info } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Pill } from "@/components/pill";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { getApproversAndThreshold } from "@/lib/config-utils";
 import { useNear } from "@/stores/near-store";
 
 interface ApprovalInfoProps {
@@ -41,6 +41,7 @@ export function ApprovalInfo({
         return (
             <Pill
                 variant="secondary"
+                className="rounded-full"
                 title={t("thresholdPill", {
                     required: requiredVotes,
                     total: approverAccounts?.length ?? 0,

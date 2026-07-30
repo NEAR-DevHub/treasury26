@@ -4,8 +4,65 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* near.com / defuse color ramps.
+   The neutral `gray` ramp is deliberately chroma-0, overriding Tailwind v4's
+   blue-tinted default so raw `gray-*` utilities read neutral app-wide. */
+@theme {
+    --color-green-50: oklch(0.9873 0.0176 170.11); /* #EDFFF8 */
+    --color-green-100: oklch(0.9664 0.0475 171.63); /* #D5FFF0 */
+    --color-green-200: oklch(0.9398 0.0887 169.95); /* #AEFFE2 */
+    --color-green-300: oklch(0.908 0.1436 167.26); /* #70FFCD */
+    --color-green-400: oklch(0.8817 0.1867 161.8); /* #2BFDB1 */
+    --color-green-500: oklch(0.831 0.1929 158.447); /* Brand color: #00EC97 */
+    --color-green-600: oklch(0.711 0.1687 157.18); /* #00C076 */
+    --color-green-700: oklch(0.5935 0.1361 159.187); /* #009660 */
+    --color-green-800: oklch(0.4975 0.1087 161.2); /* #06754E */
+    --color-green-900: oklch(0.4338 0.0912 162.98); /* #076042 */
+    --color-green-950: oklch(0.298 0.0641 163.3); /* #003724 */
+
+    --color-red-50: oklch(96.9% 0.015 12.422);
+    --color-red-100: oklch(94.1% 0.03 12.58);
+    --color-red-200: oklch(89.2% 0.058 10.001);
+    --color-red-300: oklch(81% 0.117 11.638);
+    --color-red-400: oklch(71.2% 0.194 13.428);
+    --color-red-500: oklch(64.5% 0.246 16.439);
+    --color-red-600: oklch(58.6% 0.253 17.585);
+    --color-red-700: oklch(51.4% 0.222 16.935);
+    --color-red-800: oklch(45.5% 0.188 13.697);
+    --color-red-900: oklch(41% 0.159 10.272);
+    --color-red-950: oklch(27.1% 0.105 12.094);
+
+    --color-yellow-50: oklch(0.987 0.022 95.277);
+    --color-yellow-100: oklch(0.962 0.059 95.617);
+    --color-yellow-200: oklch(0.924 0.12 95.746);
+    --color-yellow-300: oklch(0.879 0.169 91.605);
+    --color-yellow-400: oklch(0.828 0.189 84.429);
+    --color-yellow-500: oklch(0.769 0.188 70.08);
+    --color-yellow-600: oklch(0.666 0.179 58.318);
+    --color-yellow-700: oklch(0.555 0.163 48.998);
+    --color-yellow-800: oklch(0.473 0.137 46.201);
+    --color-yellow-900: oklch(0.414 0.112 45.904);
+    --color-yellow-950: oklch(0.279 0.077 45.635);
+
+    --color-gray-25: oklch(0.9911 0 0);
+    --color-gray-50: oklch(0.985 0 0);
+    --color-gray-100: oklch(0.97 0 0);
+    --color-gray-150: oklch(0.946 0 0);
+    --color-gray-200: oklch(0.922 0 0);
+    --color-gray-300: oklch(0.87 0 0);
+    --color-gray-400: oklch(0.708 0 0);
+    --color-gray-500: oklch(0.556 0 0);
+    --color-gray-600: oklch(0.439 0 0);
+    --color-gray-700: oklch(0.371 0 0);
+    --color-gray-800: oklch(0.269 0 0);
+    --color-gray-850: oklch(0.239 0 0);
+    --color-gray-900: oklch(0.205 0 0);
+    --color-gray-950: oklch(0.145 0 0);
+}
+
 :root {
     --background: rgb(245, 245, 245);
+    --page-bg: rgb(245, 245, 245);
     --foreground: rgb(10, 10, 10);
     --card: rgb(255, 255, 255);
     --card-foreground: rgb(25, 25, 26);
@@ -24,7 +81,7 @@
     --border: rgb(245, 245, 245);
     --general-border: rgba(229, 229, 229);
     --input: rgb(229, 229, 229);
-    --ring: rgb(161, 161, 161);
+    --ring: rgb(0, 192, 118);
     --general-unofficial-border: rgba(212, 212, 212);
     --general-unofficial-ghost-foreground: rgba(64, 64, 64);
     --general-unofficial-accent: rgba(229, 229, 229);
@@ -48,8 +105,8 @@
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgb(245, 245, 245);
     --general-unofficial-ghost-hover: rgba(0, 0, 0, 0.05);
-    --onboarding-primary: rgba(9, 83, 255, 1);
-    --brand-blue: rgba(9, 83, 255, 1);
+    --onboarding-primary: rgb(0, 150, 96);
+    --brand-blue: rgb(0, 150, 96);
     --general-unofficial-outline: rgba(255, 255, 255, 0.1);
     --chart-1: rgb(164, 246, 204);
     --chart-2: rgb(106, 235, 178);
@@ -70,7 +127,7 @@
     --font-mono:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
         "Courier New", monospace;
-    --radius: 0.625rem;
+    --radius: 0.75rem;
     --shadow-x: 0;
     --shadow-y: 0px;
     --shadow-blur: 0px;
@@ -94,6 +151,7 @@
 
 .dark {
     --background: rgb(15, 15, 16);
+    --page-bg: rgb(15, 15, 16);
     --foreground: rgb(250, 250, 250);
     --card: rgb(25, 25, 26);
     --card-foreground: rgb(250, 250, 250);
@@ -112,16 +170,16 @@
     --border: rgb(40, 40, 40);
     --general-border: rgba(64, 64, 64);
     --input: rgb(52, 52, 52);
-    --ring: rgb(115, 115, 115);
-    --chart-1: rgb(146, 197, 255);
-    --chart-2: rgb(60, 129, 244);
-    --chart-3: rgb(39, 100, 237);
-    --chart-4: rgb(28, 79, 216);
-    --chart-5: rgb(32, 63, 172);
+    --ring: rgb(0, 236, 151);
+    --chart-1: rgb(112, 255, 205);
+    --chart-2: rgb(43, 253, 177);
+    --chart-3: rgb(0, 236, 151);
+    --chart-4: rgb(0, 192, 118);
+    --chart-5: rgb(0, 150, 96);
     --chart-area-fill: rgb(243, 243, 243);
     --sidebar: rgb(25, 25, 26);
     --sidebar-foreground: rgb(250, 250, 250);
-    --sidebar-primary: rgb(22, 72, 228);
+    --sidebar-primary: rgb(0, 236, 151);
     --sidebar-primary-foreground: rgb(250, 250, 250);
     --sidebar-accent: rgb(38, 38, 38);
     --sidebar-accent-foreground: rgb(250, 250, 250);
@@ -149,8 +207,8 @@
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgba(38, 38, 38);
     --general-unofficial-ghost-hover: rgba(255, 255, 255, 0.1);
-    --onboarding-primary: rgba(9, 83, 255, 1);
-    --brand-blue: rgba(9, 83, 255, 1);
+    --onboarding-primary: rgb(0, 150, 96);
+    --brand-blue: rgb(0, 150, 96);
     --general-unofficial-outline: rgba(255, 255, 255, 0.05);
     --font-sans:
         ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -158,7 +216,7 @@
     --font-mono:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
         "Courier New", monospace;
-    --radius: 0.625rem;
+    --radius: 0.75rem;
     --shadow-x: 0;
     --shadow-y: 0px;
     --shadow-blur: 0px;
@@ -207,6 +265,7 @@
 
 @theme inline {
     --color-background: var(--background);
+    --color-page-bg: var(--page-bg);
     --color-foreground: var(--foreground);
     --color-card: var(--card);
     --color-card-foreground: var(--card-foreground);
@@ -281,7 +340,7 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 
-    --font-sans: var(--font-geist-sans), var(--font-sans);
+    --font-sans: var(--font-figtree), var(--font-sans);
     --font-mono: var(--font-geist-mono), var(--font-mono);
     --font-serif: var(--font-geist-serif), var(--font-serif);
 
@@ -363,10 +422,12 @@ input[type="number"] {
     }
 }
 
-/* Help & Support tour: anchor tooltip at 30% of the sidebar item height */
+/* Help & Support tour: the anchor is now the profile button at the foot of the
+   rail, so pin the tooltip to the bottom of the viewport rather than 30% down. */
 body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
-    top: 30% !important;
-    transform: translate(0, -50%) !important;
+    top: auto !important;
+    bottom: 1.5rem !important;
+    transform: none !important;
 }
 
 @media (max-width: 1023px) {
@@ -374,6 +435,7 @@ body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
     body[data-onboarding-tour="info-box-dismissed"]
     [data-name="nextstep-card"] {
         top: auto !important;
+        bottom: 1.5rem !important;
         left: 60% !important;
         transform: translate(-50%, 0) !important;
     }

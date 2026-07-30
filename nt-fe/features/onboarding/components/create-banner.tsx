@@ -41,7 +41,7 @@ export function CreateBanner({ disabled = false }: { disabled?: boolean }) {
     const createTreasuryRoute = `/create?returnTo=${encodeURIComponent(pathname || "/")}`;
 
     return (
-        <div className="bg-general-tertiary sm:bg-secondary rounded-lg p-3 flex flex-col gap-3 sm:mx-3.5">
+        <div className="flex flex-col gap-3 rounded-2xl bg-general-tertiary p-3.5 sm:mx-3 sm:bg-secondary">
             <div className="flex items-center justify-between pb-1">
                 <Logo size="sm" variant="icon" />
                 <button
@@ -59,6 +59,7 @@ export function CreateBanner({ disabled = false }: { disabled?: boolean }) {
             </div>
             <Button
                 variant="secondary"
+                size="sm"
                 className="w-full bg-card text-card-foreground hover:bg-card/80"
                 onClick={() => router.push(createTreasuryRoute)}
             >

@@ -132,7 +132,7 @@ export default function BalanceChart({
                     >
                         <stop
                             offset="0%"
-                            stopOpacity={0.1}
+                            stopOpacity={0.14}
                             stopColor="var(--color-chart-area-fill)"
                         />
                         <stop
@@ -146,6 +146,11 @@ export default function BalanceChart({
                     dataKey="name"
                     axisLine={false}
                     tickLine={false}
+                    tick={{
+                        fill: "var(--color-gray-500)",
+                        fontSize: 12,
+                        fontWeight: 500,
+                    }}
                     {...(explicitTicks
                         ? {
                               ticks: explicitTicks,
@@ -174,7 +179,7 @@ export default function BalanceChart({
                 <ChartTooltip
                     content={
                         <ChartTooltipContent
-                            className="bg-card text-foreground border-border shadow-md"
+                            className="rounded-xl border-gray-200 bg-card text-foreground shadow-md dark:border-general-border"
                             labelFormatter={(_, payload) => {
                                 const point = payload?.[0]?.payload as
                                     | ChartDataPoint

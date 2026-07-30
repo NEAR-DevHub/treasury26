@@ -30,9 +30,9 @@ export function DepositFaq() {
     ];
 
     return (
-        <PageCard className="gap-0 w-full bg-general-tertiary">
+        <PageCard radius="2xl" className="w-full gap-0">
             <p className="font-semibold">{t("faq.title")}</p>
-            <div className="divide-y divide-border">
+            <div className="divide-y divide-gray-200 dark:divide-general-border">
                 {faqItems.map((item, index) => {
                     const isOpen = openIndex === index;
 

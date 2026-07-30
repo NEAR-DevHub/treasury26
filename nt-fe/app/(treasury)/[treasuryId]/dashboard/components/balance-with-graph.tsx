@@ -1,23 +1,26 @@
 "use client";
 
 import {
-    ArrowLeftRight,
-    ArrowUpRightIcon,
+    ArrowDown,
     Check,
     ChevronDown,
     ClockIcon,
     Coins,
-    Download,
+    Eye,
+    EyeOff,
     Info,
+    Navigation,
     Shield,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { AnimatedCurrency } from "@/components/animated-currency";
 import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
+import { SwapIcon } from "@/components/icons/swap";
 import { ScrollContainer } from "@/components/scroll-container";
 import { Tooltip } from "@/components/tooltip";
 import {
@@ -61,6 +64,19 @@ interface Props {
 type TimePeriod = "1W" | "1M" | "3M" | "1Y";
 
 const TIME_PERIODS: TimePeriod[] = ["1W", "1M", "3M", "1Y"];
+
+// Chart filter chrome, per design: fully rounded grey pills, and floating
+// white menus with no border and a soft shadow.
+const FILTER_PILL_CLASS = "h-10 rounded-full text-[15px] font-semibold";
+const FILTER_MENU_CLASS =
+    "rounded-2xl border-0 p-1.5 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.25)]";
+const FILTER_MENU_ITEM_CLASS =
+    "gap-3 rounded-xl px-2.5 py-2 text-base font-medium text-gray-700 focus:bg-gray-100 dark:text-gray-200 dark:focus:bg-white/10";
+const FILTER_MOBILE_TRIGGER_CLASS =
+    "data-[size=sm]:h-10 rounded-full border-0 bg-gray-100 px-4 text-[15px] font-semibold text-gray-700 shadow-none focus:ring-0 dark:bg-white/10 dark:text-gray-200";
+// Radix Select keeps its check indicator absolutely positioned on the right,
+// so its rows need the reserved right padding back.
+const FILTER_SELECT_ITEM_CLASS = `${FILTER_MENU_ITEM_CLASS} pr-8`;
 
 // Map frontend time periods to backend intervals
 const PERIOD_TO_INTERVAL: Record<TimePeriod, ChartInterval> = {
@@ -150,6 +166,7 @@ export default function BalanceWithGraph({
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
     const [isChartHovered, setIsChartHovered] = useState(false);
+    const [isBalanceMasked, setIsBalanceMasked] = useState(false);
     const router = useRouter();
     const handleChartMouseEnter = useCallback(
         () => setIsChartHovered(true),
@@ -505,22 +522,22 @@ export default function BalanceWithGraph({
             <PageCard className="relative">
                 <div className="flex justify-around gap-4 mb-6">
                     <div className="flex-1">
-                        <h3 className="text-xs font-medium text-muted-foreground">
+                        <h3 className="font-medium text-base text-gray-500">
                             {t("totalBalance")}
                         </h3>
-                        <Skeleton className="h-9 w-40 mt-2" />
+                        <Skeleton className="mt-2 h-11 w-56 rounded-xl" />
                     </div>
 
                     <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
-                        <Skeleton className="h-8 w-[140px]" />
-                        <Skeleton className="h-8 w-[160px]" />
+                        <Skeleton className="h-10 w-[168px] rounded-full" />
+                        <Skeleton className="h-10 w-[100px] rounded-full" />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 md:gap-4">
-                    <Skeleton className="h-9 w-full" />
-                    <Skeleton className="h-9 w-full" />
-                    <Skeleton className="h-9 w-full" />
+                    <Skeleton className="h-13 w-full rounded-2xl" />
+                    <Skeleton className="h-13 w-full rounded-2xl" />
+                    <Skeleton className="h-13 w-full rounded-2xl" />
                 </div>
                 <div className="h-56 w-full space-y-3 p-4">
                     <Skeleton className="h-50 w-full" />
@@ -534,7 +551,7 @@ export default function BalanceWithGraph({
             <div className="mb-6">
                 <div className="flex justify-between gap-4 items-start">
                     <div className="flex-1">
-                        <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <h3 className="flex items-center gap-1.5 font-medium text-base text-gray-500">
                             {t("totalBalance")}
                             {showConfidentialShield && (
                                 <Tooltip
@@ -566,13 +583,32 @@ export default function BalanceWithGraph({
                                         <Info className="size-3 cursor-help" />
                                     </Tooltip>
                                 )}
+                            <button
+                                type="button"
+                                onClick={() => setIsBalanceMasked((v) => !v)}
+                                aria-label={
+                                    isBalanceMasked
+                                        ? t("showBalance")
+                                        : t("hideBalance")
+                                }
+                                aria-pressed={isBalanceMasked}
+                                className="cursor-pointer text-gray-400 transition-colors hover:text-gray-700"
+                            >
+                                {isBalanceMasked ? (
+                                    <EyeOff className="size-4" />
+                                ) : (
+                                    <Eye className="size-4" />
+                                )}
+                            </button>
                         </h3>
-                        <p className="text-3xl font-bold mt-2">
-                            {!isHidden
-                                ? formatCurrencyWithSubCent(
-                                      balanceView.totalUsd,
-                                  )
-                                : "••••••"}
+                        <p className="mt-2 font-bold text-[2.5rem]/11 tracking-tighter">
+                            {isHidden || isBalanceMasked ? (
+                                "••••••"
+                            ) : (
+                                <AnimatedCurrency
+                                    value={balanceView.totalUsd}
+                                />
+                            )}
                         </p>
                         {showBreakdown && (
                             <div className="mt-2 hidden md:flex items-center gap-2 text-sm text-muted-foreground">
@@ -607,10 +643,13 @@ export default function BalanceWithGraph({
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
-                                        variant="outline"
+                                        variant="pill"
                                         size="sm"
                                         disabled={isLoadingTokens || isLoading}
-                                        className="h-9 min-w-[140px] justify-between font-normal"
+                                        className={cn(
+                                            FILTER_PILL_CLASS,
+                                            "justify-between",
+                                        )}
                                         data-testid="chart-token-trigger"
                                     >
                                         {selectedToken === "all" ? (
@@ -628,9 +667,9 @@ export default function BalanceWithGraph({
                                                         alt={
                                                             selectedTokenGroup.symbol
                                                         }
-                                                        width={16}
-                                                        height={16}
-                                                        className="rounded-full"
+                                                        width={20}
+                                                        height={20}
+                                                        className="size-5 rounded-full"
                                                     />
                                                 )}
                                                 <span>{selectedToken}</span>
@@ -641,21 +680,27 @@ export default function BalanceWithGraph({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                     align="end"
-                                    className="min-w-[140px] p-0"
+                                    className={cn(
+                                        FILTER_MENU_CLASS,
+                                        "min-w-[168px] p-0",
+                                    )}
                                 >
-                                    <ScrollContainer className="max-h-[300px] p-1">
+                                    <ScrollContainer className="max-h-[300px] p-1.5">
                                         <DropdownMenuItem
                                             onSelect={() =>
                                                 setSelectedToken("all")
                                             }
-                                            className="flex items-center justify-between gap-2"
+                                            className={cn(
+                                                FILTER_MENU_ITEM_CLASS,
+                                                "flex items-center justify-between",
+                                            )}
                                         >
-                                            <span className="flex items-center gap-2">
-                                                <Coins className="size-4" />
+                                            <span className="flex items-center gap-3">
+                                                <Coins className="size-5" />
                                                 <span>{t("allTokens")}</span>
                                             </span>
                                             {selectedToken === "all" && (
-                                                <Check className="size-4" />
+                                                <Check className="size-4 text-foreground" />
                                             )}
                                         </DropdownMenuItem>
                                         {groupedTokens.map((group) => (
@@ -666,23 +711,26 @@ export default function BalanceWithGraph({
                                                         group.symbol,
                                                     )
                                                 }
-                                                className="flex items-center justify-between gap-2"
+                                                className={cn(
+                                                    FILTER_MENU_ITEM_CLASS,
+                                                    "flex items-center justify-between",
+                                                )}
                                             >
-                                                <span className="flex items-center gap-2">
+                                                <span className="flex items-center gap-3">
                                                     {group.icon && (
                                                         <img
                                                             src={group.icon}
                                                             alt={group.symbol}
-                                                            width={16}
-                                                            height={16}
-                                                            className="rounded-full"
+                                                            width={20}
+                                                            height={20}
+                                                            className="size-5 rounded-full"
                                                         />
                                                     )}
                                                     <span>{group.symbol}</span>
                                                 </span>
                                                 {selectedToken ===
                                                     group.symbol && (
-                                                    <Check className="size-4" />
+                                                    <Check className="size-4 text-foreground" />
                                                 )}
                                             </DropdownMenuItem>
                                         ))}
@@ -692,10 +740,13 @@ export default function BalanceWithGraph({
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
-                                        variant="outline"
+                                        variant="pill"
                                         size="sm"
                                         disabled={isLoadingTokens || isLoading}
-                                        className="h-9 w-fit justify-between gap-1.5 font-normal"
+                                        className={cn(
+                                            FILTER_PILL_CLASS,
+                                            "w-fit justify-between gap-1.5",
+                                        )}
                                         data-testid="chart-period-trigger"
                                     >
                                         <span>
@@ -706,7 +757,10 @@ export default function BalanceWithGraph({
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                     align="end"
-                                    className="min-w-[92px]"
+                                    className={cn(
+                                        FILTER_MENU_CLASS,
+                                        "min-w-[112px]",
+                                    )}
                                 >
                                     {TIME_PERIODS.map((period) => (
                                         <DropdownMenuItem
@@ -714,12 +768,15 @@ export default function BalanceWithGraph({
                                             onSelect={() =>
                                                 setSelectedPeriod(period)
                                             }
-                                            className="flex items-center justify-between gap-2"
+                                            className={cn(
+                                                FILTER_MENU_ITEM_CLASS,
+                                                "flex items-center justify-between",
+                                            )}
                                             data-testid={`chart-period-option-${period}`}
                                         >
                                             <span>{t(`period.${period}`)}</span>
                                             {selectedPeriod === period && (
-                                                <Check className="size-4" />
+                                                <Check className="size-4 text-foreground" />
                                             )}
                                         </DropdownMenuItem>
                                     ))}
@@ -727,7 +784,7 @@ export default function BalanceWithGraph({
                             </DropdownMenu>
                         </div>
                     )}
-                    <HistoryRefreshButton />
+                    <HistoryRefreshButton className="h-10 w-10 rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20" />
                 </div>
                 {showBreakdown && (
                     <div className="mt-4 border-t border-border/70 pt-3 space-y-3 md:hidden">
@@ -764,14 +821,17 @@ export default function BalanceWithGraph({
                         onDepositClick();
                     }}
                     id="dashboard-step1"
-                    className="text-xs md:text-base"
+                    size="xl"
+                    className="max-md:h-11 max-md:px-3 max-md:text-sm"
                 >
-                    <Download className="md:size-4 size-3" /> {t("deposit")}
+                    <ArrowDown className="size-4 max-md:size-3.5" />{" "}
+                    {t("receive")}
                 </Button>
                 <AuthButton
                     permissionKind="transfer"
                     permissionAction="AddProposal"
-                    className="w-full text-xs md:text-base"
+                    size="xl"
+                    className="w-full max-md:h-11 max-md:px-3 max-md:text-sm"
                     id="dashboard-step2"
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -782,13 +842,14 @@ export default function BalanceWithGraph({
                         router.push(`/${treasuryId}/payments`);
                     }}
                 >
-                    <ArrowUpRightIcon className="md:size-4 size-3" />
+                    <Navigation className="size-4 max-md:size-3.5" />
                     {t("send")}
                 </AuthButton>
                 <AuthButton
                     permissionKind="call"
                     permissionAction="AddProposal"
-                    className="w-full text-xs md:text-base"
+                    size="xl"
+                    className="w-full max-md:h-11 max-md:px-3 max-md:text-sm"
                     id="dashboard-step3"
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -799,8 +860,7 @@ export default function BalanceWithGraph({
                         router.push(`/${treasuryId}/exchange`);
                     }}
                 >
-                    <ArrowLeftRight className="md:size-4 size-3" />{" "}
-                    {t("exchange")}
+                    <SwapIcon className="size-4 max-md:size-3.5" /> {t("swap")}
                 </AuthButton>
                 {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                     <Database className="size-4" /> Earn
@@ -815,7 +875,7 @@ export default function BalanceWithGraph({
                 <Select value={selectedToken} onValueChange={setSelectedToken}>
                     <SelectTrigger
                         size="sm"
-                        className="w-[140px] border-0 shadow-none focus:ring-0"
+                        className={cn(FILTER_MOBILE_TRIGGER_CLASS, "w-[150px]")}
                         disabled={
                             isLoadingTokens || (!isConfidential && isLoading)
                         }
@@ -832,9 +892,9 @@ export default function BalanceWithGraph({
                                         <img
                                             src={selectedTokenGroup.icon}
                                             alt={selectedTokenGroup.symbol}
-                                            width={16}
-                                            height={16}
-                                            className="rounded-full"
+                                            width={20}
+                                            height={20}
+                                            className="size-5 rounded-full"
                                         />
                                     )}
                                     <span>{selectedToken}</span>
@@ -842,23 +902,30 @@ export default function BalanceWithGraph({
                             )}
                         </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">
-                            <div className="flex items-center gap-2">
-                                <Coins className="size-4" />
+                    <SelectContent className={cn(FILTER_MENU_CLASS, "p-0")}>
+                        <SelectItem
+                            value="all"
+                            className={FILTER_SELECT_ITEM_CLASS}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Coins className="size-5" />
                                 <span>{t("allTokens")}</span>
                             </div>
                         </SelectItem>
                         {groupedTokens.map((group) => (
-                            <SelectItem key={group.symbol} value={group.symbol}>
-                                <div className="flex items-center gap-2">
+                            <SelectItem
+                                key={group.symbol}
+                                value={group.symbol}
+                                className={FILTER_SELECT_ITEM_CLASS}
+                            >
+                                <div className="flex items-center gap-3">
                                     {group.icon && (
                                         <img
                                             src={group.icon}
                                             alt={group.symbol}
-                                            width={16}
-                                            height={16}
-                                            className="rounded-full"
+                                            width={20}
+                                            height={20}
+                                            className="size-5 rounded-full"
                                         />
                                     )}
                                     <span>{group.symbol}</span>
@@ -876,13 +943,20 @@ export default function BalanceWithGraph({
                     >
                         <SelectTrigger
                             size="sm"
-                            className="w-[92px] border-0 shadow-none focus:ring-0"
+                            className={cn(
+                                FILTER_MOBILE_TRIGGER_CLASS,
+                                "w-[100px]",
+                            )}
                         >
                             <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className={cn(FILTER_MENU_CLASS, "p-0")}>
                             {TIME_PERIODS.map((period) => (
-                                <SelectItem key={period} value={period}>
+                                <SelectItem
+                                    key={period}
+                                    value={period}
+                                    className={FILTER_SELECT_ITEM_CLASS}
+                                >
                                     {t(`period.${period}`)}
                                 </SelectItem>
                             ))}
