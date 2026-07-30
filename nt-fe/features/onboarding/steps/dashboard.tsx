@@ -248,7 +248,7 @@ export function WelcomeTooltip() {
         return null;
 
     return (
-        <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3 bg-popover-foreground text-popover rounded-[8px]">
+        <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3.5 bg-popover-foreground text-popover rounded-2xl">
             <div className="flex items-center justify-between pt-0.5 pb-2.5">
                 <h1 className="text-sm font-semibold">
                     {currentStep === 1
@@ -406,7 +406,7 @@ export function CongratsTooltip() {
         return null;
 
     return (
-        <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3 bg-popover-foreground text-popover rounded-[8px]">
+        <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3.5 bg-popover-foreground text-popover rounded-2xl">
             <div className="flex items-center justify-between pt-0.5 pb-2.5">
                 <h1 className="text-sm font-semibold">{tC("heading")}</h1>
                 <XIcon
@@ -512,7 +512,7 @@ export function NotificationsTooltip() {
     }
 
     return (
-        <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3 bg-popover-foreground text-popover rounded-[8px]">
+        <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3.5 bg-popover-foreground text-popover rounded-2xl">
             <div className="flex items-center justify-between pt-0.5 pb-2.5">
                 <h1 className="text-sm font-semibold">🎉 {tN("title")}</h1>
                 <XIcon

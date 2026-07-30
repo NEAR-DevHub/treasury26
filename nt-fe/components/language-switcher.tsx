@@ -50,12 +50,15 @@ interface LanguageSwitcherProps {
     align?: "start" | "end" | "center";
     className?: string;
     variant?: "ghost" | "outline";
+    /** Render as a full-width labelled row, for use inside another menu. */
+    asMenuRow?: boolean;
 }
 
 export function LanguageSwitcher({
     align = "end",
     className,
     variant = "ghost",
+    asMenuRow = false,
 }: LanguageSwitcherProps) {
     const locale = useLocale() as Locale;
     const t = useTranslations("languageSwitcher");
@@ -79,18 +82,34 @@ export function LanguageSwitcher({
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button
-                    variant={variant}
-                    size="icon"
-                    aria-label={t("select")}
-                    disabled={isPending}
-                    className={cn(
-                        "h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground",
-                        className,
-                    )}
-                >
-                    <Globe className="h-5 w-5" />
-                </Button>
+                {asMenuRow ? (
+                    <Button
+                        variant="ghost"
+                        aria-label={t("select")}
+                        disabled={isPending}
+                        className={cn(
+                            "h-auto w-full justify-start gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted",
+                            className,
+                        )}
+                    >
+                        <Globe className="size-4" />
+                        <span className="flex-1 text-start">{t("select")}</span>
+                        <span aria-hidden="true">{flagByLocale[locale]}</span>
+                    </Button>
+                ) : (
+                    <Button
+                        variant={variant}
+                        size="icon-sm"
+                        aria-label={t("select")}
+                        disabled={isPending}
+                        className={cn(
+                            "text-muted-foreground hover:bg-muted hover:text-foreground",
+                            className,
+                        )}
+                    >
+                        <Globe className="size-5" />
+                    </Button>
+                )}
             </DropdownMenuTrigger>
             <DropdownMenuContent align={align} className="min-w-[160px]">
                 {enabledLocales.map((code) => (

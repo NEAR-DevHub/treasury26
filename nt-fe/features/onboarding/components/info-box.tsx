@@ -29,11 +29,16 @@ interface InfoItemProps {
 function InfoItem({ icon, title, description, href }: InfoItemProps) {
     return (
         <Link href={href} target="_blank">
-            <PageCard className="w-full hover:bg-muted-foreground/10 border border-border gap-1.5 p-3">
-                <div className="flex gap-4 items-center">
-                    {icon}
+            <PageCard
+                radius="2xl"
+                className="w-full gap-1.5 p-3 transition-colors hover:border-gray-300 hover:bg-gray-50"
+            >
+                <div className="flex items-center gap-4">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+                        {icon}
+                    </span>
                     <div className="flex flex-col">
-                        <h1 className="font-semibold">{title}</h1>
+                        <h3 className="font-semibold">{title}</h3>
                         <p className="text-sm text-muted-foreground">
                             {description}
                         </p>
@@ -52,19 +57,19 @@ export function InfoBox() {
     const infoItems = useMemo<InfoItemProps[]>(
         () => [
             {
-                icon: <CirclePlay className="size-5" />,
+                icon: <CirclePlay className="size-4.5" />,
                 title: t("videoTitle"),
                 description: t("videoDescription"),
                 href: APP_DEMO_URL,
             },
             {
-                icon: <Eye className="size-5" />,
+                icon: <Eye className="size-4.5" />,
                 title: t("demoTitle"),
                 description: t("demoDescription"),
                 href: APP_ACTIVE_TREASURY,
             },
             {
-                icon: <File className="size-5" />,
+                icon: <File className="size-4.5" />,
                 title: t("docsTitle"),
                 description: t("docsDescription"),
                 href: APP_DOCS_URL,
@@ -88,10 +93,12 @@ export function InfoBox() {
     }
 
     return (
-        <div className="bg-general-tertiary rounded-lg p-5 flex flex-col w-full h-fit gap-5 cursor-pointer">
+        <div className="flex h-fit w-full cursor-pointer flex-col gap-5">
             <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
-                    <h1 className="font-semibold text-lg">{t("title")}</h1>
+                    <h2 className="font-bold text-2xl tracking-tight">
+                        {t("title")}
+                    </h2>
                     <button
                         type="button"
                         onClick={handleInfoBoxClick}

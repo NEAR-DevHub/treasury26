@@ -4,7 +4,7 @@ import { ChevronDown, FileText, Loader2, LogIn, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/button";
 import {
     Popover,
@@ -12,29 +12,24 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
+import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { Address } from "./address";
 import { CopyButton } from "./copy-button";
 import { User } from "./user";
 
-export function SignIn() {
-    const t = useTranslations("signIn");
-    const tCommon = useTranslations("common");
-    const tAddress = useTranslations("address");
+/** Shared row styling for every entry in the account menu (header bar + sidebar profile menu). */
+export const accountMenuItemClass =
+    "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-muted";
+
+/** Routes to `/login`, preserving where the user came from. */
+export function useConnectWallet() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const {
-        accountId: signedAccountId,
-        isInitializing,
-        isAuthenticated,
-        disconnect,
-    } = useNear();
-    const [isOpen, setIsOpen] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
-    const connectWalletLabel = `${t("connect")} ${t("wallet")}`;
 
-    const handleConnect = async () => {
+    const connect = useCallback(() => {
         setIsConnecting(true);
         try {
             const params = new URLSearchParams();
@@ -47,7 +42,142 @@ export function SignIn() {
         } finally {
             setIsConnecting(false);
         }
-    };
+    }, [pathname, router, searchParams]);
+
+    return { connect, isConnecting };
+}
+
+/**
+ * The account menu's own entries — address, copy, legal links, disconnect.
+ * Extracted so the sidebar profile menu can render them alongside its extra
+ * items (language, theme, help).
+ */
+export function AccountMenuItems({
+    accountId,
+    onNavigate,
+    showAddress = true,
+}: {
+    accountId: string;
+    onNavigate?: () => void;
+    showAddress?: boolean;
+}) {
+    const t = useTranslations("signIn");
+    const tAddress = useTranslations("address");
+    const { disconnect } = useNear();
+
+    return (
+        <>
+            {showAddress && (
+                <div className="px-3 py-2">
+                    <Address address={accountId} />
+                </div>
+            )}
+            <CopyButton
+                text={accountId}
+                toastMessage={tAddress("copied")}
+                variant="ghost"
+                className={cn(accountMenuItemClass, "h-auto justify-start")}
+            >
+                {t("copyAddress")}
+            </CopyButton>
+            <Link
+                href={TERMS_OF_SERVICE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={accountMenuItemClass}
+                onClick={onNavigate}
+            >
+                <FileText className="size-4" />
+                {t("termsOfService")}
+            </Link>
+            <Link
+                href={PRIVACY_POLICY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={accountMenuItemClass}
+                onClick={onNavigate}
+            >
+                <FileText className="size-4" />
+                {t("privacyPolicy")}
+            </Link>
+            <div className="mt-1 border-t border-border pt-1 dark:border-general-border">
+                <button
+                    type="button"
+                    className={accountMenuItemClass}
+                    onClick={() => {
+                        disconnect();
+                        onNavigate?.();
+                    }}
+                >
+                    <LogOut className="size-4" />
+                    {t("disconnect")}
+                </button>
+            </div>
+        </>
+    );
+}
+
+/** Wallet connect CTA, shown wherever there is no authenticated account. */
+export function ConnectWalletButton({
+    className,
+    iconOnly = false,
+}: {
+    className?: string;
+    iconOnly?: boolean;
+}) {
+    const t = useTranslations("signIn");
+    const tCommon = useTranslations("common");
+    const { connect, isConnecting } = useConnectWallet();
+    const label = `${t("connect")} ${t("wallet")}`;
+
+    if (iconOnly) {
+        return (
+            <Button
+                onClick={connect}
+                disabled={isConnecting}
+                size="icon"
+                className={className}
+                aria-label={label}
+            >
+                {isConnecting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                ) : (
+                    <LogIn className="size-4" />
+                )}
+            </Button>
+        );
+    }
+
+    return (
+        <Button
+            onClick={connect}
+            disabled={isConnecting}
+            className={cn("items-center gap-2", className)}
+        >
+            {isConnecting ? (
+                <>
+                    <Loader2 className="size-4 animate-spin" />
+                    {tCommon("connecting")}
+                </>
+            ) : (
+                <>
+                    <LogIn className="size-4" />
+                    {t("connect")}{" "}
+                    <span className="hidden md:inline">{t("wallet")}</span>
+                </>
+            )}
+        </Button>
+    );
+}
+
+export function SignIn() {
+    const tCommon = useTranslations("common");
+    const {
+        accountId: signedAccountId,
+        isInitializing,
+        isAuthenticated,
+    } = useNear();
+    const [isOpen, setIsOpen] = useState(false);
 
     if (isInitializing) {
         return (
@@ -58,10 +188,10 @@ export function SignIn() {
                     className="md:hidden"
                     aria-label={tCommon("loading")}
                 >
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                 </Button>
                 <Button disabled className="hidden md:flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                     {tCommon("loading")}
                 </Button>
             </>
@@ -72,39 +202,8 @@ export function SignIn() {
     if (!signedAccountId || !isAuthenticated) {
         return (
             <>
-                <Button
-                    onClick={handleConnect}
-                    disabled={isConnecting}
-                    size="icon"
-                    className="md:hidden"
-                    aria-label={connectWalletLabel}
-                >
-                    {isConnecting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                        <LogIn className="h-4 w-4" />
-                    )}
-                </Button>
-                <Button
-                    onClick={handleConnect}
-                    disabled={isConnecting}
-                    className="hidden md:flex items-center gap-2"
-                >
-                    {isConnecting ? (
-                        <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {tCommon("connecting")}
-                        </>
-                    ) : (
-                        <>
-                            <LogIn className="h-4 w-4" />
-                            {t("connect")}{" "}
-                            <span className="hidden md:inline">
-                                {t("wallet")}
-                            </span>
-                        </>
-                    )}
-                </Button>
+                <ConnectWalletButton iconOnly className="md:hidden" />
+                <ConnectWalletButton className="hidden md:flex" />
             </>
         );
     }
@@ -112,7 +211,10 @@ export function SignIn() {
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-                <button className="flex items-center gap-2 rounded-lg px-3 py-1.5 hover:bg-muted cursor-pointer">
+                <button
+                    type="button"
+                    className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-1.5 hover:bg-muted"
+                >
                     <div className="hidden md:block max-w-[180px] min-w-0">
                         <User
                             accountId={signedAccountId}
@@ -129,53 +231,14 @@ export function SignIn() {
                             iconOnly
                         />
                     </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:inline" />
+                    <ChevronDown className="hidden size-4 text-muted-foreground sm:inline" />
                 </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-48 p-1">
-                <div className="px-3 py-2">
-                    <Address address={signedAccountId} />
-                </div>
-                <CopyButton
-                    text={signedAccountId}
-                    toastMessage={tAddress("copied")}
-                    variant="ghost"
-                    className="flex h-auto w-full items-center justify-start rounded-6 gap-2 px-3 py-2 text-sm font-normal hover:bg-muted transition-colors"
-                >
-                    {t("copyAddress")}
-                </CopyButton>
-                <Link
-                    href={TERMS_OF_SERVICE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center rounded-6 gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors"
-                    onClick={() => setIsOpen(false)}
-                >
-                    <FileText className="h-4 w-4" />
-                    {t("termsOfService")}
-                </Link>
-                <Link
-                    href={PRIVACY_POLICY_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center rounded-6 gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors"
-                    onClick={() => setIsOpen(false)}
-                >
-                    <FileText className="h-4 w-4" />
-                    {t("privacyPolicy")}
-                </Link>
-                <div className="border-t border-border dark:border-general-border">
-                    <button
-                        className="flex items-center rounded-6 gap-2 px-3 py-2 text-sm w-full hover:bg-muted transition-colors"
-                        onClick={() => {
-                            disconnect();
-                            setIsOpen(false);
-                        }}
-                    >
-                        <LogOut className="h-4 w-4" />
-                        {t("disconnect")}
-                    </button>
-                </div>
+            <PopoverContent align="end" className="w-52 rounded-2xl p-1.5">
+                <AccountMenuItems
+                    accountId={signedAccountId}
+                    onNavigate={() => setIsOpen(false)}
+                />
             </PopoverContent>
         </Popover>
     );

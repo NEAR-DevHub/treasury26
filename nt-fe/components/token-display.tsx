@@ -190,18 +190,37 @@ export const BalanceCell = ({
     balance,
     symbol,
     balanceUSD,
+    amountFirst = false,
+    hideSymbol = false,
+    size = "sm",
 }: {
     balance: Big;
     symbol: string;
     balanceUSD: number;
+    /** Show the token amount as the primary line and the USD value below it. */
+    amountFirst?: boolean;
+    /** Drop the symbol suffix when it is already visible in the same row. */
+    hideSymbol?: boolean;
+    size?: "sm" | "md";
 }) => {
+    const amount = hideSymbol
+        ? formatSmartAmount(balance)
+        : `${formatSmartAmount(balance)} ${symbol}`;
+    const usd = formatCurrencyWithSubCent(balanceUSD);
+    const primaryClass =
+        size === "md" ? "font-bold text-base" : "font-medium text-sm";
+    const secondaryClass =
+        size === "md"
+            ? "text-gray-500 text-sm"
+            : "text-muted-foreground text-xxs";
+
     return (
         <div className="min-w-0 max-w-full overflow-hidden text-right">
-            <div className="truncate font-medium text-sm">
-                {formatCurrencyWithSubCent(balanceUSD)}
+            <div className={cn("truncate", primaryClass)}>
+                {amountFirst ? amount : usd}
             </div>
-            <div className="truncate text-xxs text-muted-foreground">
-                {formatSmartAmount(balance)} {symbol}
+            <div className={cn("truncate", secondaryClass)}>
+                {amountFirst ? usd : amount}
             </div>
         </div>
     );

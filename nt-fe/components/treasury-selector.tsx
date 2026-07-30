@@ -1,9 +1,10 @@
 "use client";
 
-import { Settings } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { Plus, Settings } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import * as React from "react";
+import { useMemo } from "react";
 import {
     Select,
     SelectContent,
@@ -22,7 +23,56 @@ import { Button } from "./button";
 import { Tooltip } from "./tooltip";
 import { TreasuryBalance, TreasuryLogo } from "./treasury-info";
 import { Skeleton } from "./ui/skeleton";
-import { useMemo } from "react";
+
+/** The two footer rows ("Manage" / "Create") share the option rows' geometry. */
+const actionRowClass =
+    "flex h-auto w-full items-center justify-start gap-3 rounded-xl px-2 py-2.5 font-semibold text-gray-300 text-sm transition-colors hover:bg-white/[0.07] hover:text-white";
+
+/**
+ * One treasury row in the dropdown. The check indicator is hidden — the
+ * selected treasury is marked by the row's background instead, per the design.
+ */
+function TreasuryOption({
+    daoId,
+    name,
+    logo,
+    isConfidential,
+    hideBalance,
+}: {
+    daoId: string;
+    name?: string | null;
+    logo?: string | null;
+    isConfidential?: boolean;
+    hideBalance?: boolean;
+}) {
+    return (
+        <SelectItem
+            value={daoId}
+            className="cursor-pointer gap-3 rounded-xl px-2 py-2 text-white focus:bg-white/[0.07] focus:text-white data-[state=checked]:bg-white/[0.07] [&>span:first-child]:hidden"
+        >
+            <div className="flex min-w-0 items-center gap-3">
+                <TreasuryLogo
+                    logo={logo}
+                    isConfidential={isConfidential ?? false}
+                    imageClassName="size-9 rounded-full"
+                    fallbackClassName="size-9 rounded-full bg-green-700"
+                    fallbackIconClassName="size-5 text-white"
+                />
+                <div className="flex min-w-0 flex-col items-start">
+                    <span className="max-w-full truncate font-semibold text-sm text-white">
+                        {name ?? daoId}
+                    </span>
+                    <TreasuryBalance
+                        daoId={daoId}
+                        className="max-w-full truncate font-medium text-gray-400 text-xs"
+                        skeletonClassName="h-3 w-20"
+                        isConfidential={hideBalance}
+                    />
+                </div>
+            </div>
+        </SelectItem>
+    );
+}
 
 interface TreasurySelectorProps {
     reducedMode?: boolean;
@@ -81,20 +131,20 @@ export function TreasurySelector({
             <div
                 className={cn(
                     "w-full h-fit flex items-center",
-                    reducedMode ? "px-2 py-1 justify-center" : "px-3 py-1.5",
+                    reducedMode ? "justify-center p-0" : "min-h-15 p-3",
                 )}
             >
                 <div
                     className={cn(
                         "flex items-center h-9",
-                        reducedMode ? "justify-center" : "gap-2",
+                        reducedMode ? "justify-center" : "gap-3",
                     )}
                 >
-                    <Skeleton className="size-7 rounded-md" />
+                    <Skeleton className="size-9 rounded-full" />
                     {!reducedMode && (
                         <div className="flex flex-col gap-1">
+                            <Skeleton className="h-3 w-20" />
                             <Skeleton className="h-3 w-24" />
-                            <Skeleton className="h-3 w-32" />
                         </div>
                     )}
                 </div>
@@ -124,8 +174,11 @@ export function TreasurySelector({
                 <SelectTrigger
                     id="dashboard-step5"
                     className={cn(
-                        "w-full h-fit border-none! ring-0! shadow-none! bg-transparent! hover:bg-muted!",
-                        reducedMode ? "p-0 [&>svg]:hidden" : "px-3 py-1.5",
+                        // No hover state here — the trigger stays flat against the card.
+                        "w-full h-fit cursor-pointer rounded-2xl border-none! ring-0! shadow-none! bg-transparent! hover:bg-transparent! [&>svg]:size-5 [&>svg]:text-gray-400 [&>svg]:opacity-100 [&>svg]:transition-transform [&>svg]:duration-150 [&[data-state=open]>svg]:rotate-180",
+                        reducedMode
+                            ? "p-0 [&>svg]:hidden"
+                            : "min-h-15 gap-2 p-3",
                     )}
                     disabled={!accountId}
                 >
@@ -136,24 +189,25 @@ export function TreasurySelector({
                         <div
                             className={cn(
                                 "flex items-center w-full truncate",
-                                reducedMode
-                                    ? "justify-center h-7"
-                                    : "gap-2 max-w-52 h-9",
+                                reducedMode ? "justify-center" : "gap-3",
                             )}
                         >
                             <TreasuryLogo
                                 logo={config?.metadata?.flagLogo}
                                 isConfidential={isConfidential ?? false}
+                                imageClassName="size-9 rounded-full"
+                                fallbackClassName="size-9 rounded-full bg-green-700"
+                                fallbackIconClassName="size-5 text-white"
                             />
                             {!reducedMode && (
-                                <div className="flex flex-col items-start min-w-0">
-                                    <span className="text-xs font-medium truncate max-w-full ">
+                                <div className="flex min-w-0 flex-col items-start">
+                                    <span className="truncate max-w-full font-semibold text-sm text-white">
                                         {displayName}
                                     </span>
                                     {treasuryId && (
                                         <TreasuryBalance
                                             daoId={treasuryId}
-                                            className="text-xs font-medium truncate max-w-full"
+                                            className="truncate max-w-full font-medium text-gray-400 text-xs"
                                             skeletonClassName="h-3 w-20"
                                             isConfidential={
                                                 isConfidential &&
@@ -166,105 +220,77 @@ export function TreasurySelector({
                         </div>
                     </Tooltip>
                 </SelectTrigger>
-                <SelectContent className="max-w-[250px]">
+                {/* The rail is always dark, and this popover is portalled out of
+                    it — so the dark palette is spelled out here rather than
+                    inherited from the forced `dark` scope. */}
+                <SelectContent
+                    align="start"
+                    sideOffset={8}
+                    className="w-(--radix-select-trigger-width) min-w-56 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
+                >
                     {memberTreasuries.length > 0 && (
                         <SelectGroup>
-                            <SelectLabel>{t("memberOf")}</SelectLabel>
+                            {savedGuestTreasuries.length > 0 && (
+                                <SelectLabel className="px-2 text-gray-500">
+                                    {t("memberOf")}
+                                </SelectLabel>
+                            )}
                             {memberTreasuries.map((treasury) => (
-                                <SelectItem
+                                <TreasuryOption
                                     key={treasury.daoId}
-                                    value={treasury.daoId}
-                                    className=" focus:text-accent-foreground"
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <TreasuryLogo
-                                            logo={
-                                                treasury.config.metadata
-                                                    ?.flagLogo
-                                            }
-                                            isConfidential={
-                                                treasury.isConfidential ?? false
-                                            }
-                                        />
-                                        <div className="flex flex-col items-start min-w-0">
-                                            <span className="text-sm font-medium truncate max-w-[170px]">
-                                                {treasury.config?.name ??
-                                                    treasury.daoId}
-                                            </span>
-                                            <TreasuryBalance
-                                                daoId={treasury.daoId}
-                                                className="text-xs"
-                                                skeletonClassName="size-4"
-                                            />
-                                        </div>
-                                    </div>
-                                </SelectItem>
+                                    daoId={treasury.daoId}
+                                    name={treasury.config?.name}
+                                    logo={treasury.config.metadata?.flagLogo}
+                                    isConfidential={treasury.isConfidential}
+                                />
                             ))}
                         </SelectGroup>
                     )}
                     {savedGuestTreasuries.length > 0 && (
                         <>
-                            {memberTreasuries.length > 0 && <SelectSeparator />}
+                            {memberTreasuries.length > 0 && (
+                                <SelectSeparator className="-mx-1.5 my-1.5 bg-white/10" />
+                            )}
                             <SelectGroup>
-                                <SelectLabel>
+                                <SelectLabel className="px-2 text-gray-500">
                                     {t("guestTreasuries")}
                                 </SelectLabel>
                                 {savedGuestTreasuries.map((treasury) => (
-                                    <SelectItem
+                                    <TreasuryOption
                                         key={treasury.daoId}
-                                        value={treasury.daoId}
-                                        className=" focus:text-accent-foreground"
-                                    >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <TreasuryLogo
-                                                logo={
-                                                    treasury.config.metadata
-                                                        ?.flagLogo
-                                                }
-                                                isConfidential={
-                                                    treasury.isConfidential ??
-                                                    false
-                                                }
-                                            />
-                                            <div className="flex flex-col items-start min-w-0">
-                                                <span className="text-sm font-medium truncate max-w-[170px]">
-                                                    {treasury.config?.name ??
-                                                        treasury.daoId}
-                                                </span>
-                                                <TreasuryBalance
-                                                    daoId={treasury.daoId}
-                                                    className="text-xs"
-                                                    skeletonClassName="size-4"
-                                                    isConfidential={
-                                                        treasury.isConfidential
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                    </SelectItem>
+                                        daoId={treasury.daoId}
+                                        name={treasury.config?.name}
+                                        logo={
+                                            treasury.config.metadata?.flagLogo
+                                        }
+                                        isConfidential={treasury.isConfidential}
+                                        hideBalance={treasury.isConfidential}
+                                    />
                                 ))}
                             </SelectGroup>
                         </>
                     )}
-                    <SelectSeparator />
+                    <SelectSeparator className="-mx-1.5 my-1.5 bg-white/10" />
                     <Button
-                        variant="ghost"
+                        variant="unstyled"
                         type="button"
-                        className="w-full justify-start gap-2 px-3.5!"
+                        className={actionRowClass}
                         onClick={() => router.push("/app/manage-treasuries")}
                     >
-                        <Settings className="size-4" />
-                        <span>{t("manageTreasuries")}</span>
+                        <Settings className="size-5 shrink-0" />
+                        <span className="truncate">
+                            {t("manageTreasuries")}
+                        </span>
                     </Button>
                     <Button
                         id="dashboard-step5-create-treasury"
-                        variant="ghost"
+                        variant="unstyled"
                         type="button"
-                        className="w-full justify-start gap-2 px-3.5!"
+                        className={actionRowClass}
                         onClick={() => router.push(createTreasuryRoute)}
                     >
-                        <span className="text-lg">+</span>
-                        <span>{t("createTreasury")}</span>
+                        <Plus className="size-5 shrink-0" />
+                        <span className="truncate">{t("createTreasury")}</span>
                     </Button>
                 </SelectContent>
             </Select>

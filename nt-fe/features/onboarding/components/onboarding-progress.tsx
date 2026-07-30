@@ -124,11 +124,11 @@ function StepCard({ step }: { step: OnboardingStep }) {
     const hasInlineDualActions =
         !isCompleted && !!primaryAction && !!secondaryAction;
     const activeStepClassName =
-        "border border-transparent [background:linear-gradient(#EFF6FF,#EFF6FF)_padding-box,linear-gradient(180deg,rgba(9,83,255,0.28),rgba(9,83,255,0.05))_border-box] dark:[background:linear-gradient(#080E22,#080E22)_padding-box,linear-gradient(180deg,rgba(9,83,255,0.44),rgba(9,83,255,0.24))_border-box]";
+        "border border-transparent [background:linear-gradient(#EDFFF8,#EDFFF8)_padding-box,linear-gradient(180deg,rgba(0,150,96,0.28),rgba(0,150,96,0.05))_border-box] dark:[background:linear-gradient(#03150E,#03150E)_padding-box,linear-gradient(180deg,rgba(0,236,151,0.44),rgba(0,236,151,0.24))_border-box]";
     return (
         <div
             className={cn(
-                "flex flex-col gap-2 xl:flex-row xl:items-center items-start p-3 rounded-[10.5px] overflow-hidden w-full",
+                "flex flex-col gap-2 xl:flex-row xl:items-center items-start p-3 rounded-2xl overflow-hidden w-full",
                 isActive
                     ? activeStepClassName
                     : "bg-secondary justify-center xl:justify-start",
@@ -160,6 +160,7 @@ function StepCard({ step }: { step: OnboardingStep }) {
                         <div className="mt-2 flex items-center gap-1.5">
                             <Button
                                 variant="default"
+                                size="sm"
                                 onClick={primaryAction!.onClick}
                             >
                                 <Plus className="size-4" />
@@ -354,7 +355,7 @@ export function OnboardingProgress({
     return (
         <div
             className={cn(
-                "relative flex md:flex-row flex-col gap-6 items-center overflow-hidden px-5 py-4 rounded-xl bg-general-tertiary dark:bg-black",
+                "relative flex md:flex-row flex-col gap-6 items-center overflow-hidden px-5 py-4 rounded-3xl border border-gray-200 bg-card dark:border-general-border dark:bg-black",
                 className,
             )}
         >

@@ -232,7 +232,7 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                     return (
                         <div className="flex justify-end">
                             {item.status === "generating" ? (
-                                <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 rounded-md text-sm">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 rounded-full text-sm">
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                     {tExport("status.generating")}
                                 </div>
@@ -255,11 +255,11 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                                     {tExport("download")}
                                 </Button>
                             ) : item.status === "expired" ? (
-                                <div className="px-3 py-1.5 bg-muted rounded-md text-sm">
+                                <div className="px-3 py-1.5 bg-muted rounded-full text-sm">
                                     {tExport("status.expired")}
                                 </div>
                             ) : (
-                                <div className="px-3 py-1.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-md text-sm">
+                                <div className="px-3 py-1.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-full text-sm">
                                     {tExport("status.failed")}
                                 </div>
                             )}
@@ -1151,7 +1151,7 @@ export default function ExportActivityPage() {
                                     <h3 className="font-semibold">
                                         {tEx("quotaTitle")}
                                     </h3>
-                                    <span className="text-sm font-medium border py-1 px-2 rounded-lg border-general-border bg-general-unofficial-outline">
+                                    <span className="text-sm font-medium border py-1 px-2 rounded-full border-general-border bg-general-unofficial-outline">
                                         {planDetails?.planConfig?.limits
                                             ?.monthlyExportCredits === null
                                             ? tEx("unlimited")

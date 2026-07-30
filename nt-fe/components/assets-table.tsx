@@ -88,7 +88,7 @@ interface AssetMetrics {
 }
 
 const SORT_BUTTON_CLASS =
-    "inline-flex items-center gap-1 hover:text-foreground hover:bg-transparent px-1! uppercase text-xxs";
+    "inline-flex h-auto items-center gap-1.5 px-0! py-0! text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground";
 
 function toUsd(rawAmount: Big.Big, decimals: number, price: number): number {
     if (price <= 0) return 0;
@@ -291,6 +291,7 @@ function MobileAssetViewModal({
                                 balance={mobileModalData.summaryAmount}
                                 symbol={selectedAsset.id}
                                 balanceUSD={mobileModalData.summaryUsd}
+                                amountFirst
                             />
                         </div>
                         <div className="flex items-center gap-3 py-3 border-b border-border/50">
@@ -306,15 +307,15 @@ function MobileAssetViewModal({
                                 <span className="flex-1 text-sm text-muted-foreground">
                                     {t("weight")}
                                 </span>
-                                <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden shrink-0">
+                                <div className="h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                                     <div
-                                        className="bg-foreground h-full rounded-full transition-all"
+                                        className="h-full rounded-full bg-gray-900 transition-all dark:bg-white"
                                         style={{
                                             width: `${mobileModalData.weight}%`,
                                         }}
                                     />
                                 </div>
-                                <span className="text-xs font-medium w-14 text-right shrink-0">
+                                <span className="w-14 shrink-0 text-right font-medium text-xs tabular-nums">
                                     {mobileModalData.weight.toFixed(2)}%
                                 </span>
                             </div>
@@ -526,24 +527,27 @@ function AvailableView({
     if (!isExpanded) {
         return (
             <>
-                <TableCell className="p-4 text-right">
+                <TableCell className="px-4 py-3 text-right">
                     <BalanceCell
                         balance={availableAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={availableUsd ?? 0}
+                        amountFirst
+                        hideSymbol
+                        size="md"
                     />
                 </TableCell>
-                <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
+                <TableCell className="hidden px-4 py-3 text-right font-bold text-base sm:table-cell">
                     {formatCurrencyWithSubCent(asset.price)}
                 </TableCell>
-                <TableCell className="p-4 text-right hidden sm:table-cell">
+                <TableCell className="hidden px-4 py-3 text-right sm:table-cell">
                     <div className="flex items-center justify-end gap-3">
-                        <span className="font-medium w-14 text-right">
+                        <span className="text-right font-bold text-base tabular-nums">
                             {(weight ?? 0).toFixed(2)}%
                         </span>
-                        <div className="w-24 bg-muted rounded-full h-2 overflow-hidden">
+                        <div className="h-2 w-18 shrink-0 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
                             <div
-                                className="bg-foreground h-full rounded-full"
+                                className="h-full rounded-full bg-gray-900 transition-all dark:bg-white"
                                 style={{
                                     width: `${weight ?? 0}%`,
                                 }}
@@ -596,6 +600,7 @@ function AvailableView({
                                         )}
                                         symbol={network.symbol}
                                         balanceUSD={amountUsd}
+                                        amountFirst
                                     />
                                 </div>
                             </div>
@@ -684,6 +689,7 @@ function AvailableView({
                                         network.decimals,
                                         network.price,
                                     )}
+                                    amountFirst
                                 />
                             </TableCell>
                             <TableCell />
@@ -800,28 +806,37 @@ function LockedView({
     if (!isExpanded) {
         return (
             <>
-                <TableCell className="p-4 text-right overflow-hidden hidden sm:table-cell">
+                <TableCell className="hidden overflow-hidden px-4 py-3 text-right sm:table-cell">
                     <BalanceCell
                         balance={lockedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={lockedUsd ?? 0}
+                        amountFirst
+                        hideSymbol
+                        size="md"
                     />
                 </TableCell>
-                <TableCell className="p-4 text-right overflow-hidden">
+                <TableCell className="overflow-hidden px-4 py-3 text-right">
                     <BalanceCell
                         balance={unlockedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={unlockedUsd ?? 0}
+                        amountFirst
+                        hideSymbol
+                        size="md"
                     />
                 </TableCell>
-                <TableCell className="p-4 text-right font-medium overflow-hidden hidden sm:table-cell">
+                <TableCell className="hidden overflow-hidden px-4 py-3 text-right font-bold text-base sm:table-cell">
                     {formatCurrencyWithSubCent(asset.price)}
                 </TableCell>
-                <TableCell className="p-4 text-right overflow-hidden hidden sm:table-cell">
+                <TableCell className="hidden overflow-hidden px-4 py-3 text-right sm:table-cell">
                     <BalanceCell
                         balance={totalAllocatedAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={totalAllocatedUsd ?? 0}
+                        amountFirst
+                        hideSymbol
+                        size="md"
                     />
                 </TableCell>
             </>
@@ -862,6 +877,7 @@ function LockedView({
                                         )}
                                         symbol={network.symbol}
                                         balanceUSD={amountUsd}
+                                        amountFirst
                                     />
                                 </div>
                             </div>
@@ -955,6 +971,7 @@ function LockedView({
                                     network.decimals,
                                     network.price,
                                 )}
+                                amountFirst
                             />
                         </TableCell>
                         <TableCell className="p-4 text-right overflow-hidden">
@@ -969,6 +986,7 @@ function LockedView({
                                     network.decimals,
                                     network.price,
                                 )}
+                                amountFirst
                             />
                         </TableCell>
                         <TableCell />
@@ -984,6 +1002,7 @@ function LockedView({
                                     network.decimals,
                                     network.price,
                                 )}
+                                amountFirst
                             />
                         </TableCell>
                         <TableCell className="p-4 text-right">
@@ -1022,21 +1041,27 @@ function EarningView({
     if (!isExpanded) {
         return (
             <>
-                <TableCell className="p-4 text-right">
+                <TableCell className="px-4 py-3 text-right">
                     <BalanceCell
                         balance={earningAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={earningUsd ?? 0}
+                        amountFirst
+                        hideSymbol
+                        size="md"
                     />
                 </TableCell>
-                <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
+                <TableCell className="hidden px-4 py-3 text-right font-bold text-base sm:table-cell">
                     {formatCurrencyWithSubCent(asset.price)}
                 </TableCell>
-                <TableCell className="p-4 text-right hidden sm:table-cell">
+                <TableCell className="hidden px-4 py-3 text-right sm:table-cell">
                     <BalanceCell
                         balance={earningWithdrawAmount ?? Big(0)}
                         symbol={asset.id}
                         balanceUSD={earningWithdrawUsd ?? 0}
+                        amountFirst
+                        hideSymbol
+                        size="md"
                     />
                 </TableCell>
             </>
@@ -1067,6 +1092,7 @@ function EarningView({
                                         )}
                                         symbol={network.symbol}
                                         balanceUSD={poolRow.amountUsd}
+                                        amountFirst
                                     />
                                 </div>
                             </div>
@@ -1133,6 +1159,7 @@ function EarningView({
                                                 network.decimals,
                                                 network.price,
                                             )}
+                                            amountFirst
                                         />
                                     </TableCell>
                                     <TableCell />
@@ -1148,6 +1175,7 @@ function EarningView({
                                                 network.decimals,
                                                 network.price,
                                             )}
+                                            amountFirst
                                         />
                                     </TableCell>
                                     <TableCell className="p-4 text-right">
@@ -1198,6 +1226,7 @@ function EarningView({
                                         network.decimals,
                                         network.price,
                                     )}
+                                    amountFirst
                                 />
                             </TableCell>
                             <TableCell />
@@ -1213,6 +1242,7 @@ function EarningView({
                                         network.decimals,
                                         network.price,
                                     )}
+                                    amountFirst
                                 />
                             </TableCell>
                             <TableCell className="p-4 text-right">
@@ -1586,11 +1616,11 @@ export function AssetsTable({ aggregatedTokens }: Props) {
         });
     };
     const renderSortIcon = (key: SortKey) => {
-        if (activeSort.key !== key) return <ArrowUpDown className="size-3" />;
+        if (activeSort.key !== key) return <ArrowUpDown className="size-3.5" />;
         return activeSort.dir === "desc" ? (
-            <ChevronDown className="size-3" />
+            <ChevronDown className="size-3.5" />
         ) : (
-            <ChevronUp className="size-3" />
+            <ChevronUp className="size-3.5" />
         );
     };
     const renderSortableHead = (
@@ -1603,7 +1633,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
     ) => (
         <TableHead
             className={cn(
-                "uppercase text-xxs text-muted-foreground",
+                "h-11 px-4 font-medium text-foreground text-sm normal-case",
                 options?.headClassName,
             )}
         >
@@ -1703,14 +1733,16 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                 </>
             )}
 
-            <div className={cn(hasLockedOrEarning && "p-4 pt-0")}>
-                <Table className="table-fixed">
-                    <TableHeader className="bg-transparent border-t-0">
+            <div>
+                <Table className="table-fixed [&_tr]:border-gray-200 dark:[&_tr]:border-general-border">
+                    <TableHeader className="border-t-0">
                         <TableRow className="hover:bg-transparent">
-                            {renderSortableHead("token", t("columnToken"), {
+                            {renderSortableHead("token", t("columnAsset"), {
                                 headClassName: cn(
-                                    "pl-0 sm:pl-4 overflow-hidden",
-                                    view === "locked" ? "w-[24%]" : "w-[34%]",
+                                    "overflow-hidden",
+                                    view === "locked"
+                                        ? "w-[24%]"
+                                        : "w-[32%] sm:w-[26%]",
                                 ),
                                 buttonClassName: cn("justify-start"),
                             })}
@@ -1720,22 +1752,23 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         "balance",
                                         t("balance"),
                                         {
-                                            headClassName: "text-right w-[18%]",
+                                            headClassName:
+                                                "text-right w-[22%] sm:w-[20%]",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
                                     {renderSortableHead(
                                         "price",
-                                        t("coinPrice"),
+                                        t("columnPrice"),
                                         {
                                             headClassName:
-                                                "text-right w-[16%] hidden sm:table-cell",
+                                                "text-right w-[14%] hidden sm:table-cell",
                                             buttonClassName: "ml-auto",
                                         },
                                     )}
                                     {renderSortableHead("weight", t("weight"), {
                                         headClassName:
-                                            "text-right w-[20%] hidden sm:table-cell",
+                                            "text-right hidden sm:table-cell",
                                         buttonClassName: "ml-auto",
                                     })}
                                 </>
@@ -1762,7 +1795,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                     )}
                                     {renderSortableHead(
                                         "price",
-                                        t("coinPrice"),
+                                        t("columnPrice"),
                                         {
                                             headClassName:
                                                 "text-right w-[12%] overflow-hidden hidden sm:table-cell",
@@ -1792,7 +1825,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                     )}
                                     {renderSortableHead(
                                         "price",
-                                        t("coinPrice"),
+                                        t("columnPrice"),
                                         {
                                             headClassName:
                                                 "text-right w-[16%] hidden sm:table-cell",
@@ -1810,7 +1843,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                     )}
                                 </>
                             )}
-                            <TableHead className="w-10 hidden sm:table-cell" />
+                            <TableHead className="w-12 hidden sm:table-cell" />
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1972,18 +2005,18 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                             }));
                                         }}
                                     >
-                                        <TableCell className="py-4 pr-4 pl-0 sm:p-4 sm:pl-4 overflow-hidden">
+                                        <TableCell className="overflow-hidden px-4 py-3">
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <img
                                                     src={asset.icon}
                                                     alt={asset.name}
-                                                    className="h-8 w-8 shrink-0 rounded-full"
+                                                    className="size-9 shrink-0 rounded-full"
                                                 />
                                                 <div className="min-w-0">
-                                                    <p className="font-semibold truncate">
+                                                    <p className="truncate font-bold text-base">
                                                         {asset.id}
                                                     </p>
-                                                    <p className="text-xs text-muted-foreground truncate">
+                                                    <p className="truncate text-gray-500 text-sm">
                                                         {asset.name}
                                                     </p>
                                                 </div>
@@ -2037,11 +2070,11 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                             />
                                         )}
 
-                                        <TableCell className="p-4 text-right hidden sm:table-cell">
+                                        <TableCell className="hidden py-3 pr-4 pl-0 text-right sm:table-cell">
                                             {isExpanded ? (
-                                                <ChevronDown className="size-4 text-primary ml-auto" />
+                                                <ChevronUp className="ml-auto size-5 text-foreground" />
                                             ) : (
-                                                <ChevronRight className="size-4 text-primary ml-auto" />
+                                                <ChevronDown className="ml-auto size-5 text-foreground" />
                                             )}
                                         </TableCell>
                                     </TableRow>

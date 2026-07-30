@@ -103,7 +103,7 @@ const NUMERIC_PARAMS = new Set<QueryParam>(["limit", "offset", "minUsdValue"]);
 function CodeBlock({ code, copyLabel }: { code: string; copyLabel: string }) {
     return (
         <div className="relative">
-            <pre className="bg-muted rounded-lg p-4 pr-14 text-sm overflow-x-auto whitespace-pre">
+            <pre className="bg-muted rounded-2xl p-4 pr-14 text-sm overflow-x-auto whitespace-pre">
                 <code>{code}</code>
             </pre>
             <CopyButton
@@ -446,7 +446,7 @@ export default function ApiDocsPage() {
                                 )}
                             </div>
                             <div className="relative">
-                                <pre className="bg-muted rounded-lg p-4 pr-14 text-sm overflow-auto max-h-96 whitespace-pre">
+                                <pre className="bg-muted rounded-2xl p-4 pr-14 text-sm overflow-auto max-h-96 whitespace-pre">
                                     <code>{response}</code>
                                 </pre>
                                 <CopyButton

@@ -43,7 +43,7 @@ export default function AppPage() {
         <PageComponentLayout title={t("title")} description={t("description")}>
             <HistoryRefreshIndicatorProvider>
                 <div className="flex flex-col lg:flex-row gap-5">
-                    <div className="flex flex-col gap-5 lg:w-3/5 w-full">
+                    <div className="flex flex-col gap-5 lg:w-2/3 w-full">
                         <div className="lg:hidden empty:hidden">
                             <CreateBanner />
                         </div>
@@ -68,7 +68,7 @@ export default function AppPage() {
                         />
                         <RecentActivity />
                     </div>
-                    <div className="flex flex-col gap-5 w-full lg:w-2/5">
+                    <div className="flex flex-col gap-5 w-full lg:w-1/3">
                         <InfoBox />
                         <PendingRequests />
                     </div>

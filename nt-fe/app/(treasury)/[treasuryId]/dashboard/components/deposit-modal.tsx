@@ -1391,7 +1391,7 @@ export function DepositModal({
                                 <div className="h-4 bg-muted rounded w-72" />
                             </div>
 
-                            <div className="bg-muted rounded-lg p-2">
+                            <div className="bg-muted rounded-2xl p-2">
                                 <div className="flex gap-4">
                                     {/* QR Code Skeleton */}
                                     <div className="shrink-0">
@@ -1407,7 +1407,7 @@ export function DepositModal({
                             </div>
 
                             {/* Warning Skeleton */}
-                            <div className="bg-muted rounded-lg p-3 flex gap-3">
+                            <div className="bg-muted rounded-2xl p-3 flex gap-3">
                                 <div className="w-5 h-5 bg-background rounded shrink-0" />
                                 <div className="flex-1 space-y-2">
                                     <div className="h-4 bg-background rounded w-full" />
@@ -1475,7 +1475,7 @@ export function DepositModal({
                                         </TabsList>
                                     </Tabs>
                                 )}
-                                <div className="relative bg-muted rounded-lg space-y-2 p-1.5">
+                                <div className="relative bg-muted rounded-2xl space-y-2 p-1.5">
                                     {showConfidentialDepositWarning && (
                                         <div className="rounded-md p-2">
                                             <p className="text-sm text-general-info-foreground">
@@ -1504,7 +1504,7 @@ export function DepositModal({
 
                                     <div
                                         className={cn(
-                                            "relative flex items-start gap-3 rounded-lg",
+                                            "relative flex items-start gap-3 rounded-2xl",
                                             showConfidentialDepositWarning &&
                                                 "bg-card p-2",
                                         )}
@@ -1671,7 +1671,7 @@ export function DepositModal({
 
                                 {/* Memo warning */}
                                 {displayDepositInfo.memo && (
-                                    <div className="flex gap-2 items-start text-sm bg-destructive/10 text-destructive rounded-lg p-3">
+                                    <div className="flex gap-2 items-start text-sm bg-destructive/10 text-destructive rounded-2xl p-3">
                                         <TriangleAlert className="h-4 w-4 shrink-0 mt-0.5" />
                                         <span>
                                             {t.rich("memoWarning", {

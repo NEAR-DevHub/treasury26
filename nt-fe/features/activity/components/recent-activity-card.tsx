@@ -48,9 +48,7 @@ import {
 } from "@tanstack/react-table";
 import Link from "next/link";
 import { ConfidentialState } from "@/components/confidential-state";
-import { ExportButton } from "@/components/export-button";
 import { FormattedDate } from "@/components/formatted-date";
-import { StepperHeader } from "@/components/step-wizard";
 import { Table, TableBody, TableCell, TableRow } from "@/components/table";
 import { Tooltip } from "@/components/tooltip";
 import { parseWarningCopy } from "@/components/warning-message";
@@ -154,7 +152,7 @@ export function RecentActivitySkeleton() {
                     className="grid grid-cols-[1fr_auto] items-center gap-6 border-b border-border pb-3 last:border-b-0"
                 >
                     <div className="flex items-center gap-3 min-w-0">
-                        <Skeleton className="h-10 w-10 rounded-full shrink-0 bg-general-unofficial-accent-0" />
+                        <Skeleton className="size-9 shrink-0 rounded-full bg-general-unofficial-accent-0" />
                         <div className="space-y-2 min-w-0 flex-1">
                             <Skeleton className="h-6 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
                             <Skeleton className="h-4 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
@@ -306,7 +304,7 @@ export function RecentActivity() {
                             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                                 <div
                                     className={cn(
-                                        "flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0",
+                                        "flex size-9 shrink-0 items-center justify-center rounded-full",
                                         "bg-general-success-background-faded",
                                     )}
                                 >
@@ -335,7 +333,7 @@ export function RecentActivity() {
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                             <div
                                 className={cn(
-                                    "flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0",
+                                    "flex size-9 shrink-0 items-center justify-center rounded-full",
                                     isSwap
                                         ? "bg-blue-500/10"
                                         : isReceived
@@ -537,26 +535,18 @@ export function RecentActivity() {
             <Card className="gap-3 border-none shadow-none">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 px-4">
                     <div className="space-y-1">
-                        <StepperHeader
-                            title={
-                                showConfidentialShield ? (
-                                    <span className="inline-flex items-center gap-1.5">
-                                        <span>{t("recentTitle")}</span>
-                                        <Tooltip
-                                            content={tCommon(
-                                                "confidentialDataTooltip",
-                                            )}
-                                        >
-                                            <span className="inline-flex">
-                                                <Shield className="size-4 fill-foreground" />
-                                            </span>
-                                        </Tooltip>
+                        <h2 className="flex items-center gap-1.5 font-bold text-2xl tracking-tight">
+                            {t("recentTitle")}
+                            {showConfidentialShield && (
+                                <Tooltip
+                                    content={tCommon("confidentialDataTooltip")}
+                                >
+                                    <span className="inline-flex">
+                                        <Shield className="size-4 fill-foreground" />
                                     </span>
-                                ) : (
-                                    t("recentTitle")
-                                )
-                            }
-                        />
+                                </Tooltip>
+                            )}
+                        </h2>
                     </div>
                     <div className="flex items-center gap-2">
                         {/* TODO: Uncomment after price integration */}
@@ -576,24 +566,17 @@ export function RecentActivity() {
                             </label>
                         </div> */}
                         {!isHidden && (
-                            <>
-                                {" "}
-                                <ExportButton />
-                                <Link
-                                    href={`/${treasuryId}/dashboard/activity`}
+                            <Link href={`/${treasuryId}/dashboard/activity`}>
+                                <Button
+                                    variant="pill"
+                                    size={isMobile ? "icon-sm" : "sm"}
                                 >
-                                    <Button
-                                        variant="secondary"
-                                        size={isMobile ? "icon" : "default"}
-                                        className="h-9 px-3"
-                                    >
-                                        <span className="hidden sm:inline">
-                                            {tCommon("viewAll")}
-                                        </span>
-                                        <ChevronRight className="h-4 w-4" />
-                                    </Button>
-                                </Link>
-                            </>
+                                    <span className="hidden sm:inline">
+                                        {tCommon("viewAll")}
+                                    </span>
+                                    <ChevronRight className="size-4" />
+                                </Button>
+                            </Link>
                         )}
                     </div>
                 </CardHeader>
@@ -688,7 +671,7 @@ export function RecentActivity() {
                                                                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                                                                         <div
                                                                             className={cn(
-                                                                                "flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0",
+                                                                                "flex size-9 shrink-0 items-center justify-center rounded-full",
                                                                                 "bg-general-success-background-faded",
                                                                             )}
                                                                         >

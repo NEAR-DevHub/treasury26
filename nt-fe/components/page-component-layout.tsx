@@ -5,6 +5,7 @@ import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useEffect, useState } from "react";
+import { useHasSidebarRail } from "@/components/app-shell-context";
 import { Button } from "@/components/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { Pill } from "@/components/pill";
@@ -46,6 +47,8 @@ export function PageComponentLayout({
     const { resolvedTheme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const tHeader = useTranslations("header");
+    // Inside the treasury shell these controls live in the sidebar profile menu.
+    const hasSidebarRail = useHasSidebarRail();
 
     useEffect(() => {
         setMounted(true);
@@ -59,21 +62,27 @@ export function PageComponentLayout({
         <div className="flex flex-col h-full">
             <header
                 className={cn(
-                    "flex items-center min-h-14 justify-between px-2 md:px-6",
-                    !hideHeaderBottomBorder && "border-b border-border",
-                    transparentHeader ? "bg-transparent" : "bg-card",
+                    "flex items-center min-h-16 justify-between px-2 md:px-6",
+                    // Inside the shell the header is part of the floating panel:
+                    // transparent and borderless.
+                    !hasSidebarRail &&
+                        !hideHeaderBottomBorder &&
+                        "border-b border-border",
+                    hasSidebarRail || transparentHeader
+                        ? "bg-transparent"
+                        : "bg-card",
                 )}
             >
                 <div className="flex items-center gap-2 md:gap-4">
                     {!hideCollapseButton && (
                         <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon-sm"
                             onClick={toggleSidebar}
-                            className="h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground"
+                            className="text-muted-foreground hover:bg-muted hover:text-foreground"
                             aria-label={tHeader("toggleSidebar")}
                         >
-                            <PanelLeft className="h-6 w-6" />
+                            <PanelLeft className="size-5" />
                         </Button>
                     )}
                     <div className="flex items-center gap-2 md:gap-3">
@@ -97,7 +106,7 @@ export function PageComponentLayout({
 
                         {logo ?? (
                             <div className="flex items-baseline gap-2">
-                                <h1 className="text-sm md:text-lg font-bold">
+                                <h1 className="text-xl font-semibold tracking-tight">
                                     {title}
                                 </h1>
                                 {description && (
@@ -111,7 +120,7 @@ export function PageComponentLayout({
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {isStaging && (
+                    {!hasSidebarRail && isStaging && (
                         <>
                             <span
                                 className="size-2 rounded-full bg-general-orange-foreground md:hidden"
@@ -127,28 +136,34 @@ export function PageComponentLayout({
                             />
                         </>
                     )}
-                    <LanguageSwitcher />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
-                        aria-label={tHeader("toggleTheme")}
-                        className="h-9 w-9 hover:bg-muted text-muted-foreground hover:text-foreground"
-                    >
-                        {isDarkTheme ? (
-                            <Sun className="h-5 w-5" />
-                        ) : (
-                            <Moon className="h-5 w-5" />
-                        )}
-                    </Button>
+                    {!hasSidebarRail && (
+                        <>
+                            <LanguageSwitcher />
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() =>
+                                    setTheme(isDarkTheme ? "light" : "dark")
+                                }
+                                aria-label={tHeader("toggleTheme")}
+                                className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                                {isDarkTheme ? (
+                                    <Sun className="size-5" />
+                                ) : (
+                                    <Moon className="size-5" />
+                                )}
+                            </Button>
 
-                    {!hideLogin && <SignIn />}
+                            {!hideLogin && <SignIn />}
+                        </>
+                    )}
                 </div>
             </header>
 
             <main
                 className={cn(
-                    "flex-1 overflow-y-auto bg-page-bg p-4",
+                    "flex-1 overflow-y-auto bg-page-bg px-4 pb-6 md:px-6 md:pb-8",
                     mainClassName,
                 )}
             >

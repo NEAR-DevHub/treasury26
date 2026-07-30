@@ -245,7 +245,7 @@ test("Confidential deposit — dashboard deposit page flow", async ({
 
     const depositButton = page.locator("#dashboard-step1");
     await expect(depositButton).toBeVisible({ timeout: 15_000 });
-    await expect(depositButton).toContainText("Deposit");
+    await expect(depositButton).toContainText("Receive");
 
     // ════════════════════════════════════════════════════
     // Phase 2: Open deposit page and complete deposit flow
