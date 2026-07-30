@@ -94,7 +94,6 @@ export function MemberAvatarsWithOverflow({
                     >
                         <User
                             accountId={member}
-                            iconOnly={false}
                             size="md"
                             withLink={true}
                             withHoverCard={false}
@@ -116,7 +115,6 @@ export function MemberAvatarsWithOverflow({
                     >
                         <User
                             accountId={member}
-                            iconOnly={false}
                             size="md"
                             withLink={true}
                             withHoverCard={false}
@@ -137,7 +135,7 @@ export function MemberAvatarsWithOverflow({
                 <div key={member} className="-ml-2 first:ml-0">
                     <User
                         accountId={member}
-                        iconOnly={true}
+                        variant="avatar"
                         size="lg"
                         withLink={true}
                         withHoverCard={true}

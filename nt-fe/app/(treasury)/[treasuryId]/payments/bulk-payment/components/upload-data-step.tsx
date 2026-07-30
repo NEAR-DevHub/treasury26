@@ -760,7 +760,7 @@ export function UploadDataStep({
                                                     borderless
                                                     placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
                                                     rows={8}
-                                                    className={`w-full max-w-full resize-none font-mono text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap wrap-anywhere overflow-x-hidden min-h-32 md:min-h-41 ${
+                                                    className={`w-full max-w-full resize-none font-mono text-base md:text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap wrap-anywhere overflow-x-hidden min-h-32 md:min-h-41 ${
                                                         dataErrors &&
                                                         dataErrors.length > 0
                                                             ? "border border-destructive bg-destructive/5! focus:border-destructive!"

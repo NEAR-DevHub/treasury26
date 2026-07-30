@@ -228,7 +228,7 @@ export function SignIn() {
                             accountId={signedAccountId}
                             withLink={false}
                             size="sm"
-                            iconOnly
+                            variant="avatar"
                         />
                     </div>
                     <ChevronDown className="hidden size-4 text-muted-foreground sm:inline" />

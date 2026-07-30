@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE member_join_requests\n        SET status = 'approved'\n        WHERE dao_id = $1\n          AND status = 'pending'\n          AND id = ANY($2)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "416627f6a1b60b683cfc310715815475f7a578dbd6d0a3ad96608acae544fc5e"
+}

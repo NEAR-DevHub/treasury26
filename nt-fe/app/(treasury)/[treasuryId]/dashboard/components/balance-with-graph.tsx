@@ -50,6 +50,7 @@ import {
     getDashboardBreakdownItems,
     getDashboardBucketVisibility,
 } from "@/lib/dashboard-balance-view";
+import { trackEvent } from "@/lib/analytics";
 import { cn, formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
 import BalanceChart from "./chart";
 
@@ -811,7 +812,14 @@ export default function BalanceWithGraph({
 
             <div className="grid grid-cols-3 gap-2 md:gap-4">
                 <Button
-                    onClick={onDepositClick}
+                    onClick={() => {
+                        trackEvent("nav-click", {
+                            destination: "deposit",
+                            source: "dashboard",
+                            treasury_id: treasuryId,
+                        });
+                        onDepositClick();
+                    }}
                     id="dashboard-step1"
                     size="xl"
                     className="max-md:h-11 max-md:px-3 max-md:text-sm"
@@ -825,7 +833,14 @@ export default function BalanceWithGraph({
                     size="xl"
                     className="w-full max-md:h-11 max-md:px-3 max-md:text-sm"
                     id="dashboard-step2"
-                    onClick={() => router.push(`/${treasuryId}/payments`)}
+                    onClick={() => {
+                        trackEvent("nav-click", {
+                            destination: "payments",
+                            source: "dashboard",
+                            treasury_id: treasuryId,
+                        });
+                        router.push(`/${treasuryId}/payments`);
+                    }}
                 >
                     <Navigation className="size-4 max-md:size-3.5" />
                     {t("send")}
@@ -836,7 +851,14 @@ export default function BalanceWithGraph({
                     size="xl"
                     className="w-full max-md:h-11 max-md:px-3 max-md:text-sm"
                     id="dashboard-step3"
-                    onClick={() => router.push(`/${treasuryId}/exchange`)}
+                    onClick={() => {
+                        trackEvent("nav-click", {
+                            destination: "exchange",
+                            source: "dashboard",
+                            treasury_id: treasuryId,
+                        });
+                        router.push(`/${treasuryId}/exchange`);
+                    }}
                 >
                     <SwapIcon className="size-4 max-md:size-3.5" /> {t("swap")}
                 </AuthButton>

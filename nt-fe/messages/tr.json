@@ -819,6 +819,67 @@
         "activeMembers": "Aktif Üyeler",
         "noActiveMembers": "Aktif üye bulunamadı.",
         "addNewMember": "Üye Ekle",
+        "addManually": "Manuel ekle",
+        "inviteMember": "Üye davet et",
+        "wantsToJoin": "Katılmak istiyor",
+        "invite": {
+            "title": "Üye davet et",
+            "howItWorks": {
+                "title": "Nasıl çalışır",
+                "generateTitle": "Bağlantı oluşturursunuz",
+                "generateDescription": "Eklemek istediğiniz kişiye gönderin — Telegram, e-posta, her yer.",
+                "joinTitle": "Katılmak isterler",
+                "joinDescription": "Bağlantıyı açar, bir cüzdan bağlar ve bilgilerini gönderirler.",
+                "voteTitle": "Oylamaya gönderirsiniz",
+                "voteDescription": "Bilgileri önceden dolar. Talebi siz oluşturursunuz, ekip oy verir."
+            },
+            "generateLink": "Davet bağlantısı oluştur",
+            "generating": "Oluşturuluyor...",
+            "generateFailed": "Davet bağlantısı oluşturulamadı. Lütfen tekrar deneyin.",
+            "readyTitle": "Davet bağlantınız hazır",
+            "readyDescription": "Eklemek istediğiniz kişiye gönderin. Cüzdan bağlayıp katılmak isteyecekler.",
+            "onceTitle": "Bu bağlantı bir kez, bir kişi için geçerlidir",
+            "onceDescription": "Her üye için yeni bir tane oluşturun.",
+            "yourLink": "Davet bağlantınız",
+            "copyLink": "Bağlantıyı kopyala",
+            "linkCopied": "Davet bağlantısı kopyalandı",
+            "generateNewLink": "Yeni bağlantı oluştur"
+        },
+        "joinRequests": {
+            "title": "Katılmak istiyor",
+            "memberAddress": "Üye adresi",
+            "empty": "Bekleyen katılma talebi yok.",
+            "setRolesRequired": "Her üye için bir rol belirleyin",
+            "removeFailed": "Katılma talebi kaldırılamadı",
+            "pendingPolicyRequest": "Aktif bir politika değişikliği talebi varken üye ekleyemezsiniz. Önce onaylayın veya reddedin."
+        },
+        "join": {
+            "metaTitle": "Treasury’ye katıl | Trezu",
+            "metaDescription": "Davet bağlantısıyla bir Trezu treasury’sine katılma isteği gönderin",
+            "pageTitle": "Treasury’ye katıl",
+            "pageDescription": "Bir treasury’ye katılma isteği",
+            "treasuryFallback": "bu treasury",
+            "connectTitle": "{treasury} treasury’sine katıl",
+            "connectDescription": "Katılmak istemek için bir cüzdan bağlayın. Bu henüz fon taşımaz ve sizi eklemez — önce ekip oy verir.",
+            "askTitle": "{treasury} treasury’sine katılma isteği",
+            "askDescription": "Bir şey görebilmeniz veya onaylayabilmenizden önce ekip talebinizi inceler.",
+            "walletConnected": "Cüzdan bağlandı",
+            "nameLabel": "Adınız (isteğe bağlı)",
+            "namePlaceholder": "Ekibin sizi tanıması için",
+            "askJoin": "Katılma isteği",
+            "submitting": "Gönderiliyor...",
+            "successTitle": "Neredeyse katıldınız",
+            "successDescription": "Ekip talebinizi inceledikten sonra\nkatılabilirsiniz. Şimdilik yapacak başka bir şey yok.",
+            "seeTreasury": "Treasury’yi gör",
+            "invalidTitle": "Davet bulunamadı",
+            "invalidDescription": "Bu davet bağlantısı geçersiz veya artık kullanılamıyor.",
+            "usedTitle": "Davet zaten kullanıldı",
+            "usedDescription": "Bu davet bağlantısı zaten kullanıldı.",
+            "expiredTitle": "Davetin süresi doldu",
+            "expiredDescription": "Bu davet bağlantısının süresi doldu. Ekipten yeni bir tane isteyin.",
+            "goHome": "Ana sayfaya git",
+            "joinFailed": "Katılma talebi gönderilemedi. Lütfen tekrar deneyin."
+        },
         "membersSelected": "{count, plural, =0 {üye yok} one {# üye} other {# üye}} seçildi",
         "remove": "Kaldır",
         "edit": "Düzenle",
@@ -827,7 +888,6 @@
             "editRoles": "Rolleri Düzenle",
             "addNewMember": "Üye Ekle",
             "validatingAddresses": "Adresler doğrulanıyor...",
-            "creatingProposal": "Öneri oluşturuluyor...",
             "reviewRequest": "Talebi İncele",
             "noChanges": "Üye rollerinde herhangi bir değişiklik yapılmadı"
         },
@@ -856,7 +916,8 @@
             "alreadyAdded": "Bu üye yukarıda zaten eklenmiş",
             "alreadyInTreasury": "Bu üye zaten hazinede mevcut",
             "cannotRemoveRoleAfter": "Bu üyeden {role} rolünü kaldıramazsınız. Tüm değişikliklerinizden sonra, bu role atanan tek kişi olacaklar.",
-            "cannotRemoveRoleAfterGov": "Bu üyeden {role} rolünü kaldıramazsınız. Tüm değişikliklerinizden sonra, tek {role} üyesi olacaklar ve bu rol olmadan ekip üyelerini yönetemez veya oylamayı yapılandıramazsınız."
+            "cannotRemoveRoleAfterGov": "Bu üyeden {role} rolünü kaldıramazsınız. Tüm değişikliklerinizden sonra, tek {role} üyesi olacaklar ve bu rol olmadan ekip üyelerini yönetemez veya oylamayı yapılandıramazsınız.",
+            "validateAddressesFailed": "Adresler doğrulanamadı. Lütfen tekrar deneyin."
         },
         "policy": {
             "addMembers": "Politikayı Güncelle - Yeni Üyeler Ekle",
@@ -867,7 +928,8 @@
             "editMembersSuccess": "Toplu üye rolleri güncelleme talebi başarıyla oluşturuldu",
             "removeMember": "Politikayı Güncelle - Üye Kaldır",
             "removeMembers": "Politikayı Güncelle - Üyeleri Kaldır",
-            "removeMemberSuccess": "Üye kaldırma talebi başarıyla oluşturuldu"
+            "removeMemberSuccess": "Üye kaldırma talebi başarıyla oluşturuldu",
+            "createProposalFailed": "Üye talebi oluşturulamadı. Lütfen tekrar deneyin."
         },
         "infoSection": {
             "title": "Neden daha fazla üye eklemelisiniz?",
@@ -1576,9 +1638,7 @@
         "cannotRemoveMember": "Bu üye kaldırılamaz. {roles} {count, plural, one {rolüne} other {rollerine}} atanan tek kişiler.",
         "cannotRemoveMemberGov": "Bu üye kaldırılamaz. {roles} {count, plural, one {rolüne, ki bu rol} other {rollerine, ki bu roller}} atanan tek kişiler ve ekip üyelerini yönetmek ve oylamayı yapılandırmak için gereklidir.",
         "cannotBulkRemove": "Bu üyeler kaldırılamaz. Bu, {roles} {count, plural, one {rolünü} other {rollerini}} boş bırakacaktır.",
-        "cannotBulkRemoveGov": "Bu üyeler kaldırılamaz. Bu, ekip üyelerini yönetmek ve oylamayı yapılandırmak için gereken {roles} {count, plural, one {rolünü} other {rollerini}} boş bırakacaktır.",
-        "cannotRemoveRole": "Bu üyeden {role} rolünü kaldıramazsınız. Bu role atanan tek kişiler.",
-        "cannotRemoveRoleGov": "Bu üyeden {role} rolünü kaldıramazsınız. Tek {role} üyesi olacaklar ve bu rol olmadan ekip üyelerini yönetemez veya oylamayı yapılandıramazsınız."
+        "cannotBulkRemoveGov": "Bu üyeler kaldırılamaz. Bu, ekip üyelerini yönetmek ve oylamayı yapılandırmak için gereken {roles} {count, plural, one {rolünü} other {rollerini}} boş bırakacaktır."
     },
     "roleSelector": {
         "setRole": "Rol Ayarla",

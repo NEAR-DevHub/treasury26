@@ -70,7 +70,7 @@ export function UserVote({
                 <User
                     accountId={accountId}
                     withLink={false}
-                    iconOnly={iconOnly}
+                    variant={iconOnly ? "avatar" : "full"}
                 />
                 <div
                     className={cn(

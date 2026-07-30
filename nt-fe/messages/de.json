@@ -819,6 +819,67 @@
         "activeMembers": "Aktive Mitglieder",
         "noActiveMembers": "Keine aktiven Mitglieder gefunden.",
         "addNewMember": "Mitglied hinzufügen",
+        "addManually": "Manuell hinzufügen",
+        "inviteMember": "Mitglied einladen",
+        "wantsToJoin": "Möchte beitreten",
+        "invite": {
+            "title": "Mitglied einladen",
+            "howItWorks": {
+                "title": "So funktioniert’s",
+                "generateTitle": "Du erstellst einen Link",
+                "generateDescription": "Sende ihn an die Person, die du hinzufügen möchtest – Telegram, E-Mail oder anderswo.",
+                "joinTitle": "Sie bitten um Beitritt",
+                "joinDescription": "Sie öffnen den Link, verbinden eine Wallet und senden dir ihre Angaben.",
+                "voteTitle": "Du gibst es zur Abstimmung",
+                "voteDescription": "Ihre Angaben kommen vorausgefüllt an. Du erstellst die Anfrage, und das Team stimmt ab."
+            },
+            "generateLink": "Einladungslink erstellen",
+            "generating": "Wird erstellt…",
+            "generateFailed": "Einladungslink konnte nicht erstellt werden. Bitte versuche es erneut.",
+            "readyTitle": "Dein Einladungslink ist bereit",
+            "readyDescription": "Sende ihn an die Person, die du hinzufügen möchtest. Sie verbindet eine Wallet und bittet um Beitritt.",
+            "onceTitle": "Dieser Link gilt einmal, für eine Person",
+            "onceDescription": "Erstelle für jedes Mitglied einen neuen.",
+            "yourLink": "Dein Einladungslink",
+            "copyLink": "Link kopieren",
+            "linkCopied": "Einladungslink kopiert",
+            "generateNewLink": "Neuen Link erstellen"
+        },
+        "joinRequests": {
+            "title": "Möchte beitreten",
+            "memberAddress": "Mitgliederadresse",
+            "empty": "Keine ausstehenden Beitrittsanfragen.",
+            "setRolesRequired": "Lege für jedes Mitglied eine Rolle fest",
+            "removeFailed": "Beitrittsanfrage konnte nicht entfernt werden",
+            "pendingPolicyRequest": "Du kannst keine Mitglieder hinzufügen, solange eine aktive Richtlinienänderung aussteht. Bitte genehmige oder lehne sie zuerst ab."
+        },
+        "join": {
+            "metaTitle": "Treasury beitreten | Trezu",
+            "metaDescription": "Über einen Einladungslink um Beitritt zu einem Trezu-Treasury bitten",
+            "pageTitle": "Treasury beitreten",
+            "pageDescription": "Beitritt zu einem Treasury anfragen",
+            "treasuryFallback": "diesem Treasury",
+            "connectTitle": "Dem Treasury {treasury} beitreten",
+            "connectDescription": "Verbinde eine Wallet, um um Beitritt zu bitten. Es werden noch keine Mittel bewegt und du wirst noch nicht hinzugefügt – das Team stimmt zuerst ab.",
+            "askTitle": "Um Beitritt zu {treasury} bitten",
+            "askDescription": "Das Team prüft deine Anfrage, bevor du etwas sehen oder genehmigen kannst.",
+            "walletConnected": "Wallet verbunden",
+            "nameLabel": "Dein Name (optional)",
+            "namePlaceholder": "Damit das Team dich erkennt",
+            "askJoin": "Beitritt anfragen",
+            "submitting": "Wird gesendet…",
+            "successTitle": "Du bist fast dabei",
+            "successDescription": "Du kannst beitreten, sobald das Team deine Anfrage\ngeprüft hat. Fürs Erste ist nichts weiter zu tun.",
+            "seeTreasury": "Treasury ansehen",
+            "invalidTitle": "Einladung nicht gefunden",
+            "invalidDescription": "Dieser Einladungslink ist ungültig oder nicht mehr verfügbar.",
+            "usedTitle": "Einladung bereits verwendet",
+            "usedDescription": "Dieser Einladungslink wurde bereits verwendet.",
+            "expiredTitle": "Einladung abgelaufen",
+            "expiredDescription": "Dieser Einladungslink ist abgelaufen. Bitte das Team um einen neuen.",
+            "goHome": "Zur Startseite",
+            "joinFailed": "Beitrittsanfrage konnte nicht gesendet werden. Bitte versuche es erneut."
+        },
         "membersSelected": "{count, plural, =0 {keine Mitglieder} one {# Mitglied} other {# Mitglieder}} ausgewählt",
         "remove": "Entfernen",
         "edit": "Bearbeiten",
@@ -827,7 +888,6 @@
             "editRoles": "Rollen bearbeiten",
             "addNewMember": "Mitglied hinzufügen",
             "validatingAddresses": "Adressen werden validiert...",
-            "creatingProposal": "Vorschlag wird erstellt...",
             "reviewRequest": "Anfrage prüfen",
             "noChanges": "An den Mitgliederrollen wurden keine Änderungen vorgenommen"
         },
@@ -856,7 +916,8 @@
             "alreadyAdded": "Dieses Mitglied wurde oben bereits hinzugefügt",
             "alreadyInTreasury": "Dieses Mitglied existiert bereits in der Treasury",
             "cannotRemoveRoleAfter": "Sie können die {role}-Rolle diesem Mitglied nicht entziehen. Nach all Ihren Änderungen wäre es die einzige Person mit dieser Rolle.",
-            "cannotRemoveRoleAfterGov": "Sie können die {role}-Rolle diesem Mitglied nicht entziehen. Nach all Ihren Änderungen wäre es das einzige Mitglied mit der Rolle {role}, und ohne diese Rolle können Sie keine Teammitglieder verwalten oder die Abstimmung konfigurieren."
+            "cannotRemoveRoleAfterGov": "Sie können die {role}-Rolle diesem Mitglied nicht entziehen. Nach all Ihren Änderungen wäre es das einzige Mitglied mit der Rolle {role}, und ohne diese Rolle können Sie keine Teammitglieder verwalten oder die Abstimmung konfigurieren.",
+            "validateAddressesFailed": "Adressen konnten nicht validiert werden. Bitte versuche es erneut."
         },
         "policy": {
             "addMembers": "Richtlinie aktualisieren - Neue Mitglieder hinzufügen",
@@ -867,7 +928,8 @@
             "editMembersSuccess": "Sammelanfrage zur Aktualisierung der Mitgliederrollen erfolgreich erstellt",
             "removeMember": "Richtlinie aktualisieren - Mitglied entfernen",
             "removeMembers": "Richtlinie aktualisieren - Mitglieder entfernen",
-            "removeMemberSuccess": "Anfrage zur Mitgliederentfernung erfolgreich erstellt"
+            "removeMemberSuccess": "Anfrage zur Mitgliederentfernung erfolgreich erstellt",
+            "createProposalFailed": "Mitgliederanfrage konnte nicht erstellt werden. Bitte versuche es erneut."
         },
         "infoSection": {
             "title": "Warum mehr Mitglieder hinzufügen?",
@@ -1576,9 +1638,7 @@
         "cannotRemoveMember": "Dieses Mitglied kann nicht entfernt werden. Es ist die einzige Person, der die {roles}-{count, plural, one {Rolle} other {Rollen}} zugewiesen ist.",
         "cannotRemoveMemberGov": "Dieses Mitglied kann nicht entfernt werden. Es ist die einzige Person, der die {roles}-{count, plural, one {Rolle zugewiesen ist, die} other {Rollen zugewiesen sind, die}} zur Verwaltung von Teammitgliedern und zur Konfiguration der Abstimmung erforderlich {count, plural, one {ist} other {sind}}.",
         "cannotBulkRemove": "Diese Mitglieder können nicht entfernt werden. Dadurch bliebe die {roles}-{count, plural, one {Rolle} other {Rollen}} leer.",
-        "cannotBulkRemoveGov": "Diese Mitglieder können nicht entfernt werden. Dadurch bliebe die {roles}-{count, plural, one {Rolle leer, die} other {Rollen leer, die}} zur Verwaltung von Teammitgliedern und zur Konfiguration der Abstimmung erforderlich {count, plural, one {ist} other {sind}}.",
-        "cannotRemoveRole": "Sie können diesem Mitglied die {role}-Rolle nicht entziehen. Es ist die einzige Person mit dieser Rolle.",
-        "cannotRemoveRoleGov": "Sie können diesem Mitglied die {role}-Rolle nicht entziehen. Es ist das einzige {role}-Mitglied, und ohne diese Rolle können Sie keine Teammitglieder verwalten oder die Abstimmung konfigurieren."
+        "cannotBulkRemoveGov": "Diese Mitglieder können nicht entfernt werden. Dadurch bliebe die {roles}-{count, plural, one {Rolle leer, die} other {Rollen leer, die}} zur Verwaltung von Teammitgliedern und zur Konfiguration der Abstimmung erforderlich {count, plural, one {ist} other {sind}}."
     },
     "roleSelector": {
         "setRole": "Rolle festlegen",
