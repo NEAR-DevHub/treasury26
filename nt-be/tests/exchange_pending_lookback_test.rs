@@ -42,6 +42,11 @@ async fn cleanup(pool: &sqlx::PgPool) {
         .execute(pool)
         .await
         .expect("clear silver transfer legs");
+    sqlx::query("DELETE FROM silver_balance_history WHERE account_id = $1")
+        .bind(ACCOUNT_ID)
+        .execute(pool)
+        .await
+        .expect("clear silver balance history");
     sqlx::query("DELETE FROM silver_public_history_cursors WHERE account_id = $1")
         .bind(ACCOUNT_ID)
         .execute(pool)
@@ -85,38 +90,54 @@ async fn mark_backfill_complete(pool: &sqlx::PgPool) {
     .expect("mark public history backfill complete");
 }
 
-async fn insert_authoritative_balance(
+/// Gold balance stamps resolve non-native legs by `entry_key == leg_key`
+/// against `silver_balance_history`; a leg without its ledger entry is a
+/// projection error, never a NULL balance.
+#[allow(clippy::too_many_arguments)]
+async fn insert_ledger_entry(
     pool: &sqlx::PgPool,
-    token_id: &str,
+    entry_key: &str,
+    asset: &str,
+    token_standard: &str,
+    receipt_id: &str,
     block_height: i64,
     block_time: chrono::DateTime<Utc>,
-    balance: &str,
+    delta: &str,
+    balance_before: &str,
+    balance_after: &str,
+    decimals: i32,
 ) {
     sqlx::query(
         r#"
-        INSERT INTO balance_changes (
-            account_id,
-            block_height,
-            block_timestamp,
-            block_time,
-            token_id,
-            counterparty,
-            amount,
-            balance_before,
-            balance_after
+        INSERT INTO silver_balance_history (
+            account_id, asset, token_standard, entry_kind, entry_key,
+            source, receipt_id, block_height, block_time, intra_block_seq,
+            delta_raw, delta, decimals, balance_before, balance_after,
+            affects_user_balance, user_balance_after
         )
-        VALUES ($1, $2, $3, $4, $5, 'SNAPSHOT', 0, $6::numeric, $6::numeric)
+        VALUES (
+            $1, $2, $3::public_token_standard, 'movement', $4,
+            'nearblocks_mt', $5, $6, $7, 0,
+            $8::numeric * POWER(10::numeric, $9), $8::numeric, $9,
+            $10::numeric, $11::numeric,
+            TRUE, $11::numeric
+        )
         "#,
     )
     .bind(ACCOUNT_ID)
+    .bind(asset)
+    .bind(token_standard)
+    .bind(entry_key)
+    .bind(receipt_id)
     .bind(block_height)
-    .bind(block_time.timestamp_nanos_opt().expect("valid block time"))
     .bind(block_time)
-    .bind(token_id)
-    .bind(balance)
+    .bind(delta)
+    .bind(decimals)
+    .bind(balance_before)
+    .bind(balance_after)
     .execute(pool)
     .await
-    .expect("insert authoritative legacy balance");
+    .expect("insert silver ledger entry");
 }
 
 async fn insert_bronze_event(
@@ -373,8 +394,34 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     let outgoing_time = Utc.with_ymd_and_hms(2026, 7, 6, 8, 45, 36).unwrap();
     let incoming_time = outgoing_time + Duration::seconds(16);
     let proposal_executed_at = outgoing_time + Duration::seconds(1);
-    insert_authoritative_balance(&pool, "wrap.near", 100, outgoing_time, "0.9").await;
-    insert_authoritative_balance(&pool, USDC_TOKEN_ID, 101, incoming_time, "0.492331").await;
+    insert_ledger_entry(
+        &pool,
+        "outgoing-wrap-leg",
+        "wrap.near",
+        "nep141",
+        "outgoing-receipt",
+        100,
+        outgoing_time,
+        "-0.1",
+        "1.0",
+        "0.9",
+        24,
+    )
+    .await;
+    insert_ledger_entry(
+        &pool,
+        "incoming-usdc-leg",
+        USDC_TOKEN_ID,
+        "nep245",
+        "incoming-receipt",
+        101,
+        incoming_time,
+        "0.492331",
+        "0",
+        "0.492331",
+        6,
+    )
+    .await;
 
     let proposal_ref: i64 = sqlx::query_scalar(
         r#"
@@ -546,8 +593,8 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     let reconciled_balances: (String, String) = sqlx::query_as(
         r#"
         SELECT
-            token_out_balance_after::text,
-            token_in_balance_after::text
+            trim_scale(token_out_balance_after)::text,
+            trim_scale(token_in_balance_after)::text
         FROM gold_public_history_events
         WHERE dao_id = $1
         "#,
@@ -606,8 +653,8 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     let replayed_balances: (String, String) = sqlx::query_as(
         r#"
         SELECT
-            token_out_balance_after::text,
-            token_in_balance_after::text
+            trim_scale(token_out_balance_after)::text,
+            trim_scale(token_in_balance_after)::text
         FROM gold_public_history_events
         WHERE dao_id = $1
         "#,
