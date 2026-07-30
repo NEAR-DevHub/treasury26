@@ -235,6 +235,7 @@ export function Step1({
                         }
                         tokenSelect={{
                             filterTokens: filterSellTokens,
+                            autoSelect: false,
                         }}
                         usdValueOverride={
                             quoteData?.quote
@@ -280,6 +281,7 @@ export function Step1({
                     tokenSelect={{
                         filterTokens: filterReceiveTokens,
                         showPopularAssets: true,
+                        autoSelect: false,
                     }}
                     usdValueOverride={
                         quoteData?.quote

@@ -1,8 +1,10 @@
 import { ConfidentialBulkData } from "../../types/index";
 import { BatchPayment, PaymentStatus } from "@/lib/api";
 import { BatchPaymentExpandedView } from "./batch-payment-expanded";
-import Big from "@/lib/big";
-import { mapConfidentialBulkRecipientPayment } from "../../utils/confidential-bulk-utils";
+import {
+    mapConfidentialBulkRecipientPayment,
+    sumConfidentialBulkNetworkFee,
+} from "../../utils/confidential-bulk-utils";
 import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ConfidentialBulkExpandedProps {
@@ -18,10 +20,11 @@ interface ConfidentialBulkExpandedProps {
  * Header total + token come from the parent extractor (header quote).
  * Recipient amount/recipient come from each leg's stored 1Click quote.
  *
- * Per-leg fee = `amountIn - amountOut` from the stored quote — the actual
- * withdrawal fee committed at prepare time. Summed across recipients and
- * passed as the override so the row reflects what the DAO is really paying,
- * not a fresh SDK estimate.
+ * Per-leg fee = `amountInFormatted - amountOutFormatted` from the stored
+ * quote (human-readable token units) — same as Review / single confidential
+ * payment. Raw smallest-unit diffs are wrong when origin and destination
+ * decimals differ. Summed across recipients and passed as the override so
+ * the row reflects what the DAO committed at prepare time.
  */
 export function ConfidentialBulkExpanded({
     data,
@@ -30,19 +33,15 @@ export function ConfidentialBulkExpanded({
     const requestDisplayContext = useRequestDisplayContext();
     const isExecuted = requestDisplayContext?.isExecuted ?? false;
 
-    let totalFeeRaw = Big(0);
+    const totalNetworkFee = sumConfidentialBulkNetworkFee(data.recipients);
     const payments: BatchPayment[] = data.recipients.map((r) => {
-        const { recipient, amountIn, amountOut } =
-            mapConfidentialBulkRecipientPayment(r.quoteMetadata);
+        const { recipient, amountOut } = mapConfidentialBulkRecipientPayment(
+            r.quoteMetadata,
+        );
         const isPaid = r.status === "submitted";
         const status: PaymentStatus = isPaid
             ? { Paid: { block_height: 0 } }
             : "Pending";
-
-        const legFee = Big(amountIn).minus(amountOut);
-        if (legFee.gt(0)) {
-            totalFeeRaw = totalFeeRaw.add(legFee);
-        }
 
         return { recipient, amount: amountOut, status };
     });
@@ -58,7 +57,7 @@ export function ConfidentialBulkExpanded({
             showReceiptButton={isExecuted}
             destinationAssetId={data.destinationAssetId}
             totalNetworkFeeOverride={
-                totalFeeRaw.gt(0) ? totalFeeRaw.toFixed(0) : null
+                totalNetworkFee.gt(0) ? totalNetworkFee.toFixed() : null
             }
         />
     );

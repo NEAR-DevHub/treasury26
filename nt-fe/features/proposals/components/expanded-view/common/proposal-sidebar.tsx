@@ -25,11 +25,11 @@ import type { PaymentRequestData } from "@/features/proposals/types/index";
 import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import {
-    EXCHANGE_EXPIRY_MS,
+    getEffectiveExpiryMs,
     getProposalStatus,
     getProposalStatusDateInfo,
     getProposalUIKind,
-    isShortExpiryExchangeProposal,
+    isQuoteDeadlineBeforeVotingPeriod,
     type UIProposalStatus,
 } from "@/features/proposals/utils/proposal-utils";
 import {
@@ -45,10 +45,14 @@ import {
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
-import Big from "@/lib/big";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
-import { cn, getIntentsExplorerUrl, nanosToMs } from "@/lib/utils";
+import {
+    cn,
+    decodeProposalDescription,
+    getIntentsExplorerUrl,
+    nanosToMs,
+} from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
 import { NotEnoughBalance } from "../../not-enough-balance";
@@ -435,17 +439,12 @@ export function ProposalSidebar({
             ? !isConfidential
             : isConfidentialRequestProposal || receiptProposalData !== null);
 
-    const expiresAt = new Date(
-        nanosToMs(
-            Big(proposal.submission_time)
-                .add(policy.proposal_period)
-                .toFixed(0),
-        ),
-    );
+    const expiresAt = new Date(getEffectiveExpiryMs(proposal, policy));
     const statusDateInfo = getProposalStatusDateInfo(proposal, policy);
-    const shortExpiryExchange =
-        isShortExpiryExchangeProposal(proposal) &&
-        nanosToMs(policy.proposal_period) > EXCHANGE_EXPIRY_MS;
+    const shortQuoteDeadline = isQuoteDeadlineBeforeVotingPeriod(
+        proposal,
+        policy,
+    );
 
     let timestamp;
     switch (status) {
@@ -634,8 +633,8 @@ export function ProposalSidebar({
                 </>
             )}
 
-            {/* Short-Expiry Warning (exchange proposals only) */}
-            {isPending && shortExpiryExchange && (
+            {/* Short quote deadline warning (legacy 24h quotes) */}
+            {isPending && shortQuoteDeadline && (
                 <InfoAlert
                     className="inline-flex"
                     message={

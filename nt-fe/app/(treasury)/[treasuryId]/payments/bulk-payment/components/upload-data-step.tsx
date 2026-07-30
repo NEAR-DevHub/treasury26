@@ -223,9 +223,8 @@ export function UploadDataStep({
         }
 
         // Confidential bulk requires a picked recipient network — its raw name
-        // drives address validation for ALL recipients. RecipientNetworkSelect
-        // auto-picks when only one option matches the first address, but the
-        // user may have wiped the selection (no compatible network) — block here.
+        // drives address validation for ALL recipients. The picker is gated on
+        // having payment data; block Continue if they haven't chosen one yet.
         if (isConfidential && !destinationNetwork) {
             setNetworkError(t("selectRecipientNetwork"));
             return;

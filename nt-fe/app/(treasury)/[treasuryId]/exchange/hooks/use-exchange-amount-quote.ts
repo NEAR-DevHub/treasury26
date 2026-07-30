@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useDebounce } from "use-debounce";
 import type { UseFormReturn } from "react-hook-form";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import type { ExchangeFormValues } from "../exchange-form";
 import { type ExchangeSwapType, useExchangeQuote } from "./use-exchange-quote";
 import { useFormatQuoteAmount } from "./use-format-quote-amount";
@@ -28,6 +29,9 @@ export function useExchangeAmountQuote({
     isDryRun,
     refetchInterval,
 }: UseExchangeAmountQuoteParams) {
+    const { data: policy } = useTreasuryPolicy(selectedTreasury);
+    const proposalPeriod = policy?.proposal_period;
+
     const sellToken = form.watch("sellToken");
     const receiveToken = form.watch("receiveToken");
     const sellAmount = form.watch("sellAmount");
@@ -70,6 +74,7 @@ export function useExchangeAmountQuote({
         slippageTolerance,
         enabled: Boolean(
             selectedTreasury &&
+                proposalPeriod &&
                 hasValidAmount &&
                 !areSameTokens &&
                 !exchangeSlotBlocked,
@@ -77,6 +82,7 @@ export function useExchangeAmountQuote({
         isDryRun,
         refetchInterval,
         isConfidential,
+        proposalPeriod,
     });
 
     const isDebouncingSource =

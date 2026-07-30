@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import {
     useAggregatedTokens,
+    DEFAULT_ASSETS_QUERY,
     useAssets,
     type AggregatedAsset,
 } from "@/hooks/use-assets";
@@ -298,10 +299,10 @@ export function useMergedTokens({
 }: UseMergedTokensOptions = {}) {
     const { treasuryId, isConfidential } = useTreasury();
 
-    const { data: { tokens: rawTokens = [] } = {} } = useAssets(treasuryId, {
-        onlyPositiveBalance: false,
-        onlySupportedTokens: true,
-    });
+    const {
+        data: { tokens: rawTokens = [] } = {},
+        isPending: isAssetsPending,
+    } = useAssets(treasuryId, DEFAULT_ASSETS_QUERY);
 
     const aggregatedTokens = useAggregatedTokens(rawTokens);
 
@@ -340,5 +341,11 @@ export function useMergedTokens({
         ];
     }, [aggregatedTokens, bridgeAssets, showOnlyOwned]);
 
-    return { tokens, aggregatedTokens, isLoading };
+    return {
+        tokens,
+        aggregatedTokens,
+        isLoading,
+        /** False until treasury assets resolve from cache or network — use before defaulting tokens. */
+        isAssetsReady: !isAssetsPending,
+    };
 }

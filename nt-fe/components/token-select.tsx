@@ -11,6 +11,7 @@ import {
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import type { ChainIcons } from "@/lib/api";
 import Big from "@/lib/big";
+import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
 import {
     canonicalizeTokenIdForMatch,
     cn,
@@ -32,6 +33,7 @@ import { NetworkIconDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
 import { Tooltip } from "./tooltip";
 import { ScrollArea } from "./ui/scroll-area";
+import { Skeleton } from "./ui/skeleton";
 
 // Selected token (asset + specific network)
 export interface SelectedTokenData {
@@ -45,6 +47,8 @@ export interface SelectedTokenData {
     residency?: string;
     minWithdrawalAmount?: string;
     minDepositAmount?: string;
+    balance?: string;
+    price?: number;
 }
 
 interface TokenSelectProps {
@@ -86,6 +90,12 @@ interface TokenSelectProps {
         network: string;
         residency?: string;
     }) => boolean;
+    /**
+     * When true (default), auto-picks the highest-USD owned asset from the
+     * assets cache, else USDC on NEAR. Set false for Exchange (and any flow
+     * that seeds its own tokens).
+     */
+    autoSelect?: boolean;
 }
 
 export default function TokenSelect({
@@ -101,6 +111,7 @@ export default function TokenSelect({
     iconSize = "md",
     filterTokens,
     showPopularAssets = false,
+    autoSelect = true,
 }: TokenSelectProps) {
     const t = useTranslations("tokenSelectDialog");
     const tDepositSections = useTranslations("depositModal.sections");
@@ -114,31 +125,30 @@ export default function TokenSelect({
         showPopularAssets && open && step === "token",
     );
 
-    const { tokens, isLoading } = useMergedTokens({
+    const { tokens, isLoading, isAssetsReady } = useMergedTokens({
         enabled: !showOnlyOwnedAssets && open,
         showOnlyOwned: showOnlyOwnedAssets,
     });
 
-    // Auto-select first available token on initial load.
+    // Wait for assets cache/fetch before picking — avoids flashing USDC then
+    // swapping to the highest-USD owned token when holdings arrive.
     useEffect(() => {
-        if (tokens.length > 0 && !selectedToken && !locked) {
-            const firstToken = tokens[0];
-            const firstNetwork = firstToken.networks[0];
-            if (!firstNetwork) return;
-            setSelectedToken({
-                address: firstNetwork.id,
-                symbol: firstNetwork.symbol,
-                decimals: firstNetwork.decimals,
-                name: firstToken.name || firstNetwork.symbol,
-                icon: firstToken.icon || "",
-                network: firstNetwork.name,
-                chainIcons: firstNetwork.chainIcons || undefined,
-                residency: firstNetwork.residency,
-                minWithdrawalAmount: firstNetwork.minWithdrawalAmount,
-                minDepositAmount: firstNetwork.minDepositAmount,
-            });
-        }
-    }, [tokens, selectedToken, locked, setSelectedToken]);
+        if (!autoSelect || locked || selectedToken || !isAssetsReady) return;
+
+        setSelectedToken(
+            pickDefaultSelectedToken(tokens, {
+                disableTokens,
+            }),
+        );
+    }, [
+        autoSelect,
+        isAssetsReady,
+        tokens,
+        selectedToken,
+        locked,
+        setSelectedToken,
+        disableTokens,
+    ]);
 
     // Source-agnostic list for rendering/selecting.
     const filteredTokens = useMemo(() => {
@@ -261,6 +271,8 @@ export default function TokenSelect({
                 residency: network.residency,
                 minWithdrawalAmount: network.minWithdrawalAmount,
                 minDepositAmount: network.minDepositAmount,
+                balance: network.balance,
+                price: network.price,
             });
 
             setOpen(false);
@@ -354,9 +366,14 @@ export default function TokenSelect({
         );
     };
 
+    // Payments/bulk wait for assets before seeding — show a skeleton. Exchange already has a seeded token.
+    const showDefaultLoading = !selectedToken && !isAssetsReady;
+    const iconSkeletonClass =
+        iconSize === "lg" ? "size-6" : iconSize === "sm" ? "size-4" : "size-5";
+
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogTrigger asChild disabled={disabled}>
+            <DialogTrigger asChild disabled={disabled || showDefaultLoading}>
                 <Button
                     type="button"
                     variant="outline"
@@ -365,7 +382,21 @@ export default function TokenSelect({
                         classNames?.trigger,
                     )}
                 >
-                    {selectedToken ? (
+                    {showDefaultLoading ? (
+                        // Same pattern as treasury-selector loading state.
+                        <div className="flex items-center gap-2 min-w-0 h-9">
+                            <Skeleton
+                                className={cn(
+                                    "rounded-full shrink-0",
+                                    iconSkeletonClass,
+                                )}
+                            />
+                            <div className="flex flex-col gap-1">
+                                <Skeleton className="h-3 w-16" />
+                                <Skeleton className="h-3 w-12" />
+                            </div>
+                        </div>
+                    ) : selectedToken ? (
                         <>
                             <TokenDisplay
                                 symbol={selectedToken.symbol}

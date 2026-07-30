@@ -400,48 +400,25 @@ fn get_current_time_nanos() -> U64 {
     U64::from(nanos as u64)
 }
 
-fn is_short_expiry_exchange(proposal: &Proposal) -> bool {
-    // First, gate short-expiry logic to exchange proposals only.
-    if AssetExchangeInfo::from_proposal(proposal).is_none() {
-        return false;
-    }
-
-    let Some(function_call) = proposal.kind.get("FunctionCall") else {
-        return false;
+/// Effective expiry = min(voting period end, quoteDeadline from description).
+/// Legacy exchange quotes stored a 24h deadline in `quoteDeadline`; new quotes
+/// align with proposal_period, so this remains correct for both.
+fn get_effective_expiration_time_ns(proposal: &Proposal, submission_time: u64, period: u64) -> u64 {
+    let by_period = submission_time.saturating_add(period);
+    let Some(deadline_str) = extract_from_description(&proposal.description, "quoteDeadline")
+    else {
+        return by_period;
     };
 
-    let receiver_id = function_call
-        .get("receiver_id")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    let actions = function_call
-        .get("actions")
-        .and_then(|a| a.as_array())
-        .map(|a| a.as_slice())
-        .unwrap_or(&[]);
+    let Ok(deadline) = chrono::DateTime::parse_from_rfc3339(deadline_str.trim()) else {
+        return by_period;
+    };
 
-    // Pure wrap/unwrap (single near_deposit/near_withdraw on wrap.near)
-    // follows normal proposal period, not short expiry.
-    if receiver_id == "wrap.near" && actions.len() == 1 {
-        let method_name = actions[0]
-            .get("method_name")
-            .and_then(|m| m.as_str())
-            .unwrap_or("");
-        if method_name == "near_deposit" || method_name == "near_withdraw" {
-            return false;
-        }
+    let deadline_ns = deadline.timestamp_nanos_opt().unwrap_or(0) as u64;
+    if deadline_ns == 0 {
+        return by_period;
     }
-
-    true
-}
-
-fn get_effective_expiration_period_ns(proposal: &Proposal, period: u64) -> u64 {
-    if !is_short_expiry_exchange(proposal) {
-        return period;
-    }
-
-    // Exchange custom deadline is 24h, capped by proposal period.
-    std::cmp::min(period, 24 * 60 * 60 * 1_000_000_000)
+    by_period.min(deadline_ns)
 }
 
 pub fn get_status_display(
@@ -455,14 +432,13 @@ pub fn get_status_display(
         ProposalStatus::InProgress => {
             let current_time = get_current_time_nanos().0;
 
-            // Exchange proposals use custom 24h expiration, capped by proposal period.
-            let expiration_period = if let Some(p) = proposal {
-                get_effective_expiration_period_ns(p, period)
+            let expiration_time = if let Some(p) = proposal {
+                get_effective_expiration_time_ns(p, submission_time, period)
             } else {
-                period
+                submission_time.saturating_add(period)
             };
 
-            if submission_time + expiration_period < current_time {
+            if expiration_time < current_time {
                 "Expired".to_string()
             } else {
                 pending_label.to_string()
