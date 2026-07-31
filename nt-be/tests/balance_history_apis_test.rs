@@ -9,13 +9,17 @@ use serial_test::serial;
 
 /// Ensure the test account has Pro plan (24-month history) for testing
 async fn ensure_pro_plan(pool: &sqlx::PgPool) {
+    // enabled = false: these tests serve FIXTURE data; an enabled row makes
+    // any live backend sharing the database ingest real chain rows for this
+    // account mid-test and corrupt the snapshot assertions.
     sqlx::query(
         "INSERT INTO monitored_accounts (account_id, enabled, plan_type, export_credits, batch_payment_credits, gas_covered_transactions, created_at, updated_at)
-         VALUES ('webassemblymusic-treasury.sputnik-dao.near', true, 'pro', 10, 100, 2000, NOW(), NOW())
-         ON CONFLICT (account_id) DO UPDATE SET 
-            plan_type = 'pro', 
-            export_credits = 10, 
-            batch_payment_credits = 100, 
+         VALUES ('webassemblymusic-treasury.sputnik-dao.near', false, 'pro', 10, 100, 2000, NOW(), NOW())
+         ON CONFLICT (account_id) DO UPDATE SET
+            enabled = false,
+            plan_type = 'pro',
+            export_credits = 10,
+            batch_payment_credits = 100,
             gas_covered_transactions = 2000,
             is_confidential_account = false",
     )
@@ -101,7 +105,17 @@ async fn load_test_data() {
         .expect("Failed to clear historical_prices test data");
     clear_public_history_test_data(&pool).await;
 
-    // Check if balance_changes data is already loaded
+    // Reuse loaded data only when it is the COMPLETE fixture. Other test
+    // suites write partial rows for the same account into a shared dev DB;
+    // trusting any nonzero count serves those leftovers to the snapshot
+    // assertions.
+    let fixture_rows: i64 = std::fs::read_to_string(
+        "tests/test_data/webassemblymusic_balance_changes.sql",
+    )
+    .expect("Failed to read balance changes SQL file")
+    .lines()
+    .filter(|line| line.trim_start().starts_with("INSERT"))
+    .count() as i64;
     let existing_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM balance_changes
          WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'",
@@ -110,7 +124,7 @@ async fn load_test_data() {
     .await
     .expect("Failed to check existing data");
 
-    if existing_count > 0 {
+    if existing_count == fixture_rows {
         println!(
             "✓ Test data already loaded ({} records), historical_prices cleared for fresh sync",
             existing_count
@@ -185,7 +199,28 @@ async fn load_test_data() {
             continue;
         }
 
-        sqlx::query(statement)
+        // The dump pins primary-key ids from the source database; on a
+        // shared DB those collide with other accounts' rows. Drop the id
+        // column and let the sequence assign fresh ones — nothing joins on
+        // balance_changes.id in these fixtures.
+        let statement = if let Some(without_col) = trimmed
+            .strip_prefix("INSERT INTO public.balance_changes (id, ")
+            .map(|rest| format!("INSERT INTO public.balance_changes ({rest}"))
+        {
+            match without_col.find("VALUES (") {
+                Some(pos) => {
+                    let (head, tail) = without_col.split_at(pos + "VALUES (".len());
+                    let tail = tail.trim_start_matches(|c: char| c.is_ascii_digit());
+                    let tail = tail.strip_prefix(", ").unwrap_or(tail);
+                    format!("{head}{tail}")
+                }
+                None => without_col,
+            }
+        } else {
+            trimmed.to_string()
+        };
+
+        sqlx::query(&statement)
             .execute(&pool)
             .await
             .expect("Failed to load balance change");
@@ -647,9 +682,13 @@ async fn test_chart_api_intervals() {
             interval, expected_tokens, current_tokens
         );
 
-        // Compare data point counts for each token
+        // Compare data point counts for each token. Top-level metadata
+        // fields (lastSyncedAt, chartMeta) are not token series.
         for (token_id, snapshots) in chart_data.as_object().unwrap() {
-            let current_snapshots = snapshots.as_array().unwrap().len();
+            let Some(snapshots) = snapshots.as_array() else {
+                continue;
+            };
+            let current_snapshots = snapshots.len();
             let expected_snapshots = expected_data
                 .get(token_id)
                 .and_then(|v| v.as_array())
