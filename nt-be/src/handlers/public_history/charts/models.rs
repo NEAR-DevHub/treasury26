@@ -25,6 +25,9 @@ pub struct ChartReadiness {
     /// False while a validated staking pool still has uncovered chart-horizon
     /// boundaries — a partially backfilled staked series would be misleading.
     pub staking_ready: bool,
+    /// Preserves the distinction between an empty requested range/token filter
+    /// and a projection that has no balance-bearing Gold rows at all.
+    pub has_gold_balance_points: bool,
     pub ledger_coverage_start: Option<DateTime<Utc>>,
     pub ledger_head_time: Option<DateTime<Utc>>,
 }

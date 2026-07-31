@@ -76,7 +76,7 @@ async fn project_dirty_daos(state: &Arc<AppState>, phase: &str, step: &str) {
                 stats.errors_written
             );
             for account_id in stats.changed_accounts {
-                state.publish_treasury_projection_updated(account_id);
+                state.publish_treasury_projection_updated(account_id).await;
             }
         }
         Ok(_) => {}

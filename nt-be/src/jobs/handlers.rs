@@ -355,7 +355,7 @@ pub async fn public_gold_projection(
         .await?;
     let changed = stats.changed_accounts.len();
     for account_id in stats.changed_accounts {
-        state.publish_treasury_projection_updated(account_id);
+        state.publish_treasury_projection_updated(account_id).await;
     }
     Ok(format!(
         "seen={} projected={} skipped_locked={} failed={} changed={} rows_projected={} rows_deleted={} errors={}",

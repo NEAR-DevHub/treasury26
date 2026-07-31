@@ -471,16 +471,16 @@ pub async fn get_balance_changes_internal(
 }
 
 /// Resolve the public read source once for all API adapters. One path per
-/// flag state, no per-account mixing: with medallion reads on, every public
-/// account reads the gold ledger — a not-yet-projected account serves an
-/// empty (soon-filled) history rather than silently switching to the legacy
-/// source with its different balance semantics. Flag off keeps everything
-/// on legacy.
+/// flag state, no per-account mixing: with unified ledger reads on, every
+/// public account reads `gold_treasury_ledger_events` — a not-yet-projected
+/// account serves an empty (soon-filled) history rather than silently
+/// switching to the legacy source with its different balance semantics.
+/// Flag off keeps everything on the legacy `balance_changes` paths.
 pub async fn should_read_public_history(
     state: &AppState,
     _account_id: &str,
 ) -> Result<bool, sqlx::Error> {
-    Ok(state.env_vars.public_history_medallion_reads)
+    Ok(state.env_vars.unified_gold_ledger_reads)
 }
 
 async fn fetch_legacy_balance_changes(

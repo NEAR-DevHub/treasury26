@@ -36,11 +36,11 @@ async fn clear_public_history_test_data(pool: &sqlx::PgPool) {
         .execute(pool)
         .await
         .expect("Failed to clear gold public projection errors");
-    sqlx::query("DELETE FROM gold_public_history_events WHERE dao_id = $1")
+    sqlx::query("DELETE FROM gold_treasury_ledger_events WHERE dao_id = $1")
         .bind(ACCOUNT_ID)
         .execute(pool)
         .await
-        .expect("Failed to clear gold public history events");
+        .expect("Failed to clear gold ledger events");
     sqlx::query("DELETE FROM gold_public_history_cursors WHERE account_id = $1")
         .bind(ACCOUNT_ID)
         .execute(pool)
@@ -109,13 +109,12 @@ async fn load_test_data() {
     // suites write partial rows for the same account into a shared dev DB;
     // trusting any nonzero count serves those leftovers to the snapshot
     // assertions.
-    let fixture_rows: i64 = std::fs::read_to_string(
-        "tests/test_data/webassemblymusic_balance_changes.sql",
-    )
-    .expect("Failed to read balance changes SQL file")
-    .lines()
-    .filter(|line| line.trim_start().starts_with("INSERT"))
-    .count() as i64;
+    let fixture_rows: i64 =
+        std::fs::read_to_string("tests/test_data/webassemblymusic_balance_changes.sql")
+            .expect("Failed to read balance changes SQL file")
+            .lines()
+            .filter(|line| line.trim_start().starts_with("INSERT"))
+            .count() as i64;
     let existing_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM balance_changes
          WHERE account_id = 'webassemblymusic-treasury.sputnik-dao.near'",
@@ -672,14 +671,27 @@ async fn test_chart_api_intervals() {
         let expected_data: serde_json::Value =
             serde_json::from_str(&existing_snapshot).expect("Failed to parse snapshot");
 
-        // Compare token counts
-        let current_tokens = chart_data.as_object().unwrap().len();
-        let expected_tokens = expected_data.as_object().unwrap().len();
+        // Compare token sets. Top-level metadata fields (lastSyncedAt,
+        // chartMeta) are excluded: their presence depends on whether another
+        // suite sharing the database has synced this account.
+        let token_keys = |data: &serde_json::Value| -> std::collections::BTreeSet<String> {
+            data.as_object()
+                .unwrap()
+                .iter()
+                .filter(|(_, value)| value.is_array())
+                .map(|(key, _)| key.clone())
+                .collect()
+        };
+        let current_keys = token_keys(&chart_data);
+        let expected_keys = token_keys(&expected_data);
         assert_eq!(
-            current_tokens, expected_tokens,
-            "{} interval: token count mismatch (expected {}, got {})\n\
+            current_keys,
+            expected_keys,
+            "{} interval: token set mismatch (missing: {:?}, unexpected: {:?})\n\
              To regenerate snapshots: GENERATE_NEW_TEST_SNAPSHOTS=1 cargo test --test balance_history_apis_test",
-            interval, expected_tokens, current_tokens
+            interval,
+            expected_keys.difference(&current_keys).collect::<Vec<_>>(),
+            current_keys.difference(&expected_keys).collect::<Vec<_>>()
         );
 
         // Compare data point counts for each token. Top-level metadata

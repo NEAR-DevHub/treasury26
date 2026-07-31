@@ -84,8 +84,10 @@ pub async fn has_gold_before(
         r#"
         SELECT EXISTS (
             SELECT 1
-            FROM gold_public_history_events
+            FROM gold_treasury_ledger_events
             WHERE dao_id = $1
+              AND history_visible
+              AND source_kind = 'public_silver_leg'
               AND event_time < $2
         )
         "#,
@@ -103,10 +105,12 @@ pub async fn earliest_pending_exchange_time(
     sqlx::query_scalar(
         r#"
         SELECT MIN(COALESCE(l.block_time, g.event_time))
-        FROM gold_public_history_events g
+        FROM gold_treasury_ledger_events g
         LEFT JOIN silver_public_transfer_legs l
           ON l.id = g.primary_transfer_leg_id
         WHERE g.dao_id = $1
+          AND g.history_visible
+          AND g.source_kind = 'public_silver_leg'
           AND g.transaction_type = 'exchange'
           AND g.status = 'pending'
         "#,
@@ -132,12 +136,14 @@ pub async fn widen_for_overlapping_completed_exchanges(
             SELECT
                 LEAST(primary_leg.block_time, counter_leg.block_time) AS starts_at,
                 GREATEST(primary_leg.block_time, counter_leg.block_time) AS ends_at
-            FROM gold_public_history_events gold
+            FROM gold_treasury_ledger_events gold
             JOIN silver_public_transfer_legs primary_leg
               ON primary_leg.id = gold.primary_transfer_leg_id
             JOIN silver_public_transfer_legs counter_leg
               ON counter_leg.id = gold.counter_transfer_leg_id
             WHERE gold.dao_id = $1
+              AND gold.history_visible
+              AND gold.source_kind = 'public_silver_leg'
               AND gold.transaction_type = 'exchange'
         ), boundaries(boundary) AS (
             SELECT $2::timestamptz
@@ -158,9 +164,9 @@ pub async fn widen_for_overlapping_completed_exchanges(
     .await
 }
 
-/// Loads absolute balance stamps for every ledger movement in the recompute
-/// window. One batched read per projection pass; stamps are absolute values,
-/// so partial recomputes need no seeding.
+/// Loads ledger stamps for every movement in the recompute window. One
+/// batched read per projection pass; stamps are absolute values, so partial
+/// recomputes need no seeding.
 pub async fn load_balance_stamps(
     tx: &mut Transaction<'_, Postgres>,
     account_id: &str,
@@ -169,7 +175,7 @@ pub async fn load_balance_stamps(
     let rows = sqlx::query_as::<_, BalanceStampRow>(
         r#"
         SELECT entry_key, token_standard::text AS token_standard, receipt_id,
-               balance_before, balance_after
+               user_balance_after, intra_block_seq
         FROM silver_balance_history
         WHERE account_id = $1
           AND block_time >= $2
@@ -250,50 +256,46 @@ pub async fn upsert_gold_event(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO gold_public_history_events (
+        INSERT INTO gold_treasury_ledger_events (
             gold_event_key,
-            primary_transfer_leg_id,
-            counter_transfer_leg_id,
-            proposal_ref,
             dao_id,
+            source_kind,
+            history_visible,
             transaction_type,
+            status,
+            event_time,
+            block_height,
+            source_order,
             token_in,
-            token_out,
             amount_in,
-            amount_out,
             amount_in_usd,
+            token_in_user_balance_after,
+            token_out,
+            amount_out,
             amount_out_usd,
+            token_out_user_balance_after,
             usd_change,
-            token_in_balance_before,
-            token_in_balance_after,
-            token_out_balance_before,
-            token_out_balance_after,
             recipient,
             counterparty,
-            refund_to,
             transaction_hash,
             receipt_id,
-            block_height,
-            event_time,
             proposal_id,
-            proposal_status,
             proposal_created_at,
             proposal_executed_at,
             proposal_execution_block_height,
             proposal_execution_transaction_hash,
-            status,
-            raw_payload
+            primary_transfer_leg_id,
+            counter_transfer_leg_id
         )
         VALUES (
-            $1, $2, $3, $4, $5, $6::public_transaction_type, $7, $8,
-            $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-            $19, $20, $21, $22, $23, $24, $25, $26::proposal_status,
-            $27, $28, $29, $30, $31::public_history_event_status, $32
+            $1, $2, 'public_silver_leg', TRUE,
+            $3::public_transaction_type, $4::public_history_event_status,
+            $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+            $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
         )
         ON CONFLICT (gold_event_key) DO UPDATE SET
             primary_transfer_leg_id = EXCLUDED.primary_transfer_leg_id,
             counter_transfer_leg_id = EXCLUDED.counter_transfer_leg_id,
-            proposal_ref = EXCLUDED.proposal_ref,
             dao_id = EXCLUDED.dao_id,
             transaction_type = EXCLUDED.transaction_type,
             token_in = EXCLUDED.token_in,
@@ -301,74 +303,65 @@ pub async fn upsert_gold_event(
             amount_in = EXCLUDED.amount_in,
             amount_out = EXCLUDED.amount_out,
             amount_in_usd = CASE
-                WHEN gold_public_history_events.token_in IS NOT DISTINCT FROM EXCLUDED.token_in
-                 AND gold_public_history_events.amount_in IS NOT DISTINCT FROM EXCLUDED.amount_in
-                 AND gold_public_history_events.event_time = EXCLUDED.event_time
-                THEN COALESCE(EXCLUDED.amount_in_usd, gold_public_history_events.amount_in_usd)
+                WHEN gold_treasury_ledger_events.token_in IS NOT DISTINCT FROM EXCLUDED.token_in
+                 AND gold_treasury_ledger_events.amount_in IS NOT DISTINCT FROM EXCLUDED.amount_in
+                 AND gold_treasury_ledger_events.event_time = EXCLUDED.event_time
+                THEN COALESCE(EXCLUDED.amount_in_usd, gold_treasury_ledger_events.amount_in_usd)
                 ELSE EXCLUDED.amount_in_usd
             END,
             amount_out_usd = CASE
-                WHEN gold_public_history_events.token_out IS NOT DISTINCT FROM EXCLUDED.token_out
-                 AND gold_public_history_events.amount_out IS NOT DISTINCT FROM EXCLUDED.amount_out
-                 AND gold_public_history_events.event_time = EXCLUDED.event_time
-                THEN COALESCE(EXCLUDED.amount_out_usd, gold_public_history_events.amount_out_usd)
+                WHEN gold_treasury_ledger_events.token_out IS NOT DISTINCT FROM EXCLUDED.token_out
+                 AND gold_treasury_ledger_events.amount_out IS NOT DISTINCT FROM EXCLUDED.amount_out
+                 AND gold_treasury_ledger_events.event_time = EXCLUDED.event_time
+                THEN COALESCE(EXCLUDED.amount_out_usd, gold_treasury_ledger_events.amount_out_usd)
                 ELSE EXCLUDED.amount_out_usd
             END,
             usd_change = EXCLUDED.usd_change,
-            token_in_balance_before = EXCLUDED.token_in_balance_before,
-            token_in_balance_after = EXCLUDED.token_in_balance_after,
-            token_out_balance_before = EXCLUDED.token_out_balance_before,
-            token_out_balance_after = EXCLUDED.token_out_balance_after,
+            source_order = EXCLUDED.source_order,
+            token_in_user_balance_after = EXCLUDED.token_in_user_balance_after,
+            token_out_user_balance_after = EXCLUDED.token_out_user_balance_after,
             recipient = EXCLUDED.recipient,
             counterparty = EXCLUDED.counterparty,
-            refund_to = EXCLUDED.refund_to,
             transaction_hash = EXCLUDED.transaction_hash,
             receipt_id = EXCLUDED.receipt_id,
             block_height = EXCLUDED.block_height,
             event_time = EXCLUDED.event_time,
             proposal_id = EXCLUDED.proposal_id,
-            proposal_status = EXCLUDED.proposal_status,
             proposal_created_at = EXCLUDED.proposal_created_at,
             proposal_executed_at = EXCLUDED.proposal_executed_at,
             proposal_execution_block_height = EXCLUDED.proposal_execution_block_height,
             proposal_execution_transaction_hash = EXCLUDED.proposal_execution_transaction_hash,
             status = EXCLUDED.status,
-            raw_payload = EXCLUDED.raw_payload,
             updated_at = NOW()
         "#,
     )
     .bind(&event.gold_event_key)
-    .bind(event.primary_transfer_leg_id)
-    .bind(event.counter_transfer_leg_id)
-    .bind(event.proposal_ref)
     .bind(&event.dao_id)
     .bind(event.transaction_type.as_str())
+    .bind(event.status.as_str())
+    .bind(event.event_time)
+    .bind(event.block_height)
+    .bind(event.source_order)
     .bind(&event.token_in)
-    .bind(&event.token_out)
     .bind(&event.amount_in)
-    .bind(&event.amount_out)
     .bind(&event.amount_in_usd)
+    .bind(&event.token_in_user_balance_after)
+    .bind(&event.token_out)
+    .bind(&event.amount_out)
     .bind(&event.amount_out_usd)
+    .bind(&event.token_out_user_balance_after)
     .bind(&event.usd_change)
-    .bind(&event.token_in_balance_before)
-    .bind(&event.token_in_balance_after)
-    .bind(&event.token_out_balance_before)
-    .bind(&event.token_out_balance_after)
     .bind(&event.recipient)
     .bind(&event.counterparty)
-    .bind(&event.refund_to)
     .bind(&event.transaction_hash)
     .bind(&event.receipt_id)
-    .bind(event.block_height)
-    .bind(event.event_time)
     .bind(event.proposal_id)
-    .bind(&event.proposal_status)
     .bind(event.proposal_created_at)
     .bind(event.proposal_executed_at)
     .bind(event.proposal_execution_block_height)
     .bind(&event.proposal_execution_transaction_hash)
-    .bind(event.status.as_str())
-    .bind(&event.raw_payload)
+    .bind(event.primary_transfer_leg_id)
+    .bind(event.counter_transfer_leg_id)
     .execute(&mut **tx)
     .await?;
     Ok(())
@@ -430,15 +423,16 @@ pub async fn delete_stale_gold_rows(
 ) -> Result<u64, sqlx::Error> {
     let result = sqlx::query(
         r#"
-        DELETE FROM gold_public_history_events
+        DELETE FROM gold_treasury_ledger_events
         WHERE dao_id = $1
+          AND source_kind = 'public_silver_leg'
           AND EXISTS (
               SELECT 1
               FROM silver_public_transfer_legs leg
               WHERE leg.block_time >= $2
                 AND leg.id IN (
-                    gold_public_history_events.primary_transfer_leg_id,
-                    gold_public_history_events.counter_transfer_leg_id
+                    gold_treasury_ledger_events.primary_transfer_leg_id,
+                    gold_treasury_ledger_events.counter_transfer_leg_id
                 )
           )
           AND NOT (gold_event_key = ANY($3))
@@ -544,35 +538,44 @@ mod tests {
     ) -> sqlx::Result<()> {
         sqlx::query(
             r#"
-            INSERT INTO gold_public_history_events (
+            INSERT INTO monitored_accounts (account_id, enabled, is_confidential_account)
+            VALUES ($1, true, false)
+            ON CONFLICT (account_id) DO NOTHING
+            "#,
+        )
+        .bind(DAO_ID)
+        .execute(pool)
+        .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO gold_treasury_ledger_events (
                 gold_event_key,
-                primary_transfer_leg_id,
-                counter_transfer_leg_id,
                 dao_id,
+                source_kind,
+                history_visible,
                 transaction_type,
-                token_in,
-                token_out,
-                amount_in,
-                amount_out,
-                token_in_balance_before,
-                token_in_balance_after,
-                token_out_balance_before,
-                token_out_balance_after,
-                event_time,
                 status,
-                raw_payload
+                event_time,
+                token_in,
+                amount_in,
+                token_in_user_balance_after,
+                token_out,
+                amount_out,
+                token_out_user_balance_after,
+                primary_transfer_leg_id,
+                counter_transfer_leg_id
             )
             VALUES (
-                $1, $2, $3, $4, 'exchange', 'token-in.near', 'token-out.near',
-                1, 1, 0, 1, 1, 0, $5, 'success', '{}'::jsonb
+                $1, $2, 'public_silver_leg', TRUE, 'exchange', 'success', $3,
+                'token-in.near', 1, 1, 'token-out.near', 1, 0, $4, $5
             )
             "#,
         )
         .bind(key)
-        .bind(primary_leg_id)
-        .bind(counter_leg_id)
         .bind(DAO_ID)
         .bind(event_time)
+        .bind(primary_leg_id)
+        .bind(counter_leg_id)
         .execute(pool)
         .await?;
         Ok(())
@@ -723,14 +726,15 @@ mod tests {
 
         let token_leg = stamp_probe_leg("ft-leg", "nearblocks_ft:ft-key", "nep141", "r-other");
         let token_stamp = stamps.for_leg(&token_leg).expect("token stamp by leg_key");
-        assert_eq!(token_stamp.balance_after, BigDecimal::from(1));
+        assert_eq!(token_stamp.user_balance_after, BigDecimal::from(1));
+        assert_eq!(token_stamp.intra_block_seq, 0);
 
         let native_leg = stamp_probe_leg("native-leg", "some-other-key", "native", "r-native");
         let native_stamp = stamps
             .for_leg(&native_leg)
             .expect("native stamp by receipt_id");
-        assert_eq!(native_stamp.balance_before, BigDecimal::from(2));
-        assert_eq!(native_stamp.balance_after, BigDecimal::from(7));
+        assert_eq!(native_stamp.user_balance_after, BigDecimal::from(7));
+        assert_eq!(native_stamp.intra_block_seq, 1);
 
         Ok(())
     }

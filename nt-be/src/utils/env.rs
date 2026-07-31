@@ -21,13 +21,9 @@ pub struct EnvVars {
     pub disable_balance_changes_usd_backfill: bool,
     pub disable_gold_public_usd_backfill: bool,
     pub disable_gold_confidential_usd_backfill: bool,
-    /// Global public medallion read switch. False keeps public activity and
-    /// charts on their legacy paths; true enables Gold activity reads for
-    /// ready DAOs and public balance-snapshot charts.
-    pub public_history_medallion_reads: bool,
-    /// True serves public activity reads (balanceBefore/After as user-owned
-    /// balances) from `gold_treasury_ledger_events`. Public charts already
-    /// read that table under the medallion flag.
+    /// Single public read switch. True serves public activity, charts, and
+    /// asset balances from `gold_treasury_ledger_events`; false keeps the
+    /// legacy `balance_changes` paths.
     pub unified_gold_ledger_reads: bool,
     /// Allowed absolute drift (in NEAR) between the bronze-derived native
     /// ledger head and the on-chain balance before verification fails. Drift
@@ -156,10 +152,6 @@ impl Default for EnvVars {
             .unwrap_or_else(|_| "false".to_string())
             .parse()
             .unwrap_or(false),
-            public_history_medallion_reads: std::env::var("PUBLIC_HISTORY_MEDALLION_READS")
-                .unwrap_or_else(|_| "false".to_string())
-                .parse()
-                .unwrap_or(false),
             unified_gold_ledger_reads: std::env::var("UNIFIED_GOLD_LEDGER_READS")
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()

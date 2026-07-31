@@ -189,7 +189,9 @@ pub async fn refresh_confidential_history(
     }
 
     if projection_changed {
-        state.publish_treasury_projection_updated(request.account_id.to_string());
+        state
+            .publish_treasury_projection_updated(request.account_id.to_string())
+            .await;
     }
 
     snapshot_confidential_dao_balances(&state, request.account_id.as_str()).await;

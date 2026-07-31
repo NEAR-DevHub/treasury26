@@ -407,7 +407,6 @@ async fn apply_ledger_balances(
         account.as_str(),
         chrono::Utc::now(),
         None,
-        true,
     )
     .await
     .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;

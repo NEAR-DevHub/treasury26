@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use serde_json::Value;
 
 use crate::handlers::public_history::silver::models::{
     PublicTransactionType, SilverTransferLegRow,
@@ -15,14 +14,15 @@ pub struct DirtyPublicGoldAccount {
     pub recompute_from: Option<DateTime<Utc>>,
 }
 
-/// Absolute balances around one ledger movement, read from
-/// `silver_balance_history`. Gold no longer maintains its own running total —
-/// it stamps these onto events, so feed-hidden movements (sponsor top-ups,
-/// wraps) are still absorbed into the next visible event's balance_before.
+/// Ledger identity of one movement, read from `silver_balance_history`.
+/// Gold does not maintain its own running total — it stamps the user-owned
+/// balance after each movement onto events, so feed-hidden movements
+/// (sponsor top-ups, wraps) are still absorbed into the next visible event's
+/// derived balance_before.
 #[derive(Debug, Clone)]
 pub struct BalanceStamp {
-    pub balance_before: BigDecimal,
-    pub balance_after: BigDecimal,
+    pub user_balance_after: BigDecimal,
+    pub intra_block_seq: i32,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -30,8 +30,8 @@ pub struct BalanceStampRow {
     pub entry_key: String,
     pub token_standard: String,
     pub receipt_id: Option<String>,
-    pub balance_before: BigDecimal,
-    pub balance_after: BigDecimal,
+    pub user_balance_after: BigDecimal,
+    pub intra_block_seq: i32,
 }
 
 #[derive(Debug, Default)]
@@ -48,8 +48,8 @@ impl BalanceStamps {
         let mut stamps = Self::default();
         for row in rows {
             let stamp = BalanceStamp {
-                balance_before: row.balance_before,
-                balance_after: row.balance_after,
+                user_balance_after: row.user_balance_after,
+                intra_block_seq: row.intra_block_seq,
             };
             if row.token_standard == "native"
                 && let Some(receipt_id) = row.receipt_id
@@ -91,14 +91,17 @@ impl PublicHistoryEventStatus {
     }
 }
 
+/// One activity row for `gold_treasury_ledger_events`. The writer constants
+/// (`source_kind = 'public_silver_leg'`, `history_visible = TRUE`) are
+/// hardcoded in the upsert SQL, not carried here.
 #[derive(Debug, Clone)]
 pub struct GoldPublicHistoryEvent {
     pub gold_event_key: String,
     pub primary_transfer_leg_id: i64,
     pub counter_transfer_leg_id: Option<i64>,
-    pub proposal_ref: Option<i64>,
     pub dao_id: String,
     pub transaction_type: PublicTransactionType,
+    pub source_order: i64,
     pub token_in: Option<String>,
     pub token_out: Option<String>,
     pub amount_in: Option<BigDecimal>,
@@ -106,25 +109,20 @@ pub struct GoldPublicHistoryEvent {
     pub amount_in_usd: Option<BigDecimal>,
     pub amount_out_usd: Option<BigDecimal>,
     pub usd_change: Option<BigDecimal>,
-    pub token_in_balance_before: Option<BigDecimal>,
-    pub token_in_balance_after: Option<BigDecimal>,
-    pub token_out_balance_before: Option<BigDecimal>,
-    pub token_out_balance_after: Option<BigDecimal>,
+    pub token_in_user_balance_after: Option<BigDecimal>,
+    pub token_out_user_balance_after: Option<BigDecimal>,
     pub recipient: Option<String>,
     pub counterparty: Option<String>,
-    pub refund_to: Option<String>,
     pub transaction_hash: Option<String>,
     pub receipt_id: Option<String>,
     pub block_height: Option<i64>,
     pub event_time: DateTime<Utc>,
     pub proposal_id: Option<i64>,
-    pub proposal_status: Option<String>,
     pub proposal_created_at: Option<DateTime<Utc>>,
     pub proposal_executed_at: Option<DateTime<Utc>>,
     pub proposal_execution_block_height: Option<i64>,
     pub proposal_execution_transaction_hash: Option<String>,
     pub status: PublicHistoryEventStatus,
-    pub raw_payload: Value,
 }
 
 #[derive(Debug, Clone, Default)]

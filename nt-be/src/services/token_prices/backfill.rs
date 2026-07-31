@@ -53,11 +53,11 @@ const RATE_LIMIT_MAX_BACKOFF: Duration = Duration::from_secs(30);
 
 const GOLD_RAW_IDS_SQL: &str = r#"
     SELECT DISTINCT token_in
-    FROM gold_public_history_events
+    FROM gold_treasury_ledger_events
     WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
     UNION
     SELECT DISTINCT token_out
-    FROM gold_public_history_events
+    FROM gold_treasury_ledger_events
     WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
     UNION
     SELECT DISTINCT origin_asset
@@ -89,11 +89,11 @@ const GOLD_MISSING_PAIRS_SQL: &str = r#"
     ),
     sources(raw_token_id, at) AS (
         SELECT token_in, event_time
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
         UNION ALL
         SELECT token_out, event_time
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
         UNION ALL
         SELECT origin_asset, COALESCE(proposal_executed_at, quote_created_at)
@@ -268,7 +268,7 @@ impl HistoricalPriceBackfill {
             SELECT MIN(at)
             FROM (
                 SELECT MIN(event_time) AS at
-                FROM gold_public_history_events
+                FROM gold_treasury_ledger_events
                 UNION ALL
                 SELECT MIN(COALESCE(proposal_executed_at, quote_created_at)) AS at
                 FROM gold_confidential_history_events
@@ -872,7 +872,7 @@ mod tests {
         assert!(GOLD_RAW_IDS_SQL.contains("token_out"));
         assert!(GOLD_RAW_IDS_SQL.contains("origin_asset"));
         assert!(GOLD_RAW_IDS_SQL.contains("destination_asset"));
-        assert!(GOLD_RAW_IDS_SQL.contains("gold_public_history_events"));
+        assert!(GOLD_RAW_IDS_SQL.contains("gold_treasury_ledger_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("silver_balance_history"));
         assert!(!GOLD_RAW_IDS_SQL.contains("silver_balance_history\n    WHERE"));

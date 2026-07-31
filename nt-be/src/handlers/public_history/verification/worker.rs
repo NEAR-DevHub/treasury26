@@ -4,6 +4,7 @@ use bigdecimal::{
     BigDecimal,
     num_traits::{Signed, Zero},
 };
+use chrono::{DateTime, Utc};
 use near_api::NetworkConfig;
 use sqlx::PgPool;
 
@@ -16,6 +17,7 @@ use super::repository::{
     load_native_ledger_head, load_native_ledger_head_tx, load_watermark, record_check_results,
     set_gate_status, set_head_check_result,
 };
+use crate::handlers::public_history::gold::unified::sync_hidden_ledger_rows;
 use crate::services::public_balance_reader::{
     get_public_balance_at_block, get_public_gross_native_balance_at_block,
 };
@@ -261,6 +263,7 @@ impl<'a> BalanceVerifier<'a> {
             )
             .await?;
             if written > 0 {
+                sync_hidden_ledger_rows(&mut tx, account_id, DateTime::<Utc>::UNIX_EPOCH).await?;
                 tracing::info!(
                     account_id,
                     head_block,
@@ -311,9 +314,13 @@ impl<'a> BalanceVerifier<'a> {
         )
         .await?;
         if all_passed {
-            stats.rebases_written += self
+            let rebases_written = self
                 .rebase_within_tolerance(&mut tx, account_id, &heads, &outcomes, &watermark)
                 .await?;
+            if rebases_written > 0 {
+                sync_hidden_ledger_rows(&mut tx, account_id, DateTime::<Utc>::UNIX_EPOCH).await?;
+            }
+            stats.rebases_written += rebases_written;
             set_gate_status(
                 &mut tx,
                 account_id,
@@ -376,9 +383,13 @@ impl<'a> BalanceVerifier<'a> {
         )
         .await?;
         if all_passed {
-            stats.rebases_written += self
+            let rebases_written = self
                 .rebase_within_tolerance(&mut tx, account_id, &heads, &outcomes, &watermark)
                 .await?;
+            if rebases_written > 0 {
+                sync_hidden_ledger_rows(&mut tx, account_id, DateTime::<Utc>::UNIX_EPOCH).await?;
+            }
+            stats.rebases_written += rebases_written;
         } else {
             for outcome in outcomes.iter().filter(|outcome| !outcome.passed) {
                 tracing::error!(

@@ -1,22 +1,28 @@
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::models::{ChartReadiness, GoldBalancePoint};
 
-/// Every balance-bearing unified-ledger leg for one DAO, unpivoted to
-/// (asset, user-owned balance) points in chain chronology. Visible activity
-/// rows contribute up to two legs whose chain times come from their silver
-/// legs (the counter/incoming leg carries its own time so carry-forward
-/// follows actual chronology, not the flattened display time); hidden ledger
-/// rows (sponsor top-ups, wraps, observations, rebases) carry their own block
-/// position. One indexed query per request; carry-forward happens in Rust.
+/// Balance-bearing unified-ledger legs for one DAO and chart window, unpivoted
+/// to (asset, user-owned balance) points in chain chronology. The query returns
+/// every point inside the window plus the latest point before `start_time` per
+/// asset, which is the carry-forward baseline for the first bucket.
+///
+/// Visible activity rows contribute up to two legs whose chain times come from
+/// their silver legs (the counter/incoming leg carries its own time so
+/// carry-forward follows actual chronology, not the flattened display time);
+/// hidden ledger rows (sponsor top-ups, wraps, observations, rebases) carry
+/// their own block position.
 pub async fn load_gold_balance_points(
     pool: &PgPool,
     dao_id: &str,
+    start_time: DateTime<Utc>,
+    end_time: DateTime<Utc>,
+    asset_ids: &[String],
 ) -> Result<Vec<GoldBalancePoint>, sqlx::Error> {
     sqlx::query_as::<_, GoldBalancePoint>(
         r#"
-        SELECT asset, balance, at_time, at_height, gold_id, leg_order
-        FROM (
+        WITH candidate_points AS (
             SELECT
                 gold.token_in AS asset,
                 gold.token_in_user_balance_after AS balance,
@@ -33,6 +39,11 @@ pub async fn load_gold_balance_points(
               AND gold.source_kind = 'public_silver_leg'
               AND gold.token_in IS NOT NULL
               AND gold.token_in_user_balance_after IS NOT NULL
+              AND COALESCE(counter_leg.block_time, primary_leg.block_time) <= $3
+              AND (
+                  cardinality($4::text[]) = 0
+                  OR gold.token_in = ANY($4::text[])
+              )
 
             UNION ALL
 
@@ -50,6 +61,11 @@ pub async fn load_gold_balance_points(
               AND gold.source_kind = 'public_silver_leg'
               AND gold.token_out IS NOT NULL
               AND gold.token_out_user_balance_after IS NOT NULL
+              AND primary_leg.block_time <= $3
+              AND (
+                  cardinality($4::text[]) = 0
+                  OR gold.token_out = ANY($4::text[])
+              )
 
             UNION ALL
 
@@ -70,11 +86,48 @@ pub async fn load_gold_balance_points(
                   gold.token_in_user_balance_after,
                   gold.token_out_user_balance_after
               ) IS NOT NULL
+              AND gold.event_time <= $3
+              AND (
+                  cardinality($4::text[]) = 0
+                  OR COALESCE(gold.token_in, gold.token_out) = ANY($4::text[])
+              )
+        ),
+        baseline AS (
+            SELECT DISTINCT ON (asset)
+                asset, balance, at_time, at_height, gold_id, leg_order
+            FROM candidate_points
+            WHERE at_time < $2
+            ORDER BY
+                asset ASC,
+                at_time DESC,
+                at_height DESC NULLS LAST,
+                gold_id DESC,
+                leg_order DESC
+        ),
+        window_points AS (
+            SELECT asset, balance, at_time, at_height, gold_id, leg_order
+            FROM candidate_points
+            WHERE at_time >= $2
+        )
+        SELECT asset, balance, at_time, at_height, gold_id, leg_order
+        FROM (
+            SELECT asset, balance, at_time, at_height, gold_id, leg_order
+            FROM baseline
+            UNION ALL
+            SELECT asset, balance, at_time, at_height, gold_id, leg_order
+            FROM window_points
         ) points
-        ORDER BY at_time ASC, at_height ASC, gold_id ASC, leg_order ASC
+        ORDER BY
+            at_time ASC,
+            at_height ASC NULLS LAST,
+            gold_id ASC,
+            leg_order ASC
         "#,
     )
     .bind(dao_id)
+    .bind(start_time)
+    .bind(end_time)
+    .bind(asset_ids)
     .fetch_all(pool)
     .await
 }
@@ -135,6 +188,18 @@ pub async fn load_chart_readiness(
                   AND staking.validated = true
                   AND staking.backfill_done = false
             ) AS staking_ready,
+            EXISTS (
+                SELECT 1
+                FROM gold_treasury_ledger_events gold
+                WHERE gold.dao_id = $1
+                  AND (
+                      (gold.token_in IS NOT NULL
+                       AND gold.token_in_user_balance_after IS NOT NULL)
+                      OR
+                      (gold.token_out IS NOT NULL
+                       AND gold.token_out_user_balance_after IS NOT NULL)
+                  )
+            ) AS has_gold_balance_points,
             (
                 SELECT MIN(block_time)
                 FROM silver_balance_history

@@ -222,20 +222,27 @@ pub async fn build_public_chart_response(
         return Ok(unavailable_response(&readiness));
     }
 
-    let mut points = load_gold_balance_points(&state.db_pool, account_id)
-        .await
-        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-    if points.is_empty() {
+    if !readiness.has_gold_balance_points {
         return Ok(unavailable_response(&readiness));
     }
 
-    if let Some(wanted) = token_ids.filter(|ids| !ids.is_empty()) {
-        let wanted = wanted
-            .iter()
-            .map(|asset| stored_asset_id(asset))
-            .collect::<HashSet<_>>();
-        points.retain(|point| wanted.contains(point.asset.as_str()));
-    }
+    let requested_assets = token_ids
+        .filter(|ids| !ids.is_empty())
+        .map(|ids| {
+            ids.iter()
+                .map(|asset| stored_asset_id(asset).to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let points = load_gold_balance_points(
+        &state.db_pool,
+        account_id,
+        start_time,
+        end_time,
+        &requested_assets,
+    )
+    .await
+    .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
     let assets = points
         .iter()

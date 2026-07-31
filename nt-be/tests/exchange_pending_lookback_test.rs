@@ -22,11 +22,11 @@ async fn cleanup(pool: &sqlx::PgPool) {
         .execute(pool)
         .await
         .expect("clear gold projection errors");
-    sqlx::query("DELETE FROM gold_public_history_events WHERE dao_id = $1")
+    sqlx::query("DELETE FROM gold_treasury_ledger_events WHERE dao_id = $1")
         .bind(ACCOUNT_ID)
         .execute(pool)
         .await
-        .expect("clear gold history events");
+        .expect("clear gold ledger events");
     sqlx::query("DELETE FROM gold_public_history_cursors WHERE account_id = $1")
         .bind(ACCOUNT_ID)
         .execute(pool)
@@ -88,6 +88,22 @@ async fn mark_backfill_complete(pool: &sqlx::PgPool) {
     .execute(pool)
     .await
     .expect("mark public history backfill complete");
+}
+
+/// The unified ledger table FKs dao_id to monitored_accounts, and the
+/// projector skips accounts that are not monitored as public.
+async fn seed_monitored_account(pool: &sqlx::PgPool) {
+    sqlx::query(
+        r#"
+        INSERT INTO monitored_accounts (account_id, enabled, is_confidential_account)
+        VALUES ($1, true, false)
+        ON CONFLICT (account_id) DO NOTHING
+        "#,
+    )
+    .bind(ACCOUNT_ID)
+    .execute(pool)
+    .await
+    .expect("seed monitored account");
 }
 
 /// Gold balance stamps resolve non-native legs by `entry_key == leg_key`
@@ -348,30 +364,30 @@ async fn insert_gold_exchange(
 ) {
     sqlx::query(
         r#"
-        INSERT INTO gold_public_history_events (
+        INSERT INTO gold_treasury_ledger_events (
             gold_event_key,
-            primary_transfer_leg_id,
             dao_id,
+            source_kind,
+            history_visible,
             transaction_type,
+            status,
+            event_time,
             token_out,
             amount_out,
-            token_out_balance_before,
-            token_out_balance_after,
-            event_time,
-            status,
-            raw_payload
+            token_out_user_balance_after,
+            primary_transfer_leg_id
         )
         VALUES (
-            $1, $2, $3, 'exchange', 'wrap.near', 0.1, 1.0, 0.9,
-            $4, $5::public_history_event_status, '{}'::jsonb
+            $1, $2, 'public_silver_leg', TRUE, 'exchange',
+            $3::public_history_event_status, $4, 'wrap.near', 0.1, 0.9, $5
         )
         "#,
     )
     .bind(event_key)
-    .bind(primary_leg_id)
     .bind(ACCOUNT_ID)
-    .bind(event_time)
     .bind(status)
+    .bind(event_time)
+    .bind(primary_leg_id)
     .execute(pool)
     .await
     .expect("insert gold exchange");
@@ -388,6 +404,7 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
         .await
         .expect("connect to test database");
     cleanup(&pool).await;
+    seed_monitored_account(&pool).await;
     mark_backfill_complete(&pool).await;
     let token_prices = TokenPriceService::new(pool.clone());
 
@@ -507,8 +524,9 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     let pending: (String, Option<String>, Option<String>) = sqlx::query_as(
         r#"
         SELECT transaction_type::text, token_in, token_out
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE dao_id = $1
+          AND source_kind = 'public_silver_leg'
         "#,
     )
     .bind(ACCOUNT_ID)
@@ -525,7 +543,7 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     // timestamp are unchanged.
     sqlx::query(
         r#"
-        UPDATE gold_public_history_events
+        UPDATE gold_treasury_ledger_events
         SET amount_out_usd = 42
         WHERE dao_id = $1
         "#,
@@ -570,7 +588,7 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
             token_out,
             status::text,
             amount_out_usd
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE dao_id = $1
         "#,
     )
@@ -593,9 +611,9 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     let reconciled_balances: (String, String) = sqlx::query_as(
         r#"
         SELECT
-            trim_scale(token_out_balance_after)::text,
-            trim_scale(token_in_balance_after)::text
-        FROM gold_public_history_events
+            trim_scale(token_out_user_balance_after)::text,
+            trim_scale(token_in_user_balance_after)::text
+        FROM gold_treasury_ledger_events
         WHERE dao_id = $1
         "#,
     )
@@ -611,7 +629,7 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     let standalone_deposits: i64 = sqlx::query_scalar(
         r#"
         SELECT COUNT(*)
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE dao_id = $1
           AND transaction_type = 'deposit'
           AND primary_transfer_leg_id = $2
@@ -640,7 +658,7 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
             COUNT(*),
             COUNT(*) FILTER (WHERE transaction_type = 'exchange'),
             COUNT(*) FILTER (WHERE transaction_type = 'deposit')
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE dao_id = $1
         "#,
     )
@@ -653,9 +671,9 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
     let replayed_balances: (String, String) = sqlx::query_as(
         r#"
         SELECT
-            trim_scale(token_out_balance_after)::text,
-            trim_scale(token_in_balance_after)::text
-        FROM gold_public_history_events
+            trim_scale(token_out_user_balance_after)::text,
+            trim_scale(token_in_user_balance_after)::text
+        FROM gold_treasury_ledger_events
         WHERE dao_id = $1
         "#,
     )
@@ -691,6 +709,7 @@ async fn earliest_pending_exchange_time_uses_oldest_pending_silver_time_only() {
         .await
         .expect("connect to test database");
     cleanup(&pool).await;
+    seed_monitored_account(&pool).await;
 
     let early = Utc.with_ymd_and_hms(2026, 7, 6, 8, 0, 0).unwrap();
     let middle = early + Duration::minutes(10);
@@ -736,7 +755,7 @@ async fn earliest_pending_exchange_time_uses_oldest_pending_silver_time_only() {
 
     assert_eq!(earliest_pending, Some(middle));
 
-    sqlx::query("UPDATE gold_public_history_events SET status = 'failed' WHERE dao_id = $1")
+    sqlx::query("UPDATE gold_treasury_ledger_events SET status = 'failed' WHERE dao_id = $1")
         .bind(ACCOUNT_ID)
         .execute(&pool)
         .await

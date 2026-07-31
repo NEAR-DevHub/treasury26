@@ -76,7 +76,7 @@ async fn load_fixtures(pool: &PgPool, fixture_sql: &str) {
 
 /// Query records that pass the legacy `balance_changes` visibility filters.
 ///
-/// Public activity/export APIs now read public rows from `gold_public_history_events`
+/// Public activity/export APIs now read public rows from `gold_treasury_ledger_events`
 /// and intentionally return empty for legacy-only accounts. These tests exercise
 /// the old Goldsky indexing pipeline itself, so assertions read the legacy table
 /// directly instead of going through `/api/balance-changes`.

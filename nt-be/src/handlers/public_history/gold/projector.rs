@@ -82,8 +82,8 @@ impl ParsedQuoteStatus {
 
 struct PendingExchange {
     outgoing: SilverTransferLegRow,
-    token_out_balance_before: Option<BigDecimal>,
-    token_out_balance_after: Option<BigDecimal>,
+    token_out_user_balance_after: Option<BigDecimal>,
+    source_order: i64,
 }
 
 fn choose_recompute_from(
@@ -593,17 +593,14 @@ fn public_gold_event_from_leg(
 
     match direction {
         PublicTransferDirection::Incoming => {
-            let BalanceStamp {
-                balance_before: before,
-                balance_after: after,
-            } = required_stamp_for_leg(stamps, leg)?;
+            let stamp = required_stamp_for_leg(stamps, leg)?;
             Ok(Some(GoldPublicHistoryEvent {
                 gold_event_key,
                 primary_transfer_leg_id: leg.id,
                 counter_transfer_leg_id: None,
-                proposal_ref: leg.proposal_ref,
                 dao_id: leg.account_id.clone(),
                 transaction_type: PublicTransactionType::Deposit,
+                source_order: stamp.intra_block_seq as i64,
                 token_in: Some(leg.token_id.clone()),
                 token_out: None,
                 amount_in: Some(leg.amount.clone()),
@@ -611,19 +608,15 @@ fn public_gold_event_from_leg(
                 amount_in_usd: amount_usd,
                 amount_out_usd: None,
                 usd_change: None,
-                token_in_balance_before: Some(before),
-                token_in_balance_after: Some(after),
-                token_out_balance_before: None,
-                token_out_balance_after: None,
+                token_in_user_balance_after: Some(stamp.user_balance_after),
+                token_out_user_balance_after: None,
                 recipient: None,
                 counterparty: leg.counterparty.clone(),
-                refund_to: None,
                 transaction_hash: leg.transaction_hash.clone(),
                 receipt_id: leg.receipt_id.clone(),
                 block_height: Some(leg.block_height),
                 event_time,
                 proposal_id: leg.proposal_id,
-                proposal_status: leg.proposal_status.clone(),
                 proposal_created_at: leg.proposal_created_at,
                 proposal_executed_at: leg.proposal_executed_at,
                 proposal_execution_block_height: leg.proposal_execution_block_height,
@@ -631,14 +624,11 @@ fn public_gold_event_from_leg(
                     .proposal_execution_transaction_hash
                     .clone(),
                 status: PublicHistoryEventStatus::Success,
-                raw_payload: leg.raw_payload.clone(),
             }))
         }
         PublicTransferDirection::Outgoing => {
             let quote_payment = is_quote_payment_outgoing(leg, quote, relayer_account)?;
             let stamp = required_stamp_for_leg(stamps, leg)?;
-            let (token_out_balance_before, token_out_balance_after) =
-                (Some(stamp.balance_before), Some(stamp.balance_after));
             let recipient = outgoing_recipient(quote_payment.as_ref(), leg);
             let status = if quote_payment.is_some() {
                 quote_event_status(quote)
@@ -649,9 +639,9 @@ fn public_gold_event_from_leg(
                 gold_event_key,
                 primary_transfer_leg_id: leg.id,
                 counter_transfer_leg_id: None,
-                proposal_ref: leg.proposal_ref,
                 dao_id: leg.account_id.clone(),
                 transaction_type: PublicTransactionType::Sent,
+                source_order: stamp.intra_block_seq as i64,
                 token_in: None,
                 token_out: Some(leg.token_id.clone()),
                 amount_in: None,
@@ -659,19 +649,15 @@ fn public_gold_event_from_leg(
                 amount_in_usd: None,
                 amount_out_usd: amount_usd,
                 usd_change: None,
-                token_in_balance_before: None,
-                token_in_balance_after: None,
-                token_out_balance_before,
-                token_out_balance_after,
+                token_in_user_balance_after: None,
+                token_out_user_balance_after: Some(stamp.user_balance_after),
                 recipient,
                 counterparty: leg.counterparty.clone(),
-                refund_to: None,
                 transaction_hash: leg.transaction_hash.clone(),
                 receipt_id: leg.receipt_id.clone(),
                 block_height: Some(leg.block_height),
                 event_time,
                 proposal_id: leg.proposal_id,
-                proposal_status: leg.proposal_status.clone(),
                 proposal_created_at: leg.proposal_created_at,
                 proposal_executed_at: leg.proposal_executed_at,
                 proposal_execution_block_height: leg.proposal_execution_block_height,
@@ -679,15 +665,6 @@ fn public_gold_event_from_leg(
                     .proposal_execution_transaction_hash
                     .clone(),
                 status,
-                raw_payload: if quote_payment.is_some() {
-                    serde_json::json!({
-                        "classification": "quote_payment_transfer",
-                        "quote_metadata": leg.quote_metadata.clone(),
-                        "outgoing_leg": leg.raw_payload.clone(),
-                    })
-                } else {
-                    leg.raw_payload.clone()
-                },
             }))
         }
         PublicTransferDirection::Internal => Ok(None),
@@ -712,9 +689,9 @@ fn pending_exchange_event_from_leg(
         gold_event_key: format!("silver-leg:{}", leg.leg_key),
         primary_transfer_leg_id: leg.id,
         counter_transfer_leg_id: None,
-        proposal_ref: leg.proposal_ref,
         dao_id: leg.account_id.clone(),
         transaction_type: PublicTransactionType::Exchange,
+        source_order: pending.source_order,
         token_in: None,
         token_out: Some(leg.token_id.clone()),
         amount_in: None,
@@ -722,29 +699,20 @@ fn pending_exchange_event_from_leg(
         amount_in_usd,
         amount_out_usd,
         usd_change,
-        token_in_balance_before: None,
-        token_in_balance_after: None,
-        token_out_balance_before: pending.token_out_balance_before.clone(),
-        token_out_balance_after: pending.token_out_balance_after.clone(),
+        token_in_user_balance_after: None,
+        token_out_user_balance_after: pending.token_out_user_balance_after.clone(),
         recipient: leg.counterparty.clone(),
         counterparty: leg.counterparty.clone(),
-        refund_to: None,
         transaction_hash: leg.transaction_hash.clone(),
         receipt_id: leg.receipt_id.clone(),
         block_height: Some(leg.block_height),
         event_time: leg.proposal_executed_at.unwrap_or(leg.block_time),
         proposal_id: leg.proposal_id,
-        proposal_status: leg.proposal_status.clone(),
         proposal_created_at: leg.proposal_created_at,
         proposal_executed_at: leg.proposal_executed_at,
         proposal_execution_block_height: leg.proposal_execution_block_height,
         proposal_execution_transaction_hash: leg.proposal_execution_transaction_hash.clone(),
         status,
-        raw_payload: serde_json::json!({
-            "classification": "quote_matched_exchange_pending",
-            "quote_metadata": leg.quote_metadata.clone(),
-            "outgoing_leg": leg.raw_payload.clone(),
-        }),
     })
 }
 
@@ -755,10 +723,7 @@ fn completed_exchange_event_from_legs(
     stamps: &BalanceStamps,
 ) -> Result<GoldPublicHistoryEvent, String> {
     let outgoing = &pending.outgoing;
-    let BalanceStamp {
-        balance_before: token_in_balance_before,
-        balance_after: token_in_balance_after,
-    } = required_stamp_for_leg(stamps, incoming)?;
+    let incoming_stamp = required_stamp_for_leg(stamps, incoming)?;
     let status_quote = quote.and_then(|quote| quote.status.as_ref());
     let amount_in_usd = status_quote.and_then(|quote| quote.amount_received_usd.clone());
     let amount_out_usd = status_quote.and_then(|quote| quote.amount_sent_usd.clone());
@@ -768,9 +733,9 @@ fn completed_exchange_event_from_legs(
         gold_event_key: format!("silver-leg:{}", outgoing.leg_key),
         primary_transfer_leg_id: outgoing.id,
         counter_transfer_leg_id: Some(incoming.id),
-        proposal_ref: outgoing.proposal_ref,
         dao_id: outgoing.account_id.clone(),
         transaction_type: PublicTransactionType::Exchange,
+        source_order: incoming_stamp.intra_block_seq as i64,
         token_in: Some(incoming.token_id.clone()),
         token_out: Some(outgoing.token_id.clone()),
         amount_in: Some(incoming.amount.clone()),
@@ -778,30 +743,20 @@ fn completed_exchange_event_from_legs(
         amount_in_usd,
         amount_out_usd,
         usd_change,
-        token_in_balance_before: Some(token_in_balance_before),
-        token_in_balance_after: Some(token_in_balance_after),
-        token_out_balance_before: pending.token_out_balance_before.clone(),
-        token_out_balance_after: pending.token_out_balance_after.clone(),
+        token_in_user_balance_after: Some(incoming_stamp.user_balance_after),
+        token_out_user_balance_after: pending.token_out_user_balance_after.clone(),
         recipient: Some(incoming.account_id.clone()),
         counterparty: outgoing.counterparty.clone(),
-        refund_to: None,
         transaction_hash: outgoing.transaction_hash.clone(),
         receipt_id: outgoing.receipt_id.clone(),
         block_height: Some(outgoing.block_height),
         event_time: outgoing.proposal_executed_at.unwrap_or(outgoing.block_time),
         proposal_id: outgoing.proposal_id,
-        proposal_status: outgoing.proposal_status.clone(),
         proposal_created_at: outgoing.proposal_created_at,
         proposal_executed_at: outgoing.proposal_executed_at,
         proposal_execution_block_height: outgoing.proposal_execution_block_height,
         proposal_execution_transaction_hash: outgoing.proposal_execution_transaction_hash.clone(),
         status: PublicHistoryEventStatus::Success,
-        raw_payload: serde_json::json!({
-            "classification": "quote_matched_exchange_success",
-            "quote_metadata": outgoing.quote_metadata.clone(),
-            "outgoing_leg": outgoing.raw_payload.clone(),
-            "incoming_leg": incoming.raw_payload.clone(),
-        }),
     })
 }
 
@@ -844,6 +799,27 @@ pub async fn project_public_gold_for_account(
     relayer_account: &str,
 ) -> Result<GoldProjectionResult, sqlx::Error> {
     if !is_public_history_backfill_complete(pool, account_id).await? {
+        return Ok(GoldProjectionResult::default());
+    }
+
+    // The unified table FKs dao_id to monitored_accounts and holds public
+    // rows only; a missing or confidential row here means this account must
+    // never be projected (the bronze scheduler only enrolls public accounts).
+    let is_public_monitored: Option<bool> = sqlx::query_scalar(
+        r#"
+        SELECT NOT COALESCE(is_confidential_account, false)
+        FROM monitored_accounts
+        WHERE account_id = $1
+        "#,
+    )
+    .bind(account_id)
+    .fetch_optional(pool)
+    .await?;
+    if !is_public_monitored.unwrap_or(false) {
+        tracing::warn!(
+            account_id = account_id,
+            "skipping public gold projection: account is not monitored as public"
+        );
         return Ok(GoldProjectionResult::default());
     }
 
@@ -959,26 +935,19 @@ pub async fn project_public_gold_for_account(
             .and_then(|proposal_ref| quote_by_proposal_ref.get(&proposal_ref));
 
         if is_quote_matched_exchange_deposit(&leg, quote, relayer_account).unwrap_or(false) {
-            let (token_out_balance_before, token_out_balance_after) =
-                match required_stamp_for_leg(&stamps, &leg) {
-                    Ok(stamp) => (Some(stamp.balance_before), Some(stamp.balance_after)),
-                    Err(reason) => {
-                        upsert_projection_error(
-                            &mut tx,
-                            leg.id,
-                            account_id,
-                            &reason,
-                            &leg.raw_payload,
-                        )
+            let stamp = match required_stamp_for_leg(&stamps, &leg) {
+                Ok(stamp) => stamp,
+                Err(reason) => {
+                    upsert_projection_error(&mut tx, leg.id, account_id, &reason, &leg.raw_payload)
                         .await?;
-                        stats.errors_written += 1;
-                        continue;
-                    }
-                };
+                    stats.errors_written += 1;
+                    continue;
+                }
+            };
             let pending = PendingExchange {
                 outgoing: leg.clone(),
-                token_out_balance_before,
-                token_out_balance_after,
+                token_out_user_balance_after: Some(stamp.user_balance_after),
+                source_order: stamp.intra_block_seq as i64,
             };
 
             if exchange_pairs.outgoing_to_incoming.contains_key(&leg.id) {
@@ -1065,9 +1034,9 @@ pub async fn project_public_gold_for_account(
     stats.rows_deleted =
         delete_stale_gold_rows(&mut tx, account_id, recompute_from, &preserve_keys).await?;
 
-    // Dual-projection: mirror the recomputed window into the unified ledger
-    // table inside the same transaction, so both read paths stay consistent.
-    super::unified::sync_unified_for_account(&mut tx, account_id, recompute_from).await?;
+    // After activity upserts and stale deletes so the hidden-row anti-join
+    // sees the final activity set for the recomputed window.
+    super::unified::sync_hidden_ledger_rows(&mut tx, account_id, recompute_from).await?;
 
     let has_projection_errors = has_public_history_projection_errors(&mut tx, account_id).await?;
     if stats.errors_written == 0 && !has_projection_errors {
@@ -1163,6 +1132,16 @@ mod tests {
         pool: PgPool,
     ) -> sqlx::Result<()> {
         let account_id = "projection-readiness-test.sputnik-dao.near";
+        sqlx::query(
+            r#"
+            INSERT INTO monitored_accounts (account_id, enabled, is_confidential_account)
+            VALUES ($1, true, false)
+            ON CONFLICT (account_id) DO NOTHING
+            "#,
+        )
+        .bind(account_id)
+        .execute(&pool)
+        .await?;
         for source in PublicHistorySource::all() {
             save_public_backfill_progress(&pool, account_id, source, None, true).await?;
         }
@@ -1595,12 +1574,12 @@ mod tests {
         BalanceStamps::from_rows(
             entries
                 .iter()
-                .map(|(leg, before, after)| BalanceStampRow {
+                .map(|(leg, _before, after)| BalanceStampRow {
                     entry_key: leg.leg_key.clone(),
                     token_standard: leg.token_standard.clone(),
                     receipt_id: leg.receipt_id.clone(),
-                    balance_before: decimal(before),
-                    balance_after: decimal(after),
+                    user_balance_after: decimal(after),
+                    intra_block_seq: 0,
                 })
                 .collect(),
         )
@@ -1616,8 +1595,7 @@ mod tests {
                 .expect("projectable deposit");
         assert_eq!(deposit.amount_in, Some(decimal("5")));
         assert_eq!(deposit.amount_in_usd, None);
-        assert_eq!(deposit.token_in_balance_before, Some(decimal("0")));
-        assert_eq!(deposit.token_in_balance_after, Some(decimal("5")));
+        assert_eq!(deposit.token_in_user_balance_after, Some(decimal("5")));
 
         let mut outgoing = incoming;
         outgoing.direction = "outgoing".to_string();
@@ -1628,7 +1606,7 @@ mod tests {
             .expect("projectable send");
         assert_eq!(sent.amount_out, Some(decimal("5")));
         assert_eq!(sent.amount_out_usd, None);
-        assert_eq!(sent.token_out_balance_after, Some(decimal("0")));
+        assert_eq!(sent.token_out_user_balance_after, Some(decimal("0")));
     }
 
     #[test]
@@ -1794,8 +1772,8 @@ mod tests {
                 let stamp = stamps.for_leg(&leg).expect("outgoing stamp");
                 let pending = PendingExchange {
                     outgoing: leg.clone(),
-                    token_out_balance_before: Some(stamp.balance_before),
-                    token_out_balance_after: Some(stamp.balance_after),
+                    token_out_user_balance_after: Some(stamp.user_balance_after),
+                    source_order: stamp.intra_block_seq as i64,
                 };
                 pending_exchanges.insert(leg.id, pending);
                 if let Some(incoming) = deferred_incoming.remove(&leg.id)
@@ -1868,8 +1846,8 @@ mod tests {
         let outgoing = leg("nep141", Some("deposit.near"), "1");
         let pending = PendingExchange {
             outgoing,
-            token_out_balance_before: Some(decimal("10")),
-            token_out_balance_after: Some(decimal("9")),
+            token_out_user_balance_after: Some(decimal("9")),
+            source_order: 0,
         };
         let quote = ParsedQuoteMetadata {
             proposal: None,

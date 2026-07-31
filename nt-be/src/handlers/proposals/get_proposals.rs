@@ -610,8 +610,10 @@ async fn enrich_public_proposals(proposals: &mut [Proposal], pool: &PgPool, dao_
             amount_out_usd::TEXT,
             usd_change::TEXT,
             transaction_type::TEXT AS transaction_type
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE dao_id = $1
+          AND history_visible
+          AND source_kind = 'public_silver_leg'
           AND proposal_id = ANY($2::BIGINT[])
           AND transaction_type IN ('sent', 'exchange')
         ORDER BY proposal_id, COALESCE(proposal_executed_at, proposal_created_at, event_time) DESC, id DESC

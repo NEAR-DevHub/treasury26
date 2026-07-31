@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use apalis::layers::WorkerBuilderExt;
 use apalis::prelude::*;
 use apalis_core::backend::TaskSinkError;
+use apalis_core::backend::poll_strategy::{IntervalStrategy, StrategyBuilder};
 use apalis_core::task::Task;
 use apalis_postgres::{Config, PgContext, PgTask, PostgresStorage};
 use axum::http::StatusCode;
@@ -38,7 +39,19 @@ use super::postgres::{
     set_active_public_history_job_priority,
 };
 
-pub(crate) const JOB_CONCURRENCY: usize = 2;
+pub(crate) const JOB_CONCURRENCY_DEFAULT: usize = 2;
+
+/// Latest-refresh worker slots, overridable via
+/// `PUBLIC_HISTORY_LATEST_CONCURRENCY`. Slots hold the shared NearBlocks
+/// rate gate while fetching, so raising this only helps together with a
+/// higher `NEARBLOCKS_MAX_PER_MINUTE`.
+pub(crate) fn job_concurrency() -> usize {
+    std::env::var("PUBLIC_HISTORY_LATEST_CONCURRENCY")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(JOB_CONCURRENCY_DEFAULT)
+        .max(1)
+}
 pub(crate) const BACKFILL_JOB_CONCURRENCY: usize = 2;
 pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 50;
 
@@ -74,28 +87,26 @@ fn public_history_error(message: impl Into<String>) -> BoxDynError {
     std::io::Error::other(message.into()).into()
 }
 
+/// Fixed poll cadence for the latency-sensitive latest queue. The apalis
+/// default strategy backs off exponentially to 60s while a queue is idle,
+/// which is exactly the state this queue is in between activity bursts — a
+/// detector enqueue would then wait up to a full minute to be picked up.
+const LATEST_POLL_INTERVAL: Duration = Duration::from_secs(1);
+
 fn latest_storage(pool: PgPool) -> PublicHistoryStorage {
-    public_history_storage(
-        pool,
-        PUBLIC_HISTORY_LATEST_NAMESPACE,
-        JOB_CONCURRENCY.max(1),
-    )
+    let config = Config::new(PUBLIC_HISTORY_LATEST_NAMESPACE)
+        .set_buffer_size(job_concurrency())
+        .with_poll_interval(
+            StrategyBuilder::new()
+                .apply(IntervalStrategy::new(LATEST_POLL_INTERVAL))
+                .build(),
+        );
+    PostgresStorage::new_with_config(&pool, &config)
 }
 
 fn backfill_storage(pool: PgPool) -> PublicHistoryStorage {
-    public_history_storage(
-        pool,
-        PUBLIC_HISTORY_BACKFILL_NAMESPACE,
-        BACKFILL_JOB_CONCURRENCY.max(1),
-    )
-}
-
-fn public_history_storage(
-    pool: PgPool,
-    namespace: &'static str,
-    buffer_size: usize,
-) -> PublicHistoryStorage {
-    let config = Config::new(namespace).set_buffer_size(buffer_size);
+    let config = Config::new(PUBLIC_HISTORY_BACKFILL_NAMESPACE)
+        .set_buffer_size(BACKFILL_JOB_CONCURRENCY.max(1));
     PostgresStorage::new_with_config(&pool, &config)
 }
 
@@ -593,7 +604,8 @@ async fn handle_latest_job(
             if gold_stats.rows_projected > 0 || gold_stats.rows_deleted > 0 {
                 context
                     .state
-                    .publish_treasury_projection_updated(account_id.clone());
+                    .publish_treasury_projection_updated(account_id.clone())
+                    .await;
             }
 
             // First verification is event-driven: a freshly projected
@@ -806,7 +818,7 @@ pub(crate) fn public_history_job_worker_futures(
                     .data(JobContext::new(latest_state))
                     .timeout(crate::jobs::job_timeout())
                     .enable_tracing()
-                    .concurrency(JOB_CONCURRENCY)
+                    .concurrency(job_concurrency())
                     .build(handle_latest_job)
                     .run_until(async move {
                         worker_shutdown.cancelled().await;

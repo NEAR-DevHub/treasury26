@@ -25,7 +25,7 @@ services:
         value: json
       - key: PORT
         value: 10000
-      - key: PUBLIC_HISTORY_MEDALLION_READS
+      - key: UNIFIED_GOLD_LEDGER_READS
         value: "false"
       - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
         value: 300
@@ -113,7 +113,7 @@ services:
         value: json
       - key: PORT
         value: 10000
-      - key: PUBLIC_HISTORY_MEDALLION_READS
+      - key: UNIFIED_GOLD_LEDGER_READS
         value: "false"
       - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
         value: 300

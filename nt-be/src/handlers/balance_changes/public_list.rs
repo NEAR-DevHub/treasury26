@@ -1,7 +1,8 @@
-//! Read-side adapter for public DAOs backed by `gold_public_history_events`.
+//! Read-side adapter for public DAOs backed by `gold_treasury_ledger_events`.
 //!
 //! This mirrors `confidential_list`: callers keep using `EnrichedBalanceChange`
-//! while the backing table switches from legacy `balance_changes` to public gold.
+//! while the backing table switches from legacy `balance_changes` to the
+//! unified gold ledger.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -176,7 +177,6 @@ fn bind_public_filters<'a>(
     mut builder: QueryBuilder<'a, sqlx::Postgres>,
     params: &'a BalanceChangesQuery,
     count_only: bool,
-    unified: bool,
 ) -> QueryBuilder<'a, sqlx::Postgres> {
     let start_date = params
         .start_time
@@ -193,9 +193,7 @@ fn bind_public_filters<'a>(
 
     builder.push(" WHERE dao_id = ");
     builder.push_bind(params.account_id.as_str());
-    if unified {
-        builder.push(" AND history_visible AND source_kind = 'public_silver_leg'");
-    }
+    builder.push(" AND history_visible AND source_kind = 'public_silver_leg'");
 
     if let Some(start) = start_date {
         builder.push(" AND event_time >= ");
@@ -322,15 +320,10 @@ fn bind_public_filters<'a>(
 pub async fn count_balance_change_legs(
     pool: &PgPool,
     params: &BalanceChangesQuery,
-    unified: bool,
 ) -> Result<i64, sqlx::Error> {
-    let table = if unified {
-        "gold_treasury_ledger_events"
-    } else {
-        "gold_public_history_events"
-    };
-    let builder = QueryBuilder::<sqlx::Postgres>::new(format!("SELECT COUNT(*) FROM {table}"));
-    let mut builder = bind_public_filters(builder, params, true, unified);
+    let builder =
+        QueryBuilder::<sqlx::Postgres>::new("SELECT COUNT(*) FROM gold_treasury_ledger_events");
+    let mut builder = bind_public_filters(builder, params, true);
     builder.build_query_scalar::<i64>().fetch_one(pool).await
 }
 
@@ -339,65 +332,63 @@ pub async fn load_prior_balances(
     account_id: &str,
     start_time: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
-    unified: bool,
 ) -> Result<HashMap<String, BigDecimal>, sqlx::Error> {
     // Latest is chain order (block, then intra-block source order), not
     // event_time: same-transaction legs share one event_time, and an id
     // tiebreak there can surface the balance from before the final leg.
-    let (table, in_balance, out_balance, source_order) = if unified {
-        (
-            "gold_treasury_ledger_events",
-            "token_in_user_balance_after",
-            "token_out_user_balance_after",
-            "source_order",
-        )
-    } else {
-        (
-            "gold_public_history_events",
-            "token_in_balance_after",
-            "token_out_balance_after",
-            "0 AS source_order",
-        )
-    };
-    let mut builder = QueryBuilder::<sqlx::Postgres>::new(format!(
+    //
+    // Each stamp is positioned at the block of the leg it came from, not the
+    // row's own block: an exchange row carries the outgoing leg's block, but
+    // its token_in stamp belongs to the incoming (counter) leg, which can
+    // land blocks later — ordering by the row block would let an older
+    // hidden-row stamp shadow it.
+    let mut builder = QueryBuilder::<sqlx::Postgres>::new(
         r#"
         SELECT DISTINCT ON (asset) asset, balance
         FROM (
-            SELECT token_in AS asset, {in_balance} AS balance,
-                   block_height, {source_order}, event_time, id
-            FROM {table}
-            WHERE dao_id = "#,
-    ));
+            SELECT gold.token_in AS asset,
+                   gold.token_in_user_balance_after AS balance,
+                   COALESCE(counter_leg.block_height, primary_leg.block_height,
+                            gold.block_height) AS block_height,
+                   gold.source_order, gold.event_time, gold.id
+            FROM gold_treasury_ledger_events gold
+            LEFT JOIN silver_public_transfer_legs primary_leg
+              ON primary_leg.id = gold.primary_transfer_leg_id
+            LEFT JOIN silver_public_transfer_legs counter_leg
+              ON counter_leg.id = gold.counter_transfer_leg_id
+            WHERE gold.dao_id = "#,
+    );
     builder.push_bind(account_id);
-    builder.push(" AND event_time < ");
+    builder.push(" AND gold.event_time < ");
     builder.push_bind(start_time);
-    builder.push(format!(
-        " AND token_in IS NOT NULL AND {in_balance} IS NOT NULL"
-    ));
+    builder.push(" AND gold.token_in IS NOT NULL AND gold.token_in_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND token_in = ANY(");
+        builder.push(" AND gold.token_in = ANY(");
         builder.push_bind(tokens.clone());
         builder.push(")");
     }
 
-    builder.push(format!(
+    builder.push(
         r#"
             UNION ALL
-            SELECT token_out AS asset, {out_balance} AS balance,
-                   block_height, {source_order}, event_time, id
-            FROM {table}
-            WHERE dao_id = "#,
-    ));
+            SELECT gold.token_out AS asset,
+                   gold.token_out_user_balance_after AS balance,
+                   COALESCE(primary_leg.block_height, gold.block_height) AS block_height,
+                   gold.source_order, gold.event_time, gold.id
+            FROM gold_treasury_ledger_events gold
+            LEFT JOIN silver_public_transfer_legs primary_leg
+              ON primary_leg.id = gold.primary_transfer_leg_id
+            WHERE gold.dao_id = "#,
+    );
     builder.push_bind(account_id);
-    builder.push(" AND event_time < ");
+    builder.push(" AND gold.event_time < ");
     builder.push_bind(start_time);
-    builder.push(format!(
-        " AND token_out IS NOT NULL AND {out_balance} IS NOT NULL"
-    ));
+    builder
+        .push(" AND gold.token_out IS NOT NULL AND gold.token_out_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND token_out = ANY(");
+        builder.push(" AND gold.token_out = ANY(");
         builder.push_bind(tokens.clone());
         builder.push(")");
     }
@@ -422,13 +413,11 @@ pub async fn fetch_balance_change_legs(
     state: &Arc<AppState>,
     params: &BalanceChangesQuery,
 ) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
-    let unified = state.env_vars.unified_gold_ledger_reads;
     // Unified rows carry user-owned balances; balance_before is derived
     // (user_balance_after − signed delta) instead of stored. Visible rows are
     // always user-owned by construction — non-user movements are hidden.
-    let builder = if unified {
-        QueryBuilder::<sqlx::Postgres>::new(
-            r#"
+    let builder = QueryBuilder::<sqlx::Postgres>::new(
+        r#"
         SELECT
             id,
             dao_id,
@@ -464,41 +453,8 @@ pub async fn fetch_balance_change_legs(
             created_at
         FROM gold_treasury_ledger_events
         "#,
-        )
-    } else {
-        QueryBuilder::<sqlx::Postgres>::new(
-            r#"
-        SELECT
-            id,
-            dao_id,
-            transaction_type::text AS transaction_type,
-            token_in,
-            token_out,
-            amount_in,
-            amount_out,
-            amount_in_usd,
-            amount_out_usd,
-            usd_change,
-            token_in_balance_before,
-            token_in_balance_after,
-            token_out_balance_before,
-            token_out_balance_after,
-            recipient,
-            counterparty,
-            transaction_hash,
-            receipt_id,
-            block_height,
-            event_time,
-            proposal_id,
-            proposal_execution_transaction_hash,
-            status::text AS status,
-            raw_payload->'quote_metadata' AS quote_metadata,
-            created_at
-        FROM gold_public_history_events
-        "#,
-        )
-    };
-    let mut builder = bind_public_filters(builder, params, false, unified);
+    );
+    let mut builder = bind_public_filters(builder, params, false);
     let rows: Vec<PublicGoldRow> = builder.build_query_as().fetch_all(&state.db_pool).await?;
 
     let legs: Vec<LegRow> = rows.into_iter().flat_map(LegRow::from_gold).collect();

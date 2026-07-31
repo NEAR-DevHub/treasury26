@@ -1,7 +1,7 @@
 use bigdecimal::BigDecimal;
 use chrono::{TimeZone, Utc};
 use nt_be::handlers::public_history::charts::repository::load_gold_balance_points;
-use nt_be::handlers::public_history::gold::unified::sync_unified_for_account;
+use nt_be::handlers::public_history::gold::unified::sync_hidden_ledger_rows;
 use sqlx::PgPool;
 
 const DAO: &str = "chart-only.sputnik-dao.near";
@@ -81,15 +81,16 @@ async fn chart_queries_work_without_the_legacy_balance_table(pool: PgPool) {
 
     sqlx::query(
         r#"
-        INSERT INTO gold_public_history_events (
-            gold_event_key, primary_transfer_leg_id, dao_id, transaction_type,
-            token_in, amount_in, token_in_balance_before, token_in_balance_after,
-            block_height, event_time, status, raw_payload
+        INSERT INTO gold_treasury_ledger_events (
+            gold_event_key, dao_id, source_kind, history_visible,
+            transaction_type, status, event_time, block_height, source_order,
+            token_in, amount_in, token_in_user_balance_after,
+            primary_transfer_leg_id
         )
         VALUES (
-            'chart-gold', $1, $2, 'deposit',
-            'near', 42, 0, 42,
-            100, $3, 'success', '{}'::jsonb
+            'chart-gold', $2, 'public_silver_leg', TRUE,
+            'deposit', 'success', $3, 100, 0,
+            'near', 42, 42, $1
         )
         "#,
     )
@@ -98,22 +99,68 @@ async fn chart_queries_work_without_the_legacy_balance_table(pool: PgPool) {
     .bind(block_time)
     .execute(&pool)
     .await
-    .expect("seed gold event");
+    .expect("seed gold activity row");
 
     let mut tx = pool.begin().await.expect("begin");
-    sync_unified_for_account(&mut tx, DAO, block_time - chrono::Duration::days(1))
+    sync_hidden_ledger_rows(&mut tx, DAO, block_time - chrono::Duration::days(1))
         .await
-        .expect("sync unified ledger rows");
+        .expect("sync hidden ledger rows");
     tx.commit().await.expect("commit");
 
-    let points = load_gold_balance_points(&pool, DAO)
-        .await
-        .expect("load gold balance points");
+    let points = load_gold_balance_points(
+        &pool,
+        DAO,
+        block_time - chrono::Duration::days(1),
+        block_time + chrono::Duration::days(1),
+        &[],
+    )
+    .await
+    .expect("load gold balance points");
     assert_eq!(points.len(), 2, "activity leg plus hidden sponsor movement");
     assert_eq!(points[0].asset, "near");
     assert_eq!(points[0].balance, BigDecimal::from(42));
     // The sponsor top-up is charted but leaves the user-owned balance flat.
     assert_eq!(points[1].balance, BigDecimal::from(42));
+
+    let baseline = load_gold_balance_points(
+        &pool,
+        DAO,
+        block_time + chrono::Duration::hours(2),
+        block_time + chrono::Duration::hours(3),
+        &[],
+    )
+    .await
+    .expect("load carry-forward baseline");
+    assert_eq!(
+        baseline.len(),
+        1,
+        "only the latest pre-range point is needed per asset"
+    );
+    assert_eq!(baseline[0].asset, "near");
+    assert_eq!(baseline[0].balance, BigDecimal::from(42));
+
+    let before_history = load_gold_balance_points(
+        &pool,
+        DAO,
+        block_time - chrono::Duration::days(2),
+        block_time - chrono::Duration::days(1),
+        &[],
+    )
+    .await
+    .expect("filter points after requested end");
+    assert!(before_history.is_empty());
+
+    let filtered_asset = vec!["wrap.near".to_string()];
+    let unrelated_asset = load_gold_balance_points(
+        &pool,
+        DAO,
+        block_time - chrono::Duration::days(1),
+        block_time + chrono::Duration::days(1),
+        &filtered_asset,
+    )
+    .await
+    .expect("filter unrelated assets");
+    assert!(unrelated_asset.is_empty());
 
     let hidden_visible: Vec<(String, bool)> = sqlx::query_as(
         r#"
