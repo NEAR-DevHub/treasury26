@@ -2561,6 +2561,7 @@
         "saveSuccess": "您的更改已保存。",
         "saveError": "无法保存更改。请重试。",
         "invalidImage": "请选择有效的图片文件。",
+        "imageTooLarge": "图片大小不能超过 2 MB。",
         "signInRequired": "连接钱包以管理您的账户。",
         "avatarUploaded": "头像上传成功",
         "uploadError": "上传图片时出错，请重试。"

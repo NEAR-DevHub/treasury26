@@ -2561,6 +2561,7 @@
         "saveSuccess": "Deine Änderungen wurden gespeichert.",
         "saveError": "Änderungen konnten nicht gespeichert werden. Bitte erneut versuchen.",
         "invalidImage": "Bitte wähle eine gültige Bilddatei.",
+        "imageTooLarge": "Das Bild darf höchstens 2 MB groß sein.",
         "signInRequired": "Verbinde dein Wallet, um dein Konto zu verwalten.",
         "avatarUploaded": "Avatar erfolgreich hochgeladen",
         "uploadError": "Fehler beim Hochladen des Bildes. Bitte erneut versuchen."

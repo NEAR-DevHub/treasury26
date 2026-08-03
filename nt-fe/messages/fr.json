@@ -2561,6 +2561,7 @@
         "saveSuccess": "Vos modifications ont été enregistrées.",
         "saveError": "Impossible d'enregistrer vos modifications. Réessayez.",
         "invalidImage": "Veuillez choisir un fichier image valide.",
+        "imageTooLarge": "L'image doit faire 2 Mo ou moins.",
         "signInRequired": "Connectez votre portefeuille pour gérer votre compte.",
         "avatarUploaded": "Avatar téléversé avec succès",
         "uploadError": "Erreur lors du téléversement de l'image. Réessayez."

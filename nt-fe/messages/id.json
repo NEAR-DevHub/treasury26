@@ -2561,6 +2561,7 @@
         "saveSuccess": "Perubahan Anda telah disimpan.",
         "saveError": "Tidak dapat menyimpan perubahan. Coba lagi.",
         "invalidImage": "Pilih file gambar yang valid.",
+        "imageTooLarge": "Gambar harus 2 MB atau lebih kecil.",
         "signInRequired": "Hubungkan dompet Anda untuk mengelola akun.",
         "avatarUploaded": "Avatar berhasil diunggah",
         "uploadError": "Terjadi kesalahan saat mengunggah gambar, coba lagi."

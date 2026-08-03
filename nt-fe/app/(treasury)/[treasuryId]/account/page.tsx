@@ -20,6 +20,8 @@ import { updateProfile } from "@/lib/api";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { useNear } from "@/stores/near-store";
 
+const MAX_AVATAR_FILE_BYTES = 2 * 1024 * 1024; // 2 MB
+
 function AvatarFallback({
     displayName,
     accountId,
@@ -153,19 +155,26 @@ export default function AccountPage() {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (!file.type.startsWith("image/")) {
-            toast.error(t("invalidImage"));
+        const resetInput = () => {
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
+        };
+
+        if (!file.type.startsWith("image/")) {
+            toast.error(t("invalidImage"));
+            resetInput();
+            return;
+        }
+
+        if (file.size > MAX_AVATAR_FILE_BYTES) {
+            toast.error(t("imageTooLarge"));
+            resetInput();
             return;
         }
 
         void uploadImageToIpfs(file);
-
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+        resetInput();
     };
 
     if (!accountId || !isAuthenticated) {

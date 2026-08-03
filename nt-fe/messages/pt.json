@@ -2561,6 +2561,7 @@
         "saveSuccess": "Suas alterações foram salvas.",
         "saveError": "Não foi possível salvar as alterações. Tente novamente.",
         "invalidImage": "Escolha um arquivo de imagem válido.",
+        "imageTooLarge": "A imagem deve ter 2 MB ou menos.",
         "signInRequired": "Conecte sua carteira para gerenciar sua conta.",
         "avatarUploaded": "Avatar enviado com sucesso",
         "uploadError": "Erro ao enviar a imagem. Tente novamente."

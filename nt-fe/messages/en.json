@@ -2561,6 +2561,7 @@
         "saveSuccess": "Your changes are saved.",
         "saveError": "Couldn't save your changes. Try again.",
         "invalidImage": "Please choose a valid image file.",
+        "imageTooLarge": "Image must be 2 MB or smaller.",
         "avatarUploaded": "Avatar uploaded successfully",
         "uploadError": "Error occurred while uploading image, please try again.",
         "signInRequired": "Connect your wallet to manage your account."

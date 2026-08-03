@@ -2561,6 +2561,7 @@
         "saveSuccess": "Các thay đổi của bạn đã được lưu.",
         "saveError": "Không thể lưu thay đổi. Vui lòng thử lại.",
         "invalidImage": "Vui lòng chọn tệp hình ảnh hợp lệ.",
+        "imageTooLarge": "Ảnh phải từ 2 MB trở xuống.",
         "signInRequired": "Kết nối ví để quản lý tài khoản của bạn.",
         "avatarUploaded": "Đã tải ảnh đại diện lên thành công",
         "uploadError": "Đã xảy ra lỗi khi tải ảnh lên, vui lòng thử lại."

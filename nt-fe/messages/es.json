@@ -2561,6 +2561,7 @@
         "saveSuccess": "Tus cambios se guardaron.",
         "saveError": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
         "invalidImage": "Elige un archivo de imagen válido.",
+        "imageTooLarge": "La imagen debe tener 2 MB o menos.",
         "signInRequired": "Conecta tu billetera para administrar tu cuenta.",
         "avatarUploaded": "Avatar subido correctamente",
         "uploadError": "Error al subir la imagen. Inténtalo de nuevo."
