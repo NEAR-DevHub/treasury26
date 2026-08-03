@@ -24,6 +24,15 @@ export interface TooltipProps {
     >;
 }
 
+/**
+ * Tooltips are dark in both themes. They're portalled to the body, so `dark` is
+ * forced here for nested content to resolve its `dark:` variants against the
+ * tooltip; the surface's own colours are written out, since the `dark` variant
+ * only matches descendants.
+ */
+const tooltipSurfaceClass =
+    "dark border border-white/10 bg-gray-950 text-white shadow-md";
+
 function TooltipContent({
     children,
     className,
@@ -31,7 +40,7 @@ function TooltipContent({
 }: React.ComponentProps<typeof TooltipContentPrimitive>) {
     return (
         <TooltipContentPrimitive
-            className="max-w-56 shadow-md bg-card text-foreground border-border border text-xs"
+            className={cn("max-w-56 text-xs", tooltipSurfaceClass)}
             {...props}
         >
             {children}
@@ -61,7 +70,8 @@ function Tooltip({
                 <PopoverContent
                     side={side}
                     className={cn(
-                        "w-auto max-w-56 p-2 text-xs bg-card text-foreground border-border border shadow-md",
+                        "w-auto max-w-56 p-2 text-xs",
+                        tooltipSurfaceClass,
                         className,
                     )}
                 >
