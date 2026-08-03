@@ -163,7 +163,10 @@ export function PageComponentLayout({
 
             <main
                 className={cn(
-                    "flex-1 overflow-y-auto bg-page-bg px-4 pb-6 md:px-6 md:pb-8",
+                    "flex-1 overflow-y-auto px-4 pb-6 md:px-6 md:pb-8",
+                    // Inside the shell the floating panel owns the surface, so
+                    // the content area must not paint over it.
+                    hasSidebarRail ? "bg-transparent" : "bg-page-bg",
                     mainClassName,
                 )}
             >

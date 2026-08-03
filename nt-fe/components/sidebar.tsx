@@ -62,12 +62,22 @@ interface NavLinkProps {
     showLabels?: boolean;
 }
 
-/** Shared geometry/colour for every interactive row in the dark rail. */
+/** Shared geometry/colour for every interactive row in the rail. */
 const railItemClass =
     "group relative flex w-full items-center gap-4 rounded-2xl text-base/5.5 font-semibold transition-colors";
 const railItemInactiveClass =
-    "text-gray-400 hover:bg-white/[0.07] hover:text-white";
-const railItemActiveClass = "bg-white/[0.07] text-white";
+    "text-gray-600 hover:bg-black/[0.05] hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.07] dark:hover:text-white";
+const railItemActiveClass =
+    "bg-black/[0.05] text-gray-900 dark:bg-white/[0.07] dark:text-white";
+
+/**
+ * Surface of the app shell — the rail itself plus the gutter around the
+ * content panel. Confidential mode pins it to the dark tone in both themes,
+ * matching near.com.
+ */
+export function shellSurfaceClass(isConfidential: boolean) {
+    return isConfidential ? "bg-gray-800" : "bg-[#F2F2F2] dark:bg-gray-800";
+}
 
 function NavLink({
     isActive,
@@ -209,6 +219,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     const {
         isGuestTreasury,
         isLoading: isLoadingGuestTreasury,
+        isConfidential,
         treasuryId,
         isSaved,
     } = useTreasury();
@@ -258,7 +269,12 @@ export function Sidebar({ onClose }: SidebarProps) {
     if (!mounted) {
         // Render placeholder that preserves layout space
         return (
-            <div className="hidden lg:block lg:static lg:w-20 h-dvh lg:h-screen bg-gray-850" />
+            <div
+                className={cn(
+                    "hidden lg:block lg:static lg:w-20 h-dvh lg:h-screen",
+                    shellSurfaceClass(isConfidential),
+                )}
+            />
         );
     }
 
@@ -272,11 +288,14 @@ export function Sidebar({ onClose }: SidebarProps) {
                 />
             )}
 
-            {/* Sidebar — always dark, in both themes. The forced `dark` class lets
-                nested components resolve their `dark:` variants against the rail. */}
+            {/* Sidebar — follows the theme, except in confidential mode where the
+                surface stays dark in both. The forced `dark` class there lets nested
+                components resolve their `dark:` variants against the rail. */}
             <div
                 className={cn(
-                    "dark fixed left-0 top-0 z-40 flex gap-2 h-dvh lg:h-screen flex-col bg-gray-850 text-gray-400 lg:static lg:z-auto overflow-hidden max-lg:pt-[env(safe-area-inset-top)]",
+                    "fixed left-0 top-0 z-40 flex gap-2 h-dvh lg:h-screen flex-col text-gray-600 dark:text-gray-400 lg:static lg:z-auto overflow-hidden max-lg:pt-[env(safe-area-inset-top)]",
+                    isConfidential && "dark",
+                    shellSurfaceClass(isConfidential),
                     hasInitialized &&
                         "transition-[width,transform] duration-300",
                     isMobile
@@ -290,7 +309,7 @@ export function Sidebar({ onClose }: SidebarProps) {
             >
                 <div className={cn("shrink-0", isReduced ? "p-2" : "p-3")}>
                     {isReduced ? (
-                        <div className="flex justify-center border-white/10 border-b pb-3">
+                        <div className="flex justify-center border-gray-300 dark:border-white/10 border-b pb-3">
                             <TreasurySelector
                                 reducedMode
                                 isOpen={dropdownOpen}
@@ -298,12 +317,12 @@ export function Sidebar({ onClose }: SidebarProps) {
                             />
                         </div>
                     ) : (
-                        <div className="rounded-2xl bg-gray-950 transition-colors duration-200">
+                        <div className="rounded-2xl border border-gray-300 bg-gray-50 transition-colors duration-200 dark:border-transparent dark:bg-gray-950">
                             <TreasurySelector
                                 isOpen={dropdownOpen}
                                 onOpenChange={setDropdownOpen}
                             />
-                            <div className="border-white/10 border-t px-3 py-2.5">
+                            <div className="border-gray-300 dark:border-white/10 border-t px-3 py-2.5">
                                 {isGuestTreasury && !isLoadingGuestTreasury ? (
                                     <div className="flex gap-2">
                                         <GuestBadge

@@ -26,7 +26,7 @@ import { Skeleton } from "./ui/skeleton";
 
 /** The two footer rows ("Manage" / "Create") share the option rows' geometry. */
 const actionRowClass =
-    "flex h-auto w-full items-center justify-start gap-3 rounded-xl px-2 py-2.5 font-semibold text-gray-300 text-sm transition-colors hover:bg-white/[0.07] hover:text-white";
+    "flex h-auto w-full items-center justify-start gap-3 rounded-xl px-2 py-2.5 font-semibold text-gray-600 text-sm transition-colors hover:bg-black/[0.05] hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.07] dark:hover:text-white";
 
 /**
  * One treasury row in the dropdown. The check indicator is hidden — the
@@ -48,7 +48,7 @@ function TreasuryOption({
     return (
         <SelectItem
             value={daoId}
-            className="cursor-pointer gap-3 rounded-xl px-2 py-2 text-white focus:bg-white/[0.07] focus:text-white data-[state=checked]:bg-white/[0.07] [&>span:first-child]:hidden"
+            className="cursor-pointer gap-3 rounded-xl px-2 py-2 text-gray-900 focus:bg-black/[0.05] focus:text-gray-900 data-[state=checked]:bg-black/[0.05] dark:text-white dark:focus:bg-white/[0.07] dark:focus:text-white dark:data-[state=checked]:bg-white/[0.07] [&>span:first-child]:hidden"
         >
             <div className="flex min-w-0 items-center gap-3">
                 <TreasuryLogo
@@ -59,12 +59,12 @@ function TreasuryOption({
                     fallbackIconClassName="size-5 text-white"
                 />
                 <div className="flex min-w-0 flex-col items-start">
-                    <span className="max-w-full truncate font-semibold text-sm text-white">
+                    <span className="max-w-full truncate font-semibold text-sm text-gray-900 dark:text-white">
                         {name ?? daoId}
                     </span>
                     <TreasuryBalance
                         daoId={daoId}
-                        className="max-w-full truncate font-medium text-gray-400 text-xs"
+                        className="max-w-full truncate font-medium text-gray-500 dark:text-gray-400 text-xs"
                         skeletonClassName="h-3 w-20"
                         isConfidential={hideBalance}
                     />
@@ -175,7 +175,7 @@ export function TreasurySelector({
                     id="dashboard-step5"
                     className={cn(
                         // No hover state here — the trigger stays flat against the card.
-                        "w-full h-fit cursor-pointer rounded-2xl border-none! ring-0! shadow-none! bg-transparent! hover:bg-transparent! [&>svg]:size-5 [&>svg]:text-gray-400 [&>svg]:opacity-100 [&>svg]:transition-transform [&>svg]:duration-150 [&[data-state=open]>svg]:rotate-180",
+                        "w-full h-fit cursor-pointer rounded-2xl border-none! ring-0! shadow-none! bg-transparent! hover:bg-transparent! [&>svg]:size-5 [&>svg]:text-gray-500 dark:[&>svg]:text-gray-400 [&>svg]:opacity-100 [&>svg]:transition-transform [&>svg]:duration-150 [&[data-state=open]>svg]:rotate-180",
                         reducedMode
                             ? "p-0 [&>svg]:hidden"
                             : "min-h-15 gap-2 p-3",
@@ -201,13 +201,13 @@ export function TreasurySelector({
                             />
                             {!reducedMode && (
                                 <div className="flex min-w-0 flex-col items-start">
-                                    <span className="truncate max-w-full font-semibold text-sm text-white">
+                                    <span className="truncate max-w-full font-semibold text-sm text-gray-900 dark:text-white">
                                         {displayName}
                                     </span>
                                     {treasuryId && (
                                         <TreasuryBalance
                                             daoId={treasuryId}
-                                            className="truncate max-w-full font-medium text-gray-400 text-xs"
+                                            className="truncate max-w-full font-medium text-gray-500 dark:text-gray-400 text-xs"
                                             skeletonClassName="h-3 w-20"
                                             isConfidential={
                                                 isConfidential &&
@@ -220,13 +220,18 @@ export function TreasurySelector({
                         </div>
                     </Tooltip>
                 </SelectTrigger>
-                {/* The rail is always dark, and this popover is portalled out of
-                    it — so the dark palette is spelled out here rather than
-                    inherited from the forced `dark` scope. */}
+                {/* Portalled out of the rail, so it can't inherit the rail's scope:
+                    confidential mode re-declares `dark` here to keep the popover in
+                    step with the always-dark rail. */}
                 <SelectContent
                     align="start"
                     sideOffset={8}
-                    className="w-(--radix-select-trigger-width) min-w-56 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
+                    className={cn(
+                        "w-(--radix-select-trigger-width) min-w-56 rounded-2xl p-1.5 shadow-xl",
+                        isConfidential
+                            ? "dark border-white/10 bg-gray-950 text-white"
+                            : "border-gray-300 bg-white text-gray-900 dark:border-white/10 dark:bg-gray-950 dark:text-white",
+                    )}
                 >
                     {memberTreasuries.length > 0 && (
                         <SelectGroup>
@@ -249,7 +254,7 @@ export function TreasurySelector({
                     {savedGuestTreasuries.length > 0 && (
                         <>
                             {memberTreasuries.length > 0 && (
-                                <SelectSeparator className="-mx-1.5 my-1.5 bg-white/10" />
+                                <SelectSeparator className="-mx-1.5 my-1.5 bg-gray-300 dark:bg-white/10" />
                             )}
                             <SelectGroup>
                                 <SelectLabel className="px-2 text-gray-500">
@@ -270,7 +275,7 @@ export function TreasurySelector({
                             </SelectGroup>
                         </>
                     )}
-                    <SelectSeparator className="-mx-1.5 my-1.5 bg-white/10" />
+                    <SelectSeparator className="-mx-1.5 my-1.5 bg-gray-300 dark:bg-white/10" />
                     <Button
                         variant="unstyled"
                         type="button"
