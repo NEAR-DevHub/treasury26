@@ -160,6 +160,7 @@ function ProposalsList({
                     policy={policy}
                     config={config}
                     withFilters={hasActiveFilters}
+                    searchQuery={searchParams.get("search") || ""}
                     pageIndex={page}
                     pageSize={pageSize}
                     total={data?.total ?? 0}

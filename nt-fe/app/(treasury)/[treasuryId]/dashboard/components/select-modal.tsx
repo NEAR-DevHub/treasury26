@@ -18,8 +18,13 @@ import {
 } from "@/components/select-list";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { HighlightedText } from "@/components/highlighted-text";
 
 export interface SelectOption extends SelectListItem {}
+
+export type SelectModalRenderContext = {
+    searchQuery: string;
+};
 
 interface SelectModalPropsBase {
     isOpen: boolean;
@@ -28,8 +33,14 @@ interface SelectModalPropsBase {
     options: SelectOption[];
     searchPlaceholder?: string;
     isLoading?: boolean;
-    renderIcon?: (item: SelectOption) => ReactNode;
-    renderContent?: (item: SelectOption) => ReactNode;
+    renderIcon?: (
+        item: SelectOption,
+        context: SelectModalRenderContext,
+    ) => ReactNode;
+    renderContent?: (
+        item: SelectOption,
+        context: SelectModalRenderContext,
+    ) => ReactNode;
     renderRight?: (item: SelectOption) => ReactNode;
     sections?: {
         title: string;
@@ -54,6 +65,14 @@ interface SelectModalMultiProps extends SelectModalPropsBase {
 
 type SelectModalProps = SelectModalSingleProps | SelectModalMultiProps;
 
+function optionMatchesSearch(option: SelectOption, query: string): boolean {
+    if (!query) return true;
+    return (
+        (option.name || "").toLowerCase().includes(query) ||
+        (option.symbol || "").toLowerCase().includes(query)
+    );
+}
+
 export function SelectModal({
     isOpen,
     onClose,
@@ -73,39 +92,28 @@ export function SelectModal({
     const t = useTranslations("selectModal");
     const [searchQuery, setSearchQuery] = useState("");
     const effectiveSearchPlaceholder = searchPlaceholder ?? t("searchByName");
+    const normalizedQuery = searchQuery.toLowerCase();
 
     const filteredOptions = useMemo(() => {
-        if (!searchQuery) return options;
-
-        const query = searchQuery.toLowerCase();
-        return options.filter(
-            (option) =>
-                (option.name || "").toLowerCase().includes(query) ||
-                (option.symbol || "").toLowerCase().includes(query),
+        if (!normalizedQuery) return options;
+        return options.filter((option) =>
+            optionMatchesSearch(option, normalizedQuery),
         );
-    }, [options, searchQuery]);
+    }, [options, normalizedQuery]);
 
     const filteredSections = useMemo(() => {
         if (!sections?.length) return [];
+        if (!normalizedQuery) return sections;
 
         return sections
-            .map((section) => {
-                if (!searchQuery) return section;
-
-                const query = searchQuery.toLowerCase();
-                const sectionOptions = section.options.filter(
-                    (option) =>
-                        (option.name || "").toLowerCase().includes(query) ||
-                        (option.symbol || "").toLowerCase().includes(query),
-                );
-
-                return {
-                    ...section,
-                    options: sectionOptions,
-                };
-            })
+            .map((section) => ({
+                ...section,
+                options: section.options.filter((option) =>
+                    optionMatchesSearch(option, normalizedQuery),
+                ),
+            }))
             .filter((section) => section.options.length > 0);
-    }, [sections, searchQuery]);
+    }, [sections, normalizedQuery]);
 
     const handleSelect = useCallback(
         (option: SelectOption) => {
@@ -134,53 +142,69 @@ export function SelectModal({
         [renderRight, multiSelect, selectedIds],
     );
 
+    const renderContext = useMemo(() => ({ searchQuery }), [searchQuery]);
+
     const renderOptionRow = useCallback(
-        (item: SelectOption) => (
-            <Button
-                key={item.id}
-                onClick={() => handleSelect(item)}
-                variant="ghost"
-                disabled={item.disabled}
-                className={cn(
-                    "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
-                    selectedId === item.id
-                        ? "bg-muted hover:bg-muted focus-visible:bg-muted"
-                        : "hover:bg-muted-foreground/5 focus-visible:bg-muted-foreground/5",
-                    item.disabled &&
-                        "opacity-60 cursor-not-allowed pointer-events-none",
-                )}
-            >
-                {renderIcon ? (
-                    renderIcon(item)
-                ) : (
-                    <SelectListIcon
-                        icon={item.icon}
-                        gradient={item.gradient}
-                        alt={item.symbol || item.name}
-                    />
-                )}
-                {renderContent ? (
-                    renderContent(item)
-                ) : (
-                    <div className="flex-1 text-left">
-                        <div className="font-semibold uppercase">
-                            {item.name || item.symbol}
-                        </div>
-                        {item.symbol && (
-                            <div className="text-sm text-muted-foreground ">
-                                {item.symbol}
+        (item: SelectOption) => {
+            const primary = item.symbol || item.name || "";
+            const secondary =
+                item.name && item.name !== item.symbol ? item.name : null;
+
+            return (
+                <Button
+                    key={item.id}
+                    onClick={() => handleSelect(item)}
+                    variant="ghost"
+                    disabled={item.disabled}
+                    className={cn(
+                        "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
+                        selectedId === item.id
+                            ? "bg-muted hover:bg-muted focus-visible:bg-muted"
+                            : "hover:bg-muted-foreground/5 focus-visible:bg-muted-foreground/5",
+                        item.disabled &&
+                            "opacity-60 cursor-not-allowed pointer-events-none",
+                    )}
+                >
+                    {renderIcon ? (
+                        renderIcon(item, renderContext)
+                    ) : (
+                        <SelectListIcon
+                            icon={item.icon}
+                            gradient={item.gradient}
+                            alt={item.symbol || item.name}
+                        />
+                    )}
+                    {renderContent ? (
+                        renderContent(item, renderContext)
+                    ) : (
+                        <div className="flex-1 text-left">
+                            <div className="font-semibold">
+                                <HighlightedText
+                                    text={primary}
+                                    query={searchQuery}
+                                />
                             </div>
-                        )}
-                    </div>
-                )}
-                {resolvedRenderRight(item)}
-            </Button>
-        ),
+                            {secondary && (
+                                <div className="text-sm text-muted-foreground">
+                                    <HighlightedText
+                                        text={secondary}
+                                        query={searchQuery}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {resolvedRenderRight(item)}
+                </Button>
+            );
+        },
         [
             handleSelect,
             renderContent,
+            renderContext,
             renderIcon,
             resolvedRenderRight,
+            searchQuery,
             selectedId,
         ],
     );
@@ -212,10 +236,7 @@ export function SelectModal({
                                             return (
                                                 <div
                                                     key={section.title}
-                                                    className={cn(
-                                                        section.display ===
-                                                            "chips" && "mb-3",
-                                                    )}
+                                                    className="mb-3"
                                                 >
                                                     <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
                                                         {section.title}
@@ -277,10 +298,16 @@ export function SelectModal({
                                                                             }
                                                                         </div>
                                                                     )}
-                                                                    <span>
-                                                                        {item.symbol ||
-                                                                            item.name}
-                                                                    </span>
+                                                                    <HighlightedText
+                                                                        text={
+                                                                            item.symbol ||
+                                                                            item.name ||
+                                                                            ""
+                                                                        }
+                                                                        query={
+                                                                            searchQuery
+                                                                        }
+                                                                    />
                                                                 </Button>
                                                             ),
                                                         )}

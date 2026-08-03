@@ -1082,6 +1082,7 @@ function UserFilterContent({
                                                     accountId={accountId}
                                                     withLink={false}
                                                     size="sm"
+                                                    highlightQuery={searchQuery}
                                                 />
                                             </div>
                                         </label>
