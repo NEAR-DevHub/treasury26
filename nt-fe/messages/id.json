@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "Dasbor",
         "requests": "Permintaan",
-        "payments": "Pembayaran",
+        "payments": "Kirim",
         "exchange": "Tukar",
-        "addressBook": "Buku Alamat",
+        "addressBook": "Kontak",
         "members": "Anggota",
         "settings": "Pengaturan",
         "helpSupport": "Bantuan & Dukungan",

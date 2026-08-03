@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "Panel",
         "requests": "Talepler",
-        "payments": "Ödemeler",
+        "payments": "Gönder",
         "exchange": "Takas",
-        "addressBook": "Adres Defteri",
+        "addressBook": "Kişiler",
         "members": "Üyeler",
         "settings": "Ayarlar",
         "helpSupport": "Yardım ve Destek",

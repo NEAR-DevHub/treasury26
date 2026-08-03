@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "לוח בקרה",
         "requests": "בקשות",
-        "payments": "תשלומים",
+        "payments": "שליחה",
         "exchange": "החלפה",
-        "addressBook": "ספר כתובות",
+        "addressBook": "אנשי קשר",
         "members": "חברים",
         "settings": "הגדרות",
         "helpSupport": "עזרה ותמיכה",

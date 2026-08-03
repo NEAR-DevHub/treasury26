@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "Dashboard",
         "requests": "Requests",
-        "payments": "Payments",
-        "exchange": "Exchange",
-        "addressBook": "Address Book",
+        "payments": "Send",
+        "exchange": "Swap",
+        "addressBook": "Contacts",
         "members": "Members",
         "settings": "Settings",
         "helpSupport": "Help & Support",

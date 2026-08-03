@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "仪表板",
         "requests": "请求",
-        "payments": "付款",
+        "payments": "发送",
         "exchange": "兑换",
-        "addressBook": "地址簿",
+        "addressBook": "联系人",
         "members": "成员",
         "settings": "设置",
         "helpSupport": "帮助与支持",

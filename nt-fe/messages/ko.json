@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "대시보드",
         "requests": "요청",
-        "payments": "결제",
-        "exchange": "교환",
-        "addressBook": "주소록",
+        "payments": "보내기",
+        "exchange": "스왑",
+        "addressBook": "연락처",
         "members": "멤버",
         "settings": "설정",
         "helpSupport": "도움말 및 지원",

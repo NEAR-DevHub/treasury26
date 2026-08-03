@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "Огляд",
         "requests": "Запити",
-        "payments": "Платежі",
+        "payments": "Надіслати",
         "exchange": "Обмін",
-        "addressBook": "Адресна книга",
+        "addressBook": "Контакти",
         "members": "Учасники",
         "settings": "Налаштування",
         "helpSupport": "Довідка та підтримка",

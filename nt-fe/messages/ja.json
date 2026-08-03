@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "ダッシュボード",
         "requests": "リクエスト",
-        "payments": "支払い",
-        "exchange": "交換",
-        "addressBook": "アドレス帳",
+        "payments": "送金",
+        "exchange": "スワップ",
+        "addressBook": "連絡先",
         "members": "メンバー",
         "settings": "設定",
         "helpSupport": "ヘルプとサポート",
