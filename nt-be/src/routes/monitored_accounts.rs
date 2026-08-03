@@ -47,20 +47,20 @@ pub async fn add_monitored_account(
         &payload.account_id,
         false,
     )
-        .await
-        .map_err(|e| match e {
-            RegisterMonitoredAccountError::NotSputnikDao => (
-                StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "error": "Only sputnik-dao accounts can be monitored",
-                    "message": "Account ID must end with '.sputnik-dao.near'"
-                })),
-            ),
-            RegisterMonitoredAccountError::Db(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Database error: {}", e) })),
-            ),
-        })?;
+    .await
+    .map_err(|e| match e {
+        RegisterMonitoredAccountError::NotSputnikDao => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Only sputnik-dao accounts can be monitored",
+                "message": "Account ID must end with '.sputnik-dao.near'"
+            })),
+        ),
+        RegisterMonitoredAccountError::Db(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        ),
+    })?;
 
     let account = result.account;
 

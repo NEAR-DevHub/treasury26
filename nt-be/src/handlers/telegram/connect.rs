@@ -217,16 +217,16 @@ pub async fn connect_treasuries(
             dao_id,
             false,
         )
-            .await
-            .map_err(|e| match e {
-                RegisterMonitoredAccountError::NotSputnikDao => (
-                    StatusCode::BAD_REQUEST,
-                    format!("Only sputnik-dao accounts can be connected: {}", dao_id),
-                ),
-                RegisterMonitoredAccountError::Db(err) => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-                }
-            })?;
+        .await
+        .map_err(|e| match e {
+            RegisterMonitoredAccountError::NotSputnikDao => (
+                StatusCode::BAD_REQUEST,
+                format!("Only sputnik-dao accounts can be connected: {}", dao_id),
+            ),
+            RegisterMonitoredAccountError::Db(err) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+        })?;
     }
 
     // Run everything in a transaction
