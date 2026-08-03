@@ -1,20 +1,10 @@
 import type { Metadata } from "next";
-import { Figtree, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getLocaleDirection } from "@/i18n/config";
 import "../globals.css";
 import { QueryProvider } from "@/components/query-provider";
-
-const figtree = Figtree({
-    variable: "--font-figtree",
-    subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-});
+import { figtree } from "@/lib/fonts";
 
 export async function generateMetadata(): Promise<Metadata> {
     const t = await getTranslations("pages.wallet");
@@ -38,7 +28,7 @@ export default async function WalletLayout({
             lang={locale}
             dir={dir}
             suppressHydrationWarning
-            className={`${figtree.variable} ${geistMono.variable}`}
+            className={figtree.variable}
         >
             <head>
                 <link
@@ -55,7 +45,7 @@ export default async function WalletLayout({
                 />
             </head>
             <body
-                className={`${figtree.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
+                className={`${figtree.variable} antialiased bg-background text-foreground`}
             >
                 <NextIntlClientProvider locale={locale} messages={messages}>
                     <QueryProvider>{children}</QueryProvider>

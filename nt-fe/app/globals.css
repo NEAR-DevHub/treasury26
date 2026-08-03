@@ -341,8 +341,6 @@
     --color-sidebar-ring: var(--sidebar-ring);
 
     --font-sans: var(--font-figtree), var(--font-sans);
-    --font-mono: var(--font-geist-mono), var(--font-mono);
-    --font-serif: var(--font-geist-serif), var(--font-serif);
 
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
@@ -369,7 +367,7 @@
     }
 
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background text-foreground font-sans;
     }
 }
 
