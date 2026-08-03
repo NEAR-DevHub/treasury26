@@ -1,8 +1,13 @@
 use axum::{
     Json,
     extract::State,
-    http::{HeaderMap, StatusCode},
+    http::{
+        HeaderMap, StatusCode,
+        header::{AUTHORIZATION, WWW_AUTHENTICATE},
+    },
+    response::{IntoResponse, Response},
 };
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::Serialize;
@@ -51,31 +56,71 @@ pub struct TreasuryMonthlyAnalyticsResponse {
     pub rows: Vec<TreasuryMonthlyRow>,
 }
 
-/// Validates the static analytics API key from the `Authorization` header
-/// (with or without a `Bearer ` prefix). Fails closed when the key is unset.
-fn require_analytics_key(
+const BASIC_AUTH_REALM: &str = "Trezu Analytics";
+
+pub struct ApiError {
+    status: StatusCode,
+    headers: Option<Box<HeaderMap>>,
+    body: Json<Value>,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        let mut response = (self.status, self.body).into_response();
+        if let Some(headers) = self.headers {
+            response.headers_mut().extend(*headers);
+        }
+        response
+    }
+}
+
+/// Validates the `Authorization` header against either the Basic-auth
+/// credentials in `ANALYTICS_USERS` (browser access) or the static
+/// `ANALYTICS_API_KEY` (with or without a `Bearer ` prefix). Fails closed when
+/// neither is configured; 401 responses carry a `WWW-Authenticate: Basic`
+/// challenge so browsers show their native login prompt.
+fn require_analytics_auth(
     headers: &HeaderMap,
-    state: &AppState,
-) -> Result<(), (StatusCode, Json<Value>)> {
+    users: &[crate::utils::admin_auth::AdminCredential],
+    api_key: Option<&str>,
+) -> Result<(), ApiError> {
     let unauthorized = || {
-        (
-            StatusCode::UNAUTHORIZED,
-            Json(json!({ "error": "unauthorized" })),
-        )
+        let mut response_headers = HeaderMap::new();
+        response_headers.insert(
+            WWW_AUTHENTICATE,
+            format!("Basic realm=\"{BASIC_AUTH_REALM}\"")
+                .parse()
+                .unwrap(),
+        );
+        ApiError {
+            status: StatusCode::UNAUTHORIZED,
+            headers: Some(Box::new(response_headers)),
+            body: Json(json!({ "error": "unauthorized" })),
+        }
     };
 
-    let expected = state
-        .env_vars
-        .analytics_api_key
-        .as_deref()
-        .ok_or_else(unauthorized)?;
-
-    let received = headers
-        .get(axum::http::header::AUTHORIZATION)
+    let authorization = headers
+        .get(AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
-        .map(|v| v.strip_prefix("Bearer ").unwrap_or(v))
         .ok_or_else(unauthorized)?;
 
+    if let Some(encoded) = authorization.strip_prefix("Basic ") {
+        let credentials = STANDARD
+            .decode(encoded)
+            .ok()
+            .and_then(|decoded| String::from_utf8(decoded).ok())
+            .ok_or_else(unauthorized)?;
+        let (username, password) = credentials.split_once(':').ok_or_else(unauthorized)?;
+        return match crate::utils::admin_auth::authenticate_admin(users, username, password) {
+            Some(_) => Ok(()),
+            None => Err(unauthorized()),
+        };
+    }
+
+    let expected = api_key.ok_or_else(unauthorized)?;
+    let received = authorization
+        .strip_prefix("Bearer ")
+        .unwrap_or(authorization);
     if crate::utils::admin_auth::constant_time_eq(expected, received) {
         Ok(())
     } else {
@@ -86,12 +131,16 @@ fn require_analytics_key(
 /// GET /internal/api/analytics/treasury-monthly
 ///
 /// Returns every row of the `kr_analytics_treasury_monthly` view, guarded by
-/// the `ANALYTICS_API_KEY` static key.
+/// `ANALYTICS_USERS` Basic auth or the `ANALYTICS_API_KEY` static key.
 pub async fn get_treasury_monthly(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
-) -> Result<Json<TreasuryMonthlyAnalyticsResponse>, (StatusCode, Json<Value>)> {
-    require_analytics_key(&headers, &state)?;
+) -> Result<Json<TreasuryMonthlyAnalyticsResponse>, ApiError> {
+    require_analytics_auth(
+        &headers,
+        &state.env_vars.analytics_users,
+        state.env_vars.analytics_api_key.as_deref(),
+    )?;
 
     let rows = sqlx::query_as::<_, TreasuryMonthlyRow>(
         r#"
@@ -104,14 +153,74 @@ pub async fn get_treasury_monthly(
     .await
     .map_err(|e| {
         tracing::error!("Failed to load treasury monthly analytics: {e}");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": "Failed to load treasury analytics." })),
-        )
+        ApiError {
+            status: StatusCode::INTERNAL_SERVER_ERROR,
+            headers: None,
+            body: Json(json!({ "error": "Failed to load treasury analytics." })),
+        }
     })?;
 
     Ok(Json(TreasuryMonthlyAnalyticsResponse {
         count: rows.len(),
         rows,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::admin_auth::parse_admin_users;
+
+    fn headers_with_authorization(value: &str) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        headers.insert(AUTHORIZATION, value.parse().unwrap());
+        headers
+    }
+
+    fn basic_header(username: &str, password: &str) -> String {
+        format!(
+            "Basic {}",
+            STANDARD.encode(format!("{username}:{password}"))
+        )
+    }
+
+    #[test]
+    fn accepts_valid_basic_credentials() {
+        let users = parse_admin_users(Some("viewer:secret"));
+        let headers = headers_with_authorization(&basic_header("viewer", "secret"));
+        assert!(require_analytics_auth(&headers, &users, None).is_ok());
+    }
+
+    #[test]
+    fn rejects_wrong_basic_password() {
+        let users = parse_admin_users(Some("viewer:secret"));
+        let headers = headers_with_authorization(&basic_header("viewer", "wrong"));
+        assert!(require_analytics_auth(&headers, &users, None).is_err());
+    }
+
+    #[test]
+    fn accepts_bearer_api_key() {
+        let headers = headers_with_authorization("Bearer key123");
+        assert!(require_analytics_auth(&headers, &[], Some("key123")).is_ok());
+    }
+
+    #[test]
+    fn missing_header_returns_basic_challenge() {
+        let error = require_analytics_auth(&HeaderMap::new(), &[], Some("key123")).unwrap_err();
+        assert_eq!(error.status, StatusCode::UNAUTHORIZED);
+        let response_headers = error.headers.unwrap();
+        let challenge = response_headers.get(WWW_AUTHENTICATE).unwrap();
+        assert_eq!(
+            challenge.to_str().unwrap(),
+            format!("Basic realm=\"{BASIC_AUTH_REALM}\"")
+        );
+    }
+
+    #[test]
+    fn fails_closed_when_nothing_configured() {
+        let headers = headers_with_authorization(&basic_header("viewer", "secret"));
+        assert!(require_analytics_auth(&headers, &[], None).is_err());
+        let headers = headers_with_authorization("Bearer key123");
+        assert!(require_analytics_auth(&headers, &[], None).is_err());
+    }
 }

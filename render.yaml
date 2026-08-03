@@ -39,6 +39,10 @@ services:
         sync: false
       - key: TESTING_NEAR_ACCOUNT_IDS
         sync: false
+      - key: ANALYTICS_API_KEY
+        sync: false
+      - key: ANALYTICS_USERS
+        sync: false
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 90
 
@@ -126,6 +130,10 @@ services:
       - key: TESTING_SPUTNIK_DAO_IDS
         sync: false
       - key: TESTING_NEAR_ACCOUNT_IDS
+        sync: false
+      - key: ANALYTICS_API_KEY
+        sync: false
+      - key: ANALYTICS_USERS
         sync: false
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 90
