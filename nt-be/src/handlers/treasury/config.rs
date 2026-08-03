@@ -96,7 +96,7 @@ fn apply_local_treasury_settings(config: &mut TreasuryConfig, local: LocalTreasu
         config.name = Some(name);
     }
 
-    let metadata = config.metadata.get_or_insert_with(|| TreasuryMetadata {
+    let metadata = config.metadata.get_or_insert(TreasuryMetadata {
         primary_color: None,
         flag_logo: None,
     });
@@ -111,11 +111,14 @@ fn apply_local_treasury_settings(config: &mut TreasuryConfig, local: LocalTreasu
         .filter(|v| !v.is_empty());
 }
 
+type NormalizedTreasurySettings = (String, Option<String>, Option<String>);
+type SettingsHttpError = (StatusCode, String);
+
 fn normalize_settings_input(
     display_name: String,
     flag_logo: Option<String>,
     primary_color: Option<String>,
-) -> Result<(String, Option<String>, Option<String>), (StatusCode, String)> {
+) -> Result<NormalizedTreasurySettings, SettingsHttpError> {
     let display_name = display_name.trim().to_string();
     if display_name.is_empty() {
         return Err((
