@@ -61,6 +61,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.19.0
       - key: MAXMIND_LICENSE_KEY
         sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE
@@ -150,6 +152,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.19.0
       - key: MAXMIND_LICENSE_KEY
         sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE
@@ -167,6 +171,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.19.0
       - key: MAXMIND_LICENSE_KEY
         sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE
