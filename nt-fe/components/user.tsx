@@ -12,6 +12,7 @@ import { Skeleton } from "./ui/skeleton";
 import { CopyButton } from "./copy-button";
 import { Address } from "./address";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
+import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
@@ -44,29 +45,6 @@ function getUserAvatarInitial(name: string, address: string): string {
         return name.charAt(0).toUpperCase();
     }
     return address.charAt(0).toLowerCase();
-}
-
-function resolveProfileImageUrl(image: unknown): string | undefined {
-    if (!image) return undefined;
-
-    if (typeof image === "string") {
-        const trimmed = image.trim();
-        return trimmed || undefined;
-    }
-
-    if (typeof image === "object") {
-        const value = image as Record<string, unknown>;
-        if (typeof value.url === "string" && value.url.trim()) {
-            return value.url.trim();
-        }
-
-        const cid = value.ipfs_cid ?? value.ipfsCid;
-        if (typeof cid === "string" && cid.trim()) {
-            return `https://ipfs.near.social/ipfs/${cid.trim()}`;
-        }
-    }
-
-    return undefined;
 }
 
 function UserAvatarFallback({
@@ -193,6 +171,8 @@ export function UserWithData({
     const showAvatar = variant !== "details";
     const showDetails = variant !== "avatar";
 
+    const nameIsAddress = name === address;
+
     const content = (
         <>
             {showAvatar && (
@@ -204,10 +184,12 @@ export function UserWithData({
                 />
             )}
             {showDetails && (
-                <div className="flex flex-col items-start max-w-60 md:max-w-80 min-w-0">
-                    {truncatePrimaryAddress && name === address ? (
+                <div className="flex flex-col items-start min-w-0 max-w-[min(100%,15rem)] md:max-w-[min(100%,20rem)]">
+                    {truncatePrimaryAddress && nameIsAddress ? (
                         <Address
                             address={address}
+                            prefixLength={6}
+                            suffixLength={4}
                             className="font-medium max-w-full text-sm"
                         />
                     ) : (
@@ -215,10 +197,13 @@ export function UserWithData({
                             {name}
                         </span>
                     )}
-                    <Address
-                        address={address}
-                        className="text-xs text-muted-foreground truncate max-w-full"
-                    />
+                    {/* Avoid duplicating the wallet when there is no display name */}
+                    {!nameIsAddress && (
+                        <Address
+                            address={address}
+                            className="text-xs text-muted-foreground max-w-full"
+                        />
+                    )}
                 </div>
             )}
         </>
@@ -229,12 +214,12 @@ export function UserWithData({
             <Link
                 href={explorerUrl}
                 target="_blank"
-                className="flex items-center gap-1.5"
+                className="flex items-center gap-1.5 min-w-0"
             >
                 {content}
             </Link>
         ) : (
-            <div className="flex items-center gap-1.5">{content}</div>
+            <div className="flex items-center gap-1.5 min-w-0">{content}</div>
         );
 
     if (withHoverCard) {

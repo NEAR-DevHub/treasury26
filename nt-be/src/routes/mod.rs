@@ -170,6 +170,7 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/treasury/config",
             get(handlers::treasury::config::get_treasury_config)
+                .put(handlers::treasury::config::update_treasury_settings),
         )
         .route(
             "/api/treasury/check-handle-unused",
@@ -206,7 +207,8 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         .route(
             "/api/user/profile",
-            get(handlers::user::profile::get_profile),
+            get(handlers::user::profile::get_profile)
+                .put(handlers::user::profile::update_profile),
         )
         .route(
             "/api/user/check-account-exists",

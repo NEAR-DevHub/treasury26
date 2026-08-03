@@ -106,7 +106,8 @@
         "wallet": "钱包",
         "termsOfService": "服务条款",
         "privacyPolicy": "隐私政策",
-        "disconnect": "断开连接"
+        "disconnect": "退出登录",
+        "myAccount": "我的账户"
     },
     "auth": {
         "noWallet": "请连接您的钱包",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Trezu 钱包",
             "description": "通过 Trezu 签署金库提案"
+        },
+        "account": {
+            "title": "我的账户",
+            "description": "管理您的个人资料和设置"
         }
     },
     "depositModal": {
@@ -978,7 +983,11 @@
             "fileReadError": "读取文件时出错。请再试一次。",
             "primaryColor": "主色",
             "primaryColorDescription": "为金库界面元素设置主色。该颜色将在浅色和深色模式中均会使用,因此选择中性色调时请注意对比度。",
-            "selectColorLabel": "选择颜色 {color}"
+            "selectColorLabel": "选择颜色 {color}",
+            "saveChanges": "保存更改",
+            "saving": "保存中...",
+            "savedToast": "您的更改已保存。",
+            "saveFailed": "无法保存更改。请重试。"
         },
         "voting": {
             "validation": {
@@ -2538,5 +2547,22 @@
         "errorTitle": "无法加载激活状态",
         "noPermissionNote": "您没有权限启动激活。请让具有提案权限的金库成员激活批量支付。",
         "awaitingApproverHint": "拥有批准权限的金库成员需要批准待处理的请求以完成激活。"
+    },
+    "account": {
+        "personalSettings": "个人设置",
+        "uploadAvatar": "上传头像",
+        "removeAvatar": "移除头像",
+        "uploading": "上传中...",
+        "displayName": "显示名称",
+        "displayNamePlaceholder": "输入显示名称",
+        "myWallet": "我的钱包",
+        "saveChanges": "保存更改",
+        "saving": "保存中...",
+        "saveSuccess": "您的更改已保存。",
+        "saveError": "无法保存更改。请重试。",
+        "invalidImage": "请选择有效的图片文件。",
+        "signInRequired": "连接钱包以管理您的账户。",
+        "avatarUploaded": "头像上传成功",
+        "uploadError": "上传图片时出错，请重试。"
     }
 }
