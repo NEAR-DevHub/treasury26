@@ -71,13 +71,19 @@ const railItemActiveClass =
     "bg-black/[0.05] text-gray-900 dark:bg-white/[0.07] dark:text-white";
 
 /**
- * Surface of the app shell — the rail itself plus the gutter around the
- * content panel. Confidential mode pins it to the dark tone in both themes,
- * matching near.com.
+ * Surface of the gutter around the content panel. Confidential mode pins it to
+ * the dark tone in both themes, matching near.com.
  */
 export function shellSurfaceClass(isConfidential: boolean) {
-    return isConfidential ? "bg-gray-800" : "bg-[#F2F2F2] dark:bg-gray-800";
+    return "bg-gray-800";
 }
+
+/**
+ * The rail is dark in both themes, so its surface is pinned rather than
+ * theme-dependent. The container also carries a forced `dark` class so nested
+ * components resolve their `dark:` variants against the rail, not the page.
+ */
+const railSurfaceClass = "bg-gray-800";
 
 function NavLink({
     isActive,
@@ -219,7 +225,6 @@ export function Sidebar({ onClose }: SidebarProps) {
     const {
         isGuestTreasury,
         isLoading: isLoadingGuestTreasury,
-        isConfidential,
         treasuryId,
         isSaved,
     } = useTreasury();
@@ -272,7 +277,7 @@ export function Sidebar({ onClose }: SidebarProps) {
             <div
                 className={cn(
                     "hidden lg:block lg:static lg:w-20 h-dvh lg:h-screen",
-                    shellSurfaceClass(isConfidential),
+                    railSurfaceClass,
                 )}
             />
         );
@@ -288,14 +293,14 @@ export function Sidebar({ onClose }: SidebarProps) {
                 />
             )}
 
-            {/* Sidebar — follows the theme, except in confidential mode where the
-                surface stays dark in both. The forced `dark` class there lets nested
-                components resolve their `dark:` variants against the rail. */}
+            {/* Sidebar — dark in both themes. `dark` is forced on the container so
+                nested components resolve their `dark:` variants against the rail;
+                the container's own colours are written out, since the `dark`
+                variant only matches descendants. */}
             <div
                 className={cn(
-                    "fixed left-0 top-0 z-40 flex gap-2 h-dvh lg:h-screen flex-col text-gray-600 dark:text-gray-400 lg:static lg:z-auto overflow-hidden max-lg:pt-[env(safe-area-inset-top)]",
-                    isConfidential && "dark",
-                    shellSurfaceClass(isConfidential),
+                    "dark fixed left-0 top-0 z-40 flex gap-2 h-dvh lg:h-screen flex-col text-gray-400 lg:static lg:z-auto overflow-hidden max-lg:pt-[env(safe-area-inset-top)]",
+                    railSurfaceClass,
                     hasInitialized &&
                         "transition-[width,transform] duration-300",
                     isMobile
