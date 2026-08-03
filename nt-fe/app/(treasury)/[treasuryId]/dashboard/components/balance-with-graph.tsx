@@ -522,10 +522,10 @@ export default function BalanceWithGraph({
             <PageCard className="relative">
                 <div className="flex justify-around gap-4 mb-6">
                     <div className="flex-1">
-                        <h3 className="font-medium text-base text-gray-500">
+                        <p className="font-medium text-base/[1.2] text-gray-500">
                             {t("totalBalance")}
-                        </h3>
-                        <Skeleton className="mt-2 h-11 w-56 rounded-xl" />
+                        </p>
+                        <Skeleton className="h-[30px] mt-1 w-56 rounded-xl" />
                     </div>
 
                     <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
@@ -551,7 +551,7 @@ export default function BalanceWithGraph({
             <div className="mb-6">
                 <div className="flex justify-between gap-4 items-start">
                     <div className="flex-1">
-                        <h3 className="flex items-center gap-1.5 font-medium text-base text-gray-500">
+                        <p className="flex items-center gap-1.5 font-medium text-base/[1.2] text-gray-500">
                             {t("totalBalance")}
                             {showConfidentialShield && (
                                 <Tooltip
@@ -600,8 +600,8 @@ export default function BalanceWithGraph({
                                     <Eye className="size-4" />
                                 )}
                             </button>
-                        </h3>
-                        <p className="mt-2 font-bold text-[2.5rem]/11 tracking-tighter">
+                        </p>
+                        <h2 className="mt-1 font-semibold text-[30px]/[1] tracking-tighter">
                             {isHidden || isBalanceMasked ? (
                                 "••••••"
                             ) : (
@@ -609,7 +609,7 @@ export default function BalanceWithGraph({
                                     value={balanceView.totalUsd}
                                 />
                             )}
-                        </p>
+                        </h2>
                         {showBreakdown && (
                             <div className="mt-2 hidden md:flex items-center gap-2 text-sm text-muted-foreground">
                                 {balanceBreakdownItems.map((item, idx) => (
