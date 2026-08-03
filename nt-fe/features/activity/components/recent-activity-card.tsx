@@ -10,7 +10,7 @@ import {
     Shield,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -62,14 +62,6 @@ import { TransactionDetailsModal } from "./transaction-details-modal";
 
 const ITEMS_ON_DASHBOARD = 10;
 const MAX_ITEMS = 100;
-const RECENT_ACTIVITY_SKELETON_ROW_IDS = [
-    "recent-activity-skeleton-1",
-    "recent-activity-skeleton-2",
-    "recent-activity-skeleton-3",
-    "recent-activity-skeleton-4",
-    "recent-activity-skeleton-5",
-    "recent-activity-skeleton-6",
-] as const;
 
 const columnHelper = createColumnHelper<GroupedActivity>();
 
@@ -156,9 +148,9 @@ const groupStakingActivities = (
 export function RecentActivitySkeleton() {
     return (
         <div className="space-y-4 px-4 py-2">
-            {RECENT_ACTIVITY_SKELETON_ROW_IDS.map((rowId) => (
+            {[...Array(6)].map((_, i) => (
                 <div
-                    key={rowId}
+                    key={i}
                     className="grid grid-cols-[1fr_auto] items-center gap-6 border-b border-border pb-3 last:border-b-0"
                 >
                     <div className="flex items-center gap-3 min-w-0">
@@ -453,11 +445,7 @@ export function RecentActivity() {
                                         <>
                                             {sentSymbol ? (
                                                 <span className="font-medium text-foreground truncate">
-                                                    {swap.sentAmount
-                                                        ? formatSmartAmount(
-                                                              swap.sentAmount,
-                                                          )
-                                                        : ""}{" "}
+                                                    {swap.sentAmount}{" "}
                                                     {sentSymbol}
                                                 </span>
                                             ) : null}
@@ -629,8 +617,9 @@ export function RecentActivity() {
                                             expandedGroups.has(groupId);
 
                                         return (
-                                            <Fragment key={row.id}>
+                                            <>
                                                 <TableRow
+                                                    key={row.id}
                                                     className="group cursor-pointer"
                                                     onClick={() => {
                                                         if (isGroup) {
@@ -732,7 +721,7 @@ export function RecentActivity() {
                                                             </TableRow>
                                                         ),
                                                     )}
-                                            </Fragment>
+                                            </>
                                         );
                                     })}
                                 </TableBody>
