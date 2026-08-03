@@ -270,7 +270,8 @@
         },
         "errors": {
             "addressUnavailable": "선택한 자산과 네트워크에 대한 입금 주소를 가져올 수 없습니다.",
-            "fetchFailed": "입금 주소를 가져오지 못했습니다. 다시 시도해 주세요."
+            "fetchFailed": "입금 주소를 가져오지 못했습니다. 다시 시도해 주세요.",
+            "loginRequired": "일회용 입금 주소를 생성하려면 로그인하세요."
         },
         "title": "입금",
         "subtitle": "입금 주소를 보려면 자산과 네트워크를 선택하세요",
@@ -283,7 +284,7 @@
         "depositAddressHeading": "입금 주소",
         "depositAddressSubtitle": "입금 주소는 항상 두 번 확인하세요.",
         "depositAddressSubtitleConfidential": "<semibold>1회용 입금 주소입니다.</semibold> 이 주소를 재사용하거나 만료 후 자금을 보내면 영구적인 자금 손실이 발생할 수 있습니다.",
-        "depositAddressSubtitleConfidentialExpiry": "생성 시점부터 3일 동안 유효합니다. 만료까지: {expiresIn} 남음",
+        "depositAddressSubtitleConfidentialExpiry": "생성 시점부터 14일간 유효합니다. 만료까지: {expiresIn} 남음",
         "singleUseAcknowledgement": "이 주소를 한 번만 사용하겠습니다",
         "addressLabel": "주소",
         "addressCopied": "주소가 클립보드에 복사되었습니다",
@@ -306,6 +307,78 @@
             "fiatAnswer": "아직은 지원하지 않지만, 곧 법정화폐 입금을 제공하기 위해 작업 중입니다. 조금만 기다려 주세요 - 곧 제공됩니다 🚀",
             "arrivalQuestion": "입금이 도착하는 데 얼마나 걸리나요?",
             "arrivalAnswer": "처리 시간은 네트워크에 따라 다릅니다."
+        },
+        "back": "뒤로",
+        "publicAddressTitle": "{network}의 {symbol} 입금 주소",
+        "publicAddressSubtitle": "이 토큰만 이 네트워크에서 아래 주소로 보내세요.",
+        "oneTimeAddressTitle": "{network} 네트워크의 일회용 {symbol} 입금 주소",
+        "oneTimeAddressSubtitle": "이 토큰만 이 네트워크에서 아래 주소로 보내세요.",
+        "confidentialTrezuTitle": "near.com 네트워크의 기밀 Trezu에서 입금",
+        "confidentialTrezuSubtitle": "기밀 Trezu에서 모든 자산을 받을 수 있습니다.",
+        "confidentialNearcomTitle": "내부 네트워크의 기밀 near.com에서 입금",
+        "confidentialNearcomSubtitle": "기밀 near.com에서 모든 자산을 받을 수 있습니다.",
+        "oneTimeSectionTitle": "일회용 기밀 입금 주소",
+        "oneTimeSectionSubtitle": "한 번만 사용하세요. 첫 입금 이후에는 손실됩니다.",
+        "internalAddressTitle": "이것은 내부 기밀 주소입니다",
+        "generateAddress": "주소 생성",
+        "showAddress": "주소 보기",
+        "copy": "복사",
+        "share": "공유",
+        "linkCopied": "링크가 클립보드에 복사되었습니다",
+        "minDepositValue": "최소 입금액 <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "테스트 입금을 <bold>보내지 마세요</bold>",
+        "doNotReuseAddress": "주소를 <bold>재사용·저장·화이트리스트·공유하지 마세요</bold>",
+        "doNotReuseAddressShort": "주소를 <bold>재사용·저장·화이트리스트에 추가하지 마세요</bold>",
+        "oneTimeAckCheckbox": "이 주소는 일회용이며, 한 번의 전송으로 최소 {amount} {symbol}를 보내야 함을 이해합니다.",
+        "oneTimeAckCheckboxNoMin": "이 주소는 한 번의 전송에만 사용하는 일회용 주소임을 이해합니다.",
+        "onlySendAssetNetwork": "<bold>{network}</bold> 네트워크에서 <bold>{symbol}</bold>만 보내세요. 다른 자산이나 네트워크는 자금 손실을 초래합니다.",
+        "expiresInDays": "<bold>{days}일</bold> 후 만료 – <bold>사용하지 않아도</bold>.",
+        "createNewAddressHint": "다른 입금 정보가 필요하신가요? <link>새 주소 만들기</link>. 다른 주소를 만들어도 이 주소는 비활성화되지 않습니다.",
+        "receivesOnlyConfidential": "기밀 Trezu 또는 near.com 계정에서만 자금을 받습니다",
+        "receivesOnlyConfidentialSub": "재사용 가능. 만료되지 않음.",
+        "anythingElseLost": "다른 곳에서 보낸 것은 모두 손실됩니다",
+        "anythingElseLostSub": "거래소, 공개 지갑, 다른 네트워크 – 복구할 수 없습니다.",
+        "confidentialAckCheckbox": "기밀 Trezu 또는 near.com 외부에서의 입금은 손실됨을 이해합니다.",
+        "onlyFromConfidentialTrezu": "기밀 <bold>Trezu</bold>에서만",
+        "onlyFromConfidentialNearcom": "기밀 <bold>near.com</bold>에서만",
+        "reusableDoesntExpire": "<bold>재사용 가능.</bold> 만료되지 않음",
+        "fundsOutsideTrezuLost": "기밀 Trezu 외부에서 보낸 자금은 손실됩니다",
+        "fundsOutsideNearcomLost": "기밀 near.com 외부에서 보낸 자금은 손실됩니다",
+        "publicNetworkRecommendation": "<bold>{network}</bold> 네트워크에서만 입금하세요. 전액을 보내기 전에 소액 테스트 거래로 시작하세요.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "공개 지갑에서",
+                "subtitle": "일회용 입금 주소 만들기"
+            },
+            "confidentialUser": {
+                "title": "기밀 사용자에서",
+                "subtitle": "기밀 Trezu 및 near.com에서 입금"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "기밀 Trezu에서",
+            "nearcom": "기밀 near.com에서"
+        },
+        "guestBanner": {
+            "title": "게스트로 보고 있습니다",
+            "description": "이 주소는 다른 사람의 treasury에 속합니다. 보내기 전에 다시 확인하세요."
+        },
+        "transfer": {
+            "title": "Treasury로 전송",
+            "waitingForPayment": "결제 대기 중",
+            "youSendFromPublic": "공개 지갑에서 보냅니다",
+            "youSend": "보내는 자산",
+            "goesTo": "받는 곳",
+            "assetOnNetwork": "{network} 네트워크의 {symbol}",
+            "anyAsset": "모든 자산",
+            "onNetwork": "{network} 네트워크에서",
+            "onNearcomNetwork": "near.com 네트워크에서",
+            "anyAssetOnNearcom": "near.com 네트워크의 모든 자산",
+            "securedOnTrezu": "Trezu에서 보호됨",
+            "payWithTrezu": "Trezu로 결제",
+            "payRequiresTreasury": "결제하려면 Trezu treasury로 로그인하세요.",
+            "copyLink": "링크 복사",
+            "titleConfidential": "기밀 Treasury로 전송"
         }
     },
     "assetDetails": {

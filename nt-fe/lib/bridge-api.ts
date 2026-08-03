@@ -34,18 +34,26 @@ export async function fetchBridgeTokens(options?: {
  * @param {string} chainId - Chain identifier (e.g., "nep141:btc.omft.near")
  * @returns {Promise<Object>} Result object containing deposit address
  */
+export type DepositAddressResponse = {
+    address: string;
+    memo?: string | null;
+    minAmount?: string | null;
+    /** ISO-8601 expiry for one-time confidential deposit addresses (14 days). */
+    expiresAt?: string | null;
+};
+
 export const fetchDepositAddress = async (
     accountId: string,
     chainId: string,
     tokenId?: string,
     amount?: string,
-) => {
+): Promise<DepositAddressResponse | null> => {
     try {
         if (!accountId || !chainId) {
             throw new Error("Account ID and chain ID are required");
         }
 
-        const response = await axios.post(
+        const response = await axios.post<DepositAddressResponse>(
             `${BACKEND_API_BASE}/intents/deposit-address`,
             {
                 accountId: accountId,

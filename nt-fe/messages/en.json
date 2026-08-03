@@ -270,10 +270,12 @@
         },
         "errors": {
             "addressUnavailable": "Could not retrieve deposit address for the selected asset and network.",
-            "fetchFailed": "Failed to fetch deposit address. Please try again."
+            "fetchFailed": "Failed to fetch deposit address. Please try again.",
+            "loginRequired": "Sign in to generate a one-time deposit address."
         },
         "title": "Deposit",
         "subtitle": "Select asset and network to see deposit address",
+        "back": "Back",
         "assetLabel": "Asset",
         "networkLabel": "Network",
         "selectAsset": "Select Asset",
@@ -282,8 +284,44 @@
         "otherNetworkInfo": "You can deposit any token not listed in the assets, but only via the NEAR network.",
         "depositAddressHeading": "Deposit Address",
         "depositAddressSubtitle": "Always double-check your deposit address.",
+        "publicAddressTitle": "Deposit address {symbol} on {network}",
+        "publicAddressSubtitle": "Send only this token, on this network, to the address below.",
+        "oneTimeAddressTitle": "One-time deposit address {symbol} on {network} network",
+        "oneTimeAddressSubtitle": "Send only this token, on this network, to the address below.",
+        "confidentialTrezuTitle": "Deposit from confidential Trezu on near.com network",
+        "confidentialTrezuSubtitle": "Receive any asset from confidential Trezu.",
+        "confidentialNearcomTitle": "Deposit from confidential near.com on internal network",
+        "confidentialNearcomSubtitle": "Receive any asset from confidential near.com.",
+        "oneTimeSectionTitle": "One-time confidential deposit address",
+        "oneTimeSectionSubtitle": "Use it only once, anything after the first deposit is lost.",
+        "internalAddressTitle": "This is your internal confidential address",
+        "generateAddress": "Generate Address",
+        "showAddress": "Show Address",
+        "copy": "Copy",
+        "share": "Share",
+        "linkCopied": "Link copied to clipboard",
+        "minDepositValue": "Minimum deposit value <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Do not</bold> send a test deposit",
+        "doNotReuseAddress": "<bold>Do not</bold> reuse, save, whitelist, or share the address",
+        "doNotReuseAddressShort": "<bold>Do not</bold> reuse, save, or whitelist the address",
+        "oneTimeAckCheckbox": "I understand this is a one-time address, and that I must send at least {amount} {symbol} in one transfer.",
+        "oneTimeAckCheckboxNoMin": "I understand this is a one-time address that I must use in a single transfer.",
+        "onlySendAssetNetwork": "Only send <bold>{symbol}</bold> on the <bold>{network}</bold> network. Sending other assets or using a different network will result in loss of funds.",
+        "expiresInDays": "Expires in <bold>{days} days</bold> – <bold>even if unused</bold>.",
+        "createNewAddressHint": "Need different deposit details? <link>Create a new address</link>. Creating another address will not deactivate this one.",
+        "receivesOnlyConfidential": "Receives funds only from confidential Trezu or near.com accounts",
+        "receivesOnlyConfidentialSub": "Reusable. Doesn't expire.",
+        "anythingElseLost": "Anything sent from anywhere else is lost",
+        "anythingElseLostSub": "Exchanges, public wallets, other networks – can't be recovered.",
+        "confidentialAckCheckbox": "I understand deposits from outside confidential Trezu or near.com will be lost.",
+        "onlyFromConfidentialTrezu": "Only from confidential <bold>Trezu</bold>",
+        "onlyFromConfidentialNearcom": "Only from confidential <bold>near.com</bold>",
+        "reusableDoesntExpire": "<bold>Reusable.</bold> Doesn't expire",
+        "fundsOutsideTrezuLost": "Funds sent from outside confidential trezu will be lost",
+        "fundsOutsideNearcomLost": "Funds sent from outside confidential near.com will be lost",
+        "publicNetworkRecommendation": "Only deposit from the <bold>{network}</bold> network. We recommend starting with a small test transaction to ensure everything works correctly before sending the full amount.",
         "depositAddressSubtitleConfidential": "<semibold>Single-use deposit address.</semibold> Reusing this address or sending funds after expiration may result in a permanent loss of funds.",
-        "depositAddressSubtitleConfidentialExpiry": "Valid for 3 days from the time of generation. Expires in: {expiresIn} remaining",
+        "depositAddressSubtitleConfidentialExpiry": "Valid for 14 days from the time of generation. Expires in: {expiresIn} remaining",
         "singleUseAcknowledgement": "I will use this address only once",
         "addressLabel": "Address",
         "addressCopied": "Address copied to clipboard",
@@ -293,6 +331,41 @@
         "onlyDeposit": "Only deposit <symbolTag>{symbol}</symbolTag> from the <networkTag>{network}</networkTag> network.",
         "testTransactionRecommendation": "We recommend starting with a small test transaction to ensure everything works correctly before sending the full amount.",
         "minimumDeposit": "Minimum deposit is <amountTag>{amount} {symbol}</amountTag>",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "From a public wallet",
+                "subtitle": "Create one-time deposit address"
+            },
+            "confidentialUser": {
+                "title": "From confidential user",
+                "subtitle": "Deposit from confidential trezu & near.com"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "From confidential Trezu",
+            "nearcom": "From confidential near.com"
+        },
+        "guestBanner": {
+            "title": "You're viewing as a guest",
+            "description": "This address belongs to someone else's treasury. Double-check before sending."
+        },
+        "transfer": {
+            "title": "Transfer to Treasury",
+            "titleConfidential": "Transfer to Confidential Treasury",
+            "waitingForPayment": "Waiting for payment",
+            "youSendFromPublic": "You send from any public wallet",
+            "youSend": "You send",
+            "goesTo": "Goes to",
+            "assetOnNetwork": "{symbol} on {network} network",
+            "anyAsset": "Any asset",
+            "onNetwork": "on {network} network",
+            "onNearcomNetwork": "on near.com network",
+            "anyAssetOnNearcom": "Any asset on near.com network",
+            "securedOnTrezu": "Secured on Trezu",
+            "payWithTrezu": "Pay with Trezu",
+            "payRequiresTreasury": "Sign in with a Trezu treasury to pay.",
+            "copyLink": "Copy Link"
+        },
         "tabs": {
             "fromPublic": "From public",
             "fromConfidential": "From confidential"

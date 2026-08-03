@@ -270,7 +270,8 @@
         },
         "errors": {
             "addressUnavailable": "Не вдалось отримати адресу депозиту для обраного активу та мережі.",
-            "fetchFailed": "Не вдалось отримати адресу депозиту. Спробуйте ще раз."
+            "fetchFailed": "Не вдалось отримати адресу депозиту. Спробуйте ще раз.",
+            "loginRequired": "Увійдіть, щоб створити одноразову адресу для депозиту."
         },
         "title": "Поповнити",
         "subtitle": "Оберіть актив і мережу, щоб побачити адресу депозиту",
@@ -283,7 +284,7 @@
         "depositAddressHeading": "Адреса депозиту",
         "depositAddressSubtitle": "Завжди двічі перевіряйте адресу депозиту.",
         "depositAddressSubtitleConfidential": "<semibold>Одноразова адреса депозиту.</semibold> Повторне використання цієї адреси або надсилання коштів після завершення терміну дії може призвести до постійної втрати коштів.",
-        "depositAddressSubtitleConfidentialExpiry": "Дійсна протягом 3 днів з моменту створення. Закінчується через: залишилось {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Дійсна 14 днів з моменту створення. Закінчується через: залишилось {expiresIn}",
         "singleUseAcknowledgement": "Я використаю цю адресу лише один раз",
         "addressLabel": "Адреса",
         "addressCopied": "Адресу скопійовано в буфер обміну",
@@ -306,6 +307,78 @@
             "fiatAnswer": "Поки що ні, але ми працюємо над тим, щоб незабаром додати фіатні депозити. Слідкуйте за оновленнями - це вже в дорозі 🚀",
             "arrivalQuestion": "Скільки часу займає зарахування депозиту?",
             "arrivalAnswer": "Час обробки залежить від мережі."
+        },
+        "back": "Назад",
+        "publicAddressTitle": "Адреса депозиту {symbol} у мережі {network}",
+        "publicAddressSubtitle": "Надсилайте лише цей токен, у цій мережі, на адресу нижче.",
+        "oneTimeAddressTitle": "Одноразова адреса депозиту {symbol} у мережі {network}",
+        "oneTimeAddressSubtitle": "Надсилайте лише цей токен, у цій мережі, на адресу нижче.",
+        "confidentialTrezuTitle": "Депозит із конфіденційного Trezu у мережі near.com",
+        "confidentialTrezuSubtitle": "Отримуйте будь-який актив із конфіденційного Trezu.",
+        "confidentialNearcomTitle": "Депозит із конфіденційного near.com у внутрішній мережі",
+        "confidentialNearcomSubtitle": "Отримуйте будь-який актив із конфіденційного near.com.",
+        "oneTimeSectionTitle": "Одноразова конфіденційна адреса депозиту",
+        "oneTimeSectionSubtitle": "Використовуйте лише один раз; усе після першого депозиту буде втрачено.",
+        "internalAddressTitle": "Це ваша внутрішня конфіденційна адреса",
+        "generateAddress": "Створити адресу",
+        "showAddress": "Показати адресу",
+        "copy": "Копіювати",
+        "share": "Поділитися",
+        "linkCopied": "Посилання скопійовано в буфер обміну",
+        "minDepositValue": "Мінімальний депозит <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Не</bold> надсилайте тестовий депозит",
+        "doNotReuseAddress": "<bold>Не</bold> повторно використовуйте, зберігайте, додавайте до білого списку чи поширюйте адресу",
+        "doNotReuseAddressShort": "<bold>Не</bold> повторно використовуйте, зберігайте чи додавайте адресу до білого списку",
+        "oneTimeAckCheckbox": "Я розумію, що це одноразова адреса, і я маю надіслати щонайменше {amount} {symbol} в одному переказі.",
+        "oneTimeAckCheckboxNoMin": "Я розумію, що це одноразова адреса, яку потрібно використати в одному переказі.",
+        "onlySendAssetNetwork": "Надсилайте лише <bold>{symbol}</bold> у мережі <bold>{network}</bold>. Інші активи чи мережі призведуть до втрати коштів.",
+        "expiresInDays": "Дійсна <bold>{days} днів</bold> – <bold>навіть якщо не використана</bold>.",
+        "createNewAddressHint": "Потрібні інші дані для депозиту? <link>Створити нову адресу</link>. Створення іншої не деактивує цю.",
+        "receivesOnlyConfidential": "Приймає кошти лише з конфіденційних акаунтів Trezu або near.com",
+        "receivesOnlyConfidentialSub": "Багаторазова. Не закінчується.",
+        "anythingElseLost": "Усе надіслане звідкись ще буде втрачено",
+        "anythingElseLostSub": "Біржі, публічні гаманці, інші мережі – відновити неможливо.",
+        "confidentialAckCheckbox": "Я розумію, що депозити з-поза конфіденційного Trezu або near.com буде втрачено.",
+        "onlyFromConfidentialTrezu": "Лише з конфіденційного <bold>Trezu</bold>",
+        "onlyFromConfidentialNearcom": "Лише з конфіденційного <bold>near.com</bold>",
+        "reusableDoesntExpire": "<bold>Багаторазова.</bold> Не закінчується",
+        "fundsOutsideTrezuLost": "Кошти, надіслані з-поза конфіденційного Trezu, буде втрачено",
+        "fundsOutsideNearcomLost": "Кошти, надіслані з-поза конфіденційного near.com, буде втрачено",
+        "publicNetworkRecommendation": "Вносьте депозит лише з мережі <bold>{network}</bold>. Почніть із невеликої тестової транзакції, перш ніж надсилати повну суму.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "З публічного гаманця",
+                "subtitle": "Створити одноразову адресу депозиту"
+            },
+            "confidentialUser": {
+                "title": "Від конфіденційного користувача",
+                "subtitle": "Депозит із конфіденційних Trezu і near.com"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "З конфіденційного Trezu",
+            "nearcom": "З конфіденційного near.com"
+        },
+        "guestBanner": {
+            "title": "Ви переглядаєте як гість",
+            "description": "Ця адреса належить чужій treasury. Перевірте двічі перед надсиланням."
+        },
+        "transfer": {
+            "title": "Переказ до Treasury",
+            "waitingForPayment": "Очікування платежу",
+            "youSendFromPublic": "Ви надсилаєте з будь-якого публічного гаманця",
+            "youSend": "Ви надсилаєте",
+            "goesTo": "Отримувач",
+            "assetOnNetwork": "{symbol} у мережі {network}",
+            "anyAsset": "Будь-який актив",
+            "onNetwork": "у мережі {network}",
+            "onNearcomNetwork": "у мережі near.com",
+            "anyAssetOnNearcom": "Будь-який актив у мережі near.com",
+            "securedOnTrezu": "Захищено на Trezu",
+            "payWithTrezu": "Сплатити через Trezu",
+            "payRequiresTreasury": "Увійдіть із treasury Trezu, щоб сплатити.",
+            "copyLink": "Копіювати посилання",
+            "titleConfidential": "Переказ до конфіденційної Treasury"
         }
     },
     "assetDetails": {

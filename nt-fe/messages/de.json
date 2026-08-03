@@ -270,7 +270,8 @@
         },
         "errors": {
             "addressUnavailable": "Einzahlungsadresse für den ausgewählten Vermögenswert und das Netzwerk konnte nicht abgerufen werden.",
-            "fetchFailed": "Abrufen der Einzahlungsadresse fehlgeschlagen. Bitte erneut versuchen."
+            "fetchFailed": "Abrufen der Einzahlungsadresse fehlgeschlagen. Bitte erneut versuchen.",
+            "loginRequired": "Melde dich an, um eine einmalige Einzahlungsadresse zu erstellen."
         },
         "title": "Einzahlen",
         "subtitle": "Wählen Sie Vermögenswert und Netzwerk, um die Einzahlungsadresse anzuzeigen",
@@ -283,7 +284,7 @@
         "depositAddressHeading": "Einzahlungsadresse",
         "depositAddressSubtitle": "Überprüfen Sie Ihre Einzahlungsadresse stets sorgfältig.",
         "depositAddressSubtitleConfidential": "<semibold>Einzahlungsadresse zur einmaligen Verwendung.</semibold> Die Wiederverwendung dieser Adresse oder das Senden von Geldern nach Ablauf kann zu einem dauerhaften Verlust führen.",
-        "depositAddressSubtitleConfidentialExpiry": "3 Tage ab dem Zeitpunkt der Erstellung gültig. Läuft ab in: noch {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "14 Tage ab Erstellung gültig. Läuft ab in: noch {expiresIn}",
         "singleUseAcknowledgement": "Ich werde diese Adresse nur einmal verwenden",
         "addressLabel": "Adresse",
         "addressCopied": "Adresse in die Zwischenablage kopiert",
@@ -306,6 +307,78 @@
             "fiatAnswer": "Im Moment noch nicht, aber wir arbeiten daran, Fiat-Einzahlungen bald bereitzustellen. Bleib dran - es kommt bald 🚀",
             "arrivalQuestion": "Wie lange dauert es, bis eine Einzahlung ankommt?",
             "arrivalAnswer": "Die Bearbeitungszeit hängt vom Netzwerk ab."
+        },
+        "back": "Zurück",
+        "publicAddressTitle": "Einzahlungsadresse {symbol} auf {network}",
+        "publicAddressSubtitle": "Sende nur diesen Token, auf diesem Netzwerk, an die Adresse unten.",
+        "oneTimeAddressTitle": "Einmalige Einzahlungsadresse {symbol} auf dem {network}-Netzwerk",
+        "oneTimeAddressSubtitle": "Sende nur diesen Token, auf diesem Netzwerk, an die Adresse unten.",
+        "confidentialTrezuTitle": "Einzahlung von vertraulichem Trezu im near.com-Netzwerk",
+        "confidentialTrezuSubtitle": "Empfange jedes Asset von vertraulichem Trezu.",
+        "confidentialNearcomTitle": "Einzahlung von vertraulichem near.com im internen Netzwerk",
+        "confidentialNearcomSubtitle": "Empfange jedes Asset von vertraulichem near.com.",
+        "oneTimeSectionTitle": "Einmalige vertrauliche Einzahlungsadresse",
+        "oneTimeSectionSubtitle": "Nur einmal verwenden – alles nach der ersten Einzahlung geht verloren.",
+        "internalAddressTitle": "Dies ist deine interne vertrauliche Adresse",
+        "generateAddress": "Adresse erstellen",
+        "showAddress": "Adresse anzeigen",
+        "copy": "Kopieren",
+        "share": "Teilen",
+        "linkCopied": "Link in die Zwischenablage kopiert",
+        "minDepositValue": "Mindesteinzahlung <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Keine</bold> Testeinzahlung senden",
+        "doNotReuseAddress": "Adresse <bold>nicht</bold> wiederverwenden, speichern, whitelisten oder teilen",
+        "doNotReuseAddressShort": "Adresse <bold>nicht</bold> wiederverwenden, speichern oder whitelisten",
+        "oneTimeAckCheckbox": "Ich verstehe, dass dies eine einmalige Adresse ist und ich mindestens {amount} {symbol} in einer Überweisung senden muss.",
+        "oneTimeAckCheckboxNoMin": "Ich verstehe, dass dies eine einmalige Adresse ist, die ich nur in einer Überweisung verwenden darf.",
+        "onlySendAssetNetwork": "Sende nur <bold>{symbol}</bold> im <bold>{network}</bold>-Netzwerk. Andere Assets oder Netzwerke führen zum Verlust der Mittel.",
+        "expiresInDays": "Läuft in <bold>{days} Tagen</bold> ab – <bold>auch wenn ungenutzt</bold>.",
+        "createNewAddressHint": "Andere Einzahlungsdetails nötig? <link>Neue Adresse erstellen</link>. Eine weitere Adresse deaktiviert diese nicht.",
+        "receivesOnlyConfidential": "Empfängt Mittel nur von vertraulichen Trezu- oder near.com-Konten",
+        "receivesOnlyConfidentialSub": "Wiederverwendbar. Läuft nicht ab.",
+        "anythingElseLost": "Alles von woanders Gesendete geht verloren",
+        "anythingElseLostSub": "Börsen, öffentliche Wallets, andere Netzwerke – nicht wiederherstellbar.",
+        "confidentialAckCheckbox": "Ich verstehe, dass Einzahlungen von außerhalb vertraulichem Trezu oder near.com verloren gehen.",
+        "onlyFromConfidentialTrezu": "Nur von vertraulichem <bold>Trezu</bold>",
+        "onlyFromConfidentialNearcom": "Nur von vertraulichem <bold>near.com</bold>",
+        "reusableDoesntExpire": "<bold>Wiederverwendbar.</bold> Läuft nicht ab",
+        "fundsOutsideTrezuLost": "Mittel von außerhalb vertraulichem Trezu gehen verloren",
+        "fundsOutsideNearcomLost": "Mittel von außerhalb vertraulichem near.com gehen verloren",
+        "publicNetworkRecommendation": "Zahle nur aus dem <bold>{network}</bold>-Netzwerk ein. Beginne mit einer kleinen Testtransaktion, bevor du den vollen Betrag sendest.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Von einer öffentlichen Wallet",
+                "subtitle": "Einmalige Einzahlungsadresse erstellen"
+            },
+            "confidentialUser": {
+                "title": "Von vertraulichem Nutzer",
+                "subtitle": "Einzahlung von vertraulichem Trezu & near.com"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Von vertraulichem Trezu",
+            "nearcom": "Von vertraulichem near.com"
+        },
+        "guestBanner": {
+            "title": "Du siehst dies als Gast",
+            "description": "Diese Adresse gehört zu einer fremden Treasury. Vor dem Senden doppelt prüfen."
+        },
+        "transfer": {
+            "title": "Überweisung an Treasury",
+            "waitingForPayment": "Warten auf Zahlung",
+            "youSendFromPublic": "Du sendest von einer öffentlichen Wallet",
+            "youSend": "Du sendest",
+            "goesTo": "Geht an",
+            "assetOnNetwork": "{symbol} im {network}-Netzwerk",
+            "anyAsset": "Beliebiges Asset",
+            "onNetwork": "im {network}-Netzwerk",
+            "onNearcomNetwork": "im near.com-Netzwerk",
+            "anyAssetOnNearcom": "Beliebiges Asset im near.com-Netzwerk",
+            "securedOnTrezu": "Gesichert auf Trezu",
+            "payWithTrezu": "Mit Trezu bezahlen",
+            "payRequiresTreasury": "Melde dich mit einer Trezu-Treasury an, um zu zahlen.",
+            "copyLink": "Link kopieren",
+            "titleConfidential": "Überweisung an vertrauliche Treasury"
         }
     },
     "assetDetails": {

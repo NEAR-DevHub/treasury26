@@ -270,7 +270,8 @@
         },
         "errors": {
             "addressUnavailable": "Không thể lấy địa chỉ nạp tiền cho tài sản và mạng đã chọn.",
-            "fetchFailed": "Không thể lấy địa chỉ nạp tiền. Vui lòng thử lại."
+            "fetchFailed": "Không thể lấy địa chỉ nạp tiền. Vui lòng thử lại.",
+            "loginRequired": "Đăng nhập để tạo địa chỉ nạp một lần."
         },
         "title": "Nạp tiền",
         "subtitle": "Chọn tài sản và mạng để xem địa chỉ nạp tiền",
@@ -283,7 +284,7 @@
         "depositAddressHeading": "Địa chỉ nạp tiền",
         "depositAddressSubtitle": "Hãy luôn kiểm tra kỹ địa chỉ nạp tiền của bạn.",
         "depositAddressSubtitleConfidential": "<semibold>Địa chỉ nạp tiền dùng một lần.</semibold> Việc tái sử dụng địa chỉ này hoặc gửi tiền sau khi hết hạn có thể dẫn đến mất tiền vĩnh viễn.",
-        "depositAddressSubtitleConfidentialExpiry": "Có hiệu lực trong 3 ngày kể từ thời điểm tạo. Hết hạn sau: còn {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Có hiệu lực 14 ngày kể từ khi tạo. Hết hạn sau: còn {expiresIn}",
         "singleUseAcknowledgement": "Tôi sẽ chỉ sử dụng địa chỉ này một lần",
         "addressLabel": "Địa chỉ",
         "addressCopied": "Đã sao chép địa chỉ vào bộ nhớ tạm",
@@ -306,6 +307,78 @@
             "fiatAnswer": "Hiện tại thì chưa, nhưng chúng tôi đang làm việc để sớm hỗ trợ nạp bằng tiền pháp định. Hãy đón chờ - sắp ra mắt 🚀",
             "arrivalQuestion": "Mất bao lâu để khoản nạp được ghi nhận?",
             "arrivalAnswer": "Thời gian xử lý phụ thuộc vào mạng."
+        },
+        "back": "Quay lại",
+        "publicAddressTitle": "Địa chỉ nạp {symbol} trên {network}",
+        "publicAddressSubtitle": "Chỉ gửi token này, trên mạng này, tới địa chỉ bên dưới.",
+        "oneTimeAddressTitle": "Địa chỉ nạp một lần {symbol} trên mạng {network}",
+        "oneTimeAddressSubtitle": "Chỉ gửi token này, trên mạng này, tới địa chỉ bên dưới.",
+        "confidentialTrezuTitle": "Nạp từ Trezu bảo mật trên mạng near.com",
+        "confidentialTrezuSubtitle": "Nhận bất kỳ tài sản nào từ Trezu bảo mật.",
+        "confidentialNearcomTitle": "Nạp từ near.com bảo mật trên mạng nội bộ",
+        "confidentialNearcomSubtitle": "Nhận bất kỳ tài sản nào từ near.com bảo mật.",
+        "oneTimeSectionTitle": "Địa chỉ nạp bảo mật một lần",
+        "oneTimeSectionSubtitle": "Chỉ dùng một lần; mọi thứ sau lần nạp đầu sẽ bị mất.",
+        "internalAddressTitle": "Đây là địa chỉ bảo mật nội bộ của bạn",
+        "generateAddress": "Tạo địa chỉ",
+        "showAddress": "Hiện địa chỉ",
+        "copy": "Sao chép",
+        "share": "Chia sẻ",
+        "linkCopied": "Đã sao chép liên kết vào clipboard",
+        "minDepositValue": "Số tiền nạp tối thiểu <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Không</bold> gửi giao dịch nạp thử",
+        "doNotReuseAddress": "<bold>Không</bold> tái sử dụng, lưu, whitelist hoặc chia sẻ địa chỉ",
+        "doNotReuseAddressShort": "<bold>Không</bold> tái sử dụng, lưu hoặc whitelist địa chỉ",
+        "oneTimeAckCheckbox": "Tôi hiểu đây là địa chỉ một lần và tôi phải gửi ít nhất {amount} {symbol} trong một lần chuyển.",
+        "oneTimeAckCheckboxNoMin": "Tôi hiểu đây là địa chỉ một lần chỉ dùng trong một lần chuyển.",
+        "onlySendAssetNetwork": "Chỉ gửi <bold>{symbol}</bold> trên mạng <bold>{network}</bold>. Tài sản hoặc mạng khác sẽ dẫn đến mất tiền.",
+        "expiresInDays": "Hết hạn sau <bold>{days} ngày</bold> – <bold>kể cả khi chưa dùng</bold>.",
+        "createNewAddressHint": "Cần thông tin nạp khác? <link>Tạo địa chỉ mới</link>. Tạo địa chỉ khác sẽ không vô hiệu hóa địa chỉ này.",
+        "receivesOnlyConfidential": "Chỉ nhận tiền từ tài khoản Trezu hoặc near.com bảo mật",
+        "receivesOnlyConfidentialSub": "Dùng lại được. Không hết hạn.",
+        "anythingElseLost": "Mọi thứ gửi từ nơi khác sẽ bị mất",
+        "anythingElseLostSub": "Sàn giao dịch, ví công khai, mạng khác – không thể khôi phục.",
+        "confidentialAckCheckbox": "Tôi hiểu các khoản nạp từ ngoài Trezu hoặc near.com bảo mật sẽ bị mất.",
+        "onlyFromConfidentialTrezu": "Chỉ từ <bold>Trezu</bold> bảo mật",
+        "onlyFromConfidentialNearcom": "Chỉ từ <bold>near.com</bold> bảo mật",
+        "reusableDoesntExpire": "<bold>Dùng lại được.</bold> Không hết hạn",
+        "fundsOutsideTrezuLost": "Tiền gửi từ ngoài Trezu bảo mật sẽ bị mất",
+        "fundsOutsideNearcomLost": "Tiền gửi từ ngoài near.com bảo mật sẽ bị mất",
+        "publicNetworkRecommendation": "Chỉ nạp từ mạng <bold>{network}</bold>. Hãy bắt đầu bằng một giao dịch thử nhỏ trước khi gửi toàn bộ số tiền.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Từ ví công khai",
+                "subtitle": "Tạo địa chỉ nạp một lần"
+            },
+            "confidentialUser": {
+                "title": "Từ người dùng bảo mật",
+                "subtitle": "Nạp từ Trezu & near.com bảo mật"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Từ Trezu bảo mật",
+            "nearcom": "Từ near.com bảo mật"
+        },
+        "guestBanner": {
+            "title": "Bạn đang xem với tư cách khách",
+            "description": "Địa chỉ này thuộc treasury của người khác. Hãy kiểm tra kỹ trước khi gửi."
+        },
+        "transfer": {
+            "title": "Chuyển tới Treasury",
+            "waitingForPayment": "Đang chờ thanh toán",
+            "youSendFromPublic": "Bạn gửi từ bất kỳ ví công khai nào",
+            "youSend": "Bạn gửi",
+            "goesTo": "Đến",
+            "assetOnNetwork": "{symbol} trên mạng {network}",
+            "anyAsset": "Bất kỳ tài sản nào",
+            "onNetwork": "trên mạng {network}",
+            "onNearcomNetwork": "trên mạng near.com",
+            "anyAssetOnNearcom": "Bất kỳ tài sản nào trên mạng near.com",
+            "securedOnTrezu": "Được bảo vệ trên Trezu",
+            "payWithTrezu": "Thanh toán bằng Trezu",
+            "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",
+            "copyLink": "Sao chép liên kết",
+            "titleConfidential": "Chuyển tới Treasury bảo mật"
         }
     },
     "assetDetails": {

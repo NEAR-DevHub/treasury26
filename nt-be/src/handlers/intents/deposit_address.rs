@@ -1,4 +1,5 @@
 use axum::{Json, extract::State, http::StatusCode};
+use chrono::{Duration, Utc};
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -7,6 +8,10 @@ use crate::AppState;
 use crate::auth::OptionalAuthUser;
 use crate::utils::cache::{CacheKey, CacheTier};
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
+
+/// One-time confidential deposit addresses are valid for 14 days from generation.
+/// Must stay in sync with the frontend deposit UI (`SINGLE_USE_VALIDITY_MS`).
+pub const DEPOSIT_ADDRESS_VALIDITY_DAYS: i64 = 14;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,6 +29,9 @@ pub struct DepositAddressResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_amount: Option<String>,
     pub memo: Option<String>,
+    /// ISO-8601 expiry for one-time confidential deposit addresses.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
 }
 
 /// For confidential treasuries, get a confidential quote to obtain the intents
@@ -36,10 +44,8 @@ async fn get_confidential_deposit_address(
     mut amount: u128,
 ) -> Result<DepositAddressResult, (StatusCode, String)> {
     let access_token = super::confidential::refresh_dao_jwt(state, account_id).await?;
-    let deadline = super::quote::quote_deadline_for_dao(state, account_id)
-        .await?
-        .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-        .to_string();
+    let expires_at = Utc::now() + Duration::days(DEPOSIT_ADDRESS_VALIDITY_DAYS);
+    let deadline = expires_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
     let account_id = account_id.as_str();
 
     let url = format!("{}/v0/quote", state.env_vars.confidential_api_url);
@@ -87,6 +93,7 @@ async fn get_confidential_deposit_address(
                 let mut bridge_result =
                     fetch_bridge_deposit_address(state, &quote_deposit_address, chain).await?;
                 bridge_result.min_amount = Some(amount.to_string());
+                bridge_result.expires_at = Some(deadline.clone());
                 return Ok(bridge_result);
             }
             Err((status, msg)) => {
@@ -221,4 +228,27 @@ async fn fetch_deposit_address(
 
     data.result
         .ok_or_else(|| "No deposit address found".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn deposit_address_validity_is_fourteen_days() {
+        assert_eq!(DEPOSIT_ADDRESS_VALIDITY_DAYS, 14);
+        let expires_at = Utc::now() + Duration::days(DEPOSIT_ADDRESS_VALIDITY_DAYS);
+        let remaining = expires_at.signed_duration_since(Utc::now());
+        assert!(remaining.num_days() >= 13);
+        assert!(remaining.num_days() <= 14);
+    }
+
+    #[test]
+    fn deposit_address_result_deserializes_without_expires_at() {
+        let json = r#"{"address":"abc","memo":null}"#;
+        let parsed: DepositAddressResult =
+            serde_json::from_str(json).expect("bridge payloads omit expiresAt");
+        assert_eq!(parsed.address, "abc");
+        assert_eq!(parsed.expires_at, None);
+    }
 }

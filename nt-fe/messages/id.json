@@ -270,7 +270,8 @@
         },
         "errors": {
             "addressUnavailable": "Tidak dapat mengambil alamat deposit untuk aset dan jaringan yang dipilih.",
-            "fetchFailed": "Gagal mengambil alamat deposit. Silakan coba lagi."
+            "fetchFailed": "Gagal mengambil alamat deposit. Silakan coba lagi.",
+            "loginRequired": "Masuk untuk membuat alamat deposit sekali pakai."
         },
         "title": "Deposit",
         "subtitle": "Pilih aset dan jaringan untuk melihat alamat deposit",
@@ -283,7 +284,7 @@
         "depositAddressHeading": "Alamat Deposit",
         "depositAddressSubtitle": "Selalu periksa kembali alamat deposit Anda.",
         "depositAddressSubtitleConfidential": "<semibold>Alamat deposit sekali pakai.</semibold> Menggunakan kembali alamat ini atau mengirim dana setelah kedaluwarsa dapat menyebabkan kehilangan dana permanen.",
-        "depositAddressSubtitleConfidentialExpiry": "Valid selama 3 hari sejak waktu pembuatan. Kedaluwarsa dalam: tersisa {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Berlaku 14 hari sejak dibuat. Kedaluwarsa dalam: {expiresIn} tersisa",
         "singleUseAcknowledgement": "Saya akan menggunakan alamat ini hanya sekali",
         "addressLabel": "Alamat",
         "addressCopied": "Alamat disalin ke papan klip",
@@ -306,6 +307,78 @@
             "fiatAnswer": "Untuk saat ini belum, tetapi kami sedang mengupayakan dukungan deposit fiat segera. Nantikan - segera hadir 🚀",
             "arrivalQuestion": "Berapa lama deposit akan masuk?",
             "arrivalAnswer": "Waktu pemrosesan tergantung pada jaringan."
+        },
+        "back": "Kembali",
+        "publicAddressTitle": "Alamat deposit {symbol} di {network}",
+        "publicAddressSubtitle": "Kirim hanya token ini, di jaringan ini, ke alamat di bawah.",
+        "oneTimeAddressTitle": "Alamat deposit sekali pakai {symbol} di jaringan {network}",
+        "oneTimeAddressSubtitle": "Kirim hanya token ini, di jaringan ini, ke alamat di bawah.",
+        "confidentialTrezuTitle": "Deposit dari Trezu rahasia di jaringan near.com",
+        "confidentialTrezuSubtitle": "Terima aset apa pun dari Trezu rahasia.",
+        "confidentialNearcomTitle": "Deposit dari near.com rahasia di jaringan internal",
+        "confidentialNearcomSubtitle": "Terima aset apa pun dari near.com rahasia.",
+        "oneTimeSectionTitle": "Alamat deposit rahasia sekali pakai",
+        "oneTimeSectionSubtitle": "Gunakan hanya sekali; apa pun setelah deposit pertama akan hilang.",
+        "internalAddressTitle": "Ini adalah alamat rahasia internal Anda",
+        "generateAddress": "Buat alamat",
+        "showAddress": "Tampilkan alamat",
+        "copy": "Salin",
+        "share": "Bagikan",
+        "linkCopied": "Tautan disalin ke papan klip",
+        "minDepositValue": "Deposit minimum <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Jangan</bold> kirim deposit uji coba",
+        "doNotReuseAddress": "<bold>Jangan</bold> gunakan ulang, simpan, whitelist, atau bagikan alamat",
+        "doNotReuseAddressShort": "<bold>Jangan</bold> gunakan ulang, simpan, atau whitelist alamat",
+        "oneTimeAckCheckbox": "Saya memahami ini adalah alamat sekali pakai, dan saya harus mengirim setidaknya {amount} {symbol} dalam satu transfer.",
+        "oneTimeAckCheckboxNoMin": "Saya memahami ini adalah alamat sekali pakai yang harus digunakan dalam satu transfer.",
+        "onlySendAssetNetwork": "Kirim hanya <bold>{symbol}</bold> di jaringan <bold>{network}</bold>. Aset atau jaringan lain akan menyebabkan dana hilang.",
+        "expiresInDays": "Kedaluwarsa dalam <bold>{days} hari</bold> – <bold>meski tidak digunakan</bold>.",
+        "createNewAddressHint": "Butuh detail deposit lain? <link>Buat alamat baru</link>. Membuat alamat lain tidak menonaktifkan yang ini.",
+        "receivesOnlyConfidential": "Hanya menerima dana dari akun Trezu atau near.com rahasia",
+        "receivesOnlyConfidentialSub": "Dapat digunakan ulang. Tidak kedaluwarsa.",
+        "anythingElseLost": "Apa pun yang dikirim dari tempat lain akan hilang",
+        "anythingElseLostSub": "Exchange, dompet publik, jaringan lain – tidak dapat dipulihkan.",
+        "confidentialAckCheckbox": "Saya memahami deposit dari luar Trezu atau near.com rahasia akan hilang.",
+        "onlyFromConfidentialTrezu": "Hanya dari <bold>Trezu</bold> rahasia",
+        "onlyFromConfidentialNearcom": "Hanya dari <bold>near.com</bold> rahasia",
+        "reusableDoesntExpire": "<bold>Dapat digunakan ulang.</bold> Tidak kedaluwarsa",
+        "fundsOutsideTrezuLost": "Dana yang dikirim dari luar Trezu rahasia akan hilang",
+        "fundsOutsideNearcomLost": "Dana yang dikirim dari luar near.com rahasia akan hilang",
+        "publicNetworkRecommendation": "Deposit hanya dari jaringan <bold>{network}</bold>. Mulai dengan transaksi uji kecil sebelum mengirim jumlah penuh.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Dari dompet publik",
+                "subtitle": "Buat alamat deposit sekali pakai"
+            },
+            "confidentialUser": {
+                "title": "Dari pengguna rahasia",
+                "subtitle": "Deposit dari Trezu & near.com rahasia"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Dari Trezu rahasia",
+            "nearcom": "Dari near.com rahasia"
+        },
+        "guestBanner": {
+            "title": "Anda melihat sebagai tamu",
+            "description": "Alamat ini milik treasury orang lain. Periksa ulang sebelum mengirim."
+        },
+        "transfer": {
+            "title": "Transfer ke Treasury",
+            "waitingForPayment": "Menunggu pembayaran",
+            "youSendFromPublic": "Anda mengirim dari dompet publik mana pun",
+            "youSend": "Anda mengirim",
+            "goesTo": "Ke",
+            "assetOnNetwork": "{symbol} di jaringan {network}",
+            "anyAsset": "Aset apa pun",
+            "onNetwork": "di jaringan {network}",
+            "onNearcomNetwork": "di jaringan near.com",
+            "anyAssetOnNearcom": "Aset apa pun di jaringan near.com",
+            "securedOnTrezu": "Diamankan di Trezu",
+            "payWithTrezu": "Bayar dengan Trezu",
+            "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",
+            "copyLink": "Salin tautan",
+            "titleConfidential": "Transfer ke Treasury rahasia"
         }
     },
     "assetDetails": {
