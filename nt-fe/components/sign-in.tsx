@@ -18,9 +18,13 @@ import { Address } from "./address";
 import { CopyButton } from "./copy-button";
 import { User } from "./user";
 
-/** Shared row styling for every entry in the account menu (header bar + sidebar profile menu). */
+/**
+ * Shared row styling for every entry in the account menu (header bar + sidebar
+ * profile menu). `cursor-pointer` is explicit because rows render as bare
+ * `<button>`s, which Tailwind's preflight leaves at the default arrow.
+ */
 export const accountMenuItemClass =
-    "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-muted";
+    "flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-muted";
 
 /** Routes to `/login`, preserving where the user came from. */
 export function useConnectWallet() {

@@ -221,17 +221,12 @@ export function TreasurySelector({
                     </Tooltip>
                 </SelectTrigger>
                 {/* Portalled out of the rail, so it can't inherit the rail's scope:
-                    confidential mode re-declares `dark` here to keep the popover in
-                    step with the always-dark rail. */}
+                    `dark` is re-declared here to keep the popover in step with the
+                    always-dark rail it drops out of. */}
                 <SelectContent
                     align="start"
                     sideOffset={8}
-                    className={cn(
-                        "w-(--radix-select-trigger-width) min-w-56 rounded-2xl p-1.5 shadow-xl",
-                        isConfidential
-                            ? "dark border-white/10 bg-gray-950 text-white"
-                            : "border-gray-300 bg-white text-gray-900 dark:border-white/10 dark:bg-gray-950 dark:text-white",
-                    )}
+                    className="dark w-(--radix-select-trigger-width) min-w-56 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
                 >
                     {memberTreasuries.length > 0 && (
                         <SelectGroup>

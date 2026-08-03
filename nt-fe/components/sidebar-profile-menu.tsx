@@ -68,7 +68,7 @@ export function SidebarProfileMenu({
             type="button"
             id="help-support-link"
             aria-label={accountId}
-            className="mx-auto flex size-11 cursor-pointer items-center justify-center rounded-2xl border border-gray-300 bg-gray-50 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-800 dark:hover:bg-gray-700"
+            className="mx-auto flex size-11 cursor-pointer items-center justify-center rounded-2xl border border-gray-300 bg-gray-50 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-950 dark:hover:bg-gray-900"
         >
             {avatar}
         </button>
@@ -76,7 +76,7 @@ export function SidebarProfileMenu({
         <button
             type="button"
             id="help-support-link"
-            className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-gray-300 bg-gray-50 p-3.5 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-800 dark:hover:bg-gray-700"
+            className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-gray-300 bg-gray-50 p-3.5 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-950 dark:hover:bg-gray-900"
         >
             {avatar}
             <span className="min-w-0 flex-1 truncate text-start font-semibold text-sm text-gray-900 dark:text-white">
@@ -109,11 +109,13 @@ export function SidebarProfileMenu({
                     trigger
                 )}
             </PopoverTrigger>
+            {/* Portalled out of the rail, so `dark` is re-declared here to keep the
+                menu in step with the always-dark rail it drops out of. */}
             <PopoverContent
                 side="top"
                 align="start"
                 sideOffset={8}
-                className="w-66 rounded-2xl p-1.5"
+                className="dark w-66 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
             >
                 <AccountMenuItems
                     accountId={accountId}
