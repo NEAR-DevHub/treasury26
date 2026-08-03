@@ -211,17 +211,22 @@ pub async fn connect_treasuries(
                 )
             })?;
 
-        register_or_refresh_monitored_account(&state.db_pool, dao_id, false)
-            .await
-            .map_err(|e| match e {
-                RegisterMonitoredAccountError::NotSputnikDao => (
-                    StatusCode::BAD_REQUEST,
-                    format!("Only sputnik-dao accounts can be connected: {}", dao_id),
-                ),
-                RegisterMonitoredAccountError::Db(err) => {
-                    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-                }
-            })?;
+        register_or_refresh_monitored_account(
+            &state.db_pool,
+            state.goldsky_pool.as_ref(),
+            dao_id,
+            false,
+        )
+        .await
+        .map_err(|e| match e {
+            RegisterMonitoredAccountError::NotSputnikDao => (
+                StatusCode::BAD_REQUEST,
+                format!("Only sputnik-dao accounts can be connected: {}", dao_id),
+            ),
+            RegisterMonitoredAccountError::Db(err) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+            }
+        })?;
     }
 
     // Run everything in a transaction
