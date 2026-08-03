@@ -822,16 +822,15 @@ export default function BalanceWithGraph({
                     }}
                     id="dashboard-step1"
                     size="xl"
-                    className="max-md:h-11 max-md:px-3 max-md:text-sm"
+                    className="h-11 max-md:px-3 max-md:text-sm"
                 >
-                    <ArrowDown className="size-4 max-md:size-3.5" />{" "}
-                    {t("receive")}
+                    <ArrowDown className="size-[18px]" /> {t("receive")}
                 </Button>
                 <AuthButton
                     permissionKind="transfer"
                     permissionAction="AddProposal"
                     size="xl"
-                    className="w-full max-md:h-11 max-md:px-3 max-md:text-sm"
+                    className="w-full h-11 max-md:px-3 max-md:text-sm"
                     id="dashboard-step2"
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -842,14 +841,14 @@ export default function BalanceWithGraph({
                         router.push(`/${treasuryId}/payments`);
                     }}
                 >
-                    <Navigation className="size-4 max-md:size-3.5" />
+                    <Navigation className="size-[18px]" />
                     {t("send")}
                 </AuthButton>
                 <AuthButton
                     permissionKind="call"
                     permissionAction="AddProposal"
                     size="xl"
-                    className="w-full max-md:h-11 max-md:px-3 max-md:text-sm"
+                    className="w-full h-11 max-md:px-3 max-md:text-sm"
                     id="dashboard-step3"
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -860,7 +859,7 @@ export default function BalanceWithGraph({
                         router.push(`/${treasuryId}/exchange`);
                     }}
                 >
-                    <SwapIcon className="size-4 max-md:size-3.5" /> {t("swap")}
+                    <SwapIcon className="size-[18px]" /> {t("swap")}
                 </AuthButton>
                 {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                     <Database className="size-4" /> Earn

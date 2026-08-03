@@ -68,7 +68,7 @@ export function SidebarProfileMenu({
             type="button"
             id="help-support-link"
             aria-label={accountId}
-            className="mx-auto flex size-11 cursor-pointer items-center justify-center rounded-2xl bg-gray-800 transition-colors duration-200 hover:bg-gray-700"
+            className="mx-auto flex size-11 cursor-pointer items-center justify-center rounded-2xl border border-gray-300 bg-gray-50 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-800 dark:hover:bg-gray-700"
         >
             {avatar}
         </button>
@@ -76,10 +76,10 @@ export function SidebarProfileMenu({
         <button
             type="button"
             id="help-support-link"
-            className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl bg-gray-800 p-3.5 transition-colors duration-200 hover:bg-gray-700"
+            className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-gray-300 bg-gray-50 p-3.5 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-800 dark:hover:bg-gray-700"
         >
             {avatar}
-            <span className="min-w-0 flex-1 truncate text-start font-semibold text-sm text-white">
+            <span className="min-w-0 flex-1 truncate text-start font-semibold text-sm text-gray-900 dark:text-white">
                 {accountId}
             </span>
             {isStaging && (
@@ -91,7 +91,7 @@ export function SidebarProfileMenu({
             )}
             <ChevronUp
                 className={cn(
-                    "size-5 shrink-0 text-gray-400 transition-transform duration-150 group-hover:text-white",
+                    "size-5 shrink-0 text-gray-500 transition-transform duration-150 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white",
                     isOpen && "rotate-180",
                 )}
             />

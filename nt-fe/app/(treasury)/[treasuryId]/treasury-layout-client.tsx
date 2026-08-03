@@ -4,8 +4,9 @@ import { usePathname } from "next/navigation";
 import { AppShellProvider } from "@/components/app-shell-context";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PrimaryColorProvider } from "@/components/primary-color-provider";
-import { Sidebar } from "@/components/sidebar";
+import { Sidebar, shellSurfaceClass } from "@/components/sidebar";
 import { useTreasury } from "@/hooks/use-treasury";
+import { cn } from "@/lib/utils";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { AppEventsProvider } from "./app-events-provider";
 
@@ -17,7 +18,7 @@ export function TreasuryLayoutClient({
     treasuryId: string;
 }) {
     const { isSidebarOpen, setSidebarOpen } = useResponsiveSidebar();
-    const { isLoading } = useTreasury();
+    const { isLoading, isConfidential } = useTreasury();
     const pathname = usePathname();
     const isStandaloneReceiptView = /\/requests\/[^/]+\/receipt$/.test(
         pathname ?? "",
@@ -38,7 +39,12 @@ export function TreasuryLayoutClient({
     }
     return (
         <AppShellProvider>
-            <div className="flex h-dvh lg:h-screen overflow-hidden bg-gray-850 transition-colors duration-200">
+            <div
+                className={cn(
+                    "flex h-dvh lg:h-screen overflow-hidden transition-colors duration-200",
+                    shellSurfaceClass(isConfidential),
+                )}
+            >
                 <AppEventsProvider scope={{ treasuryId }} />
                 <PrimaryColorProvider treasuryId={treasuryId} />
                 <Sidebar
@@ -46,7 +52,7 @@ export function TreasuryLayoutClient({
                     onClose={() => setSidebarOpen(false)}
                 />
                 <main className="flex-1 overflow-hidden lg:p-2">
-                    <div className="h-full overflow-y-auto bg-background lg:rounded-3xl">
+                    <div className="h-full overflow-y-auto bg-page-bg dark:bg-gray-850 lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
                         {children}
                     </div>
                 </main>

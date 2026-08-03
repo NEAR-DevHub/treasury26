@@ -54,7 +54,7 @@ function PendingRequestsSkeleton() {
         <div className="flex h-fit min-h-[300px] w-full flex-col gap-3">
             <div className="flex justify-between">
                 <div className="flex items-center gap-1">
-                    <h2 className="text-nowrap font-bold text-2xl tracking-tight">
+                    <h2 className="text-nowrap font-bold text-base tracking-tight">
                         {t("title")}
                     </h2>
                 </div>
@@ -269,7 +269,7 @@ export function PendingRequests() {
             <div className="flex h-fit min-h-[300px] w-full flex-col gap-3">
                 <div className="flex justify-between">
                     <div className="flex items-center gap-1">
-                        <h2 className="text-nowrap font-bold text-2xl tracking-tight">
+                        <h2 className="text-nowrap font-bold text-base tracking-tight">
                             {t("title")}
                         </h2>
                     </div>
@@ -295,7 +295,7 @@ export function PendingRequests() {
             >
                 <div className="flex justify-between">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-nowrap font-bold text-2xl tracking-tight">
+                        <h2 className="text-nowrap font-bold text-base tracking-tight">
                             {t("title")}
                         </h2>
                         {hasPendingRequests && (
