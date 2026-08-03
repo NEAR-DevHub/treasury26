@@ -822,7 +822,7 @@ export default function BalanceWithGraph({
                     }}
                     id="dashboard-step1"
                     size="xl"
-                    className="h-11 max-md:px-3 max-md:text-sm"
+                    className="h-11 max-md:px-3 max-md:text-sm dark:bg-white dark:hover:not-disabled:bg-gray-200"
                 >
                     <ArrowDown className="size-[18px]" /> {t("receive")}
                 </Button>
@@ -830,7 +830,7 @@ export default function BalanceWithGraph({
                     permissionKind="transfer"
                     permissionAction="AddProposal"
                     size="xl"
-                    className="w-full h-11 max-md:px-3 max-md:text-sm"
+                    className="w-full h-11 max-md:px-3 max-md:text-sm dark:bg-white dark:hover:not-disabled:bg-gray-200"
                     id="dashboard-step2"
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -848,7 +848,7 @@ export default function BalanceWithGraph({
                     permissionKind="call"
                     permissionAction="AddProposal"
                     size="xl"
-                    className="w-full h-11 max-md:px-3 max-md:text-sm"
+                    className="w-full h-11 max-md:px-3 max-md:text-sm dark:bg-white dark:hover:not-disabled:bg-gray-200"
                     id="dashboard-step3"
                     onClick={() => {
                         trackEvent("nav-click", {
