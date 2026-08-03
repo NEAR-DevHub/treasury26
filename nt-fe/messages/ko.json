@@ -843,7 +843,8 @@
             "yourLink": "초대 링크",
             "copyLink": "링크 복사",
             "linkCopied": "초대 링크가 복사되었습니다",
-            "generateNewLink": "새 링크 생성"
+            "generateNewLink": "새 링크 생성",
+            "generatingNewLink": "Generating New Link"
         },
         "joinRequests": {
             "title": "가입 희망",
@@ -2310,6 +2311,10 @@
             "docsDescription": "문서에서 모든 기능에 대해 알아보세요.",
             "videoTitle": "데모 시청",
             "videoDescription": "Trezu 작동 방식을 보여주는 짧은 비디오를 시청하세요."
+        },
+        "pendingJoinBanner": {
+            "title": "Your request to join is pending",
+            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

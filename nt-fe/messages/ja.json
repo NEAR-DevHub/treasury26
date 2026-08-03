@@ -843,7 +843,8 @@
             "yourLink": "招待リンク",
             "copyLink": "リンクをコピー",
             "linkCopied": "招待リンクをコピーしました",
-            "generateNewLink": "新しいリンクを作成"
+            "generateNewLink": "新しいリンクを作成",
+            "generatingNewLink": "Generating New Link"
         },
         "joinRequests": {
             "title": "参加希望",
@@ -2310,6 +2311,10 @@
             "docsDescription": "ドキュメントですべての機能について学びましょう。",
             "videoTitle": "デモを見る",
             "videoDescription": "Trezuの動作を示す短い動画をご覧ください。"
+        },
+        "pendingJoinBanner": {
+            "title": "Your request to join is pending",
+            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

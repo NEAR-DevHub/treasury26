@@ -843,7 +843,8 @@
             "yourLink": "你的邀请链接",
             "copyLink": "复制链接",
             "linkCopied": "已复制邀请链接",
-            "generateNewLink": "生成新链接"
+            "generateNewLink": "生成新链接",
+            "generatingNewLink": "Generating New Link"
         },
         "joinRequests": {
             "title": "希望加入",
@@ -2293,6 +2294,10 @@
             "docsDescription": "在文档中了解所有功能。",
             "videoTitle": "观看演示",
             "videoDescription": "观看一段简短视频,了解 Trezu 的工作方式。"
+        },
+        "pendingJoinBanner": {
+            "title": "Your request to join is pending",
+            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

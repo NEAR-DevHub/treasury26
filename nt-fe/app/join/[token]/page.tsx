@@ -64,9 +64,40 @@ export default function JoinInvitePage() {
     };
 
     const treasuryName = invite?.treasuryName || t("treasuryFallback");
-    const showLogin = !accountId && invite?.status === "valid" && !submitted;
+    const viewerStatus = invite?.viewerStatus;
+    const hasPendingRequest =
+        viewerStatus === "pending" || (submitted && !!joinedDaoId);
+    const pendingDaoId =
+        joinedDaoId || (viewerStatus === "pending" ? invite?.daoId : null);
+    const showLogin =
+        !accountId && invite?.status === "valid" && !hasPendingRequest;
     // Keep ask / success / used / expired / invalid cards the same footprint.
     const formCardClassName = "gap-4 min-h-[340px]";
+
+    const pendingSuccessCard = pendingDaoId ? (
+        <PageCard className={`${formCardClassName} justify-center`}>
+            <div className="flex w-full flex-col items-center text-center gap-4">
+                <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
+                    <CheckCircle2 className="size-6 text-emerald-600" />
+                </div>
+                <div className="space-y-1">
+                    <h2 className="text-xl font-semibold">
+                        {t("successTitle")}
+                    </h2>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line max-w-[280px] mx-auto">
+                        {t("successDescription")}
+                    </p>
+                </div>
+                <Button
+                    className="w-full"
+                    variant="secondary"
+                    onClick={() => router.push(`/${pendingDaoId}`)}
+                >
+                    {t("seeTreasury")}
+                </Button>
+            </div>
+        </PageCard>
+    ) : null;
 
     return (
         <PageComponentLayout
@@ -110,6 +141,8 @@ export default function JoinInvitePage() {
                             </Button>
                         </div>
                     </PageCard>
+                ) : hasPendingRequest && pendingSuccessCard ? (
+                    pendingSuccessCard
                 ) : invite.status !== "valid" ? (
                     <PageCard className={`${formCardClassName} justify-center`}>
                         <div className="flex w-full flex-col items-center text-center gap-4">
@@ -127,29 +160,6 @@ export default function JoinInvitePage() {
                             </div>
                             <Button asChild className="w-full">
                                 <Link href="/">{t("goHome")}</Link>
-                            </Button>
-                        </div>
-                    </PageCard>
-                ) : submitted && joinedDaoId ? (
-                    <PageCard className={`${formCardClassName} justify-center`}>
-                        <div className="flex w-full flex-col items-center text-center gap-4">
-                            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
-                                <CheckCircle2 className="size-6 text-emerald-600" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-semibold">
-                                    {t("successTitle")}
-                                </h2>
-                                <p className="text-sm text-muted-foreground whitespace-pre-line max-w-[280px] mx-auto">
-                                    {t("successDescription")}
-                                </p>
-                            </div>
-                            <Button
-                                className="w-full"
-                                variant="secondary"
-                                onClick={() => router.push(`/${joinedDaoId}`)}
-                            >
-                                {t("seeTreasury")}
                             </Button>
                         </div>
                     </PageCard>

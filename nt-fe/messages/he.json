@@ -843,7 +843,8 @@
             "yourLink": "קישור ההזמנה שלכם",
             "copyLink": "העתקת קישור",
             "linkCopied": "קישור ההזמנה הועתק",
-            "generateNewLink": "יצירת קישור חדש"
+            "generateNewLink": "יצירת קישור חדש",
+            "generatingNewLink": "Generating New Link"
         },
         "joinRequests": {
             "title": "רוצה להצטרף",
@@ -2310,6 +2311,10 @@
             "docsDescription": "למד על כל התכונות בתיעוד.",
             "videoTitle": "צפה בדמו",
             "videoDescription": "צפה בסרטון קצר המראה איך Trezu עובד."
+        },
+        "pendingJoinBanner": {
+            "title": "Your request to join is pending",
+            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

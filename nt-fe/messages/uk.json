@@ -843,7 +843,8 @@
             "yourLink": "Ваше посилання-запрошення",
             "copyLink": "Копіювати посилання",
             "linkCopied": "Посилання-запрошення скопійовано",
-            "generateNewLink": "Створити нове посилання"
+            "generateNewLink": "Створити нове посилання",
+            "generatingNewLink": "Generating New Link"
         },
         "joinRequests": {
             "title": "Хоче приєднатися",
@@ -2293,6 +2294,10 @@
             "docsDescription": "Дізнайтесь про всі функції у документації.",
             "videoTitle": "Переглянути демо",
             "videoDescription": "Перегляньте короткий відеоогляд роботи Trezu."
+        },
+        "pendingJoinBanner": {
+            "title": "Your request to join is pending",
+            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

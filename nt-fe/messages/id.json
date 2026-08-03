@@ -843,7 +843,8 @@
             "yourLink": "Tautan undangan Anda",
             "copyLink": "Salin tautan",
             "linkCopied": "Tautan undangan disalin",
-            "generateNewLink": "Buat tautan baru"
+            "generateNewLink": "Buat tautan baru",
+            "generatingNewLink": "Generating New Link"
         },
         "joinRequests": {
             "title": "Ingin bergabung",
@@ -2310,6 +2311,10 @@
             "docsDescription": "Pelajari semua fitur di dokumen.",
             "videoTitle": "Tonton Demo",
             "videoDescription": "Tonton video singkat yang menunjukkan cara kerja Trezu."
+        },
+        "pendingJoinBanner": {
+            "title": "Your request to join is pending",
+            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {
