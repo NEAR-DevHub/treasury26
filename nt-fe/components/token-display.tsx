@@ -208,10 +208,12 @@ export const BalanceCell = ({
         : `${formatSmartAmount(balance)} ${symbol}`;
     const usd = formatCurrencyWithSubCent(balanceUSD);
     const primaryClass =
-        size === "md" ? "font-bold text-base" : "font-medium text-sm";
+        size === "md"
+            ? "font-semibold text-base/5 text-gray-900 dark:text-white"
+            : "font-medium text-sm";
     const secondaryClass =
         size === "md"
-            ? "text-gray-500 text-sm"
+            ? "font-medium text-gray-500 text-sm/5 dark:text-gray-400"
             : "text-muted-foreground text-xxs";
 
     return (

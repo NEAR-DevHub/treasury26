@@ -53,7 +53,7 @@ export default function Assets({ tokens, state }: Props) {
     };
 
     return (
-        <PageCard className="flex flex-col gap-0 overflow-hidden p-0">
+        <PageCard className="flex flex-col gap-0 overflow-hidden border-gray-200 bg-gray-50 p-0 dark:border-white/5 dark:bg-gray-900">
             {renderContent()}
         </PageCard>
     );
