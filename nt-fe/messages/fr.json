@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "Tableau de bord",
         "requests": "Demandes",
-        "payments": "Paiements",
-        "exchange": "Échange",
-        "addressBook": "Carnet d'adresses",
+        "payments": "Envoyer",
+        "exchange": "Échanger",
+        "addressBook": "Contacts",
         "members": "Membres",
         "settings": "Paramètres",
         "helpSupport": "Aide et support",

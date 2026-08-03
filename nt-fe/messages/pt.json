@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "Painel",
         "requests": "Solicitações",
-        "payments": "Pagamentos",
-        "exchange": "Troca",
-        "addressBook": "Catálogo de endereços",
+        "payments": "Enviar",
+        "exchange": "Trocar",
+        "addressBook": "Contatos",
         "members": "Membros",
         "settings": "Configurações",
         "helpSupport": "Ajuda e suporte",

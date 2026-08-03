@@ -92,9 +92,9 @@
     "nav": {
         "dashboard": "Bảng điều khiển",
         "requests": "Yêu cầu",
-        "payments": "Thanh toán",
-        "exchange": "Trao đổi",
-        "addressBook": "Sổ địa chỉ",
+        "payments": "Gửi",
+        "exchange": "Hoán đổi",
+        "addressBook": "Danh bạ",
         "members": "Thành viên",
         "settings": "Cài đặt",
         "helpSupport": "Trợ giúp & Hỗ trợ",
