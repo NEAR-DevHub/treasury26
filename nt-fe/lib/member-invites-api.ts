@@ -69,7 +69,7 @@ export async function getMyMemberJoinStatus(
     daoId: string,
 ): Promise<MyMemberJoinStatus> {
     const { data } = await axios.get<MyMemberJoinStatus>(
-        `${BACKEND_API_BASE}/treasury/${encodeURIComponent(daoId)}/member-join-request/me`,
+        `${BACKEND_API_BASE}/treasury/${encodeURIComponent(daoId)}/member-join-requests/me`,
         { withCredentials: true },
     );
     return data;

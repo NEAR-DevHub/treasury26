@@ -2301,6 +2301,10 @@
             "description": "Trezu의 모든 기능과 혜택에 대한 권한을 잠금 해제하려면 계정을 생성하세요.",
             "cta": "트레저리 생성"
         },
+        "pendingJoinBanner": {
+            "title": "가입 요청이 대기 중입니다",
+            "description": "지금 이 트레저리를 볼 수 있습니다. 멤버가 승인하면 역할에 따라 요청 생성, 투표 또는 자금 관리를 할 수 있습니다."
+        },
         "infoBox": {
             "title": "Trezu에서 더 많은 것을 얻으세요",
             "close": "닫기",
@@ -2311,10 +2315,6 @@
             "docsDescription": "문서에서 모든 기능에 대해 알아보세요.",
             "videoTitle": "데모 시청",
             "videoDescription": "Trezu 작동 방식을 보여주는 짧은 비디오를 시청하세요."
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

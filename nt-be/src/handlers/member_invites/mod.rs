@@ -223,7 +223,7 @@ pub async fn get_member_invite(
     }))
 }
 
-/// `GET /api/treasury/{dao_id}/member-join-request/me` — requester's own join status.
+/// `GET /api/treasury/{dao_id}/member-join-requests/me` — requester's own join status.
 pub async fn get_my_member_join_status(
     State(state): State<Arc<AppState>>,
     auth_user: AuthUser,

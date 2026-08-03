@@ -2301,6 +2301,10 @@
             "description": "Trezu'nun tüm özelliklerine ve avantajlarına izin almak için bir hesap oluşturun.",
             "cta": "Hazine Oluştur"
         },
+        "pendingJoinBanner": {
+            "title": "Katılma isteğiniz bekliyor",
+            "description": "Bu hazineyi şimdi görüntüleyebilirsiniz. Bir üye sizi onayladığında, rolünüze göre istek oluşturabilir, oy verebilir veya fonları yönetebilirsiniz."
+        },
         "infoBox": {
             "title": "Trezu'dan daha fazlasını alın",
             "close": "Kapat",
@@ -2311,10 +2315,6 @@
             "docsDescription": "Tüm özellikler hakkında belgelerden bilgi edinin.",
             "videoTitle": "Demoyu İzleyin",
             "videoDescription": "Trezu'nun nasıl çalıştığını gösteren kısa bir video izleyin."
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

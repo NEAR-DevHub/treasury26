@@ -2301,6 +2301,10 @@
             "description": "アカウントを作成して、Trezuのすべての機能と特典の権限をアンロックしましょう。",
             "cta": "トレジャリーを作成"
         },
+        "pendingJoinBanner": {
+            "title": "参加リクエストは承認待ちです",
+            "description": "このトレジャリーは今すぐ閲覧できます。メンバーが承認すると、ロールに応じてリクエストの作成、投票、資金管理ができるようになります。"
+        },
         "infoBox": {
             "title": "Trezuをもっと活用",
             "close": "閉じる",
@@ -2311,10 +2315,6 @@
             "docsDescription": "ドキュメントですべての機能について学びましょう。",
             "videoTitle": "デモを見る",
             "videoDescription": "Trezuの動作を示す短い動画をご覧ください。"
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

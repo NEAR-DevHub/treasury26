@@ -2284,6 +2284,10 @@
             "description": "Tạo một tài khoản để mở khóa quyền truy cập tất cả các tính năng và lợi ích của Trezu.",
             "cta": "Tạo Ngân quỹ"
         },
+        "pendingJoinBanner": {
+            "title": "Yêu cầu tham gia của bạn đang chờ duyệt",
+            "description": "Bạn có thể xem ngân quỹ này ngay bây giờ. Khi một thành viên phê duyệt bạn, bạn sẽ có thể tạo yêu cầu, bỏ phiếu hoặc quản lý quỹ theo vai trò của mình."
+        },
         "infoBox": {
             "title": "Tận dụng Trezu nhiều hơn",
             "close": "Đóng",
@@ -2294,10 +2298,6 @@
             "docsDescription": "Tìm hiểu về tất cả tính năng trong tài liệu.",
             "videoTitle": "Xem demo",
             "videoDescription": "Xem video ngắn cho thấy cách Trezu hoạt động."
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

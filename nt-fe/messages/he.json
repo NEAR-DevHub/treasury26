@@ -2301,6 +2301,10 @@
             "description": "צור חשבון כדי לפתוח הרשאות לכל התכונות והיתרונות של Trezu.",
             "cta": "יצירת אוצר"
         },
+        "pendingJoinBanner": {
+            "title": "בקשת ההצטרפות שלך ממתינה",
+            "description": "אפשר כבר לצפות באוצר הזה. כשחבר יאשר אותך, תוכל ליצור בקשות, להצביע או לנהל כספים בהתאם לתפקיד שלך."
+        },
         "infoBox": {
             "title": "קבל יותר מ-Trezu",
             "close": "סגירה",
@@ -2311,10 +2315,6 @@
             "docsDescription": "למד על כל התכונות בתיעוד.",
             "videoTitle": "צפה בדמו",
             "videoDescription": "צפה בסרטון קצר המראה איך Trezu עובד."
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

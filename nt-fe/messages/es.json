@@ -2301,6 +2301,10 @@
             "description": "Crea una cuenta para desbloquear permisos a todas las funciones y ventajas de Trezu.",
             "cta": "Crear tesorería"
         },
+        "pendingJoinBanner": {
+            "title": "Tu solicitud para unirte está pendiente",
+            "description": "Ya puedes ver esta tesorería. Cuando un miembro te apruebe, podrás crear solicitudes, votar o gestionar fondos según tu rol."
+        },
         "infoBox": {
             "title": "Saca más partido a Trezu",
             "close": "Cerrar",
@@ -2311,10 +2315,6 @@
             "docsDescription": "Aprende sobre todas las funciones en la documentación.",
             "videoTitle": "Mira la demo",
             "videoDescription": "Mira un vídeo corto que muestra cómo funciona Trezu."
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

@@ -2301,6 +2301,10 @@
             "description": "Buat akun untuk membuka izin ke semua fitur dan manfaat Trezu.",
             "cta": "Buat Treasury"
         },
+        "pendingJoinBanner": {
+            "title": "Permintaan bergabung Anda sedang menunggu",
+            "description": "Anda sudah dapat melihat treasury ini. Setelah anggota menyetujui Anda, Anda dapat membuat permintaan, memberikan suara, atau mengelola dana sesuai peran Anda."
+        },
         "infoBox": {
             "title": "Dapatkan lebih banyak dari Trezu",
             "close": "Tutup",
@@ -2311,10 +2315,6 @@
             "docsDescription": "Pelajari semua fitur di dokumen.",
             "videoTitle": "Tonton Demo",
             "videoDescription": "Tonton video singkat yang menunjukkan cara kerja Trezu."
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {

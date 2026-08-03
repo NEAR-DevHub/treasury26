@@ -2284,6 +2284,10 @@
             "description": "Створіть обліковий запис, щоб розблокувати всі функції та переваги Trezu.",
             "cta": "Створити скарбницю"
         },
+        "pendingJoinBanner": {
+            "title": "Ваш запит на приєднання очікує підтвердження",
+            "description": "Ви вже можете переглядати цю скарбницю. Коли учасник вас схвалить, ви зможете створювати запити, голосувати або керувати коштами відповідно до своєї ролі."
+        },
         "infoBox": {
             "title": "Більше від Trezu",
             "close": "Закрити",
@@ -2294,10 +2298,6 @@
             "docsDescription": "Дізнайтесь про всі функції у документації.",
             "videoTitle": "Переглянути демо",
             "videoDescription": "Перегляньте короткий відеоогляд роботи Trezu."
-        },
-        "pendingJoinBanner": {
-            "title": "Your request to join is pending",
-            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         }
     },
     "warnings": {
