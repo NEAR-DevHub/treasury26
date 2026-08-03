@@ -147,8 +147,12 @@ export function SelectModal({
     const renderOptionRow = useCallback(
         (item: SelectOption) => {
             const primary = item.symbol || item.name || "";
+            // Only show a secondary line when symbol is present and name differs —
+            // otherwise name-only options (e.g. networks) would duplicate the primary.
             const secondary =
-                item.name && item.name !== item.symbol ? item.name : null;
+                item.symbol && item.name && item.name !== item.symbol
+                    ? item.name
+                    : null;
 
             return (
                 <Button
