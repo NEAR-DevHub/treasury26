@@ -211,7 +211,12 @@ pub async fn connect_treasuries(
                 )
             })?;
 
-        register_or_refresh_monitored_account(&state.db_pool, dao_id, false)
+        register_or_refresh_monitored_account(
+            &state.db_pool,
+            state.goldsky_pool.as_ref(),
+            dao_id,
+            false,
+        )
             .await
             .map_err(|e| match e {
                 RegisterMonitoredAccountError::NotSputnikDao => (

@@ -74,7 +74,7 @@ pub async fn set_custom_requests_setting(
     // *.sputnik-dao.near suffix gate (and on an already-tracked treasury also re-marks the daos row
     // dirty for the sync loop). A ChangePolicy holder implies a real DAO (the policy was fetched
     // above), so NotSputnikDao is a defensive 400.
-    register_or_refresh_monitored_account(&state.db_pool, &dao_id, false)
+    register_or_refresh_monitored_account(&state.db_pool, state.goldsky_pool.as_ref(), &dao_id, false)
         .await
         .map_err(|e| match e {
             RegisterMonitoredAccountError::NotSputnikDao => (

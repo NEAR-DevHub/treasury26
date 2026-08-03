@@ -645,8 +645,13 @@ async fn run_creation_inner(
 
     send_progress(tx, "creating_dao", "completed").await;
 
-    if let Err(e) =
-        register_or_refresh_monitored_account(&state.db_pool, &treasury, is_confidential).await
+    if let Err(e) = register_or_refresh_monitored_account(
+        &state.db_pool,
+        state.goldsky_pool.as_ref(),
+        &treasury,
+        is_confidential,
+    )
+    .await
     {
         tracing::warn!("Failed to add treasury to monitored accounts: {:?}", e);
     }
