@@ -61,7 +61,7 @@ interface AssetMetrics {
 }
 
 const SORT_BUTTON_CLASS =
-    "inline-flex h-auto items-center gap-1.5 px-0! py-0! text-sm/5 font-medium text-gray-500 hover:bg-transparent hover:text-gray-900 dark:text-gray-400 dark:hover:text-white";
+    "inline-flex h-auto items-center gap-1.5 px-0! py-0! text-sm/5 font-medium text-gray-500 hover:bg-transparent hover:text-gray-900 dark:text-gray-400 dark:hover:bg-transparent dark:hover:text-white";
 
 /** Rounds the row block into an inset card, like the near.com vaults table. */
 const TABLE_CARD_CLASS = [
