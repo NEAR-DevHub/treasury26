@@ -9,7 +9,10 @@ use super::grid::{
     DAILY_BUCKET_LIMIT, SnapshotGridInterval, WEEKLY_BUCKET_LIMIT, bucket_count, requested_grid,
 };
 use super::models::{ChartReadiness, GoldBalancePoint};
-use super::repository::{load_chart_readiness, load_gold_balance_points};
+use super::repository::{
+    load_chart_readiness, load_confidential_balance_points, load_confidential_chart_readiness,
+    load_gold_balance_points,
+};
 use crate::AppState;
 use crate::services::public_balance_reader::{
     BalanceSnapshot, ChartMeta, ChartResponse, ChartStatus, Interval,
@@ -33,6 +36,17 @@ fn stored_asset_id(requested: &str) -> &str {
         .strip_prefix(INTENTS_PREFIX)
         .filter(|asset| asset.starts_with(NEP245_PREFIX))
         .unwrap_or(requested)
+}
+
+/// Confidential series keys are `intents.near:`-prefixed for every asset
+/// (all confidential balances live on intents), matching the shape the
+/// frontend already groups on.
+fn confidential_chart_asset_id(asset: &str) -> String {
+    format!("{INTENTS_PREFIX}{asset}")
+}
+
+fn confidential_stored_asset_id(requested: &str) -> &str {
+    requested.strip_prefix(INTENTS_PREFIX).unwrap_or(requested)
 }
 
 fn chart_interval(interval: &Interval) -> Result<SnapshotGridInterval, (StatusCode, String)> {
@@ -244,23 +258,50 @@ pub async fn build_public_chart_response(
     .await
     .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
+    let data = priced_chart_series(state.as_ref(), points, &buckets, chart_asset_id).await;
+
+    let status =
+        if !readiness.projection_ready || readiness.gold_dirty || readiness.head_check_failed {
+            ChartStatus::Stale
+        } else {
+            ChartStatus::Ok
+        };
+    Ok(ChartResponse {
+        data,
+        last_synced_at: readiness.projection_ready_at,
+        chart_meta: Some(ChartMeta {
+            status,
+            last_snapshot_at: readiness.ledger_head_time,
+            coverage_start: readiness.ledger_coverage_start,
+        }),
+    })
+}
+
+/// Shared chart tail: bucket prices + per-asset carry-forward, keyed with the
+/// caller's frontend asset-id mapping.
+async fn priced_chart_series(
+    state: &AppState,
+    points: Vec<GoldBalancePoint>,
+    buckets: &[DateTime<Utc>],
+    series_key: fn(&str) -> String,
+) -> HashMap<String, Vec<BalanceSnapshot>> {
     let assets = points
         .iter()
         .map(|point| point.asset.clone())
         .collect::<HashSet<_>>()
         .into_iter()
         .collect::<Vec<_>>();
-    let prices = BucketPrices::load(state.as_ref(), &assets, &buckets).await;
+    let prices = BucketPrices::load(state, &assets, buckets).await;
 
     let mut data: HashMap<String, Vec<BalanceSnapshot>> = HashMap::new();
-    for (asset, bucket, balance) in carry_forward_balances(points, &buckets) {
+    for (asset, bucket, balance) in carry_forward_balances(points, buckets) {
         let price_usd = prices.price(&asset, bucket);
         let value_usd = if balance.is_zero() {
             Some(0.0)
         } else {
             price_usd.and_then(|price| balance.to_f64().map(|balance| balance * price))
         };
-        data.entry(chart_asset_id(&asset))
+        data.entry(series_key(&asset))
             .or_default()
             .push(BalanceSnapshot {
                 timestamp: bucket.to_rfc3339(),
@@ -272,13 +313,70 @@ pub async fn build_public_chart_response(
     for snapshots in data.values_mut() {
         snapshots.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
     }
+    data
+}
 
-    let status =
-        if !readiness.projection_ready || readiness.gold_dirty || readiness.head_check_failed {
-            ChartStatus::Stale
-        } else {
-            ChartStatus::Ok
-        };
+/// Unified-ledger chart for a confidential DAO. Serves whenever confidential
+/// rows exist — there is no verification gate (balances are checked against
+/// the 1Click balances API at projection time); a running backfill or
+/// recompute degrades the status to Stale, never to empty.
+pub async fn build_confidential_chart_response(
+    state: &Arc<AppState>,
+    account_id: &str,
+    start_time: DateTime<Utc>,
+    end_time: DateTime<Utc>,
+    interval: &Interval,
+    token_ids: Option<&Vec<String>>,
+) -> Result<ChartResponse, (StatusCode, String)> {
+    let interval = chart_interval(interval)?;
+    if end_time < start_time
+        || !bucket_count_is_valid(bucket_count(start_time, end_time, interval), interval)
+    {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "requested chart range is invalid or too large".to_string(),
+        ));
+    }
+    let buckets = requested_grid(start_time, end_time, interval);
+
+    let readiness = load_confidential_chart_readiness(&state.db_pool, account_id)
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    if !readiness.has_gold_balance_points {
+        return Ok(unavailable_response(&readiness));
+    }
+
+    let requested_assets = token_ids
+        .filter(|ids| !ids.is_empty())
+        .map(|ids| {
+            ids.iter()
+                .map(|asset| confidential_stored_asset_id(asset).to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let points = load_confidential_balance_points(
+        &state.db_pool,
+        account_id,
+        start_time,
+        end_time,
+        &requested_assets,
+    )
+    .await
+    .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+
+    let data = priced_chart_series(
+        state.as_ref(),
+        points,
+        &buckets,
+        confidential_chart_asset_id,
+    )
+    .await;
+
+    let status = if !readiness.projection_ready || readiness.gold_dirty {
+        ChartStatus::Stale
+    } else {
+        ChartStatus::Ok
+    };
     Ok(ChartResponse {
         data,
         last_synced_at: readiness.projection_ready_at,

@@ -71,10 +71,11 @@ pub async fn has_outflow_events_since(
         r#"
         SELECT EXISTS (
             SELECT 1
-            FROM gold_confidential_history_events
+            FROM gold_treasury_ledger_events
             WHERE dao_id = $1
+              AND source_kind = 'confidential_history_event'
               AND transaction_type IN ('sent', 'exchange')
-              AND COALESCE(proposal_executed_at, quote_created_at) > $2
+              AND COALESCE(proposal_executed_at, event_time) > $2
         )
         "#,
     )

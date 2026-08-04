@@ -8,6 +8,15 @@ use super::worker::{
     enqueue_backfill_page_job, enqueue_latest_refresh_job, enqueue_preverification_refresh_job,
 };
 use crate::AppState;
+use crate::handlers::balance_changes::confidential_enrichment::{
+    extract_sign_call_from_logs, mark_confidential_intent_submitted,
+};
+use crate::handlers::balance_changes::goldsky_enrichment::{
+    decode_success_value_u64, handle_confidential_add_proposal,
+};
+use crate::handlers::intents::confidential::bronze::mark_confidential_history_activity_due;
+use crate::handlers::intents::confidential::gold::history_events::refresh_gold_metadata_for_intent;
+use crate::handlers::intents::confidential::link_intent_to_history_event;
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
 use crate::services::goldsky_cursor::{load_goldsky_cursor, save_goldsky_cursor};
 use crate::services::public_balance_reader::with_transport_retry;
@@ -29,6 +38,7 @@ pub(crate) struct PublicHistoryDetectorStats {
     pub outcomes_seen: usize,
     pub batches_processed: usize,
     pub latest_enqueued: usize,
+    pub confidential_marked: usize,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
@@ -36,6 +46,7 @@ struct IndexedDaoOutcome {
     id: String,
     executor_id: String,
     logs: Option<String>,
+    status: Option<String>,
     transaction_hash: Option<String>,
     signer_id: Option<String>,
     receiver_id: Option<String>,
@@ -91,6 +102,103 @@ async fn load_monitored_accounts(pool: &PgPool) -> Result<HashSet<String>, sqlx:
         FROM monitored_accounts
         WHERE enabled = true
           AND COALESCE(is_confidential_account, false) = false
+        "#,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(accounts.into_iter().collect())
+}
+
+/// The legacy goldsky-enrichment consumer's confidential proposal handling,
+/// ported to this detector because it runs at the sink tip (no per-outcome
+/// RPC): `add_proposal` SuccessValues attach `proposal_id` to the matching
+/// intent, and `v1.signer` sign logs stamp the execution facts. Returns the
+/// DAO touched so the caller pulls its 1Click poll forward.
+async fn process_confidential_proposal_signals(
+    state: &AppState,
+    confidential: &HashSet<String>,
+    outcome: &IndexedDaoOutcome,
+) -> Option<String> {
+    let block_time = DateTime::from_timestamp_millis(outcome.trigger_block_timestamp)?;
+
+    if outcome.executor_id == "v1.signer" {
+        let call = extract_sign_call_from_logs(outcome.logs.as_deref()?)?;
+        if !confidential.contains(&call.dao_id) {
+            return None;
+        }
+        if let Err(error) = mark_confidential_intent_submitted(
+            &state.db_pool,
+            &call.dao_id,
+            &call.payload_hash,
+            block_time,
+            Some(outcome.trigger_block_height),
+            outcome.transaction_hash.as_deref(),
+        )
+        .await
+        {
+            tracing::warn!(
+                dao_id = call.dao_id,
+                %error,
+                "confidential intent execution stamp failed"
+            );
+            return None;
+        }
+        match link_intent_to_history_event(&state.db_pool, &call.dao_id, &call.payload_hash).await {
+            Ok(_) => {}
+            Err(error) => tracing::warn!(
+                dao_id = call.dao_id,
+                %error,
+                "confidential intent history link failed"
+            ),
+        }
+        if let Err(error) =
+            refresh_gold_metadata_for_intent(&state.db_pool, &call.dao_id, &call.payload_hash).await
+        {
+            tracing::warn!(
+                dao_id = call.dao_id,
+                %error,
+                "confidential gold metadata refresh failed"
+            );
+        }
+        return Some(call.dao_id);
+    }
+
+    if confidential.contains(&outcome.executor_id)
+        && let Some(status) = outcome.status.as_deref()
+        && let Some(proposal_id) = decode_success_value_u64(status)
+    {
+        match handle_confidential_add_proposal(
+            &state.db_pool,
+            &state.network,
+            &outcome.executor_id,
+            proposal_id,
+            block_time,
+        )
+        .await
+        {
+            Ok(_) => return Some(outcome.executor_id.clone()),
+            Err(error) => tracing::warn!(
+                dao_id = outcome.executor_id,
+                proposal_id,
+                %error,
+                "confidential proposal linkage failed"
+            ),
+        }
+    }
+
+    None
+}
+
+/// Confidential DAOs get no public-history refresh jobs, but an outcome
+/// touching one is the fastest settlement signal we have — it pulls the
+/// 1Click history poll forward instead.
+async fn load_confidential_accounts(pool: &PgPool) -> Result<HashSet<String>, sqlx::Error> {
+    let accounts: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT account_id
+        FROM monitored_accounts
+        WHERE enabled = true
+          AND is_confidential_account = true
         "#,
     )
     .fetch_all(pool)
@@ -303,6 +411,7 @@ async fn fetch_next_outcomes(
             id,
             executor_id,
             logs,
+            status,
             transaction_hash,
             signer_id,
             receiver_id,
@@ -344,6 +453,7 @@ async fn tick_goldsky_scheduler(
 ) -> Result<PublicHistoryDetectorStats, Box<dyn std::error::Error + Send + Sync>> {
     let mut cursor = load_goldsky_cursor(&state.db_pool, goldsky_pool, CONSUMER_NAME).await?;
     let monitored = load_monitored_accounts(&state.db_pool).await?;
+    let confidential = load_confidential_accounts(&state.db_pool).await?;
     let mut stats = PublicHistoryDetectorStats::default();
 
     for _ in 0..SCHEDULER_MAX_BATCHES {
@@ -359,8 +469,31 @@ async fn tick_goldsky_scheduler(
 
         let batch_size = outcomes.len();
         let mut all_candidates = Vec::new();
+        let mut confidential_touched: HashSet<String> = HashSet::new();
         for outcome in &outcomes {
             all_candidates.extend(classify_outcome(outcome, &monitored));
+            for candidate in classify_outcome(outcome, &confidential) {
+                confidential_touched.insert(candidate.account_id);
+            }
+            if let Some(dao_id) =
+                process_confidential_proposal_signals(state, &confidential, outcome).await
+            {
+                confidential_touched.insert(dao_id);
+            }
+        }
+
+        // Pull the 1Click history poll forward for confidential DAOs this
+        // batch touched; idempotent, so the legacy goldsky-enrichment
+        // trigger coexisting is harmless.
+        for account_id in confidential_touched {
+            match mark_confidential_history_activity_due(&state.db_pool, &account_id).await {
+                Ok(()) => stats.confidential_marked += 1,
+                Err(error) => tracing::warn!(
+                    account_id,
+                    %error,
+                    "cannot mark confidential history due from public detector"
+                ),
+            }
         }
 
         for candidate in coalesce_candidates(all_candidates) {
@@ -562,6 +695,7 @@ mod tests {
             id: "outcome".to_string(),
             executor_id: "token.near".to_string(),
             logs: None,
+            status: None,
             transaction_hash: Some("tx".to_string()),
             signer_id: None,
             receiver_id: None,

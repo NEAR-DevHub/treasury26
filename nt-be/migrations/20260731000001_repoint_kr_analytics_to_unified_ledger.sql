@@ -113,23 +113,24 @@ public_flows AS (
 confidential_flows AS (
     SELECT
         ghe.dao_id AS account_id,
-        date_trunc('month', coalesce(ghe.proposal_executed_at, ghe.quote_created_at))::date AS month_start,
-        coalesce(sum(greatest(coalesce(ghe.usd_change, ghe.amount_out_usd, 0), 0)) FILTER (
+        date_trunc('month', coalesce(ghe.proposal_executed_at, ghe.event_time))::date AS month_start,
+        coalesce(sum(greatest(coalesce(ghe.usd_change, ghe.amount_in_usd, 0), 0)) FILTER (
             WHERE ghe.transaction_type = 'deposit'
         ), 0) AS inflow_usd,
-        coalesce(sum(abs(coalesce(ghe.usd_change, -ghe.amount_in_usd, -ghe.amount_out_usd, 0))) FILTER (
+        coalesce(sum(abs(coalesce(ghe.usd_change, -ghe.amount_out_usd, 0))) FILTER (
             WHERE ghe.transaction_type = 'sent'
         ), 0) AS outflow_usd,
-        coalesce(sum(coalesce(ghe.amount_out_usd, abs(ghe.usd_change), 0)) FILTER (
+        coalesce(sum(coalesce(ghe.amount_in_usd, abs(ghe.usd_change), 0)) FILTER (
             WHERE ghe.transaction_type = 'exchange'
         ), 0) AS swap_volume_usd,
         count(*) FILTER (WHERE ghe.transaction_type = 'sent')::bigint AS payment_count,
         count(*) FILTER (WHERE ghe.transaction_type = 'exchange')::bigint AS swap_count
-    FROM gold_confidential_history_events ghe
+    FROM gold_treasury_ledger_events ghe
     JOIN monitored_accounts ma
       ON ma.account_id = ghe.dao_id
      AND ma.is_testing IS NOT TRUE
      AND ma.is_confidential_account IS TRUE
+    WHERE ghe.source_kind = 'confidential_history_event'
     GROUP BY 1, 2
 ),
 confidential_latest_aum_snapshot AS (
@@ -287,10 +288,11 @@ LEFT JOIN usage u
   ON u.account_id = tm.account_id
  AND u.month_start = tm.month_start
 LEFT JOIN LATERAL (
-    SELECT max(coalesce(ghe.proposal_executed_at, ghe.quote_created_at)) AS last_activity_at
-    FROM gold_confidential_history_events ghe
+    SELECT max(coalesce(ghe.proposal_executed_at, ghe.event_time)) AS last_activity_at
+    FROM gold_treasury_ledger_events ghe
     WHERE ghe.dao_id = tm.account_id
-      AND coalesce(ghe.proposal_executed_at, ghe.quote_created_at) < (tm.month_start + interval '1 month')
+      AND ghe.source_kind = 'confidential_history_event'
+      AND coalesce(ghe.proposal_executed_at, ghe.event_time) < (tm.month_start + interval '1 month')
 ) last_confidential ON true
 LEFT JOIN LATERAL (
     SELECT max(gpe.event_time) AS last_activity_at

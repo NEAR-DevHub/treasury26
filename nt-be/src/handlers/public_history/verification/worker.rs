@@ -128,8 +128,8 @@ impl<'a> BalanceVerifier<'a> {
 
     /// Event-driven first verification for one account, called right after
     /// its drain → silver → gold nudge chain so a new treasury reaches
-    /// chart-ready in the same pass instead of waiting for the next cron
-    /// sweep. Only runs when the projection is ready and the account has
+    /// chart-ready in the same pass instead of waiting for the next
+    /// projection cycle. Only runs when the projection is ready and the account has
     /// never been gated (passed accounts are done; failed accounts respect
     /// the cool-off). Returns whether the gate passed.
     pub async fn nudge_account_gate(&self, account_id: &str) -> Result<bool, VerificationError> {

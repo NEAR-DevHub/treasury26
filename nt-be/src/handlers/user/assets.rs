@@ -463,6 +463,54 @@ async fn apply_ledger_balances(
     Ok(())
 }
 
+/// Confidential intents balances from the unified ledger's per-asset head
+/// balances — the values verified against the 1Click balances API at
+/// projection time — converted back to raw base units. Returns `None` when
+/// the DAO has no confidential ledger rows yet (fresh DAO, backfill not
+/// landed), in which case the caller falls back to the live 1Click read.
+async fn load_confidential_ledger_balances(
+    state: &Arc<AppState>,
+    account: &AccountId,
+) -> Result<Option<Vec<(String, String)>>, (StatusCode, String)> {
+    use bigdecimal::Zero;
+
+    use crate::constants::intents_tokens::get_defuse_tokens_map;
+    use crate::handlers::balance_changes::confidential_list;
+    use crate::handlers::public_history::silver::models::decimal_denominator;
+
+    let ledger = confidential_list::load_prior_balances(
+        &state.db_pool,
+        account.as_str(),
+        chrono::Utc::now(),
+        None,
+    )
+    .await
+    .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    if ledger.is_empty() {
+        return Ok(None);
+    }
+
+    let defuse_map = get_defuse_tokens_map();
+    let mut balances = Vec::with_capacity(ledger.len());
+    for (asset, balance) in ledger {
+        if balance.sign() == bigdecimal::num_bigint::Sign::Minus || balance.is_zero() {
+            continue;
+        }
+        let Some(token_info) = defuse_map.get(&asset) else {
+            tracing::warn!(
+                "{} unknown defuse asset {} in ledger, skipping",
+                account,
+                asset
+            );
+            continue;
+        };
+        let scale = decimal_denominator(i32::from(token_info.decimals));
+        let raw = (&balance * &scale).with_scale(0);
+        balances.push((asset, raw.to_string()));
+    }
+    Ok(Some(balances))
+}
+
 /// Fetch NEAR balance for an account
 pub async fn fetch_near_balance(
     state: &Arc<AppState>,
@@ -532,7 +580,19 @@ pub async fn compute_user_assets(
     let ft_lockup_positions;
 
     if is_confidential {
-        intents_balances = fetch_confidential_balances(state, account).await?.balances;
+        // The unified ledger is authoritative once rows exist — its heads were
+        // verified against 1Click at projection time. Live 1Click reads remain
+        // for DAOs with no ledger rows yet, and for the legacy path while
+        // UNIFIED_GOLD_LEDGER_READS is off.
+        let ledger_balances = if state.env_vars.unified_gold_ledger_reads {
+            load_confidential_ledger_balances(state, account).await?
+        } else {
+            None
+        };
+        intents_balances = match ledger_balances {
+            Some(ledger_balances) => ledger_balances,
+            None => fetch_confidential_balances(state, account).await?.balances,
+        };
         ref_tokens_with_balances = Vec::new();
         near_balance = None;
         lockup_balance = None;

@@ -379,11 +379,15 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
             gold.usd_change::TEXT AS gold_usd_change
         FROM confidential_intents ci
         LEFT JOIN LATERAL (
-            SELECT amount_in_usd, amount_out_usd, usd_change
-            FROM gold_confidential_history_events
-            WHERE intent_id = ci.id
-            ORDER BY COALESCE(proposal_executed_at, quote_created_at) DESC, id DESC
-            LIMIT 1
+            -- Unified in/out naming is inverted vs the old confidential
+            -- table (in = credit, out = debit); swap back so the response
+            -- keeps the 1Click amountIn/amountOut convention.
+            SELECT
+                amount_out_usd AS amount_in_usd,
+                amount_in_usd AS amount_out_usd,
+                usd_change
+            FROM gold_treasury_ledger_events
+            WHERE gold_event_key = 'confidential:' || ci.history_event_id
         ) gold ON TRUE
         WHERE ci.dao_id = $1 AND ci.payload_hash = ANY($2)
         "#,

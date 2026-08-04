@@ -1,12 +1,14 @@
--- Public treasury gold ledger: the consumer table public history and charts
--- read. Rows carry user-owned balances per leg; chain truth stays in
--- silver_balance_history and verification is transaction-triggered live RPC.
--- Confidential treasuries keep their existing pipeline for now; merging them
--- into this table is a follow-up.
+-- Unified treasury gold ledger: the consumer table history and charts read
+-- for both public and confidential treasuries. Rows carry user-owned
+-- balances per leg. Public chain truth stays in silver_balance_history with
+-- transaction-triggered live RPC verification; confidential rows are replayed
+-- from bronze 1Click history and verified against the 1Click balances API at
+-- projection time.
 
 CREATE TYPE gold_ledger_source_kind AS ENUM (
     'public_silver_leg',
-    'public_balance_ledger'
+    'public_balance_ledger',
+    'confidential_history_event'
 );
 
 CREATE TABLE gold_treasury_ledger_events (
@@ -79,6 +81,11 @@ CREATE INDEX idx_gtle_dao_type_history
 CREATE INDEX idx_gtle_dao_chart_order
     ON gold_treasury_ledger_events (dao_id, event_time, block_height, source_order, id)
     WHERE status = 'success';
+-- Confidential list/export sort key: display time is the proposal execution
+-- time when present, else the 1Click event time.
+CREATE INDEX idx_gtle_confidential_display_order
+    ON gold_treasury_ledger_events (dao_id, (COALESCE(proposal_executed_at, event_time)) DESC, id DESC)
+    WHERE source_kind = 'confidential_history_event';
 
 COMMENT ON TABLE gold_treasury_ledger_events IS
-    'Public treasury ledger. history_visible gates the activity feed/exports; charts read every successful balance-bearing row. Balances are user-owned; chain truth lives in silver_balance_history. user_balance_before is derived (user_balance_after - amount), never stored.';
+    'Unified treasury ledger (public + confidential). history_visible gates the activity feed/exports; charts read every successful balance-bearing row. Balances are user-owned; public chain truth lives in silver_balance_history, confidential rows replay bronze 1Click history. user_balance_before is derived (user_balance_after - amount), never stored. Confidential provenance is carried by gold_event_key = ''confidential:{history_event_id}''.';

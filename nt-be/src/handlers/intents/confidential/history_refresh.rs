@@ -15,10 +15,8 @@ use crate::handlers::intents::confidential::bronze::ingest_worker::{
     CONFIDENTIAL_HISTORY_TRIGGER_LIMIT, run_account_history_full_drain,
 };
 use crate::handlers::intents::confidential::bronze::store::mark_confidential_history_activity_due;
-use crate::handlers::intents::confidential::gold::history_events::confidential_deposit_corrections_enabled;
 use crate::handlers::intents::confidential::gold::{
-    ConfidentialDepositCorrector, project_confidential_gold_for_dao,
-    snapshot_confidential_dao_balances,
+    project_confidential_gold_for_dao, verify_confidential_ledger_heads,
 };
 
 const REFRESH_COOLDOWN: Duration = Duration::seconds(10);
@@ -167,26 +165,10 @@ pub async fn refresh_confidential_history(
 
     run_account_history_full_drain(&state, account_ref, CONFIDENTIAL_HISTORY_TRIGGER_LIMIT).await?;
 
-    let mut projection_changed = false;
     let stats = project_confidential_gold_for_dao(&state.db_pool, request.account_id.as_str())
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    projection_changed |= stats.rows_projected > 0 || stats.rows_deleted > 0;
-
-    let corrections_written = if confidential_deposit_corrections_enabled() {
-        ConfidentialDepositCorrector::reconcile_dao(&state.db_pool, request.account_id.as_str())
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    } else {
-        0
-    };
-
-    if corrections_written > 0 {
-        let stats = project_confidential_gold_for_dao(&state.db_pool, request.account_id.as_str())
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-        projection_changed |= stats.rows_projected > 0 || stats.rows_deleted > 0;
-    }
+    let projection_changed = stats.rows_projected > 0 || stats.rows_deleted > 0;
 
     if projection_changed {
         state
@@ -194,7 +176,7 @@ pub async fn refresh_confidential_history(
             .await;
     }
 
-    snapshot_confidential_dao_balances(&state, request.account_id.as_str()).await;
+    verify_confidential_ledger_heads(&state, request.account_id.as_str()).await;
 
     let status = load_refresh_status(&state, request.account_id).await?;
     Ok(Json(status))

@@ -23,9 +23,8 @@ pub use bronze::{
     trigger_confidential_history_refresh,
 };
 pub use gold::{
-    get_confidential_balance_chart, mark_gold_dirty_for_history_event, mark_gold_dirty_tx,
-    project_confidential_gold_for_dao, refresh_gold_metadata_for_intent,
-    snapshot_confidential_dao_balances,
+    mark_gold_dirty_for_history_event, mark_gold_dirty_tx, project_confidential_gold_for_dao,
+    refresh_gold_metadata_for_intent, snapshot_confidential_dao_balances,
 };
 pub use types::{ConfidentialTxType, HistoryStatus, accounts_equal, bare_account};
 
