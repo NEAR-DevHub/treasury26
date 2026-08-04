@@ -843,7 +843,8 @@
             "yourLink": "Liên kết mời của bạn",
             "copyLink": "Sao chép liên kết",
             "linkCopied": "Đã sao chép liên kết mời",
-            "generateNewLink": "Tạo liên kết mới"
+            "generateNewLink": "Tạo liên kết mới",
+            "generatingNewLink": "Đang tạo liên kết mới"
         },
         "joinRequests": {
             "title": "Muốn tham gia",
@@ -2282,6 +2283,10 @@
             "title": "Khám phá Trezu",
             "description": "Tạo một tài khoản để mở khóa quyền truy cập tất cả các tính năng và lợi ích của Trezu.",
             "cta": "Tạo Ngân quỹ"
+        },
+        "pendingJoinBanner": {
+            "title": "Yêu cầu tham gia của bạn đang chờ duyệt",
+            "description": "Bạn có thể xem ngân quỹ này ngay bây giờ. Khi một thành viên phê duyệt bạn, bạn sẽ có thể tạo yêu cầu, bỏ phiếu hoặc quản lý quỹ theo vai trò của mình."
         },
         "infoBox": {
             "title": "Tận dụng Trezu nhiều hơn",

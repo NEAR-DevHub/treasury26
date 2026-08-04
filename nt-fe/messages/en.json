@@ -847,7 +847,8 @@
             "yourLink": "Your invite link",
             "copyLink": "Copy Link",
             "linkCopied": "Invite link copied",
-            "generateNewLink": "Generate New Link"
+            "generateNewLink": "Generate New Link",
+            "generatingNewLink": "Generating New Link"
         },
         "joinRequests": {
             "title": "Wants To Join",
@@ -2299,6 +2300,10 @@
             "title": "Explore Trezu",
             "description": "Create an account to unlock permissions to all features and benefits of Trezu.",
             "cta": "Create Treasury"
+        },
+        "pendingJoinBanner": {
+            "title": "Your request to join is pending",
+            "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         },
         "infoBox": {
             "title": "Get more from Trezu",
