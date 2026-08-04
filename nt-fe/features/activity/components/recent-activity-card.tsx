@@ -154,15 +154,15 @@ export function RecentActivitySkeleton() {
                     className="grid grid-cols-[1fr_auto] items-center gap-6 border-b border-border pb-3 last:border-b-0"
                 >
                     <div className="flex items-center gap-3 min-w-0">
-                        <Skeleton className="h-10 w-10 rounded-full shrink-0 bg-general-unofficial-accent-0" />
+                        <Skeleton className="h-10 w-10 rounded-full shrink-0" />
                         <div className="space-y-2 min-w-0 flex-1">
-                            <Skeleton className="h-6 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
-                            <Skeleton className="h-4 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
+                            <Skeleton className="h-6 w-[min(420px,100%)]" />
+                            <Skeleton className="h-4 w-[min(420px,100%)]" />
                         </div>
                     </div>
                     <div className="text-right space-y-2">
-                        <Skeleton className="h-6 w-36 bg-general-unofficial-accent-0" />
-                        <Skeleton className="h-4 w-36 ml-auto bg-general-unofficial-accent-0" />
+                        <Skeleton className="h-6 w-36" />
+                        <Skeleton className="h-4 w-36 ml-auto" />
                     </div>
                 </div>
             ))}

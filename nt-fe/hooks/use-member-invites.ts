@@ -4,13 +4,17 @@ import {
     cancelMemberJoinRequest,
     createMemberInvite,
     getMemberInvite,
+    getMyMemberJoinStatus,
     joinViaInvite,
     listMemberJoinRequests,
 } from "@/lib/member-invites-api";
+import { useNear } from "@/stores/near-store";
 
 export function useMemberInvite(token: string | undefined) {
+    // Refetch after wallet connect so viewerStatus is resolved for the session.
+    const { accountId } = useNear();
     return useQuery({
-        queryKey: ["member-invite", token],
+        queryKey: ["member-invite", token, accountId ?? null],
         queryFn: () => getMemberInvite(token!),
         enabled: !!token,
         retry: false,
@@ -27,6 +31,7 @@ export function useCreateMemberInvite(daoId: string | undefined) {
 }
 
 export function useJoinViaInvite() {
+    const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({
             token,
@@ -35,6 +40,26 @@ export function useJoinViaInvite() {
             token: string;
             displayName?: string;
         }) => joinViaInvite(token, displayName),
+        onSuccess: (result) => {
+            queryClient.invalidateQueries({
+                queryKey: ["member-invite"],
+            });
+            queryClient.invalidateQueries({
+                queryKey: ["my-member-join-status", result.daoId],
+            });
+        },
+    });
+}
+
+export function useMyMemberJoinStatus(
+    daoId: string | undefined,
+    enabled = true,
+) {
+    return useQuery({
+        queryKey: ["my-member-join-status", daoId],
+        queryFn: () => getMyMemberJoinStatus(daoId!),
+        enabled: !!daoId && enabled,
+        retry: false,
     });
 }
 

@@ -848,7 +848,8 @@
             "yourLink": "Dein Einladungslink",
             "copyLink": "Link kopieren",
             "linkCopied": "Einladungslink kopiert",
-            "generateNewLink": "Neuen Link erstellen"
+            "generateNewLink": "Neuen Link erstellen",
+            "generatingNewLink": "Neuer Link wird erstellt"
         },
         "joinRequests": {
             "title": "Möchte beitreten",
@@ -2308,6 +2309,10 @@
             "title": "Trezu erkunden",
             "description": "Erstellen Sie ein Konto, um Berechtigungen für alle Funktionen und Vorteile von Trezu freizuschalten.",
             "cta": "Treasury erstellen"
+        },
+        "pendingJoinBanner": {
+            "title": "Ihre Beitrittsanfrage ist ausstehend",
+            "description": "Sie können diese Treasury jetzt ansehen. Sobald ein Mitglied Sie genehmigt, können Sie je nach Rolle Anfragen erstellen, abstimmen oder Mittel verwalten."
         },
         "infoBox": {
             "title": "Mehr aus Trezu herausholen",

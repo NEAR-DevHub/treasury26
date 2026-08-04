@@ -74,17 +74,20 @@ pub async fn set_custom_requests_setting(
     // *.sputnik-dao.near suffix gate (and on an already-tracked treasury also re-marks the daos row
     // dirty for the sync loop). A ChangePolicy holder implies a real DAO (the policy was fetched
     // above), so NotSputnikDao is a defensive 400.
-    register_or_refresh_monitored_account(&state.db_pool, &dao_id, false)
-        .await
-        .map_err(|e| match e {
-            RegisterMonitoredAccountError::NotSputnikDao => (
-                StatusCode::BAD_REQUEST,
-                "Account is not a SputnikDAO treasury".to_string(),
-            ),
-            RegisterMonitoredAccountError::Db(e) => {
-                internal_error("Failed to register treasury", e)
-            }
-        })?;
+    register_or_refresh_monitored_account(
+        &state.db_pool,
+        state.goldsky_pool.as_ref(),
+        &dao_id,
+        false,
+    )
+    .await
+    .map_err(|e| match e {
+        RegisterMonitoredAccountError::NotSputnikDao => (
+            StatusCode::BAD_REQUEST,
+            "Account is not a SputnikDAO treasury".to_string(),
+        ),
+        RegisterMonitoredAccountError::Db(e) => internal_error("Failed to register treasury", e),
+    })?;
 
     let enabled = sqlx::query_scalar!(
         "UPDATE monitored_accounts SET custom_requests_enabled = $2 WHERE account_id = $1 RETURNING custom_requests_enabled",

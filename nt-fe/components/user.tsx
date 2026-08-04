@@ -11,6 +11,7 @@ import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
 import { CopyButton } from "./copy-button";
 import { Address } from "./address";
+import { HighlightedText } from "./highlighted-text";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
@@ -153,6 +154,8 @@ interface UserWithDataProps {
     withHoverCard?: boolean;
     chainName?: string;
     useAddressBook?: boolean;
+    /** When set, matching substrings in name/address are highlighted. */
+    highlightQuery?: string;
 }
 
 export function UserWithData({
@@ -166,6 +169,7 @@ export function UserWithData({
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
     useAddressBook = false,
+    highlightQuery,
 }: UserWithDataProps) {
     const explorerUrl = getExplorerAddressUrl(chainName, address);
     const showAvatar = variant !== "details";
@@ -186,24 +190,41 @@ export function UserWithData({
             {showDetails && (
                 <div className="flex flex-col items-start min-w-0 max-w-[min(100%,15rem)] md:max-w-[min(100%,20rem)]">
                     {truncatePrimaryAddress && nameIsAddress ? (
-                        <Address
-                            address={address}
-                            prefixLength={6}
-                            suffixLength={4}
-                            className="font-medium max-w-full text-sm"
-                        />
+                        highlightQuery ? (
+                            <HighlightedText
+                                text={address}
+                                query={highlightQuery}
+                                className="font-medium max-w-full text-sm truncate"
+                            />
+                        ) : (
+                            <Address
+                                address={address}
+                                prefixLength={6}
+                                suffixLength={4}
+                                className="font-medium max-w-full text-sm"
+                            />
+                        )
                     ) : (
-                        <span className="font-medium truncate max-w-full text-sm">
-                            {name}
-                        </span>
+                        <HighlightedText
+                            text={name}
+                            query={highlightQuery}
+                            className="font-medium truncate max-w-full text-sm"
+                        />
                     )}
                     {/* Avoid duplicating the wallet when there is no display name */}
-                    {!nameIsAddress && (
-                        <Address
-                            address={address}
-                            className="text-xs text-muted-foreground max-w-full"
-                        />
-                    )}
+                    {!nameIsAddress &&
+                        (highlightQuery ? (
+                            <HighlightedText
+                                text={address}
+                                query={highlightQuery}
+                                className="text-xs text-muted-foreground truncate max-w-full"
+                            />
+                        ) : (
+                            <Address
+                                address={address}
+                                className="text-xs text-muted-foreground max-w-full"
+                            />
+                        ))}
                 </div>
             )}
         </>
@@ -332,6 +353,8 @@ interface UserProps {
     withLink?: boolean;
     withHoverCard?: boolean;
     chainName?: string;
+    /** When set, matching substrings in name/address are highlighted. */
+    highlightQuery?: string;
 }
 
 export function User({
@@ -344,6 +367,7 @@ export function User({
     withLink = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
+    highlightQuery,
 }: UserProps) {
     const { data: profile, isLoading } = useProfile(accountId);
 
@@ -370,6 +394,7 @@ export function User({
             withLink={withLink}
             withHoverCard={withHoverCard}
             chainName={chainName}
+            highlightQuery={highlightQuery}
         />
     );
 }

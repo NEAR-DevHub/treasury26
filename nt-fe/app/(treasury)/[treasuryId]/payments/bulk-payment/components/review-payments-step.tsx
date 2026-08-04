@@ -357,12 +357,12 @@ export function ReviewPaymentsStep({
                                         <div className="flex-1">
                                             <div className="flex justify-between mb-2">
                                                 <div className="flex flex-col gap-2 justify-between flex-1">
-                                                    <div className="h-5 w-48 bg-muted animate-pulse rounded" />
+                                                    <div className="h-5 w-48 bg-general-unofficial-accent-0 animate-pulse rounded" />
                                                 </div>
                                                 <div>
                                                     <div className="flex flex-col gap-2 items-end">
-                                                        <div className="h-5 w-32 bg-muted animate-pulse rounded" />
-                                                        <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                                                        <div className="h-5 w-32 bg-general-unofficial-accent-0 animate-pulse rounded" />
+                                                        <div className="h-4 w-20 bg-general-unofficial-accent-0 animate-pulse rounded" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -590,7 +590,7 @@ export function ReviewPaymentsStep({
                                     />
                                 </Tooltip>
                             </div>
-                            <div className="h-5 w-24 bg-muted animate-pulse rounded" />
+                            <div className="h-5 w-24 bg-general-unofficial-accent-0 animate-pulse rounded" />
                         </div>
                     )}
 

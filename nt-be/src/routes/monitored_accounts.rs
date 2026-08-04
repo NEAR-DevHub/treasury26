@@ -41,21 +41,26 @@ pub async fn add_monitored_account(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<AddAccountRequest>,
 ) -> Result<Json<AddAccountResponse>, (StatusCode, Json<Value>)> {
-    let result = register_or_refresh_monitored_account(&state.db_pool, &payload.account_id, false)
-        .await
-        .map_err(|e| match e {
-            RegisterMonitoredAccountError::NotSputnikDao => (
-                StatusCode::BAD_REQUEST,
-                Json(json!({
-                    "error": "Only sputnik-dao accounts can be monitored",
-                    "message": "Account ID must end with '.sputnik-dao.near'"
-                })),
-            ),
-            RegisterMonitoredAccountError::Db(e) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Database error: {}", e) })),
-            ),
-        })?;
+    let result = register_or_refresh_monitored_account(
+        &state.db_pool,
+        state.goldsky_pool.as_ref(),
+        &payload.account_id,
+        false,
+    )
+    .await
+    .map_err(|e| match e {
+        RegisterMonitoredAccountError::NotSputnikDao => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Only sputnik-dao accounts can be monitored",
+                "message": "Account ID must end with '.sputnik-dao.near'"
+            })),
+        ),
+        RegisterMonitoredAccountError::Db(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Database error: {}", e) })),
+        ),
+    })?;
 
     let account = result.account;
 

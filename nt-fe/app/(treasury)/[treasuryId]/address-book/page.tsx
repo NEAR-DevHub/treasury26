@@ -522,6 +522,7 @@ function RecipientsView({
                     onSelectionChange={setSelectedIds}
                     onDelete={handleDelete}
                     onSend={handleSend}
+                    searchQuery={debouncedSearch}
                     pageIndex={pageIndex}
                     pageSize={ADDRESS_BOOK_PAGE_SIZE}
                     total={filtered.length}

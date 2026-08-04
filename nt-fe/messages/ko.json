@@ -848,7 +848,8 @@
             "yourLink": "초대 링크",
             "copyLink": "링크 복사",
             "linkCopied": "초대 링크가 복사되었습니다",
-            "generateNewLink": "새 링크 생성"
+            "generateNewLink": "새 링크 생성",
+            "generatingNewLink": "새 링크 생성 중"
         },
         "joinRequests": {
             "title": "가입 희망",
@@ -2308,6 +2309,10 @@
             "title": "Trezu 살펴보기",
             "description": "Trezu의 모든 기능과 혜택에 대한 권한을 잠금 해제하려면 계정을 생성하세요.",
             "cta": "트레저리 생성"
+        },
+        "pendingJoinBanner": {
+            "title": "가입 요청이 대기 중입니다",
+            "description": "지금 이 트레저리를 볼 수 있습니다. 멤버가 승인하면 역할에 따라 요청 생성, 투표 또는 자금 관리를 할 수 있습니다."
         },
         "infoBox": {
             "title": "Trezu에서 더 많은 것을 얻으세요",

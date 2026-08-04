@@ -848,7 +848,8 @@
             "yourLink": "Tu enlace de invitación",
             "copyLink": "Copiar enlace",
             "linkCopied": "Enlace de invitación copiado",
-            "generateNewLink": "Generar nuevo enlace"
+            "generateNewLink": "Generar nuevo enlace",
+            "generatingNewLink": "Generando nuevo enlace"
         },
         "joinRequests": {
             "title": "Quiere unirse",
@@ -2308,6 +2309,10 @@
             "title": "Explora Trezu",
             "description": "Crea una cuenta para desbloquear permisos a todas las funciones y ventajas de Trezu.",
             "cta": "Crear tesorería"
+        },
+        "pendingJoinBanner": {
+            "title": "Tu solicitud para unirte está pendiente",
+            "description": "Ya puedes ver esta tesorería. Cuando un miembro te apruebe, podrás crear solicitudes, votar o gestionar fondos según tu rol."
         },
         "infoBox": {
             "title": "Saca más partido a Trezu",
