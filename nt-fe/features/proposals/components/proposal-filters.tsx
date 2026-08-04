@@ -138,7 +138,7 @@ export function ProposalFilters({
                 variant="outline"
                 size="sm"
                 onClick={resetFilters}
-                className="h-9 rounded-md px-3 border-none bg-muted/50 hover:bg-muted font-medium"
+                className="h-9 px-3 border-none bg-muted/50 hover:bg-muted font-medium"
             >
                 {tF("reset")}
             </Button>

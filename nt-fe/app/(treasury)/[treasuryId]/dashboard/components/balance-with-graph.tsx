@@ -65,15 +65,15 @@ type TimePeriod = "1W" | "1M" | "3M" | "1Y";
 
 const TIME_PERIODS: TimePeriod[] = ["1W", "1M", "3M", "1Y"];
 
-// Chart filter chrome, per design: fully rounded grey pills, and floating
+// Chart filter chrome, per design: grey 12px-radius pills, and floating
 // white menus with no border and a soft shadow.
-const FILTER_PILL_CLASS = "h-10 rounded-full text-[15px] font-semibold";
+const FILTER_PILL_CLASS = "h-10 rounded-lg text-[15px] font-semibold";
 const FILTER_MENU_CLASS =
     "rounded-2xl border-0 p-1.5 shadow-[0_16px_40px_-12px_rgb(0_0_0/0.25)]";
 const FILTER_MENU_ITEM_CLASS =
     "gap-3 rounded-xl px-2.5 py-2 text-base font-medium text-gray-700 focus:bg-gray-100 dark:text-gray-200 dark:focus:bg-white/10";
 const FILTER_MOBILE_TRIGGER_CLASS =
-    "data-[size=sm]:h-10 rounded-full border-0 bg-gray-100 px-4 text-[15px] font-semibold text-gray-700 shadow-none focus:ring-0 dark:bg-white/10 dark:text-gray-200";
+    "data-[size=sm]:h-10 rounded-lg border-0 bg-gray-100 px-4 text-[15px] font-semibold text-gray-700 shadow-none focus:ring-0 dark:bg-white/10 dark:text-gray-200";
 // Radix Select keeps its check indicator absolutely positioned on the right,
 // so its rows need the reserved right padding back.
 const FILTER_SELECT_ITEM_CLASS = `${FILTER_MENU_ITEM_CLASS} pr-8`;
@@ -529,15 +529,15 @@ export default function BalanceWithGraph({
                     </div>
 
                     <div className="flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
-                        <Skeleton className="h-10 w-[168px] rounded-full" />
-                        <Skeleton className="h-10 w-[100px] rounded-full" />
+                        <Skeleton className="h-10 w-[168px] rounded-lg" />
+                        <Skeleton className="h-10 w-[100px] rounded-lg" />
                     </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 md:gap-4">
-                    <Skeleton className="h-13 w-full rounded-2xl" />
-                    <Skeleton className="h-13 w-full rounded-2xl" />
-                    <Skeleton className="h-13 w-full rounded-2xl" />
+                    <Skeleton className="h-13 w-full rounded-lg" />
+                    <Skeleton className="h-13 w-full rounded-lg" />
+                    <Skeleton className="h-13 w-full rounded-lg" />
                 </div>
                 <div className="h-56 w-full space-y-3 p-4">
                     <Skeleton className="h-50 w-full" />
@@ -784,7 +784,7 @@ export default function BalanceWithGraph({
                             </DropdownMenu>
                         </div>
                     )}
-                    <HistoryRefreshButton className="h-10 w-10 rounded-2xl bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20" />
+                    <HistoryRefreshButton className="h-10 w-10 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20" />
                 </div>
                 {showBreakdown && (
                     <div className="mt-4 border-t border-border/70 pt-3 space-y-3 md:hidden">

@@ -112,10 +112,7 @@ export function PendingRequestItem({
 
     return (
         <Link href={`/${treasuryId}/requests/${proposal.id}`}>
-            <PageCard
-                radius="2xl"
-                className="group relative flex w-full flex-row justify-between gap-3.5 overflow-hidden transition-colors hover:border-gray-300"
-            >
+            <PageCard className="group relative flex w-full flex-row justify-between gap-3.5 overflow-hidden transition-colors hover:border-gray-300">
                 <ProposalTypeIcon proposal={proposal} treasuryId={treasuryId} />
                 <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                     <span className="max-w-full truncate leading-none font-semibold">
