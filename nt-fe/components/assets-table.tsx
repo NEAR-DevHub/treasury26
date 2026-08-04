@@ -70,8 +70,8 @@ const TABLE_CARD_CLASS = [
     "[&>tr+tr>td]:border-t",
     "[&>tr>td:first-child]:border-l [&>tr>td:last-child]:border-r",
     "[&>tr:first-child>td]:border-t [&>tr:last-child>td]:border-b",
-    "[&>tr:first-child>td:first-child]:rounded-tl-xl [&>tr:first-child>td:last-child]:rounded-tr-xl",
-    "[&>tr:last-child>td:first-child]:rounded-bl-xl [&>tr:last-child>td:last-child]:rounded-br-xl",
+    "[&>tr:first-child>td:first-child]:rounded-tl-lg [&>tr:first-child>td:last-child]:rounded-tr-lg",
+    "[&>tr:last-child>td:first-child]:rounded-bl-lg [&>tr:last-child>td:last-child]:rounded-br-lg",
 ].join(" ");
 
 function toUsd(rawAmount: Big.Big, decimals: number, price: number): number {

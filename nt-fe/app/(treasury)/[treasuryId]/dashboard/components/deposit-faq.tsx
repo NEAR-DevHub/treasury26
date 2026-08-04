@@ -30,7 +30,7 @@ export function DepositFaq() {
     ];
 
     return (
-        <PageCard radius="2xl" className="w-full gap-0">
+        <PageCard className="w-full gap-0">
             <p className="font-semibold">{t("faq.title")}</p>
             <div className="divide-y divide-gray-200 dark:divide-general-border">
                 {faqItems.map((item, index) => {

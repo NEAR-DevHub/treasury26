@@ -29,10 +29,7 @@ interface InfoItemProps {
 function InfoItem({ icon, title, description, href }: InfoItemProps) {
     return (
         <Link href={href} target="_blank">
-            <PageCard
-                radius="2xl"
-                className="w-full gap-1.5 p-3 transition-colors hover:border-gray-300 hover:bg-gray-50"
-            >
+            <PageCard className="w-full gap-1.5 p-3 transition-colors hover:border-gray-300 hover:bg-gray-50">
                 <div className="flex items-center gap-4">
                     <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
                         {icon}
