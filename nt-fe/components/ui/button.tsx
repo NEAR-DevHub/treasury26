@@ -9,6 +9,11 @@ const buttonVariants = cva(
     {
         variants: {
             variant: {
+                // Surface and label are a token pair (`--primary` /
+                // `--primary-foreground`), both theme-aware and both re-written
+                // together by `PrimaryColorProvider` for branded treasuries.
+                // Never override just the background at a call site — that's how
+                // white labels ended up on white buttons in the dark theme.
                 default:
                     "bg-primary text-primary-foreground hover:bg-primary/90",
                 destructive:
