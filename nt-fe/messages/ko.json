@@ -844,7 +844,7 @@
             "copyLink": "링크 복사",
             "linkCopied": "초대 링크가 복사되었습니다",
             "generateNewLink": "새 링크 생성",
-            "generatingNewLink": "Generating New Link"
+            "generatingNewLink": "새 링크 생성 중"
         },
         "joinRequests": {
             "title": "가입 희망",

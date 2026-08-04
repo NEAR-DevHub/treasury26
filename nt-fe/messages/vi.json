@@ -844,7 +844,7 @@
             "copyLink": "Sao chép liên kết",
             "linkCopied": "Đã sao chép liên kết mời",
             "generateNewLink": "Tạo liên kết mới",
-            "generatingNewLink": "Generating New Link"
+            "generatingNewLink": "Đang tạo liên kết mới"
         },
         "joinRequests": {
             "title": "Muốn tham gia",

@@ -844,7 +844,7 @@
             "copyLink": "Bağlantıyı kopyala",
             "linkCopied": "Davet bağlantısı kopyalandı",
             "generateNewLink": "Yeni bağlantı oluştur",
-            "generatingNewLink": "Generating New Link"
+            "generatingNewLink": "Yeni bağlantı oluşturuluyor"
         },
         "joinRequests": {
             "title": "Katılmak istiyor",

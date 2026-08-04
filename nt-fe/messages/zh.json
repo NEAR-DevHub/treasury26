@@ -844,7 +844,7 @@
             "copyLink": "复制链接",
             "linkCopied": "已复制邀请链接",
             "generateNewLink": "生成新链接",
-            "generatingNewLink": "Generating New Link"
+            "generatingNewLink": "正在生成新链接"
         },
         "joinRequests": {
             "title": "希望加入",

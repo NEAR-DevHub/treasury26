@@ -844,7 +844,7 @@
             "copyLink": "Link kopieren",
             "linkCopied": "Einladungslink kopiert",
             "generateNewLink": "Neuen Link erstellen",
-            "generatingNewLink": "Generating New Link"
+            "generatingNewLink": "Neuer Link wird erstellt"
         },
         "joinRequests": {
             "title": "Möchte beitreten",

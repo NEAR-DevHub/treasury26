@@ -844,7 +844,7 @@
             "copyLink": "リンクをコピー",
             "linkCopied": "招待リンクをコピーしました",
             "generateNewLink": "新しいリンクを作成",
-            "generatingNewLink": "Generating New Link"
+            "generatingNewLink": "新しいリンクを作成中"
         },
         "joinRequests": {
             "title": "参加希望",
