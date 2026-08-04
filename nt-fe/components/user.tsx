@@ -11,6 +11,7 @@ import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
 import { CopyButton } from "./copy-button";
 import { Address } from "./address";
+import { HighlightedText } from "./highlighted-text";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
@@ -175,6 +176,8 @@ interface UserWithDataProps {
     withHoverCard?: boolean;
     chainName?: string;
     useAddressBook?: boolean;
+    /** When set, matching substrings in name/address are highlighted. */
+    highlightQuery?: string;
 }
 
 export function UserWithData({
@@ -188,6 +191,7 @@ export function UserWithData({
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
     useAddressBook = false,
+    highlightQuery,
 }: UserWithDataProps) {
     const explorerUrl = getExplorerAddressUrl(chainName, address);
     const showAvatar = variant !== "details";
@@ -206,19 +210,37 @@ export function UserWithData({
             {showDetails && (
                 <div className="flex flex-col items-start max-w-60 md:max-w-80 min-w-0">
                     {truncatePrimaryAddress && name === address ? (
-                        <Address
-                            address={address}
-                            className="font-medium max-w-full text-sm"
+                        highlightQuery ? (
+                            <HighlightedText
+                                text={address}
+                                query={highlightQuery}
+                                className="font-medium max-w-full text-sm truncate"
+                            />
+                        ) : (
+                            <Address
+                                address={address}
+                                className="font-medium max-w-full text-sm"
+                            />
+                        )
+                    ) : (
+                        <HighlightedText
+                            text={name}
+                            query={highlightQuery}
+                            className="font-medium truncate max-w-full text-sm"
+                        />
+                    )}
+                    {highlightQuery ? (
+                        <HighlightedText
+                            text={address}
+                            query={highlightQuery}
+                            className="text-xs text-muted-foreground truncate max-w-full"
                         />
                     ) : (
-                        <span className="font-medium truncate max-w-full text-sm">
-                            {name}
-                        </span>
+                        <Address
+                            address={address}
+                            className="text-xs text-muted-foreground truncate max-w-full"
+                        />
                     )}
-                    <Address
-                        address={address}
-                        className="text-xs text-muted-foreground truncate max-w-full"
-                    />
                 </div>
             )}
         </>
@@ -347,6 +369,8 @@ interface UserProps {
     withLink?: boolean;
     withHoverCard?: boolean;
     chainName?: string;
+    /** When set, matching substrings in name/address are highlighted. */
+    highlightQuery?: string;
 }
 
 export function User({
@@ -359,6 +383,7 @@ export function User({
     withLink = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
+    highlightQuery,
 }: UserProps) {
     const { data: profile, isLoading } = useProfile(accountId);
 
@@ -385,6 +410,7 @@ export function User({
             withLink={withLink}
             withHoverCard={withHoverCard}
             chainName={chainName}
+            highlightQuery={highlightQuery}
         />
     );
 }

@@ -449,7 +449,7 @@ export default function JoinRequestsPage() {
                 <FormProvider {...form}>
                     {isLoading || isLoadingRequests ? (
                         <PageCard>
-                            <div className="h-40 animate-pulse bg-muted rounded-lg" />
+                            <div className="h-40 animate-pulse bg-general-unofficial-accent-0 rounded-lg" />
                         </PageCard>
                     ) : joinRequests.length === 0 && step === 0 ? (
                         <PageCard className="gap-4">

@@ -13,6 +13,7 @@ import { Input } from "@/components/input";
 import { cn } from "@/lib/utils";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
 import { ScrollArea } from "./ui/scroll-area";
+import { HighlightedText } from "./highlighted-text";
 
 interface TokenOption {
     id: string;
@@ -151,10 +152,10 @@ export function TokenSelectPopover({
                                         key={i}
                                         className="flex items-center gap-2 py-2"
                                     >
-                                        <div className="w-5 h-5 rounded-full bg-muted shrink-0" />
+                                        <div className="w-5 h-5 rounded-full bg-general-unofficial-accent-0 shrink-0" />
                                         <div className="flex-1 space-y-1">
-                                            <div className="h-3 bg-muted rounded w-16" />
-                                            <div className="h-2 bg-muted rounded w-24" />
+                                            <div className="h-3 bg-general-unofficial-accent-0 rounded w-16" />
+                                            <div className="h-2 bg-general-unofficial-accent-0 rounded w-24" />
                                         </div>
                                     </div>
                                 ))}
@@ -186,12 +187,16 @@ export function TokenSelectPopover({
                                             </div>
                                         )}
                                         <div className="flex flex-col items-start text-left">
-                                            <span className="font-medium text-sm leading-tight">
-                                                {token.id.toUpperCase()}
-                                            </span>
-                                            <span className="text-xs text-muted-foreground leading-tight">
-                                                {token.name}
-                                            </span>
+                                            <HighlightedText
+                                                text={token.id.toUpperCase()}
+                                                query={search}
+                                                className="font-medium text-sm leading-tight"
+                                            />
+                                            <HighlightedText
+                                                text={token.name}
+                                                query={search}
+                                                className="text-xs text-muted-foreground leading-tight"
+                                            />
                                         </div>
                                     </Button>
                                 ))}
