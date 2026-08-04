@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { Check, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -17,9 +17,11 @@ import { StepperHeader } from "@/components/step-wizard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";
 import { useJoinViaInvite, useMemberInvite } from "@/hooks/use-member-invites";
-import { useProfile } from "@/hooks/use-treasury-queries";
+import { useProfile, useUserTreasuries } from "@/hooks/use-treasury-queries";
 import { reportError } from "@/lib/report-error";
 import { useNear } from "@/stores/near-store";
+
+const ALREADY_MEMBER_ERROR = "Account is already a treasury member";
 
 export default function JoinInvitePage() {
     const t = useTranslations("members.join");
@@ -31,6 +33,8 @@ export default function JoinInvitePage() {
     const joinMutation = useJoinViaInvite();
     const { data: profile, isLoading: isProfileLoading } =
         useProfile(accountId);
+    const { data: treasuries, isLoading: isTreasuriesLoading } =
+        useUserTreasuries(accountId);
 
     const existingName = profile?.name?.trim() || "";
     const hasExistingName = existingName.length > 0;
@@ -38,6 +42,25 @@ export default function JoinInvitePage() {
     const [displayName, setDisplayName] = useState("");
     const [submitted, setSubmitted] = useState(false);
     const [joinedDaoId, setJoinedDaoId] = useState<string | null>(null);
+    const [alreadyMemberFromJoin, setAlreadyMemberFromJoin] = useState(false);
+
+    const viewerStatus = invite?.viewerStatus;
+    const isAlreadyMember =
+        alreadyMemberFromJoin ||
+        viewerStatus === "member" ||
+        Boolean(
+            invite &&
+                accountId &&
+                treasuries?.some(
+                    (treasury) =>
+                        treasury.daoId === invite.daoId && treasury.isMember,
+                ),
+        );
+    const hasPendingRequest =
+        viewerStatus === "pending" || (submitted && !!joinedDaoId);
+    const treasuryDaoId = invite?.daoId;
+    const pendingDaoId =
+        joinedDaoId || (viewerStatus === "pending" ? invite?.daoId : null);
 
     const handleAskJoin = async () => {
         if (!token) return;
@@ -53,10 +76,16 @@ export default function JoinInvitePage() {
             setJoinedDaoId(result.daoId);
             setSubmitted(true);
         } catch (err: unknown) {
+            const message = (err as { response?: { data?: string } })?.response
+                ?.data;
+            if (
+                typeof message === "string" &&
+                message.includes(ALREADY_MEMBER_ERROR)
+            ) {
+                setAlreadyMemberFromJoin(true);
+                return;
+            }
             reportError(err, "Failed to join via invite");
-            const message =
-                (err as { response?: { data?: string } })?.response?.data ||
-                t("joinFailed");
             toast.error(
                 typeof message === "string" ? message : t("joinFailed"),
             );
@@ -64,15 +93,40 @@ export default function JoinInvitePage() {
     };
 
     const treasuryName = invite?.treasuryName || t("treasuryFallback");
-    const viewerStatus = invite?.viewerStatus;
-    const hasPendingRequest =
-        viewerStatus === "pending" || (submitted && !!joinedDaoId);
-    const pendingDaoId =
-        joinedDaoId || (viewerStatus === "pending" ? invite?.daoId : null);
     const showLogin =
-        !accountId && invite?.status === "valid" && !hasPendingRequest;
+        !accountId &&
+        invite?.status === "valid" &&
+        !hasPendingRequest &&
+        !isAlreadyMember;
     // Keep ask / success / used / expired / invalid cards the same footprint.
     const formCardClassName = "gap-4 min-h-[340px]";
+
+    const alreadyMemberCard = treasuryDaoId ? (
+        <PageCard className={`${formCardClassName} justify-center`}>
+            <div className="flex w-full flex-col items-center text-center gap-4">
+                <div className="flex size-8 items-center justify-center rounded-full bg-emerald-500/15">
+                    <Check className="size-4 text-emerald-600" />
+                </div>
+                <div className="space-y-1">
+                    <h2 className="text-xl font-semibold">
+                        {t("alreadyMemberTitle")}
+                    </h2>
+                    <p className="text-sm text-muted-foreground max-w-[280px] mx-auto">
+                        {t("alreadyMemberDescription", {
+                            treasury: treasuryName,
+                        })}
+                    </p>
+                </div>
+                <Button
+                    className="w-full"
+                    variant="secondary"
+                    onClick={() => router.push(`/${treasuryDaoId}`)}
+                >
+                    {t("goToTreasury")}
+                </Button>
+            </div>
+        </PageCard>
+    ) : null;
 
     const pendingSuccessCard = pendingDaoId ? (
         <PageCard className={`${formCardClassName} justify-center`}>
@@ -141,6 +195,8 @@ export default function JoinInvitePage() {
                             </Button>
                         </div>
                     </PageCard>
+                ) : isAlreadyMember && alreadyMemberCard ? (
+                    alreadyMemberCard
                 ) : hasPendingRequest && pendingSuccessCard ? (
                     pendingSuccessCard
                 ) : invite.status !== "valid" ? (
@@ -176,6 +232,13 @@ export default function JoinInvitePage() {
                         })}
                         introDescription={t("connectDescription")}
                     />
+                ) : isTreasuriesLoading && viewerStatus == null ? (
+                    <PageCard className={formCardClassName}>
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-4 w-72" />
+                        <Skeleton className="h-24 w-full" />
+                        <Skeleton className="h-10 w-full mt-auto" />
+                    </PageCard>
                 ) : (
                     <PageCard className={formCardClassName}>
                         <StepperHeader

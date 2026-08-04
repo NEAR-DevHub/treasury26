@@ -22,8 +22,33 @@ pub struct OhDearHealthConfig {
 
 /// Consecutive unhealthy checks before sending a Telegram ops alert (~3 min at 60s).
 pub const ALERT_AFTER_FAILURES: i32 = 3;
+/// Longer streak for flaky intents-side dependencies (~5 min at 60s).
+pub const ALERT_AFTER_FAILURES_INTENTS: i32 = 5;
 /// Consecutive healthy checks before closing an incident (~2 min at 60s).
 pub const RECOVER_AFTER_SUCCESSES: i32 = 2;
+
+/// Per-service alert threshold. Intents-related checks are noisier, so they
+/// need a longer consecutive-failure streak before paging Telegram.
+pub fn alert_after_failures(service: &str) -> i32 {
+    match service {
+        "exchange" | "intents-explorer" | "near-intents" => ALERT_AFTER_FAILURES_INTENTS,
+        _ => ALERT_AFTER_FAILURES,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn intents_services_use_longer_alert_threshold() {
+        assert_eq!(alert_after_failures("intents-explorer"), 5);
+        assert_eq!(alert_after_failures("near-intents"), 5);
+        assert_eq!(alert_after_failures("exchange"), 5);
+        assert_eq!(alert_after_failures("backend"), 3);
+        assert_eq!(alert_after_failures("near-rpc"), 3);
+    }
+}
 
 impl Default for OhDearHealthConfig {
     fn default() -> Self {
