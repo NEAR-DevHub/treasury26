@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "З конфіденційного Trezu",
-            "nearcom": "З конфіденційного near.com"
+            "nearcom": "З конфіденційного near.com",
+            "short": "З конфіденційного"
         },
         "guestBanner": {
             "title": "Ви переглядаєте як гість",
@@ -378,7 +379,11 @@
             "payWithTrezu": "Сплатити через Trezu",
             "payRequiresTreasury": "Увійдіть із treasury Trezu, щоб сплатити.",
             "copyLink": "Копіювати посилання",
-            "titleConfidential": "Переказ до конфіденційної Treasury"
+            "titleConfidential": "Переказ до конфіденційної Treasury",
+            "chooseTreasuryTitle": "Оберіть Treasury",
+            "chooseTreasuryDescription": "З якої treasury надходить цей платіж?",
+            "noMemberTreasuries": "Ви ще не є учасником жодної treasury.",
+            "createTreasury": "Створити treasury"
         }
     },
     "assetDetails": {

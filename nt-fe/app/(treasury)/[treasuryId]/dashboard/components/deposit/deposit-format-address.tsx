@@ -24,10 +24,11 @@ export function formatDepositAddress(
     const middle = address.slice(HIGHLIGHT_LEN, -HIGHLIGHT_LEN);
     const last = address.slice(-HIGHLIGHT_LEN);
 
+    // Keep ends emphasized but same color as the middle so wrapped lines stay readable.
     return (
         <>
             <span className="text-foreground font-semibold">{first}</span>
-            <span className="text-muted-foreground">{middle}</span>
+            <span className="text-foreground font-normal">{middle}</span>
             <span className="text-foreground font-semibold">{last}</span>
         </>
     );

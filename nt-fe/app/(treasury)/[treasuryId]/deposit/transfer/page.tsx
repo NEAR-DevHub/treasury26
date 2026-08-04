@@ -1,9 +1,9 @@
 "use client";
 
 import { Clock, Link2, Zap } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -12,6 +12,7 @@ import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { formatBalance } from "@/lib/utils";
+import { useNear } from "@/stores/near-store";
 import { DepositAddressCard } from "../../dashboard/components/deposit/deposit-address-card";
 import { DepositConfidentialSourceTabs } from "../../dashboard/components/deposit/deposit-confidential-source-tabs";
 import { DepositNoticeList } from "../../dashboard/components/deposit/deposit-notice-list";
@@ -20,56 +21,81 @@ import {
     buildPublicTreasuryNotices,
     buildPublicWalletOneTimeNotices,
 } from "../../dashboard/components/deposit/deposit-notices";
+import { DepositPayTreasuryModal } from "../../dashboard/components/deposit/deposit-pay-treasury-modal";
 import {
-    resolvePayerTreasuryId,
+    resolvePayWithTrezuNextStep,
     resolveSendTokenMeta,
 } from "../../dashboard/components/deposit/deposit-transfer-resolve";
 import { DepositTransferSummary } from "../../dashboard/components/deposit/deposit-transfer-summary";
 import {
+    buildPayWithTrezuPaymentsPath,
+    CHOOSE_PAYER_QUERY,
     getAbsoluteTransferUrl,
     parseTransferType,
+    withChoosePayerParam,
+    withoutChoosePayerParam,
 } from "../../dashboard/components/deposit/deposit-transfer-url";
 import type { ConfidentialOrigin } from "../../dashboard/components/deposit/deposit-types";
 
 export default function DepositTransferPage() {
     const t = useTranslations("depositModal");
     const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { treasuryId, config, treasuries, lastTreasuryId, isConfidential } =
+    const { accountId, isInitializing } = useNear();
+    const { treasuryId, config, treasuries, isConfidential, isLoading } =
         useTreasury();
-    const previousTreasuryIdRef = useRef(treasuryId);
-
-    // Treasury switch keeps /deposit/transfer; send users back to main deposit.
-    useEffect(() => {
-        if (!treasuryId) return;
-        if (
-            previousTreasuryIdRef.current &&
-            previousTreasuryIdRef.current !== treasuryId
-        ) {
-            router.replace(`/${treasuryId}/dashboard/deposit`);
-        }
-        previousTreasuryIdRef.current = treasuryId;
-    }, [treasuryId, router]);
+    const resumedChoosePayerRef = useRef(false);
+    const [pickerOpen, setPickerOpen] = useState(false);
 
     const tokenId = searchParams.get("token") || "";
     const networkId = searchParams.get("network") || "";
     const addressParam = searchParams.get("address") || "";
+    const shouldOpenPicker = searchParams.get(CHOOSE_PAYER_QUERY) === "1";
     const type = parseTransferType(searchParams.get("type"), {
         hasPublicParams: Boolean(addressParam && (tokenId || networkId)),
     });
+    // Drives Trezu vs near.com notice copy; kept in the URL for share/copy link.
+    const confidentialOrigin: ConfidentialOrigin =
+        searchParams.get("source") === "nearcom" ? "nearcom" : "trezu";
+
+    const hasShareParams =
+        searchParams.has("type") ||
+        searchParams.has("address") ||
+        searchParams.has("token") ||
+        searchParams.has("network") ||
+        searchParams.has("source");
+
+    // Public shares must carry the bridge deposit address — never fall back to dao id.
+    const isPublicShareIncomplete =
+        type === "public" && (!addressParam || !networkId);
+
+    const setConfidentialOrigin = useCallback(
+        (origin: ConfidentialOrigin) => {
+            if (type !== "confidential") return;
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("source", origin);
+            const next = params.toString();
+            router.replace(`${pathname}${next ? `?${next}` : ""}`, {
+                scroll: false,
+            });
+        },
+        [type, searchParams, pathname, router],
+    );
+
+    // Bare / incomplete transfer URLs → main deposit (no flash of wrong address).
+    useEffect(() => {
+        if (!treasuryId) return;
+        if (!hasShareParams || isPublicShareIncomplete) {
+            router.replace(`/${treasuryId}/dashboard/deposit`);
+        }
+    }, [treasuryId, hasShareParams, isPublicShareIncomplete, router]);
 
     // Destination treasury is always the dao id from the path; name comes from DB.
     const recipientDaoId = treasuryId || "";
     const depositAddress =
-        type === "confidential"
-            ? recipientDaoId
-            : addressParam || recipientDaoId;
+        type === "confidential" ? recipientDaoId : addressParam;
     const treasuryDisplayName = config?.name || recipientDaoId;
-
-    const initialSource =
-        searchParams.get("source") === "nearcom" ? "nearcom" : "trezu";
-    const [confidentialOrigin, setConfidentialOrigin] =
-        useState<ConfidentialOrigin>(initialSource);
 
     const { data: bridgeAssets = [] } = useBridgeTokens(type === "public", {
         includeNearNetwork: true,
@@ -81,11 +107,6 @@ export default function DepositTransferPage() {
                 ? resolveSendTokenMeta(bridgeAssets, tokenId, networkId)
                 : null,
         [type, bridgeAssets, tokenId, networkId],
-    );
-
-    const payerTreasuryId = useMemo(
-        () => resolvePayerTreasuryId(treasuries, treasuryId, lastTreasuryId),
-        [treasuries, treasuryId, lastTreasuryId],
     );
 
     const minDepositDisplay = useMemo(() => {
@@ -128,10 +149,91 @@ export default function DepositTransferPage() {
         t,
     ]);
 
-    const handleCopyLink = async () => {
-        const url = getAbsoluteTransferUrl(
-            `${window.location.pathname}${window.location.search}`,
+    const paymentPrefill = useMemo(() => {
+        if (type === "public") {
+            if (!depositAddress || !networkId) return null;
+            return { address: depositAddress, networks: networkId };
+        }
+        if (!recipientDaoId) return null;
+        return { address: recipientDaoId, networks: NEAR_COM_NETWORK_ID };
+    }, [type, depositAddress, networkId, recipientDaoId]);
+
+    const stripChoosePayerParam = useCallback(() => {
+        if (!shouldOpenPicker) return;
+        const next = withoutChoosePayerParam(
+            `${pathname}?${searchParams.toString()}`,
         );
+        router.replace(next, { scroll: false });
+    }, [shouldOpenPicker, searchParams, pathname, router]);
+
+    const continuePayWithTrezu = useCallback(() => {
+        if (!paymentPrefill) {
+            toast.error(t("transfer.payRequiresTreasury"));
+            return;
+        }
+
+        const next = resolvePayWithTrezuNextStep(treasuries, recipientDaoId);
+        if (next.kind === "create") {
+            stripChoosePayerParam();
+            router.push("/create");
+            return;
+        }
+        if (next.kind === "pay") {
+            stripChoosePayerParam();
+            router.push(
+                buildPayWithTrezuPaymentsPath(
+                    next.payerTreasuryId,
+                    paymentPrefill,
+                ),
+            );
+            return;
+        }
+        setPickerOpen(true);
+    }, [
+        paymentPrefill,
+        treasuries,
+        recipientDaoId,
+        router,
+        t,
+        stripChoosePayerParam,
+    ]);
+
+    const payWithTrezuStep = useMemo(() => {
+        if (!accountId || isInitializing || isLoading) return null;
+        return resolvePayWithTrezuNextStep(treasuries, recipientDaoId);
+    }, [accountId, isInitializing, isLoading, treasuries, recipientDaoId]);
+
+    // Keep chooser tied to `?choosePayer=1` so remounts after login still show it.
+    const showPicker =
+        pickerOpen ||
+        (shouldOpenPicker &&
+            !!paymentPrefill &&
+            payWithTrezuStep?.kind === "choose");
+
+    // After login (`?choosePayer=1`): create / pay when no chooser is needed.
+    useEffect(() => {
+        if (!shouldOpenPicker || isInitializing || isLoading) return;
+        if (!accountId || resumedChoosePayerRef.current) return;
+        if (!paymentPrefill || !payWithTrezuStep) return;
+        if (payWithTrezuStep.kind === "choose") return;
+
+        resumedChoosePayerRef.current = true;
+        continuePayWithTrezu();
+    }, [
+        shouldOpenPicker,
+        accountId,
+        isInitializing,
+        isLoading,
+        paymentPrefill,
+        payWithTrezuStep,
+        continuePayWithTrezu,
+    ]);
+
+    const handleCopyLink = async () => {
+        const sharePath = withoutChoosePayerParam(
+            `${pathname}?${searchParams.toString()}`,
+        );
+        const url = getAbsoluteTransferUrl(sharePath);
         try {
             await navigator.clipboard.writeText(url);
             toast.success(t("linkCopied"));
@@ -141,30 +243,40 @@ export default function DepositTransferPage() {
     };
 
     const handlePayWithTrezu = () => {
-        if (!payerTreasuryId) {
+        if (!paymentPrefill) {
             toast.error(t("transfer.payRequiresTreasury"));
             return;
         }
 
-        const params = new URLSearchParams();
-        if (type === "public") {
-            // Only deep-link once address + network are ready (token confirms selection).
-            if (!depositAddress || !tokenId || !networkId) {
-                toast.error(t("transfer.payRequiresTreasury"));
-                return;
-            }
-            params.set("address", depositAddress);
-            params.set("networks", networkId);
-        } else {
-            if (!recipientDaoId) {
-                toast.error(t("transfer.payRequiresTreasury"));
-                return;
-            }
-            params.set("address", recipientDaoId);
-            params.set("networks", NEAR_COM_NETWORK_ID);
+        if (!accountId) {
+            const returnTo = withChoosePayerParam(
+                withoutChoosePayerParam(
+                    `${pathname}?${searchParams.toString()}`,
+                ),
+            );
+            router.push(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+            return;
         }
 
-        router.push(`/${payerTreasuryId}/payments?${params.toString()}`);
+        if (isLoading) return;
+        continuePayWithTrezu();
+    };
+
+    const handlePickerOpenChange = (open: boolean) => {
+        setPickerOpen(open);
+        if (!open) stripChoosePayerParam();
+    };
+
+    const handleSelectPayerTreasury = (payerTreasuryId: string) => {
+        if (!paymentPrefill) {
+            toast.error(t("transfer.payRequiresTreasury"));
+            return;
+        }
+        setPickerOpen(false);
+        stripChoosePayerParam();
+        router.push(
+            buildPayWithTrezuPaymentsPath(payerTreasuryId, paymentPrefill),
+        );
     };
 
     const pageTitle =
@@ -172,11 +284,15 @@ export default function DepositTransferPage() {
             ? t("transfer.titleConfidential")
             : t("transfer.title");
 
+    if (!hasShareParams || isPublicShareIncomplete) {
+        return null;
+    }
+
     return (
         <PageComponentLayout title={pageTitle}>
             <div className="flex justify-center w-full">
                 <PageCard className="w-full max-w-150 gap-4">
-                    <div className="flex items-start justify-between gap-3 pb-3 border-b border-general-border mb-3">
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3 pb-3 border-b border-general-border mb-3">
                         <h1 className="font-semibold text-lg leading-snug">
                             {pageTitle}
                         </h1>
@@ -237,6 +353,15 @@ export default function DepositTransferPage() {
                     </div>
                 </PageCard>
             </div>
+
+            <DepositPayTreasuryModal
+                open={showPicker}
+                onOpenChange={handlePickerOpenChange}
+                treasuries={treasuries}
+                excludeTreasuryId={recipientDaoId}
+                isLoading={Boolean(accountId) && isLoading}
+                onSelect={handleSelectPayerTreasury}
+            />
         </PageComponentLayout>
     );
 }

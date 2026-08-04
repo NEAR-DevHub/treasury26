@@ -44,7 +44,6 @@ import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { pickDefaultDepositAsset } from "@/lib/pick-default-token";
-import { isAxiosErrorWithStatus } from "@/lib/query-retry";
 import {
     canonicalizeTokenIdForMatch,
     cn,
@@ -327,7 +326,10 @@ export function DepositModal({
     const [modalType, setModalType] = useState<"asset" | "network" | null>(
         null,
     );
+    /** Successfully resolved public asset+network key (skip refetch on address). */
     const lastPublicAutoFetchKeyRef = useRef<string | null>(null);
+    /** Failed public asset+network key (block auto-advance until selection/login changes). */
+    const failedPublicFetchKeyRef = useRef<string | null>(null);
     const [depositAssetsState, dispatchDepositAssets] = useReducer(
         depositAssetsReducer,
         initialDepositAssetsState,
@@ -793,6 +795,7 @@ export function DepositModal({
             setSingleUseExpiresAt(null);
             setHasAcknowledged(false);
             lastPublicAutoFetchKeyRef.current = null;
+            failedPublicFetchKeyRef.current = null;
             setStep("select");
 
             const availableNetworks = assetNetworksMap.get(asset.id) || [];
@@ -832,6 +835,7 @@ export function DepositModal({
             setSingleUseExpiresAt(null);
             setHasAcknowledged(false);
             lastPublicAutoFetchKeyRef.current = null;
+            failedPublicFetchKeyRef.current = null;
             setStep("select");
         },
         [form, invalidatePendingAddressRequest],
@@ -873,14 +877,7 @@ export function DepositModal({
                 }
             }
 
-            if (!accountId) {
-                form.setError("network", {
-                    type: "manual",
-                    message: t("errors.loginRequired"),
-                });
-                return null;
-            }
-
+            // Guests / non-members can generate deposit addresses (public + confidential).
             setIsLoadingAddress(true);
             form.clearErrors("network");
 
@@ -916,16 +913,6 @@ export function DepositModal({
                 return null;
             } catch (err: unknown) {
                 if (requestId !== latestAddressRequestRef.current) return null;
-                if (
-                    isAxiosErrorWithStatus(err, 401) ||
-                    isAxiosErrorWithStatus(err, 403)
-                ) {
-                    form.setError("network", {
-                        type: "manual",
-                        message: t("errors.loginRequired"),
-                    });
-                    return null;
-                }
                 form.setError("network", {
                     type: "manual",
                     message:
@@ -944,36 +931,66 @@ export function DepositModal({
             selectedAsset,
             treasuryId,
             isConfidential,
-            accountId,
             selectedBridgeNetwork,
             form,
             t,
         ]);
 
-    // Public treasuries: fetch address automatically when asset+network selected.
+    // After login (or any account change), allow retrying a previously failed fetch.
+    useEffect(() => {
+        failedPublicFetchKeyRef.current = null;
+    }, [accountId]);
+
+    // Public treasuries: asset+network → address step (skeleton), then fetch.
     useEffect(() => {
         if (isConfidential) return;
-        if (step !== "select") return;
-        if (!selectedAsset || !selectedNetwork || depositBlocked) {
-            if (!selectedAsset || !selectedNetwork) {
+
+        if (depositBlocked) {
+            if (step === "address") {
                 setDepositInfo(null);
                 setSingleUseExpiresAt(null);
-                lastPublicAutoFetchKeyRef.current = null;
+                setStep("select");
             }
             return;
         }
 
+        if (!selectedAsset || !selectedNetwork) {
+            setDepositInfo(null);
+            setSingleUseExpiresAt(null);
+            lastPublicAutoFetchKeyRef.current = null;
+            return;
+        }
+
         const fetchKey = `${selectedAsset.id}:${selectedNetwork.id}`;
-        if (lastPublicAutoFetchKeyRef.current === fetchKey) return;
+
+        // Advance to a dedicated address page; keep select form off-screen.
+        if (step === "select") {
+            // Same pair already failed — keep form errors visible until user
+            // re-selects or signs in (accountId effect clears the failure latch).
+            if (failedPublicFetchKeyRef.current === fetchKey) return;
+            setDepositInfo(null);
+            setSingleUseExpiresAt(null);
+            setStep("address");
+            return;
+        }
+
+        if (step !== "address") return;
+        if (lastPublicAutoFetchKeyRef.current === fetchKey && depositInfo)
+            return;
 
         let cancelled = false;
         (async () => {
             const info = await resolveAddress();
-            if (cancelled || !info) return;
+            if (cancelled) return;
+            if (!info) {
+                failedPublicFetchKeyRef.current = fetchKey;
+                setStep("select");
+                return;
+            }
+            failedPublicFetchKeyRef.current = null;
             lastPublicAutoFetchKeyRef.current = fetchKey;
             setDepositInfo(info);
             setSingleUseExpiresAt(null);
-            setStep("address");
         })();
 
         return () => {
@@ -985,6 +1002,7 @@ export function DepositModal({
         selectedAsset?.id,
         selectedNetwork?.id,
         depositBlocked,
+        depositInfo,
         resolveAddress,
     ]);
 
@@ -1086,10 +1104,16 @@ export function DepositModal({
 
     const handleBack = () => {
         if (step === "address") {
-            if (!isConfidential && selectedAsset && selectedNetwork) {
-                // Stay on select for this asset/network; changing selection clears the key.
-                lastPublicAutoFetchKeyRef.current = `${selectedAsset.id}:${selectedNetwork.id}`;
-            } else if (isConfidential && depositSource === "public_wallet") {
+            if (!isConfidential) {
+                // Clear network so re-selecting auto-opens the address step again.
+                invalidatePendingAddressRequest();
+                form.setValue("network", null);
+                form.clearErrors("network");
+                setDepositInfo(null);
+                setSingleUseExpiresAt(null);
+                lastPublicAutoFetchKeyRef.current = null;
+                failedPublicFetchKeyRef.current = null;
+            } else if (depositSource === "public_wallet") {
                 // Clear generated one-time address so user must generate again.
                 setDepositInfo(null);
                 setSingleUseExpiresAt(null);
@@ -1409,22 +1433,6 @@ export function DepositModal({
                     />
                 )}
 
-                {!isConfidential &&
-                    step === "select" &&
-                    depositInfo &&
-                    selectedAsset &&
-                    selectedNetwork &&
-                    !depositBlocked && (
-                        <Button
-                            type="button"
-                            onClick={() => setStep("address")}
-                            className="w-full h-11 rounded-xl"
-                            data-testid="deposit-show-public-address"
-                        >
-                            {t("showAddress")}
-                        </Button>
-                    )}
-
                 {showOneTimeAck && (
                     <DepositAckPanel
                         title={t("oneTimeSectionTitle")}
@@ -1552,17 +1560,6 @@ export function DepositModal({
                         }
                     />
                 )}
-
-                {isLoadingAddress &&
-                    !isConfidential &&
-                    step === "select" &&
-                    selectedAsset &&
-                    selectedNetwork && (
-                        <Skeleton
-                            className="h-11 w-full rounded-xl"
-                            data-testid="deposit-address-skeleton"
-                        />
-                    )}
             </div>
 
             <SelectModal

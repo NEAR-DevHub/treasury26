@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "Dari Trezu rahasia",
-            "nearcom": "Dari near.com rahasia"
+            "nearcom": "Dari near.com rahasia",
+            "short": "Dari rahasia"
         },
         "guestBanner": {
             "title": "Anda melihat sebagai tamu",
@@ -378,7 +379,11 @@
             "payWithTrezu": "Bayar dengan Trezu",
             "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",
             "copyLink": "Salin tautan",
-            "titleConfidential": "Transfer ke Treasury rahasia"
+            "titleConfidential": "Transfer ke Treasury rahasia",
+            "chooseTreasuryTitle": "Pilih Treasury",
+            "chooseTreasuryDescription": "Pembayaran ini berasal dari treasury mana?",
+            "noMemberTreasuries": "Anda belum menjadi anggota treasury mana pun.",
+            "createTreasury": "Buat treasury"
         }
     },
     "assetDetails": {

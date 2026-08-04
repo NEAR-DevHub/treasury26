@@ -29,9 +29,9 @@ export function DepositTransferSummary({
     const t = useTranslations("depositModal");
 
     return (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-general-border p-3 space-y-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-snug">
                     {variant === "public"
                         ? t("transfer.youSendFromPublic")
                         : t("transfer.youSend")}
@@ -55,7 +55,7 @@ export function DepositTransferSummary({
                                 alt=""
                                 width={20}
                                 height={20}
-                                className="absolute -bottom-0.5 -right-0.5 size-5 rounded-md border-2 border-card"
+                                className="absolute -bottom-0.5 -right-0.5 size-5 rounded-full object-cover border-2 border-card"
                             />
                         </span>
                     )}
@@ -88,7 +88,7 @@ export function DepositTransferSummary({
             </div>
 
             <div className="rounded-xl border border-general-border p-3 space-y-2">
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground leading-snug">
                     {t("transfer.goesTo")}
                 </p>
                 <div className="flex items-start gap-2.5">

@@ -38,18 +38,23 @@ export function DepositAddressCard({
         <div className={cn("rounded-xl overflow-hidden bg-muted", className)}>
             <div className="bg-muted p-1">
                 <div className="bg-card p-2 rounded-xl space-y-3">
-                    <div className="flex items-center gap-3">
-                        <div className="shrink-0 size-22 flex items-center justify-center overflow-hidden">
+                    {/* Small: QR centered above address. Large: original side-by-side. */}
+                    <div className="flex flex-col items-center gap-3 md:flex-row md:items-center">
+                        <div className="shrink-0 size-28 md:size-22 flex items-center justify-center overflow-hidden">
                             {address ? (
-                                <QRCode value={address} size={88} />
+                                <QRCode
+                                    value={address}
+                                    size={88}
+                                    className="size-28 md:size-22"
+                                />
                             ) : null}
                         </div>
-                        <div className="flex-1 min-w-0 space-y-1 pt-1">
+                        <div className="w-full md:flex-1 min-w-0 space-y-1 md:pt-1">
                             <p className="text-xs text-muted-foreground">
                                 {t("addressLabel")}
                             </p>
                             <div className="flex items-start gap-2">
-                                <code className="font-mono break-all text-sm sm:text-lg block">
+                                <code className="font-mono break-all text-base md:text-lg leading-snug min-w-0 flex-1">
                                     {formatDepositAddress(
                                         address,
                                         preferPlainAddress,
@@ -61,7 +66,7 @@ export function DepositAddressCard({
                                         toastMessage={t("addressCopied")}
                                         variant="unstyled"
                                         size="icon-sm"
-                                        className="shrink-0"
+                                        className="shrink-0 mt-0.5"
                                         iconClassName="w-5 h-5 text-muted-foreground"
                                     />
                                 )}
@@ -74,8 +79,8 @@ export function DepositAddressCard({
                             <p className="text-xs text-muted-foreground">
                                 {t("memoLabel")}
                             </p>
-                            <div className="flex items-start justify-between gap-2">
-                                <code className="font-mono break-all text-xs sm:text-sm">
+                            <div className="flex items-start gap-2">
+                                <code className="font-mono break-all text-xs sm:text-sm leading-snug min-w-0 flex-1">
                                     {memo}
                                 </code>
                                 <CopyButton

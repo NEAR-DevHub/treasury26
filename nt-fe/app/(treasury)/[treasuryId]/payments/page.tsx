@@ -586,14 +586,28 @@ function normalizePreferredNetwork(network: string): string {
 }
 
 function getNetworkMatchScore(
-    tokenNetwork: string,
+    tokenNetworkName: string,
     preferredNetworks: string[],
+    tokenNetworkId?: string,
 ): number {
-    const normalizedTokenNetwork = tokenNetwork.trim().toLowerCase();
+    const normalizedTokenNetwork = tokenNetworkName.trim().toLowerCase();
+    const normalizedTokenNetworkId = tokenNetworkId?.trim().toLowerCase() ?? "";
     const tokenBlockchain = getBlockchainType(normalizedTokenNetwork);
     let bestScore = 0;
 
     preferredNetworks.forEach((preferredNetwork, index) => {
+        // Match raw preferred value first so intents ids / near.com stay exact.
+        // normalizePreferredNetwork maps near.com → near for name fallbacks only.
+        const rawPreferred = preferredNetwork.trim().toLowerCase();
+
+        if (
+            normalizedTokenNetworkId &&
+            rawPreferred === normalizedTokenNetworkId
+        ) {
+            bestScore = Math.max(bestScore, 300 - index);
+            return;
+        }
+
         const normalizedPreferredNetwork =
             normalizePreferredNetwork(preferredNetwork);
 
@@ -628,6 +642,7 @@ function pickCompatibleFallbackToken(
             const networkScore = getNetworkMatchScore(
                 network.name,
                 preferredNetworks,
+                network.id,
             );
 
             if (networkScore === 0) {
@@ -1034,8 +1049,9 @@ export default function PaymentsPage() {
     const compatibleDestination = useMemo(() => {
         if (!watchedToken) return null;
 
-        // Pay-with-Trezu / confidential near.com deep links.
-        if (prefersNearCom && isConfidential) {
+        // Pay-with-Trezu confidential share deep links use networks=near.com.
+        // Key off the URL preference, not whether the *payer* treasury is confidential.
+        if (prefersNearCom) {
             return {
                 id: NEAR_COM_NETWORK_ID,
                 networkName: NEAR_NETWORK_ID,
@@ -1080,7 +1096,6 @@ export default function PaymentsPage() {
         preferredNetworks,
         watchedToken,
         prefersNearCom,
-        isConfidential,
     ]);
 
     // ── Ensure quote is fresh before entering the review step ─────────────────

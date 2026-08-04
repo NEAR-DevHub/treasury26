@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "機密 Trezu から",
-            "nearcom": "機密 near.com から"
+            "nearcom": "機密 near.com から",
+            "short": "機密から"
         },
         "guestBanner": {
             "title": "ゲストとして表示しています",
@@ -378,7 +379,11 @@
             "payWithTrezu": "Trezu で支払う",
             "payRequiresTreasury": "支払うには Trezu treasury でサインインしてください。",
             "copyLink": "リンクをコピー",
-            "titleConfidential": "機密 Treasury へ送金"
+            "titleConfidential": "機密 Treasury へ送金",
+            "chooseTreasuryTitle": "Treasury を選択",
+            "chooseTreasuryDescription": "この支払いの送金元の Treasury はどれですか？",
+            "noMemberTreasuries": "まだどの Treasury のメンバーでもありません。",
+            "createTreasury": "Treasury を作成"
         }
     },
     "assetDetails": {

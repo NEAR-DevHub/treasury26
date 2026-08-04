@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "מ-Trezu חסוי",
-            "nearcom": "מ-near.com חסוי"
+            "nearcom": "מ-near.com חסוי",
+            "short": "מחסוי"
         },
         "guestBanner": {
             "title": "אתה צופה כאורח",
@@ -378,7 +379,11 @@
             "payWithTrezu": "שלם עם Trezu",
             "payRequiresTreasury": "התחבר עם treasury של Trezu כדי לשלם.",
             "copyLink": "העתק קישור",
-            "titleConfidential": "העברה ל-Treasury חסוי"
+            "titleConfidential": "העברה ל-Treasury חסוי",
+            "chooseTreasuryTitle": "בחר Treasury",
+            "chooseTreasuryDescription": "מאיזו treasury מגיע התשלום הזה?",
+            "noMemberTreasuries": "אינך חבר עדיין באף treasury.",
+            "createTreasury": "צור treasury"
         }
     },
     "assetDetails": {

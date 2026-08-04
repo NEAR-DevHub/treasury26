@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::AppState;
-use crate::auth::OptionalAuthUser;
+use crate::handlers::balance_changes::confidential_list::is_confidential_dao;
 use crate::utils::cache::{CacheKey, CacheTier};
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 
@@ -147,17 +147,25 @@ async fn fetch_bridge_deposit_address(
 /// Fetch deposit address for a specific account and chain.
 /// For confidential treasuries, this first obtains a confidential quote to get
 /// an intents deposit address, then fetches the bridge address for that.
+///
+/// Guests and non-members may generate addresses — depositing funds into a
+/// treasury is not a member-only action. Confidential quotes authenticate with
+/// the DAO's stored intents JWT, not the caller's session.
 pub async fn get_deposit_address(
     State(state): State<Arc<AppState>>,
-    auth: OptionalAuthUser,
     Json(request): Json<DepositAddressRequest>,
 ) -> Result<Json<DepositAddressResult>, (StatusCode, String)> {
     let account_id = request.account_id.clone();
     let chain = request.chain.clone();
 
-    let confidential = auth
-        .verify_member_if_confidential(&state.db_pool, &account_id)
-        .await?;
+    let confidential = is_confidential_dao(&state.db_pool, account_id.as_str())
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check confidential status: {}", e),
+            )
+        })?;
 
     if confidential {
         let token_id = request.token_id.ok_or_else(|| {

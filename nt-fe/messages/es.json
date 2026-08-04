@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "Desde Trezu confidencial",
-            "nearcom": "Desde near.com confidencial"
+            "nearcom": "Desde near.com confidencial",
+            "short": "Desde confidencial"
         },
         "guestBanner": {
             "title": "Estás viendo como invitado",
@@ -378,7 +379,11 @@
             "payWithTrezu": "Pagar con Trezu",
             "payRequiresTreasury": "Inicia sesión con una treasury de Trezu para pagar.",
             "copyLink": "Copiar enlace",
-            "titleConfidential": "Transferir a la Treasury confidencial"
+            "titleConfidential": "Transferir a la Treasury confidencial",
+            "chooseTreasuryTitle": "Elegir una Treasury",
+            "chooseTreasuryDescription": "¿Desde qué treasury sale este pago?",
+            "noMemberTreasuries": "Aún no eres miembro de ninguna treasury.",
+            "createTreasury": "Crear una treasury"
         }
     },
     "assetDetails": {

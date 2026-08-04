@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import {
     buildDepositTransferPath,
+    buildPayWithTrezuPaymentsPath,
+    hasChoosePayerParam,
     parseTransferType,
+    withChoosePayerParam,
+    withoutChoosePayerParam,
 } from "./deposit-transfer-url";
 
 describe("buildDepositTransferPath", () => {
@@ -57,5 +61,56 @@ describe("parseTransferType", () => {
     it("defaults unknown values to confidential", () => {
         expect(parseTransferType("confidential")).toBe("confidential");
         expect(parseTransferType(null)).toBe("confidential");
+    });
+});
+
+describe("withChoosePayerParam", () => {
+    it("adds choosePayer=1 for post-login resume", () => {
+        expect(
+            withChoosePayerParam(
+                "/dao.sputnik-dao.near/deposit/transfer?type=confidential",
+            ),
+        ).toBe(
+            "/dao.sputnik-dao.near/deposit/transfer?type=confidential&choosePayer=1",
+        );
+    });
+});
+
+describe("withoutChoosePayerParam", () => {
+    it("strips choosePayer so shared links stay inert", () => {
+        expect(
+            withoutChoosePayerParam(
+                "/dao.sputnik-dao.near/deposit/transfer?type=confidential&choosePayer=1&source=trezu",
+            ),
+        ).toBe(
+            "/dao.sputnik-dao.near/deposit/transfer?type=confidential&source=trezu",
+        );
+    });
+});
+
+describe("hasChoosePayerParam", () => {
+    it("detects choosePayer via URL parsing", () => {
+        expect(
+            hasChoosePayerParam(
+                "/dao.sputnik-dao.near/deposit/transfer?choosePayer=1",
+            ),
+        ).toBe(true);
+        expect(
+            hasChoosePayerParam(
+                "/dao.sputnik-dao.near/deposit/transfer?type=confidential",
+            ),
+        ).toBe(false);
+    });
+});
+
+describe("buildPayWithTrezuPaymentsPath", () => {
+    it("builds payments deep link with address and networks", () => {
+        const path = buildPayWithTrezuPaymentsPath("payer.sputnik-dao.near", {
+            address: "dest.sputnik-dao.near",
+            networks: "near.com",
+        });
+        expect(path).toBe(
+            "/payer.sputnik-dao.near/payments?address=dest.sputnik-dao.near&networks=near.com",
+        );
     });
 });

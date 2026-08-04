@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "Gizli Trezu’dan",
-            "nearcom": "Gizli near.com’dan"
+            "nearcom": "Gizli near.com’dan",
+            "short": "Gizliden"
         },
         "guestBanner": {
             "title": "Misafir olarak görüntülüyorsunuz",
@@ -378,7 +379,11 @@
             "payWithTrezu": "Trezu ile öde",
             "payRequiresTreasury": "Ödemek için bir Trezu treasury’siyle oturum açın.",
             "copyLink": "Bağlantıyı kopyala",
-            "titleConfidential": "Gizli Treasury’ye transfer"
+            "titleConfidential": "Gizli Treasury’ye transfer",
+            "chooseTreasuryTitle": "Bir Treasury seçin",
+            "chooseTreasuryDescription": "Bu ödeme hangi treasury’den geliyor?",
+            "noMemberTreasuries": "Henüz hiçbir treasury’nin üyesi değilsiniz.",
+            "createTreasury": "Treasury oluştur"
         }
     },
     "assetDetails": {

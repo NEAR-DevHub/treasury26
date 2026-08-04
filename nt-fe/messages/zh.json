@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "来自机密 Trezu",
-            "nearcom": "来自机密 near.com"
+            "nearcom": "来自机密 near.com",
+            "short": "从保密"
         },
         "guestBanner": {
             "title": "你正在以访客身份查看",
@@ -378,7 +379,11 @@
             "payWithTrezu": "使用 Trezu 支付",
             "payRequiresTreasury": "请使用 Trezu treasury 登录以支付。",
             "copyLink": "复制链接",
-            "titleConfidential": "转账至机密 Treasury"
+            "titleConfidential": "转账至机密 Treasury",
+            "chooseTreasuryTitle": "选择 Treasury",
+            "chooseTreasuryDescription": "这笔付款来自哪个 treasury？",
+            "noMemberTreasuries": "你还不是任何 treasury 的成员。",
+            "createTreasury": "创建 treasury"
         }
     },
     "assetDetails": {

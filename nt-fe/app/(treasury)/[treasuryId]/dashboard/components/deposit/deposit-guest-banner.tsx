@@ -8,7 +8,7 @@ export function DepositGuestBanner() {
     const t = useTranslations("depositModal.guestBanner");
 
     return (
-        <Alert variant="info" className="mb-4">
+        <Alert variant="info" className="mb-1">
             <Info className="h-4 w-4 shrink-0" />
             <div className="flex flex-col gap-0.5">
                 <AlertTitle className="text-sm font-semibold leading-none">

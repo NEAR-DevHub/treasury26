@@ -57,3 +57,42 @@ export function parseTransferType(
     if (hints?.hasPublicParams) return "public";
     return "confidential";
 }
+
+/** Resume Pay-with-Trezu treasury picker after login. */
+export const CHOOSE_PAYER_QUERY = "choosePayer";
+
+export function withChoosePayerParam(pathWithSearch: string): string {
+    const url = new URL(pathWithSearch, "https://trezu.app");
+    url.searchParams.set(CHOOSE_PAYER_QUERY, "1");
+    return `${url.pathname}${url.search}`;
+}
+
+/** Strip post-login resume flag so shared/copied links stay inert. */
+export function withoutChoosePayerParam(pathWithSearch: string): string {
+    const url = new URL(pathWithSearch, "https://trezu.app");
+    url.searchParams.delete(CHOOSE_PAYER_QUERY);
+    return `${url.pathname}${url.search}`;
+}
+
+export function hasChoosePayerParam(pathWithSearch: string): boolean {
+    try {
+        return (
+            new URL(pathWithSearch, "https://trezu.app").searchParams.get(
+                CHOOSE_PAYER_QUERY,
+            ) === "1"
+        );
+    } catch {
+        return false;
+    }
+}
+
+export function buildPayWithTrezuPaymentsPath(
+    payerTreasuryId: string,
+    params: { address: string; networks: string },
+): string {
+    const search = new URLSearchParams({
+        address: params.address,
+        networks: params.networks,
+    });
+    return `/${payerTreasuryId}/payments?${search.toString()}`;
+}

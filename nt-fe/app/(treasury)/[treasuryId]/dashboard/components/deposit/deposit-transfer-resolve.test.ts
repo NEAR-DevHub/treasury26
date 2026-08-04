@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import type { Treasury } from "@/lib/api";
 import {
-    resolvePayerTreasuryId,
+    resolvePayWithTrezuNextStep,
     resolveSendTokenMeta,
 } from "./deposit-transfer-resolve";
 
@@ -18,6 +18,14 @@ const bridgeAssets: BridgeAsset[] = [
                 symbol: "USDC",
                 chainIcons: { icon: "https://example.com/avax.svg" },
                 chainId: "avax:43114",
+                decimals: 6,
+            },
+            {
+                id: "nep141:eth-usdc",
+                name: "eth",
+                symbol: "USDC",
+                chainIcons: { icon: "https://example.com/eth.svg" },
+                chainId: "eth:1",
                 decimals: 6,
             },
         ],
@@ -40,25 +48,82 @@ describe("resolveSendTokenMeta", () => {
     it("returns null when both ids are empty", () => {
         expect(resolveSendTokenMeta(bridgeAssets, "", "")).toBeNull();
     });
+
+    it("returns null when network id does not match", () => {
+        expect(
+            resolveSendTokenMeta(bridgeAssets, "usdc", "nep141:missing"),
+        ).toBeNull();
+    });
 });
 
-describe("resolvePayerTreasuryId", () => {
-    const treasuries = [
-        {
-            daoId: "dest.sputnik-dao.near",
-            isMember: true,
-            isConfidential: true,
-        },
-        {
-            daoId: "payer.sputnik-dao.near",
-            isMember: true,
-            isConfidential: true,
-        },
-    ] as unknown as Treasury[];
-
-    it("prefers a confidential member other than the destination", () => {
+describe("resolvePayWithTrezuNextStep", () => {
+    it("sends users with no member treasury to create", () => {
+        expect(resolvePayWithTrezuNextStep([])).toEqual({ kind: "create" });
         expect(
-            resolvePayerTreasuryId(treasuries, "dest.sputnik-dao.near", null),
-        ).toBe("payer.sputnik-dao.near");
+            resolvePayWithTrezuNextStep([
+                {
+                    daoId: "guest.sputnik-dao.near",
+                    isMember: false,
+                } as Treasury,
+            ]),
+        ).toEqual({ kind: "create" });
+    });
+
+    it("pays directly when there is exactly one member treasury", () => {
+        expect(
+            resolvePayWithTrezuNextStep([
+                {
+                    daoId: "only.sputnik-dao.near",
+                    isMember: true,
+                } as Treasury,
+            ]),
+        ).toEqual({
+            kind: "pay",
+            payerTreasuryId: "only.sputnik-dao.near",
+        });
+    });
+
+    it("opens the chooser when there are multiple member treasuries", () => {
+        expect(
+            resolvePayWithTrezuNextStep([
+                { daoId: "a.sputnik-dao.near", isMember: true } as Treasury,
+                { daoId: "b.sputnik-dao.near", isMember: true } as Treasury,
+            ]),
+        ).toEqual({ kind: "choose" });
+    });
+
+    it("excludes the destination treasury from payer options", () => {
+        expect(
+            resolvePayWithTrezuNextStep(
+                [
+                    {
+                        daoId: "dest.sputnik-dao.near",
+                        isMember: true,
+                    } as Treasury,
+                    {
+                        daoId: "payer.sputnik-dao.near",
+                        isMember: true,
+                    } as Treasury,
+                ],
+                "dest.sputnik-dao.near",
+            ),
+        ).toEqual({
+            kind: "pay",
+            payerTreasuryId: "payer.sputnik-dao.near",
+        });
+    });
+
+    it("sends users to create when the only member treasury is the destination", () => {
+        expect(
+            resolvePayWithTrezuNextStep(
+                [
+                    {
+                        daoId: "dest.sputnik-dao.near",
+                        isMember: true,
+                    } as Treasury,
+                ],
+                "dest.sputnik-dao.near",
+            ),
+        ).toEqual({ kind: "create" });
     });
 });

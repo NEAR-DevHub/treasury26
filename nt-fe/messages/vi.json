@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "Từ Trezu bảo mật",
-            "nearcom": "Từ near.com bảo mật"
+            "nearcom": "Từ near.com bảo mật",
+            "short": "Từ bảo mật"
         },
         "guestBanner": {
             "title": "Bạn đang xem với tư cách khách",
@@ -378,7 +379,11 @@
             "payWithTrezu": "Thanh toán bằng Trezu",
             "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",
             "copyLink": "Sao chép liên kết",
-            "titleConfidential": "Chuyển tới Treasury bảo mật"
+            "titleConfidential": "Chuyển tới Treasury bảo mật",
+            "chooseTreasuryTitle": "Chọn một Treasury",
+            "chooseTreasuryDescription": "Thanh toán này đến từ treasury nào?",
+            "noMemberTreasuries": "Bạn chưa là thành viên của treasury nào.",
+            "createTreasury": "Tạo treasury"
         }
     },
     "assetDetails": {

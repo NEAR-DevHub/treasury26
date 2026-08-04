@@ -45,9 +45,9 @@ export function DepositAddressSkeleton({ className }: { className?: string }) {
 
             <div className="rounded-xl overflow-hidden bg-muted">
                 <div className="bg-card p-3">
-                    <div className="flex items-start gap-3">
-                        <Skeleton className="size-[88px] rounded-lg shrink-0" />
-                        <div className="flex-1 min-w-0 space-y-2 pt-1">
+                    <div className="flex flex-col items-center gap-3 md:flex-row md:items-center">
+                        <Skeleton className="size-28 md:size-22 rounded-lg shrink-0" />
+                        <div className="w-full md:flex-1 min-w-0 space-y-2 md:pt-1">
                             <Skeleton className="h-3 w-16" />
                             <Skeleton className="h-5 w-full" />
                             <Skeleton className="h-5 w-4/5" />

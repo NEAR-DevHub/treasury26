@@ -357,7 +357,8 @@
         },
         "confidentialOrigins": {
             "trezu": "기밀 Trezu에서",
-            "nearcom": "기밀 near.com에서"
+            "nearcom": "기밀 near.com에서",
+            "short": "기밀에서"
         },
         "guestBanner": {
             "title": "게스트로 보고 있습니다",
@@ -378,7 +379,11 @@
             "payWithTrezu": "Trezu로 결제",
             "payRequiresTreasury": "결제하려면 Trezu treasury로 로그인하세요.",
             "copyLink": "링크 복사",
-            "titleConfidential": "기밀 Treasury로 전송"
+            "titleConfidential": "기밀 Treasury로 전송",
+            "chooseTreasuryTitle": "Treasury 선택",
+            "chooseTreasuryDescription": "이 결제는 어느 treasury에서 나오나요?",
+            "noMemberTreasuries": "아직 어떤 treasury의 멤버도 아닙니다.",
+            "createTreasury": "Treasury 만들기"
         }
     },
     "assetDetails": {

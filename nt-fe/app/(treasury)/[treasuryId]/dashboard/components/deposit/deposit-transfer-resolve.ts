@@ -25,56 +25,52 @@ export function resolveSendTokenMeta(
         bridgeAssets.find((item) =>
             item.networks.some((network) => network.id === networkId),
         );
+    if (!asset) return null;
 
-    const networkMatch =
-        asset?.networks.find(
-            (network) =>
-                network.id === networkId ||
-                network.name === networkId ||
-                getNetworkDisplayName(network.name) === networkId,
-        ) ?? asset?.networks[0];
+    // Require an explicit network match — never fall back to networks[0].
+    const networkMatch = asset.networks.find(
+        (network) =>
+            network.id === networkId ||
+            network.name === networkId ||
+            getNetworkDisplayName(network.name) === networkId,
+    );
+    if (!networkMatch) return null;
 
-    const symbol = networkMatch?.symbol || asset?.name || tokenId;
-    const networkName = networkMatch
-        ? getNetworkDisplayName(networkMatch.name)
-        : networkId;
+    const symbol = networkMatch.symbol || asset.name || tokenId;
 
     return {
         symbol,
-        networkName,
-        icon: asset?.icon || symbol?.charAt(0)?.toUpperCase() || "?",
-        chainIcons: networkMatch?.chainIcons ?? undefined,
-        minDepositAmount: networkMatch?.minDepositAmount,
-        decimals: networkMatch?.decimals ?? 0,
+        networkName: getNetworkDisplayName(networkMatch.name),
+        icon: asset.icon || symbol?.charAt(0)?.toUpperCase() || "?",
+        chainIcons: networkMatch.chainIcons ?? undefined,
+        minDepositAmount: networkMatch.minDepositAmount,
+        decimals: networkMatch.decimals ?? 0,
     };
 }
 
+export type PayWithTrezuNextStep =
+    | { kind: "create" }
+    | { kind: "pay"; payerTreasuryId: string }
+    | { kind: "choose" };
+
 /**
- * Prefer a confidential member treasury that is not the destination,
- * then any confidential member, then last/first member treasury.
+ * Pick the next Pay-with-Trezu step from member treasuries.
+ * Excludes the destination treasury so users don't pay into themselves.
+ * 0 remaining → create, 1 → pay directly, 2+ → choose in modal.
  */
-export function resolvePayerTreasuryId(
+export function resolvePayWithTrezuNextStep(
     treasuries: Treasury[],
-    destinationTreasuryId: string | undefined,
-    lastTreasuryId: string | null | undefined,
-): string | null {
-    const members = treasuries.filter((treasury) => treasury.isMember);
-
-    const confidentialOther = members.find(
+    destinationTreasuryId?: string,
+): PayWithTrezuNextStep {
+    const members = treasuries.filter(
         (treasury) =>
-            treasury.isConfidential && treasury.daoId !== destinationTreasuryId,
+            treasury.isMember &&
+            (!destinationTreasuryId ||
+                treasury.daoId !== destinationTreasuryId),
     );
-    if (confidentialOther) return confidentialOther.daoId;
-
-    const confidentialAny = members.find((treasury) => treasury.isConfidential);
-    if (confidentialAny) return confidentialAny.daoId;
-
-    if (
-        lastTreasuryId &&
-        members.some((treasury) => treasury.daoId === lastTreasuryId)
-    ) {
-        return lastTreasuryId;
+    if (members.length === 0) return { kind: "create" };
+    if (members.length === 1) {
+        return { kind: "pay", payerTreasuryId: members[0].daoId };
     }
-
-    return members[0]?.daoId ?? null;
+    return { kind: "choose" };
 }
