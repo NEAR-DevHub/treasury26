@@ -1,4 +1,9 @@
 import type { ReactNode } from "react";
+import {
+    formatDepositRemainingDuration,
+    isDepositAddressExpired,
+    isDepositExpiryUrgent,
+} from "./deposit-expires";
 import type { DepositNoticeItem } from "./deposit-notice-list";
 import type { ConfidentialOrigin } from "./deposit-types";
 
@@ -46,7 +51,23 @@ export function buildPublicWalletOneTimeNotices(
     t: DepositTranslator,
     symbol: string,
     network: string,
+    options?: {
+        expiresAtMs?: number | null;
+        nowMs?: number;
+        locale?: string;
+    },
 ): DepositNoticeItem[] {
+    const expiresAtMs = options?.expiresAtMs ?? null;
+    const nowMs = options?.nowMs ?? Date.now();
+    const locale = options?.locale ?? "en";
+    const expired = isDepositAddressExpired(expiresAtMs, nowMs);
+    const urgent =
+        expiresAtMs != null && isDepositExpiryUrgent(expiresAtMs, nowMs);
+    const duration =
+        expiresAtMs != null && !expired
+            ? formatDepositRemainingDuration(expiresAtMs, locale, nowMs)
+            : null;
+
     return [
         {
             id: "only-send",
@@ -69,11 +90,29 @@ export function buildPublicWalletOneTimeNotices(
         },
         {
             id: "expires",
-            tone: "success",
-            content: t.rich("expiresInDays", {
-                days: 14,
-                bold: noticeBold,
-            }),
+            tone: expired ? "danger" : "success",
+            content: expired
+                ? t("addressExpired")
+                : duration
+                  ? t.rich("expiresInRemaining", {
+                        duration,
+                        bold: noticeBold,
+                        time: (chunks: ReactNode) => (
+                            <span
+                                className={
+                                    urgent
+                                        ? "text-destructive font-medium"
+                                        : "text-foreground font-medium"
+                                }
+                            >
+                                {chunks}
+                            </span>
+                        ),
+                    })
+                  : t.rich("expiresInDays", {
+                        days: 14,
+                        bold: noticeBold,
+                    }),
         },
     ];
 }

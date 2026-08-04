@@ -383,8 +383,14 @@
             "chooseTreasuryTitle": "Pilih Treasury",
             "chooseTreasuryDescription": "Pembayaran ini berasal dari treasury mana?",
             "noMemberTreasuries": "Anda belum menjadi anggota treasury mana pun.",
-            "createTreasury": "Buat treasury"
-        }
+            "createTreasury": "Buat treasury",
+            "expired": "Expired",
+            "used": "Used",
+            "linkInactiveTitle": "This link is no longer active",
+            "linkInactiveDescription": "To make this payment, ask the person who sent you the link for a new one."
+        },
+        "expiresInRemaining": "Expires in <time>{duration}</time> – <bold>even if unused</bold>.",
+        "addressExpired": "This address has expired."
     },
     "assetDetails": {
         "coinPrice": "Harga Koin",

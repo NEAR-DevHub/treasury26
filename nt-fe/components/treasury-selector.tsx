@@ -104,11 +104,13 @@ export function TreasurySelector({
 
     const handleTreasuryChange = (newTreasuryId: string) => {
         const pathAfterTreasury = pathname?.split("/").slice(2).join("/") || "";
-        // Transfer share pages are treasury-specific (and drop query on switch).
+        // Pay share pages are treasury-specific (and drop query on switch).
         // Land on deposit so the new treasury starts a fresh flow.
         if (
-            pathAfterTreasury === "deposit/transfer" ||
-            pathAfterTreasury.startsWith("deposit/transfer/")
+            pathAfterTreasury === "pay/public" ||
+            pathAfterTreasury === "pay/confidential" ||
+            pathAfterTreasury.startsWith("pay/public/") ||
+            pathAfterTreasury.startsWith("pay/confidential/")
         ) {
             router.push(`/${newTreasuryId}/dashboard/deposit`);
             return;

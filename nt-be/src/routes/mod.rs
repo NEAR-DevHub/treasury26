@@ -307,6 +307,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             post(handlers::intents::deposit_address::get_deposit_address),
         )
         .route(
+            "/api/intents/deposit-address/status",
+            get(handlers::intents::deposit_address::get_deposit_address_status),
+        )
+        .route(
             "/api/intents/bridge-tokens",
             get(handlers::intents::bridge_tokens::get_bridge_tokens),
         )

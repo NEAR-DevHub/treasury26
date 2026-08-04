@@ -1,4 +1,8 @@
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{
+    Json,
+    extract::{Query, State},
+    http::StatusCode,
+};
 use chrono::{Duration, Utc};
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
@@ -6,6 +10,7 @@ use std::sync::Arc;
 
 use crate::AppState;
 use crate::handlers::balance_changes::confidential_list::is_confidential_dao;
+use crate::handlers::intents::confidential::bronze::api::fetch_history;
 use crate::utils::cache::{CacheKey, CacheTier};
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 
@@ -32,10 +37,45 @@ pub struct DepositAddressResult {
     /// ISO-8601 expiry for one-time confidential deposit addresses.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<String>,
+    /// Intents quote deposit address (confidential). Used for status lookups via
+    /// `/v0/account/history?depositAddress=…`. Differs from `address` when the
+    /// bridge maps the quote address onto a chain-specific deposit address.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub quote_deposit_address: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DepositAddressStatusQuery {
+    pub account_id: AccountId,
+    /// Intents quote deposit address from address generation.
+    pub deposit_address: String,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DepositAddressStatusResult {
+    pub deposit_address: String,
+    pub found: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<String>,
+    /// ISO-8601 expiry (`createdAt + DEPOSIT_ADDRESS_VALIDITY_DAYS`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub origin_asset: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination_asset: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amount_in_formatted: Option<String>,
 }
 
 /// For confidential treasuries, get a confidential quote to obtain the intents
 /// deposit address, then fetch the bridge deposit address for that quote address.
+///
+/// Quote auth uses the app `ONECLICK_API_KEY` only — no DAO JWT required.
 async fn get_confidential_deposit_address(
     state: &Arc<AppState>,
     account_id: &near_account_id::AccountIdRef,
@@ -43,7 +83,6 @@ async fn get_confidential_deposit_address(
     token_id: &str,
     mut amount: u128,
 ) -> Result<DepositAddressResult, (StatusCode, String)> {
-    let access_token = super::confidential::refresh_dao_jwt(state, account_id).await?;
     let expires_at = Utc::now() + Duration::days(DEPOSIT_ADDRESS_VALIDITY_DAYS);
     let deadline = expires_at.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
     let account_id = account_id.as_str();
@@ -74,9 +113,8 @@ async fn get_confidential_deposit_address(
             "quoteWaitingTimeMs": 5000,
         });
 
-        match super::quote::send_oneclick_request(state, &url, &quote_body, Some(&access_token))
-            .await
-        {
+        // API key is attached in send_oneclick_request; DAO JWT is not required.
+        match super::quote::send_oneclick_request(state, &url, &quote_body, None).await {
             Ok(response_body) => {
                 let quote_deposit_address = response_body
                     .get("quote")
@@ -94,6 +132,7 @@ async fn get_confidential_deposit_address(
                     fetch_bridge_deposit_address(state, &quote_deposit_address, chain).await?;
                 bridge_result.min_amount = Some(amount.to_string());
                 bridge_result.expires_at = Some(deadline.clone());
+                bridge_result.quote_deposit_address = Some(quote_deposit_address);
                 return Ok(bridge_result);
             }
             Err((status, msg)) => {
@@ -149,8 +188,8 @@ async fn fetch_bridge_deposit_address(
 /// an intents deposit address, then fetches the bridge address for that.
 ///
 /// Guests and non-members may generate addresses — depositing funds into a
-/// treasury is not a member-only action. Confidential quotes authenticate with
-/// the DAO's stored intents JWT, not the caller's session.
+/// treasury is not a member-only action. Confidential quotes use the app API
+/// key (no DAO JWT).
 pub async fn get_deposit_address(
     State(state): State<Arc<AppState>>,
     Json(request): Json<DepositAddressRequest>,
@@ -188,6 +227,82 @@ pub async fn get_deposit_address(
 
     let result = fetch_bridge_deposit_address(&state, account_id.as_str(), &chain).await?;
     Ok(Json(result))
+}
+
+/// Look up confidential deposit status via 1Click history (`depositAddress` filter).
+/// Uses the DAO Intents JWT server-side so share pages can poll without membership.
+pub async fn get_deposit_address_status(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<DepositAddressStatusQuery>,
+) -> Result<Json<DepositAddressStatusResult>, (StatusCode, String)> {
+    let account_id = query.account_id;
+    let deposit_address = query.deposit_address.trim().to_string();
+    if deposit_address.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "depositAddress is required".to_string(),
+        ));
+    }
+
+    let confidential = is_confidential_dao(&state.db_pool, account_id.as_str())
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to check confidential status: {}", e),
+            )
+        })?;
+    if !confidential {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Deposit address status is only available for confidential treasuries".to_string(),
+        ));
+    }
+
+    let page = fetch_history(
+        &state,
+        &account_id,
+        5,
+        None,
+        None,
+        Some(deposit_address.as_str()),
+    )
+    .await?;
+
+    let item = page.items.into_iter().find(|event| {
+        event
+            .item
+            .deposit_address
+            .eq_ignore_ascii_case(&deposit_address)
+    });
+
+    match item {
+        Some(event) => {
+            let expires_at = (event.item.created_at
+                + Duration::days(DEPOSIT_ADDRESS_VALIDITY_DAYS))
+            .to_rfc3339();
+            Ok(Json(DepositAddressStatusResult {
+                deposit_address: event.item.deposit_address,
+                found: true,
+                status: Some(event.item.status),
+                created_at: Some(event.item.created_at.to_rfc3339()),
+                expires_at: Some(expires_at),
+                origin_asset: event.item.origin_asset,
+                destination_asset: Some(event.item.destination_asset),
+                amount_in_formatted: event.item.amount_in_formatted,
+            }))
+        }
+        None => Ok(Json(DepositAddressStatusResult {
+            deposit_address,
+            found: false,
+            status: None,
+            created_at: None,
+            expires_at: None,
+            origin_asset: None,
+            destination_asset: None,
+            amount_in_formatted: None,
+        })),
+    }
 }
 
 async fn fetch_deposit_address(

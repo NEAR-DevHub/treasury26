@@ -163,7 +163,7 @@ pub async fn poll_confidential_history_once(
 ) -> HandlerResult<HistoryPollResult> {
     tracing::debug!("{} latest page poll limit={}", account_id, limit);
 
-    let page = fetch_history(state, account_id, limit, None, None).await?;
+    let page = fetch_history(state, account_id, limit, None, None, None).await?;
 
     let upsert_result = upsert_history_events(&state.db_pool, account_id.as_str(), &page.items)
         .await
@@ -318,7 +318,7 @@ async fn backfill_one_page(
 
     let backward_cursor = cursor.as_ref().and_then(|c| c.backward_cursor.as_deref());
     let saved_backward_cursor = backward_cursor.map(ToString::to_string);
-    let page = fetch_history(state, account_id, limit, None, backward_cursor).await?;
+    let page = fetch_history(state, account_id, limit, None, backward_cursor, None).await?;
 
     let upsert_result = upsert_history_events(&state.db_pool, account_id.as_str(), &page.items)
         .await

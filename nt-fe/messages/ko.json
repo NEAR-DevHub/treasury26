@@ -383,8 +383,14 @@
             "chooseTreasuryTitle": "Treasury 선택",
             "chooseTreasuryDescription": "이 결제는 어느 treasury에서 나오나요?",
             "noMemberTreasuries": "아직 어떤 treasury의 멤버도 아닙니다.",
-            "createTreasury": "Treasury 만들기"
-        }
+            "createTreasury": "Treasury 만들기",
+            "expired": "만료됨",
+            "used": "사용됨",
+            "linkInactiveTitle": "이 링크는 더 이상 유효하지 않습니다",
+            "linkInactiveDescription": "이 결제를 하려면 링크를 보낸 사람에게 새 링크를 요청하세요."
+        },
+        "expiresInRemaining": "<time>{duration}</time> 후 만료 – <bold>사용하지 않아도</bold>.",
+        "addressExpired": "이 주소는 만료되었습니다."
     },
     "assetDetails": {
         "coinPrice": "코인 가격",

@@ -48,6 +48,19 @@ export function resolveSendTokenMeta(
     };
 }
 
+/** Bridge RPC chain id for an intents asset / network id from status. */
+export function resolveBridgeChainId(
+    bridgeAssets: BridgeAsset[],
+    networkId: string,
+): string | null {
+    if (!networkId) return null;
+    for (const asset of bridgeAssets) {
+        const network = asset.networks.find((item) => item.id === networkId);
+        if (network) return network.chainId || network.id;
+    }
+    return networkId;
+}
+
 export type PayWithTrezuNextStep =
     | { kind: "create" }
     | { kind: "pay"; payerTreasuryId: string }

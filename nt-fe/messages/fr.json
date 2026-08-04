@@ -383,8 +383,14 @@
             "chooseTreasuryTitle": "Choisir une Treasury",
             "chooseTreasuryDescription": "De quelle treasury provient ce paiement ?",
             "noMemberTreasuries": "Vous n’êtes encore membre d’aucune treasury.",
-            "createTreasury": "Créer une treasury"
-        }
+            "createTreasury": "Créer une treasury",
+            "expired": "Expiré",
+            "used": "Utilisé",
+            "linkInactiveTitle": "Ce lien n'est plus actif",
+            "linkInactiveDescription": "Pour effectuer ce paiement, demandez un nouveau lien à la personne qui vous l'a envoyé."
+        },
+        "expiresInRemaining": "Expire dans <time>{duration}</time> – <bold>même si inutilisée</bold>.",
+        "addressExpired": "Cette adresse a expiré."
     },
     "assetDetails": {
         "coinPrice": "Prix de la pièce",

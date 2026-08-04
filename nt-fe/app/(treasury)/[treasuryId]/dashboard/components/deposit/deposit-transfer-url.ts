@@ -1,44 +1,45 @@
 import type { ConfidentialOrigin } from "./deposit-types";
 
+export type PayShareKind = "public" | "confidential";
+
 /**
- * Transfer page query shape.
+ * Standalone pay share page query shape.
  *
- * Public (from a public wallet): address + token + network ids — everything else
- * (symbol, icons, min deposit, display names) is resolved from bridge tokens.
- * Confidential (from Trezu / near.com): dao id comes from the path; `source`
- * selects the Trezu vs near.com copy.
+ * Confidential one-time: only `id` (quote deposit address). Asset, expiry, and
+ * used/expired come from the status API; bridge address is re-derived.
+ * Public treasury: `id` is the bridge address plus token/network for display.
+ * Confidential reusable: dao from path; `source` selects Trezu vs near.com copy.
  */
-export type TransferQuery =
+export type PayShareQuery =
     | {
-          type: "public";
-          /** One-time bridge deposit address. */
-          address: string;
-          /** Bridge asset id (e.g. "usdc"). */
-          token: string;
-          /** Bridge network / intents token id. */
-          network: string;
+          kind: "public";
+          /** Quote deposit address (confidential) or bridge address (public treasury). */
+          id: string;
+          /** Required for public treasuries (no status API). */
+          token?: string;
+          network?: string;
       }
     | {
-          type: "confidential";
+          kind: "confidential";
           source: ConfidentialOrigin;
       };
 
-export function buildDepositTransferPath(
+export function buildPaySharePath(
     treasuryId: string,
-    query: TransferQuery,
+    query: PayShareQuery,
 ): string {
     const params = new URLSearchParams();
-    params.set("type", query.type);
 
-    if (query.type === "public") {
-        params.set("address", query.address);
-        params.set("token", query.token);
-        params.set("network", query.network);
+    if (query.kind === "public") {
+        params.set("id", query.id);
+        if (query.token) params.set("token", query.token);
+        if (query.network) params.set("network", query.network);
     } else {
         params.set("source", query.source);
     }
 
-    return `/${treasuryId}/deposit/transfer?${params.toString()}`;
+    const search = params.toString();
+    return `/${treasuryId}/pay/${query.kind}${search ? `?${search}` : ""}`;
 }
 
 export function getAbsoluteTransferUrl(path: string): string {
@@ -46,16 +47,11 @@ export function getAbsoluteTransferUrl(path: string): string {
     return `${window.location.origin}${path}`;
 }
 
-export function parseTransferType(
-    value: string | null,
-    hints?: { hasPublicParams?: boolean },
-): "public" | "confidential" {
-    if (value === "confidential") return "confidential";
-    // "one-time" kept as a legacy alias while old links may still exist.
-    if (value === "public" || value === "one-time") return "public";
-    // Infer public when the URL carries public-wallet fields but omits type.
-    if (hints?.hasPublicParams) return "public";
-    return "confidential";
+export function parsePayShareKind(
+    value: string | null | undefined,
+): PayShareKind | null {
+    if (value === "public" || value === "confidential") return value;
+    return null;
 }
 
 /** Resume Pay-with-Trezu treasury picker after login. */

@@ -40,6 +40,22 @@ export type DepositAddressResponse = {
     minAmount?: string | null;
     /** ISO-8601 expiry for one-time confidential deposit addresses (14 days). */
     expiresAt?: string | null;
+    /**
+     * Intents quote deposit address for confidential status lookups.
+     * Differs from `address` when the bridge remaps onto a chain deposit address.
+     */
+    quoteDepositAddress?: string | null;
+};
+
+export type DepositAddressStatusResponse = {
+    depositAddress: string;
+    found: boolean;
+    status?: string | null;
+    createdAt?: string | null;
+    expiresAt?: string | null;
+    originAsset?: string | null;
+    destinationAsset?: string | null;
+    amountInFormatted?: string | null;
 };
 
 export const fetchDepositAddress = async (
@@ -69,4 +85,30 @@ export const fetchDepositAddress = async (
         console.error("Error fetching deposit address from backend:", error);
         throw error;
     }
+};
+
+/**
+ * Look up confidential one-time deposit status via 1Click history
+ * (`depositAddress` filter). Pass the quote deposit address from generate.
+ */
+export const fetchDepositAddressStatus = async (
+    accountId: string,
+    depositAddress: string,
+): Promise<DepositAddressStatusResponse> => {
+    if (!accountId || !depositAddress) {
+        throw new Error("Account ID and deposit address are required");
+    }
+
+    const response = await axios.get<DepositAddressStatusResponse>(
+        `${BACKEND_API_BASE}/intents/deposit-address/status`,
+        {
+            params: {
+                accountId,
+                depositAddress,
+            },
+            withCredentials: true,
+        },
+    );
+
+    return response.data;
 };

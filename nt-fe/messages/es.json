@@ -383,8 +383,14 @@
             "chooseTreasuryTitle": "Elegir una Treasury",
             "chooseTreasuryDescription": "¿Desde qué treasury sale este pago?",
             "noMemberTreasuries": "Aún no eres miembro de ninguna treasury.",
-            "createTreasury": "Crear una treasury"
-        }
+            "createTreasury": "Crear una treasury",
+            "expired": "Caducado",
+            "used": "Usado",
+            "linkInactiveTitle": "Este enlace ya no está activo",
+            "linkInactiveDescription": "Para realizar este pago, pide a la persona que te envió el enlace uno nuevo."
+        },
+        "expiresInRemaining": "Caduca en <time>{duration}</time> – <bold>aunque no se use</bold>.",
+        "addressExpired": "Esta dirección ha caducado."
     },
     "assetDetails": {
         "coinPrice": "Precio de la moneda",

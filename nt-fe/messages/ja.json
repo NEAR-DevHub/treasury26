@@ -383,8 +383,14 @@
             "chooseTreasuryTitle": "Treasury を選択",
             "chooseTreasuryDescription": "この支払いの送金元の Treasury はどれですか？",
             "noMemberTreasuries": "まだどの Treasury のメンバーでもありません。",
-            "createTreasury": "Treasury を作成"
-        }
+            "createTreasury": "Treasury を作成",
+            "expired": "期限切れ",
+            "used": "使用済み",
+            "linkInactiveTitle": "このリンクは無効です",
+            "linkInactiveDescription": "この支払いを行うには、リンクを送った人に新しいリンクを依頼してください。"
+        },
+        "expiresInRemaining": "<time>{duration}</time>で期限切れ – <bold>未使用でも</bold>。",
+        "addressExpired": "このアドレスは期限切れです。"
     },
     "assetDetails": {
         "coinPrice": "コイン価格",

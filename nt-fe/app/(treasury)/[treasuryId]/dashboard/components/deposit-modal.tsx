@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
     useCallback,
     useEffect,
@@ -41,7 +41,10 @@ import {
 } from "@/hooks/use-warnings";
 import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
-import { fetchDepositAddress } from "@/lib/bridge-api";
+import {
+    fetchDepositAddress,
+    fetchDepositAddressStatus,
+} from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { pickDefaultDepositAsset } from "@/lib/pick-default-token";
 import {
@@ -61,13 +64,17 @@ import {
 import { DepositConfidentialSourceTabs } from "./deposit/deposit-confidential-source-tabs";
 import { DepositGuestBanner } from "./deposit/deposit-guest-banner";
 import {
+    isDepositAddressExpired,
+    isDepositAddressUsed,
+} from "./deposit/deposit-expires";
+import {
     buildConfidentialOriginNotices,
     buildPublicTreasuryNotices,
     buildPublicWalletOneTimeNotices,
 } from "./deposit/deposit-notices";
 import { DepositOptionIcon } from "./deposit/deposit-option-icon";
 import { DepositSourceCards } from "./deposit/deposit-source-cards";
-import { buildDepositTransferPath } from "./deposit/deposit-transfer-url";
+import { buildPaySharePath } from "./deposit/deposit-transfer-url";
 import type {
     ConfidentialOrigin,
     DepositInfo,
@@ -302,6 +309,7 @@ export function DepositModal({
     const { accountId } = useNear();
     const showGuestBanner = isConfidential && (isGuestTreasury || !accountId);
     const router = useRouter();
+    const locale = useLocale();
     const {
         data: { tokens: treasuryAssets } = { tokens: STABLE_EMPTY_ARRAY },
         isPending: isAssetsPending,
@@ -348,6 +356,8 @@ export function DepositModal({
     const [singleUseExpiresAt, setSingleUseExpiresAt] = useState<number | null>(
         null,
     );
+    const [nowMs, setNowMs] = useState(() => Date.now());
+    const [depositStatus, setDepositStatus] = useState<string | null>(null);
     const previousTreasuryIdRef = useRef(treasuryId);
     const { data: popularAssets = STABLE_EMPTY_ARRAY } =
         usePopularAssetsByActivity();
@@ -856,6 +866,7 @@ export function DepositModal({
                     memo: null,
                     minDepositAmount: null,
                     expiresAtMs: null,
+                    quoteDepositAddress: null,
                 };
             }
 
@@ -873,6 +884,7 @@ export function DepositModal({
                         memo: null,
                         minDepositAmount: null,
                         expiresAtMs: null,
+                        quoteDepositAddress: null,
                     };
                 }
             }
@@ -903,6 +915,8 @@ export function DepositModal({
                         expiresAtMs: Number.isFinite(parsedExpiresAt)
                             ? parsedExpiresAt
                             : null,
+                        quoteDepositAddress:
+                            result.quoteDepositAddress ?? null,
                     };
                 }
 
@@ -1072,6 +1086,7 @@ export function DepositModal({
             memo: null,
             minDepositAmount: null,
             expiresAtMs: null,
+            quoteDepositAddress: null,
         });
         setSingleUseExpiresAt(null);
         setStep("address");
@@ -1083,20 +1098,26 @@ export function DepositModal({
         const isConfidentialShare =
             isConfidential && depositSource === "confidential_user";
 
-        // Public share URL only after token, network, and deposit address are ready.
+        // Confidential one-time: quote id only (asset/expiry from status API).
+        // Public treasury: bridge address + token/network for display.
         const path = isConfidentialShare
-            ? buildDepositTransferPath(treasuryId, {
-                  type: "confidential",
+            ? buildPaySharePath(treasuryId, {
+                  kind: "confidential",
                   source: confidentialOrigin,
               })
-            : selectedAsset?.id && selectedNetwork?.id
-              ? buildDepositTransferPath(treasuryId, {
-                    type: "public",
-                    address: depositInfo.address,
-                    token: selectedAsset.id,
-                    network: selectedNetwork.id,
+            : isConfidential && depositInfo.quoteDepositAddress
+              ? buildPaySharePath(treasuryId, {
+                    kind: "public",
+                    id: depositInfo.quoteDepositAddress,
                 })
-              : null;
+              : selectedAsset?.id && selectedNetwork?.id
+                ? buildPaySharePath(treasuryId, {
+                      kind: "public",
+                      id: depositInfo.address,
+                      token: selectedAsset.id,
+                      network: selectedNetwork.id,
+                  })
+                : null;
 
         if (!path) return;
         router.push(path);
@@ -1140,6 +1161,67 @@ export function DepositModal({
         depositSource === "confidential_user" &&
         step === "select";
 
+    const oneTimeExpiresAtMs =
+        depositInfo?.expiresAtMs ?? singleUseExpiresAt;
+
+    // Tick countdown while a one-time address is on screen.
+    useEffect(() => {
+        if (
+            step !== "address" ||
+            !isConfidential ||
+            depositSource !== "public_wallet" ||
+            oneTimeExpiresAtMs == null
+        ) {
+            return;
+        }
+        setNowMs(Date.now());
+        const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+        return () => window.clearInterval(id);
+    }, [step, isConfidential, depositSource, oneTimeExpiresAtMs]);
+
+    // Poll confidential quote status for one-time addresses.
+    useEffect(() => {
+        if (
+            step !== "address" ||
+            !isConfidential ||
+            depositSource !== "public_wallet" ||
+            !treasuryId ||
+            !depositInfo?.quoteDepositAddress
+        ) {
+            setDepositStatus(null);
+            return;
+        }
+
+        let cancelled = false;
+        const quoteAddress = depositInfo.quoteDepositAddress;
+
+        const poll = async () => {
+            try {
+                const result = await fetchDepositAddressStatus(
+                    treasuryId,
+                    quoteAddress,
+                );
+                if (cancelled) return;
+                setDepositStatus(result.status ?? null);
+            } catch {
+                // Keep showing the address; status is best-effort.
+            }
+        };
+
+        void poll();
+        const id = window.setInterval(poll, 15_000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(id);
+        };
+    }, [
+        step,
+        isConfidential,
+        depositSource,
+        treasuryId,
+        depositInfo?.quoteDepositAddress,
+    ]);
+
     const addressNotices = useMemo(() => {
         if (!isConfidential) {
             return buildPublicTreasuryNotices(
@@ -1158,6 +1240,11 @@ export function DepositModal({
             t,
             assetSymbol,
             networkDisplayName,
+            {
+                expiresAtMs: oneTimeExpiresAtMs,
+                nowMs,
+                locale,
+            },
         );
     }, [
         isConfidential,
@@ -1166,8 +1253,17 @@ export function DepositModal({
         minDepositDisplay,
         assetSymbol,
         networkDisplayName,
+        oneTimeExpiresAtMs,
+        nowMs,
+        locale,
         t,
     ]);
+
+    const oneTimeAddressInactive =
+        isConfidential &&
+        depositSource === "public_wallet" &&
+        (isDepositAddressUsed(depositStatus) ||
+            isDepositAddressExpired(oneTimeExpiresAtMs, nowMs));
 
     const addressTitle = useMemo(() => {
         if (!isConfidential) {
@@ -1543,6 +1639,7 @@ export function DepositModal({
                         }
                         notices={addressNotices}
                         onShare={handleShare}
+                        showShare={!oneTimeAddressInactive}
                         onCreateNewAddress={
                             isConfidential && depositSource === "public_wallet"
                                 ? handleCreateNewAddress

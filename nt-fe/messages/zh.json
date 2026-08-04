@@ -383,8 +383,14 @@
             "chooseTreasuryTitle": "选择 Treasury",
             "chooseTreasuryDescription": "这笔付款来自哪个 treasury？",
             "noMemberTreasuries": "你还不是任何 treasury 的成员。",
-            "createTreasury": "创建 treasury"
-        }
+            "createTreasury": "创建 treasury",
+            "expired": "已过期",
+            "used": "已使用",
+            "linkInactiveTitle": "此链接已失效",
+            "linkInactiveDescription": "如需完成此付款，请向发送链接的人索取新链接。"
+        },
+        "expiresInRemaining": "<time>{duration}</time>后过期 – <bold>即使未使用</bold>。",
+        "addressExpired": "此地址已过期。"
     },
     "assetDetails": {
         "coinPrice": "币价",

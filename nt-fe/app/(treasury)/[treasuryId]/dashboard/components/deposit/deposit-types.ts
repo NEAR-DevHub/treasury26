@@ -10,6 +10,8 @@ export interface DepositInfo {
     minDepositAmount: string | null;
     /** Epoch ms expiry from backend (`expiresAt`); null when not applicable. */
     expiresAtMs: number | null;
+    /** Intents quote address for confidential status polling; null when N/A. */
+    quoteDepositAddress: string | null;
 }
 
 export interface SelectOption {

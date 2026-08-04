@@ -383,8 +383,14 @@
             "chooseTreasuryTitle": "בחר Treasury",
             "chooseTreasuryDescription": "מאיזו treasury מגיע התשלום הזה?",
             "noMemberTreasuries": "אינך חבר עדיין באף treasury.",
-            "createTreasury": "צור treasury"
-        }
+            "createTreasury": "צור treasury",
+            "expired": "Expired",
+            "used": "Used",
+            "linkInactiveTitle": "This link is no longer active",
+            "linkInactiveDescription": "To make this payment, ask the person who sent you the link for a new one."
+        },
+        "expiresInRemaining": "Expires in <time>{duration}</time> – <bold>even if unused</bold>.",
+        "addressExpired": "This address has expired."
     },
     "assetDetails": {
         "coinPrice": "מחיר מטבע",
