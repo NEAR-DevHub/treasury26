@@ -70,6 +70,7 @@ export function GeneralTab() {
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Any DAO member (not guest / Everyone-only). Backend enforces membership.
     const canEdit = Boolean(accountId && !isGuestTreasury);
 
     const form = useForm<GeneralFormValues>({

@@ -278,6 +278,8 @@ pub async fn update_treasury_settings(
     auth_user: AuthUser,
     Json(body): Json<UpdateTreasurySettingsRequest>,
 ) -> Result<Json<TreasuryConfig>, (StatusCode, String)> {
+    // Any policy member (Group role synced to dao_members). Everyone-only
+    // accounts are not members, so they cannot update branding.
     auth_user
         .verify_dao_member_for_http(&state.db_pool, &body.treasury_id)
         .await?;
