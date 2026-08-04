@@ -1,135 +1,102 @@
 "use client";
 
-import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useEffect } from "react";
+import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
 
 interface PrimaryColorProviderProps {
     treasuryId?: string;
 }
 
-// Color constants
+interface Rgb {
+    r: number;
+    g: number;
+    b: number;
+}
+
+// Color constants — the label colours are the `--primary-foreground` values the
+// themes ship in globals.css.
 const COLORS = {
-    WHITE: "rgb(255, 255, 255)",
-    BLACK: "rgb(0, 0, 0)",
-    DARK_TEXT: "rgb(25, 25, 26)",
-    LIGHT_TEXT: "rgb(250, 250, 250)",
+    WHITE: { r: 255, g: 255, b: 255 },
+    DARK_TEXT: { r: 25, g: 25, b: 26 },
+    LIGHT_TEXT: { r: 250, g: 250, b: 250 },
 } as const;
+
+function toCss({ r, g, b }: Rgb) {
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+function hexToRgb(hex: string): Rgb | null {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+        ? {
+              r: parseInt(result[1], 16),
+              g: parseInt(result[2], 16),
+              b: parseInt(result[3], 16),
+          }
+        : null;
+}
 
 /**
  * Component that dynamically applies the primary color from treasury config
- * to the CSS --primary variable for button colors
+ * to the CSS --primary variable for button colors.
+ *
+ * `--primary` and `--primary-foreground` are always written as a pair: the
+ * label has to follow the surface it sits on. Setting only one of them is what
+ * left white labels on the white dark-theme buttons.
  */
 export function PrimaryColorProvider({
     treasuryId,
 }: PrimaryColorProviderProps) {
     const { data: treasury } = useTreasuryConfig(treasuryId);
+    const primaryColor = treasury?.metadata?.primaryColor;
 
     useEffect(() => {
-        if (treasury?.metadata?.primaryColor) {
-            const primaryColor = treasury.metadata.primaryColor;
+        const root = document.documentElement;
+        const clear = () => {
+            root.style.removeProperty("--primary");
+            root.style.removeProperty("--primary-foreground");
+        };
 
-            // Special handling for black color - use white in dark mode
-            if (primaryColor === "#000000") {
-                // Check if dark mode is active
-                const isDarkMode =
-                    document.documentElement.classList.contains("dark");
-
-                if (isDarkMode) {
-                    // In dark mode, use white
-                    document.documentElement.style.setProperty(
-                        "--primary",
-                        COLORS.WHITE,
-                    );
-                    document.documentElement.style.setProperty(
-                        "--primary-foreground",
-                        COLORS.DARK_TEXT,
-                    );
-                } else {
-                    // In light mode, use black
-                    document.documentElement.style.setProperty(
-                        "--primary",
-                        COLORS.BLACK,
-                    );
-                    document.documentElement.style.setProperty(
-                        "--primary-foreground",
-                        COLORS.LIGHT_TEXT,
-                    );
-                }
-
-                // Listen for theme changes
-                const observer = new MutationObserver((mutations) => {
-                    mutations.forEach((mutation) => {
-                        if (mutation.attributeName === "class") {
-                            const isDarkMode =
-                                document.documentElement.classList.contains(
-                                    "dark",
-                                );
-                            if (isDarkMode) {
-                                document.documentElement.style.setProperty(
-                                    "--primary",
-                                    COLORS.WHITE,
-                                );
-                                document.documentElement.style.setProperty(
-                                    "--primary-foreground",
-                                    COLORS.DARK_TEXT,
-                                );
-                            } else {
-                                document.documentElement.style.setProperty(
-                                    "--primary",
-                                    COLORS.BLACK,
-                                );
-                                document.documentElement.style.setProperty(
-                                    "--primary-foreground",
-                                    COLORS.LIGHT_TEXT,
-                                );
-                            }
-                        }
-                    });
-                });
-
-                observer.observe(document.documentElement, {
-                    attributes: true,
-                });
-
-                return () => observer.disconnect();
-            }
-
-            // Convert hex to RGB for other colors
-            const hexToRgb = (hex: string) => {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(
-                    hex,
-                );
-                return result
-                    ? {
-                          r: parseInt(result[1], 16),
-                          g: parseInt(result[2], 16),
-                          b: parseInt(result[3], 16),
-                      }
-                    : null;
-            };
-
-            const rgb = hexToRgb(primaryColor);
-            if (rgb) {
-                // Set the primary color
-                document.documentElement.style.setProperty(
-                    "--primary",
-                    `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`,
-                );
-
-                // For colored buttons (blue, red, green, etc.), text should always be white
-                document.documentElement.style.setProperty(
-                    "--primary-foreground",
-                    COLORS.WHITE,
-                );
-            }
-        } else {
-            // Reset to default when no treasury or no primary color
-            document.documentElement.style.removeProperty("--primary");
-            document.documentElement.style.removeProperty(
-                "--primary-foreground",
-            );
+        const rgb = primaryColor ? hexToRgb(primaryColor) : null;
+        if (!rgb) {
+            // No brand colour — fall back to the theme tokens in globals.css.
+            clear();
+            return;
         }
-    }, [treasury]);
+
+        // Black is the only theme-dependent choice: it flips to white in the
+        // dark theme so the button stays visible against the dark page. Every
+        // other brand colour keeps a white label in both themes.
+        const isBlack = rgb.r === 0 && rgb.g === 0 && rgb.b === 0;
+
+        const apply = () => {
+            const isDark = root.classList.contains("dark");
+            const [surface, foreground] = !isBlack
+                ? [rgb, COLORS.WHITE]
+                : isDark
+                  ? [COLORS.WHITE, COLORS.DARK_TEXT]
+                  : [rgb, COLORS.LIGHT_TEXT];
+
+            root.style.setProperty("--primary", toCss(surface));
+            root.style.setProperty("--primary-foreground", toCss(foreground));
+        };
+
+        apply();
+
+        if (!isBlack) return clear;
+
+        // Re-run when next-themes toggles the `dark` class on <html>.
+        const observer = new MutationObserver(apply);
+        observer.observe(root, {
+            attributes: true,
+            attributeFilter: ["class"],
+        });
+
+        return () => {
+            observer.disconnect();
+            clear();
+        };
+    }, [primaryColor]);
 
     return null; // This component doesn't render anything
 }

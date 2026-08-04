@@ -157,7 +157,9 @@
     --card-foreground: rgb(250, 250, 250);
     --popover: rgb(38, 38, 38);
     --popover-foreground: rgb(250, 250, 250);
-    --primary: rgb(229, 229, 229);
+    /* Primary buttons are white in the dark theme. Kept as a token pair so a
+       call site never forces the surface without its label colour. */
+    --primary: rgb(255, 255, 255);
     --primary-foreground: rgb(25, 25, 26);
     --secondary: rgb(38, 38, 38);
     --secondary-foreground: rgb(250, 250, 250);
