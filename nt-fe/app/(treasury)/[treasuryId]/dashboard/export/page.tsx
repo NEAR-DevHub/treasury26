@@ -672,12 +672,12 @@ export default function ExportActivityPage() {
                 <div className="flex flex-wrap justify-center gap-6 w-full">
                     <div className="flex-1 min-w-0 max-w-3xl">
                         <PageCard className="gap-2">
-                            <div className="h-64 bg-muted-foreground/20 rounded animate-pulse" />
+                            <div className="h-64 bg-general-unofficial-accent-0 rounded animate-pulse" />
                         </PageCard>
                     </div>
                     <div className="flex flex-col gap-4 w-full lg:w-80 shrink-0">
                         <PageCard className="w-full">
-                            <div className="h-32 bg-muted-foreground/20 rounded animate-pulse" />
+                            <div className="h-32 bg-general-unofficial-accent-0 rounded animate-pulse" />
                         </PageCard>
                     </div>
                 </div>

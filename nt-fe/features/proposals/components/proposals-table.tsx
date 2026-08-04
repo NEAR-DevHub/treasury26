@@ -70,6 +70,7 @@ import {
     resolveExecutionTimestamp,
 } from "@/features/proposals/utils/receipt-utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { HighlightedText } from "@/components/highlighted-text";
 import { cn } from "@/lib/utils";
 import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
 
@@ -80,6 +81,8 @@ interface ProposalsTableProps {
     policy: Policy;
     config?: TreasuryConfig | null;
     withFilters?: boolean;
+    /** Active requests search query — used to highlight matching text. */
+    searchQuery?: string;
     pageIndex?: number;
     pageSize?: number;
     total?: number;
@@ -165,6 +168,7 @@ export function ProposalsTable({
     proposals,
     policy,
     withFilters = false,
+    searchQuery = "",
     pageIndex = 0,
     pageSize = 10,
     total = 0,
@@ -285,7 +289,11 @@ export function ProposalsTable({
                     return (
                         <div className="flex items-center gap-5 max-w-[400px] truncate">
                             <span className="text-sm text-muted-foreground w-6 shrink-0 font-semibold">
-                                #{proposal.id}
+                                #
+                                <HighlightedText
+                                    text={String(proposal.id)}
+                                    query={searchQuery}
+                                />
                             </span>
                             <ProposalTypeIcon
                                 proposal={proposal}
@@ -293,9 +301,11 @@ export function ProposalsTable({
                             />
                             <div className="flex flex-col items-start">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm font-medium">
-                                        {title}
-                                    </span>
+                                    <HighlightedText
+                                        text={title}
+                                        query={searchQuery}
+                                        className="text-sm font-medium"
+                                    />
                                 </div>
                                 <ProposalTimelineDate
                                     proposal={proposal}
@@ -393,7 +403,16 @@ export function ProposalsTable({
                 ),
             }),
         ],
-        [policy, accountId, treasuryId, isMobile, router],
+        [
+            policy,
+            accountId,
+            treasuryId,
+            isMobile,
+            router,
+            searchQuery,
+            getProposalKindLabel,
+            tT,
+        ],
     );
 
     const table = useReactTable({

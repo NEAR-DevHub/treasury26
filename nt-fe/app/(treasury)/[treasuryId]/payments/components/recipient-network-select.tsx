@@ -22,6 +22,7 @@ import { getBlockchainType } from "@/lib/blockchain-utils";
 import { isValidNearAddressFormat } from "@/lib/near-validation";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
+import { HighlightedText } from "@/components/highlighted-text";
 import { cn } from "@/lib/utils";
 
 export interface RecipientNetworkOption {
@@ -87,9 +88,11 @@ function isAddressCompatibleWithNetwork(
 function NetworkRow({
     option,
     disabled,
+    highlightQuery,
 }: {
     option: RecipientNetworkOption;
     disabled?: boolean;
+    highlightQuery?: string;
 }) {
     return (
         <div
@@ -108,18 +111,20 @@ function NetworkRow({
                 )}
             />
             <div className="flex flex-col items-start text-left min-w-0">
-                <span
+                <HighlightedText
+                    text={option.name}
+                    query={highlightQuery}
                     className={cn(
                         "text-sm md:text-base font-semibold truncate max-w-full",
                         getNetworkDisplayCaseClass(option.id),
                     )}
-                >
-                    {option.name}
-                </span>
+                />
                 {option.description && (
-                    <span className="text-xs text-muted-foreground font-normal">
-                        {option.description}
-                    </span>
+                    <HighlightedText
+                        text={option.description}
+                        query={highlightQuery}
+                        className="text-xs text-muted-foreground font-normal"
+                    />
                 )}
             </div>
         </div>
@@ -333,7 +338,7 @@ export function RecipientNetworkSelect({
                     onNetworkChange?.(rich._option);
                     setOpen(false);
                 }}
-                renderIcon={(option) => {
+                renderIcon={(option, { searchQuery }) => {
                     const rich = option as unknown as {
                         _option: RecipientNetworkOption;
                         _disabled?: boolean;
@@ -342,6 +347,7 @@ export function RecipientNetworkSelect({
                         <NetworkRow
                             option={rich._option}
                             disabled={rich._disabled}
+                            highlightQuery={searchQuery}
                         />
                     );
                 }}
