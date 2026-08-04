@@ -51,7 +51,7 @@ export function TreasuryLayoutClient({
                     isOpen={isSidebarOpen}
                     onClose={() => setSidebarOpen(false)}
                 />
-                <main className="flex-1 overflow-hidden">
+                <main className="flex-1 overflow-hidden py-2 pr-2">
                     <div className="h-full overflow-y-auto bg-page-bg dark:bg-gray-850 lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
                         {children}
                     </div>
