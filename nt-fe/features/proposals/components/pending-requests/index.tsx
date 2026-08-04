@@ -36,7 +36,9 @@ import { useRouter } from "next/navigation";
 const MAX_DISPLAYED_REQUESTS = 3;
 
 function PendingRequestItemSkeleton() {
-    return <Skeleton className="h-16 w-full rounded-lg" />;
+    return (
+        <Skeleton className="h-16 w-full rounded-lg bg-general-unofficial-accent" />
+    );
 }
 
 function PendingRequestsGridSkeleton() {

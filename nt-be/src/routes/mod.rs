@@ -449,6 +449,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             post(handlers::member_invites::join_via_invite),
         )
         .route(
+            "/api/treasury/{dao_id}/member-join-requests/me",
+            get(handlers::member_invites::get_my_member_join_status),
+        )
+        .route(
             "/api/treasury/{dao_id}/member-join-requests",
             get(handlers::member_invites::list_member_join_requests),
         )

@@ -11,17 +11,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/input";
 import { Switch } from "@/components/ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form, FormField, FormControl, FormItem } from "@/components/ui/form";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { getTimezones, type Timezone } from "@/lib/api";
-import { Search } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { TimezonePicker } from "./timezone-picker";
 
 const preferencesSchema = z.object({
     timeFormat: z.enum(["12", "24"]),
@@ -44,7 +42,6 @@ export function PreferencesTab() {
     const [isMounted, setIsMounted] = useState(false);
     const [timezones, setTimezones] = useState<Timezone[]>([]);
     const [isLoadingTimezones, setIsLoadingTimezones] = useState(true);
-    const [timezoneSearch, setTimezoneSearch] = useState("");
 
     // Load preferences from localStorage
     const loadPreferences = (): PreferencesFormValues => {
@@ -190,18 +187,6 @@ export function PreferencesTab() {
         }
     };
 
-    // Filter timezones based on search
-    const filteredTimezones = useMemo(() => {
-        if (!timezoneSearch) return timezones;
-        const searchLower = timezoneSearch.toLowerCase();
-        return timezones.filter(
-            (tz) =>
-                tz.value.toLowerCase().includes(searchLower) ||
-                tz.utc.toLowerCase().includes(searchLower) ||
-                tz.name.toLowerCase().includes(searchLower),
-        );
-    }, [timezones, timezoneSearch]);
-
     if (!isMounted) {
         return null; // Prevent hydration mismatch
     }
@@ -283,7 +268,6 @@ export function PreferencesTab() {
                         )}
                     />
 
-                    {/* Timezone Select */}
                     <div className="space-y-2">
                         <Label>{t("timezone")}</Label>
                         <FormField
@@ -292,88 +276,16 @@ export function PreferencesTab() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormControl>
-                                        <Select
-                                            value={field.value?.name || ""}
-                                            onValueChange={(value) => {
-                                                const selected = timezones.find(
-                                                    (tz) => tz.name === value,
-                                                );
-                                                field.onChange(selected);
-                                                setTimezoneSearch(""); // Clear search after selection
-                                            }}
-                                            onOpenChange={(open) => {
-                                                if (!open)
-                                                    setTimezoneSearch(""); // Clear search when dropdown closes
-                                            }}
+                                        <TimezonePicker
+                                            value={field.value}
+                                            timezones={timezones}
+                                            isLoading={isLoadingTimezones}
                                             disabled={
                                                 autoTimezone ||
                                                 isLoadingTimezones
                                             }
-                                        >
-                                            <SelectTrigger className="w-full overflow-hidden [&>span]:truncate [&>span]:min-w-0">
-                                                <span className="truncate block min-w-0">
-                                                    {isLoadingTimezones
-                                                        ? t("loadingTimezones")
-                                                        : field.value
-                                                          ? `(${field.value.utc}) ${field.value.value}`
-                                                          : t("selectTimezone")}
-                                                </span>
-                                            </SelectTrigger>
-                                            <SelectContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
-                                                <div className="px-2 pb-2 sticky top-0  z-10">
-                                                    <Input
-                                                        search
-                                                        placeholder={t(
-                                                            "searchTimezones",
-                                                        )}
-                                                        value={timezoneSearch}
-                                                        onChange={(e) =>
-                                                            setTimezoneSearch(
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        onClick={(e) =>
-                                                            e.stopPropagation()
-                                                        }
-                                                        onKeyDown={(e) =>
-                                                            e.stopPropagation()
-                                                        }
-                                                        autoFocus
-                                                    />
-                                                </div>
-                                                <ScrollArea className="h-[300px]">
-                                                    {filteredTimezones.length >
-                                                    0 ? (
-                                                        filteredTimezones.map(
-                                                            (tz) => (
-                                                                <SelectItem
-                                                                    key={
-                                                                        tz.name
-                                                                    }
-                                                                    value={
-                                                                        tz.name
-                                                                    }
-                                                                    className="whitespace-normal"
-                                                                >
-                                                                    <span className="block whitespace-normal wrap-break-word">
-                                                                        (
-                                                                        {tz.utc}
-                                                                        ){" "}
-                                                                        {
-                                                                            tz.value
-                                                                        }
-                                                                    </span>
-                                                                </SelectItem>
-                                                            ),
-                                                        )
-                                                    ) : (
-                                                        <div className="py-6 text-center text-sm text-muted-foreground">
-                                                            {t("noTimezones")}
-                                                        </div>
-                                                    )}
-                                                </ScrollArea>
-                                            </SelectContent>
-                                        </Select>
+                                            onChange={field.onChange}
+                                        />
                                     </FormControl>
                                 </FormItem>
                             )}

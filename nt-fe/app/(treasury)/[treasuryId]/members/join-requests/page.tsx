@@ -6,7 +6,12 @@ import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FormProvider, useForm, useFormContext } from "react-hook-form";
+import {
+    FormProvider,
+    useFieldArray,
+    useForm,
+    useFormContext,
+} from "react-hook-form";
 import { toast } from "sonner";
 import * as z from "zod";
 import { Button } from "@/components/button";
@@ -29,16 +34,30 @@ import {
     useMemberJoinRequests,
 } from "@/hooks/use-member-invites";
 import { useTreasury } from "@/hooks/use-treasury";
+import type { MemberJoinRequest } from "@/lib/member-invites-api";
 import { reportError } from "@/lib/report-error";
 import { sortRolesByOrder } from "@/lib/role-utils";
 import { useRoleDescription } from "@/lib/use-role-description";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
-import type { MemberFormData } from "../components/member-form-step";
 import { MemberReviewStep } from "../components/member-review-step";
 import { useDisabledMemberRoles } from "../hooks/use-disabled-member-roles";
 import { useMemberPolicyGate } from "../hooks/use-member-policy-gate";
 import { applyMemberRolesToPolicy } from "../utils/policy-helpers";
+
+type JoinRequestFormData = {
+    members: Array<{
+        requestId: string;
+        accountId: string;
+        roles: string[];
+    }>;
+};
+
+function requestIdsKey(
+    items: Array<{ id?: string; requestId?: string }>,
+): string {
+    return items.map((item) => item.id ?? item.requestId ?? "").join("\0");
+}
 
 type AssignStepProps = StepProps & {
     onExit: () => void;
@@ -47,7 +66,6 @@ type AssignStepProps = StepProps & {
         title: string;
         description?: string;
     }>;
-    requestIds: string[];
     onRemove: (requestId: string) => void;
     isRemoving: boolean;
     reviewDisabledReason?: string;
@@ -61,7 +79,6 @@ function JoinRequestsAssignStep({
     handleNext,
     onExit,
     availableRoles,
-    requestIds,
     onRemove,
     isRemoving,
     reviewDisabledReason,
@@ -69,10 +86,10 @@ function JoinRequestsAssignStep({
 }: AssignStepProps) {
     const t = useTranslations("members.joinRequests");
     const tModal = useTranslations("members.memberModal");
-    const form = useFormContext<MemberFormData>();
-    const members = form.watch("members");
+    const form = useFormContext<JoinRequestFormData>();
+    const members = form.watch("members") ?? [];
     const allHaveRoles =
-        members.length > 0 && members.every((m) => m.roles.length > 0);
+        members.length > 0 && members.every((m) => (m?.roles?.length ?? 0) > 0);
     const canReview = allHaveRoles && !reviewDisabledReason;
 
     return (
@@ -82,7 +99,7 @@ function JoinRequestsAssignStep({
                 <div className="flex flex-col">
                     {members.map((member, index) => (
                         <div
-                            key={requestIds[index] ?? member.accountId}
+                            key={member.requestId}
                             className="flex px-3.5 first:rounded-t-xl first:pt-3 not-first:pt-2 last:pb-3 flex-col gap-0 border-b border-muted-foreground/10 last:border-b-0"
                         >
                             <div className="flex justify-between items-center">
@@ -93,10 +110,7 @@ function JoinRequestsAssignStep({
                                     variant="ghost"
                                     className="size-6 p-0! group hover:text-destructive"
                                     disabled={isRemoving}
-                                    onClick={() => {
-                                        const id = requestIds[index];
-                                        if (id) onRemove(id);
-                                    }}
+                                    onClick={() => onRemove(member.requestId)}
                                 >
                                     <Trash2 className="size-4 text-foreground group-hover:text-destructive" />
                                 </Button>
@@ -116,14 +130,14 @@ function JoinRequestsAssignStep({
                                     name={`members.${index}.roles`}
                                     render={({ field }) => (
                                         <RoleSelector
-                                            selectedRoles={field.value}
+                                            selectedRoles={field.value ?? []}
                                             onRolesChange={field.onChange}
                                             availableRoles={availableRoles}
                                             disabledRoles={
                                                 getDisabledRoles
                                                     ? getDisabledRoles(
                                                           member.accountId,
-                                                          field.value || [],
+                                                          field.value ?? [],
                                                       )
                                                     : []
                                             }
@@ -194,7 +208,7 @@ export default function JoinRequestsPage() {
     const getRoleDescription = useRoleDescription();
 
     const [step, setStep] = useState(0);
-    const [requestIds, setRequestIds] = useState<string[]>([]);
+    const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
 
     const reviewDisabledReason = hasPendingMemberRequest
         ? tJoin("pendingPolicyRequest")
@@ -214,6 +228,7 @@ export default function JoinRequestsPage() {
                 members: z
                     .array(
                         z.object({
+                            requestId: z.string().min(1),
                             accountId: z.string().min(1),
                             roles: z
                                 .array(z.string())
@@ -225,29 +240,39 @@ export default function JoinRequestsPage() {
         [tMembers, tJoin],
     );
 
-    const form = useForm<MemberFormData>({
+    const form = useForm<JoinRequestFormData>({
         resolver: zodResolver(schema),
         mode: "onChange",
         defaultValues: { members: [] },
     });
+    const { remove } = useFieldArray({
+        control: form.control,
+        name: "members",
+    });
 
+    // Sync who is pending from the server. Skip when already aligned, on the
+    // review step, or while submitting so assigned roles are not clobbered.
     useEffect(() => {
-        if (isLoadingRequests) return;
+        if (isLoadingRequests || isSubmittingRequest || step > 0) return;
+
+        const current = form.getValues("members") ?? [];
+        if (requestIdsKey(joinRequests) === requestIdsKey(current)) return;
 
         const rolesByAccount = new Map(
-            form.getValues("members").map((m) => [m.accountId, m.roles]),
+            current
+                .filter((m) => m?.accountId)
+                .map((m) => [m.accountId, m.roles ?? []]),
         );
 
-        setRequestIds(joinRequests.map((r) => r.id));
         form.reset({
             members: joinRequests.map((req) => ({
+                requestId: req.id,
                 accountId: req.accountId,
                 roles: rolesByAccount.get(req.accountId) ?? [],
             })),
         });
-        // Only re-sync when the server list changes
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [joinRequests, isLoadingRequests]);
+    }, [joinRequests, isLoadingRequests, isSubmittingRequest, step]);
 
     const mappedRoles = useMemo(() => {
         const mapped = availableRoles.map((r) => ({
@@ -272,34 +297,48 @@ export default function JoinRequestsPage() {
 
     const handleRemove = useCallback(
         async (requestId: string) => {
+            const members = form.getValues("members");
+            const index = members.findIndex((m) => m.requestId === requestId);
+            if (index < 0) return;
+
+            const previousRequests = queryClient.getQueryData<
+                MemberJoinRequest[]
+            >(["member-join-requests", treasuryId]);
+            const previousMembers = members;
+
+            remove(index);
+            queryClient.setQueryData<MemberJoinRequest[]>(
+                ["member-join-requests", treasuryId],
+                (old) => (old ?? []).filter((r) => r.id !== requestId),
+            );
+
             try {
-                const index = requestIds.indexOf(requestId);
                 await cancelRequest.mutateAsync(requestId);
-                const nextIds = requestIds.filter((id) => id !== requestId);
-                const nextMembers = form
-                    .getValues("members")
-                    .filter((_, i) => i !== index);
-                setRequestIds(nextIds);
-                form.setValue("members", nextMembers);
-                if (nextIds.length === 0) {
+                if (previousMembers.length <= 1) {
                     router.push(`/${treasuryId}/members`);
                 }
             } catch (error) {
+                form.reset({ members: previousMembers });
+                queryClient.setQueryData(
+                    ["member-join-requests", treasuryId],
+                    previousRequests,
+                );
                 reportError(error, "Failed to remove join request");
                 toast.error(tJoin("removeFailed"));
             }
         },
-        [cancelRequest, form, requestIds, router, treasuryId, tJoin],
+        [cancelRequest, form, queryClient, remove, router, treasuryId, tJoin],
     );
 
     const handleSubmit = useCallback(async () => {
         if (!policy || !treasuryId || hasPendingMemberRequest) return;
 
-        const data = form.getValues();
-        const membersList = data.members.map(({ accountId, roles }) => ({
+        const members = form.getValues("members");
+        const membersList = members.map(({ accountId, roles }) => ({
             member: accountId,
-            roles,
+            roles: roles ?? [],
         }));
+        const requestIds = members.map((m) => m.requestId);
 
         const { updatedPolicy, summary } = applyMemberRolesToPolicy(
             policy,
@@ -310,49 +349,53 @@ export default function JoinRequestsPage() {
 
         if (!updatedPolicy) return;
 
+        setIsSubmittingRequest(true);
         try {
-            await createProposal(tMembers("policy.addMembersSuccess"), {
-                treasuryId,
-                proposalBond: policy.proposal_bond || "0",
-                proposal: {
-                    description: encodeToMarkdown({
-                        title: tMembers("policy.addMembers"),
-                        summary,
-                    }),
-                    kind: {
-                        ChangePolicy: {
-                            policy: updatedPolicy,
+            try {
+                await createProposal(tMembers("policy.addMembersSuccess"), {
+                    treasuryId,
+                    proposalBond: policy.proposal_bond || "0",
+                    proposal: {
+                        description: encodeToMarkdown({
+                            title: tMembers("policy.addMembers"),
+                            summary,
+                        }),
+                        kind: {
+                            ChangePolicy: {
+                                policy: updatedPolicy,
+                            },
                         },
                     },
-                },
-                proposalType: "other",
+                    proposalType: "other",
+                });
+            } catch (error) {
+                // createProposal already toasts wallet rejection — stay on review.
+                reportError(error, "Failed to create add-members proposal");
+                return;
+            }
+
+            // Proposal is on-chain. Always leave this page afterward so a failed
+            // approve cannot leave the same requests open for a duplicate submit.
+            try {
+                await approveRequests.mutateAsync(requestIds);
+            } catch (error) {
+                // Proposal already succeeded; leave the page so retry can't
+                // create a second ChangePolicy for the same accounts.
+                // Non-blocking for the user — still report for observability.
+                reportError(error, "Failed to mark join requests approved");
+            }
+
+            queryClient.invalidateQueries({
+                queryKey: ["proposals", treasuryId],
             });
-        } catch (error) {
-            // Wallet rejected / proposal failed — stay on review to retry.
-            reportError(error, "Failed to create add-members proposal");
-            toast.error(tMembers("policy.createProposalFailed"));
-            return;
+            queryClient.invalidateQueries({
+                queryKey: ["member-join-requests", treasuryId],
+            });
+
+            router.push(`/${treasuryId}/members`);
+        } finally {
+            setIsSubmittingRequest(false);
         }
-
-        // Proposal is on-chain. Always leave this page afterward so a failed
-        // approve cannot leave the same requests open for a duplicate submit.
-        try {
-            await approveRequests.mutateAsync(requestIds);
-        } catch (error) {
-            // Proposal already succeeded; leave the page so retry can't
-            // create a second ChangePolicy for the same accounts.
-            // Non-blocking for the user — still report for observability.
-            reportError(error, "Failed to mark join requests approved");
-        }
-
-        queryClient.invalidateQueries({
-            queryKey: ["proposals", treasuryId],
-        });
-        queryClient.invalidateQueries({
-            queryKey: ["member-join-requests", treasuryId],
-        });
-
-        router.push(`/${treasuryId}/members`);
     }, [
         policy,
         treasuryId,
@@ -362,7 +405,6 @@ export default function JoinRequestsPage() {
         createProposal,
         tMembers,
         approveRequests,
-        requestIds,
         queryClient,
         router,
     ]);
@@ -374,7 +416,6 @@ export default function JoinRequestsPage() {
                 props: {
                     onExit: exitToMembers,
                     availableRoles: mappedRoles,
-                    requestIds,
                     onRemove: handleRemove,
                     isRemoving: cancelRequest.isPending,
                     reviewDisabledReason,
@@ -394,7 +435,6 @@ export default function JoinRequestsPage() {
         [
             exitToMembers,
             mappedRoles,
-            requestIds,
             handleRemove,
             cancelRequest.isPending,
             reviewDisabledReason,
@@ -409,7 +449,7 @@ export default function JoinRequestsPage() {
                 <FormProvider {...form}>
                     {isLoading || isLoadingRequests ? (
                         <PageCard>
-                            <div className="h-40 animate-pulse bg-muted rounded-lg" />
+                            <div className="h-40 animate-pulse bg-general-unofficial-accent-0 rounded-lg" />
                         </PageCard>
                     ) : joinRequests.length === 0 && step === 0 ? (
                         <PageCard className="gap-4">

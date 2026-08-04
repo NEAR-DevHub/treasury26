@@ -843,7 +843,8 @@
             "yourLink": "Davet bağlantınız",
             "copyLink": "Bağlantıyı kopyala",
             "linkCopied": "Davet bağlantısı kopyalandı",
-            "generateNewLink": "Yeni bağlantı oluştur"
+            "generateNewLink": "Yeni bağlantı oluştur",
+            "generatingNewLink": "Yeni bağlantı oluşturuluyor"
         },
         "joinRequests": {
             "title": "Katılmak istiyor",
@@ -2302,6 +2303,10 @@
             "title": "Trezu'yu Keşfet",
             "description": "Trezu'nun tüm özelliklerine ve avantajlarına izin almak için bir hesap oluşturun.",
             "cta": "Hazine Oluştur"
+        },
+        "pendingJoinBanner": {
+            "title": "Katılma isteğiniz bekliyor",
+            "description": "Bu hazineyi şimdi görüntüleyebilirsiniz. Bir üye sizi onayladığında, rolünüze göre istek oluşturabilir, oy verebilir veya fonları yönetebilirsiniz."
         },
         "infoBox": {
             "title": "Trezu'dan daha fazlasını alın",

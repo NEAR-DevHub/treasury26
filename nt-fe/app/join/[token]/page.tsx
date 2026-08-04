@@ -44,8 +44,10 @@ export default function JoinInvitePage() {
     const [joinedDaoId, setJoinedDaoId] = useState<string | null>(null);
     const [alreadyMemberFromJoin, setAlreadyMemberFromJoin] = useState(false);
 
+    const viewerStatus = invite?.viewerStatus;
     const isAlreadyMember =
         alreadyMemberFromJoin ||
+        viewerStatus === "member" ||
         Boolean(
             invite &&
                 accountId &&
@@ -54,6 +56,11 @@ export default function JoinInvitePage() {
                         treasury.daoId === invite.daoId && treasury.isMember,
                 ),
         );
+    const hasPendingRequest =
+        viewerStatus === "pending" || (submitted && !!joinedDaoId);
+    const treasuryDaoId = invite?.daoId;
+    const pendingDaoId =
+        joinedDaoId || (viewerStatus === "pending" ? invite?.daoId : null);
 
     const handleAskJoin = async () => {
         if (!token) return;
@@ -86,11 +93,10 @@ export default function JoinInvitePage() {
     };
 
     const treasuryName = invite?.treasuryName || t("treasuryFallback");
-    const treasuryDaoId = invite?.daoId;
     const showLogin =
         !accountId &&
         invite?.status === "valid" &&
-        !submitted &&
+        !hasPendingRequest &&
         !isAlreadyMember;
     // Keep ask / success / used / expired / invalid cards the same footprint.
     const formCardClassName = "gap-4 min-h-[340px]";
@@ -117,6 +123,31 @@ export default function JoinInvitePage() {
                     onClick={() => router.push(`/${treasuryDaoId}`)}
                 >
                     {t("goToTreasury")}
+                </Button>
+            </div>
+        </PageCard>
+    ) : null;
+
+    const pendingSuccessCard = pendingDaoId ? (
+        <PageCard className={`${formCardClassName} justify-center`}>
+            <div className="flex w-full flex-col items-center text-center gap-4">
+                <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
+                    <CheckCircle2 className="size-6 text-emerald-600" />
+                </div>
+                <div className="space-y-1">
+                    <h2 className="text-xl font-semibold">
+                        {t("successTitle")}
+                    </h2>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line max-w-[280px] mx-auto">
+                        {t("successDescription")}
+                    </p>
+                </div>
+                <Button
+                    className="w-full"
+                    variant="secondary"
+                    onClick={() => router.push(`/${pendingDaoId}`)}
+                >
+                    {t("seeTreasury")}
                 </Button>
             </div>
         </PageCard>
@@ -164,6 +195,10 @@ export default function JoinInvitePage() {
                             </Button>
                         </div>
                     </PageCard>
+                ) : isAlreadyMember && alreadyMemberCard ? (
+                    alreadyMemberCard
+                ) : hasPendingRequest && pendingSuccessCard ? (
+                    pendingSuccessCard
                 ) : invite.status !== "valid" ? (
                     <PageCard className={`${formCardClassName} justify-center`}>
                         <div className="flex w-full flex-col items-center text-center gap-4">
@@ -184,31 +219,6 @@ export default function JoinInvitePage() {
                             </Button>
                         </div>
                     </PageCard>
-                ) : isAlreadyMember && alreadyMemberCard ? (
-                    alreadyMemberCard
-                ) : submitted && joinedDaoId ? (
-                    <PageCard className={`${formCardClassName} justify-center`}>
-                        <div className="flex w-full flex-col items-center text-center gap-4">
-                            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
-                                <CheckCircle2 className="size-6 text-emerald-600" />
-                            </div>
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-semibold">
-                                    {t("successTitle")}
-                                </h2>
-                                <p className="text-sm text-muted-foreground whitespace-pre-line max-w-[280px] mx-auto">
-                                    {t("successDescription")}
-                                </p>
-                            </div>
-                            <Button
-                                className="w-full"
-                                variant="secondary"
-                                onClick={() => router.push(`/${joinedDaoId}`)}
-                            >
-                                {t("seeTreasury")}
-                            </Button>
-                        </div>
-                    </PageCard>
                 ) : !accountId ? (
                     <ConnectWalletSelector
                         source={`/join/${token}`}
@@ -222,7 +232,7 @@ export default function JoinInvitePage() {
                         })}
                         introDescription={t("connectDescription")}
                     />
-                ) : isTreasuriesLoading ? (
+                ) : isTreasuriesLoading && viewerStatus == null ? (
                     <PageCard className={formCardClassName}>
                         <Skeleton className="h-6 w-48" />
                         <Skeleton className="h-4 w-72" />

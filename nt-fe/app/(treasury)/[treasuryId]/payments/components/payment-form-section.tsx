@@ -530,7 +530,7 @@ export function PaymentFormSection<
                     setIsContactModalOpen(false);
                 }}
                 renderIcon={() => null}
-                renderContent={(option) => {
+                renderContent={(option, { searchQuery }) => {
                     const entry = filteredAddressBook.find(
                         (e) => e.id === option.id,
                     );
@@ -546,6 +546,7 @@ export function PaymentFormSection<
                                 useAddressBook
                                 size="sm"
                                 withLink={false}
+                                highlightQuery={searchQuery}
                             />
                             {entryChains.length > 0 && (
                                 <NetworkList

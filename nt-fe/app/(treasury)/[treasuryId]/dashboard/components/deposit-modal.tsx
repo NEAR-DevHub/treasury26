@@ -22,6 +22,7 @@ import { useForm } from "react-hook-form";
 import QRCode from "react-qr-code";
 import { z } from "zod";
 import { Button } from "@/components/button";
+import { HighlightedText } from "@/components/highlighted-text";
 import { SlotWarning, WarningMessage } from "@/components/warning-message";
 import {
     isTokenOrNetworkScopedWarning,
@@ -1723,7 +1724,7 @@ export function DepositModal({
                         searchPlaceholder={t("searchByName")}
                         isLoading={isLoadingAssets}
                         selectedId={selectedNetwork?.id}
-                        renderContent={(item) => {
+                        renderContent={(item, { searchQuery }) => {
                             const option = item as SelectOption;
                             return (
                                 <div className="flex-1 text-left">
@@ -1736,16 +1737,29 @@ export function DepositModal({
                                             ),
                                         )}
                                     >
-                                        {option.name || option.symbol}
+                                        <HighlightedText
+                                            text={
+                                                option.name ||
+                                                option.symbol ||
+                                                ""
+                                            }
+                                            query={searchQuery}
+                                        />
                                     </div>
                                     {option.description && (
                                         <div className="text-xs text-muted-foreground font-normal">
-                                            {option.description}
+                                            <HighlightedText
+                                                text={option.description}
+                                                query={searchQuery}
+                                            />
                                         </div>
                                     )}
                                     {option.symbol && (
                                         <div className="text-sm text-muted-foreground">
-                                            {option.symbol}
+                                            <HighlightedText
+                                                text={option.symbol}
+                                                query={searchQuery}
+                                            />
                                         </div>
                                     )}
                                 </div>

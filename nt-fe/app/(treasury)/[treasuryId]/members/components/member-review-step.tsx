@@ -35,7 +35,7 @@ export function MemberReviewStep({
     const form = useFormContext<MemberFormData>();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const members = form.watch("members");
+    const members = form.watch("members") ?? [];
     const isEditMode = mode === "edit";
 
     const membersToShow = isEditMode
@@ -46,7 +46,7 @@ export function MemberReviewStep({
               if (!existingMember) return false;
 
               const currentRolesSorted = sortRolesByOrder([
-                  ...member.roles,
+                  ...(member.roles ?? []),
               ]).join(",");
               const existingRolesSorted = sortRolesByOrder([
                   ...existingMember.roles,
@@ -126,7 +126,7 @@ export function MemberReviewStep({
                                     )}
                                 </div>
                                 <div className="flex gap-2 flex-wrap shrink-0">
-                                    {sortRolesByOrder(member.roles).map(
+                                    {sortRolesByOrder(member.roles ?? []).map(
                                         (role) => (
                                             <RoleBadge
                                                 key={role}
