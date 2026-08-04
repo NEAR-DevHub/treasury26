@@ -68,7 +68,7 @@ export function SidebarProfileMenu({
             type="button"
             id="help-support-link"
             aria-label={accountId}
-            className="mx-auto flex size-11 cursor-pointer items-center justify-center rounded-2xl border border-gray-300 bg-gray-50 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-950 dark:hover:bg-gray-900"
+            className="mx-auto flex size-11 cursor-pointer items-center justify-center rounded-2xl border border-transparent bg-gray-900 transition-colors duration-200 hover:bg-gray-950"
         >
             {avatar}
         </button>
@@ -76,7 +76,7 @@ export function SidebarProfileMenu({
         <button
             type="button"
             id="help-support-link"
-            className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-gray-300 bg-gray-50 p-3.5 transition-colors duration-200 hover:bg-white dark:border-transparent dark:bg-gray-950 dark:hover:bg-gray-900"
+            className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-transparent bg-gray-900 p-3.5 transition-colors duration-200 hover:bg-gray-950"
         >
             {avatar}
             <span className="min-w-0 flex-1 truncate text-start font-semibold text-sm text-gray-900 dark:text-white">

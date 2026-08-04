@@ -111,12 +111,22 @@ export function LanguageSwitcher({
                     </Button>
                 )}
             </DropdownMenuTrigger>
-            <DropdownMenuContent align={align} className="min-w-[160px]">
+            <DropdownMenuContent
+                align={align}
+                className={cn(
+                    "min-w-[160px]",
+                    asMenuRow &&
+                        "dark rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl",
+                )}
+            >
                 {enabledLocales.map((code) => (
                     <DropdownMenuItem
                         key={code}
                         onSelect={() => handleSelect(code)}
-                        className="flex items-center justify-between gap-2"
+                        className={cn(
+                            "flex items-center justify-between gap-2",
+                            asMenuRow && "rounded-xl px-2 py-2",
+                        )}
                     >
                         <span className="flex items-center gap-2">
                             <span aria-hidden="true" className="text-base">
