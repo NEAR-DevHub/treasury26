@@ -843,7 +843,8 @@
             "yourLink": "Tautan undangan Anda",
             "copyLink": "Salin tautan",
             "linkCopied": "Tautan undangan disalin",
-            "generateNewLink": "Buat tautan baru"
+            "generateNewLink": "Buat tautan baru",
+            "generatingNewLink": "Membuat tautan baru"
         },
         "joinRequests": {
             "title": "Ingin bergabung",
@@ -2299,6 +2300,10 @@
             "title": "Jelajahi Trezu",
             "description": "Buat akun untuk membuka izin ke semua fitur dan manfaat Trezu.",
             "cta": "Buat Treasury"
+        },
+        "pendingJoinBanner": {
+            "title": "Permintaan bergabung Anda sedang menunggu",
+            "description": "Anda sudah dapat melihat treasury ini. Setelah anggota menyetujui Anda, Anda dapat membuat permintaan, memberikan suara, atau mengelola dana sesuai peran Anda."
         },
         "infoBox": {
             "title": "Dapatkan lebih banyak dari Trezu",

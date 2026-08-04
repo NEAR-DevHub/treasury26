@@ -843,7 +843,8 @@
             "yourLink": "Votre lien d’invitation",
             "copyLink": "Copier le lien",
             "linkCopied": "Lien d’invitation copié",
-            "generateNewLink": "Générer un nouveau lien"
+            "generateNewLink": "Générer un nouveau lien",
+            "generatingNewLink": "Génération d’un nouveau lien"
         },
         "joinRequests": {
             "title": "Souhaite rejoindre",
@@ -2299,6 +2300,10 @@
             "title": "Explorer Trezu",
             "description": "Créez un compte pour débloquer les autorisations à toutes les fonctionnalités et avantages de Trezu.",
             "cta": "Créer une trésorerie"
+        },
+        "pendingJoinBanner": {
+            "title": "Votre demande d'adhésion est en attente",
+            "description": "Vous pouvez déjà consulter cette trésorerie. Lorsqu'un membre vous approuvera, vous pourrez créer des demandes, voter ou gérer les fonds selon votre rôle."
         },
         "infoBox": {
             "title": "Tirez le meilleur parti de Trezu",

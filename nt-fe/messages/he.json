@@ -843,7 +843,8 @@
             "yourLink": "קישור ההזמנה שלכם",
             "copyLink": "העתקת קישור",
             "linkCopied": "קישור ההזמנה הועתק",
-            "generateNewLink": "יצירת קישור חדש"
+            "generateNewLink": "יצירת קישור חדש",
+            "generatingNewLink": "יוצר קישור חדש"
         },
         "joinRequests": {
             "title": "רוצה להצטרף",
@@ -2299,6 +2300,10 @@
             "title": "גלה את Trezu",
             "description": "צור חשבון כדי לפתוח הרשאות לכל התכונות והיתרונות של Trezu.",
             "cta": "יצירת אוצר"
+        },
+        "pendingJoinBanner": {
+            "title": "בקשת ההצטרפות שלך ממתינה",
+            "description": "אפשר כבר לצפות באוצר הזה. כשחבר יאשר אותך, תוכל ליצור בקשות, להצביע או לנהל כספים בהתאם לתפקיד שלך."
         },
         "infoBox": {
             "title": "קבל יותר מ-Trezu",
