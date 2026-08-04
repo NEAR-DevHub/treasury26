@@ -4,6 +4,8 @@ const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
 export type InviteLinkStatus = "valid" | "used" | "expired" | "not_found";
 
+export type ViewerJoinStatus = "none" | "pending" | "member";
+
 export interface CreateInviteResponse {
     token: string;
     url: string;
@@ -13,6 +15,7 @@ export interface InviteLinkInfo {
     daoId: string;
     treasuryName?: string | null;
     status: InviteLinkStatus;
+    viewerStatus?: ViewerJoinStatus | null;
 }
 
 export interface JoinViaInviteResponse {
@@ -25,6 +28,10 @@ export interface MemberJoinRequest {
     accountId: string;
     displayName: string | null;
     createdAt: string;
+}
+
+export interface MyMemberJoinStatus {
+    status: ViewerJoinStatus;
 }
 
 export async function createMemberInvite(
@@ -53,6 +60,16 @@ export async function joinViaInvite(
     const { data } = await axios.post<JoinViaInviteResponse>(
         `${BACKEND_API_BASE}/member-invites/${encodeURIComponent(token)}/join`,
         { displayName: displayName?.trim() || undefined },
+        { withCredentials: true },
+    );
+    return data;
+}
+
+export async function getMyMemberJoinStatus(
+    daoId: string,
+): Promise<MyMemberJoinStatus> {
+    const { data } = await axios.get<MyMemberJoinStatus>(
+        `${BACKEND_API_BASE}/treasury/${encodeURIComponent(daoId)}/member-join-requests/me`,
         { withCredentials: true },
     );
     return data;

@@ -845,7 +845,8 @@
             "yourLink": "你的邀请链接",
             "copyLink": "复制链接",
             "linkCopied": "已复制邀请链接",
-            "generateNewLink": "生成新链接"
+            "generateNewLink": "生成新链接",
+            "generatingNewLink": "正在生成新链接"
         },
         "joinRequests": {
             "title": "希望加入",
@@ -2284,6 +2285,10 @@
             "title": "探索 Trezu",
             "description": "创建账户以解锁 Trezu 所有功能与权益的访问权限。",
             "cta": "创建金库"
+        },
+        "pendingJoinBanner": {
+            "title": "您的加入请求正在等待审批",
+            "description": "您现在可以查看此金库。成员批准后，您将可以根据角色创建请求、投票或管理资金。"
         },
         "infoBox": {
             "title": "更好地利用 Trezu",

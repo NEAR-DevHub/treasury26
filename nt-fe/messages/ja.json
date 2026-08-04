@@ -845,7 +845,8 @@
             "yourLink": "招待リンク",
             "copyLink": "リンクをコピー",
             "linkCopied": "招待リンクをコピーしました",
-            "generateNewLink": "新しいリンクを作成"
+            "generateNewLink": "新しいリンクを作成",
+            "generatingNewLink": "新しいリンクを作成中"
         },
         "joinRequests": {
             "title": "参加希望",
@@ -2301,6 +2302,10 @@
             "title": "Trezuを探索",
             "description": "アカウントを作成して、Trezuのすべての機能と特典の権限をアンロックしましょう。",
             "cta": "トレジャリーを作成"
+        },
+        "pendingJoinBanner": {
+            "title": "参加リクエストは承認待ちです",
+            "description": "このトレジャリーは今すぐ閲覧できます。メンバーが承認すると、ロールに応じてリクエストの作成、投票、資金管理ができるようになります。"
         },
         "infoBox": {
             "title": "Trezuをもっと活用",

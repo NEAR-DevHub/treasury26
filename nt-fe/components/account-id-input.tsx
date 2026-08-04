@@ -75,7 +75,7 @@ export function AccountIdInput<
                 <LargeInput
                     disabled={disabled}
                     borderless
-                    placeholder="address.near"
+                    placeholder="address"
                     autoComplete="off"
                     value={field.value}
                     onChange={(e) => {
