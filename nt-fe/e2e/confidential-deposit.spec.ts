@@ -1,13 +1,13 @@
 /**
  * E2E test for confidential treasury deposits.
  *
- * Verifies that confidential treasuries use the deposit page flow:
+ * Verifies the redesigned deposit page flow:
  * 1. Create a confidential DAO on sandbox
  * 2. Navigate to the dashboard
  * 3. Open the deposit page from dashboard action
- * 4. Select asset and network
- * 5. Verify deposit address is fetched via intents API
- *    (not the direct treasury account ID)
+ * 4. Choose "From a public wallet", select asset/network
+ * 5. Acknowledge + Generate Address → one-time intents address
+ * 6. Switch to confidential user path and show treasury address
  *
  * Bridge RPC (bridge-tokens, deposit-address) is mocked at the Playwright
  * route level since the sandbox doesn't include a bridge RPC mock.
@@ -69,6 +69,7 @@ const MOCK_BRIDGE_TOKENS = {
                     },
                     chainId: "near:mainnet",
                     decimals: 6,
+                    minDepositAmount: "5000000",
                 },
                 {
                     id: "eth:1:0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
@@ -94,7 +95,6 @@ async function setupSandbox(): Promise<string> {
         // May already exist
     }
 
-    // Ensure the confidential DAO exists once and can be reused between retries.
     await ensureTreasury({
         name: "Confidential Deposit Test",
         accountId: DAO_ID,
@@ -104,10 +104,8 @@ async function setupSandbox(): Promise<string> {
         isConfidential: true,
     });
 
-    // Fund the DAO
     await transferNear("near", DAO_ID, 10);
 
-    // Create an auth session via the sandbox mock server
     const sessionResp = await fetch(
         `${SANDBOX_MOCK_URL}/_test/create-session`,
         {
@@ -133,15 +131,11 @@ test("Confidential deposit — dashboard deposit page flow", async ({
 
     const sandboxJwt = await setupSandbox();
 
-    // Track whether deposit-address was requested (confidential treasuries
-    // must always go through the intents API, even for NEAR-on-NEAR)
     let depositAddressRequested = false;
 
-    // Intercept backend requests: inject JWT, mock bridge endpoints
     await context.route("http://localhost:8080/**", async (route) => {
         const url = route.request().url();
 
-        // Mock auth/me (the mock wallet can't do real NEAR auth)
         if (url.includes("/api/auth/me")) {
             return route.fulfill({
                 status: 200,
@@ -153,7 +147,6 @@ test("Confidential deposit — dashboard deposit page flow", async ({
             });
         }
 
-        // Mock bridge-tokens (Bridge RPC not available in sandbox)
         if (url.includes("/api/intents/bridge-tokens")) {
             return route.fulfill({
                 status: 200,
@@ -162,7 +155,6 @@ test("Confidential deposit — dashboard deposit page flow", async ({
             });
         }
 
-        // Mock deposit-address (Bridge RPC not available in sandbox)
         if (url.includes("/api/intents/deposit-address")) {
             depositAddressRequested = true;
             return route.fulfill({
@@ -172,11 +164,13 @@ test("Confidential deposit — dashboard deposit page flow", async ({
                     address: MOCK_DEPOSIT_ADDRESS,
                     memo: null,
                     minAmount: "5000000",
+                    expiresAt: new Date(
+                        Date.now() + 14 * 24 * 60 * 60 * 1000,
+                    ).toISOString(),
                 }),
             });
         }
 
-        // Proxy all other requests to the real sandbox backend with JWT
         const method = route.request().method();
         const headers: Record<string, string> = {
             cookie: `auth_token=${sandboxJwt}`,
@@ -206,7 +200,6 @@ test("Confidential deposit — dashboard deposit page flow", async ({
         });
     });
 
-    // Route NEAR RPC calls to sandbox instead of mainnet
     for (const rpcHost of [
         "**/archival-rpc.mainnet.fastnear.com**",
         "**/free.rpc.fastnear.com**",
@@ -224,7 +217,6 @@ test("Confidential deposit — dashboard deposit page flow", async ({
 
     await registerMockWalletRoutes(context);
 
-    // Capture console errors for debugging
     page.on("console", (msg) => {
         if (msg.type() === "error") {
             console.log(`[BROWSER ERROR] ${msg.text()}`);
@@ -234,34 +226,31 @@ test("Confidential deposit — dashboard deposit page flow", async ({
         console.log(`[PAGE ERROR] ${err.message}`);
     });
 
-    // Seed wallet and navigate to dashboard
     await page.goto(`/${DAO_ID}`);
     await seedMockWalletAccount(page, ACCOUNT_ID, "evaluate");
     await page.goto(`/${DAO_ID}`);
 
-    // ════════════════════════════════════════════════════
-    // Phase 1: Verify dashboard renders for confidential treasury
-    // ════════════════════════════════════════════════════
-
     const depositButton = page.locator("#dashboard-step1");
     await expect(depositButton).toBeVisible({ timeout: 15_000 });
     await expect(depositButton).toContainText("Receive");
-
-    // ════════════════════════════════════════════════════
-    // Phase 2: Open deposit page and complete deposit flow
-    // ════════════════════════════════════════════════════
 
     await depositButton.click();
     await expect(page).toHaveURL(new RegExp(`/${DAO_ID}/dashboard/deposit`), {
         timeout: 10_000,
     });
 
-    // Deposit page should render the standard deposit heading
     await expect(page.getByText("Deposit", { exact: true })).toBeVisible({
         timeout: 10_000,
     });
 
-    // Should show asset/network selection prompt
+    // Source cards appear first for confidential treasuries
+    const publicSource = page.getByTestId("deposit-source-public_wallet");
+    const confidentialSource = page.getByTestId(
+        "deposit-source-confidential_user",
+    );
+    await expect(publicSource).toBeVisible({ timeout: 10_000 });
+    await expect(confidentialSource).toBeVisible({ timeout: 10_000 });
+
     await expect(
         page.getByText("Select asset and network to see deposit address"),
     ).toBeVisible();
@@ -277,7 +266,6 @@ test("Confidential deposit — dashboard deposit page flow", async ({
         .first()
         .click();
 
-    // USDC has multiple destination networks. Select Near Protocol explicitly.
     const networkSelectButton = page.getByTestId("deposit-network-selector");
     await expect(networkSelectButton).toBeVisible({ timeout: 10_000 });
     await networkSelectButton.click();
@@ -286,26 +274,22 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     ).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: "Near Protocol" }).first().click();
 
-    // Near Protocol enables source tabs (public/confidential) for confidential treasuries.
-    const nearProtocolButton = page.getByTestId("deposit-network-selector");
-    await expect(nearProtocolButton).toBeVisible({ timeout: 10_000 });
+    // Address must NOT be fetched until Generate Address is clicked
+    expect(depositAddressRequested).toBe(false);
 
-    await expect(
-        page.getByText("Deposit Address", { exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
-
-    // Public source is shown first and the address should be blurred behind the single-use acknowledgement.
-    await expect(page.getByRole("tab", { name: /From public/i })).toBeVisible({
+    await expect(page.getByTestId("deposit-ack-checkbox")).toBeVisible({
         timeout: 10_000,
     });
+    const generateButton = page.getByTestId("deposit-ack-cta");
+    await expect(generateButton).toBeDisabled();
+
+    await page.getByTestId("deposit-ack-checkbox").click();
+    await expect(generateButton).toBeEnabled();
+    await generateButton.click();
+
     await expect(
-        page.getByRole("tab", { name: /From confidential/i }),
-    ).toBeVisible({ timeout: 10_000 });
-    await expect(
-        page.getByRole("button", {
-            name: /I will use this address only once/i,
-        }),
-    ).toBeVisible({ timeout: 10_000 });
+        page.getByText(/One-time deposit address/i).first(),
+    ).toBeVisible({ timeout: 15_000 });
 
     const publicAddressElement = page.locator("code").first();
     await expect(publicAddressElement).toBeVisible({ timeout: 10_000 });
@@ -314,30 +298,36 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     expect(publicAddressText).not.toContain(DAO_ID);
     expect(depositAddressRequested).toBe(true);
 
-    // Verify info message about depositing from the correct network
-    await expect(page.getByText("Minimum deposit is 5")).toBeVisible();
+    await expect(page.getByText(/Expires in/i)).toBeVisible();
 
-    // Switching to "From confidential" should show the direct DAO account ID.
-    await page.getByRole("tab", { name: /From confidential/i }).click();
-    await expect(
-        page.getByRole("button", {
-            name: /I will use this address only once/i,
-        }),
-    ).toHaveCount(0);
+    // Back to select, then switch to confidential user source
+    await page.getByTestId("deposit-back-button").click();
+    await expect(confidentialSource).toBeVisible({ timeout: 10_000 });
+    await confidentialSource.click();
+
+    await expect(page.getByTestId("deposit-ack-checkbox")).toBeVisible({
+        timeout: 10_000,
+    });
+    const showAddressButton = page.getByTestId("deposit-ack-cta");
+    await expect(showAddressButton).toBeDisabled();
+    await page.getByTestId("deposit-ack-checkbox").click();
+    await expect(showAddressButton).toBeEnabled();
+    await showAddressButton.click();
+
+    await expect(page.getByTestId("deposit-origin-trezu")).toBeVisible({
+        timeout: 10_000,
+    });
+    await expect(page.getByTestId("deposit-origin-nearcom")).toBeVisible();
 
     const confidentialAddressElement = page.locator("code").first();
     await expect(confidentialAddressElement).toBeVisible({ timeout: 10_000 });
     expect(await confidentialAddressElement.textContent()).toContain(DAO_ID);
 
-    // QR code should be rendered
     await expect(page.locator("svg").first()).toBeVisible();
 
-    // ════════════════════════════════════════════════════
-    // Phase 3: Verify "Other" asset is not available
-    // (confidential treasuries restrict to bridge assets only)
-    // ════════════════════════════════════════════════════
-
-    // Open currently selected asset/network selectors and verify "Other" is absent.
+    // Verify "Other" asset is not available on public-wallet path
+    await page.getByTestId("deposit-back-button").click();
+    await publicSource.click();
     const selectedAssetButton = page.getByTestId("deposit-asset-selector");
     await expect(selectedAssetButton).toBeVisible({ timeout: 10_000 });
     await selectedAssetButton.click();

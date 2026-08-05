@@ -4,11 +4,12 @@ import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import { useTreasury } from "@/hooks/use-treasury";
 import { DepositModal } from "../components/deposit-modal";
-import { DepositFaq } from "../components/deposit-faq";
 
 export default function DepositPage() {
     const tDashboard = useTranslations("pages.dashboard");
+    const { treasuryId } = useTreasury();
     const searchParams = useSearchParams();
     const initialPrefillRef = useRef({
         token: searchParams.get("token") ?? undefined,
@@ -20,15 +21,13 @@ export default function DepositPage() {
             title={tDashboard("title")}
             description={tDashboard("description")}
         >
-            <div className="flex flex-wrap justify-center gap-4 w-full">
+            <div className="flex justify-center w-full">
                 <div className="flex-1 max-w-[600px] w-full min-w-[300px]">
                     <DepositModal
+                        key={treasuryId ?? "deposit"}
                         prefillTokenId={initialPrefillRef.current.token}
                         prefillNetworkId={initialPrefillRef.current.network}
                     />
-                </div>
-                <div className="flex flex-col md:max-w-[300px] w-full shrink-0">
-                    <DepositFaq />
                 </div>
             </div>
         </PageComponentLayout>

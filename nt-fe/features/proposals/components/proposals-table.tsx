@@ -40,6 +40,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Pagination } from "@/components/pagination";
 import { ProposalStatusPill } from "./proposal-status-pill";
 import { useNear } from "@/stores/near-store";
+import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import {
@@ -181,7 +182,7 @@ export function ProposalsTable({
     const [rowSelection, setRowSelection] = useState({});
     const [expanded, setExpanded] = useState<ExpandedState>({});
     const { accountId } = useNear();
-    const { treasuryId } = useTreasury();
+    const { treasuryId, isConfidential } = useTreasury();
     const { isMobile } = useResponsiveSidebar();
     const router = useRouter();
     // Global action.approve / action.reject pause all requests — disable bulk
@@ -682,28 +683,17 @@ export function ProposalsTable({
                                                         tokenSymbol,
                                                         tokenNetwork,
                                                     ) => {
-                                                        const params =
-                                                            new URLSearchParams();
-                                                        if (tokenSymbol) {
-                                                            params.set(
-                                                                "token",
-                                                                tokenSymbol,
-                                                            );
-                                                        }
-                                                        if (tokenNetwork) {
-                                                            params.set(
-                                                                "network",
-                                                                tokenNetwork,
-                                                            );
-                                                        }
-                                                        const query =
-                                                            params.toString();
                                                         router.push(
-                                                            `/${treasuryId}/dashboard/deposit${
-                                                                query
-                                                                    ? `?${query}`
-                                                                    : ""
-                                                            }`,
+                                                            buildDepositDeepLink(
+                                                                treasuryId!,
+                                                                isConfidential
+                                                                    ? null
+                                                                    : {
+                                                                          token: tokenSymbol,
+                                                                          network:
+                                                                              tokenNetwork,
+                                                                      },
+                                                            ),
                                                         );
                                                     }}
                                                 />

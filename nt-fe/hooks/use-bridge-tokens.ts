@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ChainIcons } from "@/lib/api";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
-import { ChainIcons } from "@/lib/api";
 
 export interface BridgeNetwork {
     id: string;
@@ -11,7 +11,6 @@ export interface BridgeNetwork {
     decimals: number;
     minDepositAmount?: string;
     minWithdrawalAmount?: string;
-    supportsPublicNearDepositSource?: boolean;
 }
 
 export interface BridgeAsset {
@@ -24,20 +23,11 @@ export interface BridgeAsset {
 /**
  * Hook to fetch bridge tokens with React Query
  */
-export function useBridgeTokens(
-    enabled: boolean = true,
-    options?: {
-        includeNearNetwork?: boolean;
-    },
-) {
-    const includeNearNetwork = options?.includeNearNetwork ?? false;
-
+export function useBridgeTokens(enabled: boolean = true) {
     return useQuery({
-        queryKey: ["bridgeTokens", includeNearNetwork],
+        queryKey: ["bridgeTokens"],
         queryFn: async () => {
-            const fetchedAssets = await fetchBridgeTokens({
-                includeNearNetwork,
-            });
+            const fetchedAssets = await fetchBridgeTokens();
 
             const formattedAssets: BridgeAsset[] = fetchedAssets.map(
                 (asset: any) => {
@@ -67,8 +57,6 @@ export function useBridgeTokens(
                             decimals: network.decimals,
                             minDepositAmount: network.minDepositAmount,
                             minWithdrawalAmount: network.minWithdrawalAmount,
-                            supportsPublicNearDepositSource:
-                                network.supportsPublicNearDepositSource,
                         })),
                     };
                 },

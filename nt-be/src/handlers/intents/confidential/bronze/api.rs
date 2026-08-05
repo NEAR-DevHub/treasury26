@@ -80,6 +80,7 @@ pub async fn fetch_history_with_token(
     jwt_token: &str,
     next_cursor: Option<&str>,
     prev_cursor: Option<&str>,
+    deposit_address: Option<&str>,
 ) -> Result<HistoryPage, (StatusCode, String)> {
     let access_token = jwt_token.to_string();
 
@@ -94,6 +95,10 @@ pub async fn fetch_history_with_token(
 
     if let Some(backward) = prev_cursor {
         params.push(("prevCursor", backward.to_string()));
+    }
+
+    if let Some(address) = deposit_address {
+        params.push(("depositAddress", address.to_string()));
     }
 
     let mut req = state
@@ -149,6 +154,7 @@ pub async fn fetch_history(
     limit: u32,
     next_cursor: Option<&str>,
     prev_cursor: Option<&str>,
+    deposit_address: Option<&str>,
 ) -> Result<HistoryPage, (StatusCode, String)> {
     let jwt_token = refresh_dao_jwt(state, account_id).await?;
     fetch_history_with_token(
@@ -158,6 +164,7 @@ pub async fn fetch_history(
         &jwt_token,
         next_cursor,
         prev_cursor,
+        deposit_address,
     )
     .await
 }
@@ -269,7 +276,7 @@ mod tests {
         let dao_id = AccountIdRef::new("tobi.sputnik-dao.near").unwrap();
 
         println!("=== Fetching confidential history for {} ===", dao_id);
-        let page = fetch_history(&state, dao_id, 20, None, None)
+        let page = fetch_history(&state, dao_id, 20, None, None, None)
             .await
             .unwrap_or_else(|(status, msg)| panic!("fetch_history failed: {} - {}", status, msg));
 
@@ -300,7 +307,7 @@ mod tests {
         let state = create_real_api_state().await;
         let dao_id = AccountIdRef::new("tobi.sputnik-dao.near").unwrap();
 
-        let first = fetch_history(&state, dao_id, 5, None, None)
+        let first = fetch_history(&state, dao_id, 5, None, None, None)
             .await
             .unwrap_or_else(|(s, m)| panic!("first page failed: {} - {}", s, m));
 
@@ -315,7 +322,7 @@ mod tests {
             return;
         };
 
-        let second = fetch_history(&state, dao_id, 5, Some(cursor), None)
+        let second = fetch_history(&state, dao_id, 5, Some(cursor), None, None)
             .await
             .unwrap_or_else(|(s, m)| panic!("second page failed: {} - {}", s, m));
 

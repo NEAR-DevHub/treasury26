@@ -43,6 +43,7 @@ import {
     buildNetworkLookup,
     resolveNetworkName,
 } from "@/features/address-book/utils/resolve-network";
+import { buildPaymentsDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { StepperHeader } from "@/components/step-wizard";
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
@@ -362,16 +363,14 @@ function RecipientsView({
     }
 
     function handleSend(entry: AddressBookEntry) {
-        const params = new URLSearchParams({
-            address: entry.address,
-            name: entry.name,
-        });
-
-        if (entry.networks.length > 0) {
-            params.set("networks", entry.networks.join(","));
-        }
-
-        router.push(`/${treasuryId}/payments?${params.toString()}`);
+        if (!treasuryId) return;
+        router.push(
+            buildPaymentsDeepLink(treasuryId, {
+                address: entry.address,
+                name: entry.name,
+                networks: entry.networks,
+            }),
+        );
     }
 
     return (

@@ -402,6 +402,30 @@
         background: #172554;
         box-shadow: 2px 4px 17.9px 1px rgba(161, 179, 245, 0.25) inset;
     }
+
+    .deposit-ack-panel {
+        background:
+            linear-gradient(rgba(255, 247, 237, 1), rgba(255, 247, 237, 1))
+            padding-box,
+            linear-gradient(
+                180deg,
+                rgba(251, 146, 60, 0.28) 0%,
+                rgba(251, 146, 60, 0.05) 100%
+            )
+            border-box;
+    }
+
+    .dark .deposit-ack-panel {
+        background:
+            linear-gradient(rgba(67, 20, 7, 0.65), rgba(67, 20, 7, 0.65))
+            padding-box,
+            linear-gradient(
+                180deg,
+                rgba(251, 146, 60, 0.35) 0%,
+                rgba(251, 146, 60, 0.08) 100%
+            )
+            border-box;
+    }
 }
 
 input::-webkit-outer-spin-button,

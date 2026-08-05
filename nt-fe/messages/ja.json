@@ -276,7 +276,8 @@
         },
         "errors": {
             "addressUnavailable": "選択した資産とネットワークの入金アドレスを取得できませんでした。",
-            "fetchFailed": "入金アドレスの取得に失敗しました。もう一度お試しください。"
+            "fetchFailed": "入金アドレスの取得に失敗しました。もう一度お試しください。",
+            "loginRequired": "ワンタイム入金アドレスを生成するにはサインインしてください。"
         },
         "title": "入金",
         "subtitle": "資産とネットワークを選択して入金アドレスを表示",
@@ -289,7 +290,7 @@
         "depositAddressHeading": "入金アドレス",
         "depositAddressSubtitle": "入金アドレスは必ず再確認してください。",
         "depositAddressSubtitleConfidential": "<semibold>この入金アドレスは1回限りです。</semibold> このアドレスを再利用したり、有効期限後に送金したりすると、資金を恒久的に失う可能性があります。",
-        "depositAddressSubtitleConfidentialExpiry": "生成時点から3日間有効です。失効まで: 残り{expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "生成時点から14日間有効です。失効まで: 残り{expiresIn}",
         "singleUseAcknowledgement": "このアドレスは一度だけ使用します",
         "addressLabel": "アドレス",
         "addressCopied": "アドレスをクリップボードにコピーしました",
@@ -312,7 +313,90 @@
             "fiatAnswer": "現時点では未対応ですが、法定通貨での入金をまもなく提供できるよう取り組んでいます。今しばらくお待ちください - まもなく公開予定です 🚀",
             "arrivalQuestion": "入金が反映されるまでどのくらいかかりますか？",
             "arrivalAnswer": "処理時間はネットワークによって異なります。"
-        }
+        },
+        "back": "戻る",
+        "publicAddressTitle": "{network} 上の {symbol} 入金アドレス",
+        "publicAddressSubtitle": "このトークンのみを、このネットワークで下のアドレスに送ってください。",
+        "oneTimeAddressTitle": "{network} ネットワーク上のワンタイム {symbol} 入金アドレス",
+        "oneTimeAddressSubtitle": "このトークンのみを、このネットワークで下のアドレスに送ってください。",
+        "confidentialTrezuTitle": "near.com ネットワーク上の機密 Trezu からの入金",
+        "confidentialTrezuSubtitle": "機密 Trezu から任意の資産を受け取れます。",
+        "confidentialNearcomTitle": "内部ネットワーク上の機密 near.com からの入金",
+        "confidentialNearcomSubtitle": "機密 near.com から任意の資産を受け取れます。",
+        "oneTimeSectionTitle": "ワンタイム機密入金アドレス",
+        "oneTimeSectionSubtitle": "一度だけ使用してください。初回入金以降は失われます。",
+        "internalAddressTitle": "これは内部の機密アドレスです",
+        "generateAddress": "アドレスを生成",
+        "showAddress": "アドレスを表示",
+        "copy": "コピー",
+        "share": "共有",
+        "linkCopied": "リンクをクリップボードにコピーしました",
+        "minDepositValue": "最低入金額 <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "テスト入金を<bold>送らないでください</bold>",
+        "doNotReuseAddress": "アドレスを<bold>再利用・保存・ホワイトリスト登録・共有しないでください</bold>",
+        "doNotReuseAddressShort": "アドレスを<bold>再利用・保存・ホワイトリスト登録しないでください</bold>",
+        "oneTimeAckCheckbox": "これはワンタイムアドレスであり、1回の送金で少なくとも {amount} {symbol} を送る必要があることを理解しています。",
+        "oneTimeAckCheckboxNoMin": "これは1回の送金でのみ使用するワンタイムアドレスであることを理解しています。",
+        "onlySendAssetNetwork": "<bold>{network}</bold> ネットワークで <bold>{symbol}</bold> のみを送ってください。他の資産やネットワークでは資金を失います。",
+        "expiresInDays": "<bold>{days} 日</bold>で期限切れ – <bold>未使用でも</bold>。",
+        "createNewAddressHint": "別の入金情報が必要ですか？<link>新しいアドレスを作成</link>。別のアドレスを作成しても、このアドレスは無効になりません。",
+        "receivesOnlyConfidential": "機密 Trezu または near.com アカウントからのみ資金を受け取ります",
+        "receivesOnlyConfidentialSub": "再利用可能。期限なし。",
+        "anythingElseLost": "他から送られたものは失われます",
+        "anythingElseLostSub": "取引所、公開ウォレット、他のネットワーク – 復元できません。",
+        "confidentialAckCheckbox": "機密 Trezu または near.com 以外からの入金は失われることを理解しています。",
+        "onlyFromConfidentialTrezu": "機密 <bold>Trezu</bold> からのみ",
+        "onlyFromConfidentialNearcom": "機密 <bold>near.com</bold> からのみ",
+        "reusableDoesntExpire": "<bold>再利用可能。</bold>期限なし",
+        "fundsOutsideTrezuLost": "機密 Trezu 以外から送られた資金は失われます",
+        "fundsOutsideNearcomLost": "機密 near.com 以外から送られた資金は失われます",
+        "publicNetworkRecommendation": "<bold>{network}</bold> ネットワークからのみ入金してください。全額を送る前に少額のテスト取引から始めることをおすすめします。",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "公開ウォレットから",
+                "subtitle": "ワンタイム入金アドレスを作成"
+            },
+            "confidentialUser": {
+                "title": "機密ユーザーから",
+                "subtitle": "機密 Trezu と near.com から入金"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "機密 Trezu から",
+            "nearcom": "機密 near.com から",
+            "short": "機密から"
+        },
+        "guestBanner": {
+            "title": "ゲストとして表示しています",
+            "description": "このアドレスは他者の treasury のものです。送信前に再確認してください。"
+        },
+        "transfer": {
+            "title": "Treasury へ送金",
+            "waitingForPayment": "支払い待ち",
+            "youSendFromPublic": "任意の公開ウォレットから送金",
+            "youSend": "送金内容",
+            "goesTo": "送金先",
+            "assetOnNetwork": "{network} ネットワーク上の {symbol}",
+            "anyAsset": "任意の資産",
+            "onNetwork": "{network} ネットワーク上",
+            "onNearcomNetwork": "near.com ネットワーク上",
+            "anyAssetOnNearcom": "near.com ネットワーク上の任意の資産",
+            "securedOnTrezu": "Trezu で保護",
+            "payWithTrezu": "Trezu で支払う",
+            "payRequiresTreasury": "支払うには Trezu treasury でサインインしてください。",
+            "copyLink": "リンクをコピー",
+            "titleConfidential": "機密 Treasury へ送金",
+            "chooseTreasuryTitle": "Treasury を選択",
+            "chooseTreasuryDescription": "この支払いの送金元の Treasury はどれですか？",
+            "noMemberTreasuries": "まだどの Treasury のメンバーでもありません。",
+            "createTreasury": "Treasury を作成",
+            "expired": "期限切れ",
+            "used": "使用済み",
+            "linkInactiveTitle": "このリンクは無効です",
+            "linkInactiveDescription": "この支払いを行うには、リンクを送った人に新しいリンクを依頼してください。"
+        },
+        "expiresInRemaining": "<time>{duration}</time>で期限切れ – <bold>未使用でも</bold>。",
+        "addressExpired": "このアドレスは期限切れです。"
     },
     "assetDetails": {
         "coinPrice": "コイン価格",

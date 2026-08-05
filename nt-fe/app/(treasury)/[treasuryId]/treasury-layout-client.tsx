@@ -20,15 +20,16 @@ export function TreasuryLayoutClient({
     const { isSidebarOpen, setSidebarOpen } = useResponsiveSidebar();
     const { isLoading, isConfidential } = useTreasury();
     const pathname = usePathname();
-    const isStandaloneReceiptView = /\/requests\/[^/]+\/receipt$/.test(
-        pathname ?? "",
-    );
+    // Receipt + pay share links are public/standalone (no treasury sidebar).
+    const isStandaloneView =
+        /\/requests\/[^/]+\/receipt$/.test(pathname ?? "") ||
+        /\/pay\/(public|confidential)\/?$/.test(pathname ?? "");
 
     if (isLoading) {
         return <LoadingScreen />;
     }
 
-    if (isStandaloneReceiptView) {
+    if (isStandaloneView) {
         return (
             <div className="h-dvh overflow-y-auto bg-muted print:h-auto print:overflow-visible print:bg-white">
                 <AppEventsProvider scope={{ treasuryId }} />
