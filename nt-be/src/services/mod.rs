@@ -10,6 +10,7 @@ pub mod platform_metrics;
 pub mod price_lookup;
 pub mod price_provider;
 pub mod price_sync;
+pub mod public_balance_reader;
 pub mod public_dashboard;
 pub mod sponsor_alerts;
 pub mod testing_accounts;
@@ -37,7 +38,7 @@ pub use public_dashboard::{
 pub use sponsor_alerts::run_sponsor_monitor_cycle;
 pub use testing_accounts::{mark_testing_if_needed, should_mark_testing};
 pub use token_prices::{
-    BalanceChangesUsdBackfill, GoldConfidentialUsdBackfill, GoldPublicUsdBackfill,
+    BalanceChangesUsdBackfill, GoldConfidentialUsdBackfill, GoldLedgerUsdBackfill,
     HistoricalPriceBackfill, TokenPriceIngestor, TokenPriceService,
     spawn_token_price_ingest_worker,
 };

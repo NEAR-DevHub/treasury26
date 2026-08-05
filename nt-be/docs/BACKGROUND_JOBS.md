@@ -81,8 +81,9 @@ idempotency and deduplication protections.
 Public silver and gold projection remain idle for a DAO until all three rows in
 `bronze_public_history_cursors` (`nearblocks_ft`, `nearblocks_mt`, and
 `nearblocks_receipt`) have `backfill_done = true`. Public API reads stay on
-legacy `balance_changes` by default; setting `PUBLIC_HISTORY_MEDALLION_READS=true`
-routes backfill-complete public DAOs to `gold_public_history_events`.
+legacy `balance_changes` by default; setting `UNIFIED_GOLD_LEDGER_READS=true`
+routes public DAOs (activity, charts, and asset balances) to
+`gold_treasury_ledger_events`.
 
 Gold projection values recent ordinary transfers from the in-memory latest-price
 snapshot, without a database or external request. Historical rows and recent
@@ -137,10 +138,15 @@ returning a plain `404` (the board only owns `/api/v1`).
 | price-sync | every 60s | — | syncs DeFiLlama prices into `historical_prices` |
 | token-price-ingest | every 60s | — | refreshes `tokens` and 5-minute `token_prices` from Chaindefuser |
 | gold-usd-enrichment | every 5min + startup task | GOLD_USD_ENRICHMENT_INTERVAL_SECONDS | ordered historical-price load, then NULL public/confidential USD fill; projection never waits for prices |
-| public-history-scheduler | every 2s | — | enqueues public latest/backfill page jobs; latest enqueue skipped without GOLDSKY_DATABASE_URL |
+| public-history-scheduler | every 2s | — | latency-sensitive Goldsky detector; enqueues public latest-refresh jobs only |
+| public-history-readiness-scheduler | every 60s | — | schedules FT/MT/receipt coverage refreshes for dirty public snapshot cursors |
+| public-history-backfill-scheduler | every 10s | — | schedules incomplete public Bronze history pages from Bronze cursors |
 | public-silver-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
 | public-gold-projection | every 5s | — | gated by NEARBLOCKS_API_KEY and per-DAO bronze backfill completion |
 | public-proposal-reconciliation | every 10min | — | gated by NEARBLOCKS_API_KEY |
+| public-balance-snapshot-sweeper | hourly + startup task | PUBLIC_BALANCE_SNAPSHOT_REFRESH_INTERVAL_SECONDS | batches dirty Silver activity into at most one RPC balance refresh per DAO per interval |
+| public-balance-snapshot-staking-refresh | daily 00:01 UTC | — | marks staking holdings dirty so reward-only balance changes are refreshed |
+| public-balance-snapshot-usd-repair | hourly + startup task | — | fills missing snapshot USD values after historical price enrichment |
 | confidential-history-ingest | every 10s | — | |
 | confidential-snapshots | hourly | — | |
 | confidential-gold-reconciliation | daily + startup task | — | |

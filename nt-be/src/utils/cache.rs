@@ -15,8 +15,7 @@ pub enum CacheTier {
     /// Frequently changing data (5 seconds TTL) - balances, policies
     ShortTerm,
     /// Historical/immutable data (very long TTL) - block data, historical balances
-    /// Note: Implementation for immutable cache is not included yet
-    #[allow(dead_code)]
+    /// Entries have no time-based expiry and are evicted only by capacity.
     Immutable,
 }
 
@@ -29,6 +28,8 @@ pub struct Cache {
     pub very_long_term: MokaCache<String, Value>,
     /// Short-term cache (30 seconds TTL)
     pub short_term: MokaCache<String, Value>,
+    /// Immutable historical lookups. Bounded, but without a TTL.
+    pub immutable: MokaCache<String, Value>,
 }
 
 pub enum CacheError {
@@ -94,10 +95,13 @@ impl Cache {
             .time_to_live(Duration::from_secs(5)) // 5 seconds
             .build();
 
+        let immutable = MokaCache::builder().max_capacity(100_000).build();
+
         Self {
             long_term,
             very_long_term,
             short_term,
+            immutable,
         }
     }
 
@@ -125,10 +129,15 @@ impl Cache {
             .time_to_live(Duration::from_secs(short_term_ttl_secs))
             .build();
 
+        let immutable = MokaCache::builder()
+            .max_capacity(long_term_capacity.saturating_mul(10).max(1))
+            .build();
+
         Self {
             long_term,
             very_long_term,
             short_term,
+            immutable,
         }
     }
 
@@ -138,7 +147,7 @@ impl Cache {
             CacheTier::LongTerm => &self.long_term,
             CacheTier::VeryLongTerm => &self.very_long_term,
             CacheTier::ShortTerm => &self.short_term,
-            CacheTier::Immutable => &self.long_term, // TODO: implement separate immutable cache
+            CacheTier::Immutable => &self.immutable,
         }
     }
 

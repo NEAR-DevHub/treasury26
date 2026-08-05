@@ -5,23 +5,18 @@ use near_account_id::AccountIdRef;
 use reqwest::StatusCode;
 
 use crate::AppState;
-use crate::handlers::intents::confidential::bronze::api::{HistoryEvent, fetch_history};
+use crate::handlers::intents::confidential::bronze::api::fetch_history;
 use crate::handlers::intents::confidential::bronze::store::{
-    HistoryEventUpsertOutcome, HistoryEventUpsertState, load_due_confidential_history_accounts,
-    load_history_cursor, mark_confidential_history_activity_due, mark_history_backfill_done,
+    load_due_confidential_history_accounts, load_history_cursor,
+    mark_confidential_history_activity_due, mark_history_backfill_done,
     record_confidential_history_poll_result, save_backfill_progress, save_latest_page_cursor,
     upsert_history_events,
 };
 use crate::handlers::intents::confidential::gold::history_events::{
-    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, classify_is_deposit,
-    confidential_deposit_corrections_enabled, project_confidential_gold_for_dao,
-    project_confidential_gold_for_dirty_daos,
+    CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS, project_confidential_gold_for_dao,
+    project_confidential_gold_for_dirty_daos, verify_confidential_ledger_heads,
 };
 use crate::handlers::intents::confidential::gold::snapshots::snapshot_confidential_dao_balances;
-use crate::handlers::intents::confidential::gold::{
-    ConfidentialDepositCorrector, InsertedConfidentialDeposit,
-};
-use crate::handlers::intents::confidential::types::HistoryStatus;
 
 pub const CONFIDENTIAL_HISTORY_SCHEDULER_TICK: Duration = Duration::from_secs(10);
 pub const CONFIDENTIAL_HISTORY_TRIGGER_LIMIT: u32 = 50;
@@ -193,25 +188,6 @@ pub async fn poll_confidential_history_once(
         )
     })?;
 
-    // Forward deposit-amount correction: the 1Click history API reports the
-    // ~0.001 quote nominal, so for newly-successful external deposits we
-    // record the real quantity from a live balance fetch. Best-effort — a
-    // failure here is recovered by the daily backfill reconciliation.
-    if confidential_deposit_corrections_enabled() {
-        let inserted_deposits =
-            collect_successful_deposit_candidates(account_id, &page.items, &upsert_result.events);
-        if !inserted_deposits.is_empty()
-            && let Err(e) = ConfidentialDepositCorrector::correct_new_deposits(
-                state,
-                account_id,
-                &inserted_deposits,
-            )
-            .await
-        {
-            tracing::warn!("{} forward deposit correction failed: {}", account_id, e);
-        }
-    }
-
     Ok(HistoryPollResult {
         account_id: account_id.as_str().to_string(),
         items_fetched: page.items.len(),
@@ -220,46 +196,6 @@ pub async fn poll_confidential_history_once(
         next_cursor: page.next_cursor,
         prev_cursor: page.prev_cursor,
     })
-}
-
-/// Pick deposits that just became successful in a poll, pairing each page item
-/// with its upsert outcome (pushed in the same order). Rows can first be
-/// inserted before final settlement and later change to `SUCCESS`; both cases
-/// need the forward correction.
-fn collect_successful_deposit_candidates(
-    account_id: &AccountIdRef,
-    items: &[HistoryEvent],
-    outcomes: &[HistoryEventUpsertOutcome],
-) -> Vec<InsertedConfidentialDeposit> {
-    items
-        .iter()
-        .zip(outcomes)
-        .filter_map(|(event, outcome)| {
-            if !matches!(
-                outcome.state,
-                HistoryEventUpsertState::Inserted | HistoryEventUpsertState::Changed
-            ) {
-                return None;
-            }
-            let item = &event.item;
-            if HistoryStatus::parse(&item.status) != HistoryStatus::Success {
-                return None;
-            }
-            if !classify_is_deposit(
-                account_id.as_str(),
-                item.recipient.as_deref()?,
-                item.origin_asset.as_deref(),
-                &item.destination_asset,
-            ) {
-                return None;
-            }
-            Some(InsertedConfidentialDeposit {
-                history_event_id: outcome.history_event_id,
-                destination_asset: item.destination_asset.clone(),
-                created_at_external: outcome.created_at_external,
-            })
-        })
-        .collect()
 }
 
 #[tracing::instrument(level = "debug", skip_all, fields(account_id = %account_id, limit = limit))]
@@ -480,7 +416,9 @@ pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: 
                         stats.errors_written
                     );
                     if stats.rows_projected > 0 || stats.rows_deleted > 0 {
-                        state.publish_treasury_projection_updated(account_id.to_string());
+                        state
+                            .publish_treasury_projection_updated(account_id.to_string())
+                            .await;
                     }
                 }
                 Err(e) => {
@@ -488,7 +426,7 @@ pub async fn trigger_confidential_history_refresh(state: &AppState, account_id: 
                 }
             }
 
-            snapshot_confidential_dao_balances(state, account_id).await;
+            verify_confidential_ledger_heads(state, account_id).await;
         }
         Err((status, message)) => {
             tracing::warn!(
@@ -646,7 +584,8 @@ pub async fn tick_confidential_history_scheduler(
                 stats.errors_written
             );
             for account_id in stats.changed_accounts {
-                state.publish_treasury_projection_updated(account_id);
+                verify_confidential_ledger_heads(state, &account_id).await;
+                state.publish_treasury_projection_updated(account_id).await;
             }
         }
         Ok(_) => {}
@@ -734,56 +673,6 @@ mod tests {
                 "invalid account"
             ]
         );
-    }
-
-    fn successful_deposit_event(status: &str) -> HistoryEvent {
-        let raw_payload = serde_json::json!({
-            "amountInFormatted": "0.001",
-            "amountInUsd": "0.0010",
-            "amountOutFormatted": "0.001",
-            "amountOutUsd": "0.0010",
-            "createdAt": "2026-06-16T03:21:20.966465Z",
-            "depositAddress": "deposit-address",
-            "depositMemo": null,
-            "depositType": "INTENTS",
-            "destinationAsset": "nep141:wrap.near",
-            "originAsset": "nep141:wrap.near",
-            "recipient": "dao.near",
-            "recipientType": "CONFIDENTIAL_INTENTS",
-            "status": status
-        });
-        let item = serde_json::from_value(raw_payload.clone()).expect("event should parse");
-        HistoryEvent { item, raw_payload }
-    }
-
-    fn upsert_outcome(
-        history_event_id: i64,
-        state: HistoryEventUpsertState,
-    ) -> HistoryEventUpsertOutcome {
-        HistoryEventUpsertOutcome {
-            history_event_id,
-            created_at_external: chrono::Utc::now(),
-            state,
-        }
-    }
-
-    #[test]
-    fn test_changed_success_deposit_is_forward_correction_candidate() {
-        let account_id = AccountIdRef::new("dao.near").unwrap();
-        let success = successful_deposit_event("SUCCESS");
-        let pending = successful_deposit_event("PENDING");
-        let items = vec![success.clone(), success, pending];
-        let outcomes = vec![
-            upsert_outcome(10, HistoryEventUpsertState::Changed),
-            upsert_outcome(11, HistoryEventUpsertState::Unchanged),
-            upsert_outcome(12, HistoryEventUpsertState::Changed),
-        ];
-
-        let candidates = collect_successful_deposit_candidates(account_id, &items, &outcomes);
-
-        assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].history_event_id, 10);
-        assert_eq!(candidates[0].destination_asset, "nep141:wrap.near");
     }
 
     async fn create_real_api_state() -> Arc<AppState> {

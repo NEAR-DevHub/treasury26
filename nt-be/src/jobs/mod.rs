@@ -218,7 +218,7 @@ fn cron_every_secs(secs: u64) -> String {
 /// are fully schema-qualified (`apalis.*`), so only the bookkeeping table's
 /// placement matters — pointing the connection's `search_path` at a private
 /// schema keeps the two migration lineages isolated.
-async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub(crate) async fn setup_apalis(pool: &PgPool) -> Result<(), sqlx::Error> {
     use sqlx::Executor as _;
 
     pool.execute("CREATE SCHEMA IF NOT EXISTS apalis_migrations")
@@ -544,6 +544,22 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            "public-history-readiness-scheduler",
+            schedule_every_secs(60),
+            handlers::public_history_readiness_scheduler
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "public-history-backfill-scheduler",
+            schedule_every_secs(10),
+            handlers::public_history_backfill_scheduler
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
             "public-silver-projection",
             schedule_every_secs(5),
             handlers::public_silver_projection
@@ -571,6 +587,22 @@ fn configure_cron_runtime(
             "public-quote-status-refresh",
             schedule_every_secs(env_secs("PUBLIC_QUOTE_REFRESH_INTERVAL_SECONDS", 120)),
             handlers::public_quote_status_refresh
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "staking-observation",
+            schedule_every_secs(env_secs("STAKING_OBSERVATION_INTERVAL_SECONDS", 900)),
+            handlers::staking_observation
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            "price-history-backfill",
+            schedule_every_secs(3600),
+            handlers::price_history_backfill
         );
     } else {
         if preparing_queues {
@@ -611,9 +643,7 @@ fn configure_cron_runtime(
     //     );
     // }
 
-    if !state.env_vars.disable_gold_public_usd_backfill
-        || !state.env_vars.disable_gold_confidential_usd_backfill
-    {
+    if !state.env_vars.disable_gold_ledger_usd_backfill {
         monitor = register_cron_worker!(
             monitor,
             queues,
@@ -842,13 +872,14 @@ fn build_cron_runtime(state: Arc<AppState>, queues: JobQueues) -> (Monitor, JobQ
     )
 }
 
-const STARTUP_QUEUES: [&str; 6] = [
+const STARTUP_QUEUES: [&str; 7] = [
     "confidential-gold-reconciliation",
     "subscription-monthly-reset",
     "public-dashboard-refresh",
     "ft-lockup-refresh",
     "balance-changes-usd-backfill",
     "gold-usd-enrichment",
+    "price-history-backfill",
 ];
 
 async fn push_startup_tasks(queues: &JobQueues, pool: &PgPool) {
@@ -935,13 +966,12 @@ async fn run_leader_runtime(
     }
 
     let liveness_pool = state.db_pool.clone();
-    let mut consumer_futures: FuturesUnordered<_> =
+    let payload_consumers =
         crate::handlers::public_history::bronze::jobs::public_history_queue_worker_futures(
-            state,
+            state.clone(),
             shutdown.clone(),
-        )
-        .into_iter()
-        .collect();
+        );
+    let mut consumer_futures: FuturesUnordered<_> = payload_consumers.into_iter().collect();
 
     let mut children = tokio::task::JoinSet::new();
     let monitor_shutdown = shutdown.clone();
@@ -1155,7 +1185,85 @@ pub fn board_router(queues: &JobQueues, state: Arc<AppState>) -> Router {
 
 #[cfg(test)]
 mod tests {
-    use super::{cron_every_secs, is_foreign_api_path, schedule_every_secs};
+    use super::{STARTUP_QUEUES, cron_every_secs, is_foreign_api_path, schedule_every_secs};
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn public_history_scheduler_queues_have_independent_watchdog_cadences(
+        pool: sqlx::PgPool,
+    ) {
+        let env = crate::utils::env::EnvVars {
+            nearblocks_api_key: Some("test".to_string()),
+            goldsky_database_url: None,
+            ..Default::default()
+        };
+        let state = std::sync::Arc::new(
+            crate::AppState::builder()
+                .db_pool(pool)
+                .env_vars(env)
+                .build()
+                .await
+                .unwrap(),
+        );
+
+        let (queues, specs) = super::prepare_job_queues(state);
+        for (queue, interval_secs) in [
+            ("public-history-scheduler", 2),
+            ("public-history-readiness-scheduler", 60),
+            ("public-history-backfill-scheduler", 10),
+        ] {
+            assert!(
+                queues.storage(queue).is_some(),
+                "{queue} must be registered"
+            );
+            let spec = specs
+                .iter()
+                .find(|spec| spec.queue == queue)
+                .unwrap_or_else(|| panic!("{queue} must be watched"));
+            assert!(matches!(
+                spec.kind,
+                super::watchdog::QueueKind::Cron {
+                    interval_secs: actual
+                } if actual == interval_secs
+            ));
+        }
+    }
+
+    #[test]
+    fn price_history_backfill_runs_at_startup_once() {
+        assert_eq!(
+            STARTUP_QUEUES
+                .iter()
+                .filter(|queue| **queue == "price-history-backfill")
+                .count(),
+            1
+        );
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn price_backfill_startup_wakeup_deduplicates_active_job(pool: sqlx::PgPool) {
+        super::setup_apalis(&pool).await.unwrap();
+        let queue = "price-history-backfill";
+        let queues = super::JobQueues {
+            entries: vec![(queue, super::storage(&pool, queue))],
+        };
+
+        super::push_startup_tasks(&queues, &pool).await;
+        super::push_startup_tasks(&queues, &pool).await;
+
+        let active: i64 = sqlx::query_scalar(
+            r#"
+            SELECT COUNT(*)
+            FROM apalis.jobs
+            WHERE job_type = $1
+              AND status IN ('Pending', 'Queued', 'Running')
+            "#,
+        )
+        .bind(queue)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(active, 1);
+    }
 
     #[test]
     fn cron_every_secs_expressible_intervals() {

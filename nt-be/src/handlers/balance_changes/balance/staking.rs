@@ -75,90 +75,79 @@ pub fn is_staking_pool(account_id: &str) -> bool {
 ///
 /// # Returns
 /// The staking balance as a BigDecimal (e.g., "11.1002" for 11.1002 NEAR staked)
-pub async fn get_staking_balance_at_block(
+pub async fn get_staking_balance_at_exact_block(
     network: &NetworkConfig,
     account_id: &str,
     staking_pool: &str,
     block_height: u64,
 ) -> Result<BigDecimal, Box<dyn std::error::Error>> {
     let pool_account_id = AccountId::from_str(staking_pool)?;
-    let max_retries = 10;
+    let data: near_api::Data<U128> = with_transport_retry("staking_balance_exact", || {
+        Contract(pool_account_id.clone())
+            .call_function(
+                "get_account_total_balance",
+                serde_json::json!({
+                    "account_id": account_id
+                }),
+            )
+            .read_only()
+            .at(Reference::AtBlock(block_height))
+            .fetch_from(network)
+    })
+    .await?;
 
-    for offset in 0..=max_retries {
+    convert_raw_to_decimal(&data.data.0.to_string(), NEAR_DECIMALS)
+}
+
+/// Legacy staking lookup that tolerates a skipped/unavailable requested block
+/// by walking backwards. New snapshot code must use
+/// [`get_staking_balance_at_exact_block`] so the stored block identity always
+/// matches the queried state.
+pub async fn get_staking_balance_at_block(
+    network: &NetworkConfig,
+    account_id: &str,
+    staking_pool: &str,
+    block_height: u64,
+) -> Result<BigDecimal, Box<dyn std::error::Error>> {
+    const MAX_PREVIOUS_BLOCK_ATTEMPTS: u64 = 10;
+
+    for offset in 0..=MAX_PREVIOUS_BLOCK_ATTEMPTS {
         let current_block = block_height.saturating_sub(offset);
-
-        let result: Result<near_api::Data<U128>, _> =
-            with_transport_retry("staking_balance", || {
-                Contract(pool_account_id.clone())
-                    .call_function(
-                        "get_account_total_balance",
-                        serde_json::json!({
-                            "account_id": account_id
-                        }),
-                    )
-                    .read_only()
-                    .at(Reference::AtBlock(current_block))
-                    .fetch_from(network)
-            })
-            .await;
-
-        match result {
-            Ok(data) => {
+        match get_staking_balance_at_exact_block(network, account_id, staking_pool, current_block)
+            .await
+        {
+            Ok(balance) => {
                 if offset > 0 {
                     tracing::warn!(
-                        "Block {} not available for staking pool {}, used block {} instead (offset: {})",
-                        block_height,
+                        requested_block = block_height,
+                        queried_block = current_block,
                         staking_pool,
-                        current_block,
-                        offset
+                        "legacy staking lookup substituted a previous block"
                     );
                 }
-
-                // Convert yoctoNEAR to human-readable NEAR (24 decimals)
-                let raw_balance = data.data;
-                let decimal_balance =
-                    convert_raw_to_decimal(&raw_balance.0.to_string(), NEAR_DECIMALS)?;
-
-                return Ok(decimal_balance);
+                return Ok(balance);
             }
-            Err(e) => {
-                let err_str = e.to_string();
-                // Check for various error conditions
-                if err_str.contains("422")
-                    || err_str.contains("UnknownBlock")
-                    || err_str.contains("GarbageCollectedBlock")
-                    || err_str.contains("MethodNotFound")
-                    || err_str.contains("doesn't exist")
-                {
-                    if offset < max_retries {
-                        tracing::debug!(
-                            "Block {} not available for staking pool {} ({}), trying previous block",
-                            current_block,
-                            staking_pool,
-                            err_str
-                        );
-                        continue;
-                    } else {
-                        return Err(format!(
-                            "Failed to query staking balance after {} retries: {}",
-                            max_retries, err_str
-                        )
-                        .into());
-                    }
-                } else {
-                    // For other errors, fail immediately
-                    return Err(e.into());
+            Err(error) => {
+                let message = error.to_string();
+                let block_unavailable = message.contains("422")
+                    || message.contains("UnknownBlock")
+                    || message.contains("GarbageCollectedBlock")
+                    || message.contains("MethodNotFound")
+                    || message.contains("doesn't exist");
+                if !block_unavailable || offset == MAX_PREVIOUS_BLOCK_ATTEMPTS {
+                    return Err(error);
                 }
+                tracing::debug!(
+                    block_height = current_block,
+                    staking_pool,
+                    error = %message,
+                    "staking block unavailable; legacy lookup trying previous block"
+                );
             }
         }
     }
 
-    Err(format!(
-        "Failed to query staking balance for block {} after {} attempts",
-        block_height,
-        max_retries + 1
-    )
-    .into())
+    unreachable!("bounded staking fallback loop always returns")
 }
 
 /// Query staking balance change at a specific block (both before and after)

@@ -1,12 +1,14 @@
 //! Read-side adapter that lets `/api/balance-changes`, `/api/recent-activity`,
-//! and `/api/balance-history/export` serve confidential DAOs from
-//! `gold_confidential_history_events` while keeping the response shape
-//! (`EnrichedBalanceChange`) identical to the public list.
+//! and `/api/balance-history/export` serve confidential DAOs from the unified
+//! `gold_treasury_ledger_events` (rows with
+//! `source_kind = 'confidential_history_event'`) while keeping the response
+//! shape (`EnrichedBalanceChange`) identical to the public list.
 //!
 //! Exchange Gold rows surface as a single Exchange Fulfillment row (the
 //! request side is intentionally hidden for confidential DAOs).
 
 use std::collections::{HashMap, HashSet};
+use std::str::FromStr;
 use std::sync::Arc;
 
 use bigdecimal::{BigDecimal, FromPrimitive, Zero};
@@ -30,29 +32,27 @@ fn normalize_account_filter_values(accounts: &[String]) -> Vec<String> {
 #[derive(Debug)]
 struct ConfidentialBalanceChangeRow {
     id: i64,
-    history_event_id: i64,
+    gold_event_key: String,
     dao_id: AccountId,
     transaction_type: ConfidentialTxType,
-    origin_asset: Option<String>,
-    destination_asset: String,
+    token_in: Option<String>,
+    token_out: Option<String>,
     amount_in: Option<BigDecimal>,
-    amount_out: BigDecimal,
+    amount_out: Option<BigDecimal>,
     amount_in_usd: Option<BigDecimal>,
     amount_out_usd: Option<BigDecimal>,
-    origin_balance_before: Option<BigDecimal>,
-    origin_balance_after: Option<BigDecimal>,
-    destination_balance_before: Option<BigDecimal>,
-    destination_balance_after: Option<BigDecimal>,
-    recipient: String,
-    counterparty: String,
+    token_in_user_balance_after: Option<BigDecimal>,
+    token_out_user_balance_after: Option<BigDecimal>,
+    recipient: Option<String>,
+    counterparty: Option<String>,
     proposal_execution_block_height: Option<i64>,
     proposal_executed_at: Option<DateTime<Utc>>,
     proposal_execution_transaction_hash: Option<String>,
-    quote_created_at: DateTime<Utc>,
+    /// On-chain deposit tx hash from quoteTransactions[0].txHash.
+    transaction_hash: Option<String>,
+    event_time: DateTime<Utc>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
-    /// On-chain deposit tx hash from quoteTransactions[0].txHash.
-    deposit_tx_hash: Option<String>,
 }
 
 impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
@@ -61,32 +61,35 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
         let dao_id = dao_id
             .parse::<AccountId>()
             .map_err(|e| sqlx::Error::Decode(Box::new(e)))?;
+        // The unified column is a public_transaction_type enum, so it is
+        // selected as TEXT and parsed here.
+        let transaction_type: String = row.try_get("transaction_type")?;
+        let transaction_type = ConfidentialTxType::from_str(&transaction_type)
+            .map_err(|e| sqlx::Error::Decode(e.into()))?;
 
         Ok(Self {
             id: row.try_get("id")?,
-            history_event_id: row.try_get("history_event_id")?,
+            gold_event_key: row.try_get("gold_event_key")?,
             dao_id,
-            transaction_type: row.try_get("transaction_type")?,
-            origin_asset: row.try_get("origin_asset")?,
-            destination_asset: row.try_get("destination_asset")?,
+            transaction_type,
+            token_in: row.try_get("token_in")?,
+            token_out: row.try_get("token_out")?,
             amount_in: row.try_get("amount_in")?,
             amount_out: row.try_get("amount_out")?,
             amount_in_usd: row.try_get("amount_in_usd")?,
             amount_out_usd: row.try_get("amount_out_usd")?,
-            origin_balance_before: row.try_get("origin_balance_before")?,
-            origin_balance_after: row.try_get("origin_balance_after")?,
-            destination_balance_before: row.try_get("destination_balance_before")?,
-            destination_balance_after: row.try_get("destination_balance_after")?,
+            token_in_user_balance_after: row.try_get("token_in_user_balance_after")?,
+            token_out_user_balance_after: row.try_get("token_out_user_balance_after")?,
             recipient: row.try_get("recipient")?,
             counterparty: row.try_get("counterparty")?,
             proposal_execution_block_height: row.try_get("proposal_execution_block_height")?,
             proposal_executed_at: row.try_get("proposal_executed_at")?,
             proposal_execution_transaction_hash: row
                 .try_get("proposal_execution_transaction_hash")?,
-            quote_created_at: row.try_get("quote_created_at")?,
+            transaction_hash: row.try_get("transaction_hash")?,
+            event_time: row.try_get("event_time")?,
             created_at: row.try_get("created_at")?,
             proposal_id: row.try_get("proposal_id")?,
-            deposit_tx_hash: row.try_get("deposit_tx_hash")?,
         })
     }
 }
@@ -157,46 +160,35 @@ fn build_filtered_legs_query(
         .map(|t| normalize_account_filter_values(t));
 
     // Apply token / account / amount / date filters in SQL *before* pagination
-    // so a small limit can't drop legs that would otherwise match the filter
-    // (the old in-Rust filter ran post-limit). Date sort/filter uses
-    // event_time (proposal_executed_at → quote_created_at) rather than
-    // gold_confidential_history_events.created_at, which is the projection insert
-    // time and would surface old transactions as today's activity. Amount
-    // bounds compare against the formatted decimal amount directly — gold
-    // already stores amountOutFormatted, not raw token units.
+    // so a small limit can't drop legs that would otherwise match the filter.
+    // Date sort/filter uses the display time (proposal_executed_at →
+    // event_time) rather than created_at, which is the projection insert time
+    // and would surface old transactions as today's activity. Amount bounds
+    // compare against the formatted decimal amount directly — gold stores
+    // decimal-adjusted amounts, not raw token units.
     let mut builder = QueryBuilder::<sqlx::Postgres>::new(
         r#"
         WITH legs AS (
             SELECT
-                id, history_event_id, dao_id, transaction_type,
-                origin_asset, destination_asset,
+                id, gold_event_key, dao_id,
+                transaction_type::text AS transaction_type,
+                token_in, token_out,
                 amount_in, amount_out, amount_in_usd, amount_out_usd,
-                origin_balance_before, origin_balance_after,
-                destination_balance_before, destination_balance_after,
+                token_in_user_balance_after, token_out_user_balance_after,
                 recipient, counterparty,
                 proposal_execution_block_height,
                 proposal_executed_at,
                 proposal_execution_transaction_hash,
-                quote_created_at, created_at,
-                deposit_tx_hash,
-                (
-                    SELECT ci.proposal_id
-                    FROM confidential_intents ci
-                    WHERE ci.id = gold_confidential_history_events.intent_id
-                ) AS proposal_id,
-                COALESCE(proposal_executed_at, quote_created_at) AS event_time,
+                transaction_hash,
+                event_time, created_at, proposal_id,
+                COALESCE(proposal_executed_at, event_time) AS event_time_display,
                 CASE
-                    WHEN transaction_type = 'sent'
-                        THEN COALESCE(origin_asset, destination_asset)
-                    ELSE destination_asset
+                    WHEN transaction_type = 'sent' THEN token_out
+                    ELSE token_in
                 END AS leg_token_id,
                 CASE
-                    WHEN transaction_type = 'sent'
-                        THEN -COALESCE(amount_in, 0)
-                    WHEN transaction_type = 'deposit'
-                        THEN COALESCE(destination_balance_after, 0)
-                           - COALESCE(destination_balance_before, 0)
-                    ELSE amount_out
+                    WHEN transaction_type = 'sent' THEN -COALESCE(amount_out, 0)
+                    ELSE COALESCE(amount_in, 0)
                 END AS leg_amount,
                 CASE
                     WHEN transaction_type = 'sent' THEN dao_id
@@ -206,10 +198,11 @@ fn build_filtered_legs_query(
                     WHEN transaction_type = 'sent' THEN recipient
                     ELSE dao_id
                 END AS leg_to_account
-            FROM gold_confidential_history_events
+            FROM gold_treasury_ledger_events
             WHERE dao_id = "#,
     );
     builder.push_bind(params.account_id.as_str().to_string());
+    builder.push(" AND source_kind = 'confidential_history_event'");
     builder.push(" AND transaction_type IN ('sent', 'deposit', 'exchange')");
     builder.push(" ) ");
     if count_only {
@@ -218,17 +211,17 @@ fn build_filtered_legs_query(
         builder.push(
             r#"
             SELECT
-                id, history_event_id, dao_id, transaction_type,
-                origin_asset, destination_asset,
+                id, gold_event_key, dao_id, transaction_type,
+                token_in, token_out,
                 amount_in, amount_out, amount_in_usd, amount_out_usd,
-                origin_balance_before, origin_balance_after,
-                destination_balance_before, destination_balance_after,
+                token_in_user_balance_after, token_out_user_balance_after,
                 recipient, counterparty,
                 proposal_execution_block_height,
                 proposal_executed_at,
                 proposal_execution_transaction_hash,
-                quote_created_at, created_at, proposal_id,
-                deposit_tx_hash
+                transaction_hash,
+                event_time, created_at, proposal_id,
+                event_time_display
             FROM legs
             WHERE 1 = 1
             "#,
@@ -236,11 +229,11 @@ fn build_filtered_legs_query(
     }
 
     if let Some(start) = start_date {
-        builder.push(" AND event_time >= ");
+        builder.push(" AND event_time_display >= ");
         builder.push_bind(start);
     }
     if let Some(end) = end_date {
-        builder.push(" AND event_time <= ");
+        builder.push(" AND event_time_display <= ");
         builder.push_bind(end);
     }
 
@@ -248,7 +241,7 @@ fn build_filtered_legs_query(
         builder.push(" AND transaction_type IN (");
         let mut sep = builder.separated(", ");
         for t in types {
-            sep.push_bind(t);
+            sep.push_bind(t.as_str());
         }
         builder.push(")");
     }
@@ -318,26 +311,31 @@ pub async fn load_prior_balances(
     start_time: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
 ) -> Result<HashMap<String, BigDecimal>, sqlx::Error> {
+    // Cutoff on display time (the list's contract); head selection per asset
+    // follows replay order (event_time, source_order, id) so the returned
+    // balance is the ledger's actual head value.
     let mut builder = QueryBuilder::<sqlx::Postgres>::new(
         r#"
         SELECT DISTINCT ON (asset) asset, balance
         FROM (
             SELECT
-                origin_asset AS asset,
-                origin_balance_after AS balance,
-                COALESCE(proposal_executed_at, quote_created_at) AS event_time,
+                token_out AS asset,
+                token_out_user_balance_after AS balance,
+                event_time,
+                source_order,
                 id,
                 0 AS leg_order
-            FROM gold_confidential_history_events
+            FROM gold_treasury_ledger_events
             WHERE dao_id = "#,
     );
     builder.push_bind(dao_id.to_string());
-    builder.push(" AND COALESCE(proposal_executed_at, quote_created_at) < ");
+    builder.push(" AND source_kind = 'confidential_history_event'");
+    builder.push(" AND COALESCE(proposal_executed_at, event_time) < ");
     builder.push_bind(start_time);
-    builder.push(" AND origin_asset IS NOT NULL AND origin_balance_after IS NOT NULL");
+    builder.push(" AND token_out IS NOT NULL AND token_out_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND origin_asset = ANY(");
+        builder.push(" AND token_out = ANY(");
         builder.push_bind(tokens.clone());
         builder.push(")");
     }
@@ -346,21 +344,23 @@ pub async fn load_prior_balances(
         r#"
             UNION ALL
             SELECT
-                destination_asset AS asset,
-                destination_balance_after AS balance,
-                COALESCE(proposal_executed_at, quote_created_at) AS event_time,
+                token_in AS asset,
+                token_in_user_balance_after AS balance,
+                event_time,
+                source_order,
                 id,
                 1 AS leg_order
-            FROM gold_confidential_history_events
+            FROM gold_treasury_ledger_events
             WHERE dao_id = "#,
     );
     builder.push_bind(dao_id.to_string());
-    builder.push(" AND COALESCE(proposal_executed_at, quote_created_at) < ");
+    builder.push(" AND source_kind = 'confidential_history_event'");
+    builder.push(" AND COALESCE(proposal_executed_at, event_time) < ");
     builder.push_bind(start_time);
-    builder.push(" AND destination_balance_after IS NOT NULL");
+    builder.push(" AND token_in IS NOT NULL AND token_in_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND destination_asset = ANY(");
+        builder.push(" AND token_in = ANY(");
         builder.push_bind(tokens.clone());
         builder.push(")");
     }
@@ -368,7 +368,7 @@ pub async fn load_prior_balances(
     builder.push(
         r#"
         ) balances
-        ORDER BY asset, event_time DESC, id DESC, leg_order DESC
+        ORDER BY asset, event_time DESC, source_order DESC, id DESC, leg_order DESC
         "#,
     );
 
@@ -389,7 +389,7 @@ pub async fn fetch_balance_change_legs(
         return Ok(Vec::new());
     };
 
-    builder.push(" ORDER BY event_time DESC, id DESC");
+    builder.push(" ORDER BY event_time_display DESC, id DESC");
 
     if params.limit.is_some() || params.offset.is_some() {
         let limit = params.limit.unwrap_or(100).min(1000);
@@ -524,56 +524,54 @@ impl LegRow {
     fn from_gold(row: ConfidentialBalanceChangeRow) -> Option<Self> {
         let ConfidentialBalanceChangeRow {
             id,
-            history_event_id,
+            gold_event_key,
             dao_id,
             transaction_type,
-            origin_asset,
-            destination_asset,
+            token_in,
+            token_out,
             amount_in,
             amount_out,
             amount_in_usd,
             amount_out_usd,
-            origin_balance_before,
-            origin_balance_after,
-            destination_balance_before,
-            destination_balance_after,
+            token_in_user_balance_after,
+            token_out_user_balance_after,
             recipient,
             counterparty,
             proposal_execution_block_height,
             proposal_executed_at,
             proposal_execution_transaction_hash,
-            quote_created_at,
+            transaction_hash,
+            event_time,
             created_at,
             proposal_id,
-            deposit_tx_hash,
         } = row;
 
-        let resolved_block_time = proposal_executed_at.unwrap_or(quote_created_at);
+        let resolved_block_time = proposal_executed_at.unwrap_or(event_time);
         let block_height = proposal_execution_block_height.unwrap_or(0);
-        let transaction_hash = proposal_execution_transaction_hash;
 
         let dao_id_str = dao_id.as_str().to_string();
         match transaction_type {
             ConfidentialTxType::Sent => {
-                let token_id = origin_asset
-                    .clone()
-                    .unwrap_or_else(|| destination_asset.clone());
-                let amount_abs = amount_in.unwrap_or_else(BigDecimal::zero);
+                let token_id = token_out?;
+                let amount_abs = amount_out.unwrap_or_else(BigDecimal::zero);
+                let balance_after = token_out_user_balance_after.unwrap_or_else(BigDecimal::zero);
+                let balance_before = &balance_after + &amount_abs;
+                let recipient = recipient.unwrap_or_default();
                 Some(LegRow {
                     id,
                     token_id,
                     amount: -amount_abs,
-                    balance_before: origin_balance_before.unwrap_or_else(BigDecimal::zero),
-                    balance_after: origin_balance_after.unwrap_or_else(BigDecimal::zero),
+                    balance_before,
+                    balance_after,
                     counterparty: Some(recipient.clone()),
                     signer_id: Some(dao_id_str),
                     receiver_id: Some(recipient),
                     block_height,
                     block_time: resolved_block_time,
-                    transaction_hash,
+                    transaction_hash: proposal_execution_transaction_hash,
                     created_at,
                     proposal_id,
-                    usd_value: amount_in_usd,
+                    usd_value: amount_out_usd,
                     action_kind: "ConfidentialSend".to_string(),
                     swap_sent_token: None,
                     swap_sent_amount: None,
@@ -586,18 +584,21 @@ impl LegRow {
                 })
             }
             ConfidentialTxType::Deposit => {
-                let balance_before = destination_balance_before.unwrap_or_else(BigDecimal::zero);
-                let balance_after = destination_balance_after.unwrap_or_else(BigDecimal::zero);
-                // Match gold ledger delta (amount_out - amount_in for same-asset fees), not
-                // gross amount_out — keeps amount = balance_after - balance_before.
-                let amount = &balance_after - &balance_before;
+                let token_id = token_in?;
+                // The stored credit is the applied balance delta by
+                // construction, so amount = balance_after - balance_before
+                // holds (same-asset fees included).
+                let amount = amount_in.unwrap_or_else(BigDecimal::zero);
+                let balance_after = token_in_user_balance_after.unwrap_or_else(BigDecimal::zero);
+                let balance_before = &balance_after - &amount;
                 // Use the deposit tx hash as the transaction identifier when there
                 // is no NEAR proposal execution tx (typical for pure deposits).
                 // counterparty already holds the real on-chain sender (set in classify.rs).
-                let resolved_tx_hash = transaction_hash.or(deposit_tx_hash);
+                let resolved_tx_hash = proposal_execution_transaction_hash.or(transaction_hash);
+                let counterparty = counterparty.unwrap_or_default();
                 Some(LegRow {
                     id,
-                    token_id: destination_asset,
+                    token_id,
                     amount,
                     balance_before,
                     balance_after,
@@ -609,7 +610,7 @@ impl LegRow {
                     transaction_hash: resolved_tx_hash,
                     created_at,
                     proposal_id,
-                    usd_value: amount_out_usd,
+                    usd_value: amount_in_usd,
                     action_kind: "ConfidentialDeposit".to_string(),
                     swap_sent_token: None,
                     swap_sent_amount: None,
@@ -622,32 +623,37 @@ impl LegRow {
                 })
             }
             ConfidentialTxType::Exchange => {
-                let solver_tx = transaction_hash
+                let token_id = token_in?;
+                let amount = amount_in.unwrap_or_else(BigDecimal::zero);
+                let balance_after = token_in_user_balance_after.unwrap_or_else(BigDecimal::zero);
+                let balance_before = &balance_after - &amount;
+                let solver_tx = proposal_execution_transaction_hash
                     .clone()
-                    .unwrap_or_else(|| format!("confidential:{}", history_event_id));
+                    .unwrap_or(gold_event_key);
+                let counterparty = counterparty.unwrap_or_default();
                 Some(LegRow {
                     id,
-                    token_id: destination_asset.clone(),
-                    amount: amount_out.clone(),
-                    balance_before: destination_balance_before.unwrap_or_else(BigDecimal::zero),
-                    balance_after: destination_balance_after.unwrap_or_else(BigDecimal::zero),
+                    token_id: token_id.clone(),
+                    amount: amount.clone(),
+                    balance_before,
+                    balance_after,
                     counterparty: Some(counterparty.clone()),
                     signer_id: Some(counterparty),
                     receiver_id: Some(dao_id_str),
                     block_height,
                     block_time: resolved_block_time,
-                    transaction_hash,
+                    transaction_hash: proposal_execution_transaction_hash,
                     created_at,
                     proposal_id,
-                    usd_value: amount_out_usd.clone(),
+                    usd_value: amount_in_usd.clone(),
                     action_kind: "ConfidentialExchange".to_string(),
-                    swap_sent_token: origin_asset.clone(),
-                    swap_sent_amount: amount_in,
-                    swap_sent_amount_usd: amount_in_usd,
-                    swap_other_token: origin_asset,
-                    swap_received_token: Some(destination_asset),
-                    swap_received_amount: Some(amount_out),
-                    swap_received_amount_usd: amount_out_usd,
+                    swap_sent_token: token_out.clone(),
+                    swap_sent_amount: amount_out,
+                    swap_sent_amount_usd: amount_out_usd,
+                    swap_other_token: token_out,
+                    swap_received_token: Some(token_id),
+                    swap_received_amount: Some(amount),
+                    swap_received_amount_usd: amount_in_usd,
                     swap_solver_tx: Some(solver_tx),
                 })
             }
@@ -759,12 +765,27 @@ mod tests {
         )
     }
 
+    async fn seed_confidential_dao(pool: &PgPool, dao_id: &str) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO monitored_accounts (account_id, enabled, is_confidential_account)
+            VALUES ($1, true, true)
+            ON CONFLICT (account_id) DO NOTHING
+            "#,
+        )
+        .bind(dao_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
     async fn seed_sent_confidential_change(
         pool: &PgPool,
         dao_id: &str,
         recipient: &str,
     ) -> Result<(), sqlx::Error> {
         let now = chrono::Utc::now();
+        seed_confidential_dao(pool, dao_id).await?;
         let deposit_address = format!("deposit-{}", Uuid::new_v4());
         let event_id: i64 = sqlx::query_scalar(
             r#"
@@ -787,26 +808,23 @@ mod tests {
 
         sqlx::query(
             r#"
-            INSERT INTO gold_confidential_history_events (
-                history_event_id, dao_id, transaction_type,
-                origin_asset, destination_asset, amount_in, amount_out,
-                origin_balance_before, origin_balance_after,
-                recipient, refund_to, counterparty, deposit_address,
-                quote_created_at, proposal_executed_at
+            INSERT INTO gold_treasury_ledger_events (
+                gold_event_key, dao_id, source_kind, history_visible,
+                transaction_type, status, event_time, source_order,
+                token_out, amount_out, token_out_user_balance_after,
+                recipient, counterparty, proposal_executed_at
             )
             VALUES (
-                $1, $2, 'sent',
-                'nep141:usdc.near', 'nep141:usdc.near', 5, 0,
-                10, 5,
-                $3, $2, $3, $4,
-                $5, $5
+                'confidential:' || $1, $2, 'confidential_history_event', TRUE,
+                'sent', 'success', $4, $1,
+                'nep141:usdc.near', 5, 5,
+                $3, $3, $4
             )
             "#,
         )
         .bind(event_id)
         .bind(dao_id)
         .bind(recipient)
-        .bind(&deposit_address)
         .bind(now)
         .execute(pool)
         .await?;
@@ -814,11 +832,13 @@ mod tests {
         Ok(())
     }
 
-    /// Same-asset deposit with fees: gold ledger uses net (out - in), not gross out.
+    /// Same-asset deposit with fees: the stored credit is the applied balance
+    /// delta (out - in), not the gross 1Click amount.
     async fn seed_same_asset_fee_deposit(pool: &PgPool, dao_id: &str) -> Result<(), sqlx::Error> {
         use std::str::FromStr;
 
         let now = chrono::Utc::now();
+        seed_confidential_dao(pool, dao_id).await?;
         let deposit_address = format!("deposit-{}", Uuid::new_v4());
         let event_id: i64 = sqlx::query_scalar(
             r#"
@@ -840,31 +860,28 @@ mod tests {
         .fetch_one(pool)
         .await?;
 
-        let balance_before = BigDecimal::from(10);
+        let applied_delta = BigDecimal::from_str("-0.4").expect("valid decimal");
         let balance_after = BigDecimal::from_str("9.6").expect("valid decimal");
         sqlx::query(
             r#"
-            INSERT INTO gold_confidential_history_events (
-                history_event_id, dao_id, transaction_type,
-                origin_asset, destination_asset, amount_in, amount_out,
-                destination_balance_before, destination_balance_after,
-                recipient, refund_to, counterparty, deposit_address,
-                quote_created_at, proposal_executed_at
+            INSERT INTO gold_treasury_ledger_events (
+                gold_event_key, dao_id, source_kind, history_visible,
+                transaction_type, status, event_time, source_order,
+                token_in, amount_in, token_in_user_balance_after,
+                recipient, counterparty, proposal_executed_at
             )
             VALUES (
-                $1, $2, 'deposit',
-                'nep141:usdc.near', 'nep141:usdc.near', 1, 0.6,
-                $3, $4,
-                $2, $2, 'intents.near', $5,
-                $6, $6
+                'confidential:' || $1, $2, 'confidential_history_event', TRUE,
+                'deposit', 'success', $5, $1,
+                'nep141:usdc.near', $3, $4,
+                $2, 'intents.near', $5
             )
             "#,
         )
         .bind(event_id)
         .bind(dao_id)
-        .bind(&balance_before)
+        .bind(&applied_delta)
         .bind(&balance_after)
-        .bind(&deposit_address)
         .bind(now)
         .execute(pool)
         .await?;

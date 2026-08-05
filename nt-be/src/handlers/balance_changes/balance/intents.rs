@@ -11,6 +11,17 @@ use crate::handlers::balance_changes::counterparty::{
 };
 use crate::handlers::balance_changes::utils::with_transport_retry;
 
+fn parse_nep245_asset_id(token_id: &str) -> Result<(&str, &str), String> {
+    let contract_and_token = token_id.strip_prefix("nep245:").unwrap_or(token_id);
+    let Some((contract, token)) = contract_and_token.split_once(':') else {
+        return Err(format!("Invalid NEP-245 token format: {token_id}"));
+    };
+    if contract.is_empty() || token.is_empty() {
+        return Err(format!("Invalid NEP-245 token format: {token_id}"));
+    }
+    Ok((contract, token))
+}
+
 /// Query NEAR Intents multi-token balance at a specific block height
 ///
 /// Returns an error if the block doesn't exist (UnknownBlock). The caller (binary search)
@@ -22,7 +33,8 @@ use crate::handlers::balance_changes::utils::with_transport_retry;
 /// * `pool` - Database connection pool for storing/retrieving token metadata
 /// * `network` - The NEAR network configuration (use archival network for historical queries)
 /// * `account_id` - The NEAR account to query
-/// * `token_id` - Full token identifier in format "contract:token_id"
+/// * `token_id` - Full token identifier in either `contract:token_id` or
+///   canonical `nep245:contract:token_id` format
 /// * `block_height` - The block height to query at
 ///
 /// # Returns
@@ -34,19 +46,33 @@ pub async fn get_balance_at_block(
     token_id: &str,
     block_height: u64,
 ) -> Result<bigdecimal::BigDecimal, Box<dyn std::error::Error>> {
-    // Parse token_id format: "contract:token_id" (split on first colon only)
-    // Example: "intents.near:nep141:btc.omft.near" -> contract="intents.near", token="nep141:btc.omft.near"
-    let parts: Vec<&str> = token_id.splitn(2, ':').collect();
-    if parts.len() != 2 {
-        return Err(format!("Invalid Intents token format: {}", token_id).into());
-    }
-    let (contract_str, token) = (parts[0], parts[1]);
+    // Strip the canonical namespace before separating the contract from the
+    // contract-specific token id. Token ids may themselves contain colons.
+    let (contract_str, token) = parse_nep245_asset_id(token_id)
+        .map_err(|message| -> Box<dyn std::error::Error> { message.into() })?;
 
     // Resolve decimals for the token.
     // - intents.near tokens: use the token registry via ensure_ft_metadata (full token_id as key)
     // - Other NEP-245 contracts (e.g. v2_1.omni.hot.tg): query mt_metadata_base_by_token_id
     let decimals = if contract_str == "intents.near" {
-        ensure_ft_metadata(pool, network, token_id).await?
+        let registry_result = ensure_ft_metadata(pool, network, token_id)
+            .await
+            .map_err(|error| error.to_string());
+        match registry_result {
+            Ok(decimals) => decimals,
+            Err(registry_error_message) => {
+                // Owner discovery is authoritative and may surface a valid
+                // Intents asset before the bundled registry is updated. Fall
+                // back to the contract's NEP-245 metadata instead of making
+                // that one new asset block the DAO snapshot generation.
+                tracing::warn!(
+                    token_id,
+                    error = %registry_error_message,
+                    "intents token missing from static registry; using on-chain MT metadata"
+                );
+                ensure_nep245_token_decimals(pool, network, token_id, contract_str, token).await?
+            }
+        }
     } else {
         ensure_nep245_token_decimals(pool, network, token_id, contract_str, token).await?
     };
@@ -79,6 +105,29 @@ pub async fn get_balance_at_block(
 mod tests {
     use super::*;
     use crate::utils::test_utils::init_test_state;
+
+    #[test]
+    fn parses_intents_and_canonical_nep245_asset_ids() {
+        assert_eq!(
+            parse_nep245_asset_id("intents.near:nep141:btc.omft.near").unwrap(),
+            ("intents.near", "nep141:btc.omft.near")
+        );
+        assert_eq!(
+            parse_nep245_asset_id("nep245:v2_1.omni.hot.tg:4444119_wyixUKCL").unwrap(),
+            ("v2_1.omni.hot.tg", "4444119_wyixUKCL")
+        );
+        assert_eq!(
+            parse_nep245_asset_id("nep245:collectibles.near:collection:token:7").unwrap(),
+            ("collectibles.near", "collection:token:7")
+        );
+    }
+
+    #[test]
+    fn rejects_nep245_asset_ids_without_contract_or_token() {
+        assert!(parse_nep245_asset_id("nep245:contract.near").is_err());
+        assert!(parse_nep245_asset_id("nep245::token").is_err());
+        assert!(parse_nep245_asset_id("nep245:contract.near:").is_err());
+    }
 
     /// Verifies that balance queries for non-intents.near NEP-245 contracts work end-to-end:
     /// - decimals are fetched via mt_metadata_base_by_token_id (not ft_metadata)

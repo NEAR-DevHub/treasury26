@@ -107,7 +107,9 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
     // trust it when the event ledger records outflows since the last snapshot.
     if seen_assets.is_empty() && prior_balances.values().any(|b| !b.is_zero()) {
         let since = match latest_snapshot_at(&state.db_pool, dao_id).await {
-            Ok(at) => at.unwrap_or(chrono::DateTime::<Utc>::MIN_UTC),
+            // Epoch, not MIN_UTC: chrono's minimum is outside Postgres's
+            // timestamptz range and errors the query.
+            Ok(at) => at.unwrap_or(chrono::DateTime::<Utc>::UNIX_EPOCH),
             Err(e) => {
                 tracing::warn!("{} latest_snapshot_at failed: {}", dao_id, e);
                 return;
@@ -286,12 +288,15 @@ mod tests {
 
         sqlx::query(
             r#"
-            INSERT INTO gold_confidential_history_events
-                (history_event_id, dao_id, transaction_type, destination_asset,
-                 amount_out, recipient, refund_to, counterparty, deposit_address,
-                 quote_created_at)
-            VALUES ($1, $2, 'sent', 'nep141:wrap.near', 1, 'bob.near', $2,
-                    'bob.near', 'addr', $3)
+            INSERT INTO gold_treasury_ledger_events
+                (gold_event_key, dao_id, source_kind, history_visible,
+                 transaction_type, status, event_time, source_order,
+                 token_out, amount_out, token_out_user_balance_after,
+                 recipient, counterparty)
+            VALUES ('confidential:' || $1, $2, 'confidential_history_event', TRUE,
+                    'sent', 'success', $3, $1,
+                    'nep141:wrap.near', 1, 0,
+                    'bob.near', 'bob.near')
             "#,
         )
         .bind(bronze_id)

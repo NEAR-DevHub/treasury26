@@ -65,7 +65,6 @@ pub enum PublicTransferLegKind {
     Mint,
     Burn,
     WrapAndTransfer,
-    QuotePending,
 }
 
 impl PublicTransferLegKind {
@@ -75,7 +74,6 @@ impl PublicTransferLegKind {
             Self::Mint => "mint",
             Self::Burn => "burn",
             Self::WrapAndTransfer => "wrap_and_transfer",
-            Self::QuotePending => "quote_pending",
         }
     }
 
@@ -85,7 +83,6 @@ impl PublicTransferLegKind {
             "mint" => Ok(Self::Mint),
             "burn" => Ok(Self::Burn),
             "wrap_and_transfer" => Ok(Self::WrapAndTransfer),
-            "quote_pending" => Ok(Self::QuotePending),
             other => Err(format!("unknown public transfer leg kind: {}", other)),
         }
     }
@@ -176,7 +173,7 @@ impl PublicAmount {
     }
 }
 
-fn decimal_denominator(decimals: i32) -> BigDecimal {
+pub fn decimal_denominator(decimals: i32) -> BigDecimal {
     if decimals <= 0 {
         return BigDecimal::from(1);
     }
@@ -261,6 +258,9 @@ pub struct SilverProjectionCycleStats {
     pub rows_projected: u64,
     pub rows_deleted: u64,
     pub errors_written: u64,
+    /// Accounts whose ledger changed this cycle — the head anchor check
+    /// runs against exactly these.
+    pub changed_accounts: Vec<String>,
 }
 
 #[derive(Debug, Clone, sqlx::FromRow)]
