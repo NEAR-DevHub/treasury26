@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use crate::handlers::balance_changes::completeness;
 use crate::handlers::balance_changes::confidential_list;
+use crate::handlers::balance_changes::confidential_list_legacy;
 use crate::handlers::balance_changes::gap_filler;
 use crate::handlers::balance_changes::public_list;
 use crate::handlers::balance_changes::query_builder::*;
@@ -193,7 +194,11 @@ pub(crate) async fn get_balance_changes_from_source(
 ) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
     match source {
         BalanceChangesReadSource::Confidential => {
-            confidential_list::fetch_balance_change_legs(state, params).await
+            if state.env_vars.unified_gold_ledger_reads {
+                confidential_list::fetch_balance_change_legs(state, params).await
+            } else {
+                confidential_list_legacy::fetch_balance_change_legs(state, params).await
+            }
         }
         BalanceChangesReadSource::PublicGold => {
             public_list::fetch_balance_change_legs(state, params).await

@@ -19,8 +19,7 @@ pub struct EnvVars {
     pub disable_stats_generation: bool,
     pub disable_ft_lockup_scheduler: bool,
     pub disable_balance_changes_usd_backfill: bool,
-    pub disable_gold_public_usd_backfill: bool,
-    pub disable_gold_confidential_usd_backfill: bool,
+    pub disable_gold_ledger_usd_backfill: bool,
     /// Single public read switch. True serves public activity, charts, and
     /// asset balances from `gold_treasury_ledger_events`; false keeps the
     /// legacy `balance_changes` paths.
@@ -142,16 +141,12 @@ impl Default for EnvVars {
             .unwrap_or_else(|_| "false".to_string())
             .parse()
             .unwrap_or(false),
-            disable_gold_public_usd_backfill: std::env::var("DISABLE_GOLD_PUBLIC_USD_BACKFILL")
+            // DISABLE_GOLD_PUBLIC_USD_BACKFILL is the deployed legacy name.
+            disable_gold_ledger_usd_backfill: std::env::var("DISABLE_GOLD_LEDGER_USD_BACKFILL")
+                .or_else(|_| std::env::var("DISABLE_GOLD_PUBLIC_USD_BACKFILL"))
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
-            disable_gold_confidential_usd_backfill: std::env::var(
-                "DISABLE_GOLD_CONFIDENTIAL_USD_BACKFILL",
-            )
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false),
             unified_gold_ledger_reads: std::env::var("UNIFIED_GOLD_LEDGER_READS")
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()

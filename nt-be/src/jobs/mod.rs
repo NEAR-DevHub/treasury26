@@ -592,17 +592,6 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
-            "public-balance-verification",
-            schedule_every_secs(env_secs(
-                "PUBLIC_BALANCE_VERIFICATION_INTERVAL_SECONDS",
-                300
-            )),
-            handlers::public_balance_verification
-        );
-        monitor = register_cron_worker!(
-            monitor,
-            queues,
-            state,
             "staking-observation",
             schedule_every_secs(env_secs("STAKING_OBSERVATION_INTERVAL_SECONDS", 900)),
             handlers::staking_observation
@@ -654,9 +643,7 @@ fn configure_cron_runtime(
     //     );
     // }
 
-    if !state.env_vars.disable_gold_public_usd_backfill
-        || !state.env_vars.disable_gold_confidential_usd_backfill
-    {
+    if !state.env_vars.disable_gold_ledger_usd_backfill {
         monitor = register_cron_worker!(
             monitor,
             queues,

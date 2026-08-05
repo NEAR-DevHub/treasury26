@@ -288,12 +288,15 @@ mod tests {
 
         sqlx::query(
             r#"
-            INSERT INTO gold_confidential_history_events
-                (history_event_id, dao_id, transaction_type, destination_asset,
-                 amount_out, recipient, refund_to, counterparty, deposit_address,
-                 quote_created_at)
-            VALUES ($1, $2, 'sent', 'nep141:wrap.near', 1, 'bob.near', $2,
-                    'bob.near', 'addr', $3)
+            INSERT INTO gold_treasury_ledger_events
+                (gold_event_key, dao_id, source_kind, history_visible,
+                 transaction_type, status, event_time, source_order,
+                 token_out, amount_out, token_out_user_balance_after,
+                 recipient, counterparty)
+            VALUES ('confidential:' || $1, $2, 'confidential_history_event', TRUE,
+                    'sent', 'success', $3, $1,
+                    'nep141:wrap.near', 1, 0,
+                    'bob.near', 'bob.near')
             "#,
         )
         .bind(bronze_id)

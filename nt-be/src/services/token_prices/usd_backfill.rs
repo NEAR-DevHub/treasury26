@@ -35,15 +35,17 @@ pub struct BalanceChangesUsdBackfill {
 }
 
 /// Fills `gold_treasury_ledger_events.amount_in_usd / amount_out_usd` for
-/// rows the projector left NULL (price was missing at projection time).
-/// Hidden ledger rows are enriched too — they carry token/amount/event_time
-/// like activity rows and would otherwise keep NULL USD forever.
-pub struct GoldPublicUsdBackfill {
+/// rows the projectors (public and confidential) left NULL (price was
+/// missing at projection time). Hidden ledger rows are enriched too — they
+/// carry token/amount/event_time like activity rows and would otherwise keep
+/// NULL USD forever.
+pub struct GoldLedgerUsdBackfill {
     inner: UsdBackfill,
 }
 
-/// Fills `gold_confidential_history_events.amount_in_usd / amount_out_usd`
-/// for rows whose 1Click quote carried no nominal USD.
+// TODO(confidential-v2): remove with the dual-write.
+/// Legacy fill for `gold_confidential_history_events` while
+/// `UNIFIED_GOLD_LEDGER_READS` can still serve confidential reads from it.
 pub struct GoldConfidentialUsdBackfill {
     inner: UsdBackfill,
 }
@@ -312,13 +314,13 @@ impl BalanceChangesUsdBackfill {
     }
 }
 
-impl GoldPublicUsdBackfill {
+impl GoldLedgerUsdBackfill {
     pub fn new(pool: PgPool, service: Arc<TokenPriceService>) -> Self {
         Self {
             inner: UsdBackfill {
                 pool,
                 service,
-                label: "gold public usd backfill",
+                label: "gold ledger usd backfill",
                 distinct_ids_sql: r#"
                     SELECT DISTINCT token_in FROM gold_treasury_ledger_events
                     WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
@@ -564,7 +566,7 @@ mod tests {
             None
         );
 
-        let summary = GoldPublicUsdBackfill::new(pool.clone(), service)
+        let summary = GoldLedgerUsdBackfill::new(pool.clone(), service)
             .run()
             .await
             .expect("USD enrichment succeeds");

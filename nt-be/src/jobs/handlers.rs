@@ -86,22 +86,19 @@ pub async fn gold_usd_enrichment(
         Err(error) => errors.push(format!("price loading failed: {error}")),
     }
 
-    if state.env_vars.disable_gold_public_usd_backfill {
-        outcomes.push("public=disabled".to_string());
+    if state.env_vars.disable_gold_ledger_usd_backfill {
+        outcomes.push("ledger=disabled".to_string());
     } else {
-        let backfill = crate::services::GoldPublicUsdBackfill::new(
+        let backfill = crate::services::GoldLedgerUsdBackfill::new(
             state.db_pool.clone(),
             Arc::clone(&state.token_price_service),
         );
         match backfill.run().await {
-            Ok(summary) => outcomes.push(format!("public=[{summary}]")),
-            Err(error) => errors.push(format!("public USD fill failed: {error}")),
+            Ok(summary) => outcomes.push(format!("ledger=[{summary}]")),
+            Err(error) => errors.push(format!("ledger USD fill failed: {error}")),
         }
-    }
 
-    if state.env_vars.disable_gold_confidential_usd_backfill {
-        outcomes.push("confidential=disabled".to_string());
-    } else {
+        // TODO(confidential-v2): remove with the dual-write.
         let backfill = crate::services::GoldConfidentialUsdBackfill::new(
             state.db_pool.clone(),
             Arc::clone(&state.token_price_service),
@@ -205,8 +202,11 @@ pub async fn public_history_scheduler(
         crate::handlers::public_history::bronze::jobs::run_public_history_detector_cycle(&state)
             .await?;
     Ok(format!(
-        "outcomes={} batches={} latest_enqueued={}",
-        stats.outcomes_seen, stats.batches_processed, stats.latest_enqueued
+        "outcomes={} batches={} latest_enqueued={} confidential_marked={}",
+        stats.outcomes_seen,
+        stats.batches_processed,
+        stats.latest_enqueued,
+        stats.confidential_marked
     ))
 }
 
@@ -297,30 +297,6 @@ pub async fn staking_observation(
     ))
 }
 
-/// On-chain verification of the public balance ledger: full-history gates
-/// for unverified DAOs, head drift checks for verified ones.
-pub async fn public_balance_verification(
-    _t: Tick,
-    state: Data<Arc<AppState>>,
-) -> Result<String, BoxDynError> {
-    let verifier = crate::handlers::public_history::verification::BalanceVerifier::new(
-        &state.db_pool,
-        &state.archival_network,
-        state.env_vars.public_native_verification_tolerance_near,
-    );
-    let stats = verifier.run_cycle().await?;
-    Ok(format!(
-        "gates_run={} passed={} failed={} skipped_stale={} head_checks={} head_failed={} rebases={}",
-        stats.gates_run,
-        stats.gates_passed,
-        stats.gates_failed,
-        stats.gates_skipped_stale_watermark,
-        stats.head_checks_run,
-        stats.head_checks_failed,
-        stats.rebases_written,
-    ))
-}
-
 /// Historical chart prices. Deliberately readiness-neutral: missing prices
 /// never make an otherwise authoritative balance dataset unready.
 pub async fn price_history_backfill(
@@ -357,7 +333,8 @@ pub async fn public_gold_projection(
     for account_id in stats.changed_accounts {
         state.publish_treasury_projection_updated(account_id).await;
     }
-    Ok(format!(
+
+    let projection = format!(
         "seen={} projected={} skipped_locked={} failed={} changed={} rows_projected={} rows_deleted={} errors={}",
         stats.accounts_seen,
         stats.accounts_projected,
@@ -366,8 +343,33 @@ pub async fn public_gold_projection(
         changed,
         stats.rows_projected,
         stats.rows_deleted,
-        stats.errors_written
-    ))
+        stats.errors_written,
+    );
+    if changed == 0 {
+        return Ok(projection);
+    }
+
+    // On-chain verification (full-history gates for unverified DAOs, head
+    // drift checks for verified ones) runs inline whenever the ledger
+    // changed, not on a timer. Failed gates retry on the next change.
+    let verifier = crate::handlers::public_history::verification::BalanceVerifier::new(
+        &state.db_pool,
+        &state.archival_network,
+        state.env_vars.public_native_verification_tolerance_near,
+    );
+    match verifier.run_cycle().await {
+        Ok(vstats) => Ok(format!(
+            "{projection} gates_run={} gates_passed={} gates_failed={} head_checks={} head_failed={}",
+            vstats.gates_run,
+            vstats.gates_passed,
+            vstats.gates_failed,
+            vstats.head_checks_run,
+            vstats.head_checks_failed,
+        )),
+        Err(error) => {
+            Err(format!("verification failed: {error}; completed stages: {projection}").into())
+        }
+    }
 }
 
 /// Reconciles stale public DAO proposal statuses.

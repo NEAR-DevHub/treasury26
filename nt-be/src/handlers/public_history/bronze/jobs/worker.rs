@@ -610,8 +610,8 @@ async fn handle_latest_job(
 
             // First verification is event-driven: a freshly projected
             // treasury gets its gate immediately (charts + ledger-fed
-            // dashboard in the same pass), instead of waiting up to a full
-            // verification cron interval. No-op for already-gated accounts.
+            // dashboard in the same pass), instead of waiting for the next
+            // projection cycle. No-op for already-gated accounts.
             let verifier = BalanceVerifier::new(
                 &context.state.db_pool,
                 &context.state.archival_network,
@@ -629,7 +629,7 @@ async fn handle_latest_job(
                     tracing::warn!(
                         account_id,
                         %error,
-                        "verification nudge failed; cron will retry"
+                        "verification nudge failed; retried on the next ledger change"
                     );
                 }
             }

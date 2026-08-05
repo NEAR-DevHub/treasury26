@@ -111,8 +111,9 @@ pub async fn mark_backfilled_confidential_daos_gold_dirty(
                   OR gchc.gold_dirty_since IS NOT NULL
                   OR NOT EXISTS (
                       SELECT 1
-                      FROM gold_confidential_history_events ghe
+                      FROM gold_treasury_ledger_events ghe
                       WHERE ghe.dao_id = ma.account_id
+                        AND ghe.source_kind = 'confidential_history_event'
                   )
               )
         ),

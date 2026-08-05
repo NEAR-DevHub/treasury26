@@ -38,7 +38,7 @@ pub use public_dashboard::{
 pub use sponsor_alerts::run_sponsor_monitor_cycle;
 pub use testing_accounts::{mark_testing_if_needed, should_mark_testing};
 pub use token_prices::{
-    BalanceChangesUsdBackfill, GoldConfidentialUsdBackfill, GoldPublicUsdBackfill,
+    BalanceChangesUsdBackfill, GoldConfidentialUsdBackfill, GoldLedgerUsdBackfill,
     HistoricalPriceBackfill, TokenPriceIngestor, TokenPriceService,
     spawn_token_price_ingest_worker,
 };

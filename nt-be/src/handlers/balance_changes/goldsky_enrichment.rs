@@ -545,7 +545,7 @@ async fn update_confidential_intent_proposal(
     Ok(false)
 }
 
-async fn handle_confidential_add_proposal(
+pub(crate) async fn handle_confidential_add_proposal(
     app_pool: &PgPool,
     network: &NetworkConfig,
     dao_id: &str,

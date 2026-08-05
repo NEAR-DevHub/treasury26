@@ -179,8 +179,9 @@ pub async fn mark_confidential_intent_submitted(
 ///
 /// Returns `Ok(true)` if a row was written, `Ok(false)` if no matching intent
 /// record was found.
-// TODO(confidential-v2): remove this legacy public `balance_changes` writer
-// once `gold_confidential_history_events` backs list/chart/export reads.
+// TODO(confidential-v2): remove this legacy public `balance_changes` writer.
+// List/chart/export reads are already backed by the unified ledger; the
+// remaining consumer is the deposit-correction backfill source.
 #[allow(clippy::too_many_arguments)]
 pub async fn handle_confidential_outgoing(
     app_pool: &PgPool,

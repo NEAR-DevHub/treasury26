@@ -60,14 +60,6 @@ const GOLD_RAW_IDS_SQL: &str = r#"
     FROM gold_treasury_ledger_events
     WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
     UNION
-    SELECT DISTINCT origin_asset
-    FROM gold_confidential_history_events
-    WHERE origin_asset IS NOT NULL AND amount_in_usd IS NULL
-    UNION
-    SELECT DISTINCT destination_asset
-    FROM gold_confidential_history_events
-    WHERE amount_out_usd IS NULL
-    UNION
     SELECT DISTINCT asset
     FROM silver_balance_history
 "#;
@@ -95,14 +87,6 @@ const GOLD_MISSING_PAIRS_SQL: &str = r#"
         SELECT token_out, event_time
         FROM gold_treasury_ledger_events
         WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
-        UNION ALL
-        SELECT origin_asset, COALESCE(proposal_executed_at, quote_created_at)
-        FROM gold_confidential_history_events
-        WHERE origin_asset IS NOT NULL AND amount_in_usd IS NULL
-        UNION ALL
-        SELECT destination_asset, COALESCE(proposal_executed_at, quote_created_at)
-        FROM gold_confidential_history_events
-        WHERE amount_out_usd IS NULL
         UNION ALL
         SELECT asset, block_time
         FROM silver_balance_history
@@ -269,9 +253,6 @@ impl HistoricalPriceBackfill {
             FROM (
                 SELECT MIN(event_time) AS at
                 FROM gold_treasury_ledger_events
-                UNION ALL
-                SELECT MIN(COALESCE(proposal_executed_at, quote_created_at)) AS at
-                FROM gold_confidential_history_events
                 UNION ALL
                 SELECT MIN(block_time) AS at
                 FROM silver_balance_history
@@ -870,24 +851,22 @@ mod tests {
     fn raw_id_discovery_reads_gold_and_ledger_tokens() {
         assert!(GOLD_RAW_IDS_SQL.contains("token_in"));
         assert!(GOLD_RAW_IDS_SQL.contains("token_out"));
-        assert!(GOLD_RAW_IDS_SQL.contains("origin_asset"));
-        assert!(GOLD_RAW_IDS_SQL.contains("destination_asset"));
         assert!(GOLD_RAW_IDS_SQL.contains("gold_treasury_ledger_events"));
-        assert!(GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
         assert!(GOLD_RAW_IDS_SQL.contains("silver_balance_history"));
         assert!(!GOLD_RAW_IDS_SQL.contains("silver_balance_history\n    WHERE"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_out_usd IS NULL"));
         assert!(!GOLD_RAW_IDS_SQL.contains("balance_changes"));
+        // Confidential rows live in the same unified table with no
+        // source_kind filter, so no dedicated arms remain.
+        assert!(!GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
     }
 
     #[test]
     fn missing_pair_discovery_uses_history_timestamps_and_dedupes_buckets() {
         assert!(GOLD_MISSING_PAIRS_SQL.contains("SELECT DISTINCT m.token_ref"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("event_time"));
-        assert!(
-            GOLD_MISSING_PAIRS_SQL.contains("COALESCE(proposal_executed_at, quote_created_at)")
-        );
+        assert!(!GOLD_MISSING_PAIRS_SQL.contains("gold_confidential_history_events"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("floor(extract(epoch FROM s.at) / 300) * 300"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("LEFT JOIN token_prices"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("token_price_backfill_misses"));
