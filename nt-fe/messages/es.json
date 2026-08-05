@@ -275,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "No se pudo obtener la dirección de depósito para el activo y la red seleccionados.",
-            "fetchFailed": "Error al obtener la dirección de depósito. Inténtalo de nuevo."
+            "fetchFailed": "Error al obtener la dirección de depósito. Inténtalo de nuevo.",
+            "loginRequired": "Inicia sesión para generar una dirección de depósito de un solo uso."
         },
         "title": "Depositar",
         "subtitle": "Selecciona activo y red para ver la dirección de depósito",
@@ -288,7 +289,7 @@
         "depositAddressHeading": "Dirección de depósito",
         "depositAddressSubtitle": "Comprueba siempre dos veces tu dirección de depósito.",
         "depositAddressSubtitleConfidential": "<semibold>Dirección de depósito de un solo uso.</semibold> Reutilizar esta dirección o enviar fondos después del vencimiento puede provocar una pérdida permanente de fondos.",
-        "depositAddressSubtitleConfidentialExpiry": "Válida durante 3 días desde el momento de su generación. Expira en: {expiresIn} restantes",
+        "depositAddressSubtitleConfidentialExpiry": "Válida durante 14 días desde la generación. Caduca en: {expiresIn} restantes",
         "singleUseAcknowledgement": "Usaré esta dirección solo una vez",
         "addressLabel": "Dirección",
         "addressCopied": "Dirección copiada al portapapeles",
@@ -311,7 +312,90 @@
             "fiatAnswer": "Por el momento no, pero estamos trabajando para habilitar depósitos con fiat pronto. Mantente atento: ¡ya viene! 🚀",
             "arrivalQuestion": "¿Cuánto tarda en llegar un depósito?",
             "arrivalAnswer": "El tiempo de procesamiento depende de la red."
-        }
+        },
+        "back": "Atrás",
+        "publicAddressTitle": "Dirección de depósito {symbol} en {network}",
+        "publicAddressSubtitle": "Envía solo este token, en esta red, a la dirección de abajo.",
+        "oneTimeAddressTitle": "Dirección de depósito de un solo uso {symbol} en la red {network}",
+        "oneTimeAddressSubtitle": "Envía solo este token, en esta red, a la dirección de abajo.",
+        "confidentialTrezuTitle": "Depósito desde Trezu confidencial en la red near.com",
+        "confidentialTrezuSubtitle": "Recibe cualquier activo desde Trezu confidencial.",
+        "confidentialNearcomTitle": "Depósito desde near.com confidencial en la red interna",
+        "confidentialNearcomSubtitle": "Recibe cualquier activo desde near.com confidencial.",
+        "oneTimeSectionTitle": "Dirección de depósito confidencial de un solo uso",
+        "oneTimeSectionSubtitle": "Úsala solo una vez; todo lo posterior al primer depósito se pierde.",
+        "internalAddressTitle": "Esta es tu dirección confidencial interna",
+        "generateAddress": "Generar dirección",
+        "showAddress": "Mostrar dirección",
+        "copy": "Copiar",
+        "share": "Compartir",
+        "linkCopied": "Enlace copiado al portapapeles",
+        "minDepositValue": "Depósito mínimo <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>No</bold> envíes un depósito de prueba",
+        "doNotReuseAddress": "<bold>No</bold> reutilices, guardes, agregues a la lista blanca ni compartas la dirección",
+        "doNotReuseAddressShort": "<bold>No</bold> reutilices, guardes ni agregues a la lista blanca la dirección",
+        "oneTimeAckCheckbox": "Entiendo que esta es una dirección de un solo uso y debo enviar al menos {amount} {symbol} en una sola transferencia.",
+        "oneTimeAckCheckboxNoMin": "Entiendo que esta es una dirección de un solo uso que debo usar en una sola transferencia.",
+        "onlySendAssetNetwork": "Envía solo <bold>{symbol}</bold> en la red <bold>{network}</bold>. Otros activos o redes provocarán la pérdida de fondos.",
+        "expiresInDays": "Caduca en <bold>{days} días</bold> – <bold>aunque no se use</bold>.",
+        "createNewAddressHint": "¿Necesitas otros datos de depósito? <link>Crear una nueva dirección</link>. Crear otra no desactiva esta.",
+        "receivesOnlyConfidential": "Recibe fondos solo de cuentas Trezu o near.com confidenciales",
+        "receivesOnlyConfidentialSub": "Reutilizable. No caduca.",
+        "anythingElseLost": "Todo lo enviado desde otro lugar se pierde",
+        "anythingElseLostSub": "Exchanges, carteras públicas, otras redes: no se puede recuperar.",
+        "confidentialAckCheckbox": "Entiendo que los depósitos desde fuera de Trezu o near.com confidenciales se perderán.",
+        "onlyFromConfidentialTrezu": "Solo desde <bold>Trezu</bold> confidencial",
+        "onlyFromConfidentialNearcom": "Solo desde <bold>near.com</bold> confidencial",
+        "reusableDoesntExpire": "<bold>Reutilizable.</bold> No caduca",
+        "fundsOutsideTrezuLost": "Los fondos enviados desde fuera de Trezu confidencial se perderán",
+        "fundsOutsideNearcomLost": "Los fondos enviados desde fuera de near.com confidencial se perderán",
+        "publicNetworkRecommendation": "Deposita solo desde la red <bold>{network}</bold>. Empieza con una transacción de prueba pequeña antes de enviar el importe completo.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Desde una cartera pública",
+                "subtitle": "Crear dirección de depósito de un solo uso"
+            },
+            "confidentialUser": {
+                "title": "Desde usuario confidencial",
+                "subtitle": "Depósito desde Trezu y near.com confidenciales"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Desde Trezu confidencial",
+            "nearcom": "Desde near.com confidencial",
+            "short": "Desde confidencial"
+        },
+        "guestBanner": {
+            "title": "Estás viendo como invitado",
+            "description": "Esta dirección pertenece a la treasury de otra persona. Comprueba dos veces antes de enviar."
+        },
+        "transfer": {
+            "title": "Transferir a la Treasury",
+            "waitingForPayment": "Esperando el pago",
+            "youSendFromPublic": "Envías desde cualquier cartera pública",
+            "youSend": "Envías",
+            "goesTo": "Va a",
+            "assetOnNetwork": "{symbol} en la red {network}",
+            "anyAsset": "Cualquier activo",
+            "onNetwork": "en la red {network}",
+            "onNearcomNetwork": "en la red near.com",
+            "anyAssetOnNearcom": "Cualquier activo en la red near.com",
+            "securedOnTrezu": "Asegurado en Trezu",
+            "payWithTrezu": "Pagar con Trezu",
+            "payRequiresTreasury": "Inicia sesión con una treasury de Trezu para pagar.",
+            "copyLink": "Copiar enlace",
+            "titleConfidential": "Transferir a la Treasury confidencial",
+            "chooseTreasuryTitle": "Elegir una Treasury",
+            "chooseTreasuryDescription": "¿Desde qué treasury sale este pago?",
+            "noMemberTreasuries": "Aún no eres miembro de ninguna treasury.",
+            "createTreasury": "Crear una treasury",
+            "expired": "Caducado",
+            "used": "Usado",
+            "linkInactiveTitle": "Este enlace ya no está activo",
+            "linkInactiveDescription": "Para realizar este pago, pide a la persona que te envió el enlace uno nuevo."
+        },
+        "expiresInRemaining": "Caduca en <time>{duration}</time> – <bold>aunque no se use</bold>.",
+        "addressExpired": "Esta dirección ha caducado."
     },
     "assetDetails": {
         "coinPrice": "Precio de la moneda",
