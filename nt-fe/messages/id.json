@@ -106,7 +106,8 @@
         "wallet": "Dompet",
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
-        "disconnect": "Putuskan"
+        "disconnect": "Keluar",
+        "myAccount": "Akun Saya"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Dompet Trezu",
             "description": "Tandatangani usulan treasury via Trezu"
+        },
+        "account": {
+            "title": "Akun Saya",
+            "description": "Kelola profil dan pengaturan pribadi Anda"
         }
     },
     "depositModal": {
@@ -982,7 +987,11 @@
             "fileReadError": "Kesalahan membaca file. Silakan coba lagi.",
             "primaryColor": "Warna Utama",
             "primaryColorDescription": "Tetapkan warna utama untuk elemen antarmuka treasury Anda. Warna ini akan digunakan dalam mode terang dan gelap, jadi pertimbangkan kontras saat memilih corak netral.",
-            "selectColorLabel": "Pilih warna {color}"
+            "selectColorLabel": "Pilih warna {color}",
+            "saveChanges": "Simpan perubahan",
+            "saving": "Menyimpan...",
+            "savedToast": "Perubahan Anda telah disimpan.",
+            "saveFailed": "Tidak dapat menyimpan perubahan. Coba lagi."
         },
         "voting": {
             "validation": {
@@ -2545,5 +2554,23 @@
             "min": "{label} minimal harus {min}",
             "max": "{label} maksimal harus {max}"
         }
+    },
+    "account": {
+        "personalSettings": "Pengaturan pribadi",
+        "uploadAvatar": "Unggah avatar",
+        "removeAvatar": "Hapus avatar",
+        "uploading": "Mengunggah...",
+        "displayName": "Nama tampilan",
+        "displayNamePlaceholder": "Masukkan nama tampilan",
+        "myWallet": "Dompet saya",
+        "saveChanges": "Simpan perubahan",
+        "saving": "Menyimpan...",
+        "saveSuccess": "Perubahan Anda telah disimpan.",
+        "saveError": "Tidak dapat menyimpan perubahan. Coba lagi.",
+        "invalidImage": "Pilih file gambar yang valid.",
+        "imageTooLarge": "Gambar harus 2 MB atau lebih kecil.",
+        "signInRequired": "Hubungkan dompet Anda untuk mengelola akun.",
+        "avatarUploaded": "Avatar berhasil diunggah",
+        "uploadError": "Terjadi kesalahan saat mengunggah gambar, coba lagi."
     }
 }

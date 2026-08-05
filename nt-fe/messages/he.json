@@ -106,7 +106,8 @@
         "wallet": "ארנק",
         "termsOfService": "תנאי שימוש",
         "privacyPolicy": "מדיניות פרטיות",
-        "disconnect": "התנתקות"
+        "disconnect": "התנתקות",
+        "myAccount": "החשבון שלי"
     },
     "auth": {
         "noWallet": "חבר את הארנק שלך",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "ארנק Trezu",
             "description": "חתום על הצעות אוצר באמצעות Trezu"
+        },
+        "account": {
+            "title": "החשבון שלי",
+            "description": "נהל את הפרופיל וההגדרות האישיות שלך"
         }
     },
     "depositModal": {
@@ -982,7 +987,11 @@
             "fileReadError": "שגיאה בקריאת הקובץ. אנא נסה שוב.",
             "primaryColor": "צבע ראשי",
             "primaryColorDescription": "הגדר את הצבע הראשי עבור רכיבי הממשק של האוצר שלך. צבע זה ישמש במצבים בהירים וכהים כאחד, אז שמור על ניגודיות בחירה בגוונים ניטרליים.",
-            "selectColorLabel": "בחר צבע {color}"
+            "selectColorLabel": "בחר צבע {color}",
+            "saveChanges": "שמור שינויים",
+            "saving": "שומר...",
+            "savedToast": "השינויים שלך נשמרו.",
+            "saveFailed": "לא ניתן לשמור את השינויים. נסה שוב."
         },
         "voting": {
             "validation": {
@@ -2545,5 +2554,23 @@
             "min": "{label} חייב להיות לפחות {min}",
             "max": "{label} חייב להיות לכל היותר {max}"
         }
+    },
+    "account": {
+        "personalSettings": "הגדרות אישיות",
+        "uploadAvatar": "העלה תמונת פרופיל",
+        "removeAvatar": "הסר תמונת פרופיל",
+        "uploading": "מעלה...",
+        "displayName": "שם תצוגה",
+        "displayNamePlaceholder": "הזן שם תצוגה",
+        "myWallet": "הארנק שלי",
+        "saveChanges": "שמור שינויים",
+        "saving": "שומר...",
+        "saveSuccess": "השינויים שלך נשמרו.",
+        "saveError": "לא ניתן לשמור את השינויים. נסה שוב.",
+        "invalidImage": "בחר קובץ תמונה תקין.",
+        "imageTooLarge": "התמונה חייבת להיות עד 2 MB.",
+        "signInRequired": "חבר את הארנק כדי לנהל את החשבון שלך.",
+        "avatarUploaded": "תמונת הפרופיל הועלתה בהצלחה",
+        "uploadError": "אירעה שגיאה בהעלאת התמונה, נסה שוב."
     }
 }

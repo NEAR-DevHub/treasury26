@@ -492,7 +492,7 @@ export async function getRecentActivityRecipients(
 
 /**
  * Get treasury config for a specific treasury
- * Fetches from backend which queries the treasury contract for config data
+ * Prefers local `treasury_settings` DB overrides when present, else on-chain config.
  */
 export async function getTreasuryConfig(
     treasuryId: string,
@@ -512,6 +512,27 @@ export async function getTreasuryConfig(
         console.error(`Error getting treasury config for ${treasuryId}`, error);
         return null;
     }
+}
+
+export interface UpdateTreasurySettingsRequest {
+    treasuryId: string;
+    displayName: string;
+    flagLogo?: string | null;
+    primaryColor?: string | null;
+}
+
+/**
+ * Update treasury branding settings in the DB (no on-chain ChangeConfig proposal).
+ */
+export async function updateTreasurySettings(
+    body: UpdateTreasurySettingsRequest,
+): Promise<TreasuryConfig> {
+    const response = await axios.put<TreasuryConfig>(
+        `${BACKEND_API_BASE}/treasury/config`,
+        body,
+        { withCredentials: true },
+    );
+    return response.data;
 }
 
 /**
@@ -805,6 +826,27 @@ export async function getProfile(
         console.error(`Error getting profile for ${accountId}`, error);
         return null;
     }
+}
+
+export interface UpdateProfileRequest {
+    displayName?: string | null;
+    /** IPFS/https URL. `null` clears the avatar (including NEAR Social fallback). */
+    avatarUrl?: string | null;
+}
+
+/**
+ * Update the authenticated user's local profile (display name + avatar).
+ * Stored in `user_profiles` and overrides NEAR Social fields when set.
+ */
+export async function updateProfile(
+    body: UpdateProfileRequest,
+): Promise<ProfileData> {
+    const response = await axios.put<ProfileData>(
+        `${BACKEND_API_BASE}/user/profile`,
+        body,
+        { withCredentials: true },
+    );
+    return response.data;
 }
 
 export type PaymentStatus = "Pending" | { Paid: { block_height: number } };

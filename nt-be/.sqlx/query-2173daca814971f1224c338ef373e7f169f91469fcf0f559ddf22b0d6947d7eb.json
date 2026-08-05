@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT display_name, flag_logo, primary_color\n            FROM treasury_settings\n            WHERE account_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "flag_logo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "primary_color",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "2173daca814971f1224c338ef373e7f169f91469fcf0f559ddf22b0d6947d7eb"
+}
