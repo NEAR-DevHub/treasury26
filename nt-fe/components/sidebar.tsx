@@ -322,7 +322,12 @@ export function Sidebar({ onClose }: SidebarProps) {
                             />
                         </div>
                     ) : (
-                        <div className="rounded-2xl border border-transparent bg-gray-900 transition-colors duration-200 hover:bg-gray-950">
+                        <div
+                            className={cn(
+                                "rounded-2xl border border-transparent bg-gray-900 transition-colors duration-200 hover:bg-gray-950",
+                                dropdownOpen && "bg-gray-950",
+                            )}
+                        >
                             <TreasurySelector
                                 isOpen={dropdownOpen}
                                 onOpenChange={setDropdownOpen}
