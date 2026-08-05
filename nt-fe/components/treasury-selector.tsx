@@ -53,7 +53,7 @@ function TreasuryOption({
     return (
         <SelectItem
             value={daoId}
-            className="cursor-pointer gap-3 rounded-md px-2 py-2 text-gray-900 focus:bg-black/[0.05] focus:text-gray-900 data-[state=checked]:bg-black/[0.05] dark:text-white dark:focus:bg-white/[0.07] dark:focus:text-white dark:data-[state=checked]:bg-white/[0.07] [&>span:first-child]:hidden"
+            className="cursor-pointer gap-3 rounded-md px-2 py-2 text-gray-900 focus:bg-black/[0.05] focus:text-gray-900 data-[state=checked]:bg-black/[0.05] dark:text-white dark:focus:bg-white/[0.07] dark:focus:text-white dark:data-[state=checked]:bg-white/[0.07] [&>span:first-child]:hidden *:[span]:last:min-w-0"
         >
             <div className="flex min-w-0 items-center gap-3">
                 <TreasuryLogo
@@ -64,7 +64,7 @@ function TreasuryOption({
                     fallbackIconClassName="size-5 text-white"
                 />
                 <div className="flex min-w-0 flex-col items-start">
-                    <span className="max-w-full truncate font-semibold text-sm text-gray-900 dark:text-white">
+                    <span className="line-clamp-1 max-w-full break-all font-semibold text-sm text-gray-900 dark:text-white">
                         {name ?? daoId}
                     </span>
                     <TreasuryBalance
