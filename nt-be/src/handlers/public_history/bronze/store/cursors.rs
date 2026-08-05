@@ -40,7 +40,9 @@ pub async fn load_public_history_cursor(
             source::text AS source,
             backward_cursor,
             backfill_done,
-            last_seen_block_height
+            last_seen_block_height,
+            latest_refresh_at,
+            latest_refresh_cutoff_block_height
         FROM bronze_public_history_cursors
         WHERE account_id = $1
           AND source = $2::public_history_source
@@ -120,6 +122,7 @@ pub async fn record_public_history_poll_result(
     account_id: &str,
     source: PublicHistorySource,
     last_seen_block_height: Option<i64>,
+    verified_provider_head: i64,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
@@ -127,12 +130,16 @@ pub async fn record_public_history_poll_result(
             account_id,
             source,
             last_seen_block_height,
+            latest_refresh_at,
+            latest_refresh_cutoff_block_height,
             updated_at
         )
         VALUES (
             $1,
             $2::public_history_source,
             $3,
+            NOW(),
+            $4,
             NOW()
         )
         ON CONFLICT (account_id, source) DO UPDATE SET
@@ -144,12 +151,18 @@ pub async fn record_public_history_poll_result(
                 bronze_public_history_cursors.last_seen_block_height,
                 EXCLUDED.last_seen_block_height
             ),
+            latest_refresh_at = EXCLUDED.latest_refresh_at,
+            latest_refresh_cutoff_block_height = GREATEST(
+                bronze_public_history_cursors.latest_refresh_cutoff_block_height,
+                EXCLUDED.latest_refresh_cutoff_block_height
+            ),
             updated_at = NOW()
         "#,
     )
     .bind(account_id)
     .bind(source.as_str())
     .bind(last_seen_block_height)
+    .bind(verified_provider_head)
     .execute(pool)
     .await?;
 
@@ -232,6 +245,30 @@ mod tests {
             .await?;
         assert!(force_full);
         assert!(recompute_from.is_none());
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn only_a_successful_latest_drain_sets_latest_refresh_at(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let account_id = "latest-refresh-cutoff.sputnik-dao.near";
+        let source = PublicHistorySource::NearblocksFt;
+
+        save_public_backfill_progress(&pool, account_id, source, None, true).await?;
+        let after_backfill = load_public_history_cursor(&pool, account_id, source)
+            .await?
+            .expect("backfill should create a cursor");
+        assert!(after_backfill.latest_refresh_at.is_none());
+
+        record_public_history_poll_result(&pool, account_id, source, Some(123), 150).await?;
+        let after_latest = load_public_history_cursor(&pool, account_id, source)
+            .await?
+            .expect("latest refresh should keep the cursor");
+        assert_eq!(after_latest.last_seen_block_height, Some(123));
+        assert!(after_latest.latest_refresh_at.is_some());
+        assert_eq!(after_latest.latest_refresh_cutoff_block_height, Some(150));
 
         Ok(())
     }

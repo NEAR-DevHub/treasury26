@@ -1540,6 +1540,27 @@ export async function searchReceipt(
     }
 }
 
+/**
+ * Fire-and-forget nudge telling the backend a proposal was just submitted or
+ * voted on. The backend fetches the proposal from chain RPC (nothing here is
+ * trusted) and projects it, so an approved payment/exchange shows up in
+ * history as a pending row within seconds instead of waiting for the
+ * indexer. Never awaited, never surfaces errors — the indexer remains the
+ * safety net.
+ */
+export function refreshProposal(accountId: string, proposalId: number): void {
+    if (!Number.isInteger(proposalId) || proposalId < 0) {
+        return;
+    }
+    void axios
+        .post(
+            `${BACKEND_API_BASE}/proposals/refresh`,
+            { accountId, proposalId },
+            { withCredentials: true },
+        )
+        .catch(() => {});
+}
+
 export interface RelayDelegateActionResponse {
     success: boolean;
     error?: string;

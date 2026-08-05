@@ -145,13 +145,15 @@ async fn load_seen_token_ids(
         FROM gold_confidential_balance_snapshots
         WHERE asset IS NOT NULL
         UNION
-        SELECT DISTINCT origin_asset AS token_id
-        FROM gold_confidential_history_events
-        WHERE origin_asset IS NOT NULL
+        SELECT DISTINCT token_in AS token_id
+        FROM gold_treasury_ledger_events
+        WHERE source_kind = 'confidential_history_event'
+          AND token_in IS NOT NULL
         UNION
-        SELECT DISTINCT destination_asset AS token_id
-        FROM gold_confidential_history_events
-        WHERE destination_asset IS NOT NULL
+        SELECT DISTINCT token_out AS token_id
+        FROM gold_treasury_ledger_events
+        WHERE source_kind = 'confidential_history_event'
+          AND token_out IS NOT NULL
         "#,
     )
     .fetch_all(pool)

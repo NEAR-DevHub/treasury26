@@ -116,7 +116,7 @@ pub async fn build_confidential_chart_data(
 /// response shape, with snapshot freshness surfaced as `chartMeta`. When the
 /// newest snapshot has fallen behind the snapshot dedup window, a refresh is
 /// spawned in the background so the next load is fresh.
-pub async fn build_confidential_chart_response(
+pub async fn build_confidential_snapshot_chart_response(
     state: &Arc<AppState>,
     account_id: &str,
     start_time: DateTime<Utc>,
@@ -153,6 +153,7 @@ pub async fn build_confidential_chart_response(
         chart_meta: Some(ChartMeta {
             status,
             last_snapshot_at,
+            coverage_start: None,
         }),
     })
 }
@@ -317,7 +318,7 @@ mod tests {
         )
         .await;
 
-        let response = build_confidential_chart_response(
+        let response = build_confidential_snapshot_chart_response(
             &state,
             DAO,
             now - Duration::days(3),
@@ -378,7 +379,7 @@ mod tests {
         let state = Arc::new(build_test_state(pool.clone()));
         let now = Utc::now();
 
-        let response = build_confidential_chart_response(
+        let response = build_confidential_snapshot_chart_response(
             &state,
             DAO,
             now - Duration::days(1),

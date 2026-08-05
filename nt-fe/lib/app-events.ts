@@ -60,6 +60,34 @@ export function parseAppEvent(raw: string): AppEvent | null {
     }
 }
 
+/**
+ * Invalidate every query the projection-updated event covers. Also used as
+ * a catch-up on SSE reconnect: events emitted while the stream was down are
+ * never replayed, so a reconnect must assume state changed in the gap.
+ */
+export async function invalidateTreasuryScopedQueries(
+    queryClient: QueryClient,
+    accountId: string,
+) {
+    await Promise.all([
+        queryClient.invalidateQueries({
+            queryKey: ["recentActivity", accountId],
+        }),
+        queryClient.invalidateQueries({
+            queryKey: ["treasuryAssets", accountId],
+        }),
+        queryClient.invalidateQueries({
+            queryKey: ["balanceChart", accountId],
+        }),
+        queryClient.invalidateQueries({
+            queryKey: ["recentActivitySenders", accountId],
+        }),
+        queryClient.invalidateQueries({
+            queryKey: ["recentActivityRecipients", accountId],
+        }),
+    ]);
+}
+
 async function invalidateTreasuryProjectionQueries(
     queryClient: QueryClient,
     event: TreasuryProjectionUpdatedEvent,
@@ -69,23 +97,7 @@ async function invalidateTreasuryProjectionQueries(
         return;
     }
 
-    await Promise.all([
-        queryClient.invalidateQueries({
-            queryKey: ["recentActivity", event.accountId],
-        }),
-        queryClient.invalidateQueries({
-            queryKey: ["treasuryAssets", event.accountId],
-        }),
-        queryClient.invalidateQueries({
-            queryKey: ["balanceChart", event.accountId],
-        }),
-        queryClient.invalidateQueries({
-            queryKey: ["recentActivitySenders", event.accountId],
-        }),
-        queryClient.invalidateQueries({
-            queryKey: ["recentActivityRecipients", event.accountId],
-        }),
-    ]);
+    await invalidateTreasuryScopedQueries(queryClient, event.accountId);
 }
 
 export async function handleAppEvent(

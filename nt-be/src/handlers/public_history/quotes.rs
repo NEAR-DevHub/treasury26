@@ -220,7 +220,6 @@ pub fn quote_amount_matches(expected: Option<&BigDecimal>, actual_raw: &BigDecim
 pub const QUOTE_LEG_MATCH_SQL: &str = r#"
     dp.dao_id = l.account_id
     AND l.direction = 'outgoing'
-    AND l.leg_kind <> 'quote_pending'
     AND dp.quote_deposit_address = l.counterparty
     AND dp.quote_metadata->'proposalQuote' IS NOT NULL
     AND dp.quote_metadata->'proposalQuote'->>'originAmountRaw' ~ '^[0-9]+(\.[0-9]+)?$'

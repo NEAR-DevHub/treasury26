@@ -28,7 +28,7 @@ use crate::handlers::balance_changes::query_builder::{
     BalanceChangeFilters, FROM_ACCOUNT_EXPR, RELAYER_ACCOUNT, TO_ACCOUNT_EXPR, build_count_query,
     build_where_conditions,
 };
-use crate::handlers::balance_changes::{confidential_list, public_list};
+use crate::handlers::balance_changes::{confidential_list, confidential_list_legacy, public_list};
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{
@@ -125,6 +125,8 @@ pub struct ChartMeta {
     pub status: ChartStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_snapshot_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coverage_start: Option<DateTime<Utc>>,
 }
 
 /// Chart response with metadata
@@ -149,16 +151,18 @@ pub async fn get_balance_chart(
 ) -> Result<Json<ChartResponse>, (StatusCode, String)> {
     user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
-    let read_source = resolve_balance_changes_read_source(&state, params.account_id.as_str())
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Confidential charts are served from trusted balance snapshots — the
-    // event ledger can drift from real balances (missed deposits) and must
-    // not drive the chart.
-    if read_source == BalanceChangesReadSource::Confidential {
-        let response =
-            crate::handlers::intents::confidential::gold::snapshots::build_confidential_chart_response(
+    // Decide confidentiality independently from the balance-history read
+    // source. Public snapshot reads must return before the legacy/PublicGold
+    // resolver so the enabled path cannot fall through to `balance_changes`.
+    let is_confidential =
+        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str())
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if is_confidential {
+        let response = if state.env_vars.unified_gold_ledger_reads {
+            crate::handlers::public_history::charts::chart::build_confidential_chart_response(
                 &state,
                 params.account_id.as_str(),
                 params.start_time,
@@ -166,9 +170,39 @@ pub async fn get_balance_chart(
                 &params.interval,
                 params.token_ids.as_ref(),
             )
-            .await?;
+            .await?
+        } else {
+            crate::handlers::intents::confidential::gold::snapshots::build_confidential_snapshot_chart_response(
+                &state,
+                params.account_id.as_str(),
+                params.start_time,
+                params.end_time,
+                &params.interval,
+                params.token_ids.as_ref(),
+            )
+            .await?
+        };
         return Ok(Json(response));
     }
+
+    if state.env_vars.unified_gold_ledger_reads {
+        let response = crate::handlers::public_history::charts::chart::build_public_chart_response(
+            &state,
+            params.account_id.as_str(),
+            params.start_time,
+            params.end_time,
+            &params.interval,
+            params.token_ids.as_ref(),
+        )
+        .await?;
+        return Ok(Json(response));
+    }
+
+    let read_source = resolve_balance_changes_read_source(&state, params.account_id.as_str())
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    debug_assert_ne!(read_source, BalanceChangesReadSource::Confidential);
 
     let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
@@ -1854,9 +1888,18 @@ pub async fn get_recent_activity(
     };
     let total: i64 = match read_source {
         BalanceChangesReadSource::Confidential => {
-            confidential_list::count_balance_change_legs(&state.db_pool, &source_count_query)
+            if state.env_vars.unified_gold_ledger_reads {
+                confidential_list::count_balance_change_legs(&state.db_pool, &source_count_query)
+                    .await
+                    .unwrap_or(0)
+            } else {
+                confidential_list_legacy::count_balance_change_legs(
+                    &state.db_pool,
+                    &source_count_query,
+                )
                 .await
                 .unwrap_or(0)
+            }
         }
         BalanceChangesReadSource::PublicGold => {
             public_list::count_balance_change_legs(&state.db_pool, &source_count_query)

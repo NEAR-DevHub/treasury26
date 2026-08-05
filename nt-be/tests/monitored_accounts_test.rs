@@ -3,9 +3,26 @@ mod common;
 use chrono::{DateTime, Datelike, Months, Utc};
 use common::TestServer;
 
+/// Dedicated to this test: registration semantics are register-or-refresh
+/// (an existing disabled row stays disabled), so the account must not exist
+/// before the call for the new-registration assertions to hold.
+const CRUD_TEST_ACCOUNT: &str = "monitored-accounts-crud-test.sputnik-dao.near";
+
 #[tokio::test]
 async fn test_monitored_accounts_crud() {
     common::load_test_env();
+
+    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .max_connections(2)
+        .connect(&db_url)
+        .await
+        .expect("connect to test database");
+    sqlx::query("DELETE FROM monitored_accounts WHERE account_id = $1")
+        .bind(CRUD_TEST_ACCOUNT)
+        .execute(&pool)
+        .await
+        .expect("remove leftover crud test account");
 
     // Start the actual server
     let server = TestServer::start().await;
@@ -14,7 +31,7 @@ async fn test_monitored_accounts_crud() {
     // Test 1: Add a monitored account
     // Note: AddAccountRequest uses camelCase deserialization
     let add_payload = serde_json::json!({
-        "accountId": "test-treasury.sputnik-dao.near"
+        "accountId": CRUD_TEST_ACCOUNT
     });
 
     let response = client
@@ -27,7 +44,7 @@ async fn test_monitored_accounts_crud() {
     assert_eq!(response.status(), 200, "Add account should succeed");
     // AddAccountResponse uses camelCase serialization
     let added: serde_json::Value = response.json().await.expect("Failed to parse JSON");
-    assert_eq!(added["accountId"], "test-treasury.sputnik-dao.near");
+    assert_eq!(added["accountId"], CRUD_TEST_ACCOUNT);
     assert_eq!(added["enabled"], true);
     assert!(added["createdAt"].is_string());
     assert!(added["updatedAt"].is_string());
@@ -54,4 +71,11 @@ async fn test_monitored_accounts_crud() {
         credits_reset_at, expected_reset_at,
         "New account should have credits_reset_at at next UTC month start"
     );
+
+    // Leave no enabled fake account behind for the pipeline schedulers.
+    sqlx::query("DELETE FROM monitored_accounts WHERE account_id = $1")
+        .bind(CRUD_TEST_ACCOUNT)
+        .execute(&pool)
+        .await
+        .expect("clean up crud test account");
 }

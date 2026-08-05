@@ -23,9 +23,17 @@ use crate::{
 };
 
 /// Sustained NearBlocks request ceiling (per minute) shared by every NearBlocks
-/// caller. Kept under the plan's 190/min hard limit to leave headroom for the
-/// on-demand v1 call sites; the daily/monthly budget is enforced separately.
-const NEARBLOCKS_MAX_PER_MINUTE: u32 = 10;
+/// caller, overridable via `NEARBLOCKS_MAX_PER_MINUTE`. Kept under the plan's
+/// 190/min hard limit to leave headroom for the on-demand v1 call sites; the
+/// daily/monthly budget is enforced separately.
+const NEARBLOCKS_MAX_PER_MINUTE_DEFAULT: u32 = 10;
+
+fn nearblocks_max_per_minute() -> u32 {
+    std::env::var("NEARBLOCKS_MAX_PER_MINUTE")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(NEARBLOCKS_MAX_PER_MINUTE_DEFAULT)
+}
 
 /// Sustained DeFiLlama request ceiling (per minute) shared by every DeFiLlama
 /// caller. The free tier enforces 500/min per IP; we stay well under it.
@@ -400,10 +408,11 @@ impl AppStateBuilder {
         // spawn the gate's driver here so no AppState can exist without a running
         // driver (a gate whose driver isn't running would fail open → unlimited
         // NearBlocks calls). build() is always awaited inside a tokio runtime.
+        let nearblocks_max_per_minute = nearblocks_max_per_minute();
         let nearblocks_limiter = RateLimiter::per_minute(
             "nearblocks",
-            NEARBLOCKS_MAX_PER_MINUTE,
-            NEARBLOCKS_MAX_PER_MINUTE,
+            nearblocks_max_per_minute,
+            nearblocks_max_per_minute,
         );
         let (nearblocks_gate, nearblocks_gate_driver) =
             PriorityRateGate::<NearblocksPriority>::new(nearblocks_limiter);
@@ -446,7 +455,14 @@ impl Default for AppStateBuilder {
 }
 
 impl AppState {
-    pub fn publish_treasury_projection_updated(&self, account_id: String) {
+    pub async fn publish_treasury_projection_updated(&self, account_id: String) {
+        // Evict the account's cached assets response before broadcasting:
+        // clients refetch on this event, and a refetch inside the cache TTL
+        // would read the pre-projection payload and never retry.
+        self.cache
+            .short_term
+            .invalidate(&format!("{account_id}-user-assets"))
+            .await;
         let event = AppEvent::treasury_projection_updated(account_id);
         if let Err(e) = self.event_tx.send(event) {
             tracing::debug!(

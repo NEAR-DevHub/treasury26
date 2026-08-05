@@ -3,6 +3,10 @@ use near_api::AccountId;
 
 /// The relayer account that sponsors users with NEAR for storage deposits.
 /// Transactions from/to this account are hidden from users in all activity views.
+///
+/// Legacy read path only: the medallion pipeline classifies sponsor
+/// movements at projection time using the environment's `SIGNER_ID` instead
+/// of this production-specific constant. Dies with the legacy formula.
 pub const RELAYER_ACCOUNT: &str = "sponsor.trezu.near";
 
 const RELAYER_WHERE_CONDITION: &str = "counterparty != 'sponsor.trezu.near'";

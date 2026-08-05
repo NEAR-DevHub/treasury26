@@ -1,8 +1,9 @@
 //! Historical token-price backfill from DefiLlama into `token_prices`.
 //!
 //! Fills the 5-minute price series for exactly the (token, bucket) pairs
-//! gold public/confidential history rows need: 100 events for one token inside
-//! one bucket cost one price point. Discovery is a single anti-join against
+//! gold public/confidential history and public balance snapshots need: 100
+//! rows for one token inside one bucket cost one price point. Discovery is a
+//! single anti-join against
 //! `token_prices` (plus a persistent miss list), so every run is idempotent
 //! and self-resuming — the database is the cursor. Points are grouped by
 //! `tokens.coingecko_id` (bridged variants share one upstream price), packed
@@ -52,42 +53,47 @@ const RATE_LIMIT_MAX_BACKOFF: Duration = Duration::from_secs(30);
 
 const GOLD_RAW_IDS_SQL: &str = r#"
     SELECT DISTINCT token_in
-    FROM gold_public_history_events
+    FROM gold_treasury_ledger_events
     WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
     UNION
     SELECT DISTINCT token_out
-    FROM gold_public_history_events
+    FROM gold_treasury_ledger_events
     WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
     UNION
-    SELECT DISTINCT origin_asset
-    FROM gold_confidential_history_events
-    WHERE origin_asset IS NOT NULL AND amount_in_usd IS NULL
-    UNION
-    SELECT DISTINCT destination_asset
-    FROM gold_confidential_history_events
-    WHERE amount_out_usd IS NULL
+    SELECT DISTINCT asset
+    FROM silver_balance_history
 "#;
 
 const GOLD_MISSING_PAIRS_SQL: &str = r#"
     WITH mapping(raw_token_id, token_ref) AS (
         SELECT * FROM UNNEST($1::text[], $2::int4[])
     ),
+    snapshot_assets(raw_token_id) AS (
+        SELECT DISTINCT asset
+        FROM silver_balance_history
+    ),
+    snapshot_chart_grid(at) AS (
+        SELECT date_trunc('day', NOW()) - grid_offset.value * INTERVAL '1 day'
+        FROM generate_series(0, 89) AS grid_offset(value)
+        UNION
+        SELECT date_trunc('week', NOW()) - grid_offset.value * INTERVAL '1 week'
+        FROM generate_series(0, 52) AS grid_offset(value)
+    ),
     sources(raw_token_id, at) AS (
         SELECT token_in, event_time
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
         UNION ALL
         SELECT token_out, event_time
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
         UNION ALL
-        SELECT origin_asset, COALESCE(proposal_executed_at, quote_created_at)
-        FROM gold_confidential_history_events
-        WHERE origin_asset IS NOT NULL AND amount_in_usd IS NULL
+        SELECT asset, block_time
+        FROM silver_balance_history
         UNION ALL
-        SELECT destination_asset, COALESCE(proposal_executed_at, quote_created_at)
-        FROM gold_confidential_history_events
-        WHERE amount_out_usd IS NULL
+        SELECT snapshot_assets.raw_token_id, snapshot_chart_grid.at
+        FROM snapshot_assets
+        CROSS JOIN snapshot_chart_grid
     ),
     needed AS (
         SELECT DISTINCT m.token_ref,
@@ -238,7 +244,7 @@ impl HistoricalPriceBackfill {
         Ok(summary)
     }
 
-    /// Create `token_prices` partitions from the first gold history month
+    /// Create `token_prices` partitions from the first history/snapshot month
     /// through the current month, skipping months that already have one.
     async fn ensure_partitions(&self) -> Result<(), sqlx::Error> {
         let earliest: Option<(Option<DateTime<Utc>>,)> = sqlx::query_as(
@@ -246,10 +252,10 @@ impl HistoricalPriceBackfill {
             SELECT MIN(at)
             FROM (
                 SELECT MIN(event_time) AS at
-                FROM gold_public_history_events
+                FROM gold_treasury_ledger_events
                 UNION ALL
-                SELECT MIN(COALESCE(proposal_executed_at, quote_created_at)) AS at
-                FROM gold_confidential_history_events
+                SELECT MIN(block_time) AS at
+                FROM silver_balance_history
             ) earliest
             "#,
         )
@@ -842,30 +848,34 @@ mod tests {
     }
 
     #[test]
-    fn raw_id_discovery_reads_public_and_confidential_gold_tokens() {
+    fn raw_id_discovery_reads_gold_and_ledger_tokens() {
         assert!(GOLD_RAW_IDS_SQL.contains("token_in"));
         assert!(GOLD_RAW_IDS_SQL.contains("token_out"));
-        assert!(GOLD_RAW_IDS_SQL.contains("origin_asset"));
-        assert!(GOLD_RAW_IDS_SQL.contains("destination_asset"));
-        assert!(GOLD_RAW_IDS_SQL.contains("gold_public_history_events"));
-        assert!(GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
+        assert!(GOLD_RAW_IDS_SQL.contains("gold_treasury_ledger_events"));
+        assert!(GOLD_RAW_IDS_SQL.contains("silver_balance_history"));
+        assert!(!GOLD_RAW_IDS_SQL.contains("silver_balance_history\n    WHERE"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_RAW_IDS_SQL.contains("amount_out_usd IS NULL"));
         assert!(!GOLD_RAW_IDS_SQL.contains("balance_changes"));
+        // Confidential rows live in the same unified table with no
+        // source_kind filter, so no dedicated arms remain.
+        assert!(!GOLD_RAW_IDS_SQL.contains("gold_confidential_history_events"));
     }
 
     #[test]
-    fn missing_pair_discovery_uses_gold_timestamps_and_dedupes_buckets() {
+    fn missing_pair_discovery_uses_history_timestamps_and_dedupes_buckets() {
         assert!(GOLD_MISSING_PAIRS_SQL.contains("SELECT DISTINCT m.token_ref"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("event_time"));
-        assert!(
-            GOLD_MISSING_PAIRS_SQL.contains("COALESCE(proposal_executed_at, quote_created_at)")
-        );
+        assert!(!GOLD_MISSING_PAIRS_SQL.contains("gold_confidential_history_events"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("floor(extract(epoch FROM s.at) / 300) * 300"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("LEFT JOIN token_prices"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("token_price_backfill_misses"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_in_usd IS NULL"));
         assert!(GOLD_MISSING_PAIRS_SQL.contains("amount_out_usd IS NULL"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("silver_balance_history"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("generate_series(0, 89)"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("generate_series(0, 52)"));
+        assert!(GOLD_MISSING_PAIRS_SQL.contains("CROSS JOIN snapshot_chart_grid"));
         assert!(!GOLD_MISSING_PAIRS_SQL.contains("balance_changes"));
     }
 
@@ -876,5 +886,44 @@ mod tests {
         assert_eq!(bucket(1719878400), 1719878400); // exact boundary
         assert_eq!(bucket(1719878400 + 299), 1719878400); // 12:04:59 -> 12:00
         assert_eq!(bucket(1719878400 + 300), 1719878700); // 12:05:00 -> 12:05
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn missing_pair_discovery_includes_snapshot_chart_grid(pool: PgPool) {
+        sqlx::query(
+            r#"
+            INSERT INTO silver_balance_history (
+                account_id, asset, token_standard, entry_key, source,
+                block_height, block_time, intra_block_seq,
+                delta_raw, delta, decimals, balance_before, balance_after,
+                affects_user_balance, user_balance_after
+            )
+            VALUES (
+                'price-grid.sputnik-dao.near', 'near', 'native',
+                'native:price-grid.sputnik-dao.near:r1', 'nearblocks_receipt',
+                1, '2020-01-01T00:00:00Z', 0, 1, 1, 24, 0, 1,
+                TRUE, 1
+            )
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let pairs: Vec<(i32, DateTime<Utc>)> = sqlx::query_as(GOLD_MISSING_PAIRS_SQL)
+            .bind(vec!["near"])
+            .bind(vec![1_i32])
+            .bind(MAX_MISS_ATTEMPTS)
+            .bind(MAX_POINTS_PER_RUN)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+        assert!(pairs.len() >= 130);
+        assert!(pairs.iter().any(|(_, at)| {
+            *at == DateTime::parse_from_rfc3339("2020-01-01T00:00:00Z")
+                .unwrap()
+                .with_timezone(&Utc)
+        }));
     }
 }
