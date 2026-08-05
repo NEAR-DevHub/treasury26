@@ -15,10 +15,12 @@ import {
 } from "@/components/modal";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import type { Token } from "@/components/token-input";
+import { Tooltip } from "@/components/tooltip";
 import { User } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity, SwapInfo, TokenMetadataInfo } from "@/lib/api";
+import Big from "@/lib/big";
 import {
     cn,
     formatActivityAmount,
@@ -85,6 +87,114 @@ function tokenRateLabel(activity: RecentActivity): string | null {
     if (!unitPrice) return null;
 
     return `1 ${symbol} = ${formatCurrencyWithSubCent(unitPrice)}`;
+}
+
+interface ExchangeRateDetails {
+    unitAmount: string;
+    sentSymbol: string;
+    receivedPerSent: string;
+    receivedSymbol: string;
+    sentUnitUsd: number | null;
+    receivedUnitUsd: number | null;
+}
+
+function swapUnitUsdPrice(
+    amount: string,
+    amountUsd?: number,
+    fallbackPrice?: number,
+): number | null {
+    try {
+        const parsedAmount = Big(amount);
+        if (
+            parsedAmount.gt(0) &&
+            amountUsd != null &&
+            Number.isFinite(amountUsd) &&
+            amountUsd > 0
+        ) {
+            const unitPrice = Big(amountUsd.toString())
+                .div(parsedAmount)
+                .toNumber();
+            if (Number.isFinite(unitPrice) && unitPrice > 0) return unitPrice;
+        }
+    } catch {
+        // Fall through to the token metadata price.
+    }
+
+    return fallbackPrice != null &&
+        Number.isFinite(fallbackPrice) &&
+        fallbackPrice > 0
+        ? fallbackPrice
+        : null;
+}
+
+function exchangeRateDetails(swap: SwapInfo): ExchangeRateDetails | null {
+    if (!swap.sentAmount || !swap.receivedAmount || !swap.sentTokenMetadata) {
+        return null;
+    }
+
+    try {
+        const sentAmount = Big(swap.sentAmount);
+        const receivedAmount = Big(swap.receivedAmount);
+        if (sentAmount.lte(0) || receivedAmount.lte(0)) return null;
+
+        return {
+            unitAmount: formatSmartAmount(1),
+            sentSymbol: swap.sentTokenMetadata.symbol,
+            receivedPerSent: formatSmartAmount(receivedAmount.div(sentAmount)),
+            receivedSymbol: swap.receivedTokenMetadata.symbol,
+            sentUnitUsd: swapUnitUsdPrice(
+                swap.sentAmount,
+                swap.sentAmountUsd,
+                swap.sentTokenMetadata.price,
+            ),
+            receivedUnitUsd: swapUnitUsdPrice(
+                swap.receivedAmount,
+                swap.receivedAmountUsd,
+                swap.receivedTokenMetadata.price,
+            ),
+        };
+    } catch {
+        return null;
+    }
+}
+
+function ExchangeRateValue({ details }: { details: ExchangeRateDetails }) {
+    const rate = (
+        <span>
+            {details.unitAmount} {details.sentSymbol} ≈{" "}
+            {details.receivedPerSent} {details.receivedSymbol}
+        </span>
+    );
+
+    if (details.sentUnitUsd == null && details.receivedUnitUsd == null) {
+        return rate;
+    }
+
+    return (
+        <Tooltip
+            side="right"
+            content={
+                <div className="flex flex-col gap-1 whitespace-nowrap">
+                    {details.sentUnitUsd != null ? (
+                        <p>
+                            {details.unitAmount} {details.sentSymbol} ={" "}
+                            {formatCurrencyWithSubCent(details.sentUnitUsd)}
+                        </p>
+                    ) : null}
+                    {details.receivedUnitUsd != null ? (
+                        <p>
+                            {details.unitAmount} {details.receivedSymbol} ={" "}
+                            {formatCurrencyWithSubCent(details.receivedUnitUsd)}
+                        </p>
+                    ) : null}
+                </div>
+            }
+        >
+            <button type="button" className="text-right">
+                {rate}
+            </button>
+        </Tooltip>
+    );
 }
 
 function activityToken(metadata: TokenMetadataInfo): Token {
@@ -327,23 +437,27 @@ function DetailsSection({
             label: t("status"),
             value: <ActivityStatusPill status={getActivityStatus(activity)} />,
         },
-        {
-            label: t("date"),
-            value: (
-                <FormattedDate
-                    date={new Date(activity.blockTime)}
-                    includeTime
-                />
-            ),
-        },
     ];
-
-    if (variant !== "exchange") {
+    if (variant === "exchange" && activity.swap) {
+        const rate = exchangeRateDetails(activity.swap);
+        if (rate) {
+            items.push({
+                label: t("rate"),
+                value: <ExchangeRateValue details={rate} />,
+            });
+        }
+    } else {
         const rate = tokenRateLabel(activity);
         if (rate) {
             items.push({ label: t("rate"), value: rate });
         }
     }
+    items.push({
+        label: t("date"),
+        value: (
+            <FormattedDate date={new Date(activity.blockTime)} includeTime />
+        ),
+    });
 
     if (isProposalCall(activity)) {
         items.push(

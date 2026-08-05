@@ -4,9 +4,9 @@ import {
     AlertTriangle,
     ArrowDownToLine,
     ArrowRightLeft,
-    ArrowUpToLine,
     ChevronRight,
     Clock,
+    Minus,
     Shield,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -272,23 +272,14 @@ export function RecentActivity() {
 
     const getActivityType = useCallback(
         (activity: RecentActivityType) => {
-            return getActivityLabel({
-                ...activity,
-                tokenSymbol: activity.tokenMetadata?.symbol,
-            });
+            return getActivityLabel(activity);
         },
         [getActivityLabel],
     );
 
     const getActivityFrom = useCallback(
         (activity: RecentActivityType) => {
-            return getActivitySubLabel(
-                {
-                    ...activity,
-                    tokenSymbol: activity.tokenMetadata?.symbol,
-                },
-                treasuryId,
-            );
+            return getActivitySubLabel(activity, treasuryId);
         },
         [getActivitySubLabel, treasuryId],
     );
@@ -333,26 +324,17 @@ export function RecentActivity() {
 
                     return (
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                            <div
-                                className={cn(
-                                    "flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full shrink-0",
-                                    isSwap
-                                        ? "bg-blue-500/10"
-                                        : isReceived
-                                          ? "bg-general-success-background-faded"
-                                          : "bg-general-destructive-background-faded",
-                                )}
-                            >
+                            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-muted shrink-0">
                                 {isSwap ? (
-                                    <ArrowRightLeft className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+                                    <ArrowRightLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                                 ) : isReceived ? (
-                                    <ArrowDownToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-success-foreground" />
+                                    <ArrowDownToLine className="h-4 w-4 sm:h-5 sm:w-5" />
                                 ) : (
-                                    <ArrowUpToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-destructive-foreground" />
+                                    <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
                                 )}
                             </div>
                             <div className="min-w-0 flex-1 overflow-hidden">
-                                <div className="text-sm sm:text-base font-semibold truncate">
+                                <div className="text-sm sm:text-base font-medium truncate">
                                     {activityType}
                                 </div>
                                 <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
@@ -423,27 +405,27 @@ export function RecentActivity() {
                             swap.receivedTokenId;
                         return (
                             <div className="flex flex-col items-end">
-                                <div className="flex items-center justify-end gap-1.5 truncate">
+                                <div className="flex items-center justify-end gap-1 truncate text-sm sm:text-base">
                                     {isDeposit ? (
                                         <>
                                             {swap.sentAmount &&
                                             swap.sentTokenMetadata ? (
-                                                <span className="font-semibold text-foreground hidden sm:inline truncate">
+                                                <span className="font-medium text-foreground hidden sm:inline truncate">
                                                     {formatSmartAmount(
                                                         swap.sentAmount,
                                                     )}{" "}
                                                     {sentSymbol}
                                                 </span>
                                             ) : (
-                                                <span className="font-semibold text-muted-foreground hidden sm:inline">
+                                                <span className="font-medium text-muted-foreground hidden sm:inline">
                                                     ?
                                                 </span>
                                             )}
-                                            <span className="font-semibold text-foreground sm:hidden">
+                                            <span className="font-medium text-foreground sm:hidden">
                                                 {sentSymbol ?? "?"}
                                             </span>
-                                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="font-semibold text-general-success-foreground truncate">
+                                            <ChevronRight className="h-2 w-1 text-muted-foreground shrink-0" />
+                                            <span className="font-medium text-general-success-foreground truncate">
                                                 {receivedSymbol}
                                             </span>
                                             {status ? (
@@ -462,13 +444,13 @@ export function RecentActivity() {
                                     ) : (
                                         <>
                                             {sentSymbol ? (
-                                                <span className="font-semibold text-foreground truncate">
+                                                <span className="font-medium text-foreground truncate">
+                                                    {swap.sentAmount}{" "}
                                                     {sentSymbol}
                                                 </span>
                                             ) : null}
                                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="font-semibold text-general-success-foreground hidden sm:inline truncate">
-                                                +
+                                            <span className="font-medium hidden sm:inline truncate">
                                                 {swap.receivedAmount
                                                     ? formatSmartAmount(
                                                           swap.receivedAmount,
@@ -476,7 +458,7 @@ export function RecentActivity() {
                                                     : ""}{" "}
                                                 {receivedSymbol}
                                             </span>
-                                            <span className="font-semibold text-general-success-foreground sm:hidden truncate">
+                                            <span className="font-medium text-general-success-foreground sm:hidden truncate">
                                                 {receivedSymbol}
                                             </span>
                                         </>
@@ -497,7 +479,7 @@ export function RecentActivity() {
                             <div className="flex flex-col items-end gap-0.5 min-w-0 w-full">
                                 <div
                                     className={cn(
-                                        "text-sm sm:text-base font-semibold truncate w-full text-right",
+                                        "text-sm sm:text-base font-medium truncate w-full text-right",
                                         isReceived
                                             ? "text-general-success-foreground"
                                             : "text-foreground",
