@@ -2,7 +2,12 @@
 
 import { Clock, Link2, Zap } from "lucide-react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+    useParams,
+    usePathname,
+    useRouter,
+    useSearchParams,
+} from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -13,20 +18,15 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
 import { useTreasury } from "@/hooks/use-treasury";
-import {
-    fetchDepositAddress,
-    fetchDepositAddressStatus,
-} from "@/lib/bridge-api";
+import { fetchDepositAddress } from "@/lib/bridge-api";
 import { formatBalance } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { DepositAddressCard } from "../../dashboard/components/deposit/deposit-address-card";
 import { DepositAddressSkeleton } from "../../dashboard/components/deposit/deposit-address-view";
 import { DepositConfidentialSourceTabs } from "../../dashboard/components/deposit/deposit-confidential-source-tabs";
-import {
-    isDepositAddressExpired,
-    isDepositAddressUsed,
-} from "../../dashboard/components/deposit/deposit-expires";
+import { isDepositAddressUsed } from "../../dashboard/components/deposit/deposit-expires";
 import { DepositNoticeList } from "../../dashboard/components/deposit/deposit-notice-list";
 import {
     buildConfidentialOriginNotices,
@@ -64,15 +64,6 @@ export default function PaySharePage() {
     const resumedChoosePayerRef = useRef(false);
     const [pickerOpen, setPickerOpen] = useState(false);
     const [nowMs, setNowMs] = useState(() => Date.now());
-    const [depositStatus, setDepositStatus] = useState<string | null>(null);
-    const [statusExpiresAtMs, setStatusExpiresAtMs] = useState<number | null>(
-        null,
-    );
-    const [statusOriginAsset, setStatusOriginAsset] = useState<string | null>(
-        null,
-    );
-    const [statusFound, setStatusFound] = useState<boolean | null>(null);
-    const [hasFetchedStatus, setHasFetchedStatus] = useState(false);
     const [bridgeAddress, setBridgeAddress] = useState<string | null>(null);
     const [bridgeMemo, setBridgeMemo] = useState<string | null>(null);
     const [hasFetchedBridge, setHasFetchedBridge] = useState(false);
@@ -87,6 +78,20 @@ export default function PaySharePage() {
 
     const isOneTimeConfidentialShare = kind === "public" && isConfidential;
     const isPublicTreasuryShare = kind === "public" && !isConfidential;
+
+    const depositStatusState = useDepositAddressStatus({
+        enabled: isOneTimeConfidentialShare,
+        accountId: treasuryId,
+        depositAddress: shareId,
+    });
+    const {
+        hasFetched: hasFetchedStatus,
+        found: statusFound,
+        status: depositStatus,
+        expiresAtMs: statusExpiresAtMs,
+        originAsset: statusOriginAsset,
+        isTerminal: statusIsTerminal,
+    } = depositStatusState;
 
     const networkId = isOneTimeConfidentialShare
         ? statusOriginAsset || ""
@@ -125,59 +130,13 @@ export default function PaySharePage() {
         includeNearNetwork: true,
     });
 
-    // Status for confidential one-time shares (asset + expiry + used).
-    useEffect(() => {
-        if (!isOneTimeConfidentialShare || !treasuryId || !shareId) {
-            setDepositStatus(null);
-            setStatusExpiresAtMs(null);
-            setStatusOriginAsset(null);
-            setStatusFound(null);
-            setHasFetchedStatus(false);
-            return;
-        }
-
-        let cancelled = false;
-        setHasFetchedStatus(false);
-
-        const poll = async () => {
-            try {
-                const result = await fetchDepositAddressStatus(
-                    treasuryId,
-                    shareId,
-                );
-                if (cancelled) return;
-                setStatusFound(result.found);
-                setDepositStatus(result.status ?? null);
-                setStatusOriginAsset(
-                    result.originAsset || result.destinationAsset || null,
-                );
-                const expiresMs = result.expiresAt
-                    ? Date.parse(result.expiresAt)
-                    : Number.NaN;
-                setStatusExpiresAtMs(
-                    Number.isFinite(expiresMs) ? expiresMs : null,
-                );
-            } catch {
-                if (!cancelled) {
-                    setStatusFound(false);
-                    setDepositStatus(null);
-                    setStatusExpiresAtMs(null);
-                    setStatusOriginAsset(null);
-                }
-            } finally {
-                if (!cancelled) setHasFetchedStatus(true);
-            }
-        };
-
-        void poll();
-        const id = window.setInterval(poll, 15_000);
-        return () => {
-            cancelled = true;
-            window.clearInterval(id);
-        };
-    }, [isOneTimeConfidentialShare, treasuryId, shareId]);
+    const bridgeChainId = useMemo(() => {
+        if (!networkId) return null;
+        return resolveBridgeChainId(bridgeAssets, networkId) || networkId;
+    }, [bridgeAssets, networkId]);
 
     // Bridge address from quote id + chain (after status provides the asset).
+    // Depend on bridgeChainId string — not the bridgeAssets array — to avoid refetch loops.
     useEffect(() => {
         if (!isOneTimeConfidentialShare) {
             setBridgeAddress(null);
@@ -185,17 +144,24 @@ export default function PaySharePage() {
             setHasFetchedBridge(false);
             return;
         }
-        if (!hasFetchedStatus || !statusFound || !networkId || !shareId) {
+        if (
+            !hasFetchedStatus ||
+            !statusFound ||
+            !bridgeChainId ||
+            !shareId ||
+            statusIsTerminal
+        ) {
             setBridgeAddress(null);
             setBridgeMemo(null);
             setHasFetchedBridge(
-                hasFetchedStatus && (statusFound === false || !networkId),
+                hasFetchedStatus &&
+                    (statusFound === false ||
+                        !bridgeChainId ||
+                        statusIsTerminal),
             );
             return;
         }
 
-        const chain =
-            resolveBridgeChainId(bridgeAssets, networkId) || networkId;
         let cancelled = false;
         setHasFetchedBridge(false);
 
@@ -203,7 +169,10 @@ export default function PaySharePage() {
         // runs the bridge lookup (no new confidential quote).
         void (async () => {
             try {
-                const result = await fetchDepositAddress(shareId, chain);
+                const result = await fetchDepositAddress(
+                    shareId,
+                    bridgeChainId,
+                );
                 if (cancelled) return;
                 setBridgeAddress(result?.address ?? null);
                 setBridgeMemo(result?.memo ?? null);
@@ -224,33 +193,38 @@ export default function PaySharePage() {
         isOneTimeConfidentialShare,
         hasFetchedStatus,
         statusFound,
-        networkId,
+        statusIsTerminal,
+        bridgeChainId,
         shareId,
-        bridgeAssets,
     ]);
 
     const expiresAtMs = statusExpiresAtMs;
 
     useEffect(() => {
-        if (!isOneTimeConfidentialShare || expiresAtMs == null) return;
+        if (
+            !isOneTimeConfidentialShare ||
+            expiresAtMs == null ||
+            statusIsTerminal
+        ) {
+            return;
+        }
         setNowMs(Date.now());
         const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
         return () => window.clearInterval(id);
-    }, [isOneTimeConfidentialShare, expiresAtMs]);
+    }, [isOneTimeConfidentialShare, expiresAtMs, statusIsTerminal]);
 
     const isStatusLoading =
         kind === "public" &&
         (isLoading ||
             (isConfidential &&
                 (!hasFetchedStatus ||
-                    (statusFound === true && !hasFetchedBridge))));
+                    (statusFound === true &&
+                        !statusIsTerminal &&
+                        !hasFetchedBridge))));
 
     const isUsed = isDepositAddressUsed(depositStatus);
-    const isExpired = isDepositAddressExpired(expiresAtMs, nowMs);
     const isInactive =
-        !isStatusLoading &&
-        isOneTimeConfidentialShare &&
-        (statusFound === false || isUsed || isExpired);
+        !isStatusLoading && isOneTimeConfidentialShare && statusIsTerminal;
 
     const depositAddress =
         kind === "confidential"

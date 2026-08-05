@@ -4,6 +4,9 @@ export const DEPOSIT_EXPIRY_URGENT_MS = 24 * 60 * 60 * 1000;
 /** Must stay in sync with backend `DEPOSIT_ADDRESS_VALIDITY_DAYS`. */
 export const DEPOSIT_ADDRESS_VALIDITY_MS = 14 * 24 * 60 * 60 * 1000;
 
+/** @deprecated Use `DEPOSIT_ADDRESS_VALIDITY_MS`. */
+export const SINGLE_USE_VALIDITY_MS = DEPOSIT_ADDRESS_VALIDITY_MS;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
@@ -37,7 +40,9 @@ export function isDepositAddressExpired(
 }
 
 /** Quote has already received a deposit or reached a terminal/used state. */
-export function isDepositAddressUsed(status: string | null | undefined): boolean {
+export function isDepositAddressUsed(
+    status: string | null | undefined,
+): boolean {
     if (!status) return false;
     const normalized = status.trim().toUpperCase();
     if (normalized === PENDING_DEPOSIT_STATUS) return false;
@@ -48,10 +53,7 @@ export function resolveExpiresAtMs(params: {
     expiresAtMs?: number | null;
     createdAt?: string | null;
 }): number | null {
-    if (
-        params.expiresAtMs != null &&
-        Number.isFinite(params.expiresAtMs)
-    ) {
+    if (params.expiresAtMs != null && Number.isFinite(params.expiresAtMs)) {
         return params.expiresAtMs;
     }
     if (!params.createdAt) return null;

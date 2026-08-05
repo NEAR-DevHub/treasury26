@@ -15,12 +15,10 @@ describe("deposit-expires", () => {
         expect(
             isDepositExpiryUrgent(now + DEPOSIT_EXPIRY_URGENT_MS - 1, now),
         ).toBe(true);
-        expect(
-            isDepositExpiryUrgent(now + DEPOSIT_EXPIRY_URGENT_MS, now),
-        ).toBe(false);
-        expect(
-            isDepositExpiryUrgent(now + 2 * 60 * 60 * 1000, now),
-        ).toBe(true);
+        expect(isDepositExpiryUrgent(now + DEPOSIT_EXPIRY_URGENT_MS, now)).toBe(
+            false,
+        );
+        expect(isDepositExpiryUrgent(now + 2 * 60 * 60 * 1000, now)).toBe(true);
     });
 
     it("detects expired addresses", () => {
@@ -41,9 +39,9 @@ describe("deposit-expires", () => {
     it("resolves expiry from createdAt when expiresAt is missing", () => {
         const createdAt = "2026-01-01T00:00:00.000Z";
         const createdMs = Date.parse(createdAt);
-        expect(
-            resolveExpiresAtMs({ expiresAtMs: null, createdAt }),
-        ).toBe(createdMs + DEPOSIT_ADDRESS_VALIDITY_MS);
+        expect(resolveExpiresAtMs({ expiresAtMs: null, createdAt })).toBe(
+            createdMs + DEPOSIT_ADDRESS_VALIDITY_MS,
+        );
         expect(
             resolveExpiresAtMs({
                 expiresAtMs: createdMs + 1000,
@@ -81,11 +79,7 @@ describe("deposit-expires", () => {
         ).toMatch(/3\s+hours?/i);
 
         expect(
-            formatDepositRemainingDuration(
-                now + 45 * 60 * 1000,
-                "en",
-                now,
-            ),
+            formatDepositRemainingDuration(now + 45 * 60 * 1000, "en", now),
         ).toMatch(/45\s+minutes?/i);
 
         expect(

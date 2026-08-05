@@ -26,14 +26,61 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { EmptyState } from "@/components/empty-state";
-import { ConfidentialState } from "@/components/confidential-state";
 import { NotEnoughBalance } from "../not-enough-balance";
 import { FormattedDate } from "@/components/formatted-date";
 import { Policy } from "@/types/policy";
 import { extractConfidentialRequestData } from "../../utils/proposal-extractors";
+import { TreasuryTypeIcon } from "@/components/icons/shield";
 import { useRouter } from "next/navigation";
 
 const MAX_DISPLAYED_REQUESTS = 3;
+
+function ConfidentialGuestPendingRequestItem() {
+    const getProposalKindLabel = useProposalKindLabel();
+
+    return (
+        <PageCard className="flex flex-row items-center gap-3.5 w-full">
+            <TreasuryTypeIcon type="confidential" />
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+                <span className="max-w-full truncate leading-none font-semibold">
+                    {getProposalKindLabel("Confidential Request")}
+                </span>
+                <Skeleton className="h-4 w-36 animate-none" />
+            </div>
+        </PageCard>
+    );
+}
+
+function ConfidentialGuestPendingRequests({
+    treasuryId,
+}: {
+    treasuryId: string;
+}) {
+    const t = useTranslations("requests.pending");
+
+    return (
+        <div className="bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[100px]">
+            <div className="flex justify-between">
+                <div className="flex items-center gap-1">
+                    <h1 className="font-semibold text-nowrap">{t("title")}</h1>
+                </div>
+                <Link href={`/${treasuryId}/requests`}>
+                    <Button variant="ghost" className="flex gap-2">
+                        {t("viewAll")}
+                        <ChevronRight className="size-4" />
+                    </Button>
+                </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+                {Array.from({ length: MAX_DISPLAYED_REQUESTS }).map(
+                    (_, index) => (
+                        <ConfidentialGuestPendingRequestItem key={index} />
+                    ),
+                )}
+            </div>
+        </div>
+    );
+}
 
 function PendingRequestItemSkeleton() {
     return <Skeleton className="h-16 w-full rounded-lg" />;
@@ -237,8 +284,13 @@ export function PendingRequestItem({
 export function PendingRequests() {
     const t = useTranslations("requests.pending");
     const { accountId } = useNear();
-    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
-    const isHidden = isConfidential && isGuestTreasury;
+    const {
+        treasuryId,
+        isConfidential,
+        isGuestTreasury,
+        isLoading: isTreasuryLoading,
+    } = useTreasury();
+    const isConfidentialGuest = isConfidential && isGuestTreasury;
     const router = useRouter();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [isVoteModalOpen, setIsVoteModalOpen] = useState(false);
@@ -255,31 +307,28 @@ export function PendingRequests() {
                     voter_votes: `${accountId}:No Voted`,
                 }),
             },
-            !isHidden,
+            // Guests on confidential treasuries only see redacted placeholders —
+            // never fetch proposal data or counts.
+            !isConfidentialGuest && !isTreasuryLoading,
         );
 
-    const isLoading = isRequestsLoading;
-
-    if (isHidden) {
-        return (
-            <div className="bg-general-tertiary rounded-lg p-5 gap-3 flex flex-col w-full h-fit min-h-[300px]">
-                <div className="flex justify-between">
-                    <div className="flex items-center gap-1">
-                        <h1 className="font-semibold text-nowrap">
-                            {t("title")}
-                        </h1>
-                    </div>
-                </div>
-                <ConfidentialState skeleton={<PendingRequestsGridSkeleton />} />
-            </div>
-        );
-    }
-
-    if (isLoading) {
+    if (isTreasuryLoading) {
         return <PendingRequestsSkeleton />;
     }
 
-    const hasPendingRequests = (pendingRequests?.proposals?.length ?? 0) > 0;
+    if (isConfidentialGuest) {
+        return <ConfidentialGuestPendingRequests treasuryId={treasuryId!} />;
+    }
+
+    if (isRequestsLoading) {
+        return <PendingRequestsSkeleton />;
+    }
+
+    const pendingCount =
+        pendingRequests?.total ?? pendingRequests?.proposals?.length ?? 0;
+    const hasPendingRequests = pendingCount > 0;
+    const displayedProposals =
+        pendingRequests?.proposals?.slice(0, MAX_DISPLAYED_REQUESTS) ?? [];
 
     return (
         <>
@@ -290,14 +339,12 @@ export function PendingRequests() {
                 )}
             >
                 <div className="flex justify-between">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                         <h1 className="font-semibold text-nowrap">
                             {t("title")}
                         </h1>
                         {hasPendingRequests && (
-                            <NumberBadge
-                                number={pendingRequests?.proposals?.length ?? 0}
-                            />
+                            <NumberBadge number={pendingCount} />
                         )}
                     </div>
 
@@ -313,38 +360,36 @@ export function PendingRequests() {
 
                 {hasPendingRequests ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-                        {pendingRequests?.proposals
-                            ?.slice(0, MAX_DISPLAYED_REQUESTS)
-                            .map((proposal) => (
-                                <PendingRequestItem
-                                    key={proposal.id}
-                                    proposal={proposal}
-                                    policy={policy!}
-                                    treasuryId={treasuryId!}
-                                    onVote={(vote) => {
-                                        setVoteInfo({
-                                            vote,
-                                            proposals: [proposal],
-                                        });
-                                        setIsVoteModalOpen(true);
-                                    }}
-                                    onDeposit={(tokenSymbol, tokenNetwork) => {
-                                        const params = new URLSearchParams();
-                                        if (tokenSymbol) {
-                                            params.set("token", tokenSymbol);
-                                        }
-                                        if (tokenNetwork) {
-                                            params.set("network", tokenNetwork);
-                                        }
-                                        const query = params.toString();
-                                        router.push(
-                                            `/${treasuryId}/dashboard/deposit${
-                                                query ? `?${query}` : ""
-                                            }`,
-                                        );
-                                    }}
-                                />
-                            ))}
+                        {displayedProposals.map((proposal) => (
+                            <PendingRequestItem
+                                key={proposal.id}
+                                proposal={proposal}
+                                policy={policy!}
+                                treasuryId={treasuryId!}
+                                onVote={(vote) => {
+                                    setVoteInfo({
+                                        vote,
+                                        proposals: [proposal],
+                                    });
+                                    setIsVoteModalOpen(true);
+                                }}
+                                onDeposit={(tokenSymbol, tokenNetwork) => {
+                                    const params = new URLSearchParams();
+                                    if (tokenSymbol) {
+                                        params.set("token", tokenSymbol);
+                                    }
+                                    if (tokenNetwork) {
+                                        params.set("network", tokenNetwork);
+                                    }
+                                    const query = params.toString();
+                                    router.push(
+                                        `/${treasuryId}/dashboard/deposit${
+                                            query ? `?${query}` : ""
+                                        }`,
+                                    );
+                                }}
+                            />
+                        ))}
                     </div>
                 ) : (
                     <EmptyState

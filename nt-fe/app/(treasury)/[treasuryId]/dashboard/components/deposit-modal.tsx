@@ -33,6 +33,7 @@ import {
     useAssets,
 } from "@/hooks/use-assets";
 import { type BridgeNetwork, useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
 import { useTreasury } from "@/hooks/use-treasury";
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import {
@@ -41,10 +42,7 @@ import {
 } from "@/hooks/use-warnings";
 import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
-import {
-    fetchDepositAddress,
-    fetchDepositAddressStatus,
-} from "@/lib/bridge-api";
+import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { pickDefaultDepositAsset } from "@/lib/pick-default-token";
 import {
@@ -64,6 +62,7 @@ import {
 import { DepositConfidentialSourceTabs } from "./deposit/deposit-confidential-source-tabs";
 import { DepositGuestBanner } from "./deposit/deposit-guest-banner";
 import {
+    DEPOSIT_ADDRESS_VALIDITY_MS,
     isDepositAddressExpired,
     isDepositAddressUsed,
 } from "./deposit/deposit-expires";
@@ -135,7 +134,8 @@ interface NetworkBalanceDisplay {
 }
 
 const STABLE_EMPTY_ARRAY: never[] = [];
-export const SINGLE_USE_VALIDITY_MS = 14 * 24 * 60 * 60 * 1000;
+/** @deprecated Use `DEPOSIT_ADDRESS_VALIDITY_MS` from `./deposit/deposit-expires`. */
+export const SINGLE_USE_VALIDITY_MS = DEPOSIT_ADDRESS_VALIDITY_MS;
 
 type AssetSection = {
     title: string;
@@ -357,7 +357,6 @@ export function DepositModal({
         null,
     );
     const [nowMs, setNowMs] = useState(() => Date.now());
-    const [depositStatus, setDepositStatus] = useState<string | null>(null);
     const previousTreasuryIdRef = useRef(treasuryId);
     const { data: popularAssets = STABLE_EMPTY_ARRAY } =
         usePopularAssetsByActivity();
@@ -915,8 +914,7 @@ export function DepositModal({
                         expiresAtMs: Number.isFinite(parsedExpiresAt)
                             ? parsedExpiresAt
                             : null,
-                        quoteDepositAddress:
-                            result.quoteDepositAddress ?? null,
+                        quoteDepositAddress: result.quoteDepositAddress ?? null,
                     };
                 }
 
@@ -1060,7 +1058,7 @@ export function DepositModal({
         }
         setDepositInfo(info);
         setSingleUseExpiresAt(
-            info.expiresAtMs ?? Date.now() + SINGLE_USE_VALIDITY_MS,
+            info.expiresAtMs ?? Date.now() + DEPOSIT_ADDRESS_VALIDITY_MS,
         );
     };
 
@@ -1075,7 +1073,7 @@ export function DepositModal({
         }
         setDepositInfo(info);
         setSingleUseExpiresAt(
-            info.expiresAtMs ?? Date.now() + SINGLE_USE_VALIDITY_MS,
+            info.expiresAtMs ?? Date.now() + DEPOSIT_ADDRESS_VALIDITY_MS,
         );
     };
 
@@ -1161,66 +1159,40 @@ export function DepositModal({
         depositSource === "confidential_user" &&
         step === "select";
 
+    const oneTimeStatusEnabled =
+        step === "address" &&
+        isConfidential &&
+        depositSource === "public_wallet" &&
+        !!depositInfo?.quoteDepositAddress;
+
+    const {
+        status: depositStatus,
+        expiresAtMs: statusExpiresAtMs,
+        isTerminal: statusIsTerminal,
+    } = useDepositAddressStatus({
+        enabled: oneTimeStatusEnabled,
+        accountId: treasuryId,
+        depositAddress: depositInfo?.quoteDepositAddress,
+        // Fresh quotes may miss history briefly — keep polling until used/expired.
+        stopOnNotFound: false,
+    });
+
     const oneTimeExpiresAtMs =
-        depositInfo?.expiresAtMs ?? singleUseExpiresAt;
+        statusExpiresAtMs ?? depositInfo?.expiresAtMs ?? singleUseExpiresAt;
 
     // Tick countdown while a one-time address is on screen.
     useEffect(() => {
         if (
-            step !== "address" ||
-            !isConfidential ||
-            depositSource !== "public_wallet" ||
-            oneTimeExpiresAtMs == null
+            !oneTimeStatusEnabled ||
+            oneTimeExpiresAtMs == null ||
+            statusIsTerminal
         ) {
             return;
         }
         setNowMs(Date.now());
         const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
         return () => window.clearInterval(id);
-    }, [step, isConfidential, depositSource, oneTimeExpiresAtMs]);
-
-    // Poll confidential quote status for one-time addresses.
-    useEffect(() => {
-        if (
-            step !== "address" ||
-            !isConfidential ||
-            depositSource !== "public_wallet" ||
-            !treasuryId ||
-            !depositInfo?.quoteDepositAddress
-        ) {
-            setDepositStatus(null);
-            return;
-        }
-
-        let cancelled = false;
-        const quoteAddress = depositInfo.quoteDepositAddress;
-
-        const poll = async () => {
-            try {
-                const result = await fetchDepositAddressStatus(
-                    treasuryId,
-                    quoteAddress,
-                );
-                if (cancelled) return;
-                setDepositStatus(result.status ?? null);
-            } catch {
-                // Keep showing the address; status is best-effort.
-            }
-        };
-
-        void poll();
-        const id = window.setInterval(poll, 15_000);
-        return () => {
-            cancelled = true;
-            window.clearInterval(id);
-        };
-    }, [
-        step,
-        isConfidential,
-        depositSource,
-        treasuryId,
-        depositInfo?.quoteDepositAddress,
-    ]);
+    }, [oneTimeStatusEnabled, oneTimeExpiresAtMs, statusIsTerminal]);
 
     const addressNotices = useMemo(() => {
         if (!isConfidential) {
@@ -1262,7 +1234,8 @@ export function DepositModal({
     const oneTimeAddressInactive =
         isConfidential &&
         depositSource === "public_wallet" &&
-        (isDepositAddressUsed(depositStatus) ||
+        (statusIsTerminal ||
+            isDepositAddressUsed(depositStatus) ||
             isDepositAddressExpired(oneTimeExpiresAtMs, nowMs));
 
     const addressTitle = useMemo(() => {
