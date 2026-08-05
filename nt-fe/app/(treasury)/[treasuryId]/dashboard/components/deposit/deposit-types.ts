@@ -23,5 +23,4 @@ export interface SelectOption {
     gradient?: string;
     networks?: unknown[];
     chainId?: string;
-    supportsPublicNearDepositSource?: boolean;
 }

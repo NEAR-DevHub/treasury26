@@ -69,7 +69,6 @@ const MOCK_BRIDGE_TOKENS = {
                     },
                     chainId: "near:mainnet",
                     decimals: 6,
-                    supportsPublicNearDepositSource: true,
                     minDepositAmount: "5000000",
                 },
                 {

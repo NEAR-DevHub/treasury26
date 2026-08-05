@@ -113,9 +113,7 @@ export function UploadDataStep({
     const activeTab = form.watch("activeTab");
     const uploadedFileName = form.watch("uploadedFileName");
 
-    const { data: bridgeAssets = [] } = useBridgeAssetsForWarnings("payments", {
-        includeNearNetwork: true,
-    });
+    const { data: bridgeAssets = [] } = useBridgeAssetsForWarnings("payments");
     const { blocked: paymentsSlotBlocked, scopedMessage: sendWarningMessage } =
         useBridgeScopedWarning(
             "payments",

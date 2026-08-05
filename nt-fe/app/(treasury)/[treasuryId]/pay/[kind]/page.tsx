@@ -18,11 +18,10 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useConfidentialBridgeAddress } from "@/hooks/use-confidential-bridge-address";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
+import { useDepositExpiryClock } from "@/hooks/use-deposit-expiry-clock";
 import { useTreasury } from "@/hooks/use-treasury";
-import Big from "@/lib/big";
-import { fetchDepositAddress } from "@/lib/bridge-api";
-import { formatBalance } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { DepositAddressCard } from "../../dashboard/components/deposit/deposit-address-card";
 import { DepositAddressSkeleton } from "../../dashboard/components/deposit/deposit-address-view";
@@ -35,12 +34,12 @@ import {
     buildPublicWalletOneTimeNotices,
 } from "../../dashboard/components/deposit/deposit-notices";
 import { DepositPayTreasuryModal } from "../../dashboard/components/deposit/deposit-pay-treasury-modal";
+import { DepositTransferInactive } from "../../dashboard/components/deposit/deposit-transfer-inactive";
 import {
     resolveBridgeChainId,
     resolvePayWithTrezuNextStep,
     resolveSendTokenMeta,
 } from "../../dashboard/components/deposit/deposit-transfer-resolve";
-import { DepositTransferInactive } from "../../dashboard/components/deposit/deposit-transfer-inactive";
 import { DepositTransferSummary } from "../../dashboard/components/deposit/deposit-transfer-summary";
 import {
     buildPayWithTrezuPaymentsPath,
@@ -51,6 +50,7 @@ import {
     withoutChoosePayerParam,
 } from "../../dashboard/components/deposit/deposit-transfer-url";
 import type { ConfidentialOrigin } from "../../dashboard/components/deposit/deposit-types";
+import { formatMinDepositDisplay } from "../../dashboard/components/deposit/format-min-deposit";
 
 export default function PaySharePage() {
     const t = useTranslations("depositModal");
@@ -64,10 +64,6 @@ export default function PaySharePage() {
         useTreasury();
     const resumedChoosePayerRef = useRef(false);
     const [pickerOpen, setPickerOpen] = useState(false);
-    const [nowMs, setNowMs] = useState(() => Date.now());
-    const [bridgeAddress, setBridgeAddress] = useState<string | null>(null);
-    const [bridgeMemo, setBridgeMemo] = useState<string | null>(null);
-    const [hasFetchedBridge, setHasFetchedBridge] = useState(false);
 
     const kind = parsePayShareKind(params.kind);
     const shareId = searchParams.get("id") || "";
@@ -80,11 +76,6 @@ export default function PaySharePage() {
     const isOneTimeConfidentialShare = kind === "public" && isConfidential;
     const isPublicTreasuryShare = kind === "public" && !isConfidential;
 
-    const depositStatusState = useDepositAddressStatus({
-        enabled: isOneTimeConfidentialShare,
-        accountId: treasuryId,
-        depositAddress: shareId,
-    });
     const {
         hasFetched: hasFetchedStatus,
         found: statusFound,
@@ -92,7 +83,11 @@ export default function PaySharePage() {
         expiresAtMs: statusExpiresAtMs,
         originAsset: statusOriginAsset,
         isTerminal: statusIsTerminal,
-    } = depositStatusState;
+    } = useDepositAddressStatus({
+        enabled: isOneTimeConfidentialShare,
+        accountId: treasuryId,
+        depositAddress: shareId,
+    });
 
     const networkId = isOneTimeConfidentialShare
         ? statusOriginAsset || ""
@@ -127,92 +122,42 @@ export default function PaySharePage() {
     const recipientDaoId = treasuryId || "";
     const treasuryDisplayName = config?.name || recipientDaoId;
 
-    const { data: bridgeAssets = [] } = useBridgeTokens(kind === "public", {
-        includeNearNetwork: true,
-    });
+    const { data: bridgeAssets = [] } = useBridgeTokens(kind === "public");
 
     const bridgeChainId = useMemo(() => {
         if (!networkId) return null;
         return resolveBridgeChainId(bridgeAssets, networkId) || networkId;
     }, [bridgeAssets, networkId]);
 
-    // Bridge address from quote id + chain (after status provides the asset).
-    // Depend on bridgeChainId string — not the bridgeAssets array — to avoid refetch loops.
-    useEffect(() => {
-        if (!isOneTimeConfidentialShare) {
-            setBridgeAddress(null);
-            setBridgeMemo(null);
-            setHasFetchedBridge(false);
-            return;
-        }
-        if (
-            !hasFetchedStatus ||
-            !statusFound ||
-            !bridgeChainId ||
-            !shareId ||
-            statusIsTerminal
-        ) {
-            setBridgeAddress(null);
-            setBridgeMemo(null);
-            setHasFetchedBridge(
-                hasFetchedStatus &&
-                    (statusFound === false ||
-                        !bridgeChainId ||
-                        statusIsTerminal),
-            );
-            return;
-        }
+    const shouldFetchBridge =
+        isOneTimeConfidentialShare &&
+        hasFetchedStatus &&
+        statusFound === true &&
+        !statusIsTerminal &&
+        !!shareId &&
+        !!bridgeChainId;
 
-        let cancelled = false;
-        setHasFetchedBridge(false);
-
-        // Quote id is not a confidential DAO, so POST deposit-address only
-        // runs the bridge lookup (no new confidential quote).
-        void (async () => {
-            try {
-                const result = await fetchDepositAddress(
-                    shareId,
-                    bridgeChainId,
-                );
-                if (cancelled) return;
-                setBridgeAddress(result?.address ?? null);
-                setBridgeMemo(result?.memo ?? null);
-            } catch {
-                if (!cancelled) {
-                    setBridgeAddress(null);
-                    setBridgeMemo(null);
-                }
-            } finally {
-                if (!cancelled) setHasFetchedBridge(true);
-            }
-        })();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [
-        isOneTimeConfidentialShare,
-        hasFetchedStatus,
-        statusFound,
-        statusIsTerminal,
+    const {
+        address: bridgeAddress,
+        memo: bridgeMemo,
+        hasFetched: bridgeQueryFetched,
+    } = useConfidentialBridgeAddress({
+        enabled: shouldFetchBridge,
+        quoteDepositAddress: shareId,
         bridgeChainId,
-        shareId,
-    ]);
+    });
 
-    const expiresAtMs = statusExpiresAtMs;
+    // Settle when status says skip bridge, chain is missing, or the query finished.
+    const hasFetchedBridge = !hasFetchedStatus
+        ? false
+        : statusFound !== true || statusIsTerminal || !bridgeChainId
+          ? true
+          : bridgeQueryFetched;
 
-    useEffect(() => {
-        if (
-            !isOneTimeConfidentialShare ||
-            expiresAtMs == null ||
-            statusIsTerminal
-        ) {
-            return;
-        }
-        setNowMs(Date.now());
-        const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
-        return () => window.clearInterval(id);
-    }, [isOneTimeConfidentialShare, expiresAtMs, statusIsTerminal]);
+    const nowMs = useDepositExpiryClock(
+        isOneTimeConfidentialShare && !statusIsTerminal,
+        statusExpiresAtMs,
+    );
 
     const isStatusLoading =
         kind === "public" &&
@@ -242,18 +187,14 @@ export default function PaySharePage() {
         [kind, bridgeAssets, tokenId, networkId],
     );
 
-    const minDepositDisplay = useMemo(() => {
-        const raw = sendTokenMeta?.minDepositAmount;
-        if (!raw) return null;
-        try {
-            if (!Big(raw).gt(0)) return null;
-        } catch {
-            return null;
-        }
-        // Small mins (e.g. 1e-7 ETH) round to "0" with the default 5 decimals.
-        const formatted = formatBalance(raw, sendTokenMeta.decimals, 10);
-        return formatted === "0" ? null : formatted;
-    }, [sendTokenMeta?.minDepositAmount, sendTokenMeta?.decimals]);
+    const minDepositDisplay = useMemo(
+        () =>
+            formatMinDepositDisplay(
+                sendTokenMeta?.minDepositAmount,
+                sendTokenMeta?.decimals ?? 0,
+            ),
+        [sendTokenMeta?.minDepositAmount, sendTokenMeta?.decimals],
+    );
 
     const notices = useMemo(() => {
         if (kind === "confidential") {
@@ -273,7 +214,7 @@ export default function PaySharePage() {
         }
 
         return buildPublicWalletOneTimeNotices(t, symbol, network, {
-            expiresAtMs,
+            expiresAtMs: statusExpiresAtMs,
             nowMs,
             locale,
         });
@@ -286,7 +227,7 @@ export default function PaySharePage() {
         minDepositDisplay,
         tokenId,
         networkId,
-        expiresAtMs,
+        statusExpiresAtMs,
         nowMs,
         locale,
         t,
@@ -307,13 +248,28 @@ export default function PaySharePage() {
         return { address: recipientDaoId, networks: NEAR_COM_NETWORK_ID };
     }, [kind, depositAddress, sendTokenMeta?.networkName, recipientDaoId]);
 
+    const currentSharePath = withoutChoosePayerParam(
+        `${pathname}?${searchParams.toString()}`,
+    );
+
     const stripChoosePayerParam = useCallback(() => {
         if (!shouldOpenPicker) return;
-        const next = withoutChoosePayerParam(
-            `${pathname}?${searchParams.toString()}`,
-        );
-        router.replace(next, { scroll: false });
-    }, [shouldOpenPicker, searchParams, pathname, router]);
+        router.replace(currentSharePath, { scroll: false });
+    }, [shouldOpenPicker, currentSharePath, router]);
+
+    const goToPayerTreasury = useCallback(
+        (payerTreasuryId: string) => {
+            if (!paymentPrefill) {
+                toast.error(t("transfer.payRequiresTreasury"));
+                return;
+            }
+            stripChoosePayerParam();
+            router.push(
+                buildPayWithTrezuPaymentsPath(payerTreasuryId, paymentPrefill),
+            );
+        },
+        [paymentPrefill, stripChoosePayerParam, router, t],
+    );
 
     const continuePayWithTrezu = useCallback(() => {
         if (!paymentPrefill) {
@@ -328,13 +284,7 @@ export default function PaySharePage() {
             return;
         }
         if (next.kind === "pay") {
-            stripChoosePayerParam();
-            router.push(
-                buildPayWithTrezuPaymentsPath(
-                    next.payerTreasuryId,
-                    paymentPrefill,
-                ),
-            );
+            goToPayerTreasury(next.payerTreasuryId);
             return;
         }
         setPickerOpen(true);
@@ -345,6 +295,7 @@ export default function PaySharePage() {
         router,
         t,
         stripChoosePayerParam,
+        goToPayerTreasury,
     ]);
 
     const payWithTrezuStep = useMemo(() => {
@@ -377,10 +328,7 @@ export default function PaySharePage() {
     ]);
 
     const handleCopyLink = async () => {
-        const sharePath = withoutChoosePayerParam(
-            `${pathname}?${searchParams.toString()}`,
-        );
-        const url = getAbsoluteTransferUrl(sharePath);
+        const url = getAbsoluteTransferUrl(currentSharePath);
         try {
             await navigator.clipboard.writeText(url);
             toast.success(t("linkCopied"));
@@ -396,11 +344,7 @@ export default function PaySharePage() {
         }
 
         if (!accountId) {
-            const returnTo = withChoosePayerParam(
-                withoutChoosePayerParam(
-                    `${pathname}?${searchParams.toString()}`,
-                ),
-            );
+            const returnTo = withChoosePayerParam(currentSharePath);
             router.push(`/login?returnTo=${encodeURIComponent(returnTo)}`);
             return;
         }
@@ -415,15 +359,8 @@ export default function PaySharePage() {
     };
 
     const handleSelectPayerTreasury = (payerTreasuryId: string) => {
-        if (!paymentPrefill) {
-            toast.error(t("transfer.payRequiresTreasury"));
-            return;
-        }
         setPickerOpen(false);
-        stripChoosePayerParam();
-        router.push(
-            buildPayWithTrezuPaymentsPath(payerTreasuryId, paymentPrefill),
-        );
+        goToPayerTreasury(payerTreasuryId);
     };
 
     const pageTitle =
