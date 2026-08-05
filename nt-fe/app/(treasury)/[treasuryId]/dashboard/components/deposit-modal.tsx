@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
+import { HighlightedText } from "@/components/highlighted-text";
 import { InputBlock } from "@/components/input-block";
 import { getNetworkDisplayName } from "@/components/token-display";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -1668,7 +1669,7 @@ export function DepositModal({
                 searchPlaceholder={t("searchByName")}
                 isLoading={isLoadingAssets}
                 selectedId={selectedNetwork?.id}
-                renderContent={(item) => {
+                renderContent={(item, { searchQuery }) => {
                     const option = item as SelectOption;
                     return (
                         <div className="flex-1 text-left">
@@ -1681,16 +1682,27 @@ export function DepositModal({
                                     ),
                                 )}
                             >
-                                {option.name || option.symbol}
+                                <HighlightedText
+                                    text={
+                                        option.name || option.symbol || ""
+                                    }
+                                    query={searchQuery}
+                                />
                             </div>
                             {option.description && (
                                 <div className="text-xs text-muted-foreground font-normal">
-                                    {option.description}
+                                    <HighlightedText
+                                        text={option.description}
+                                        query={searchQuery}
+                                    />
                                 </div>
                             )}
                             {option.symbol && (
                                 <div className="text-sm text-muted-foreground">
-                                    {option.symbol}
+                                    <HighlightedText
+                                        text={option.symbol}
+                                        query={searchQuery}
+                                    />
                                 </div>
                             )}
                         </div>

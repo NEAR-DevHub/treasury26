@@ -83,7 +83,9 @@ function ConfidentialGuestPendingRequests({
 }
 
 function PendingRequestItemSkeleton() {
-    return <Skeleton className="h-16 w-full rounded-lg" />;
+    return (
+        <Skeleton className="h-16 w-full rounded-lg bg-general-unofficial-accent" />
+    );
 }
 
 function PendingRequestsGridSkeleton() {

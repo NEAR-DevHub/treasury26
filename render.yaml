@@ -5,7 +5,7 @@ services:
     runtime: rust
     plan: standard
     rootDir: nt-be
-    branch: release-1.23.0
+    branch: release-1.24.0
     buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be && cargo build --release --example mark_testing_daos
     startCommand: ./target/release/nt-be
     domains:
@@ -39,6 +39,10 @@ services:
         sync: false
       - key: TESTING_NEAR_ACCOUNT_IDS
         sync: false
+      - key: ANALYTICS_API_KEY
+        sync: false
+      - key: ANALYTICS_USERS
+        sync: false
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 90
 
@@ -48,7 +52,7 @@ services:
     runtime: node
     plan: starter
     rootDir: nt-fe
-    branch: release-1.23.0
+    branch: release-1.24.0
     buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
     domains:
@@ -69,7 +73,7 @@ services:
     plan: starter
     image:
       url: docker.io/nocodb/nocodb:0.301.3
-    disk: 
+    disk:
       name: nocodb-disk
       mountPath: /usr/app/data/
       sizeGB: 1
@@ -127,6 +131,10 @@ services:
         sync: false
       - key: TESTING_NEAR_ACCOUNT_IDS
         sync: false
+      - key: ANALYTICS_API_KEY
+        sync: false
+      - key: ANALYTICS_USERS
+        sync: false
     healthCheckPath: /api/health
     maxShutdownDelaySeconds: 90
 
@@ -148,10 +156,27 @@ services:
         sync: false
     healthCheckPath: /
 
+  - type: web
+    name: near-treasury-frontend-staging-redesign
+    runtime: node
+    plan: starter
+    rootDir: nt-fe
+    branch: nearcom_redesign
+    buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+    startCommand: node .next/standalone/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MAXMIND_LICENSE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_BACKEND_API_BASE
+        sync: false
+    healthCheckPath: /
+
 databases:
   - name: database
     plan: basic-1gb
-    diskSizeGB: 5
+    diskSizeGB: 10
 
   - name: database-staging
     plan: basic-1gb

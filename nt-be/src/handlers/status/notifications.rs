@@ -574,6 +574,24 @@ pub fn format_health_check_alert(
     .render()
 }
 
+/// Ops alert when a previously failing health check is healthy again.
+pub fn format_health_check_recovery(service: &str, check_name: &str) -> String {
+    OpsMessage {
+        emoji: "✅",
+        title: format!("Health check recovered: {}", service_label(service)),
+        trigger: Some(MessageTrigger::Automatic { reason: None }),
+        health_check_service: None,
+        status: Some("ok".to_string()),
+        scope: None,
+        extra_meta: vec![format!("Check: <code>{}</code>", escape_html(check_name))],
+        section_label: None,
+        previews: Vec::new(),
+        schedule: None,
+        footer: Some("Service is healthy again.".to_string()),
+    }
+    .render()
+}
+
 // ─── Sending ─────────────────────────────────────────────────────────────────
 
 /// Send a warning lifecycle alert to the ops channel. Best-effort: failures are
@@ -716,5 +734,15 @@ mod tests {
         assert!(message.contains("Check: <code>backend.database</code>"));
         assert!(message.contains("Connection refused"));
         assert!(message.contains("Post to app would publish:"));
+    }
+
+    #[test]
+    fn health_check_recovery_has_consistent_header() {
+        let message = format_health_check_recovery("near-rpc", "near-rpc.status");
+        assert!(message.contains("✅ <b>Health check recovered: NEAR RPC</b>"));
+        assert!(message.contains("Trigger: <b>Automatic</b>"));
+        assert!(message.contains("Status: <b>ok</b>"));
+        assert!(message.contains("Check: <code>near-rpc.status</code>"));
+        assert!(message.contains("Service is healthy again."));
     }
 }

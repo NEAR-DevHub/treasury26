@@ -44,12 +44,47 @@ impl From<sqlx::Error> for RegisterMonitoredAccountError {
     }
 }
 
+/// Mirror a non-sputnik account into the Goldsky pipeline's dynamic lookup
+/// table (`streamling.tracked_accounts`) so its outcomes are indexed.
+/// Sputnik DAOs are covered by the pipeline's static filters and skipped.
+/// Best-effort: a failure is logged but never blocks registration — the
+/// NearBlocks backfill still covers the data.
+async fn sync_tracked_account(goldsky_pool: Option<&PgPool>, account_id: &AccountIdRef) {
+    if account_id.as_str().ends_with(".sputnik-dao.near") {
+        return;
+    }
+    let Some(goldsky_pool) = goldsky_pool else {
+        return;
+    };
+    let result = sqlx::query(
+        r#"
+        INSERT INTO streamling.tracked_accounts (value, updated_at)
+        VALUES ($1, NOW())
+        ON CONFLICT (value) DO UPDATE SET updated_at = NOW()
+        "#,
+    )
+    .bind(account_id.as_str())
+    .execute(goldsky_pool)
+    .await;
+
+    if let Err(e) = result {
+        tracing::warn!(
+            account_id = account_id.as_str(),
+            error = %e,
+            "failed to sync account into goldsky tracked_accounts"
+        );
+    }
+}
+
 /// Register a monitored account or refresh an existing one.
 ///
 /// - Existing account: updates `dirty_at` and marks DAO as dirty.
 /// - New account: creates with default Plus plan credits.
+/// - Non-sputnik accounts are mirrored into the Goldsky `tracked_accounts`
+///   lookup table so the pipeline indexes their outcomes.
 pub async fn register_or_refresh_monitored_account(
     pool: &PgPool,
+    goldsky_pool: Option<&PgPool>,
     account_id: &AccountIdRef,
     is_confidential: bool,
 ) -> Result<RegisterMonitoredAccountResult, RegisterMonitoredAccountError> {
@@ -93,6 +128,8 @@ pub async fn register_or_refresh_monitored_account(
         .execute(pool)
         .await?;
 
+        sync_tracked_account(goldsky_pool, account_id).await;
+
         return Ok(RegisterMonitoredAccountResult {
             account,
             is_new_registration: false,
@@ -119,6 +156,8 @@ pub async fn register_or_refresh_monitored_account(
     .bind(is_confidential)
     .fetch_one(pool)
     .await?;
+
+    sync_tracked_account(goldsky_pool, account_id).await;
 
     Ok(RegisterMonitoredAccountResult {
         account,

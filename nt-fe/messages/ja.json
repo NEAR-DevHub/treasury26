@@ -927,7 +927,8 @@
             "yourLink": "招待リンク",
             "copyLink": "リンクをコピー",
             "linkCopied": "招待リンクをコピーしました",
-            "generateNewLink": "新しいリンクを作成"
+            "generateNewLink": "新しいリンクを作成",
+            "generatingNewLink": "新しいリンクを作成中"
         },
         "joinRequests": {
             "title": "参加希望",
@@ -955,6 +956,9 @@
             "successTitle": "もう少しで参加できます",
             "successDescription": "チームがリクエストを確認したら\n参加できます。今は他にすることはありません。",
             "seeTreasury": "トレジャリーを見る",
+            "alreadyMemberTitle": "すでにメンバーです",
+            "alreadyMemberDescription": "アクセスを申請する必要はありません — すでに {treasury} の一員です。",
+            "goToTreasury": "トレジャリーへ",
             "invalidTitle": "招待が見つかりません",
             "invalidDescription": "この招待リンクは無効か、利用できなくなっています。",
             "usedTitle": "招待は使用済みです",
@@ -2383,6 +2387,10 @@
             "title": "Trezuを探索",
             "description": "アカウントを作成して、Trezuのすべての機能と特典の権限をアンロックしましょう。",
             "cta": "トレジャリーを作成"
+        },
+        "pendingJoinBanner": {
+            "title": "参加リクエストは承認待ちです",
+            "description": "このトレジャリーは今すぐ閲覧できます。メンバーが承認すると、ロールに応じてリクエストの作成、投票、資金管理ができるようになります。"
         },
         "infoBox": {
             "title": "Trezuをもっと活用",

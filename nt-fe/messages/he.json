@@ -927,7 +927,8 @@
             "yourLink": "קישור ההזמנה שלכם",
             "copyLink": "העתקת קישור",
             "linkCopied": "קישור ההזמנה הועתק",
-            "generateNewLink": "יצירת קישור חדש"
+            "generateNewLink": "יצירת קישור חדש",
+            "generatingNewLink": "יוצר קישור חדש"
         },
         "joinRequests": {
             "title": "רוצה להצטרף",
@@ -955,6 +956,9 @@
             "successTitle": "כמעט בפנים",
             "successDescription": "תוכלו להצטרף אחרי שהצוות יבדוק\nאת הבקשה. בינתיים אין מה לעשות.",
             "seeTreasury": "צפייה באוצר",
+            "alreadyMemberTitle": "אתה כבר חבר",
+            "alreadyMemberDescription": "אין צורך לבקש גישה — אתה כבר חלק מ-{treasury}.",
+            "goToTreasury": "עבור לאוצר",
             "invalidTitle": "ההזמנה לא נמצאה",
             "invalidDescription": "קישור ההזמנה אינו תקף או שאינו זמין יותר.",
             "usedTitle": "ההזמנה כבר נוצלה",
@@ -2383,6 +2387,10 @@
             "title": "גלה את Trezu",
             "description": "צור חשבון כדי לפתוח הרשאות לכל התכונות והיתרונות של Trezu.",
             "cta": "יצירת אוצר"
+        },
+        "pendingJoinBanner": {
+            "title": "בקשת ההצטרפות שלך ממתינה",
+            "description": "אפשר כבר לצפות באוצר הזה. כשחבר יאשר אותך, תוכל ליצור בקשות, להצביע או לנהל כספים בהתאם לתפקיד שלך."
         },
         "infoBox": {
             "title": "קבל יותר מ-Trezu",

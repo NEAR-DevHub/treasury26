@@ -1,41 +1,31 @@
 import { useState, useEffect } from "react";
 
 /**
- * Custom hook to detect media query matches
- * @param query - CSS media query string (e.g., "(max-width: 768px)")
- * @returns boolean indicating if the query matches
+ * Detect whether a CSS media query currently matches.
+ * Initializes synchronously on the client to avoid a false → true flip after mount.
  */
 export function useMediaQuery(query: string): boolean {
-    const [matches, setMatches] = useState(false);
+    const [matches, setMatches] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return window.matchMedia(query).matches;
+    });
 
     useEffect(() => {
         const media = window.matchMedia(query);
-
-        // Set initial value
-        setMatches(media.matches);
-
-        // Create event listener
         const listener = (event: MediaQueryListEvent) => {
             setMatches(event.matches);
         };
 
-        // Add listener (use deprecated addListener for older browsers)
-        if (media.addEventListener) {
+        setMatches(media.matches);
+
+        // Safari < 14 only supports the older addListener/removeListener API.
+        if (typeof media.addEventListener === "function") {
             media.addEventListener("change", listener);
-        } else {
-            // @ts-ignore - for older browsers
-            media.addListener(listener);
+            return () => media.removeEventListener("change", listener);
         }
 
-        // Cleanup
-        return () => {
-            if (media.removeEventListener) {
-                media.removeEventListener("change", listener);
-            } else {
-                // @ts-ignore - for older browsers
-                media.removeListener(listener);
-            }
-        };
+        media.addListener(listener);
+        return () => media.removeListener(listener);
     }, [query]);
 
     return matches;

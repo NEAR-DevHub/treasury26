@@ -34,10 +34,10 @@ export function SelectListSkeleton() {
                     key={i}
                     className="w-full flex items-center gap-3 py-3 rounded-lg"
                 >
-                    <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
+                    <div className="w-10 h-10 rounded-full bg-general-unofficial-accent-0 shrink-0" />
                     <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-muted rounded w-24" />
-                        <div className="h-3 bg-muted rounded w-32" />
+                        <div className="h-4 bg-general-unofficial-accent-0 rounded w-24" />
+                        <div className="h-3 bg-general-unofficial-accent-0 rounded w-32" />
                     </div>
                 </div>
             ))}

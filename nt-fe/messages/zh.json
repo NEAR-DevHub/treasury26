@@ -927,7 +927,8 @@
             "yourLink": "你的邀请链接",
             "copyLink": "复制链接",
             "linkCopied": "已复制邀请链接",
-            "generateNewLink": "生成新链接"
+            "generateNewLink": "生成新链接",
+            "generatingNewLink": "正在生成新链接"
         },
         "joinRequests": {
             "title": "希望加入",
@@ -955,6 +956,9 @@
             "successTitle": "快要加入了",
             "successDescription": "团队审核你的请求后，\n你就可以加入。现在无需再做任何事。",
             "seeTreasury": "查看金库",
+            "alreadyMemberTitle": "您已是成员",
+            "alreadyMemberDescription": "无需申请访问权限 — 您已是 {treasury} 的成员。",
+            "goToTreasury": "前往金库",
             "invalidTitle": "未找到邀请",
             "invalidDescription": "此邀请链接无效或已不可用。",
             "usedTitle": "邀请已使用",
@@ -2366,6 +2370,10 @@
             "title": "探索 Trezu",
             "description": "创建账户以解锁 Trezu 所有功能与权益的访问权限。",
             "cta": "创建金库"
+        },
+        "pendingJoinBanner": {
+            "title": "您的加入请求正在等待审批",
+            "description": "您现在可以查看此金库。成员批准后，您将可以根据角色创建请求、投票或管理资金。"
         },
         "infoBox": {
             "title": "更好地利用 Trezu",

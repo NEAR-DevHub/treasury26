@@ -10,7 +10,11 @@ use sqlx::Postgres;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::{AppState, auth::AuthUser, handlers::treasury::config::fetch_treasury_config};
+use crate::{
+    AppState,
+    auth::{AuthUser, OptionalAuthUser},
+    handlers::treasury::config::fetch_treasury_config,
+};
 
 fn internal_error(context: &str, e: impl std::fmt::Display) -> (StatusCode, String) {
     tracing::error!("{context}: {e}");
@@ -87,6 +91,14 @@ impl InviteLinkStatus {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ViewerJoinStatus {
+    None,
+    Pending,
+    Member,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InviteLinkInfoResponse {
@@ -94,6 +106,55 @@ pub struct InviteLinkInfoResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury_name: Option<String>,
     pub status: InviteLinkStatus,
+    /// Present when the request includes a valid session cookie.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub viewer_status: Option<ViewerJoinStatus>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MyMemberJoinStatusResponse {
+    pub status: ViewerJoinStatus,
+}
+
+async fn resolve_viewer_join_status(
+    pool: &sqlx::PgPool,
+    dao_id: &AccountId,
+    account_id: &str,
+) -> Result<ViewerJoinStatus, (StatusCode, String)> {
+    let is_member = sqlx::query_scalar!(
+        r#"
+        SELECT 1 AS ok FROM dao_members
+        WHERE dao_id = $1 AND account_id = $2 AND is_policy_member = true
+        "#,
+        dao_id.as_str(),
+        account_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| internal_error("Failed to check DAO membership", e))?;
+
+    if is_member.is_some() {
+        return Ok(ViewerJoinStatus::Member);
+    }
+
+    let has_pending = sqlx::query_scalar!(
+        r#"
+        SELECT 1 AS ok FROM member_join_requests
+        WHERE dao_id = $1 AND account_id = $2 AND status = 'pending'
+        "#,
+        dao_id.as_str(),
+        account_id
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| internal_error("Failed to check pending join request", e))?;
+
+    if has_pending.is_some() {
+        return Ok(ViewerJoinStatus::Pending);
+    }
+
+    Ok(ViewerJoinStatus::None)
 }
 
 struct InviteLinkRow {
@@ -115,6 +176,7 @@ fn resolve_invite_status(row: &InviteLinkRow) -> InviteLinkStatus {
 /// `GET /api/member-invites/{token}` — public invite link metadata.
 pub async fn get_member_invite(
     State(state): State<Arc<AppState>>,
+    auth: OptionalAuthUser,
     Path(token): Path<Uuid>,
 ) -> Result<Json<InviteLinkInfoResponse>, (StatusCode, String)> {
     let row = sqlx::query_as!(
@@ -147,11 +209,29 @@ pub async fn get_member_invite(
         None
     };
 
+    let viewer_status = if let Some(user) = auth.0.as_ref() {
+        Some(resolve_viewer_join_status(&state.db_pool, &dao_id, user.account_id.as_str()).await?)
+    } else {
+        None
+    };
+
     Ok(Json(InviteLinkInfoResponse {
         dao_id,
         treasury_name,
         status,
+        viewer_status,
     }))
+}
+
+/// `GET /api/treasury/{dao_id}/member-join-requests/me` — requester's own join status.
+pub async fn get_my_member_join_status(
+    State(state): State<Arc<AppState>>,
+    auth_user: AuthUser,
+    Path(dao_id): Path<AccountId>,
+) -> Result<Json<MyMemberJoinStatusResponse>, (StatusCode, String)> {
+    let status =
+        resolve_viewer_join_status(&state.db_pool, &dao_id, auth_user.account_id.as_str()).await?;
+    Ok(Json(MyMemberJoinStatusResponse { status }))
 }
 
 #[derive(Debug, Deserialize)]

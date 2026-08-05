@@ -927,7 +927,8 @@
             "yourLink": "Tu enlace de invitación",
             "copyLink": "Copiar enlace",
             "linkCopied": "Enlace de invitación copiado",
-            "generateNewLink": "Generar nuevo enlace"
+            "generateNewLink": "Generar nuevo enlace",
+            "generatingNewLink": "Generando nuevo enlace"
         },
         "joinRequests": {
             "title": "Quiere unirse",
@@ -955,6 +956,9 @@
             "successTitle": "Casi estás dentro",
             "successDescription": "Podrás unirte cuando el equipo revise\ntu solicitud. Por ahora no hay nada más que hacer.",
             "seeTreasury": "Ver treasury",
+            "alreadyMemberTitle": "Ya eres miembro",
+            "alreadyMemberDescription": "No necesitas solicitar acceso: ya formas parte de {treasury}.",
+            "goToTreasury": "Ir al treasury",
             "invalidTitle": "Invitación no encontrada",
             "invalidDescription": "Este enlace de invitación no es válido o ya no está disponible.",
             "usedTitle": "Invitación ya usada",
@@ -2383,6 +2387,10 @@
             "title": "Explora Trezu",
             "description": "Crea una cuenta para desbloquear permisos a todas las funciones y ventajas de Trezu.",
             "cta": "Crear tesorería"
+        },
+        "pendingJoinBanner": {
+            "title": "Tu solicitud para unirte está pendiente",
+            "description": "Ya puedes ver esta tesorería. Cuando un miembro te apruebe, podrás crear solicitudes, votar o gestionar fondos según tu rol."
         },
         "infoBox": {
             "title": "Saca más partido a Trezu",

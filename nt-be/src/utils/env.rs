@@ -66,6 +66,8 @@ pub struct EnvVars {
     pub telegram_webhook_secret: Option<String>,
     // Static API key guarding the internal analytics export endpoint
     pub analytics_api_key: Option<String>,
+    // Basic-auth credentials for browser access to the analytics export endpoint
+    pub analytics_users: Vec<crate::utils::admin_auth::AdminCredential>,
     pub frontend_base_url: String,
     pub admin_users: Vec<crate::utils::admin_auth::AdminCredential>,
     // Confidential auth token lifetime in days (default: 36500 ≈ 100 years)
@@ -244,6 +246,9 @@ impl Default for EnvVars {
             analytics_api_key: std::env::var("ANALYTICS_API_KEY")
                 .ok()
                 .filter(|s| !s.is_empty()),
+            analytics_users: crate::utils::admin_auth::parse_admin_users(
+                std::env::var("ANALYTICS_USERS").ok().as_deref(),
+            ),
             frontend_base_url: std::env::var("FRONTEND_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:3001".to_string()),
             admin_users: crate::utils::admin_auth::parse_admin_users(

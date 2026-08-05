@@ -927,7 +927,8 @@
             "yourLink": "Davet bağlantınız",
             "copyLink": "Bağlantıyı kopyala",
             "linkCopied": "Davet bağlantısı kopyalandı",
-            "generateNewLink": "Yeni bağlantı oluştur"
+            "generateNewLink": "Yeni bağlantı oluştur",
+            "generatingNewLink": "Yeni bağlantı oluşturuluyor"
         },
         "joinRequests": {
             "title": "Katılmak istiyor",
@@ -955,6 +956,9 @@
             "successTitle": "Neredeyse katıldınız",
             "successDescription": "Ekip talebinizi inceledikten sonra\nkatılabilirsiniz. Şimdilik yapacak başka bir şey yok.",
             "seeTreasury": "Treasury’yi gör",
+            "alreadyMemberTitle": "Zaten üyesiniz",
+            "alreadyMemberDescription": "Erişim istemenize gerek yok — zaten {treasury} üyesisiniz.",
+            "goToTreasury": "Treasury’ye git",
             "invalidTitle": "Davet bulunamadı",
             "invalidDescription": "Bu davet bağlantısı geçersiz veya artık kullanılamıyor.",
             "usedTitle": "Davet zaten kullanıldı",
@@ -2383,6 +2387,10 @@
             "title": "Trezu'yu Keşfet",
             "description": "Trezu'nun tüm özelliklerine ve avantajlarına izin almak için bir hesap oluşturun.",
             "cta": "Hazine Oluştur"
+        },
+        "pendingJoinBanner": {
+            "title": "Katılma isteğiniz bekliyor",
+            "description": "Bu hazineyi şimdi görüntüleyebilirsiniz. Bir üye sizi onayladığında, rolünüze göre istek oluşturabilir, oy verebilir veya fonları yönetebilirsiniz."
         },
         "infoBox": {
             "title": "Trezu'dan daha fazlasını alın",
