@@ -107,7 +107,8 @@
         "wallet": "Carteira",
         "termsOfService": "Termos de Serviço",
         "privacyPolicy": "Política de Privacidade",
-        "disconnect": "Desconectar"
+        "disconnect": "Sair",
+        "myAccount": "Minha conta"
     },
     "auth": {
         "noWallet": "Conecte sua carteira",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "Trezu Wallet",
             "description": "Assine propostas de tesouraria pelo Trezu"
+        },
+        "account": {
+            "title": "Minha conta",
+            "description": "Gerencie seu perfil e configurações pessoais"
         }
     },
     "depositModal": {
@@ -984,7 +989,11 @@
             "fileReadError": "Erro ao ler o arquivo. Por favor, tente novamente.",
             "primaryColor": "Cor primária",
             "primaryColorDescription": "Defina a cor primária para os elementos da interface da sua tesouraria. Esta cor será usada nos modos claro e escuro, então leve em conta o contraste ao escolher tons neutros.",
-            "selectColorLabel": "Selecionar cor {color}"
+            "selectColorLabel": "Selecionar cor {color}",
+            "saveChanges": "Salvar alterações",
+            "saving": "Salvando...",
+            "savedToast": "Suas alterações foram salvas.",
+            "saveFailed": "Não foi possível salvar as alterações. Tente novamente."
         },
         "voting": {
             "validation": {
@@ -2547,5 +2556,23 @@
             "min": "{label} deve ser no mínimo {min}",
             "max": "{label} deve ser no máximo {max}"
         }
+    },
+    "account": {
+        "personalSettings": "Configurações pessoais",
+        "uploadAvatar": "Enviar avatar",
+        "removeAvatar": "Remover avatar",
+        "uploading": "Enviando...",
+        "displayName": "Nome de exibição",
+        "displayNamePlaceholder": "Digite o nome de exibição",
+        "myWallet": "Minha carteira",
+        "saveChanges": "Salvar alterações",
+        "saving": "Salvando...",
+        "saveSuccess": "Suas alterações foram salvas.",
+        "saveError": "Não foi possível salvar as alterações. Tente novamente.",
+        "invalidImage": "Escolha um arquivo de imagem válido.",
+        "imageTooLarge": "A imagem deve ter 2 MB ou menos.",
+        "signInRequired": "Conecte sua carteira para gerenciar sua conta.",
+        "avatarUploaded": "Avatar enviado com sucesso",
+        "uploadError": "Erro ao enviar a imagem. Tente novamente."
     }
 }

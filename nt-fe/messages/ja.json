@@ -107,7 +107,8 @@
         "wallet": "ウォレット",
         "termsOfService": "利用規約",
         "privacyPolicy": "プライバシーポリシー",
-        "disconnect": "切断"
+        "disconnect": "ログアウト",
+        "myAccount": "マイアカウント"
     },
     "auth": {
         "noWallet": "ウォレットを接続してください",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "Trezuウォレット",
             "description": "Trezu経由でトレジャリー提案に署名"
+        },
+        "account": {
+            "title": "マイアカウント",
+            "description": "個人プロフィールと設定を管理"
         }
     },
     "depositModal": {
@@ -984,7 +989,11 @@
             "fileReadError": "ファイルの読み込みエラーです。もう一度お試しください。",
             "primaryColor": "メインカラー",
             "primaryColorDescription": "トレジャリーのインターフェース要素のメインカラーを設定します。この色はライトモードとダークモードの両方で使われるため、ニュートラルな色を選ぶ際はコントラストに注意してください。",
-            "selectColorLabel": "色 {color} を選択"
+            "selectColorLabel": "色 {color} を選択",
+            "saveChanges": "変更を保存",
+            "saving": "保存中...",
+            "savedToast": "変更を保存しました。",
+            "saveFailed": "変更を保存できませんでした。もう一度お試しください。"
         },
         "voting": {
             "validation": {
@@ -2547,5 +2556,23 @@
             "min": "{label}は{min}以上である必要があります",
             "max": "{label}は{max}以下である必要があります"
         }
+    },
+    "account": {
+        "personalSettings": "個人設定",
+        "uploadAvatar": "アバターをアップロード",
+        "removeAvatar": "アバターを削除",
+        "uploading": "アップロード中...",
+        "displayName": "表示名",
+        "displayNamePlaceholder": "表示名を入力",
+        "myWallet": "マイウォレット",
+        "saveChanges": "変更を保存",
+        "saving": "保存中...",
+        "saveSuccess": "変更を保存しました。",
+        "saveError": "変更を保存できませんでした。もう一度お試しください。",
+        "invalidImage": "有効な画像ファイルを選択してください。",
+        "imageTooLarge": "画像は2 MB以下にしてください。",
+        "signInRequired": "アカウントを管理するにはウォレットを接続してください。",
+        "avatarUploaded": "アバターをアップロードしました",
+        "uploadError": "画像のアップロード中にエラーが発生しました。もう一度お試しください。"
     }
 }

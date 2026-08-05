@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO treasury_settings (account_id, display_name, flag_logo, primary_color, updated_by)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (account_id) DO UPDATE\n        SET display_name = EXCLUDED.display_name,\n            flag_logo = EXCLUDED.flag_logo,\n            primary_color = EXCLUDED.primary_color,\n            updated_by = EXCLUDED.updated_by,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c6553a0816afaca225b91ee36529211c748bee8bd6936746569980e7be69b7c7"
+}

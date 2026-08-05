@@ -103,11 +103,12 @@
     },
     "signIn": {
         "copyAddress": "Copy address",
+        "myAccount": "My Account",
         "connect": "Connect",
         "wallet": "Wallet",
         "termsOfService": "Terms of Service",
         "privacyPolicy": "Privacy Policy",
-        "disconnect": "Disconnect"
+        "disconnect": "Log Out"
     },
     "auth": {
         "noWallet": "Connect your wallet",
@@ -188,6 +189,10 @@
         "settings": {
             "title": "Settings",
             "description": "Adjust your application settings"
+        },
+        "account": {
+            "title": "My Account",
+            "description": "Manage your personal profile and settings"
         },
         "addressBook": {
             "title": "Address Book",
@@ -984,7 +989,11 @@
             "fileReadError": "Error reading file. Please try again.",
             "primaryColor": "Primary Color",
             "primaryColorDescription": "Set the primary color for your treasury's interface elements. This color will be used in both light and dark modes, so keep contrast in mind when choosing neutral shades.",
-            "selectColorLabel": "Select color {color}"
+            "selectColorLabel": "Select color {color}",
+            "saveChanges": "Save Changes",
+            "saving": "Saving...",
+            "savedToast": "Your changes are saved.",
+            "saveFailed": "Couldn't save your changes. Try again."
         },
         "voting": {
             "validation": {
@@ -2547,5 +2556,23 @@
             "min": "{label} must be at least {min}",
             "max": "{label} must be at most {max}"
         }
+    },
+    "account": {
+        "personalSettings": "Personal Settings",
+        "uploadAvatar": "Upload Avatar",
+        "removeAvatar": "Remove Avatar",
+        "uploading": "Uploading...",
+        "displayName": "Display Name",
+        "displayNamePlaceholder": "Enter display name",
+        "myWallet": "My Wallet",
+        "saveChanges": "Save Changes",
+        "saving": "Saving...",
+        "saveSuccess": "Your changes are saved.",
+        "saveError": "Couldn't save your changes. Try again.",
+        "invalidImage": "Please choose a valid image file.",
+        "imageTooLarge": "Image must be 2 MB or smaller.",
+        "avatarUploaded": "Avatar uploaded successfully",
+        "uploadError": "Error occurred while uploading image, please try again.",
+        "signInRequired": "Connect your wallet to manage your account."
     }
 }

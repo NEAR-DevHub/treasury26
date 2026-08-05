@@ -107,7 +107,8 @@
         "wallet": "Wallet",
         "termsOfService": "Nutzungsbedingungen",
         "privacyPolicy": "Datenschutzerklärung",
-        "disconnect": "Trennen"
+        "disconnect": "Abmelden",
+        "myAccount": "Mein Konto"
     },
     "auth": {
         "noWallet": "Verbinden Sie Ihre Wallet",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "Trezu Wallet",
             "description": "Treasury-Vorschläge über Trezu signieren"
+        },
+        "account": {
+            "title": "Mein Konto",
+            "description": "Verwalte dein persönliches Profil und Einstellungen"
         }
     },
     "depositModal": {
@@ -984,7 +989,11 @@
             "fileReadError": "Fehler beim Lesen der Datei. Bitte erneut versuchen.",
             "primaryColor": "Primärfarbe",
             "primaryColorDescription": "Legen Sie die Primärfarbe für die Oberflächenelemente Ihrer Treasury fest. Diese Farbe wird sowohl im hellen als auch im dunklen Modus verwendet, achten Sie daher beim Wählen neutraler Töne auf den Kontrast.",
-            "selectColorLabel": "Farbe {color} auswählen"
+            "selectColorLabel": "Farbe {color} auswählen",
+            "saveChanges": "Änderungen speichern",
+            "saving": "Speichern...",
+            "savedToast": "Deine Änderungen wurden gespeichert.",
+            "saveFailed": "Änderungen konnten nicht gespeichert werden. Bitte erneut versuchen."
         },
         "voting": {
             "validation": {
@@ -2547,5 +2556,23 @@
             "min": "{label} muss mindestens {min} sein",
             "max": "{label} darf höchstens {max} sein"
         }
+    },
+    "account": {
+        "personalSettings": "Persönliche Einstellungen",
+        "uploadAvatar": "Avatar hochladen",
+        "removeAvatar": "Avatar entfernen",
+        "uploading": "Wird hochgeladen...",
+        "displayName": "Anzeigename",
+        "displayNamePlaceholder": "Anzeigename eingeben",
+        "myWallet": "Mein Wallet",
+        "saveChanges": "Änderungen speichern",
+        "saving": "Speichern...",
+        "saveSuccess": "Deine Änderungen wurden gespeichert.",
+        "saveError": "Änderungen konnten nicht gespeichert werden. Bitte erneut versuchen.",
+        "invalidImage": "Bitte wähle eine gültige Bilddatei.",
+        "imageTooLarge": "Das Bild darf höchstens 2 MB groß sein.",
+        "signInRequired": "Verbinde dein Wallet, um dein Konto zu verwalten.",
+        "avatarUploaded": "Avatar erfolgreich hochgeladen",
+        "uploadError": "Fehler beim Hochladen des Bildes. Bitte erneut versuchen."
     }
 }

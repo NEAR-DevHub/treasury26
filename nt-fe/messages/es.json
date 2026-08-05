@@ -107,7 +107,8 @@
         "wallet": "Cartera",
         "termsOfService": "Términos del servicio",
         "privacyPolicy": "Política de privacidad",
-        "disconnect": "Desconectar"
+        "disconnect": "Cerrar sesión",
+        "myAccount": "Mi cuenta"
     },
     "auth": {
         "noWallet": "Conecta tu cartera",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "Trezu Wallet",
             "description": "Firma propuestas de tesorería a través de Trezu"
+        },
+        "account": {
+            "title": "Mi cuenta",
+            "description": "Administra tu perfil y configuración personal"
         }
     },
     "depositModal": {
@@ -984,7 +989,11 @@
             "fileReadError": "Error al leer el archivo. Inténtalo de nuevo.",
             "primaryColor": "Color principal",
             "primaryColorDescription": "Define el color principal para los elementos de la interfaz de tu tesorería. Se usará tanto en modo claro como oscuro, así que ten en cuenta el contraste al elegir tonos neutros.",
-            "selectColorLabel": "Seleccionar color {color}"
+            "selectColorLabel": "Seleccionar color {color}",
+            "saveChanges": "Guardar cambios",
+            "saving": "Guardando...",
+            "savedToast": "Tus cambios se guardaron.",
+            "saveFailed": "No se pudieron guardar los cambios. Inténtalo de nuevo."
         },
         "voting": {
             "validation": {
@@ -2547,5 +2556,23 @@
             "min": "{label} debe ser como mínimo {min}",
             "max": "{label} debe ser como máximo {max}"
         }
+    },
+    "account": {
+        "personalSettings": "Configuración personal",
+        "uploadAvatar": "Subir avatar",
+        "removeAvatar": "Eliminar avatar",
+        "uploading": "Subiendo...",
+        "displayName": "Nombre para mostrar",
+        "displayNamePlaceholder": "Introduce un nombre",
+        "myWallet": "Mi billetera",
+        "saveChanges": "Guardar cambios",
+        "saving": "Guardando...",
+        "saveSuccess": "Tus cambios se guardaron.",
+        "saveError": "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+        "invalidImage": "Elige un archivo de imagen válido.",
+        "imageTooLarge": "La imagen debe tener 2 MB o menos.",
+        "signInRequired": "Conecta tu billetera para administrar tu cuenta.",
+        "avatarUploaded": "Avatar subido correctamente",
+        "uploadError": "Error al subir la imagen. Inténtalo de nuevo."
     }
 }

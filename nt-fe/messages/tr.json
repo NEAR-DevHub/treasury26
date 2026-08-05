@@ -107,7 +107,8 @@
         "wallet": "Cüzdan",
         "termsOfService": "Hizmet Şartları",
         "privacyPolicy": "Gizlilik Politikası",
-        "disconnect": "Bağlantıyı Kes"
+        "disconnect": "Çıkış yap",
+        "myAccount": "Hesabım"
     },
     "auth": {
         "noWallet": "Cüzdanınızı bağlayın",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "Trezu Cüzdan",
             "description": "Trezu üzerinden hazine önerilerini imzalayın"
+        },
+        "account": {
+            "title": "Hesabım",
+            "description": "Kişisel profilini ve ayarlarını yönet"
         }
     },
     "depositModal": {
@@ -984,7 +989,11 @@
             "fileReadError": "Dosya okunurken hata oluştu. Lütfen tekrar deneyin.",
             "primaryColor": "Birincil Renk",
             "primaryColorDescription": "Hazinenizin arayüz öğeleri için birincil rengi ayarlayın. Bu renk hem açık hem de karanlık modlarda kullanılacak, bu nedenle nötr tonlar seçerken kontrastı göz önünde bulundurun.",
-            "selectColorLabel": "{color} rengini seç"
+            "selectColorLabel": "{color} rengini seç",
+            "saveChanges": "Değişiklikleri kaydet",
+            "saving": "Kaydediliyor...",
+            "savedToast": "Değişiklikleriniz kaydedildi.",
+            "saveFailed": "Değişiklikler kaydedilemedi. Tekrar deneyin."
         },
         "voting": {
             "validation": {
@@ -2547,5 +2556,23 @@
             "min": "{label} en az {min} olmalıdır",
             "max": "{label} en fazla {max} olmalıdır"
         }
+    },
+    "account": {
+        "personalSettings": "Kişisel ayarlar",
+        "uploadAvatar": "Avatar yükle",
+        "removeAvatar": "Avatarı kaldır",
+        "uploading": "Yükleniyor...",
+        "displayName": "Görünen ad",
+        "displayNamePlaceholder": "Görünen ad girin",
+        "myWallet": "Cüzdanım",
+        "saveChanges": "Değişiklikleri kaydet",
+        "saving": "Kaydediliyor...",
+        "saveSuccess": "Değişiklikleriniz kaydedildi.",
+        "saveError": "Değişiklikler kaydedilemedi. Tekrar deneyin.",
+        "invalidImage": "Lütfen geçerli bir görsel dosyası seçin.",
+        "imageTooLarge": "Görsel 2 MB veya daha küçük olmalıdır.",
+        "signInRequired": "Hesabınızı yönetmek için cüzdanınızı bağlayın.",
+        "avatarUploaded": "Avatar başarıyla yüklendi",
+        "uploadError": "Görsel yüklenirken hata oluştu, lütfen tekrar deneyin."
     }
 }

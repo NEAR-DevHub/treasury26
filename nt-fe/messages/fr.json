@@ -107,7 +107,8 @@
         "wallet": "Portefeuille",
         "termsOfService": "Conditions d'utilisation",
         "privacyPolicy": "Politique de confidentialité",
-        "disconnect": "Déconnecter"
+        "disconnect": "Se déconnecter",
+        "myAccount": "Mon compte"
     },
     "auth": {
         "noWallet": "Connectez votre portefeuille",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "Portefeuille Trezu",
             "description": "Signez les propositions de trésorerie via Trezu"
+        },
+        "account": {
+            "title": "Mon compte",
+            "description": "Gérez votre profil et vos paramètres personnels"
         }
     },
     "depositModal": {
@@ -984,7 +989,11 @@
             "fileReadError": "Erreur de lecture du fichier. Veuillez réessayer.",
             "primaryColor": "Couleur principale",
             "primaryColorDescription": "Définissez la couleur principale des éléments d'interface de votre trésorerie. Cette couleur sera utilisée en mode clair et sombre, gardez donc le contraste à l'esprit lors du choix de teintes neutres.",
-            "selectColorLabel": "Sélectionner la couleur {color}"
+            "selectColorLabel": "Sélectionner la couleur {color}",
+            "saveChanges": "Enregistrer les modifications",
+            "saving": "Enregistrement...",
+            "savedToast": "Vos modifications ont été enregistrées.",
+            "saveFailed": "Impossible d'enregistrer vos modifications. Réessayez."
         },
         "voting": {
             "validation": {
@@ -2547,5 +2556,23 @@
             "min": "{label} doit être au minimum {min}",
             "max": "{label} doit être au maximum {max}"
         }
+    },
+    "account": {
+        "personalSettings": "Paramètres personnels",
+        "uploadAvatar": "Téléverser l'avatar",
+        "removeAvatar": "Supprimer l'avatar",
+        "uploading": "Téléversement...",
+        "displayName": "Nom d'affichage",
+        "displayNamePlaceholder": "Entrez un nom d'affichage",
+        "myWallet": "Mon portefeuille",
+        "saveChanges": "Enregistrer les modifications",
+        "saving": "Enregistrement...",
+        "saveSuccess": "Vos modifications ont été enregistrées.",
+        "saveError": "Impossible d'enregistrer vos modifications. Réessayez.",
+        "invalidImage": "Veuillez choisir un fichier image valide.",
+        "imageTooLarge": "L'image doit faire 2 Mo ou moins.",
+        "signInRequired": "Connectez votre portefeuille pour gérer votre compte.",
+        "avatarUploaded": "Avatar téléversé avec succès",
+        "uploadError": "Erreur lors du téléversement de l'image. Réessayez."
     }
 }
