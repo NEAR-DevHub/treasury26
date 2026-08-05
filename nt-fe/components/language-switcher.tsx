@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 import { Button } from "@/components/button";
+import { accountMenuItemClass } from "@/components/sign-in";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -88,7 +89,8 @@ export function LanguageSwitcher({
                         aria-label={t("select")}
                         disabled={isPending}
                         className={cn(
-                            "h-auto w-full justify-start gap-2 rounded-xl px-3 py-2 text-sm font-medium hover:bg-muted",
+                            accountMenuItemClass,
+                            "h-auto justify-start",
                             className,
                         )}
                     >
@@ -125,7 +127,7 @@ export function LanguageSwitcher({
                         onSelect={() => handleSelect(code)}
                         className={cn(
                             "flex items-center justify-between gap-2",
-                            asMenuRow && "rounded-xl px-2 py-2",
+                            asMenuRow && "rounded-md px-3 py-2",
                         )}
                     >
                         <span className="flex items-center gap-2">

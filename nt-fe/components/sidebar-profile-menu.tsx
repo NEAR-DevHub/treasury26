@@ -127,7 +127,7 @@ export function SidebarProfileMenu({
                     accountId={accountId}
                     onNavigate={() => setIsOpen(false)}
                 />
-                <div className="mt-1 flex flex-col border-t border-border pt-1 dark:border-general-border">
+                <div className="-mx-1.5 mt-1 flex flex-col border-t border-border px-1.5 pt-1 dark:border-general-border">
                     <LanguageSwitcher asMenuRow align="start" />
                     <button
                         type="button"

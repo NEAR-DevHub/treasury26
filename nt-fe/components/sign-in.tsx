@@ -22,9 +22,17 @@ import { User } from "./user";
  * Shared row styling for every entry in the account menu (header bar + sidebar
  * profile menu). `cursor-pointer` is explicit because rows render as bare
  * `<button>`s, which Tailwind's preflight leaves at the default arrow.
+ *
+ * `has-[>svg]:px-3` restates the padding for the rows rendered through `Button`
+ * (copy address, language): its cva ships `has-[>svg]:px-4`, which `twMerge`
+ * keeps alongside a plain `px-3` and then wins on specificity — leaving those
+ * rows' icons 4px further in than everyone else's.
+ *
+ * The radius is the popover's own (`rounded-2xl`, 16px) less its `p-1.5`, so a
+ * highlighted row sits concentrically inside the menu.
  */
 export const accountMenuItemClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors hover:bg-muted";
+    "flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 has-[>svg]:px-3 text-sm font-medium transition-colors hover:bg-general-unofficial-ghost-hover";
 
 /** Routes to `/login`, preserving where the user came from. */
 export function useConnectWallet() {
@@ -104,7 +112,7 @@ export function AccountMenuItems({
                 <FileText className="size-4" />
                 {t("privacyPolicy")}
             </Link>
-            <div className="mt-1 border-t border-border pt-1 dark:border-general-border">
+            <div className="-mx-1.5 mt-1 border-t border-border px-1.5 pt-1 dark:border-general-border">
                 <button
                     type="button"
                     className={accountMenuItemClass}

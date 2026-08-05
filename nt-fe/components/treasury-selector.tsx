@@ -24,9 +24,14 @@ import { Tooltip } from "./tooltip";
 import { TreasuryBalance, TreasuryLogo } from "./treasury-info";
 import { Skeleton } from "./ui/skeleton";
 
-/** The two footer rows ("Manage" / "Create") share the option rows' geometry. */
+/**
+ * The two footer rows ("Manage" / "Create") share the option rows' geometry.
+ * `has-[>svg]:px-2` restates the padding because `Button`'s cva ships
+ * `has-[>svg]:px-4`, which `twMerge` keeps alongside a plain `px-2` and then
+ * wins on specificity — indenting these icons past the treasury logos above.
+ */
 const actionRowClass =
-    "flex h-auto w-full items-center justify-start gap-3 rounded-xl px-2 py-2.5 font-semibold text-gray-600 text-sm transition-colors hover:bg-black/[0.05] hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.07] dark:hover:text-white";
+    "flex h-auto w-full items-center justify-start gap-3 rounded-md px-2 py-2.5 has-[>svg]:px-2 font-semibold text-gray-600 text-sm transition-colors hover:bg-black/[0.05] hover:text-gray-900 dark:text-gray-300 dark:hover:bg-white/[0.07] dark:hover:text-white";
 
 /**
  * One treasury row in the dropdown. The check indicator is hidden — the
@@ -48,7 +53,7 @@ function TreasuryOption({
     return (
         <SelectItem
             value={daoId}
-            className="cursor-pointer gap-3 rounded-xl px-2 py-2 text-gray-900 focus:bg-black/[0.05] focus:text-gray-900 data-[state=checked]:bg-black/[0.05] dark:text-white dark:focus:bg-white/[0.07] dark:focus:text-white dark:data-[state=checked]:bg-white/[0.07] [&>span:first-child]:hidden"
+            className="cursor-pointer gap-3 rounded-md px-2 py-2 text-gray-900 focus:bg-black/[0.05] focus:text-gray-900 data-[state=checked]:bg-black/[0.05] dark:text-white dark:focus:bg-white/[0.07] dark:focus:text-white dark:data-[state=checked]:bg-white/[0.07] [&>span:first-child]:hidden"
         >
             <div className="flex min-w-0 items-center gap-3">
                 <TreasuryLogo
@@ -226,7 +231,8 @@ export function TreasurySelector({
                 <SelectContent
                     align="start"
                     sideOffset={8}
-                    className="dark w-(--radix-select-trigger-width) min-w-56 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
+                    className="dark w-(--radix-select-trigger-width) min-w-56 rounded-2xl border-white/10 bg-gray-950 text-white shadow-xl"
+                    viewportClassName="min-w-0 p-1.5"
                 >
                     {memberTreasuries.length > 0 && (
                         <SelectGroup>
