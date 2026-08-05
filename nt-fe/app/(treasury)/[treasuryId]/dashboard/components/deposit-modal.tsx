@@ -288,10 +288,6 @@ function renderBalance(amount: number | string, amountUSD: number) {
     );
 }
 
-function isNearNetworkId(chainIdOrId: string | undefined): boolean {
-    return (chainIdOrId ?? "").toLowerCase().includes(NEAR_NETWORK_ID);
-}
-
 export function DepositModal({
     prefillTokenId,
     prefillNetworkId,
@@ -436,28 +432,6 @@ export function DepositModal({
             (network) => network.id === selectedNetwork.id,
         );
     }, [selectedAsset, selectedNetwork, bridgeAssets]);
-
-    const isNearNetworkSelected = isNearNetworkId(
-        selectedNetwork?.chainId ?? selectedNetwork?.id,
-    );
-    const isConfidentialNearFallbackOnly =
-        isConfidential &&
-        isNearNetworkSelected &&
-        selectedBridgeNetwork?.supportsPublicNearDepositSource === false;
-
-    // When NEAR public deposit is unsupported, force confidential-user source.
-    useEffect(() => {
-        if (
-            isConfidentialNearFallbackOnly &&
-            depositSource !== "confidential_user"
-        ) {
-            setDepositSource("confidential_user");
-            setHasAcknowledged(false);
-            setStep("select");
-            setDepositInfo(null);
-            setSingleUseExpiresAt(null);
-        }
-    }, [isConfidentialNearFallbackOnly, depositSource]);
 
     const networkSections = useMemo(() => {
         const withAssets: SelectOption[] = [];
@@ -1024,7 +998,18 @@ export function DepositModal({
             depositInfo?.minDepositAmount ??
             selectedBridgeNetwork?.minDepositAmount;
         if (!raw) return null;
-        return formatBalance(raw, selectedBridgeNetwork?.decimals ?? 0);
+        try {
+            if (!Big(raw).gt(0)) return null;
+        } catch {
+            return null;
+        }
+        // Small mins (e.g. 1e-7 ETH) round to "0" with the default 5 decimals.
+        const formatted = formatBalance(
+            raw,
+            selectedBridgeNetwork?.decimals ?? 0,
+            10,
+        );
+        return formatted === "0" ? null : formatted;
     }, [
         depositInfo?.minDepositAmount,
         selectedBridgeNetwork?.minDepositAmount,
@@ -1301,7 +1286,6 @@ export function DepositModal({
                     <DepositSourceCards
                         value={depositSource}
                         onChange={handleSourceChange}
-                        disablePublicWallet={isConfidentialNearFallbackOnly}
                     />
                 )}
 
@@ -1607,6 +1591,7 @@ export function DepositModal({
                         subtitle={addressSubtitle}
                         address={depositInfo.address}
                         memo={depositInfo.memo}
+                        // Sputnik-dao treasury id — plain text, no highlight.
                         preferPlainAddress={
                             isConfidential &&
                             depositSource === "confidential_user"
@@ -1683,9 +1668,7 @@ export function DepositModal({
                                 )}
                             >
                                 <HighlightedText
-                                    text={
-                                        option.name || option.symbol || ""
-                                    }
+                                    text={option.name || option.symbol || ""}
                                     query={searchQuery}
                                 />
                             </div>

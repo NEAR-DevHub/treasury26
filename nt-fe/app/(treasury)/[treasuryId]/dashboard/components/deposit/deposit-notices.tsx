@@ -11,7 +11,8 @@ import type { ConfidentialOrigin } from "./deposit-types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DepositTranslator = any;
 
-function noticeBold(chunks: ReactNode) {
+/** next-intl rich tag: emphasize notice copy with foreground color (not font-weight). */
+function richForeground(chunks: ReactNode) {
     return <span className="text-foreground">{chunks}</span>;
 }
 
@@ -32,12 +33,12 @@ export function buildConfidentialOriginNotices(
         {
             id: "only-from",
             tone: "success",
-            content: t.rich(onlyFromKey, { bold: noticeBold }),
+            content: t.rich(onlyFromKey, { bold: richForeground }),
         },
         {
             id: "reusable",
             tone: "success",
-            content: t.rich("reusableDoesntExpire", { bold: noticeBold }),
+            content: t.rich("reusableDoesntExpire", { bold: richForeground }),
         },
         {
             id: "outside-lost",
@@ -75,18 +76,18 @@ export function buildPublicWalletOneTimeNotices(
             content: t.rich("onlySendAssetNetwork", {
                 symbol,
                 network,
-                bold: noticeBold,
+                bold: richForeground,
             }),
         },
         {
             id: "no-test",
             tone: "danger",
-            content: t.rich("doNotSendTestDeposit", { bold: noticeBold }),
+            content: t.rich("doNotSendTestDeposit", { bold: richForeground }),
         },
         {
             id: "no-reuse",
             tone: "danger",
-            content: t.rich("doNotReuseAddressShort", { bold: noticeBold }),
+            content: t.rich("doNotReuseAddressShort", { bold: richForeground }),
         },
         {
             id: "expires",
@@ -96,7 +97,7 @@ export function buildPublicWalletOneTimeNotices(
                 : duration
                   ? t.rich("expiresInRemaining", {
                         duration,
-                        bold: noticeBold,
+                        bold: richForeground,
                         time: (chunks: ReactNode) => (
                             <span
                                 className={
@@ -111,7 +112,7 @@ export function buildPublicWalletOneTimeNotices(
                     })
                   : t.rich("expiresInDays", {
                         days: 14,
-                        bold: noticeBold,
+                        bold: richForeground,
                     }),
         },
     ];
@@ -132,9 +133,7 @@ export function buildPublicTreasuryNotices(
             content: t.rich("minimumDeposit", {
                 amount: minDepositDisplay,
                 symbol: assetSymbol,
-                amountTag: (chunks: ReactNode) => (
-                    <span className="text-foreground">{chunks}</span>
-                ),
+                amountTag: richForeground,
             }),
         });
     }
@@ -144,9 +143,7 @@ export function buildPublicTreasuryNotices(
         tone: "success",
         content: t.rich("publicNetworkRecommendation", {
             network,
-            bold: (chunks: ReactNode) => (
-                <span className="text-foreground">{chunks}</span>
-            ),
+            bold: richForeground,
         }),
     });
 

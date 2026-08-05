@@ -576,9 +576,9 @@ const STABLE_TOKEN_PRIORITY: Record<string, number> = {
     USDT: 1,
 };
 
+/** Map pay-share `near.com` to bridge `near` for token/network matching. */
 function normalizePreferredNetwork(network: string): string {
     const normalized = network.trim().toLowerCase();
-    // near.com payments target the NEAR ecosystem; match bridge "near" networks.
     if (normalized === NEAR_COM_NETWORK_ID) {
         return NEAR_NETWORK_ID;
     }
@@ -586,28 +586,14 @@ function normalizePreferredNetwork(network: string): string {
 }
 
 function getNetworkMatchScore(
-    tokenNetworkName: string,
+    tokenNetwork: string,
     preferredNetworks: string[],
-    tokenNetworkId?: string,
 ): number {
-    const normalizedTokenNetwork = tokenNetworkName.trim().toLowerCase();
-    const normalizedTokenNetworkId = tokenNetworkId?.trim().toLowerCase() ?? "";
+    const normalizedTokenNetwork = tokenNetwork.trim().toLowerCase();
     const tokenBlockchain = getBlockchainType(normalizedTokenNetwork);
     let bestScore = 0;
 
     preferredNetworks.forEach((preferredNetwork, index) => {
-        // Match raw preferred value first so intents ids / near.com stay exact.
-        // normalizePreferredNetwork maps near.com → near for name fallbacks only.
-        const rawPreferred = preferredNetwork.trim().toLowerCase();
-
-        if (
-            normalizedTokenNetworkId &&
-            rawPreferred === normalizedTokenNetworkId
-        ) {
-            bestScore = Math.max(bestScore, 300 - index);
-            return;
-        }
-
         const normalizedPreferredNetwork =
             normalizePreferredNetwork(preferredNetwork);
 
@@ -642,7 +628,6 @@ function pickCompatibleFallbackToken(
             const networkScore = getNetworkMatchScore(
                 network.name,
                 preferredNetworks,
-                network.id,
             );
 
             if (networkScore === 0) {
@@ -810,12 +795,7 @@ export default function PaymentsPage() {
 
     const defaultAddress = useMemo(() => {
         const addressParam = searchParams.get("address");
-        if (!addressParam) return "";
-        try {
-            return decodeURIComponent(addressParam);
-        } catch {
-            return addressParam;
-        }
+        return addressParam ? decodeURIComponent(addressParam) : "";
     }, [searchParams]);
 
     // Onboarding tours
@@ -1049,8 +1029,7 @@ export default function PaymentsPage() {
     const compatibleDestination = useMemo(() => {
         if (!watchedToken) return null;
 
-        // Pay-with-Trezu confidential share deep links use networks=near.com.
-        // Key off the URL preference, not whether the *payer* treasury is confidential.
+        // Confidential pay-share deep links use networks=near.com.
         if (prefersNearCom) {
             return {
                 id: NEAR_COM_NETWORK_ID,
@@ -1058,28 +1037,12 @@ export default function PaymentsPage() {
             };
         }
 
-        if (preferredNetworks.length === 0 || bridgeAssets.length === 0) {
+        if (preferredBlockchainTypes.size === 0 || bridgeAssets.length === 0) {
             return null;
         }
 
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
-
-        // Public deposit share: ?networks= is the intents network id.
-        const preferredIds = new Set(
-            preferredNetworks.map((network) => network.trim().toLowerCase()),
-        );
-        const exactMatch = bridgeAsset.networks.find((network) =>
-            preferredIds.has(network.id.toLowerCase()),
-        );
-        if (exactMatch) {
-            return {
-                id: exactMatch.id,
-                networkName: exactMatch.name,
-            };
-        }
-
-        if (preferredBlockchainTypes.size === 0) return null;
 
         const matches = bridgeAsset.networks.filter((network) =>
             preferredBlockchainTypes.has(getBlockchainType(network.name)),
@@ -1090,13 +1053,7 @@ export default function PaymentsPage() {
             id: matches[0].id,
             networkName: matches[0].name,
         };
-    }, [
-        bridgeAssets,
-        preferredBlockchainTypes,
-        preferredNetworks,
-        watchedToken,
-        prefersNearCom,
-    ]);
+    }, [bridgeAssets, preferredBlockchainTypes, watchedToken, prefersNearCom]);
 
     // ── Ensure quote is fresh before entering the review step ─────────────────
 
@@ -1182,13 +1139,14 @@ export default function PaymentsPage() {
 
     useEffect(() => {
         if (!defaultAddress) return;
+        if (!watchedDestinationNetwork) return;
         if (form.getValues("address") === defaultAddress) return;
         form.setValue("address", defaultAddress, {
             shouldDirty: true,
             shouldTouch: true,
             shouldValidate: true,
         });
-    }, [defaultAddress, form]);
+    }, [defaultAddress, watchedDestinationNetwork, form]);
 
     useEffect(() => {
         if (!isCrossChainIntentsToken) {

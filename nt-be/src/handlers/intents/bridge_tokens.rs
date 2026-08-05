@@ -15,7 +15,6 @@ use std::sync::Arc;
 use super::supported_tokens::fetch_supported_tokens_data;
 use crate::{
     AppState,
-    constants::NEAR_DECIMALS,
     constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
     handlers::token::metadata::fetch_tokens_metadata_enriched,
 };
@@ -220,28 +219,17 @@ pub async fn get_bridge_tokens(
                             icon: "https://near.com/static/icons/network/near.svg".to_string(),
                         })
                     });
-                // Normalize each asset to at most one canonical NEAR network entry:
-                // - if a "near" network already exists, preserve its token id/decimals
-                // - otherwise, synthesize a NEAR entry for assets that have networks
-                //   (using near:mainnet id as fallback token id)
-                // - skip assets that have no networks at all
+                // Normalize to at most one canonical NEAR network entry — only when
+                // the asset already has a real Near network. Do not synthesize NEAR
+                // for assets that only exist on other chains (those cannot accept a
+                // public-wallet NEAR deposit for this token).
                 for asset in &mut assets {
                     let existing_near_network = asset
                         .networks
                         .iter()
-                        .find(|network| network.name.eq_ignore_ascii_case("near"));
-
-                    let (canonical_near_token_id, selection_source) =
-                        if let Some(network) = existing_near_network {
-                            (Some(network.id.clone()), "has_near_network")
-                        } else if !asset.networks.is_empty() {
-                            (Some(NEAR_MAINNET_NETWORK_ID.to_string()), "no_near_network")
-                        } else {
-                            (None, "no_networks_skip")
-                        };
-                    let canonical_near_decimals =
-                        existing_near_network.map_or(NEAR_DECIMALS, |network| network.decimals);
-                    let Some(canonical_near_token_id) = canonical_near_token_id else {
+                        .find(|network| network.name.eq_ignore_ascii_case("near"))
+                        .cloned();
+                    let Some(existing_near_network) = existing_near_network else {
                         continue;
                     };
 
@@ -252,17 +240,15 @@ pub async fn get_bridge_tokens(
                     });
 
                     asset.networks.push(NetworkOption {
-                        id: canonical_near_token_id,
+                        id: existing_near_network.id,
                         name: "near".to_string(),
                         symbol: asset.asset_name.clone(),
                         chain_icons: near_chain_icons.clone(),
                         chain_id: NEAR_MAINNET_NETWORK_ID.to_string(),
-                        decimals: canonical_near_decimals,
-                        min_deposit_amount: None,
-                        min_withdrawal_amount: None,
-                        supports_public_near_deposit_source: Some(
-                            selection_source == "has_near_network",
-                        ),
+                        decimals: existing_near_network.decimals,
+                        min_deposit_amount: existing_near_network.min_deposit_amount,
+                        min_withdrawal_amount: existing_near_network.min_withdrawal_amount,
+                        supports_public_near_deposit_source: Some(true),
                     });
                 }
             }

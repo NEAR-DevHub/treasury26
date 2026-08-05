@@ -22,6 +22,11 @@ interface DepositAddressViewProps {
     subtitle?: string;
     address: string;
     memo?: string | null;
+    /**
+     * Skip middle-highlight formatting (show the address as plain text).
+     * Used for the reusable confidential treasury account (sputnik-dao id),
+     * where highlighting adds little and can look odd on a `.near` name.
+     */
     preferPlainAddress?: boolean;
     notices: AddressNotice[];
     onShare?: () => void;

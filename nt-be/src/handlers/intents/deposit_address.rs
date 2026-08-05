@@ -4,64 +4,15 @@ use axum::{
     http::StatusCode,
 };
 use chrono::{Duration, Utc};
-use governor::{
-    Quota, RateLimiter,
-    clock::DefaultClock,
-    state::{InMemoryState, NotKeyed, keyed::DefaultKeyedStateStore},
-};
 use near_api::AccountId;
 use serde::{Deserialize, Serialize};
-use std::num::NonZeroU32;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 use crate::AppState;
 use crate::handlers::balance_changes::confidential_list::is_confidential_dao;
 use crate::handlers::intents::confidential::bronze::api::fetch_history;
 use crate::utils::cache::{CacheKey, CacheTier};
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
-
-type KeyedLimiter = RateLimiter<String, DefaultKeyedStateStore<String>, DefaultClock>;
-type GlobalLimiter = RateLimiter<NotKeyed, InMemoryState, DefaultClock>;
-
-/// Per-treasury budget for unauthenticated status polls (history + DAO JWT).
-fn status_account_limiter() -> &'static KeyedLimiter {
-    static LIMITER: OnceLock<KeyedLimiter> = OnceLock::new();
-    LIMITER.get_or_init(|| {
-        RateLimiter::keyed(
-            Quota::per_minute(NonZeroU32::new(30).expect("nonzero")).allow_burst(
-                NonZeroU32::new(10).expect("nonzero"),
-            ),
-        )
-    })
-}
-
-/// Global budget for unauthenticated confidential quote minting (shared API key).
-fn generate_global_limiter() -> &'static GlobalLimiter {
-    static LIMITER: OnceLock<GlobalLimiter> = OnceLock::new();
-    LIMITER.get_or_init(|| {
-        RateLimiter::direct(
-            Quota::per_minute(NonZeroU32::new(60).expect("nonzero")).allow_burst(
-                NonZeroU32::new(20).expect("nonzero"),
-            ),
-        )
-    })
-}
-
-/// Per-treasury budget for confidential quote minting.
-fn generate_account_limiter() -> &'static KeyedLimiter {
-    static LIMITER: OnceLock<KeyedLimiter> = OnceLock::new();
-    LIMITER.get_or_init(|| {
-        RateLimiter::keyed(
-            Quota::per_minute(NonZeroU32::new(10).expect("nonzero")).allow_burst(
-                NonZeroU32::new(5).expect("nonzero"),
-            ),
-        )
-    })
-}
-
-fn rate_limited(msg: &str) -> (StatusCode, String) {
-    (StatusCode::TOO_MANY_REQUESTS, msg.to_string())
-}
 
 /// One-time confidential deposit addresses are valid for 14 days from generation.
 /// Must stay in sync with the frontend (`DEPOSIT_ADDRESS_VALIDITY_MS`).
@@ -95,7 +46,7 @@ pub struct DepositAddressResult {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DepositAddressStatusQuery {
+pub struct ConfidentialDepositAddressStatusQuery {
     pub account_id: AccountId,
     /// Intents quote deposit address from address generation.
     pub deposit_address: String,
@@ -103,22 +54,16 @@ pub struct DepositAddressStatusQuery {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct DepositAddressStatusResult {
-    pub deposit_address: String,
+pub struct ConfidentialDepositAddressStatusResult {
     pub found: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<String>,
     /// ISO-8601 expiry (`createdAt + DEPOSIT_ADDRESS_VALIDITY_DAYS`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<String>,
+    /// Origin asset / network id for the quote (used by share pages).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin_asset: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub destination_asset: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub amount_in_formatted: Option<String>,
 }
 
 /// For confidential treasuries, get a confidential quote to obtain the intents
@@ -256,20 +201,6 @@ pub async fn get_deposit_address(
         })?;
 
     if confidential {
-        if generate_global_limiter().check().is_err() {
-            return Err(rate_limited(
-                "Too many deposit address requests; try again shortly",
-            ));
-        }
-        if generate_account_limiter()
-            .check_key(&account_id.to_string())
-            .is_err()
-        {
-            return Err(rate_limited(
-                "Too many deposit address requests for this treasury; try again shortly",
-            ));
-        }
-
         let token_id = request.token_id.ok_or_else(|| {
             (
                 StatusCode::BAD_REQUEST,
@@ -292,29 +223,19 @@ pub async fn get_deposit_address(
     Ok(Json(result))
 }
 
-/// Look up confidential deposit status via 1Click history (`depositAddress` filter).
-/// Uses the DAO Intents JWT server-side so share pages can poll without membership.
-///
-/// Rate-limited per treasury and cached briefly to reduce upstream history load.
-pub async fn get_deposit_address_status(
+/// Look up confidential one-time deposit status via 1Click history
+/// (`depositAddress` filter). Uses the DAO Intents JWT server-side so share
+/// pages can poll without membership. Cached briefly to coalesce FE polls.
+pub async fn get_confidential_deposit_address_status(
     State(state): State<Arc<AppState>>,
-    Query(query): Query<DepositAddressStatusQuery>,
-) -> Result<Json<DepositAddressStatusResult>, (StatusCode, String)> {
+    Query(query): Query<ConfidentialDepositAddressStatusQuery>,
+) -> Result<Json<ConfidentialDepositAddressStatusResult>, (StatusCode, String)> {
     let account_id = query.account_id;
     let deposit_address = query.deposit_address.trim().to_string();
     if deposit_address.is_empty() {
         return Err((
             StatusCode::BAD_REQUEST,
             "depositAddress is required".to_string(),
-        ));
-    }
-
-    if status_account_limiter()
-        .check_key(&account_id.to_string())
-        .is_err()
-    {
-        return Err(rate_limited(
-            "Too many status requests for this treasury; try again shortly",
         ));
     }
 
@@ -333,7 +254,7 @@ pub async fn get_deposit_address_status(
         ));
     }
 
-    let cache_key = CacheKey::new("deposit-address:status")
+    let cache_key = CacheKey::new("confidential:deposit-address:status")
         .with(account_id.as_str())
         .with(&deposit_address)
         .build();
@@ -345,7 +266,7 @@ pub async fn get_deposit_address_status(
     let result = state
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
-            fetch_deposit_address_status_uncached(
+            fetch_confidential_deposit_address_status_uncached(
                 &state_for_fetch,
                 &account_id_for_fetch,
                 &deposit_address_for_fetch,
@@ -357,71 +278,31 @@ pub async fn get_deposit_address_status(
     Ok(Json(result))
 }
 
-async fn fetch_deposit_address_status_uncached(
+async fn fetch_confidential_deposit_address_status_uncached(
     state: &AppState,
     account_id: &AccountId,
     deposit_address: &str,
-) -> Result<DepositAddressStatusResult, (StatusCode, String)> {
-    let page = fetch_history(
-        state,
-        account_id,
-        5,
-        None,
-        None,
-        Some(deposit_address),
-    )
-    .await?;
+) -> Result<ConfidentialDepositAddressStatusResult, (StatusCode, String)> {
+    // One-time quote ids are unique; history is already filtered by depositAddress.
+    let page = fetch_history(state, account_id, 1, None, None, Some(deposit_address)).await?;
 
-    let item = page.items.into_iter().find(|event| {
-        if !event
-            .item
-            .deposit_address
-            .eq_ignore_ascii_case(deposit_address)
-        {
-            return false;
-        }
-        // Defense in depth: only surface quotes bound to this treasury.
-        let dao = account_id.as_str();
-        let recipient_ok = event
-            .item
-            .recipient
-            .as_deref()
-            .map(|r| r.eq_ignore_ascii_case(dao))
-            .unwrap_or(true);
-        let refund_ok = event
-            .item
-            .refund_to
-            .as_deref()
-            .map(|r| r.eq_ignore_ascii_case(dao))
-            .unwrap_or(true);
-        recipient_ok && refund_ok
-    });
-
-    match item {
+    match page.items.into_iter().next() {
         Some(event) => {
             let expires_at = (event.item.created_at
                 + Duration::days(DEPOSIT_ADDRESS_VALIDITY_DAYS))
             .to_rfc3339();
-            Ok(DepositAddressStatusResult {
-                deposit_address: event.item.deposit_address,
+            Ok(ConfidentialDepositAddressStatusResult {
                 found: true,
                 status: Some(event.item.status),
-                created_at: Some(event.item.created_at.to_rfc3339()),
                 expires_at: Some(expires_at),
                 origin_asset: event.item.origin_asset,
-                destination_asset: Some(event.item.destination_asset),
-                amount_in_formatted: event.item.amount_in_formatted,
             })
         }
-        None => Ok(DepositAddressStatusResult {
-            deposit_address: deposit_address.to_string(),
+        None => Ok(ConfidentialDepositAddressStatusResult {
             found: false,
             status: None,
-            created_at: None,
             expires_at: None,
             origin_asset: None,
-            destination_asset: None,
-            amount_in_formatted: None,
         }),
     }
 }

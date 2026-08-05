@@ -47,15 +47,11 @@ export type DepositAddressResponse = {
     quoteDepositAddress?: string | null;
 };
 
-export type DepositAddressStatusResponse = {
-    depositAddress: string;
+export type ConfidentialDepositAddressStatusResponse = {
     found: boolean;
     status?: string | null;
-    createdAt?: string | null;
     expiresAt?: string | null;
     originAsset?: string | null;
-    destinationAsset?: string | null;
-    amountInFormatted?: string | null;
 };
 
 export const fetchDepositAddress = async (
@@ -91,16 +87,16 @@ export const fetchDepositAddress = async (
  * Look up confidential one-time deposit status via 1Click history
  * (`depositAddress` filter). Pass the quote deposit address from generate.
  */
-export const fetchDepositAddressStatus = async (
+export const fetchConfidentialDepositAddressStatus = async (
     accountId: string,
     depositAddress: string,
-): Promise<DepositAddressStatusResponse> => {
+): Promise<ConfidentialDepositAddressStatusResponse> => {
     if (!accountId || !depositAddress) {
         throw new Error("Account ID and deposit address are required");
     }
 
-    const response = await axios.get<DepositAddressStatusResponse>(
-        `${BACKEND_API_BASE}/intents/deposit-address/status`,
+    const response = await axios.get<ConfidentialDepositAddressStatusResponse>(
+        `${BACKEND_API_BASE}/intents/confidential/deposit-address/status`,
         {
             params: {
                 accountId,

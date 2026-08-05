@@ -12,7 +12,10 @@ import { formatDepositAddress } from "./deposit-format-address";
 interface DepositAddressCardProps {
     address: string;
     memo?: string | null;
-    /** When true, prefer plain (unhighlighted) address formatting. */
+    /**
+     * Skip middle-highlight formatting. True for sputnik-dao treasury account
+     * addresses (reusable confidential path); hex/one-time addresses stay highlighted.
+     */
     preferPlainAddress?: boolean;
     /** "actions" = Copy/Share buttons; "inline" = copy icon next to address. */
     copyMode?: "actions" | "inline";

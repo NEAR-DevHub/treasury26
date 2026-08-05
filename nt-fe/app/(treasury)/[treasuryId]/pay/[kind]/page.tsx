@@ -20,6 +20,7 @@ import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
 import { useTreasury } from "@/hooks/use-treasury";
+import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { formatBalance } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
@@ -242,11 +243,16 @@ export default function PaySharePage() {
     );
 
     const minDepositDisplay = useMemo(() => {
-        if (!sendTokenMeta?.minDepositAmount) return null;
-        return formatBalance(
-            sendTokenMeta.minDepositAmount,
-            sendTokenMeta.decimals,
-        );
+        const raw = sendTokenMeta?.minDepositAmount;
+        if (!raw) return null;
+        try {
+            if (!Big(raw).gt(0)) return null;
+        } catch {
+            return null;
+        }
+        // Small mins (e.g. 1e-7 ETH) round to "0" with the default 5 decimals.
+        const formatted = formatBalance(raw, sendTokenMeta.decimals, 10);
+        return formatted === "0" ? null : formatted;
     }, [sendTokenMeta?.minDepositAmount, sendTokenMeta?.decimals]);
 
     const notices = useMemo(() => {
@@ -288,12 +294,18 @@ export default function PaySharePage() {
 
     const paymentPrefill = useMemo(() => {
         if (kind === "public") {
-            if (!depositAddress || !networkId) return null;
-            return { address: depositAddress, networks: networkId };
+            // Pass bridge network name (e.g. "ethereum") so payments can match
+            // with existing getBlockchainType logic — not the intents asset id.
+            const networkName = sendTokenMeta?.networkName?.trim();
+            if (!depositAddress || !networkName) return null;
+            return {
+                address: depositAddress,
+                networks: networkName.toLowerCase(),
+            };
         }
         if (!recipientDaoId) return null;
         return { address: recipientDaoId, networks: NEAR_COM_NETWORK_ID };
-    }, [kind, depositAddress, networkId, recipientDaoId]);
+    }, [kind, depositAddress, sendTokenMeta?.networkName, recipientDaoId]);
 
     const stripChoosePayerParam = useCallback(() => {
         if (!shouldOpenPicker) return;
