@@ -37,6 +37,7 @@ export function DepositAssetNetworkForm({
     selectedNetwork,
     selectorsDisabled,
     isAssetsPending,
+    showTopBorder = false,
     onOpenAssetModal,
     onOpenNetworkModal,
 }: {
@@ -45,6 +46,8 @@ export function DepositAssetNetworkForm({
     selectedNetwork: DepositAssetNetworkFormValues["network"];
     selectorsDisabled: boolean;
     isAssetsPending: boolean;
+    /** Top border separates this form from public/confidential source cards. */
+    showTopBorder?: boolean;
     onOpenAssetModal: () => void;
     onOpenNetworkModal: () => void;
 }) {
@@ -52,7 +55,11 @@ export function DepositAssetNetworkForm({
 
     return (
         <>
-            <div className="border-t border-general-border pt-3">
+            <div
+                className={cn(
+                    showTopBorder && "border-t border-general-border pt-3",
+                )}
+            >
                 <p className="text-sm font-semibold">{t("subtitle")}</p>
             </div>
             <Form {...form}>

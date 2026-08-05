@@ -21,6 +21,7 @@ import { Tooltip } from "./tooltip";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { buildPaymentsDeepLinkForAsset } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { buildTokenQueryParam } from "@/lib/token-query-param";
 import {
     ArrowUpRight,
@@ -131,6 +132,18 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                     );
                                     const tokenParam =
                                         buildTokenQueryParam(network);
+                                    const paymentsPath =
+                                        buildPaymentsDeepLinkForAsset(
+                                            treasuryId!,
+                                            {
+                                                assetId: asset.id,
+                                                networkId:
+                                                    network.contractId ??
+                                                    network.id,
+                                                networkName: network.network,
+                                                residency: network.residency,
+                                            },
+                                        );
                                     return (
                                         <div
                                             key={idx}
@@ -168,7 +181,7 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                     onClick={() => {
                                                         onClose();
                                                         router.push(
-                                                            `/${treasuryId}/payments?token=${tokenParam}`,
+                                                            paymentsPath,
                                                         );
                                                     }}
                                                 >

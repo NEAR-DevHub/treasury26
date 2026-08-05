@@ -55,6 +55,7 @@ import {
     formatCurrencyWithSubCent,
     formatSmartAmount,
 } from "@/lib/utils";
+import { buildPaymentsDeepLinkForAsset } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { buildTokenQueryParam } from "@/lib/token-query-param";
 import { EarningPoolDetailsModal } from "./earning-pool-details-modal";
 import { LockupDetailsModal } from "./lockup-details-modal";
@@ -232,6 +233,19 @@ function networkRowKey(
 
 function buildTokenParam(network: NetworkAsset): string {
     return buildTokenQueryParam(network);
+}
+
+function buildPaymentsPath(
+    treasuryId: string,
+    assetId: string,
+    network: NetworkAsset,
+): string {
+    return buildPaymentsDeepLinkForAsset(treasuryId, {
+        assetId,
+        networkId: network.contractId ?? network.id,
+        networkName: network.network,
+        residency: network.residency,
+    });
 }
 
 interface MobileEarningPoolRow {
@@ -607,7 +621,11 @@ function AvailableView({
                                         className="h-auto p-0 text-sm font-medium text-foreground hover:bg-transparent"
                                         onClick={() =>
                                             onNavigate?.(
-                                                `/${treasuryId}/payments?token=${tokenParam}`,
+                                                buildPaymentsPath(
+                                                    treasuryId!,
+                                                    selectedAssetId ?? asset.id,
+                                                    network,
+                                                ),
                                             )
                                         }
                                     >
@@ -714,7 +732,11 @@ function AvailableView({
                                             tooltipContent={t("send")}
                                             onClick={() =>
                                                 onNavigate?.(
-                                                    `/${treasuryId}/payments?token=${tokenParam}`,
+                                                    buildPaymentsPath(
+                                                        treasuryId!,
+                                                        asset.id,
+                                                        network,
+                                                    ),
                                                 )
                                             }
                                         >

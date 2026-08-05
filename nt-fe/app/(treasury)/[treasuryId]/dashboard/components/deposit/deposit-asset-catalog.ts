@@ -39,20 +39,38 @@ export function toNetworkOption(network: BridgeNetwork): SelectOption {
     };
 }
 
-/** Match a network by intents id, chain id, or name substring. */
+/**
+ * Match a network by intents id / chain id (exact), or by name when unique.
+ * Ambiguous soft matches leave selection empty so the user picks.
+ */
 export function matchNetworkPrefill(
     networks: SelectOption[],
     prefillNetworkId: string,
 ): SelectOption | null {
-    const normalized = prefillNetworkId.toLowerCase();
-    return (
-        networks.find(
-            (network) =>
-                network.id.toLowerCase() === normalized ||
-                (network.chainId || "").toLowerCase() === normalized ||
-                network.name.toLowerCase().includes(normalized),
-        ) ?? null
+    const normalized = prefillNetworkId.toLowerCase().trim();
+    if (!normalized) return null;
+
+    const byId = networks.find(
+        (network) => network.id.toLowerCase() === normalized,
     );
+    if (byId) return byId;
+
+    const byChainId = networks.find(
+        (network) => (network.chainId || "").toLowerCase() === normalized,
+    );
+    if (byChainId) return byChainId;
+
+    const byExactName = networks.filter(
+        (network) => network.name.toLowerCase() === normalized,
+    );
+    if (byExactName.length === 1) return byExactName[0];
+    if (byExactName.length > 1) return null;
+
+    const byIncludes = networks.filter((network) =>
+        network.name.toLowerCase().includes(normalized),
+    );
+    if (byIncludes.length === 1) return byIncludes[0];
+    return null;
 }
 
 export function buildNetworkBalanceMap(
@@ -396,12 +414,13 @@ export function resolvePrefillSelection(params: {
         networkBalancesByAsset.get(targetAsset.id) || new Map();
 
     // Network is never inferred from balances / USDC / single-option.
-    // Only apply an explicit URL prefill; otherwise leave empty so the user picks.
+    // Prefer exact token→network (contract id); soft URL network prefill only
+    // when it uniquely identifies a network — otherwise leave empty.
     let networkToSelect: SelectOption | null = networkFromTokenPrefill;
     if (prefillNetworkId) {
         networkToSelect =
             matchNetworkPrefill(availableNetworks, prefillNetworkId) ??
-            networkToSelect;
+            networkFromTokenPrefill;
     }
 
     return {

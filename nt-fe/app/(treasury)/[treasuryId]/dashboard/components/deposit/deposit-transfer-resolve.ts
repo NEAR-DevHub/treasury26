@@ -4,8 +4,15 @@ import type { Treasury } from "@/lib/api";
 import type { ChainIcons } from "@/lib/api";
 
 export type SendTokenMeta = {
+    /** Bridge asset id (e.g. "usdc") for payments `?token=`. */
+    assetId: string;
+    /** Intents network id for payments `?network=` exact destination match. */
+    networkId: string;
     symbol: string;
+    /** Display label (e.g. "Ethereum", "BNB Chain"). */
     networkName: string;
+    /** Raw bridge network name (e.g. "eth", "bsc"). */
+    bridgeNetworkName: string;
     icon: string;
     chainIcons?: ChainIcons;
     minDepositAmount?: string;
@@ -39,8 +46,11 @@ export function resolveSendTokenMeta(
     const symbol = networkMatch.symbol || asset.name || tokenId;
 
     return {
+        assetId: asset.id,
+        networkId: networkMatch.id,
         symbol,
         networkName: getNetworkDisplayName(networkMatch.name),
+        bridgeNetworkName: networkMatch.name,
         icon: asset.icon || symbol?.charAt(0)?.toUpperCase() || "?",
         chainIcons: networkMatch.chainIcons ?? undefined,
         minDepositAmount: networkMatch.minDepositAmount,
@@ -66,6 +76,12 @@ export type PayWithTrezuNextStep =
     | { kind: "pay"; payerTreasuryId: string }
     | { kind: "choose" };
 
+export type PayWithTrezuTreasuryFilter = {
+    destinationTreasuryId?: string;
+    /** Confidential share: only confidential member treasuries can pay. */
+    confidentialOnly?: boolean;
+};
+
 /**
  * Pick the next Pay-with-Trezu step from member treasuries.
  * Excludes the destination treasury so users don't pay into themselves.
@@ -73,14 +89,27 @@ export type PayWithTrezuNextStep =
  */
 export function resolvePayWithTrezuNextStep(
     treasuries: Treasury[],
-    destinationTreasuryId?: string,
+    options?: PayWithTrezuTreasuryFilter | string,
 ): PayWithTrezuNextStep {
-    const members = treasuries.filter(
-        (treasury) =>
-            treasury.isMember &&
-            (!destinationTreasuryId ||
-                treasury.daoId !== destinationTreasuryId),
-    );
+    // Backward-compatible: older callers passed destination id as the 2nd arg.
+    const filter: PayWithTrezuTreasuryFilter =
+        typeof options === "string"
+            ? { destinationTreasuryId: options }
+            : (options ?? {});
+
+    const members = treasuries.filter((treasury) => {
+        if (!treasury.isMember) return false;
+        if (
+            filter.destinationTreasuryId &&
+            treasury.daoId === filter.destinationTreasuryId
+        ) {
+            return false;
+        }
+        if (filter.confidentialOnly && !treasury.isConfidential) {
+            return false;
+        }
+        return true;
+    });
     if (members.length === 0) return { kind: "create" };
     if (members.length === 1) {
         return { kind: "pay", payerTreasuryId: members[0].daoId };

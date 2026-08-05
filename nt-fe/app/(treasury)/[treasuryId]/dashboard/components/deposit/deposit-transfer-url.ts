@@ -1,3 +1,4 @@
+import { formatAssetForIntentsAPI } from "@/app/(treasury)/[treasuryId]/exchange/utils";
 import type { ConfidentialOrigin } from "./deposit-types";
 
 export type PayShareKind = "public" | "confidential";
@@ -82,13 +83,105 @@ export function hasChoosePayerParam(pathWithSearch: string): boolean {
     }
 }
 
-export function buildPayWithTrezuPaymentsPath(
-    payerTreasuryId: string,
-    params: { address: string; networks: string },
+/**
+ * Deposit modal deep link (`/dashboard/deposit`).
+ * Public treasuries may prefill `token` (asset/contract id) + `network`
+ * (intents id or chain name). Confidential should omit params so the user
+ * walks the source/ack flow without skipping reading.
+ */
+export type DepositDeepLinkParams = {
+    token?: string;
+    network?: string;
+};
+
+export function buildDepositDeepLink(
+    treasuryId: string,
+    params?: DepositDeepLinkParams | null,
 ): string {
-    const search = new URLSearchParams({
-        address: params.address,
-        networks: params.networks,
+    const search = new URLSearchParams();
+    if (params?.token) search.set("token", params.token);
+    if (params?.network) search.set("network", params.network);
+    const qs = search.toString();
+    return `/${treasuryId}/dashboard/deposit${qs ? `?${qs}` : ""}`;
+}
+
+/**
+ * Shared `/payments` deep-link query.
+ *
+ * Exact pick: `token=<assetId>&network=<intentsNetworkId>` (+ optional address/name).
+ * Soft prefs: `networks=eth,near` or `networks=near.com` (+ optional token/address/name).
+ * Never emit both `network` and `networks`. Never put a JSON blob in `token`.
+ */
+export type PaymentsDeepLinkParams = {
+    /** Recipient address when known (Pay-with-Trezu, address book). */
+    address?: string;
+    /** Optional recipient display name (address book). */
+    name?: string;
+    /** Bridge asset id (e.g. "usdc") — never a JSON blob. */
+    token?: string;
+    /** Singular intents network id for exact match (`eth:1:0x…` / `nep141:…`). */
+    network?: string;
+    /**
+     * Soft chain preferences (address book) or confidential `near.com`.
+     * Do not use for exact intents ids — use `network` instead.
+     */
+    networks?: string | string[];
+};
+
+/** Shared `/payments` deep link used by Pay-with-Trezu, address book, assets, etc. */
+export function buildPaymentsDeepLink(
+    treasuryId: string,
+    params: PaymentsDeepLinkParams,
+): string {
+    const search = new URLSearchParams();
+    if (params.address) search.set("address", params.address);
+    if (params.name) search.set("name", params.name);
+    if (params.token) search.set("token", params.token);
+    if (params.network) search.set("network", params.network);
+    if (params.networks) {
+        const networks = Array.isArray(params.networks)
+            ? params.networks.join(",")
+            : params.networks;
+        if (networks) search.set("networks", networks);
+    }
+    const qs = search.toString();
+    return `/${treasuryId}/payments${qs ? `?${qs}` : ""}`;
+}
+
+/**
+ * Assets-table / details Send link.
+ * Exact for Intents or Ft (has contract id); soft chain pref otherwise.
+ */
+export function buildPaymentsDeepLinkForAsset(
+    treasuryId: string,
+    params: {
+        assetId: string;
+        /** `contractId ?? id` from the treasury network row. */
+        networkId: string;
+        networkName: string;
+        /** Treasury/bridge residency on that row. */
+        residency: string;
+    },
+): string {
+    const token = params.assetId.trim();
+    const networkId = params.networkId.trim();
+    const useExact =
+        !!networkId &&
+        (params.residency === "Intents" || params.residency === "Ft");
+
+    if (useExact) {
+        return buildPaymentsDeepLink(treasuryId, {
+            token,
+            // Ft stores bare contracts; Intents ids are already canonical
+            // (`nep141:…` / `eth:1:…`) and must not be re-prefixed.
+            network:
+                params.residency === "Ft"
+                    ? formatAssetForIntentsAPI(networkId)
+                    : networkId,
+        });
+    }
+    return buildPaymentsDeepLink(treasuryId, {
+        token,
+        networks: params.networkName,
     });
-    return `/${payerTreasuryId}/payments?${search.toString()}`;
 }

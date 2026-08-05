@@ -42,7 +42,7 @@ import {
 } from "../../dashboard/components/deposit/deposit-transfer-resolve";
 import { DepositTransferSummary } from "../../dashboard/components/deposit/deposit-transfer-summary";
 import {
-    buildPayWithTrezuPaymentsPath,
+    buildPaymentsDeepLink,
     CHOOSE_PAYER_QUERY,
     getAbsoluteTransferUrl,
     parsePayShareKind,
@@ -233,20 +233,41 @@ export default function PaySharePage() {
         t,
     ]);
 
+    // Pay with Trezu only for confidential Trezu source (not near.com) and public shares.
+    const showPayWithTrezu =
+        kind !== "confidential" || confidentialOrigin === "trezu";
+    const isConfidentialTrezuShare =
+        kind === "confidential" && confidentialOrigin === "trezu";
+
     const paymentPrefill = useMemo(() => {
+        if (!showPayWithTrezu) return null;
         if (kind === "public") {
-            // Pass bridge network name (e.g. "ethereum") so payments can match
-            // with existing getBlockchainType logic — not the intents asset id.
-            const networkName = sendTokenMeta?.networkName?.trim();
-            if (!depositAddress || !networkName) return null;
+            // Exact ids for payments matching — not display names or JSON blobs.
+            if (
+                !depositAddress ||
+                !sendTokenMeta?.assetId ||
+                !sendTokenMeta?.networkId
+            ) {
+                return null;
+            }
             return {
                 address: depositAddress,
-                networks: networkName.toLowerCase(),
+                token: sendTokenMeta.assetId,
+                network: sendTokenMeta.networkId,
             };
         }
         if (!recipientDaoId) return null;
+        // Confidential Trezu source pays via near.com into the DAO id.
         return { address: recipientDaoId, networks: NEAR_COM_NETWORK_ID };
-    }, [kind, depositAddress, sendTokenMeta?.networkName, recipientDaoId]);
+    }, [showPayWithTrezu, kind, depositAddress, sendTokenMeta, recipientDaoId]);
+
+    const payWithTrezuFilter = useMemo(
+        () => ({
+            destinationTreasuryId: recipientDaoId,
+            confidentialOnly: isConfidentialTrezuShare,
+        }),
+        [recipientDaoId, isConfidentialTrezuShare],
+    );
 
     const currentSharePath = withoutChoosePayerParam(
         `${pathname}?${searchParams.toString()}`,
@@ -264,9 +285,7 @@ export default function PaySharePage() {
                 return;
             }
             stripChoosePayerParam();
-            router.push(
-                buildPayWithTrezuPaymentsPath(payerTreasuryId, paymentPrefill),
-            );
+            router.push(buildPaymentsDeepLink(payerTreasuryId, paymentPrefill));
         },
         [paymentPrefill, stripChoosePayerParam, router, t],
     );
@@ -277,7 +296,10 @@ export default function PaySharePage() {
             return;
         }
 
-        const next = resolvePayWithTrezuNextStep(treasuries, recipientDaoId);
+        const next = resolvePayWithTrezuNextStep(
+            treasuries,
+            payWithTrezuFilter,
+        );
         if (next.kind === "create") {
             stripChoosePayerParam();
             router.push("/create");
@@ -291,7 +313,7 @@ export default function PaySharePage() {
     }, [
         paymentPrefill,
         treasuries,
-        recipientDaoId,
+        payWithTrezuFilter,
         router,
         t,
         stripChoosePayerParam,
@@ -300,8 +322,8 @@ export default function PaySharePage() {
 
     const payWithTrezuStep = useMemo(() => {
         if (!accountId || isInitializing || isLoading) return null;
-        return resolvePayWithTrezuNextStep(treasuries, recipientDaoId);
-    }, [accountId, isInitializing, isLoading, treasuries, recipientDaoId]);
+        return resolvePayWithTrezuNextStep(treasuries, payWithTrezuFilter);
+    }, [accountId, isInitializing, isLoading, treasuries, payWithTrezuFilter]);
 
     const showPicker =
         pickerOpen ||
@@ -450,15 +472,17 @@ export default function PaySharePage() {
                             />
 
                             <div className="space-y-2">
-                                <Button
-                                    type="button"
-                                    onClick={handlePayWithTrezu}
-                                    className="w-full gap-2"
-                                    data-testid="deposit-pay-with-trezu"
-                                >
-                                    <Zap className="size-4 fill-current" />
-                                    {t("transfer.payWithTrezu")}
-                                </Button>
+                                {showPayWithTrezu && (
+                                    <Button
+                                        type="button"
+                                        onClick={handlePayWithTrezu}
+                                        className="w-full gap-2"
+                                        data-testid="deposit-pay-with-trezu"
+                                    >
+                                        <Zap className="size-4 fill-current" />
+                                        {t("transfer.payWithTrezu")}
+                                    </Button>
+                                )}
                                 <Button
                                     type="button"
                                     variant="secondary"
@@ -475,12 +499,13 @@ export default function PaySharePage() {
                 </PageCard>
             </div>
 
-            {!isInactive && (
+            {!isInactive && showPayWithTrezu && (
                 <DepositPayTreasuryModal
                     open={showPicker}
                     onOpenChange={handlePickerOpenChange}
                     treasuries={treasuries}
                     excludeTreasuryId={recipientDaoId}
+                    confidentialOnly={isConfidentialTrezuShare}
                     isLoading={Boolean(accountId) && isLoading}
                     onSelect={handleSelectPayerTreasury}
                 />

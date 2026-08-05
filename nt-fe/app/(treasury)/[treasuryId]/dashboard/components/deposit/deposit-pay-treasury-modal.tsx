@@ -21,6 +21,8 @@ interface DepositPayTreasuryModalProps {
     treasuries: Treasury[];
     /** Destination treasury — excluded so users don't pay into themselves. */
     excludeTreasuryId?: string;
+    /** Confidential share: only list confidential member treasuries. */
+    confidentialOnly?: boolean;
     isLoading?: boolean;
     onSelect: (daoId: string) => void;
 }
@@ -30,13 +32,17 @@ export function DepositPayTreasuryModal({
     onOpenChange,
     treasuries,
     excludeTreasuryId,
+    confidentialOnly = false,
     isLoading = false,
     onSelect,
 }: DepositPayTreasuryModalProps) {
     const t = useTranslations("depositModal.transfer");
-    const memberTreasuries = treasuries.filter(
-        (treasury) => treasury.isMember && treasury.daoId !== excludeTreasuryId,
-    );
+    const memberTreasuries = treasuries.filter((treasury) => {
+        if (!treasury.isMember) return false;
+        if (treasury.daoId === excludeTreasuryId) return false;
+        if (confidentialOnly && !treasury.isConfidential) return false;
+        return true;
+    });
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

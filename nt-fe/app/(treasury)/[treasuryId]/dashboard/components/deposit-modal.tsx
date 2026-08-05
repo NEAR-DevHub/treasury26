@@ -365,25 +365,20 @@ export function DepositModal({
             return a.name.localeCompare(b.name);
         });
 
-        if (withAssets.length === 0) {
-            return [
-                {
-                    title: t("sections.supportedNetworks"),
-                    options: supportedNetworks,
-                },
-            ];
-        }
-
-        return [
-            {
+        const sections: { title: string; options: SelectOption[] }[] = [];
+        if (withAssets.length > 0) {
+            sections.push({
                 title: t("sections.networksWithAssets"),
                 options: withAssets,
-            },
-            {
+            });
+        }
+        if (supportedNetworks.length > 0) {
+            sections.push({
                 title: t("sections.supportedNetworks"),
                 options: supportedNetworks,
-            },
-        ];
+            });
+        }
+        return sections;
     }, [filteredNetworks, selectedNetworkBalances, t]);
 
     useEffect(() => {
@@ -481,12 +476,8 @@ export function DepositModal({
                 },
             });
 
-            // Auto-select network only when there is exactly one option.
-            if (availableNetworks.length === 1) {
-                form.setValue("network", availableNetworks[0]);
-            } else {
-                form.setValue("network", null);
-            }
+            // Always clear network — user must pick explicitly (even if only one).
+            form.setValue("network", null);
         },
         [
             form,
@@ -960,6 +951,7 @@ export function DepositModal({
                             selectedNetwork={selectedNetwork}
                             selectorsDisabled={depositSelectorsDisabled}
                             isAssetsPending={isAssetsPending}
+                            showTopBorder={isConfidential}
                             onOpenAssetModal={() => setModalType("asset")}
                             onOpenNetworkModal={() => setModalType("network")}
                         />

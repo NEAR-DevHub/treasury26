@@ -11,6 +11,7 @@ import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
+import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { ChevronRight, Check, X, Download, Send } from "lucide-react";
@@ -376,18 +377,16 @@ export function PendingRequests() {
                                     setIsVoteModalOpen(true);
                                 }}
                                 onDeposit={(tokenSymbol, tokenNetwork) => {
-                                    const params = new URLSearchParams();
-                                    if (tokenSymbol) {
-                                        params.set("token", tokenSymbol);
-                                    }
-                                    if (tokenNetwork) {
-                                        params.set("network", tokenNetwork);
-                                    }
-                                    const query = params.toString();
                                     router.push(
-                                        `/${treasuryId}/dashboard/deposit${
-                                            query ? `?${query}` : ""
-                                        }`,
+                                        buildDepositDeepLink(
+                                            treasuryId!,
+                                            isConfidential
+                                                ? null
+                                                : {
+                                                      token: tokenSymbol,
+                                                      network: tokenNetwork,
+                                                  },
+                                        ),
                                     );
                                 }}
                             />
