@@ -275,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "Seçili varlık ve ağ için para yatırma adresi alınamadı.",
-            "fetchFailed": "Para yatırma adresi alınamadı. Lütfen tekrar deneyin."
+            "fetchFailed": "Para yatırma adresi alınamadı. Lütfen tekrar deneyin.",
+            "loginRequired": "Tek kullanımlık bir yatırma adresi oluşturmak için oturum açın."
         },
         "title": "Para Yatır",
         "subtitle": "Para yatırma adresini görmek için varlık ve ağ seçin",
@@ -288,7 +289,7 @@
         "depositAddressHeading": "Para Yatırma Adresi",
         "depositAddressSubtitle": "Para yatırma adresinizi her zaman iki kez kontrol edin.",
         "depositAddressSubtitleConfidential": "<semibold>Tek kullanımlık para yatırma adresi.</semibold> Bu adresin yeniden kullanılması veya süresi dolduktan sonra fon gönderilmesi kalıcı fon kaybına yol açabilir.",
-        "depositAddressSubtitleConfidentialExpiry": "Oluşturulduğu andan itibaren 3 gün geçerlidir. Sürenin dolmasına: {expiresIn} kaldı",
+        "depositAddressSubtitleConfidentialExpiry": "Oluşturulduğu andan itibaren 14 gün geçerlidir. Süre dolumu: kalan {expiresIn}",
         "singleUseAcknowledgement": "Bu adresi yalnızca bir kez kullanacağım",
         "addressLabel": "Adres",
         "addressCopied": "Adres panoya kopyalandı",
@@ -311,7 +312,90 @@
             "fiatAnswer": "Şu anda değil, ancak yakında fiat para ile yatırma özelliğini getirmek için çalışıyoruz. Takipte kalın - yolda 🚀",
             "arrivalQuestion": "Bir yatırmanın ulaşması ne kadar sürer?",
             "arrivalAnswer": "İşlem süresi ağa bağlıdır."
-        }
+        },
+        "back": "Geri",
+        "publicAddressTitle": "{network} üzerinde {symbol} yatırma adresi",
+        "publicAddressSubtitle": "Yalnızca bu tokeni, bu ağ üzerinden aşağıdaki adrese gönderin.",
+        "oneTimeAddressTitle": "{network} ağında tek kullanımlık {symbol} yatırma adresi",
+        "oneTimeAddressSubtitle": "Yalnızca bu tokeni, bu ağ üzerinden aşağıdaki adrese gönderin.",
+        "confidentialTrezuTitle": "near.com ağında gizli Trezu’dan yatırma",
+        "confidentialTrezuSubtitle": "Gizli Trezu’dan herhangi bir varlığı alın.",
+        "confidentialNearcomTitle": "Dahili ağda gizli near.com’dan yatırma",
+        "confidentialNearcomSubtitle": "Gizli near.com’dan herhangi bir varlığı alın.",
+        "oneTimeSectionTitle": "Tek kullanımlık gizli yatırma adresi",
+        "oneTimeSectionSubtitle": "Yalnızca bir kez kullanın; ilk yatırmadan sonrası kaybolur.",
+        "internalAddressTitle": "Bu sizin dahili gizli adresinizdir",
+        "generateAddress": "Adres oluştur",
+        "showAddress": "Adresi göster",
+        "copy": "Kopyala",
+        "share": "Paylaş",
+        "linkCopied": "Bağlantı panoya kopyalandı",
+        "minDepositValue": "Minimum yatırma <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "Test yatırması <bold>göndermeyin</bold>",
+        "doNotReuseAddress": "Adresi <bold>yeniden kullanmayın</bold>, kaydetmeyin, beyaz listeye eklemeyin veya paylaşmayın",
+        "doNotReuseAddressShort": "Adresi <bold>yeniden kullanmayın</bold>, kaydetmeyin veya beyaz listeye eklemeyin",
+        "oneTimeAckCheckbox": "Bunun tek kullanımlık bir adres olduğunu ve tek bir transferde en az {amount} {symbol} göndermem gerektiğini anlıyorum.",
+        "oneTimeAckCheckboxNoMin": "Bunun tek bir transferde kullanmam gereken tek kullanımlık bir adres olduğunu anlıyorum.",
+        "onlySendAssetNetwork": "Yalnızca <bold>{network}</bold> ağında <bold>{symbol}</bold> gönderin. Diğer varlıklar veya ağlar fon kaybına yol açar.",
+        "expiresInDays": "<bold>{days} gün</bold> içinde sona erer – <bold>kullanılmasa bile</bold>.",
+        "createNewAddressHint": "Farklı yatırma bilgileri mi lazım? <link>Yeni bir adres oluştur</link>. Başka bir adres oluşturmak bunu devre dışı bırakmaz.",
+        "receivesOnlyConfidential": "Yalnızca gizli Trezu veya near.com hesaplarından fon alır",
+        "receivesOnlyConfidentialSub": "Yeniden kullanılabilir. Süresi dolmaz.",
+        "anythingElseLost": "Başka yerden gönderilen her şey kaybolur",
+        "anythingElseLostSub": "Borsalar, genel cüzdanlar, diğer ağlar – kurtarılamaz.",
+        "confidentialAckCheckbox": "Gizli Trezu veya near.com dışından yapılan yatırmaların kaybolacağını anlıyorum.",
+        "onlyFromConfidentialTrezu": "Yalnızca gizli <bold>Trezu</bold>’dan",
+        "onlyFromConfidentialNearcom": "Yalnızca gizli <bold>near.com</bold>’dan",
+        "reusableDoesntExpire": "<bold>Yeniden kullanılabilir.</bold> Süresi dolmaz",
+        "fundsOutsideTrezuLost": "Gizli Trezu dışından gönderilen fonlar kaybolur",
+        "fundsOutsideNearcomLost": "Gizli near.com dışından gönderilen fonlar kaybolur",
+        "publicNetworkRecommendation": "Yalnızca <bold>{network}</bold> ağından yatırın. Tam tutarı göndermeden önce küçük bir test işlemiyle başlayın.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Genel bir cüzdandan",
+                "subtitle": "Tek kullanımlık yatırma adresi oluştur"
+            },
+            "confidentialUser": {
+                "title": "Gizli kullanıcıdan",
+                "subtitle": "Gizli Trezu ve near.com’dan yatırma"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Gizli Trezu’dan",
+            "nearcom": "Gizli near.com’dan",
+            "short": "Gizliden"
+        },
+        "guestBanner": {
+            "title": "Misafir olarak görüntülüyorsunuz",
+            "description": "Bu adres başka birinin treasury’sine aittir. Göndermeden önce iki kez kontrol edin."
+        },
+        "transfer": {
+            "title": "Treasury’ye transfer",
+            "waitingForPayment": "Ödeme bekleniyor",
+            "youSendFromPublic": "Herhangi bir genel cüzdandan gönderiyorsunuz",
+            "youSend": "Gönderiyorsunuz",
+            "goesTo": "Gideceği yer",
+            "assetOnNetwork": "{network} ağında {symbol}",
+            "anyAsset": "Herhangi bir varlık",
+            "onNetwork": "{network} ağında",
+            "onNearcomNetwork": "near.com ağında",
+            "anyAssetOnNearcom": "near.com ağında herhangi bir varlık",
+            "securedOnTrezu": "Trezu’da güvende",
+            "payWithTrezu": "Trezu ile öde",
+            "payRequiresTreasury": "Ödemek için bir Trezu treasury’siyle oturum açın.",
+            "copyLink": "Bağlantıyı kopyala",
+            "titleConfidential": "Gizli Treasury’ye transfer",
+            "chooseTreasuryTitle": "Bir Treasury seçin",
+            "chooseTreasuryDescription": "Bu ödeme hangi treasury’den geliyor?",
+            "noMemberTreasuries": "Henüz hiçbir treasury’nin üyesi değilsiniz.",
+            "createTreasury": "Treasury oluştur",
+            "expired": "Süresi doldu",
+            "used": "Kullanıldı",
+            "linkInactiveTitle": "Bu bağlantı artık aktif değil",
+            "linkInactiveDescription": "Bu ödemeyi yapmak için bağlantıyı gönderen kişiden yeni bir bağlantı isteyin."
+        },
+        "expiresInRemaining": "<time>{duration}</time> içinde sona erer – <bold>kullanılmasa bile</bold>.",
+        "addressExpired": "Bu adresin süresi dolmuştur."
     },
     "assetDetails": {
         "coinPrice": "Coin Fiyatı",

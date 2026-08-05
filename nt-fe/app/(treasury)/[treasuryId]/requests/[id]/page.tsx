@@ -11,6 +11,7 @@ import { ExpandedView } from "@/features/proposals";
 import { VoteModal } from "@/features/proposals/components/vote-modal";
 import { useProposal } from "@/hooks/use-proposals";
 import { useCachedProposalSubmissionTime } from "@/hooks/use-cached-proposal-submission-time";
+import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import type { Proposal } from "@/lib/proposals-api";
@@ -42,7 +43,11 @@ function RequestPageSkeleton() {
 export default function RequestPage({ params }: RequestPageProps) {
     const t = useTranslations("pages.requests");
     const { id } = use(params);
-    const { treasuryId, isLoading: isTreasuryLoading } = useTreasury();
+    const {
+        treasuryId,
+        isConfidential,
+        isLoading: isTreasuryLoading,
+    } = useTreasury();
     const router = useRouter();
     const cachedSubmissionTime = useCachedProposalSubmissionTime(
         treasuryId,
@@ -116,18 +121,17 @@ export default function RequestPage({ params }: RequestPageProps) {
                     setIsVoteModalOpen(true);
                 }}
                 onDeposit={(tokenSymbol, tokenNetwork) => {
-                    const params = new URLSearchParams();
-                    if (tokenSymbol) {
-                        params.set("token", tokenSymbol);
-                    }
-                    if (tokenNetwork) {
-                        params.set("network", tokenNetwork);
-                    }
-                    const query = params.toString();
+                    // Confidential: no prefill — user should read source/ack steps.
                     router.push(
-                        `/${treasuryId}/dashboard/deposit${
-                            query ? `?${query}` : ""
-                        }`,
+                        buildDepositDeepLink(
+                            treasuryId!,
+                            isConfidential
+                                ? null
+                                : {
+                                      token: tokenSymbol,
+                                      network: tokenNetwork,
+                                  },
+                        ),
                     );
                 }}
             />

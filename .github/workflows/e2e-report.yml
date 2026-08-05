@@ -8,7 +8,7 @@ name: Publish E2E Report
 # from forks get a read-only token and cannot push to gh-pages or comment.
 # `workflow_run` always executes in the base repo with the base repo's token,
 # so it works for fork PRs too. It only ever publishes an already-built static
-# report — it never checks out or runs PR code.
+# report — it checks out the base repo for git/deploy only, never PR code.
 
 on:
   workflow_run:
@@ -33,6 +33,11 @@ jobs:
     if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     steps:
+      # Checkout the base repo only (workflow_run default). Needed so
+      # JamesIves can initialize git; we never check out or execute PR code.
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download Playwright report
         continue-on-error: true
         uses: actions/download-artifact@v4

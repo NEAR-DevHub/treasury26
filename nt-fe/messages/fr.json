@@ -275,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "Impossible de récupérer l'adresse de dépôt pour l'actif et le réseau sélectionnés.",
-            "fetchFailed": "Échec de la récupération de l'adresse de dépôt. Veuillez réessayer."
+            "fetchFailed": "Échec de la récupération de l'adresse de dépôt. Veuillez réessayer.",
+            "loginRequired": "Connectez-vous pour générer une adresse de dépôt à usage unique."
         },
         "title": "Dépôt",
         "subtitle": "Sélectionnez un actif et un réseau pour voir l'adresse de dépôt",
@@ -288,7 +289,7 @@
         "depositAddressHeading": "Adresse de dépôt",
         "depositAddressSubtitle": "Vérifiez toujours votre adresse de dépôt.",
         "depositAddressSubtitleConfidential": "<semibold>Adresse de dépôt à usage unique.</semibold> Réutiliser cette adresse ou envoyer des fonds après expiration peut entraîner une perte permanente des fonds.",
-        "depositAddressSubtitleConfidentialExpiry": "Valide pendant 3 jours à compter de sa génération. Expire dans : il reste {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Valable 14 jours à compter de la génération. Expire dans : {expiresIn} restants",
         "singleUseAcknowledgement": "J'utiliserai cette adresse une seule fois",
         "addressLabel": "Adresse",
         "addressCopied": "Adresse copiée dans le presse-papiers",
@@ -311,7 +312,90 @@
             "fiatAnswer": "Pas pour le moment, mais nous travaillons pour proposer bientôt les dépôts fiat. Restez à l’écoute - c’est en route 🚀",
             "arrivalQuestion": "Combien de temps faut-il pour qu’un dépôt arrive ?",
             "arrivalAnswer": "Le délai de traitement dépend du réseau."
-        }
+        },
+        "back": "Retour",
+        "publicAddressTitle": "Adresse de dépôt {symbol} sur {network}",
+        "publicAddressSubtitle": "N’envoyez que ce jeton, sur ce réseau, à l’adresse ci-dessous.",
+        "oneTimeAddressTitle": "Adresse de dépôt à usage unique {symbol} sur le réseau {network}",
+        "oneTimeAddressSubtitle": "N’envoyez que ce jeton, sur ce réseau, à l’adresse ci-dessous.",
+        "confidentialTrezuTitle": "Dépôt depuis Trezu confidentiel sur le réseau near.com",
+        "confidentialTrezuSubtitle": "Recevez n’importe quel actif depuis Trezu confidentiel.",
+        "confidentialNearcomTitle": "Dépôt depuis near.com confidentiel sur le réseau interne",
+        "confidentialNearcomSubtitle": "Recevez n’importe quel actif depuis near.com confidentiel.",
+        "oneTimeSectionTitle": "Adresse de dépôt confidentielle à usage unique",
+        "oneTimeSectionSubtitle": "À n’utiliser qu’une seule fois ; tout après le premier dépôt est perdu.",
+        "internalAddressTitle": "Voici votre adresse confidentielle interne",
+        "generateAddress": "Générer l’adresse",
+        "showAddress": "Afficher l’adresse",
+        "copy": "Copier",
+        "share": "Partager",
+        "linkCopied": "Lien copié dans le presse-papiers",
+        "minDepositValue": "Dépôt minimum <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>N’envoyez pas</bold> de dépôt test",
+        "doNotReuseAddress": "<bold>Ne</bold> réutilisez pas, n’enregistrez pas, n’ajoutez pas à une liste blanche et ne partagez pas l’adresse",
+        "doNotReuseAddressShort": "<bold>Ne</bold> réutilisez pas, n’enregistrez pas et n’ajoutez pas l’adresse à une liste blanche",
+        "oneTimeAckCheckbox": "Je comprends que c’est une adresse à usage unique et que je dois envoyer au moins {amount} {symbol} en un seul transfert.",
+        "oneTimeAckCheckboxNoMin": "Je comprends que c’est une adresse à usage unique à utiliser en un seul transfert.",
+        "onlySendAssetNetwork": "N’envoyez que <bold>{symbol}</bold> sur le réseau <bold>{network}</bold>. D’autres actifs ou réseaux entraîneront une perte de fonds.",
+        "expiresInDays": "Expire dans <bold>{days} jours</bold> – <bold>même si inutilisée</bold>.",
+        "createNewAddressHint": "Besoin d’autres détails de dépôt ? <link>Créer une nouvelle adresse</link>. En créer une autre ne désactive pas celle-ci.",
+        "receivesOnlyConfidential": "Reçoit des fonds uniquement depuis des comptes Trezu ou near.com confidentiels",
+        "receivesOnlyConfidentialSub": "Réutilisable. N’expire pas.",
+        "anythingElseLost": "Tout envoi depuis ailleurs est perdu",
+        "anythingElseLostSub": "Exchanges, portefeuilles publics, autres réseaux – irrécupérable.",
+        "confidentialAckCheckbox": "Je comprends que les dépôts hors Trezu ou near.com confidentiels seront perdus.",
+        "onlyFromConfidentialTrezu": "Uniquement depuis <bold>Trezu</bold> confidentiel",
+        "onlyFromConfidentialNearcom": "Uniquement depuis <bold>near.com</bold> confidentiel",
+        "reusableDoesntExpire": "<bold>Réutilisable.</bold> N’expire pas",
+        "fundsOutsideTrezuLost": "Les fonds envoyés hors de Trezu confidentiel seront perdus",
+        "fundsOutsideNearcomLost": "Les fonds envoyés hors de near.com confidentiel seront perdus",
+        "publicNetworkRecommendation": "Ne déposez que depuis le réseau <bold>{network}</bold>. Commencez par une petite transaction de test avant d’envoyer le montant total.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Depuis un portefeuille public",
+                "subtitle": "Créer une adresse de dépôt à usage unique"
+            },
+            "confidentialUser": {
+                "title": "Depuis un utilisateur confidentiel",
+                "subtitle": "Dépôt depuis Trezu & near.com confidentiels"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Depuis Trezu confidentiel",
+            "nearcom": "Depuis near.com confidentiel",
+            "short": "Depuis confidentiel"
+        },
+        "guestBanner": {
+            "title": "Vous consultez en invité",
+            "description": "Cette adresse appartient à la treasury de quelqu’un d’autre. Vérifiez avant d’envoyer."
+        },
+        "transfer": {
+            "title": "Transfert vers la Treasury",
+            "waitingForPayment": "En attente de paiement",
+            "youSendFromPublic": "Vous envoyez depuis n’importe quel portefeuille public",
+            "youSend": "Vous envoyez",
+            "goesTo": "Va vers",
+            "assetOnNetwork": "{symbol} sur le réseau {network}",
+            "anyAsset": "N’importe quel actif",
+            "onNetwork": "sur le réseau {network}",
+            "onNearcomNetwork": "sur le réseau near.com",
+            "anyAssetOnNearcom": "N’importe quel actif sur le réseau near.com",
+            "securedOnTrezu": "Sécurisé sur Trezu",
+            "payWithTrezu": "Payer avec Trezu",
+            "payRequiresTreasury": "Connectez-vous avec une treasury Trezu pour payer.",
+            "copyLink": "Copier le lien",
+            "titleConfidential": "Transfert vers la Treasury confidentielle",
+            "chooseTreasuryTitle": "Choisir une Treasury",
+            "chooseTreasuryDescription": "De quelle treasury provient ce paiement ?",
+            "noMemberTreasuries": "Vous n’êtes encore membre d’aucune treasury.",
+            "createTreasury": "Créer une treasury",
+            "expired": "Expiré",
+            "used": "Utilisé",
+            "linkInactiveTitle": "Ce lien n'est plus actif",
+            "linkInactiveDescription": "Pour effectuer ce paiement, demandez un nouveau lien à la personne qui vous l'a envoyé."
+        },
+        "expiresInRemaining": "Expire dans <time>{duration}</time> – <bold>même si inutilisée</bold>.",
+        "addressExpired": "Cette adresse a expiré."
     },
     "assetDetails": {
         "coinPrice": "Prix de la pièce",
