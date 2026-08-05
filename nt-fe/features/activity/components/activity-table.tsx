@@ -3,14 +3,16 @@
 import {
     ArrowDownToLine,
     ArrowRightLeft,
-    ArrowUpToLine,
     ChevronRight,
     Clock,
     Info,
     Loader2,
+    Minus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Address } from "@/components/address";
+import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
 import { Pagination } from "@/components/pagination";
@@ -38,6 +40,7 @@ import {
     useGetActivityLabel,
     useGetFromAccount,
 } from "../utils/history-utils";
+import { TransactionDetailsModal } from "./transaction-details-modal";
 import { TransactionHashCell } from "./transaction-hash-cell";
 
 interface ActivityTableProps {
@@ -61,18 +64,23 @@ export function ActivityTable({
     const getActivityLabel = useGetActivityLabel();
     const getFromAccount = useGetFromAccount();
     const { treasuryId, isConfidential } = useTreasury();
+    const [selectedActivity, setSelectedActivity] =
+        useState<RecentActivity | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const totalPages = Math.ceil(total / pageSize);
 
     const getTypeLabel = (activity: RecentActivity) => {
-        return getActivityLabel({
-            ...activity,
-            tokenSymbol: activity.tokenMetadata?.symbol,
-        });
+        return getActivityLabel(activity);
+    };
+
+    const openTransactionDetails = (activity: RecentActivity) => {
+        setSelectedActivity(activity);
+        setIsModalOpen(true);
     };
 
     if (isLoading) {
-        return <TableSkeleton rows={pageSize} columns={5} />;
+        return <TableSkeleton rows={pageSize} columns={6} />;
     }
 
     if (activities.length === 0) {
@@ -103,13 +111,18 @@ export function ActivityTable({
                             <TableHead className="min-w-[150px] text-xs font-medium uppercase text-muted-foreground">
                                 {t("table.to")}
                             </TableHead>
-                            <TableHead className="text-right pr-6 min-w-[120px] text-xs font-medium uppercase text-muted-foreground">
+                            <TableHead className="text-right pr-2 min-w-[120px] text-xs font-medium uppercase text-muted-foreground">
                                 <div className="flex items-center justify-end gap-1">
                                     {t("table.transactionHash")}
                                     <Tooltip content={t("table.hashTooltip")}>
                                         <Info className="h-3.5 w-3.5 text-muted-foreground" />
                                     </Tooltip>
                                 </div>
+                            </TableHead>
+                            <TableHead className="w-10 pr-4">
+                                <span className="sr-only">
+                                    {t("details.title")}
+                                </span>
                             </TableHead>
                         </TableRow>
                     </TableHeader>
@@ -134,22 +147,13 @@ export function ActivityTable({
                                 <TableRow key={activity.id}>
                                     <TableCell className="pl-6">
                                         <div className="flex items-center gap-3">
-                                            <div
-                                                className={cn(
-                                                    "flex h-10 w-10 items-center justify-center rounded-full shrink-0",
-                                                    isSwap
-                                                        ? "bg-blue-500/10"
-                                                        : isReceived
-                                                          ? "bg-general-success-background-faded"
-                                                          : "bg-general-destructive-background-faded",
-                                                )}
-                                            >
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full shrink-0 bg-muted">
                                                 {isSwap ? (
-                                                    <ArrowRightLeft className="h-5 w-5 text-blue-500" />
+                                                    <ArrowRightLeft className="h-4 w-4" />
                                                 ) : isReceived ? (
-                                                    <ArrowDownToLine className="h-5 w-5 text-general-success-foreground" />
+                                                    <ArrowDownToLine className="h-4 w-4" />
                                                 ) : (
-                                                    <ArrowUpToLine className="h-5 w-5 text-general-destructive-foreground" />
+                                                    <Minus className="h-4 w-4" />
                                                 )}
                                             </div>
                                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -400,7 +404,7 @@ export function ActivityTable({
                                             </span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right pr-6">
+                                    <TableCell className="text-right pr-2">
                                         <TransactionHashCell
                                             transactionHashes={
                                                 activity.transactionHashes
@@ -411,6 +415,20 @@ export function ActivityTable({
                                                     ?.chainName
                                             }
                                         />
+                                    </TableCell>
+                                    <TableCell className="w-10 px-0 pr-4 text-right">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label={t("details.title")}
+                                            className="size-8 p-0 text-muted-foreground hover:text-foreground"
+                                            onClick={() =>
+                                                openTransactionDetails(activity)
+                                            }
+                                        >
+                                            <ChevronRight className="size-4" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             );
@@ -429,6 +447,13 @@ export function ActivityTable({
                     />
                 </div>
             )}
+
+            <TransactionDetailsModal
+                activity={selectedActivity}
+                treasuryId={treasuryId || ""}
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+            />
         </div>
     );
 }

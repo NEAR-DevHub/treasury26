@@ -2,12 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { CopyButton } from "@/components/copy-button";
-import { Button } from "@/components/button";
-import { ExternalLink } from "lucide-react";
-import { useReceiptSearch } from "@/hooks/use-receipt-search";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { useReceiptSearch } from "@/hooks/use-receipt-search";
 import { getExplorerTxUrl } from "@/lib/blockchain-utils";
+import { cn } from "@/lib/utils";
 
 interface TransactionHashCellProps {
     transactionHashes?: string[];
@@ -50,16 +48,16 @@ export function TransactionHashCell({
 
     return (
         <div className={className}>
-            <div className="text-sm">{transactionHash.slice(0, 12)}...</div>
             {explorerUrl ? (
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    tooltipContent={t("openInExplorer")}
-                    onClick={() => window.open(explorerUrl, "_blank")}
+                <a
+                    href={explorerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t("openInExplorer")}
+                    className="text-sm underline"
                 >
-                    <ExternalLink className="h-3 w-3" />
-                </Button>
+                    {transactionHash.slice(0, 12)}...
+                </a>
             ) : null}
             <CopyButton
                 text={transactionHash}
