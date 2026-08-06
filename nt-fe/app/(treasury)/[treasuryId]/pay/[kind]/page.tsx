@@ -17,6 +17,7 @@ import Logo from "@/components/icons/logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_ICON } from "@/constants/token";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useConfidentialBridgeAddress } from "@/hooks/use-confidential-bridge-address";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
@@ -233,14 +234,13 @@ export default function PaySharePage() {
         t,
     ]);
 
-    // Pay with Trezu only for confidential Trezu source (not near.com) and public shares.
-    const showPayWithTrezu =
-        kind !== "confidential" || confidentialOrigin === "trezu";
-    const isConfidentialTrezuShare =
-        kind === "confidential" && confidentialOrigin === "trezu";
+    const isConfidentialShare = kind === "confidential";
+    const isConfidentialNearcomShare =
+        isConfidentialShare && confidentialOrigin === "nearcom";
 
     const paymentPrefill = useMemo(() => {
-        if (!showPayWithTrezu) return null;
+        // near.com CTA opens near.com/home — no Trezu payments prefill.
+        if (isConfidentialNearcomShare) return null;
         if (kind === "public") {
             // Exact ids for payments matching — not display names or JSON blobs.
             if (
@@ -257,16 +257,23 @@ export default function PaySharePage() {
             };
         }
         if (!recipientDaoId) return null;
-        // Confidential Trezu source pays via near.com into the DAO id.
+        // Confidential Trezu pays via near.com into the DAO id.
         return { address: recipientDaoId, networks: NEAR_COM_NETWORK_ID };
-    }, [showPayWithTrezu, kind, depositAddress, sendTokenMeta, recipientDaoId]);
+    }, [
+        isConfidentialNearcomShare,
+        kind,
+        depositAddress,
+        sendTokenMeta,
+        recipientDaoId,
+    ]);
 
     const payWithTrezuFilter = useMemo(
         () => ({
             destinationTreasuryId: recipientDaoId,
-            confidentialOnly: isConfidentialTrezuShare,
+            confidentialOnly:
+                isConfidentialShare && !isConfidentialNearcomShare,
         }),
-        [recipientDaoId, isConfidentialTrezuShare],
+        [recipientDaoId, isConfidentialShare, isConfidentialNearcomShare],
     );
 
     const currentSharePath = withoutChoosePayerParam(
@@ -359,6 +366,10 @@ export default function PaySharePage() {
         }
     };
 
+    const handlePayWithNearcom = () => {
+        window.open("https://near.com/send", "_blank", "noopener,noreferrer");
+    };
+
     const handlePayWithTrezu = () => {
         if (!paymentPrefill) {
             toast.error(t("transfer.payRequiresTreasury"));
@@ -373,6 +384,14 @@ export default function PaySharePage() {
 
         if (isLoading) return;
         continuePayWithTrezu();
+    };
+
+    const handlePayCta = () => {
+        if (isConfidentialNearcomShare) {
+            handlePayWithNearcom();
+            return;
+        }
+        handlePayWithTrezu();
     };
 
     const handlePickerOpenChange = (open: boolean) => {
@@ -472,17 +491,29 @@ export default function PaySharePage() {
                             />
 
                             <div className="space-y-2">
-                                {showPayWithTrezu && (
-                                    <Button
-                                        type="button"
-                                        onClick={handlePayWithTrezu}
-                                        className="w-full gap-2"
-                                        data-testid="deposit-pay-with-trezu"
-                                    >
+                                <Button
+                                    type="button"
+                                    onClick={handlePayCta}
+                                    className="w-full gap-2"
+                                    data-testid={
+                                        isConfidentialNearcomShare
+                                            ? "deposit-pay-with-nearcom"
+                                            : "deposit-pay-with-trezu"
+                                    }
+                                >
+                                    {isConfidentialNearcomShare ? (
+                                        <img
+                                            src={NEAR_COM_ICON}
+                                            alt=""
+                                            className="size-4 rounded"
+                                        />
+                                    ) : (
                                         <Zap className="size-4 fill-current" />
-                                        {t("transfer.payWithTrezu")}
-                                    </Button>
-                                )}
+                                    )}
+                                    {isConfidentialNearcomShare
+                                        ? t("transfer.payWithNearcom")
+                                        : t("transfer.payWithTrezu")}
+                                </Button>
                                 <Button
                                     type="button"
                                     variant="secondary"
@@ -499,13 +530,13 @@ export default function PaySharePage() {
                 </PageCard>
             </div>
 
-            {!isInactive && showPayWithTrezu && (
+            {!isInactive && !isConfidentialNearcomShare && (
                 <DepositPayTreasuryModal
                     open={showPicker}
                     onOpenChange={handlePickerOpenChange}
                     treasuries={treasuries}
                     excludeTreasuryId={recipientDaoId}
-                    confidentialOnly={isConfidentialTrezuShare}
+                    confidentialOnly={isConfidentialShare}
                     isLoading={Boolean(accountId) && isLoading}
                     onSelect={handleSelectPayerTreasury}
                 />

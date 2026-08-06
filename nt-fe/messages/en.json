@@ -375,6 +375,7 @@
             "anyAssetOnNearcom": "Any asset on near.com network",
             "securedOnTrezu": "Secured on Trezu",
             "payWithTrezu": "Pay with Trezu",
+            "payWithNearcom": "Pay with near.com",
             "payRequiresTreasury": "Sign in with a Trezu treasury to pay.",
             "chooseTreasuryTitle": "Choose a Treasury",
             "chooseTreasuryDescription": "Which treasury is this payment coming from?",

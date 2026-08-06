@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins } from "lucide-react";
+import { Coins, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { TreasuryLogo } from "@/components/treasury-info";
@@ -92,13 +92,21 @@ export function DepositTransferSummary({
                     {t("transfer.goesTo")}
                 </p>
                 <div className="flex items-start gap-2.5">
-                    <TreasuryLogo
-                        logo={treasuryLogo}
-                        isConfidential={isConfidentialTreasury}
-                        alt={treasuryDisplayName}
-                        imageClassName="size-9 rounded-full"
-                        fallbackClassName="size-9 rounded-full"
-                    />
+                    {variant === "confidential" || isConfidentialTreasury ? (
+                        <div
+                            className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary"
+                            aria-hidden
+                        >
+                            <Shield className="size-3.5 fill-primary-foreground text-primary-foreground" />
+                        </div>
+                    ) : (
+                        <TreasuryLogo
+                            logo={treasuryLogo}
+                            alt={treasuryDisplayName}
+                            imageClassName="size-9 rounded-full"
+                            fallbackClassName="size-9 rounded-full"
+                        />
+                    )}
                     <div className="min-w-0">
                         <p className="text-sm font-semibold leading-snug truncate">
                             {treasuryDisplayName}

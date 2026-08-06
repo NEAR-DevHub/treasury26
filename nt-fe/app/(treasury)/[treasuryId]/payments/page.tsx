@@ -670,7 +670,6 @@ export default function PaymentsPage() {
     const isNativeNearPrefill = resolveIsNativeNearPrefill({
         tokenParam,
         networkParam,
-        softNetworks,
     });
     const exactTokenNetworkId =
         !isNativeNearPrefill &&

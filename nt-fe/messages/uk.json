@@ -382,6 +382,7 @@
             "anyAssetOnNearcom": "Будь-який актив у мережі near.com",
             "securedOnTrezu": "Захищено на Trezu",
             "payWithTrezu": "Сплатити через Trezu",
+            "payWithNearcom": "Сплатити через near.com",
             "payRequiresTreasury": "Увійдіть із treasury Trezu, щоб сплатити.",
             "copyLink": "Копіювати посилання",
             "titleConfidential": "Переказ до конфіденційної Treasury",

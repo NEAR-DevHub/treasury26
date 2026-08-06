@@ -4,11 +4,6 @@ import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { getBlockchainType } from "@/lib/blockchain-utils";
 import { normalizeNearAssetId } from "@/lib/utils";
 
-const STABLE_TOKEN_PRIORITY: Record<string, number> = {
-    USDC: 2,
-    USDT: 1,
-};
-
 /** Soft `?networks=eth,near` list (trimmed, non-empty). */
 export function parseSoftNetworks(
     networksParam: string | null | undefined,
@@ -61,25 +56,13 @@ export function isJsonTokenQueryParam(param: string): boolean {
     }
 }
 
-/**
- * Native NEAR deep link: `token=NEAR&network=near`, or legacy
- * `token=NEAR&networks=near` (soft, single entry).
- */
+/** Native NEAR deep link: `token=NEAR&network=near`. */
 export function isNativeNearPrefill(params: {
     tokenParam: string | null;
     networkParam: string | null;
-    softNetworks: readonly string[];
 }): boolean {
     if (!isNativeNearTokenParam(params.tokenParam)) return false;
-    const network = params.networkParam?.trim().toLowerCase();
-    if (network === NEAR_NETWORK_ID && params.softNetworks.length === 0) {
-        return true;
-    }
-    return (
-        !params.networkParam &&
-        params.softNetworks.length === 1 &&
-        params.softNetworks[0].toLowerCase() === NEAR_NETWORK_ID
-    );
+    return params.networkParam?.trim().toLowerCase() === NEAR_NETWORK_ID;
 }
 
 /** Destination prefs from hybrid `network` / `networks` query params. */
@@ -90,7 +73,6 @@ export function resolvePreferredNetworks(params: {
     isNativeNearPrefill: boolean;
 }): string[] {
     if (params.softNetworks.length > 0) {
-        if (params.isNativeNearPrefill) return [NEAR_NETWORK_ID];
         return [...params.softNetworks];
     }
     if (params.isFtNetworkPrefill || params.isNativeNearPrefill) {
@@ -202,14 +184,11 @@ export function pickCompatibleFallbackToken(
                 continue;
             }
 
-            const stablePriority =
-                STABLE_TOKEN_PRIORITY[network.symbol.toUpperCase()] ?? 0;
-            const candidateScore = networkScore * 10 + stablePriority;
             const candidate = tokenFromBridgeNetwork(asset, network);
 
-            if (!bestCandidate || candidateScore > bestCandidate.score) {
+            if (!bestCandidate || networkScore > bestCandidate.score) {
                 bestCandidate = {
-                    score: candidateScore,
+                    score: networkScore,
                     token: candidate,
                 };
             }
