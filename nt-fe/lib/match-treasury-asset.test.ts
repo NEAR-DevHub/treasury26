@@ -18,6 +18,39 @@ const btcAsset = {
     weight: 0,
 } as unknown as TreasuryAsset;
 
+const usdcFt = {
+    id: "USDC",
+    contractId: "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    residency: "Ft",
+    network: "near",
+    chainName: "NEAR",
+    symbol: "USDC",
+    balance: { Standard: { total: "1000000", locked: "0" } },
+    decimals: 6,
+    price: 1,
+    name: "USD Coin",
+    icon: "",
+    balanceUSD: 1,
+    weight: 0,
+} as unknown as TreasuryAsset;
+
+const usdcIntents = {
+    id: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    contractId:
+        "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    residency: "Intents",
+    network: "near",
+    chainName: "NEAR",
+    symbol: "USDC",
+    balance: { Standard: { total: "5000000", locked: "0" } },
+    decimals: 6,
+    price: 1,
+    name: "USD Coin",
+    icon: "",
+    balanceUSD: 5,
+    weight: 0,
+} as unknown as TreasuryAsset;
+
 describe("findMatchingTreasuryAsset", () => {
     it("matches nep141 address to bare contractId", () => {
         const matched = findMatchingTreasuryAsset([btcAsset], {
@@ -42,6 +75,26 @@ describe("findMatchingTreasuryAsset", () => {
                 network: "eth",
             }),
         ).toBeNull();
+    });
+
+    it("distinguishes Ft vs Intents for the same Near contract", () => {
+        const tokens = [usdcFt, usdcIntents];
+        expect(
+            findMatchingTreasuryAsset(tokens, {
+                address:
+                    "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+                network: "near",
+                residency: "Ft",
+            })?.residency,
+        ).toBe("Ft");
+        expect(
+            findMatchingTreasuryAsset(tokens, {
+                address:
+                    "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+                network: "near",
+                residency: "Intents",
+            })?.residency,
+        ).toBe("Intents");
     });
 
     it("returns null when tokens or address are missing", () => {
