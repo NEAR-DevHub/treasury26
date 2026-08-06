@@ -23,6 +23,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { isStaging } from "@/constants/features";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
@@ -42,6 +43,9 @@ export function SidebarProfileMenu({
     const { resolvedTheme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    // On touch, `Tooltip` falls back to a popover of its own, which would fire
+    // alongside this menu on tap — and the menu already spells out the account.
+    const isTouchDevice = useMediaQuery("(hover: none)");
 
     useEffect(() => {
         setMounted(true);
@@ -106,15 +110,17 @@ export function SidebarProfileMenu({
 
     return (
         <Popover open={isOpen} onOpenChange={setIsOpen} modal={false}>
-            <PopoverTrigger asChild>
-                {isReduced ? (
-                    <Tooltip content={accountId} side="right">
-                        {trigger}
-                    </Tooltip>
-                ) : (
-                    trigger
-                )}
-            </PopoverTrigger>
+            {isReduced ? (
+                <Tooltip
+                    content={accountId}
+                    side="right"
+                    disabled={isTouchDevice}
+                >
+                    <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+                </Tooltip>
+            ) : (
+                <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+            )}
             {/* Portalled out of the rail, so `dark` is re-declared here to keep the
                 menu in step with the always-dark rail it drops out of. */}
             <PopoverContent
