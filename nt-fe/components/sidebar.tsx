@@ -312,9 +312,9 @@ export function Sidebar({ onClose }: SidebarProps) {
                           : "w-20",
                 )}
             >
-                <div className={cn("shrink-0", isReduced ? "p-2" : "p-3")}>
+                <div className={cn("shrink-0", isReduced ? "p-3.5 pt-8" : "p-3")}>
                     {isReduced ? (
-                        <div className="flex justify-center pb-3">
+                        <div className="flex justify-center">
                             <TreasurySelector
                                 reducedMode
                                 isOpen={dropdownOpen}
@@ -385,7 +385,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                 <nav
                     className={cn(
                         "flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-hide py-2",
-                        "border-y border-gray-300 dark:border-white/10",
+                        !isReduced &&
+                            "border-y border-gray-300 dark:border-white/10",
                         isReduced ? "px-2" : "px-3",
                     )}
                 >
