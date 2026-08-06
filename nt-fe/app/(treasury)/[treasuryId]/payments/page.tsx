@@ -29,10 +29,7 @@ import { Tooltip } from "@/components/tooltip";
 import { type Token, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import {
-    default_near_token,
-    default_usdc_near_token,
-} from "@/constants/token";
+import { default_near_token, default_usdc_near_token } from "@/constants/token";
 import { useAddressBook } from "@/features/address-book";
 import {
     PAGE_TOUR_NAMES,
@@ -689,12 +686,7 @@ export default function PaymentsPage() {
                 isFtNetworkPrefill,
                 isNativeNearPrefill,
             }),
-        [
-            softNetworks,
-            networkParam,
-            isFtNetworkPrefill,
-            isNativeNearPrefill,
-        ],
+        [softNetworks, networkParam, isFtNetworkPrefill, isNativeNearPrefill],
     );
     const {
         data: bridgeAssets = [],

@@ -60,11 +60,11 @@ export default async function EarnPage() {
 
     return (
         <PageComponentLayout title={t("title")} description={t("description")}>
-            <div className="mx-auto w-full max-w-5xl space-y-5">
+            <div className="w-full max-w-4xl mx-auto space-y-6">
                 {earnAppConfigs.map((app) => {
                     const media = earnAppMedia[app.id];
                     return (
-                        <PageCard key={app.id} className="p-5">
+                        <PageCard key={app.id}>
                             <div className="flex items-start gap-4">
                                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-black text-sm font-semibold text-white">
                                     <img
