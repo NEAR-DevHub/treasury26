@@ -1375,8 +1375,6 @@
         "continueToWallet": "Lanjut ke dompet",
         "alreadyHaveTreasuryLabel": "Sudah punya treasury?",
         "signInLabel": "Masuk",
-        "dontHaveTreasuryLabel": "Belum punya treasury?",
-        "createOneLabel": "Buat satu",
         "walletSelector": {
             "title": "Masuk atau buat treasury",
             "subtitle": "Gunakan passkey untuk pengalaman termudah, atau hubungkan wallet.",

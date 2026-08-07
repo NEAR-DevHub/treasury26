@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowLeft, Check, Fingerprint, Wallet } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SlotWarning } from "@/components/warning-message";
@@ -159,8 +158,6 @@ interface ConnectWalletSelectorProps {
     onBack?: () => void;
     showBackButton?: boolean;
     showOnboardingHints?: boolean;
-    showCreateTreasuryCta?: boolean;
-    onCreateTreasuryClick?: () => void;
     onConnectSupported: (walletId?: string) => Promise<void> | void;
     /** Optional context shown above the standard sign-in header. */
     introTitle?: string;
@@ -174,13 +171,10 @@ export function ConnectWalletSelector({
     onBack,
     showBackButton = true,
     showOnboardingHints = false,
-    showCreateTreasuryCta = true,
-    onCreateTreasuryClick,
     onConnectSupported,
     introTitle,
     introDescription,
 }: ConnectWalletSelectorProps) {
-    const router = useRouter();
     const t = useTranslations("createTreasury");
     const { getWarning } = useWarnings();
     const resolveWarningMessage = useResolveWarningMessage();
@@ -723,25 +717,6 @@ export function ConnectWalletSelector({
                     </DialogContent>
                 </Dialog>
             </div>
-            {showCreateTreasuryCta && (
-                <p className="mt-6 text-sm text-muted-foreground">
-                    {t("dontHaveTreasuryLabel")}{" "}
-                    <Button
-                        type="button"
-                        variant="unstyled"
-                        className="h-auto p-0 underline"
-                        onClick={() => {
-                            if (onCreateTreasuryClick) {
-                                onCreateTreasuryClick();
-                                return;
-                            }
-                            router.push("/create");
-                        }}
-                    >
-                        {t("createOneLabel")}
-                    </Button>
-                </p>
-            )}
         </>
     );
 }

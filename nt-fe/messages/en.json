@@ -1375,8 +1375,6 @@
         "continueToWallet": "Continue to wallet",
         "alreadyHaveTreasuryLabel": "Already have a treasury?",
         "signInLabel": "Sign In",
-        "dontHaveTreasuryLabel": "Don't have a treasury yet?",
-        "createOneLabel": "Create one",
         "walletSelector": {
             "title": "Sign in or create a treasury",
             "subtitle": "Use a passkey for the easiest experience, or connect a wallet.",

@@ -1358,8 +1358,6 @@
         "continueToWallet": "Продовжити до гаманця",
         "alreadyHaveTreasuryLabel": "Уже маєте скарбницю?",
         "signInLabel": "Увійти",
-        "dontHaveTreasuryLabel": "Ще не маєте скарбниці?",
-        "createOneLabel": "Створити",
         "walletSelector": {
             "title": "Увійдіть або створіть скарбницю",
             "subtitle": "Скористайтеся ключем доступу для найпростішого досвіду або підключіть гаманець.",

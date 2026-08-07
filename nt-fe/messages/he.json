@@ -1375,8 +1375,6 @@
         "continueToWallet": "המשך לארנק",
         "alreadyHaveTreasuryLabel": "כבר יש לך כספת?",
         "signInLabel": "התחברות",
-        "dontHaveTreasuryLabel": "אין לך עדיין כספת?",
-        "createOneLabel": "צור אחת",
         "walletSelector": {
             "title": "התחברות או יצירת כספת",
             "subtitle": "השתמשו במפתח גישה לחוויה הפשוטה ביותר, או חברו ארנק.",

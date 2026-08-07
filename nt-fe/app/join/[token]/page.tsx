@@ -158,7 +158,6 @@ export default function JoinInvitePage() {
                         source={`/join/${token}`}
                         connectFlow="within_treasury"
                         isConnectingWallet={isAuthenticating}
-                        showCreateTreasuryCta={false}
                         showBackButton={false}
                         onConnectSupported={connect}
                         introTitle={t("connectTitle", {

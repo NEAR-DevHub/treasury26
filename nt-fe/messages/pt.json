@@ -1375,8 +1375,6 @@
         "continueToWallet": "Continuar para a carteira",
         "alreadyHaveTreasuryLabel": "Já tem uma tesouraria?",
         "signInLabel": "Entrar",
-        "dontHaveTreasuryLabel": "Ainda não tem uma tesouraria?",
-        "createOneLabel": "Criar uma",
         "walletSelector": {
             "title": "Entre ou crie uma tesouraria",
             "subtitle": "Use uma passkey para a experiência mais simples, ou conecte uma carteira.",

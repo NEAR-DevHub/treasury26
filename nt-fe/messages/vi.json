@@ -1358,8 +1358,6 @@
         "continueToWallet": "Tiếp tục đến ví",
         "alreadyHaveTreasuryLabel": "Bạn đã có kho bạc?",
         "signInLabel": "Đăng nhập",
-        "dontHaveTreasuryLabel": "Bạn chưa có kho bạc?",
-        "createOneLabel": "Tạo một",
         "walletSelector": {
             "title": "Đăng nhập hoặc tạo kho bạc",
             "subtitle": "Dùng passkey để có trải nghiệm dễ nhất, hoặc kết nối ví.",
