@@ -75,10 +75,30 @@ impl<'r> ReceiptDepositGroup<'r> {
     /// Signed yoctoNEAR delta for the monitored account; `None` means the
     /// receipt does not move the account's own balance (self-receipt or a
     /// receipt where the account is neither receiver nor predecessor).
+    ///
+    /// A failed receipt still debited its attached deposit from the
+    /// predecessor at receipt creation; the protocol returns it later via a
+    /// separate `system` refund receipt that is booked as a normal inflow.
+    /// Booking the debit here keeps the pair net-zero on the chain series —
+    /// booking neither leg was impossible because the refund receipt itself
+    /// reports a successful outcome. Nothing ever reached the receiver, and
+    /// failed receipts without deposit data stay skipped instead of raising
+    /// projection errors.
     fn signed_delta_raw(&self, account_id: &str) -> Result<Option<BigDecimal>, String> {
         let first = self.first();
         let receiver_is_account = first.affected_account_id == account_id;
         let predecessor_is_account = first.involved_account_id.as_deref() == Some(account_id);
+
+        if self.is_failed() {
+            if !predecessor_is_account || receiver_is_account {
+                return Ok(None);
+            }
+            return Ok(self
+                .deposit_magnitude_raw()
+                .ok()
+                .filter(|magnitude| !magnitude.is_zero())
+                .map(|magnitude| -magnitude));
+        }
 
         let magnitude = self.deposit_magnitude_raw()?;
         if magnitude.is_zero() {
@@ -185,9 +205,6 @@ impl<'a> BalanceLedgerBuilder<'a> {
 
         for group_rows in receipt_rows.into_values() {
             let group = ReceiptDepositGroup::new(group_rows);
-            if group.is_failed() {
-                continue;
-            }
             match self.native_movements(&group) {
                 Ok(receipt_movements) => movements.extend(receipt_movements),
                 Err(reason) => result.errors.push(projection_error(group.first(), reason)),
@@ -274,13 +291,18 @@ impl<'a> BalanceLedgerBuilder<'a> {
             .clone()
             .expect("receipt groups are keyed by receipt_id");
         let counterparty = group.counterparty(self.account_id);
-        let affects_user_balance = native_movement_affects_user_balance(
-            counterparty.as_deref(),
-            &first.raw_payload,
-            self.account_id,
-            self.relayer_account,
-            delta_raw.is_positive().then_some(&delta_raw),
-        );
+        // Failed-deposit debits are chain plumbing like the system refunds
+        // that return them (the refund inflow is already non-user via the
+        // `system` counterparty rule) — both legs must stay off the user
+        // series or it drifts by the deposit with no offsetting entry.
+        let affects_user_balance = !group.is_failed()
+            && native_movement_affects_user_balance(
+                counterparty.as_deref(),
+                &first.raw_payload,
+                self.account_id,
+                self.relayer_account,
+                delta_raw.is_positive().then_some(&delta_raw),
+            );
         let movement =
             |entry_key: String, delta_raw: BigDecimal, affects_user_balance: bool| LedgerMovement {
                 asset: PublicAsset::native_near(),
@@ -519,7 +541,7 @@ mod tests {
     }
 
     #[test]
-    fn failed_receipt_moves_no_balance() {
+    fn failed_incoming_receipt_moves_no_balance() {
         let mut failed = receipt_row(1, "r1", 0, 100, DAO, Some("alice.near"), Some("700"), None);
         failed.outcome_status = Some(false);
 
@@ -527,6 +549,87 @@ mod tests {
 
         assert!(result.errors.is_empty());
         assert!(result.entries.is_empty());
+    }
+
+    #[test]
+    fn failed_outgoing_deposit_is_a_non_user_debit() {
+        let mut failed = receipt_row(
+            1,
+            "r1",
+            0,
+            100,
+            "multisender.app.near",
+            Some(DAO),
+            None,
+            Some("700"),
+        );
+        failed.outcome_status = Some(false);
+
+        let result = build(&[failed]);
+
+        assert!(result.errors.is_empty());
+        assert_eq!(result.entries.len(), 1);
+        assert_eq!(result.entries[0].delta_raw, BigDecimal::from(-700));
+        assert!(!result.entries[0].affects_user_balance);
+        assert_eq!(result.entries[0].user_balance_after, BigDecimal::zero());
+    }
+
+    #[test]
+    fn failed_outgoing_without_deposit_data_is_skipped_not_an_error() {
+        let mut failed = receipt_row(
+            1,
+            "r1",
+            0,
+            100,
+            "multisender.app.near",
+            Some(DAO),
+            None,
+            None,
+        );
+        failed.outcome_status = Some(false);
+
+        let result = build(&[failed]);
+
+        assert!(result.errors.is_empty());
+        assert!(result.entries.is_empty());
+    }
+
+    #[test]
+    fn failed_payout_and_system_refund_net_to_zero() {
+        // The nearuaguild.sputnik-dao.near pattern: a proposal payout with an
+        // attached deposit fails at the receiver, and the protocol refunds
+        // the deposit via a system receipt whose own outcome is SUCCESS.
+        // Booking only the refund fabricated +15 NEAR per failed payout.
+        let mut failed = receipt_row(
+            1,
+            "payout",
+            0,
+            100,
+            "multisender.app.near",
+            Some(DAO),
+            None,
+            Some("15000"),
+        );
+        failed.outcome_status = Some(false);
+        let refund = receipt_row(
+            2,
+            "refund",
+            0,
+            102,
+            DAO,
+            Some("system"),
+            None,
+            Some("15000"),
+        );
+
+        let result = build(&[failed, refund]);
+
+        assert!(result.errors.is_empty());
+        assert_eq!(result.entries.len(), 2);
+        let last = result.entries.last().unwrap();
+        assert_eq!(last.balance_after, BigDecimal::zero());
+        assert_eq!(last.user_balance_after, BigDecimal::zero());
+        assert!(result.entries.iter().all(|e| !e.affects_user_balance));
     }
 
     #[test]
