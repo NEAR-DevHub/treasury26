@@ -576,7 +576,16 @@ mod tests {
 
     #[test]
     fn failed_outgoing_without_deposit_data_is_skipped_not_an_error() {
-        let mut failed = receipt_row(1, "r1", 0, 100, "multisender.app.near", Some(DAO), None, None);
+        let mut failed = receipt_row(
+            1,
+            "r1",
+            0,
+            100,
+            "multisender.app.near",
+            Some(DAO),
+            None,
+            None,
+        );
         failed.outcome_status = Some(false);
 
         let result = build(&[failed]);
@@ -602,7 +611,16 @@ mod tests {
             Some("15000"),
         );
         failed.outcome_status = Some(false);
-        let refund = receipt_row(2, "refund", 0, 102, DAO, Some("system"), None, Some("15000"));
+        let refund = receipt_row(
+            2,
+            "refund",
+            0,
+            102,
+            DAO,
+            Some("system"),
+            None,
+            Some("15000"),
+        );
 
         let result = build(&[failed, refund]);
 
