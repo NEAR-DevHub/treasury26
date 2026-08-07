@@ -25,6 +25,12 @@ type BaseFormattedDateProps = Omit<
     timeFormat?: "12" | "24";
     /** Additional CSS classes */
     className?: string;
+    /**
+     * Wrap relative dates in a tooltip showing the full timestamp. Defaults to
+     * true; turn it off inside an interactive parent, since the tooltip trigger
+     * is a button and buttons may not nest.
+     */
+    withTooltip?: boolean;
 };
 
 type StandardDateProps = BaseFormattedDateProps & {
@@ -108,6 +114,7 @@ export function FormattedDate(props: FormattedDateProps) {
             timeFormat: _tf,
             policy: _p,
             proposal: _pr,
+            withTooltip: _wt,
             ...options
         } = props as StandardDateProps;
         tooltipText = formatUserDate(date, {
@@ -134,7 +141,7 @@ export function FormattedDate(props: FormattedDateProps) {
         </span>
     );
 
-    return tooltipText ? (
+    return tooltipText && props.withTooltip !== false ? (
         <Tooltip
             content={tooltipText}
             triggerProps={{ asChild: false, className: "py-px flex" }}

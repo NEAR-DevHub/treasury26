@@ -34,6 +34,7 @@
         "copy": "Kopyala",
         "copied": "Kopyalandı",
         "viewAll": "Tümünü Görüntüle",
+        "seeMore": "Daha fazla",
         "viewDetails": "Ayrıntıları görüntüle",
         "noResults": "Sonuç bulunamadı",
         "add": "Ekle",
@@ -356,6 +357,7 @@
             "description": "İşlemleriniz ve eylemleriniz gerçekleştiklerinde burada görünecek"
         },
         "recentTitle": "Son İşlemler",
+        "recentSubtitle": "Son bir yıldaki işlem hareketleri",
         "details": {
             "title": "İşlem Ayrıntıları",
             "copyAddress": "Adresi Kopyala",

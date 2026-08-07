@@ -2,28 +2,40 @@
 
 import {
     AlertTriangle,
-    ArrowDownToLine,
-    ArrowRightLeft,
-    ArrowUpToLine,
+    ArrowDown,
     ChevronRight,
     Clock,
+    Loader2,
+    Navigation,
     Shield,
 } from "lucide-react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
+import { PageCard } from "@/components/card";
+import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { FormattedDate } from "@/components/formatted-date";
+import { SwapIcon } from "@/components/icons/swap";
+import { Tooltip } from "@/components/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseWarningCopy } from "@/components/warning-message";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
+import { useWarningMessage, useWarnings } from "@/hooks/use-warnings";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
 import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import {
+    type ActivityStatus,
     getActivityStatus,
     useGetActivityLabel,
     useGetActivitySubLabel,
 } from "../utils/history-utils";
+import { useIsHistoryRefreshing } from "./history-refresh-indicator";
+import { TransactionDetailsModal } from "./transaction-details-modal";
 
 type GroupedActivity =
     | {
@@ -39,29 +51,8 @@ type GroupedActivity =
           blockTime: string; // Most recent time
       };
 
-import {
-    type ColumnDef,
-    createColumnHelper,
-    flexRender,
-    getCoreRowModel,
-    useReactTable,
-} from "@tanstack/react-table";
-import Link from "next/link";
-import { ConfidentialState } from "@/components/confidential-state";
-import { FormattedDate } from "@/components/formatted-date";
-import { Table, TableBody, TableCell, TableRow } from "@/components/table";
-import { Tooltip } from "@/components/tooltip";
-import { parseWarningCopy } from "@/components/warning-message";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { useMediaQuery } from "@/hooks/use-media-query";
-import { useWarningMessage, useWarnings } from "@/hooks/use-warnings";
-import { useIsHistoryRefreshing } from "./history-refresh-indicator";
-import { TransactionDetailsModal } from "./transaction-details-modal";
-
 const ITEMS_ON_DASHBOARD = 10;
 const MAX_ITEMS = 100;
-
-const columnHelper = createColumnHelper<GroupedActivity>();
 
 // Helper function to detect if an activity is a staking reward
 const isStakingReward = (activity: RecentActivityType): boolean => {
@@ -143,24 +134,172 @@ const groupStakingActivities = (
     return grouped;
 };
 
+/**
+ * Neutral 36px badge that fronts every row. The design deliberately keeps the
+ * badge monochrome — direction is carried by the glyph and the amount colour,
+ * not by a tinted circle.
+ */
+function RowIcon({ children }: { children: ReactNode }) {
+    return (
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-general-border bg-general-secondary text-muted-foreground">
+            {children}
+        </div>
+    );
+}
+
+function activityIcon(activity: RecentActivityType) {
+    if (activity.swap) return <SwapIcon className="size-4" />;
+    return parseFloat(activity.amount) > 0 ? (
+        <ArrowDown className="size-4" />
+    ) : (
+        <Navigation className="size-4" />
+    );
+}
+
+interface ActivityRowProps {
+    icon: ReactNode;
+    label: ReactNode;
+    subLabel?: ReactNode;
+    amount: ReactNode;
+    /** Secondary line under the amount: relative date or execution status. */
+    meta: ReactNode;
+    trailing?: ReactNode;
+    onClick: () => void;
+    className?: string;
+}
+
+function ActivityRow({
+    icon,
+    label,
+    subLabel,
+    amount,
+    meta,
+    trailing,
+    onClick,
+    className,
+}: ActivityRowProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+                "flex w-full cursor-pointer items-center rounded-2xl px-1 text-left transition-colors hover:bg-general-secondary",
+                className,
+            )}
+        >
+            <div className="flex h-16 items-center px-2">{icon}</div>
+            <div className="flex h-16 min-w-0 flex-1 flex-col justify-center px-2">
+                <span className="truncate font-semibold text-sm leading-[1.2] sm:text-base">
+                    {label}
+                </span>
+                {subLabel ? (
+                    <span className="truncate font-medium text-muted-foreground text-xs leading-[1.5] sm:text-sm">
+                        {subLabel}
+                    </span>
+                ) : null}
+            </div>
+            <div className="flex h-16 min-w-0 flex-1 flex-col items-end justify-center gap-0.5 px-2">
+                {amount}
+                {meta}
+            </div>
+            {trailing ? (
+                <div className="flex h-16 items-center pr-1">{trailing}</div>
+            ) : null}
+        </button>
+    );
+}
+
+function RowAmount({
+    children,
+    className,
+}: {
+    children: ReactNode;
+    className?: string;
+}) {
+    return (
+        <span
+            className={cn(
+                "w-full truncate text-right font-semibold text-sm leading-[1.2] sm:text-base",
+                className,
+            )}
+        >
+            {children}
+        </span>
+    );
+}
+
+function RowDate({ date }: { date: string }) {
+    return (
+        <span className="w-full truncate text-right font-medium text-muted-foreground text-xs leading-[1.5] sm:text-sm">
+            {/* The row itself is the button, so the date can't carry one. */}
+            <FormattedDate date={new Date(date)} relative withTooltip={false} />
+        </span>
+    );
+}
+
+/** Replaces the date line while a transaction is still settling or has failed. */
+function RowStatus({ status }: { status: NonNullable<ActivityStatus> }) {
+    const t = useTranslations("activity.details");
+    return (
+        <span
+            className={cn(
+                "flex items-center gap-1 font-medium text-xs leading-[1.5] sm:text-sm",
+                status === "failed"
+                    ? "text-general-destructive-foreground"
+                    : "text-general-orange-foreground",
+            )}
+        >
+            {status === "pending" ? (
+                <Loader2 className="size-3 animate-spin" />
+            ) : null}
+            {status === "pending" ? t("processing") : t("failed")}
+        </span>
+    );
+}
+
+function SwapAmount({
+    swap,
+}: {
+    swap: NonNullable<RecentActivityType["swap"]>;
+}) {
+    const sentSymbol = swap.sentTokenMetadata?.symbol ?? null;
+    const receivedSymbol =
+        swap.receivedTokenMetadata?.symbol ?? swap.receivedTokenId;
+    const sent =
+        swap.sentAmount && sentSymbol
+            ? `${formatSmartAmount(swap.sentAmount)} ${sentSymbol}`
+            : (sentSymbol ?? "?");
+    const received = swap.receivedAmount
+        ? `${formatSmartAmount(swap.receivedAmount)} ${receivedSymbol}`
+        : receivedSymbol;
+
+    return (
+        <RowAmount>
+            {/* Narrow screens can't fit both amounts, so they fall back to symbols. */}
+            <span className="hidden sm:inline">{sent}</span>
+            <span className="sm:hidden">{sentSymbol ?? "?"}</span>
+            {" → "}
+            <span className="hidden sm:inline">{received}</span>
+            <span className="sm:hidden">{receivedSymbol}</span>
+        </RowAmount>
+    );
+}
+
+const SKELETON_ROWS = ["a", "b", "c", "d", "e", "f"];
+
 export function RecentActivitySkeleton() {
     return (
-        <div className="space-y-4 px-4 py-2">
-            {[...Array(6)].map((_, i) => (
-                <div
-                    key={i}
-                    className="grid grid-cols-[1fr_auto] items-center gap-6 border-b border-border pb-3 last:border-b-0"
-                >
-                    <div className="flex items-center gap-3 min-w-0">
-                        <Skeleton className="size-9 shrink-0 rounded-full bg-general-unofficial-accent-0" />
-                        <div className="space-y-2 min-w-0 flex-1">
-                            <Skeleton className="h-6 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
-                            <Skeleton className="h-4 w-[min(420px,100%)] bg-general-unofficial-accent-0" />
-                        </div>
+        <div className="flex flex-col">
+            {SKELETON_ROWS.map((row) => (
+                <div key={row} className="flex h-16 items-center gap-4 px-3">
+                    <Skeleton className="size-9 shrink-0 rounded-full bg-general-unofficial-accent-0" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                        <Skeleton className="h-4 w-[min(240px,60%)] bg-general-unofficial-accent-0" />
+                        <Skeleton className="h-3 w-[min(160px,40%)] bg-general-unofficial-accent-0" />
                     </div>
-                    <div className="text-right space-y-2">
-                        <Skeleton className="h-6 w-36 bg-general-unofficial-accent-0" />
-                        <Skeleton className="h-4 w-36 ml-auto bg-general-unofficial-accent-0" />
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                        <Skeleton className="h-4 w-28 bg-general-unofficial-accent-0" />
+                        <Skeleton className="h-3 w-20 bg-general-unofficial-accent-0" />
                     </div>
                 </div>
             ))}
@@ -176,7 +315,7 @@ function RecentActivityUnavailableOverlay({
     body: string;
 }) {
     return (
-        <div className="relative min-h-[28rem]">
+        <div className="relative min-h-[24rem]">
             <RecentActivitySkeleton />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 py-8">
                 <div className="pointer-events-auto flex max-w-lg flex-col items-center gap-3 text-center">
@@ -185,12 +324,12 @@ function RecentActivityUnavailableOverlay({
                     </div>
                     <div>
                         {heading && (
-                            <p className="text-base font-semibold text-foreground">
+                            <p className="font-semibold text-base text-foreground">
                                 {heading}
                             </p>
                         )}
                         {body && (
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-muted-foreground text-sm">
                                 {body}
                             </p>
                         )}
@@ -291,251 +430,152 @@ export function RecentActivity() {
         [getActivitySubLabel, treasuryId],
     );
 
-    const columns = useMemo<ColumnDef<GroupedActivity, unknown>[]>(
-        () => [
-            columnHelper.display({
-                id: "type",
-                header: "",
-                cell: ({ row }) => {
-                    const grouped = row.original;
-
-                    if (grouped.type === "grouped") {
-                        return (
-                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                <div
-                                    className={cn(
-                                        "flex size-9 shrink-0 items-center justify-center rounded-full",
-                                        "bg-general-success-background-faded",
-                                    )}
-                                >
-                                    <ArrowDownToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-success-foreground" />
-                                </div>
-                                <div className="min-w-0 flex-1 overflow-hidden">
-                                    <div className="text-sm sm:text-base font-semibold truncate">
-                                        {t("tabs.stakingRewards")}
-                                    </div>
-                                    <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
-                                        {t("fromPool", {
-                                            pool: grouped.pool,
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    const activity = grouped.activity;
-                    const isSwap = !!activity.swap;
-                    const isReceived = parseFloat(activity.amount) > 0;
-                    const activityType = getActivityType(activity);
-
-                    return (
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                            <div
-                                className={cn(
-                                    "flex size-9 shrink-0 items-center justify-center rounded-full",
-                                    isSwap
-                                        ? "bg-blue-500/10"
-                                        : isReceived
-                                          ? "bg-general-success-background-faded"
-                                          : "bg-general-destructive-background-faded",
-                                )}
-                            >
-                                {isSwap ? (
-                                    <ArrowRightLeft className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
-                                ) : isReceived ? (
-                                    <ArrowDownToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-success-foreground" />
-                                ) : (
-                                    <ArrowUpToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-destructive-foreground" />
-                                )}
-                            </div>
-                            <div className="min-w-0 flex-1 overflow-hidden">
-                                <div className="text-sm sm:text-base font-semibold truncate">
-                                    {activityType}
-                                </div>
-                                <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
-                                    {getActivityFrom(activity)}
-                                </div>
-                            </div>
-                        </div>
-                    );
-                },
-            }),
-            columnHelper.display({
-                id: "amount",
-                header: "",
-                cell: ({ row }) => {
-                    const grouped = row.original;
-
-                    if (grouped.type === "grouped") {
-                        const groupId = `${grouped.pool}-${grouped.blockTime}`;
-                        const isExpanded = expandedGroups.has(groupId);
-
-                        return (
-                            <div className="flex items-center justify-end min-w-0">
-                                <div className="flex flex-col items-end gap-0.5 min-w-0 flex-1">
-                                    <div className="text-sm sm:text-base font-semibold text-general-success-foreground truncate w-full text-right">
-                                        {formatActivityAmount(
-                                            grouped.totalAmount,
-                                        )}{" "}
-                                        {grouped.tokenMetadata?.symbol ??
-                                            grouped.activities[0]?.tokenId}
-                                    </div>
-                                    <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                                        <FormattedDate
-                                            date={new Date(grouped.blockTime)}
-                                            relative
-                                        />
-                                    </div>
-                                </div>
-                                <div
-                                    className={cn(
-                                        "overflow-hidden transition-all shrink-0",
-                                        isExpanded
-                                            ? "w-6 ml-2"
-                                            : "w-0 group-hover:w-6 group-hover:ml-1",
-                                    )}
-                                >
-                                    <ChevronRight
-                                        className={cn(
-                                            "h-5 w-5 text-muted-foreground transition-transform",
-                                            isExpanded && "rotate-90",
-                                        )}
-                                    />
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    const activity = grouped.activity;
-                    const isReceived = parseFloat(activity.amount) > 0;
-
-                    if (activity.swap) {
-                        const swap = activity.swap;
-                        const isDeposit = swap.swapRole === "deposit";
-                        const status = getActivityStatus(activity);
-                        const sentSymbol =
-                            swap.sentTokenMetadata?.symbol ?? null;
-                        const receivedSymbol =
-                            swap.receivedTokenMetadata?.symbol ??
-                            swap.receivedTokenId;
-                        return (
-                            <div className="flex flex-col items-end">
-                                <div className="flex items-center justify-end gap-1.5 truncate">
-                                    {isDeposit ? (
-                                        <>
-                                            {swap.sentAmount &&
-                                            swap.sentTokenMetadata ? (
-                                                <span className="font-semibold text-foreground hidden sm:inline truncate">
-                                                    {formatSmartAmount(
-                                                        swap.sentAmount,
-                                                    )}{" "}
-                                                    {sentSymbol}
-                                                </span>
-                                            ) : (
-                                                <span className="font-semibold text-muted-foreground hidden sm:inline">
-                                                    ?
-                                                </span>
-                                            )}
-                                            <span className="font-semibold text-foreground sm:hidden">
-                                                {sentSymbol ?? "?"}
-                                            </span>
-                                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="font-semibold text-general-success-foreground truncate">
-                                                {receivedSymbol}
-                                            </span>
-                                            {status ? (
-                                                <span
-                                                    className={cn(
-                                                        "text-xs font-medium capitalize shrink-0",
-                                                        status === "failed"
-                                                            ? "text-general-destructive-foreground"
-                                                            : "text-muted-foreground",
-                                                    )}
-                                                >
-                                                    {status}
-                                                </span>
-                                            ) : null}
-                                        </>
-                                    ) : (
-                                        <>
-                                            {sentSymbol ? (
-                                                <span className="font-semibold text-foreground truncate">
-                                                    {sentSymbol}
-                                                </span>
-                                            ) : null}
-                                            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="font-semibold text-general-success-foreground hidden sm:inline truncate">
-                                                +
-                                                {swap.receivedAmount
-                                                    ? formatSmartAmount(
-                                                          swap.receivedAmount,
-                                                      )
-                                                    : ""}{" "}
-                                                {receivedSymbol}
-                                            </span>
-                                            <span className="font-semibold text-general-success-foreground sm:hidden truncate">
-                                                {receivedSymbol}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                    <FormattedDate
-                                        date={new Date(activity.blockTime)}
-                                        relative
-                                    />
-                                </div>
-                            </div>
-                        );
-                    }
-
-                    return (
-                        <div className="flex items-center justify-end min-w-0">
-                            <div className="flex flex-col items-end gap-0.5 min-w-0 w-full">
-                                <div
-                                    className={cn(
-                                        "text-sm sm:text-base font-semibold truncate w-full text-right",
-                                        isReceived
-                                            ? "text-general-success-foreground"
-                                            : "text-foreground",
-                                    )}
-                                >
-                                    {formatActivityAmount(activity.amount)}{" "}
-                                    {activity.tokenMetadata?.symbol ??
-                                        activity.tokenId}
-                                </div>
-                                <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                                    <FormattedDate
-                                        date={new Date(activity.blockTime)}
-                                        relative
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    );
-                },
-            }),
-        ],
-        [expandedGroups, getActivityFrom, getActivityType, t],
+    const renderStakingRewardRow = (
+        activity: RecentActivityType,
+        pool: string,
+        className?: string,
+    ) => (
+        <ActivityRow
+            key={`sub-${activity.id}`}
+            icon={
+                <RowIcon>
+                    <ArrowDown className="size-4" />
+                </RowIcon>
+            }
+            label={t("tabs.stakingRewards")}
+            subLabel={t("fromPool", { pool })}
+            amount={
+                <RowAmount className="text-general-success-foreground">
+                    {formatActivityAmount(activity.amount)}{" "}
+                    {activity.tokenMetadata?.symbol ?? activity.tokenId}
+                </RowAmount>
+            }
+            meta={<RowDate date={activity.blockTime} />}
+            onClick={() => handleActivityClick(activity)}
+            className={className}
+        />
     );
 
-    const table = useReactTable({
-        data: displayedActivities,
-        columns,
-        getCoreRowModel: getCoreRowModel(),
-        getRowId: (row) =>
-            row.type === "grouped"
-                ? `group-${row.pool}-${row.blockTime}`
-                : `single-${row.activity.id}`,
-    });
+    const renderRow = (grouped: GroupedActivity) => {
+        if (grouped.type === "grouped") {
+            const groupId = `${grouped.pool}-${grouped.blockTime}`;
+            const isExpanded = expandedGroups.has(groupId);
+
+            return (
+                <div key={`group-${groupId}`} className="flex flex-col">
+                    <ActivityRow
+                        icon={
+                            <RowIcon>
+                                <ArrowDown className="size-4" />
+                            </RowIcon>
+                        }
+                        label={t("tabs.stakingRewards")}
+                        subLabel={t("fromPool", { pool: grouped.pool })}
+                        amount={
+                            <RowAmount className="text-general-success-foreground">
+                                {formatActivityAmount(grouped.totalAmount)}{" "}
+                                {grouped.tokenMetadata?.symbol ??
+                                    grouped.activities[0]?.tokenId}
+                            </RowAmount>
+                        }
+                        meta={<RowDate date={grouped.blockTime} />}
+                        trailing={
+                            <ChevronRight
+                                className={cn(
+                                    "size-5 text-muted-foreground transition-transform",
+                                    isExpanded && "rotate-90",
+                                )}
+                            />
+                        }
+                        onClick={() => toggleGroup(groupId)}
+                    />
+                    {isExpanded &&
+                        grouped.activities.map((activity) =>
+                            renderStakingRewardRow(
+                                activity,
+                                grouped.pool,
+                                "pl-6 sm:pl-10",
+                            ),
+                        )}
+                </div>
+            );
+        }
+
+        const activity = grouped.activity;
+        const status = getActivityStatus(activity);
+        const isReceived = parseFloat(activity.amount) > 0;
+
+        return (
+            <ActivityRow
+                key={`single-${activity.id}`}
+                icon={<RowIcon>{activityIcon(activity)}</RowIcon>}
+                label={getActivityType(activity)}
+                subLabel={getActivityFrom(activity)}
+                amount={
+                    activity.swap ? (
+                        <SwapAmount swap={activity.swap} />
+                    ) : (
+                        <RowAmount
+                            className={
+                                isReceived
+                                    ? "text-general-success-foreground"
+                                    : "text-foreground"
+                            }
+                        >
+                            {formatActivityAmount(activity.amount)}{" "}
+                            {activity.tokenMetadata?.symbol ?? activity.tokenId}
+                        </RowAmount>
+                    )
+                }
+                meta={
+                    status ? (
+                        <RowStatus status={status} />
+                    ) : (
+                        <RowDate date={activity.blockTime} />
+                    )
+                }
+                onClick={() => handleActivityClick(activity)}
+            />
+        );
+    };
+
+    const renderContent = () => {
+        if (isHidden) {
+            return <ConfidentialState skeleton={<RecentActivitySkeleton />} />;
+        }
+        if (showActivityUnavailable) {
+            return (
+                <RecentActivityUnavailableOverlay
+                    heading={activityWarningCopy.heading}
+                    body={activityWarningCopy.body}
+                />
+            );
+        }
+        if (isLoading || isHistoryRefreshing) {
+            return <RecentActivitySkeleton />;
+        }
+        if (activities.length === 0) {
+            return (
+                <EmptyState
+                    icon={Clock}
+                    title={t("emptyDashboard.title")}
+                    description={t("emptyDashboard.description")}
+                />
+            );
+        }
+        return (
+            <div className="flex flex-col">
+                {displayedActivities.map(renderRow)}
+            </div>
+        );
+    };
 
     return (
         <>
-            <Card className="gap-3 border-none shadow-none">
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3 px-4">
-                    <div className="space-y-1">
-                        <h2 className="flex items-center gap-1.5 font-bold text-2xl tracking-tight">
+            <section className="flex flex-col gap-3">
+                <header className="flex items-center gap-3">
+                    <div className="flex min-w-0 flex-1 flex-col">
+                        <h2 className="flex items-center gap-1.5 font-semibold text-xl leading-[1.2] tracking-[-0.4px]">
                             {t("recentTitle")}
                             {showConfidentialShield && (
                                 <Tooltip
@@ -547,190 +587,29 @@ export function RecentActivity() {
                                 </Tooltip>
                             )}
                         </h2>
+                        <p className="truncate text-muted-foreground text-sm leading-[1.5] sm:text-base">
+                            {t("recentSubtitle")}
+                        </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        {/* TODO: Uncomment after price integration */}
-                        {/* <div className="flex items-center gap-2">
-                            <Checkbox
-                                id="hide-small"
-                                checked={hideSmallTransactions}
-                                onCheckedChange={(checked) =>
-                                    setHideSmallTransactions(!!checked)
-                                }
-                            />
-                            <label
-                                htmlFor="hide-small"
-                                className="text-sm text-muted-foreground leading-none cursor-pointer whitespace-nowrap"
+                    {!isHidden && (
+                        <Link href={`/${treasuryId}/dashboard/activity`}>
+                            <Button
+                                variant="secondary"
+                                className="bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20"
+                                size={isMobile ? "icon-sm" : "sm"}
                             >
-                                Hide transactions &lt;1USD
-                            </label>
-                        </div> */}
-                        {!isHidden && (
-                            <Link href={`/${treasuryId}/dashboard/activity`}>
-                                <Button
-                                    variant="pill"
-                                    size={isMobile ? "icon-sm" : "sm"}
-                                >
-                                    <span className="hidden sm:inline">
-                                        {tCommon("viewAll")}
-                                    </span>
-                                    <ChevronRight className="size-4" />
-                                </Button>
-                            </Link>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent className="px-2">
-                    {isHidden ? (
-                        <ConfidentialState
-                            skeleton={<RecentActivitySkeleton />}
-                        />
-                    ) : showActivityUnavailable ? (
-                        <RecentActivityUnavailableOverlay
-                            heading={activityWarningCopy.heading}
-                            body={activityWarningCopy.body}
-                        />
-                    ) : isLoading || isHistoryRefreshing ? (
-                        <RecentActivitySkeleton />
-                    ) : activities.length === 0 ? (
-                        <EmptyState
-                            icon={Clock}
-                            title={t("emptyDashboard.title")}
-                            description={t("emptyDashboard.description")}
-                        />
-                    ) : (
-                        <div className="w-full overflow-x-auto px-2">
-                            <Table className="table-fixed w-full min-w-full">
-                                <colgroup>
-                                    <col className="w-42 sm:w-52 lg:w-1/2" />
-                                    <col className="min-w-0 lg:w-1/2" />
-                                </colgroup>
-                                <TableBody>
-                                    {table.getRowModel().rows.map((row) => {
-                                        const grouped = row.original;
-                                        const isGroup =
-                                            grouped.type === "grouped";
-                                        const groupId = isGroup
-                                            ? `${grouped.pool}-${grouped.blockTime}`
-                                            : "";
-                                        const isExpanded =
-                                            isGroup &&
-                                            expandedGroups.has(groupId);
-
-                                        return (
-                                            <>
-                                                <TableRow
-                                                    key={row.id}
-                                                    className="group cursor-pointer"
-                                                    onClick={() => {
-                                                        if (isGroup) {
-                                                            toggleGroup(
-                                                                groupId,
-                                                            );
-                                                        } else {
-                                                            handleActivityClick(
-                                                                grouped.activity,
-                                                            );
-                                                        }
-                                                    }}
-                                                >
-                                                    {row
-                                                        .getVisibleCells()
-                                                        .map((cell, idx) => (
-                                                            <TableCell
-                                                                key={cell.id}
-                                                                className={cn(
-                                                                    "py-2 h-14",
-                                                                    idx === 0
-                                                                        ? "pl-0 overflow-hidden pr-0 max-w-0"
-                                                                        : "pr-0 overflow-hidden",
-                                                                )}
-                                                            >
-                                                                {flexRender(
-                                                                    cell.column
-                                                                        .columnDef
-                                                                        .cell,
-                                                                    cell.getContext(),
-                                                                )}
-                                                            </TableCell>
-                                                        ))}
-                                                </TableRow>
-                                                {isExpanded &&
-                                                    grouped.activities.map(
-                                                        (activity) => (
-                                                            <TableRow
-                                                                key={`${groupId}-sub-${activity.id}`}
-                                                                className="group cursor-pointer bg-muted/30"
-                                                                onClick={() =>
-                                                                    handleActivityClick(
-                                                                        activity,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <TableCell className="py-2 h-14 pl-8 sm:pl-14 overflow-hidden max-w-0">
-                                                                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                                                        <div
-                                                                            className={cn(
-                                                                                "flex size-9 shrink-0 items-center justify-center rounded-full",
-                                                                                "bg-general-success-background-faded",
-                                                                            )}
-                                                                        >
-                                                                            <ArrowDownToLine className="h-4 w-4 sm:h-5 sm:w-5 text-general-success-foreground" />
-                                                                        </div>
-                                                                        <div className="min-w-0 flex-1 overflow-hidden">
-                                                                            <div className="text-sm sm:text-base font-semibold truncate">
-                                                                                {t(
-                                                                                    "tabs.stakingRewards",
-                                                                                )}
-                                                                            </div>
-                                                                            <div className="text-xs sm:text-sm text-muted-foreground font-medium truncate">
-                                                                                {t(
-                                                                                    "fromPool",
-                                                                                    {
-                                                                                        pool: grouped.pool,
-                                                                                    },
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </TableCell>
-                                                                <TableCell className="py-2 h-14 pr-3 pl-4 overflow-hidden">
-                                                                    <div className="flex items-center justify-end min-w-0">
-                                                                        <div className="flex flex-col items-end gap-0.5 min-w-0 w-full">
-                                                                            <div className="text-sm sm:text-base font-semibold text-general-success-foreground truncate w-full text-right">
-                                                                                {formatActivityAmount(
-                                                                                    activity.amount,
-                                                                                )}{" "}
-                                                                                {activity
-                                                                                    .tokenMetadata
-                                                                                    ?.symbol ??
-                                                                                    activity.tokenId}
-                                                                            </div>
-                                                                            <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                                                                                <FormattedDate
-                                                                                    date={
-                                                                                        new Date(
-                                                                                            activity.blockTime,
-                                                                                        )
-                                                                                    }
-                                                                                    relative
-                                                                                />
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </TableCell>
-                                                            </TableRow>
-                                                        ),
-                                                    )}
-                                            </>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                <span className="hidden sm:inline">
+                                    {tCommon("seeMore")}
+                                </span>
+                                <ChevronRight className="size-4" />
+                            </Button>
+                        </Link>
                     )}
-                </CardContent>
-            </Card>
+                </header>
+                <PageCard className="gap-0 overflow-hidden px-3 py-4">
+                    {renderContent()}
+                </PageCard>
+            </section>
 
             <TransactionDetailsModal
                 activity={selectedActivity}

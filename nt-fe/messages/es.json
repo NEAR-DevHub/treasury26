@@ -34,6 +34,7 @@
         "copy": "Copiar",
         "copied": "Copiado",
         "viewAll": "Ver todo",
+        "seeMore": "Ver más",
         "viewDetails": "Ver detalles",
         "noResults": "Sin resultados",
         "add": "Añadir",
@@ -356,6 +357,7 @@
             "description": "Tus transacciones y acciones aparecerán aquí cuando ocurran"
         },
         "recentTitle": "Transacciones recientes",
+        "recentSubtitle": "Actividad de transacciones durante el último año",
         "details": {
             "title": "Detalles de la transacción",
             "copyAddress": "Copiar dirección",

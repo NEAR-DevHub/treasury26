@@ -34,6 +34,7 @@
         "copy": "Sao chép",
         "copied": "Đã sao chép",
         "viewAll": "Xem tất cả",
+        "seeMore": "Xem thêm",
         "viewDetails": "Xem chi tiết",
         "noResults": "Không tìm thấy kết quả",
         "add": "Thêm",
@@ -356,6 +357,7 @@
             "description": "Giao dịch và các hành động của bạn sẽ xuất hiện ở đây khi chúng diễn ra"
         },
         "recentTitle": "Giao dịch gần đây",
+        "recentSubtitle": "Hoạt động giao dịch trong năm qua",
         "details": {
             "title": "Chi tiết giao dịch",
             "copyAddress": "Sao chép địa chỉ",
