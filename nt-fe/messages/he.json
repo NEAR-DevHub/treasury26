@@ -383,6 +383,7 @@
             "anyAssetOnNearcom": "כל נכס ברשת near.com",
             "securedOnTrezu": "מאובטח ב-Trezu",
             "payWithTrezu": "שלם עם Trezu",
+            "payWithNearcom": "שלם עם near.com",
             "payRequiresTreasury": "התחבר עם treasury של Trezu כדי לשלם.",
             "copyLink": "העתק קישור",
             "titleConfidential": "העברה ל-Treasury חסוי",

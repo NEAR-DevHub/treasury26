@@ -383,6 +383,7 @@
             "anyAssetOnNearcom": "near.com 网络上的任意资产",
             "securedOnTrezu": "由 Trezu 保障安全",
             "payWithTrezu": "使用 Trezu 支付",
+            "payWithNearcom": "使用 near.com 支付",
             "payRequiresTreasury": "请使用 Trezu treasury 登录以支付。",
             "copyLink": "复制链接",
             "titleConfidential": "转账至机密 Treasury",

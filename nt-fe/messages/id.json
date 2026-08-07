@@ -383,6 +383,7 @@
             "anyAssetOnNearcom": "Aset apa pun di jaringan near.com",
             "securedOnTrezu": "Diamankan di Trezu",
             "payWithTrezu": "Bayar dengan Trezu",
+            "payWithNearcom": "Bayar dengan near.com",
             "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",
             "copyLink": "Salin tautan",
             "titleConfidential": "Transfer ke Treasury rahasia",

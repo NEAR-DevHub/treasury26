@@ -383,6 +383,7 @@
             "anyAssetOnNearcom": "near.com 네트워크의 모든 자산",
             "securedOnTrezu": "Trezu에서 보호됨",
             "payWithTrezu": "Trezu로 결제",
+            "payWithNearcom": "near.com로 결제",
             "payRequiresTreasury": "결제하려면 Trezu treasury로 로그인하세요.",
             "copyLink": "링크 복사",
             "titleConfidential": "기밀 Treasury로 전송",
