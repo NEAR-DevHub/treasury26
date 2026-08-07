@@ -34,6 +34,7 @@
         "copy": "Salin",
         "copied": "Tersalin",
         "viewAll": "Lihat Semua",
+        "seeMore": "Lihat selengkapnya",
         "viewDetails": "Lihat detail",
         "noResults": "Tidak ada hasil ditemukan",
         "add": "Tambah",
@@ -356,6 +357,7 @@
             "description": "Transaksi dan tindakan Anda akan muncul di sini setelah terjadi"
         },
         "recentTitle": "Transaksi Terbaru",
+        "recentSubtitle": "Aktivitas transaksi selama setahun terakhir",
         "details": {
             "title": "Detail Transaksi",
             "copyAddress": "Salin Alamat",

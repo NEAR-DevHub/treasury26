@@ -34,6 +34,7 @@
         "copy": "복사",
         "copied": "복사됨",
         "viewAll": "전체 보기",
+        "seeMore": "더 보기",
         "viewDetails": "상세 보기",
         "noResults": "결과를 찾을 수 없습니다",
         "add": "추가",
@@ -356,6 +357,7 @@
             "description": "트랜잭션과 작업이 발생하면 여기에 표시됩니다"
         },
         "recentTitle": "최근 트랜잭션",
+        "recentSubtitle": "지난 1년간의 거래 활동",
         "details": {
             "title": "트랜잭션 세부정보",
             "copyAddress": "주소 복사",

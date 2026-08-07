@@ -34,6 +34,7 @@
         "copy": "复制",
         "copied": "已复制",
         "viewAll": "查看全部",
+        "seeMore": "查看更多",
         "viewDetails": "查看详情",
         "noResults": "未找到结果",
         "add": "添加",
@@ -356,6 +357,7 @@
             "description": "您的交易和操作在发生后将显示在此处"
         },
         "recentTitle": "近期交易",
+        "recentSubtitle": "过去一年的交易活动",
         "details": {
             "title": "交易详情",
             "copyAddress": "复制地址",

@@ -34,6 +34,7 @@
         "copy": "コピー",
         "copied": "コピーしました",
         "viewAll": "すべて表示",
+        "seeMore": "もっと見る",
         "viewDetails": "詳細を表示",
         "noResults": "結果が見つかりませんでした",
         "add": "追加",
@@ -356,6 +357,7 @@
             "description": "トランザクションやアクションが発生するとここに表示されます"
         },
         "recentTitle": "最近のトランザクション",
+        "recentSubtitle": "過去1年間の取引アクティビティ",
         "details": {
             "title": "トランザクションの詳細",
             "copyAddress": "アドレスをコピー",
