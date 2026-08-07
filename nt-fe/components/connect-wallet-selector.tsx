@@ -1,12 +1,11 @@
 "use client";
 
-import { Check, Fingerprint, Wallet } from "lucide-react";
+import { ArrowLeft, Check, Fingerprint, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SlotWarning } from "@/components/warning-message";
 import { Button } from "@/components/button";
-import { PageCard } from "@/components/card";
 import {
     Dialog,
     DialogContent,
@@ -45,7 +44,7 @@ function WalletOptionIcon({
     wallet: WalletOption;
     size?: "lg" | "xl";
 }) {
-    const sizeClass = size === "xl" ? "size-12" : "size-8";
+    const sizeClass = size === "xl" ? "size-14" : "size-10";
     if (wallet.id === WALLET_IDS.PASSKEY) {
         return (
             <div className="flex items-center">
@@ -55,16 +54,20 @@ function WalletOptionIcon({
                         wallet.imageClassName,
                     )}
                 >
-                    <Fingerprint className="size-4" />
+                    <Fingerprint
+                        className={size === "xl" ? "size-6" : "size-4.5"}
+                    />
                 </div>
             </div>
         );
     }
 
+    // Primary logo leads the stack and sits on top; the rest fan out to the
+    // right underneath it.
     const stackedSources = [
-        wallet.tertiaryIconSrc,
-        wallet.secondaryIconSrc,
         wallet.imgSrc,
+        wallet.secondaryIconSrc,
+        wallet.tertiaryIconSrc,
     ].filter(Boolean) as string[];
 
     return (
@@ -73,16 +76,14 @@ function WalletOptionIcon({
                 <img
                     key={`${wallet.id}-${src}-${index}`}
                     src={src}
-                    alt={
-                        index === stackedSources.length - 1 ? wallet.label : ""
-                    }
+                    alt={index === 0 ? wallet.label : ""}
                     className={cn(
                         `${sizeClass} rounded-full bg-black object-cover`,
                         stackedSources.length > 1 && "border-2 border-card",
-                        index > 0 && "-ml-3",
-                        index === stackedSources.length - 1
+                        index > 0 && (size === "xl" ? "-ml-5" : "-ml-4"),
+                        index === 0
                             ? "relative z-30"
-                            : index === stackedSources.length - 2
+                            : index === 1
                               ? "relative z-20"
                               : "relative z-10",
                         wallet.imageClassName,
@@ -90,6 +91,64 @@ function WalletOptionIcon({
                 />
             ))}
         </div>
+    );
+}
+
+/**
+ * The tile used for every sign-in option: a bordered card with the wallet logo
+ * on top, an optional badge in the opposite corner, and the label underneath.
+ */
+function WalletCard({
+    icon,
+    badge,
+    title,
+    description,
+    disabled,
+    dimmed,
+    onClick,
+    className,
+}: {
+    icon: ReactNode;
+    badge?: ReactNode;
+    title: string;
+    description?: string;
+    disabled?: boolean;
+    dimmed?: boolean;
+    onClick: () => void;
+    className?: string;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-disabled={disabled || dimmed}
+            className={cn(
+                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-5 text-left",
+                "transition-colors hover:border-gray-400 dark:hover:border-gray-500",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "disabled:pointer-events-none",
+                dimmed
+                    ? "cursor-not-allowed opacity-50 hover:border-general-border"
+                    : "cursor-pointer",
+                className,
+            )}
+        >
+            <div className="flex w-full items-start justify-between gap-2">
+                {icon}
+                {badge}
+            </div>
+            <div className="flex w-full flex-col gap-[3px]">
+                <span className="text-base font-semibold leading-tight">
+                    {title}
+                </span>
+                {description && (
+                    <span className="text-sm font-medium leading-5 text-muted-foreground whitespace-normal">
+                        {description}
+                    </span>
+                )}
+            </div>
+        </button>
     );
 }
 
@@ -103,7 +162,7 @@ interface ConnectWalletSelectorProps {
     showCreateTreasuryCta?: boolean;
     onCreateTreasuryClick?: () => void;
     onConnectSupported: (walletId?: string) => Promise<void> | void;
-    /** Optional context shown above the standard "Choose how to sign in" header. */
+    /** Optional context shown above the standard sign-in header. */
     introTitle?: string;
     introDescription?: ReactNode;
 }
@@ -150,18 +209,6 @@ export function ConnectWalletSelector({
     };
 
     const headerTitle = t("walletSelector.title");
-    const headerDescription = showOnboardingHints ? (
-        <>
-            {t("walletSelector.subtitle")}{" "}
-            <button
-                type="button"
-                className="text-muted-foreground underline underline-offset-2 hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm transition-colors cursor-pointer"
-                onClick={() => setIsGuideOpen(true)}
-            >
-                {t("walletSelector.helpCta")}
-            </button>
-        </>
-    ) : undefined;
 
     const recentWalletGroup = useMemo(
         () => getWalletGroup(lastUsedWalletId),
@@ -316,161 +363,122 @@ export function ConnectWalletSelector({
         (wallet) => wallet.id !== WALLET_IDS.PASSKEY,
     );
 
+    const renderBadge = (badge: BadgeInfo | null) => {
+        if (!badge) return null;
+        return (
+            <Pill
+                title={badge.label}
+                info={badge.tooltip}
+                className={cn(
+                    "shrink-0 rounded-lg px-2 py-[3px] text-xs font-semibold",
+                    badge.isOffline
+                        ? "bg-general-warning-background-faded text-general-warning-foreground"
+                        : "bg-general-success-background-faded text-general-success-foreground",
+                )}
+            />
+        );
+    };
+
     return (
         <>
-            <PageCard>
+            <div className="flex flex-col gap-6">
                 {(introTitle || introDescription) && (
-                    <div className="mb-1">
-                        <StepperHeader
-                            title={introTitle ?? ""}
-                            description={introDescription}
-                        />
-                    </div>
+                    <StepperHeader
+                        title={introTitle ?? ""}
+                        description={introDescription}
+                    />
                 )}
-                <StepperHeader
-                    title={headerTitle}
-                    description={headerDescription}
-                    handleBack={showBackButton ? onBack : undefined}
-                />
-                <SlotWarning slot="login" className="mb-4" />
-                {showOnboardingHints && (
-                    <div className="space-y-3 mb-4">
-                        <div className="flex items-start gap-2">
-                            <div className="bg-general-success-background-faded rounded-full size-7 sm:size-6 flex items-center justify-center p-1 sm:p-0">
-                                <Check className="size-4 shrink-0 text-general-success-foreground " />
-                            </div>
-                            <p className="text-sm mt-px">
-                                {t("walletSelector.noFundsNote")}
-                            </p>
-                        </div>
-                    </div>
+                {/* The back control sits on its own row so the heading keeps
+                    the column's left edge, as in the design. */}
+                {showBackButton && onBack && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        type="button"
+                        onClick={onBack}
+                        className="-mb-2 -ml-2 w-fit"
+                        aria-label={t("walletSelector.back")}
+                    >
+                        <ArrowLeft className="size-4" />
+                    </Button>
                 )}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {passkeyOption &&
-                        (() => {
-                            const wallet = passkeyOption;
-                            const isOfflineBlocked = isWalletChoiceBlocked(
-                                wallet.id,
-                            );
-                            // Show the Offline warning when blocked, otherwise
-                            // the "recommended" badge.
-                            const topBadge = getTopLevelBadge(wallet);
-                            const badge = topBadge?.isOffline
-                                ? topBadge
-                                : {
-                                      label: t(
-                                          "walletSelector.passkeyCardBadge",
-                                      ),
-                                  };
-                            return (
-                                <Button
-                                    key={wallet.id}
-                                    type="button"
-                                    variant="secondary"
-                                    className={cn(
-                                        "h-auto items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted sm:col-span-2",
-                                        isOfflineBlocked &&
-                                            !isConnectingWallet &&
-                                            "cursor-not-allowed opacity-50 hover:bg-secondary",
-                                    )}
-                                    onClick={() => handleWalletChoice(wallet)}
-                                    disabled={isConnectingWallet}
-                                    aria-disabled={
-                                        isConnectingWallet || isOfflineBlocked
-                                    }
-                                >
-                                    <div className="flex w-full flex-col gap-2">
-                                        <div className="flex items-center justify-between">
-                                            <WalletOptionIcon wallet={wallet} />
-                                            <Pill
-                                                title={badge.label}
-                                                info={
-                                                    "tooltip" in badge
-                                                        ? badge.tooltip
-                                                        : undefined
-                                                }
-                                                className={
-                                                    "isOffline" in badge &&
-                                                    badge.isOffline
-                                                        ? "shrink-0 bg-general-warning-background-faded text-general-warning-foreground"
-                                                        : "shrink-0 bg-general-success-background-faded text-general-success-foreground"
-                                                }
-                                            />
-                                        </div>
-                                        <div className="text-lg font-semibold">
-                                            {t(
-                                                "walletSelector.passkeyCardTitle",
-                                            )}
-                                        </div>
-                                        <span className="text-sm font-normal text-muted-foreground whitespace-normal">
-                                            {t(
-                                                "walletSelector.passkeyCardSubtitle",
-                                            )}
-                                        </span>
-                                    </div>
-                                </Button>
-                            );
-                        })()}
-                    {passkeyOption && (
-                        <div
-                            role="separator"
-                            className="flex items-center gap-3 sm:col-span-2"
+                <div className="flex flex-col gap-[9px]">
+                    <h1 className="text-2xl font-bold leading-tight">
+                        {headerTitle}
+                    </h1>
+                    <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-muted-foreground">
+                        <p>{t("walletSelector.subtitle")}</p>
+                        <button
+                            type="button"
+                            className="w-fit cursor-pointer rounded-sm underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            onClick={() => setIsGuideOpen(true)}
                         >
-                            <span className="h-px flex-1 bg-border" />
-                            <span className="text-xs font-medium text-muted-foreground">
-                                {t("walletSelector.web3WalletsSeparator")}
-                            </span>
-                            <span className="h-px flex-1 bg-border" />
+                            {t("walletSelector.helpCta")}
+                        </button>
+                    </div>
+                </div>
+                <SlotWarning slot="login" />
+                {showOnboardingHints && (
+                    <div className="flex items-start gap-2">
+                        <div className="bg-general-success-background-faded rounded-full size-7 sm:size-6 flex items-center justify-center p-1 sm:p-0">
+                            <Check className="size-4 shrink-0 text-general-success-foreground" />
                         </div>
-                    )}
+                        <p className="text-sm mt-px">
+                            {t("walletSelector.noFundsNote")}
+                        </p>
+                    </div>
+                )}
+                {passkeyOption &&
+                    (() => {
+                        const wallet = passkeyOption;
+                        const isOfflineBlocked = isWalletChoiceBlocked(
+                            wallet.id,
+                        );
+                        // The passkey card carries no "recommended" badge in the
+                        // design — only the Offline warning when it's blocked.
+                        const topBadge = getTopLevelBadge(wallet);
+                        return (
+                            <WalletCard
+                                icon={<WalletOptionIcon wallet={wallet} />}
+                                badge={renderBadge(
+                                    topBadge?.isOffline ? topBadge : null,
+                                )}
+                                title={t("walletSelector.passkeyCardTitle")}
+                                description={t(
+                                    "walletSelector.passkeyCardSubtitle",
+                                )}
+                                disabled={isConnectingWallet}
+                                dimmed={isOfflineBlocked}
+                                onClick={() => handleWalletChoice(wallet)}
+                            />
+                        );
+                    })()}
+                {passkeyOption && (
+                    <div role="separator" className="flex items-center gap-6">
+                        <span className="h-px flex-1 bg-general-border" />
+                        <span className="text-sm font-medium text-muted-foreground">
+                            {t("walletSelector.web3WalletsSeparator")}
+                        </span>
+                        <span className="h-px flex-1 bg-general-border" />
+                    </div>
+                )}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {otherOptions.map((wallet) => {
-                        // Use aria-disabled (not disabled) when offline so the
-                        // Offline badge tooltip can still receive hover events.
+                        // `dimmed` (aria-disabled) rather than `disabled` when
+                        // offline, so the Offline badge tooltip still gets hover.
                         const isOfflineBlocked = isWalletChoiceBlocked(
                             wallet.id,
                         );
                         return (
-                            <Button
+                            <WalletCard
                                 key={wallet.id}
-                                type="button"
-                                variant="secondary"
-                                className={cn(
-                                    "h-26 items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted",
-                                    isOfflineBlocked &&
-                                        !isConnectingWallet &&
-                                        "cursor-not-allowed opacity-50 hover:bg-secondary",
-                                )}
-                                onClick={() => handleWalletChoice(wallet)}
+                                icon={<WalletOptionIcon wallet={wallet} />}
+                                badge={renderBadge(getTopLevelBadge(wallet))}
+                                title={wallet.label}
                                 disabled={isConnectingWallet}
-                                aria-disabled={
-                                    isConnectingWallet || isOfflineBlocked
-                                }
-                            >
-                                <div className="flex w-full flex-col gap-2">
-                                    <div className="flex items-center justify-between">
-                                        <WalletOptionIcon wallet={wallet} />
-                                        {(() => {
-                                            const badge =
-                                                getTopLevelBadge(wallet);
-                                            if (!badge) return null;
-                                            return (
-                                                <Pill
-                                                    title={badge.label}
-                                                    info={badge.tooltip}
-                                                    className={
-                                                        badge.isOffline
-                                                            ? "bg-general-warning-background-faded text-general-warning-foreground"
-                                                            : "bg-general-success-background-faded text-general-success-foreground"
-                                                    }
-                                                />
-                                            );
-                                        })()}
-                                    </div>
-                                    <div className="text-lg font-semibold">
-                                        {wallet.label}
-                                    </div>
-                                </div>
-                            </Button>
+                                dimmed={isOfflineBlocked}
+                                onClick={() => handleWalletChoice(wallet)}
+                            />
                         );
                     })}
                 </div>
@@ -485,74 +493,34 @@ export function ConnectWalletSelector({
                         setIsGuideOpen(false);
                     }}
                 >
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {walletPickerOpen === "near"
-                                    ? t("walletSelector.chooseNearWallet")
-                                    : t("walletSelector.chooseNearWallet")}
+                    <DialogContent className="gap-4 p-5 sm:max-w-md!">
+                        <DialogHeader className="mx-0 border-b-0 px-0 pb-0">
+                            <DialogTitle className="text-left text-base font-semibold">
+                                {t("walletSelector.chooseNearWallet")}
                             </DialogTitle>
                         </DialogHeader>
-                        <SlotWarning slot="login" className="mb-2" />
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <SlotWarning slot="login" />
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             {walletPickerChoices.map((wallet) => {
                                 const isOfflineBlocked = isWalletChoiceBlocked(
                                     wallet.id,
                                 );
                                 return (
-                                    <div key={wallet.id}>
-                                        <Button
-                                            type="button"
-                                            variant="secondary"
-                                            className={cn(
-                                                "h-26 w-full items-start justify-start rounded-xl border border-border p-4 text-left hover:bg-muted",
-                                                isOfflineBlocked &&
-                                                    !isConnectingWallet &&
-                                                    "cursor-not-allowed opacity-50 hover:bg-secondary",
-                                            )}
-                                            onClick={() =>
-                                                handleWalletChoice(wallet)
-                                            }
-                                            disabled={isConnectingWallet}
-                                            aria-disabled={
-                                                isConnectingWallet ||
-                                                isOfflineBlocked
-                                            }
-                                        >
-                                            <div className="flex w-full flex-col gap-2">
-                                                <div className="flex items-center justify-between">
-                                                    <WalletOptionIcon
-                                                        wallet={wallet}
-                                                    />
-                                                    {(() => {
-                                                        const badge =
-                                                            getModalBadge(
-                                                                wallet,
-                                                            );
-                                                        if (!badge) return null;
-                                                        return (
-                                                            <Pill
-                                                                title={
-                                                                    badge.label
-                                                                }
-                                                                info={
-                                                                    badge.tooltip
-                                                                }
-                                                                className={
-                                                                    badge.isOffline
-                                                                        ? "bg-general-warning-background-faded text-general-warning-foreground"
-                                                                        : "bg-general-success-background-faded text-general-success-foreground"
-                                                                }
-                                                            />
-                                                        );
-                                                    })()}
-                                                </div>
-                                                <div className="text-lg font-semibold">
-                                                    {wallet.label}
-                                                </div>
-                                            </div>
-                                        </Button>
-                                    </div>
+                                    <WalletCard
+                                        key={wallet.id}
+                                        icon={
+                                            <WalletOptionIcon wallet={wallet} />
+                                        }
+                                        badge={renderBadge(
+                                            getModalBadge(wallet),
+                                        )}
+                                        title={wallet.label}
+                                        disabled={isConnectingWallet}
+                                        dimmed={isOfflineBlocked}
+                                        onClick={() =>
+                                            handleWalletChoice(wallet)
+                                        }
+                                    />
                                 );
                             })}
                         </div>
@@ -713,16 +681,16 @@ export function ConnectWalletSelector({
                             closeUnsupportedWalletModal();
                     }}
                 >
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader className="border-b-0 pb-0">
+                    <DialogContent className="gap-4 p-5 sm:max-w-md!">
+                        <DialogHeader className="mx-0 border-b-0 px-0 pb-0">
                             <DialogTitle className="sr-only">
                                 {t("walletNotSupportedTitle", {
                                     wallet: unsupportedWallet?.label ?? "",
                                 })}
                             </DialogTitle>
                         </DialogHeader>
-                        <div className="space-y-5 text-center">
-                            <div className="mx-auto flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-4 text-center">
+                            <div className="flex items-center justify-center">
                                 {unsupportedWallet ? (
                                     <WalletOptionIcon
                                         wallet={unsupportedWallet}
@@ -732,73 +700,31 @@ export function ConnectWalletSelector({
                                     <Wallet className="size-7" />
                                 )}
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="text-xl font-semibold">
+                            <div className="flex flex-col gap-1">
+                                <h3 className="text-xl font-bold leading-tight tracking-[-0.4px]">
                                     {t("walletNotSupportedTitle", {
                                         wallet: unsupportedWallet?.label ?? "",
                                     })}
                                 </h3>
-                                <p className="text-muted-foreground text-sm">
+                                <p className="text-sm font-medium leading-normal text-muted-foreground">
                                     {t("walletNotSupportedDescription", {
                                         wallet: unsupportedWallet?.label ?? "",
                                     })}
                                 </p>
                             </div>
-                            <div className="space-y-3">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="w-full"
-                                    onClick={() =>
-                                        handleWalletChoice({
-                                            id: WALLET_IDS.NEAR,
-                                            label: "NEAR Wallets",
-                                            imgSrc: "/near.com.svg",
-                                            supported: true,
-                                        })
-                                    }
-                                >
-                                    {t("walletSelector.signInWithNear")}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="w-full"
-                                    onClick={() =>
-                                        handleWalletChoice({
-                                            id: WALLET_IDS.LEDGER,
-                                            label: "Ledger",
-                                            imgSrc: "/wallets/ledger.svg",
-                                            supported: true,
-                                        })
-                                    }
-                                >
-                                    {t("walletSelector.signInWithLedger")}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    className="w-full"
-                                    onClick={() =>
-                                        handleWalletChoice({
-                                            id: WALLET_IDS.EVM,
-                                            label: "EVM Wallets",
-                                            imgSrc: "/icons/metamask.svg",
-                                            supported: true,
-                                        })
-                                    }
-                                >
-                                    {t(
-                                        "walletSelector.signInWithWalletConnect",
-                                    )}
-                                </Button>
-                            </div>
+                            <Button
+                                type="button"
+                                className="h-13 w-full rounded-2xl text-base font-bold"
+                                onClick={closeUnsupportedWalletModal}
+                            >
+                                {t("walletSelector.selectOtherWallet")}
+                            </Button>
                         </div>
                     </DialogContent>
                 </Dialog>
-            </PageCard>
+            </div>
             {showCreateTreasuryCta && (
-                <p className="mt-3 text-center text-sm">
+                <p className="mt-6 text-sm text-muted-foreground">
                     {t("dontHaveTreasuryLabel")}{" "}
                     <Button
                         type="button"

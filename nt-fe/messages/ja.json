@@ -1378,17 +1378,14 @@
         "dontHaveTreasuryLabel": "まだトレジャリーをお持ちではありませんか？",
         "createOneLabel": "作成する",
         "walletSelector": {
-            "title": "サインイン方法を選択",
-            "subtitle": "あなたのサインインがトレジャリーの最初のメンバーになります。",
+            "title": "サインインまたはトレジャリーを作成",
+            "subtitle": "最も簡単なのはパスキーです。ウォレットを接続することもできます。",
             "helpCta": "どれを選べばよいか分かりませんか？",
             "popularBadge": "人気",
             "recentBadge": "最近使用",
             "noFundsNote": "開始に資金は不要です — お試しいただけるよう取引手数料は当社が負担します",
             "chooseNearWallet": "NEARウォレットを選択",
             "chooseEvmWallet": "EVMウォレットを選択",
-            "signInWithNear": "NEARウォレットでサインイン",
-            "signInWithLedger": "Ledgerでサインイン",
-            "signInWithWalletConnect": "EVMウォレットでサインイン",
             "guide": {
                 "title": "どのサインイン方法を使うべきですか？",
                 "connectWalletTitle": "ウォレットを接続",
@@ -1410,8 +1407,9 @@
             },
             "passkeyCardTitle": "Touch ID・Face ID対応のパスキー",
             "passkeyCardSubtitle": "デバイスの生体認証またはパスコードでサインイン",
-            "passkeyCardBadge": "簡単・安全",
-            "web3WalletsSeparator": "Web3ウォレット"
+            "web3WalletsSeparator": "Web3ウォレット",
+            "selectOtherWallet": "別のウォレットを選択",
+            "back": "戻る"
         },
         "unexpectedError": "予期しないエラーが発生しました",
         "creationFailed": "トレジャリーの作成に失敗しました。もう一度お試しください。",

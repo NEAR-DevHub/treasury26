@@ -1378,17 +1378,14 @@
         "dontHaveTreasuryLabel": "Don't have a treasury yet?",
         "createOneLabel": "Create one",
         "walletSelector": {
-            "title": "Choose how to sign in",
-            "subtitle": "Your sign in becomes the first member of your treasury.",
-            "helpCta": "Not sure which to pick?",
+            "title": "Sign in or create a treasury",
+            "subtitle": "Use a passkey for the easiest experience, or connect a wallet.",
+            "helpCta": "Wondering which to choose?",
             "popularBadge": "Popular",
             "recentBadge": "Recent",
             "noFundsNote": "No funds needed to start - we cover transaction fees so you can try it out",
-            "chooseNearWallet": "Choose your NEAR wallets",
+            "chooseNearWallet": "Choose your NEAR wallet",
             "chooseEvmWallet": "Choose your EVM wallets",
-            "signInWithNear": "Sign in with NEAR Wallets",
-            "signInWithLedger": "Sign in with Ledger",
-            "signInWithWalletConnect": "Sign in with EVM Wallets",
             "guide": {
                 "title": "Which sign in should I use?",
                 "connectWalletTitle": "Connect a wallet",
@@ -1410,8 +1407,9 @@
             },
             "passkeyCardTitle": "Passkey for Touch ID and Face ID",
             "passkeyCardSubtitle": "Use your device biometrics or passcode to sign in",
-            "passkeyCardBadge": "Easy & Secure",
-            "web3WalletsSeparator": "Web3 wallets"
+            "web3WalletsSeparator": "Web3 wallets",
+            "selectOtherWallet": "Select other wallet",
+            "back": "Back"
         },
         "unexpectedError": "An unexpected error occurred",
         "creationFailed": "Failed to create treasury. Please try again.",

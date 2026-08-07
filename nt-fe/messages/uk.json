@@ -1361,17 +1361,14 @@
         "dontHaveTreasuryLabel": "Ще не маєте скарбниці?",
         "createOneLabel": "Створити",
         "walletSelector": {
-            "title": "Оберіть спосіб входу",
-            "subtitle": "Ваш вхід стане першим учасником вашої скарбниці.",
+            "title": "Увійдіть або створіть скарбницю",
+            "subtitle": "Скористайтеся ключем доступу для найпростішого досвіду або підключіть гаманець.",
             "helpCta": "Не знаєте, що обрати?",
             "popularBadge": "Популярне",
             "recentBadge": "Нещодавнє",
             "noFundsNote": "Для старту не потрібні кошти — ми покриваємо комісії, щоб ви могли спробувати",
             "chooseNearWallet": "Оберіть ваші NEAR-гаманці",
             "chooseEvmWallet": "Оберіть ваші EVM-гаманці",
-            "signInWithNear": "Увійти через NEAR-гаманці",
-            "signInWithLedger": "Увійти через Ledger",
-            "signInWithWalletConnect": "Увійти через EVM-гаманці",
             "guide": {
                 "title": "Який спосіб входу обрати?",
                 "connectWalletTitle": "Підключити гаманець",
@@ -1393,8 +1390,9 @@
             },
             "passkeyCardTitle": "Passkey для Touch ID та Face ID",
             "passkeyCardSubtitle": "Увійдіть за допомогою біометрії або коду доступу пристрою",
-            "passkeyCardBadge": "Просто й безпечно",
-            "web3WalletsSeparator": "Web3-гаманці"
+            "web3WalletsSeparator": "Web3-гаманці",
+            "selectOtherWallet": "Обрати інший гаманець",
+            "back": "Назад"
         },
         "unexpectedError": "Сталася неочікувана помилка",
         "creationFailed": "Не вдалось створити скарбницю. Спробуйте ще раз.",

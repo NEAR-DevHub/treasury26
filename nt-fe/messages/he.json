@@ -1378,17 +1378,14 @@
         "dontHaveTreasuryLabel": "אין לך עדיין כספת?",
         "createOneLabel": "צור אחת",
         "walletSelector": {
-            "title": "בחר איך להתחבר",
-            "subtitle": "ההתחברות שלך תהפוך לחבר הראשון בכספת.",
+            "title": "התחברות או יצירת כספת",
+            "subtitle": "השתמשו במפתח גישה לחוויה הפשוטה ביותר, או חברו ארנק.",
             "helpCta": "לא בטוח מה לבחור?",
             "popularBadge": "פופולרי",
             "recentBadge": "אחרון",
             "noFundsNote": "לא צריך כספים כדי להתחיל — אנחנו מכסים את עמלות העסקה כדי שתוכל לנסות",
             "chooseNearWallet": "בחר את ארנקי ה-NEAR שלך",
             "chooseEvmWallet": "בחר את ארנקי ה-EVM שלך",
-            "signInWithNear": "התחבר עם ארנקי NEAR",
-            "signInWithLedger": "התחבר עם Ledger",
-            "signInWithWalletConnect": "התחבר עם ארנקי EVM",
             "guide": {
                 "title": "באיזו שיטת התחברות כדאי להשתמש?",
                 "connectWalletTitle": "חיבור ארנק",
@@ -1410,8 +1407,9 @@
             },
             "passkeyCardTitle": "Passkey עבור Touch ID ו-Face ID",
             "passkeyCardSubtitle": "היכנסו באמצעות זיהוי ביומטרי או קוד המכשיר",
-            "passkeyCardBadge": "פשוט ומאובטח",
-            "web3WalletsSeparator": "ארנקי Web3"
+            "web3WalletsSeparator": "ארנקי Web3",
+            "selectOtherWallet": "בחירת ארנק אחר",
+            "back": "חזרה"
         },
         "unexpectedError": "אירעה שגיאה בלתי צפויה",
         "creationFailed": "יצירת האוצר נכשלה. אנא נסה שוב.",

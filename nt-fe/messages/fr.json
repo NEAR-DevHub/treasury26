@@ -1378,17 +1378,14 @@
         "dontHaveTreasuryLabel": "Vous n'avez pas encore de trésorerie ?",
         "createOneLabel": "En créer une",
         "walletSelector": {
-            "title": "Choisissez comment vous connecter",
-            "subtitle": "Votre connexion devient le premier membre de votre trésorerie.",
+            "title": "Connectez-vous ou créez une trésorerie",
+            "subtitle": "Utilisez une passkey pour l'expérience la plus simple, ou connectez un wallet.",
             "helpCta": "Vous ne savez pas quoi choisir ?",
             "popularBadge": "Populaire",
             "recentBadge": "Récent",
             "noFundsNote": "Aucun fonds nécessaire pour commencer : nous couvrons les frais de transaction afin que vous puissiez essayer",
             "chooseNearWallet": "Choisissez vos wallets NEAR",
             "chooseEvmWallet": "Choisissez vos wallets EVM",
-            "signInWithNear": "Se connecter avec des wallets NEAR",
-            "signInWithLedger": "Se connecter avec Ledger",
-            "signInWithWalletConnect": "Se connecter avec des wallets EVM",
             "guide": {
                 "title": "Quelle méthode de connexion dois-je utiliser ?",
                 "connectWalletTitle": "Connecter un wallet",
@@ -1410,8 +1407,9 @@
             },
             "passkeyCardTitle": "Passkey pour Touch ID et Face ID",
             "passkeyCardSubtitle": "Connectez-vous avec la biométrie ou le code de votre appareil",
-            "passkeyCardBadge": "Simple et sécurisé",
-            "web3WalletsSeparator": "Portefeuilles Web3"
+            "web3WalletsSeparator": "Portefeuilles Web3",
+            "selectOtherWallet": "Choisir un autre wallet",
+            "back": "Retour"
         },
         "unexpectedError": "Une erreur inattendue s'est produite",
         "creationFailed": "Échec de la création de la trésorerie. Veuillez réessayer.",

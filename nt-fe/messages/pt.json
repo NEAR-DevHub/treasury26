@@ -1378,17 +1378,14 @@
         "dontHaveTreasuryLabel": "Ainda não tem uma tesouraria?",
         "createOneLabel": "Criar uma",
         "walletSelector": {
-            "title": "Escolha como entrar",
-            "subtitle": "Seu login se torna o primeiro membro da sua tesouraria.",
+            "title": "Entre ou crie uma tesouraria",
+            "subtitle": "Use uma passkey para a experiência mais simples, ou conecte uma carteira.",
             "helpCta": "Não sabe qual escolher?",
             "popularBadge": "Popular",
             "recentBadge": "Recente",
             "noFundsNote": "Não é preciso fundos para começar — nós cobrimos as taxas para você testar",
             "chooseNearWallet": "Escolha suas carteiras NEAR",
             "chooseEvmWallet": "Escolha suas carteiras EVM",
-            "signInWithNear": "Entrar com carteiras NEAR",
-            "signInWithLedger": "Entrar com Ledger",
-            "signInWithWalletConnect": "Entrar com carteiras EVM",
             "guide": {
                 "title": "Qual tipo de login devo usar?",
                 "connectWalletTitle": "Conectar uma carteira",
@@ -1410,8 +1407,9 @@
             },
             "passkeyCardTitle": "Passkey para Touch ID e Face ID",
             "passkeyCardSubtitle": "Entre com a biometria ou o código do seu dispositivo",
-            "passkeyCardBadge": "Fácil e seguro",
-            "web3WalletsSeparator": "Carteiras Web3"
+            "web3WalletsSeparator": "Carteiras Web3",
+            "selectOtherWallet": "Escolher outra carteira",
+            "back": "Voltar"
         },
         "unexpectedError": "Ocorreu um erro inesperado",
         "creationFailed": "Falha ao criar tesouraria. Por favor, tente novamente.",

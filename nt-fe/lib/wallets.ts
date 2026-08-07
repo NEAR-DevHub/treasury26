@@ -108,18 +108,18 @@ export const WALLET_OPTIONS: WalletOption[] = [
         supported: true,
     },
     {
-        id: WALLET_IDS.PHANTOM,
-        label: "Phantom Wallet",
-        imgSrc: "/icons/phantom.svg",
-        supported: false,
-    },
-    {
         id: WALLET_IDS.EVM,
         label: "EVM Wallets",
         imgSrc: "/icons/metamask.svg",
         secondaryIconSrc: "/icons/fireblocks.svg",
         tertiaryIconSrc: "/icons/binance-web3.svg",
         supported: true,
+    },
+    {
+        id: WALLET_IDS.PHANTOM,
+        label: "Phantom Wallet",
+        imgSrc: "/icons/phantom.svg",
+        supported: false,
     },
 ];
 

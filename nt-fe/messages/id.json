@@ -1378,17 +1378,14 @@
         "dontHaveTreasuryLabel": "Belum punya treasury?",
         "createOneLabel": "Buat satu",
         "walletSelector": {
-            "title": "Pilih cara masuk",
-            "subtitle": "Login Anda menjadi anggota pertama treasury Anda.",
+            "title": "Masuk atau buat treasury",
+            "subtitle": "Gunakan passkey untuk pengalaman termudah, atau hubungkan wallet.",
             "helpCta": "Belum yakin harus pilih yang mana?",
             "popularBadge": "Populer",
             "recentBadge": "Terbaru",
             "noFundsNote": "Tidak perlu dana untuk memulai — kami menanggung biaya transaksi agar Anda bisa mencobanya",
             "chooseNearWallet": "Pilih wallet NEAR Anda",
             "chooseEvmWallet": "Pilih wallet EVM Anda",
-            "signInWithNear": "Masuk dengan wallet NEAR",
-            "signInWithLedger": "Masuk dengan Ledger",
-            "signInWithWalletConnect": "Masuk dengan dompet EVM",
             "guide": {
                 "title": "Sebaiknya saya pakai metode masuk yang mana?",
                 "connectWalletTitle": "Hubungkan wallet",
@@ -1410,8 +1407,9 @@
             },
             "passkeyCardTitle": "Passkey untuk Touch ID dan Face ID",
             "passkeyCardSubtitle": "Masuk dengan biometrik atau kode sandi perangkat Anda",
-            "passkeyCardBadge": "Mudah & Aman",
-            "web3WalletsSeparator": "Dompet Web3"
+            "web3WalletsSeparator": "Dompet Web3",
+            "selectOtherWallet": "Pilih wallet lain",
+            "back": "Kembali"
         },
         "unexpectedError": "Terjadi kesalahan tak terduga",
         "creationFailed": "Gagal membuat treasury. Silakan coba lagi.",

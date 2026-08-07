@@ -307,7 +307,7 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
     // Navigate and open the sign-in screen
     await page.goto("/create");
     await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page.getByText("Choose how to sign in")).toBeVisible();
+    await expect(page.getByText("Sign in or create a treasury")).toBeVisible();
 
     // Passkey card must be present without the "Coming soon" gate
     const passkeyOption = page.getByRole("button", { name: "Passkey" });
@@ -336,7 +336,9 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
     await confirmCreateBtn.click();
 
     // Login completes: the sign-in screen goes away
-    await expect(page.getByText("Choose how to sign in")).not.toBeVisible({
+    await expect(
+        page.getByText("Sign in or create a treasury"),
+    ).not.toBeVisible({
         timeout: 30000,
     });
     expect(resolvedAccountId).toMatch(/^0s[0-9a-f]{40}$/);
