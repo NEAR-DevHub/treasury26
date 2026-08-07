@@ -1375,8 +1375,6 @@
         "continueToWallet": "Continuer vers le portefeuille",
         "alreadyHaveTreasuryLabel": "Vous avez déjà une trésorerie ?",
         "signInLabel": "Se connecter",
-        "dontHaveTreasuryLabel": "Vous n'avez pas encore de trésorerie ?",
-        "createOneLabel": "En créer une",
         "walletSelector": {
             "title": "Connectez-vous ou créez une trésorerie",
             "subtitle": "Utilisez une passkey pour l'expérience la plus simple, ou connectez un wallet.",

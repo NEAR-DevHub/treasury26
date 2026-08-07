@@ -768,15 +768,6 @@ export function TreasuryOnboardingPage({
                 isConnectingWallet={isAuthenticating}
                 showBackButton={isConnectWalletLogin}
                 showOnboardingHints={isConnectWalletLogin}
-                showCreateTreasuryCta={!isConnectWalletLogin}
-                onCreateTreasuryClick={
-                    isCreateRoute
-                        ? () => {
-                              setShowLoginScreen(false);
-                              setForceStayOnCreatePage(true);
-                          }
-                        : undefined
-                }
                 onBack={
                     isConnectWalletLogin
                         ? () => {

@@ -1375,8 +1375,6 @@
         "continueToWallet": "ウォレットへ進む",
         "alreadyHaveTreasuryLabel": "すでにトレジャリーをお持ちですか？",
         "signInLabel": "サインイン",
-        "dontHaveTreasuryLabel": "まだトレジャリーをお持ちではありませんか？",
-        "createOneLabel": "作成する",
         "walletSelector": {
             "title": "サインインまたはトレジャリーを作成",
             "subtitle": "最も簡単なのはパスキーです。ウォレットを接続することもできます。",

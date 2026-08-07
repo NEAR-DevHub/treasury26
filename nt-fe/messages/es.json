@@ -1375,8 +1375,6 @@
         "continueToWallet": "Continuar al monedero",
         "alreadyHaveTreasuryLabel": "¿Ya tienes una tesorería?",
         "signInLabel": "Iniciar sesión",
-        "dontHaveTreasuryLabel": "¿Aún no tienes una tesorería?",
-        "createOneLabel": "Crear una",
         "walletSelector": {
             "title": "Inicia sesión o crea una tesorería",
             "subtitle": "Usa una passkey para la experiencia más sencilla, o conecta una wallet.",

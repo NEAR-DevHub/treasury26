@@ -1358,8 +1358,6 @@
         "continueToWallet": "继续到钱包",
         "alreadyHaveTreasuryLabel": "已经有金库了？",
         "signInLabel": "登录",
-        "dontHaveTreasuryLabel": "还没有金库吗？",
-        "createOneLabel": "创建一个",
         "walletSelector": {
             "title": "登录或创建金库",
             "subtitle": "使用通行密钥体验最简单，或连接钱包。",
