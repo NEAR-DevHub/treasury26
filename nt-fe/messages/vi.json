@@ -382,6 +382,7 @@
             "anyAssetOnNearcom": "Bất kỳ tài sản nào trên mạng near.com",
             "securedOnTrezu": "Được bảo vệ trên Trezu",
             "payWithTrezu": "Thanh toán bằng Trezu",
+            "payWithNearcom": "Thanh toán bằng near.com",
             "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",
             "copyLink": "Sao chép liên kết",
             "titleConfidential": "Chuyển tới Treasury bảo mật",

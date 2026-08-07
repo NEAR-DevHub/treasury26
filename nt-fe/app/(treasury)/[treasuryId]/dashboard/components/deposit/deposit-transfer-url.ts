@@ -1,4 +1,5 @@
-import { formatAssetForIntentsAPI } from "@/app/(treasury)/[treasuryId]/exchange/utils";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { normalizeNearAssetId } from "@/lib/utils";
 import type { ConfidentialOrigin } from "./deposit-types";
 
 export type PayShareKind = "public" | "confidential";
@@ -108,7 +109,10 @@ export function buildDepositDeepLink(
 /**
  * Shared `/payments` deep-link query.
  *
- * Exact pick: `token=<assetId>&network=<intentsNetworkId>` (+ optional address/name).
+ * Exact pick: `token=<assetId>&network=<id>` (+ optional address/name).
+ *   - Intents / near.com: `network` has a prefix (`nep141:…` / `eth:1:…`)
+ *   - NEAR FT: `network` is the bare contract (no `nep141:`)
+ *   - Native NEAR: `token=NEAR&network=near`
  * Soft prefs: `networks=eth,near` or `networks=near.com` (+ optional token/address/name).
  * Never emit both `network` and `networks`. Never put a JSON blob in `token`.
  */
@@ -119,7 +123,10 @@ export type PaymentsDeepLinkParams = {
     name?: string;
     /** Bridge asset id (e.g. "usdc") — never a JSON blob. */
     token?: string;
-    /** Singular intents network id for exact match (`eth:1:0x…` / `nep141:…`). */
+    /**
+     * Exact token network: intents id (`nep141:…` / `eth:1:…`) or bare NEAR
+     * FT contract (no prefix).
+     */
     network?: string;
     /**
      * Soft chain preferences (address book) or confidential `near.com`.
@@ -150,7 +157,8 @@ export function buildPaymentsDeepLink(
 
 /**
  * Assets-table / details Send link.
- * Exact for Intents or Ft (has contract id); soft chain pref otherwise.
+ * Exact for Intents, Ft, or native Near; soft chain pref otherwise.
+ * Intents keep prefixed ids; Ft uses bare contract; native Near uses `network=near`.
  */
 export function buildPaymentsDeepLinkForAsset(
     treasuryId: string,
@@ -165,18 +173,23 @@ export function buildPaymentsDeepLinkForAsset(
 ): string {
     const token = params.assetId.trim();
     const networkId = params.networkId.trim();
-    const useExact =
-        !!networkId &&
-        (params.residency === "Intents" || params.residency === "Ft");
 
-    if (useExact) {
+    if (params.residency === "Near") {
+        return buildPaymentsDeepLink(treasuryId, {
+            token: token || "NEAR",
+            network: NEAR_NETWORK_ID,
+        });
+    }
+
+    if (
+        networkId &&
+        (params.residency === "Intents" || params.residency === "Ft")
+    ) {
         return buildPaymentsDeepLink(treasuryId, {
             token,
-            // Ft stores bare contracts; Intents ids are already canonical
-            // (`nep141:…` / `eth:1:…`) and must not be re-prefixed.
             network:
                 params.residency === "Ft"
-                    ? formatAssetForIntentsAPI(networkId)
+                    ? normalizeNearAssetId(networkId)
                     : networkId,
         });
     }

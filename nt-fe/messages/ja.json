@@ -382,6 +382,7 @@
             "anyAssetOnNearcom": "near.com ネットワーク上の任意の資産",
             "securedOnTrezu": "Trezu で保護",
             "payWithTrezu": "Trezu で支払う",
+            "payWithNearcom": "near.com で支払う",
             "payRequiresTreasury": "支払うには Trezu treasury でサインインしてください。",
             "copyLink": "リンクをコピー",
             "titleConfidential": "機密 Treasury へ送金",

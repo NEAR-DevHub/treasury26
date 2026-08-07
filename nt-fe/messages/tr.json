@@ -382,6 +382,7 @@
             "anyAssetOnNearcom": "near.com ağında herhangi bir varlık",
             "securedOnTrezu": "Trezu’da güvende",
             "payWithTrezu": "Trezu ile öde",
+            "payWithNearcom": "near.com ile öde",
             "payRequiresTreasury": "Ödemek için bir Trezu treasury’siyle oturum açın.",
             "copyLink": "Bağlantıyı kopyala",
             "titleConfidential": "Gizli Treasury’ye transfer",

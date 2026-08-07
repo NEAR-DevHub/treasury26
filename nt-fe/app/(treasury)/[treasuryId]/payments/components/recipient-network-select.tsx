@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
 import { InputBlock } from "@/components/input-block";
@@ -171,6 +171,23 @@ export function RecipientNetworkSelect({
     );
 
     const tokenNetworkOptions = useMemo((): RecipientNetworkOption[] => {
+        // Native NEAR / NEAR FT: destination id is `near`, not `nep141:wrap.near`.
+        // Check before bridge match — address "near" also resolves a bridge asset.
+        if (
+            token?.residency === "Ft" ||
+            token?.residency === "Near" ||
+            token?.address?.toLowerCase() === NEAR_NETWORK_ID
+        ) {
+            return [
+                {
+                    id: NEAR_NETWORK_ID,
+                    name: getNetworkDisplayName(NEAR_NETWORK_ID),
+                    icon: NEAR_CHAIN_ICONS.icon,
+                    networkName: NEAR_NETWORK_ID,
+                },
+            ];
+        }
+
         if (bridgeAssetMatch) {
             return bridgeAssetMatch.networks.map((network) => {
                 const iconUrl = network.chainIcons
@@ -188,18 +205,6 @@ export function RecipientNetworkSelect({
                     networkName: network.name,
                 };
             });
-        }
-
-        // Native NEAR FTs can be transferred on NEAR network
-        if (token?.residency === "Ft") {
-            return [
-                {
-                    id: NEAR_NETWORK_ID,
-                    name: getNetworkDisplayName(NEAR_NETWORK_ID),
-                    icon: NEAR_CHAIN_ICONS.icon,
-                    networkName: NEAR_NETWORK_ID,
-                },
-            ];
         }
 
         return [];
@@ -256,15 +261,20 @@ export function RecipientNetworkSelect({
         ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
         : isBridgeAssetsLoading || availableOptions.length === 0;
 
-    // Clear selection when the address is removed or no longer matches the
-    // chosen network (e.g. user edited into a different chain's format).
+    // Clear on address wipe (non-empty → empty) or incompatible format.
+    // Do not clear on initial empty address — URL deep links prefill
+    // destination before recipient, and that fought the page seed in a loop.
+    const hadRecipientRef = useRef(false);
     useEffect(() => {
         if (!requireRecipient) return;
-        if (!value) return;
-        if (!recipient) {
+        if (recipient) {
+            hadRecipientRef.current = true;
+        } else if (hadRecipientRef.current && value) {
+            hadRecipientRef.current = false;
             onChange("");
             return;
         }
+        if (!value || !recipient) return;
         if (availableOptions.length === 0) return;
         if (compatibleOptions.some((o) => o.id === value)) return;
         onChange("");

@@ -183,7 +183,7 @@ export default function AccountPage() {
                 title={tPages("title")}
                 description={tPages("description")}
             >
-                <div className="w-full max-w-xl mx-auto">
+                <div className="w-full max-w-[600px] mx-auto">
                     <PageCard>
                         <p className="text-sm text-muted-foreground">
                             {t("signInRequired")}
@@ -199,7 +199,7 @@ export default function AccountPage() {
             title={tPages("title")}
             description={tPages("description")}
         >
-            <div className="w-full max-w-xl mx-auto">
+            <div className="w-full max-w-[600px] mx-auto">
                 {isLoadingProfile ? (
                     <PageCard className="space-y-6">
                         <Skeleton className="h-6 w-40" />

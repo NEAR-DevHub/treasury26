@@ -382,6 +382,7 @@
             "anyAssetOnNearcom": "Cualquier activo en la red near.com",
             "securedOnTrezu": "Asegurado en Trezu",
             "payWithTrezu": "Pagar con Trezu",
+            "payWithNearcom": "Pagar con near.com",
             "payRequiresTreasury": "Inicia sesión con una treasury de Trezu para pagar.",
             "copyLink": "Copiar enlace",
             "titleConfidential": "Transferir a la Treasury confidencial",
