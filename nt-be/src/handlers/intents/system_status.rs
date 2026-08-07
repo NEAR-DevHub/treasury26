@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     AppState,
+    handlers::status::oh_dear::is_relevant_intents_post,
     utils::cache::{CacheKey, CacheTier},
 };
 
@@ -78,19 +79,11 @@ pub async fn get_system_status(
             })?;
 
             let now = chrono::Utc::now().timestamp_millis();
+            // Include scheduled (not-yet-started) maintenance; drop only expired posts.
             let posts: Vec<SystemStatusPost> = instatus_response
                 .posts
                 .into_iter()
-                .filter(|post| {
-                    if post.post_type == "incident" {
-                        return true;
-                    }
-                    match (post.starts_at, post.ends_at) {
-                        (Some(start), Some(end)) => now >= start && now <= end,
-                        (Some(start), None) => now >= start,
-                        _ => true,
-                    }
-                })
+                .filter(|post| is_relevant_intents_post(post.ends_at, now))
                 .map(|post| {
                     let message = post
                         .latest_update
