@@ -28,10 +28,14 @@ interface InfoItemProps {
 
 function InfoItem({ icon, title, description, href }: InfoItemProps) {
     return (
-        <Link href={href} target="_blank">
-            <PageCard className="w-full gap-1.5 p-3 transition-colors hover:border-gray-300 hover:bg-gray-50">
+        <Link
+            href={href}
+            target="_blank"
+            className="block rounded-2xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        >
+            <PageCard className="w-full gap-1.5 p-3 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:hover:border-gray-700 dark:hover:bg-white/5">
                 <div className="flex items-center gap-4">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300">
                         {icon}
                     </span>
                     <div className="flex flex-col">
