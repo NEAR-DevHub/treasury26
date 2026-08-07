@@ -1376,17 +1376,14 @@
         "dontHaveTreasuryLabel": "Noch keine Treasury?",
         "createOneLabel": "Eine erstellen",
         "walletSelector": {
-            "title": "Wähle, wie du dich anmelden möchtest",
-            "subtitle": "Deine Anmeldung wird zum ersten Mitglied deiner Treasury.",
+            "title": "Anmelden oder Treasury erstellen",
+            "subtitle": "Nutze einen Passkey für das einfachste Erlebnis oder verbinde eine Wallet.",
             "helpCta": "Nicht sicher, was du wählen sollst?",
             "popularBadge": "Beliebt",
             "recentBadge": "Zuletzt verwendet",
             "noFundsNote": "Keine Startmittel nötig – wir übernehmen die Transaktionsgebühren, damit du es ausprobieren kannst",
             "chooseNearWallet": "Wähle deine NEAR-Wallets",
             "chooseEvmWallet": "Wähle deine EVM-Wallets",
-            "signInWithNear": "Mit NEAR-Wallets anmelden",
-            "signInWithLedger": "Mit Ledger anmelden",
-            "signInWithWalletConnect": "Mit EVM-Wallets anmelden",
             "guide": {
                 "title": "Welche Anmeldung soll ich verwenden?",
                 "connectWalletTitle": "Wallet verbinden",
@@ -1408,8 +1405,9 @@
             },
             "passkeyCardTitle": "Passkey für Touch ID und Face ID",
             "passkeyCardSubtitle": "Melde dich mit der Biometrie oder dem Code deines Geräts an",
-            "passkeyCardBadge": "Einfach & Sicher",
-            "web3WalletsSeparator": "Web3-Wallets"
+            "web3WalletsSeparator": "Web3-Wallets",
+            "selectOtherWallet": "Andere Wallet wählen",
+            "back": "Zurück"
         },
         "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
         "creationFailed": "Erstellung der Treasury fehlgeschlagen. Bitte erneut versuchen.",

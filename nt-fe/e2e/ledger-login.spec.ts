@@ -392,7 +392,7 @@ test("Ledger login flow", async ({ page, context }) => {
     await page.getByRole("button", { name: /sign in/i }).click();
     await page.waitForTimeout(1000); // Pause to show the button
 
-    await expect(page.getByText("Choose how to sign in")).toBeVisible();
+    await expect(page.getByText("Sign in or create a treasury")).toBeVisible();
     await page.waitForTimeout(1500); // Pause to show wallet connection page
 
     // Verify Ledger option is visible in available options and click it
@@ -450,7 +450,9 @@ test("Ledger login flow", async ({ page, context }) => {
 
     // Wait for login to complete
     await page.waitForTimeout(2000);
-    await expect(page.getByText("Choose how to sign in")).not.toBeVisible();
+    await expect(
+        page.getByText("Sign in or create a treasury"),
+    ).not.toBeVisible();
 
     // Pause at the end to clearly show the successful login result
     await page.waitForTimeout(3000);

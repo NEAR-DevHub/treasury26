@@ -1359,17 +1359,14 @@
         "dontHaveTreasuryLabel": "Bạn chưa có kho bạc?",
         "createOneLabel": "Tạo một",
         "walletSelector": {
-            "title": "Chọn cách đăng nhập",
-            "subtitle": "Lần đăng nhập của bạn sẽ trở thành thành viên đầu tiên của kho bạc.",
+            "title": "Đăng nhập hoặc tạo kho bạc",
+            "subtitle": "Dùng passkey để có trải nghiệm dễ nhất, hoặc kết nối ví.",
             "helpCta": "Bạn chưa chắc nên chọn gì?",
             "popularBadge": "Phổ biến",
             "recentBadge": "Gần đây",
             "noFundsNote": "Không cần vốn để bắt đầu — chúng tôi chi trả phí giao dịch để bạn có thể thử",
             "chooseNearWallet": "Chọn ví NEAR của bạn",
             "chooseEvmWallet": "Chọn ví EVM của bạn",
-            "signInWithNear": "Đăng nhập bằng ví NEAR",
-            "signInWithLedger": "Đăng nhập bằng Ledger",
-            "signInWithWalletConnect": "Đăng nhập bằng ví EVM",
             "guide": {
                 "title": "Tôi nên dùng cách đăng nhập nào?",
                 "connectWalletTitle": "Kết nối ví",
@@ -1391,8 +1388,9 @@
             },
             "passkeyCardTitle": "Passkey cho Touch ID và Face ID",
             "passkeyCardSubtitle": "Đăng nhập bằng sinh trắc học hoặc mật mã của thiết bị",
-            "passkeyCardBadge": "Dễ dàng & An toàn",
-            "web3WalletsSeparator": "Ví Web3"
+            "web3WalletsSeparator": "Ví Web3",
+            "selectOtherWallet": "Chọn ví khác",
+            "back": "Quay lại"
         },
         "unexpectedError": "Đã xảy ra lỗi không mong muốn",
         "creationFailed": "Không thể tạo ngân quỹ. Vui lòng thử lại.",

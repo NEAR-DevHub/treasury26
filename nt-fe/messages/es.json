@@ -1376,17 +1376,14 @@
         "dontHaveTreasuryLabel": "¿Aún no tienes una tesorería?",
         "createOneLabel": "Crear una",
         "walletSelector": {
-            "title": "Elige cómo iniciar sesión",
-            "subtitle": "Tu inicio de sesión se convierte en el primer miembro de tu tesorería.",
+            "title": "Inicia sesión o crea una tesorería",
+            "subtitle": "Usa una passkey para la experiencia más sencilla, o conecta una wallet.",
             "helpCta": "¿No sabes cuál elegir?",
             "popularBadge": "Popular",
             "recentBadge": "Reciente",
             "noFundsNote": "No necesitas fondos para empezar: cubrimos las comisiones para que puedas probarlo",
             "chooseNearWallet": "Elige tu wallet de NEAR",
             "chooseEvmWallet": "Elige tu wallet de EVM",
-            "signInWithNear": "Iniciar sesión con wallets de NEAR",
-            "signInWithLedger": "Iniciar sesión con Ledger",
-            "signInWithWalletConnect": "Iniciar sesión con wallets EVM",
             "guide": {
                 "title": "¿Qué inicio de sesión debo usar?",
                 "connectWalletTitle": "Conectar una wallet",
@@ -1408,8 +1405,9 @@
             },
             "passkeyCardTitle": "Passkey para Touch ID y Face ID",
             "passkeyCardSubtitle": "Inicia sesión con la biometría o el código de tu dispositivo",
-            "passkeyCardBadge": "Fácil y seguro",
-            "web3WalletsSeparator": "Monederos Web3"
+            "web3WalletsSeparator": "Monederos Web3",
+            "selectOtherWallet": "Elegir otra wallet",
+            "back": "Atrás"
         },
         "unexpectedError": "Se produjo un error inesperado",
         "creationFailed": "Error al crear la tesorería. Inténtalo de nuevo.",

@@ -1376,17 +1376,14 @@
         "dontHaveTreasuryLabel": "Henüz bir hazineniz yok mu?",
         "createOneLabel": "Bir tane oluştur",
         "walletSelector": {
-            "title": "Nasıl giriş yapacağınızı seçin",
-            "subtitle": "Girişiniz hazinenizin ilk üyesi olur.",
+            "title": "Giriş yapın veya hazine oluşturun",
+            "subtitle": "En kolay deneyim için bir passkey kullanın veya bir cüzdan bağlayın.",
             "helpCta": "Hangisini seçeceğinizden emin değil misiniz?",
             "popularBadge": "Popüler",
             "recentBadge": "Son kullanılan",
             "noFundsNote": "Başlamak için fon gerekmez — denemeniz için işlem ücretlerini biz karşılıyoruz",
             "chooseNearWallet": "NEAR cüzdanınızı seçin",
             "chooseEvmWallet": "EVM cüzdanınızı seçin",
-            "signInWithNear": "NEAR cüzdanlarıyla giriş yap",
-            "signInWithLedger": "Ledger ile giriş yap",
-            "signInWithWalletConnect": "EVM Cüzdanları ile giriş yap",
             "guide": {
                 "title": "Hangi giriş yöntemini kullanmalıyım?",
                 "connectWalletTitle": "Bir cüzdan bağla",
@@ -1408,8 +1405,9 @@
             },
             "passkeyCardTitle": "Touch ID ve Face ID için Passkey",
             "passkeyCardSubtitle": "Cihazınızın biyometriği veya parolasıyla oturum açın",
-            "passkeyCardBadge": "Kolay ve Güvenli",
-            "web3WalletsSeparator": "Web3 cüzdanları"
+            "web3WalletsSeparator": "Web3 cüzdanları",
+            "selectOtherWallet": "Başka cüzdan seç",
+            "back": "Geri"
         },
         "unexpectedError": "Beklenmedik bir hata oluştu",
         "creationFailed": "Hazine oluşturulamadı. Lütfen tekrar deneyin.",
