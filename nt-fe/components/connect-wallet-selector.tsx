@@ -33,6 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { stripMessageForTooltip } from "@/lib/warnings";
 import { useNear } from "@/stores/near-store";
+import NearBusinessLogo from "./icons/near-business-logo";
 
 type WalletPickerType = "near";
 
@@ -169,7 +170,7 @@ export function ConnectWalletSelector({
     connectFlow,
     isConnectingWallet = false,
     onBack,
-    showBackButton = true,
+    showBackButton = false,
     showOnboardingHints = false,
     onConnectSupported,
     introTitle,
@@ -396,6 +397,9 @@ export function ConnectWalletSelector({
                         <ArrowLeft className="size-4" />
                     </Button>
                 )}
+                <div className="flex items-center justify-start">
+                    <NearBusinessLogo className="h-7" />
+                </div>
                 <div className="flex flex-col gap-[9px]">
                     <h1 className="text-2xl font-bold leading-tight">
                         {headerTitle}
