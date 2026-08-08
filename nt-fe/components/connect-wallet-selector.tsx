@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowLeft, Check, Fingerprint, Wallet } from "lucide-react";
+import { ArrowLeft, Check, Wallet } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SlotWarning } from "@/components/warning-message";
 import { Button } from "@/components/button";
+import { FingerAccessIcon } from "@/components/icons/finger-access";
 import {
     Dialog,
     DialogContent,
@@ -49,11 +50,11 @@ function WalletOptionIcon({
             <div className="flex items-center">
                 <div
                     className={cn(
-                        `${sizeClass} rounded-full bg-foreground text-background flex items-center justify-center`,
+                        `${sizeClass} rounded-full bg-foreground text-green-500 flex items-center justify-center`,
                         wallet.imageClassName,
                     )}
                 >
-                    <Fingerprint
+                    <FingerAccessIcon
                         className={size === "xl" ? "size-6" : "size-4.5"}
                     />
                 </div>
