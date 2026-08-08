@@ -92,7 +92,7 @@ export const WALLET_OPTIONS: WalletOption[] = [
     {
         id: WALLET_IDS.NEAR,
         label: "NEAR Wallets",
-        imgSrc: "/near.com.svg",
+        imgSrc: "/icons/near-white.svg",
         isPopular: true,
         supported: true,
     },

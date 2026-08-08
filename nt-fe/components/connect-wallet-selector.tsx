@@ -753,7 +753,7 @@ export function ConnectWalletSelector({
                                         handleWalletChoice({
                                             id: WALLET_IDS.NEAR,
                                             label: "NEAR Wallets",
-                                            imgSrc: "/near.com.svg",
+                                            imgSrc: "/icons/near-white.svg",
                                             supported: true,
                                         })
                                     }
