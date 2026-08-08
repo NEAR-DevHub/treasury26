@@ -72,13 +72,6 @@ export default function LoginPage() {
                     source="/login"
                     connectFlow="within_treasury"
                     isConnectingWallet={isAuthenticating}
-                    onBack={() => {
-                        if (returnToWithUtms) {
-                            router.push(returnToWithUtms);
-                            return;
-                        }
-                        router.back();
-                    }}
                     onConnectSupported={connect}
                 />
             </div>
