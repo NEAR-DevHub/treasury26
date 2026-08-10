@@ -1,6 +1,14 @@
 "use client";
 
-import { Check, Info, Link, RefreshCw, UserPlus, Vote } from "lucide-react";
+import {
+    Check,
+    Info,
+    Link,
+    Loader2,
+    RefreshCw,
+    UserPlus,
+    Vote,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -10,6 +18,7 @@ import { PageCard } from "@/components/card";
 import { CopyButton } from "@/components/copy-button";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { StepperHeader } from "@/components/step-wizard";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCreateMemberInvite } from "@/hooks/use-member-invites";
 import { useTreasury } from "@/hooks/use-treasury";
 import { reportError } from "@/lib/report-error";
@@ -67,6 +76,8 @@ export default function InviteMemberPage() {
         },
     ];
 
+    const isGenerating = createInvite.isPending;
+
     return (
         <PageComponentLayout title={t("title")} description={t("description")}>
             <div className="max-w-xl mx-auto w-full">
@@ -111,9 +122,9 @@ export default function InviteMemberPage() {
                                 type="button"
                                 className="w-full mt-3"
                                 onClick={() => void handleGenerate()}
-                                disabled={createInvite.isPending}
+                                disabled={isGenerating}
                             >
-                                {createInvite.isPending
+                                {isGenerating
                                     ? tInvite("generating")
                                     : tInvite("generateLink")}
                             </Button>
@@ -153,19 +164,28 @@ export default function InviteMemberPage() {
                                 <p className="text-sm text-muted-foreground">
                                     {tInvite("yourLink")}
                                 </p>
-                                <div className="flex items-center gap-2 rounded-lg bg-secondary p-2 pl-3">
-                                    <Link className="size-4 shrink-0 text-base" />
-                                    <span className="flex-1 truncate text-sm font-medium">
-                                        {inviteUrl}
-                                    </span>
-                                    <CopyButton
-                                        text={inviteUrl || ""}
-                                        toastMessage={tInvite("linkCopied")}
-                                        size="default"
-                                    >
-                                        {tInvite("copyLink")}
-                                    </CopyButton>
-                                </div>
+                                {isGenerating ? (
+                                    <Skeleton className="h-11 w-full rounded-lg" />
+                                ) : (
+                                    <div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-lg bg-secondary p-2 pl-3">
+                                        <Link className="size-4 shrink-0 text-base" />
+                                        <input
+                                            type="text"
+                                            readOnly
+                                            value={inviteUrl ?? ""}
+                                            aria-label={tInvite("yourLink")}
+                                            className="min-w-0 flex-1 truncate border-0 bg-transparent p-0 text-sm font-medium text-foreground outline-none select-all"
+                                        />
+                                        <CopyButton
+                                            text={inviteUrl || ""}
+                                            toastMessage={tInvite("linkCopied")}
+                                            size="default"
+                                            disabled={!inviteUrl}
+                                        >
+                                            {tInvite("copyLink")}
+                                        </CopyButton>
+                                    </div>
+                                )}
                             </div>
 
                             <Button
@@ -173,10 +193,16 @@ export default function InviteMemberPage() {
                                 variant="ghost"
                                 className="w-full"
                                 onClick={() => void handleGenerate()}
-                                disabled={createInvite.isPending}
+                                disabled={isGenerating}
                             >
-                                <RefreshCw className="size-4" />
-                                {tInvite("generateNewLink")}
+                                {isGenerating ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                ) : (
+                                    <RefreshCw className="size-4" />
+                                )}
+                                {isGenerating
+                                    ? tInvite("generatingNewLink")
+                                    : tInvite("generateNewLink")}
                             </Button>
                         </>
                     )}

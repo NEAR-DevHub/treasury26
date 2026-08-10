@@ -11,7 +11,10 @@ mod postgres;
 mod scheduler;
 mod worker;
 
-pub(crate) use scheduler::run_public_history_scheduler_cycle;
+pub(crate) use scheduler::{
+    run_public_history_backfill_scheduler_cycle, run_public_history_detector_cycle,
+    run_public_history_readiness_scheduler_cycle,
+};
 pub(crate) use worker::board_storages;
 
 /// Queue names of the two event-driven workers, for watchdog registration.

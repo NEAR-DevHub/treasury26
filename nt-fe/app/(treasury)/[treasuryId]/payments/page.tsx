@@ -28,7 +28,8 @@ import { Textarea } from "@/components/textarea";
 import { Tooltip } from "@/components/tooltip";
 import { type Token, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
-import { default_usdc_near_token } from "@/constants/token";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { default_near_token, default_usdc_near_token } from "@/constants/token";
 import { useAddressBook } from "@/features/address-book";
 import {
     PAGE_TOUR_NAMES,
@@ -85,6 +86,19 @@ import {
     isNearChainNativeToken,
 } from "@/lib/intents-fee";
 import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
+import {
+    isBareNearContractId,
+    isIntentsNetworkId,
+    isJsonTokenQueryParam,
+    isNativeNearPrefill as resolveIsNativeNearPrefill,
+    nearChainDestination,
+    normalizePreferredNetwork,
+    parseSoftNetworks,
+    pickCompatibleFallbackToken,
+    resolveExactBridgeToken,
+    resolvePreferredDestinationNetwork,
+    resolvePreferredNetworks,
+} from "./utils/payments-deep-link";
 import { buildDirectTransferKind } from "./utils/proposal-builder";
 
 function buildPaymentFormSchema(messages: {
@@ -570,89 +584,6 @@ function classifyPaymentToken(
     };
 }
 
-const STABLE_TOKEN_PRIORITY: Record<string, number> = {
-    USDC: 2,
-    USDT: 1,
-};
-
-function getNetworkMatchScore(
-    tokenNetwork: string,
-    preferredNetworks: string[],
-): number {
-    const normalizedTokenNetwork = tokenNetwork.trim().toLowerCase();
-    const tokenBlockchain = getBlockchainType(normalizedTokenNetwork);
-    let bestScore = 0;
-
-    preferredNetworks.forEach((preferredNetwork, index) => {
-        const normalizedPreferredNetwork = preferredNetwork
-            .trim()
-            .toLowerCase();
-
-        if (normalizedPreferredNetwork === normalizedTokenNetwork) {
-            bestScore = Math.max(bestScore, 200 - index);
-            return;
-        }
-
-        const preferredBlockchain = getBlockchainType(
-            normalizedPreferredNetwork,
-        );
-
-        if (
-            preferredBlockchain !== "unknown" &&
-            preferredBlockchain === tokenBlockchain
-        ) {
-            bestScore = Math.max(bestScore, 100 - index);
-        }
-    });
-
-    return bestScore;
-}
-
-function pickCompatibleFallbackToken(
-    preferredNetworks: string[],
-    bridgeAssets: BridgeAsset[],
-): Token | null {
-    let bestCandidate: { score: number; token: Token } | null = null;
-
-    for (const asset of bridgeAssets) {
-        for (const network of asset.networks) {
-            const networkScore = getNetworkMatchScore(
-                network.name,
-                preferredNetworks,
-            );
-
-            if (networkScore === 0) {
-                continue;
-            }
-
-            const stablePriority =
-                STABLE_TOKEN_PRIORITY[network.symbol.toUpperCase()] ?? 0;
-            const candidateScore = networkScore * 10 + stablePriority;
-            const candidate: Token = {
-                address: network.id,
-                symbol: network.symbol,
-                decimals: network.decimals,
-                name: asset.name,
-                icon: asset.icon,
-                network: network.name,
-                chainIcons: network.chainIcons ?? undefined,
-                residency: "Intents",
-                minWithdrawalAmount: network.minWithdrawalAmount,
-                minDepositAmount: network.minDepositAmount,
-            };
-
-            if (!bestCandidate || candidateScore > bestCandidate.score) {
-                bestCandidate = {
-                    score: candidateScore,
-                    token: candidate,
-                };
-            }
-        }
-    }
-
-    return bestCandidate?.token ?? null;
-}
-
 function buildIntentTransferDescription(
     data: PaymentFormValues,
     quote: Awaited<ReturnType<typeof getIntentsQuote>>,
@@ -722,13 +653,39 @@ export default function PaymentsPage() {
         useState(false);
 
     const tokenParam = searchParams.get("token");
+    // Hybrid deep links:
+    // - exact Intents:     `?token=<assetId>&network=nep141:…` (or `eth:1:…`)
+    // - exact Ft:          `?token=<assetId>&network=<bareContract>`
+    // - exact native NEAR: `?token=NEAR&network=near`
+    // - soft:              `?networks=eth,near` (+ optional `token=<assetId>`)
+    const networkParam = searchParams.get("network");
+    const networksParam = searchParams.get("networks");
+    const softNetworks = useMemo(
+        () => parseSoftNetworks(networksParam),
+        [networksParam],
+    );
+    const isFtNetworkPrefill = !!(
+        networkParam && isBareNearContractId(networkParam)
+    );
+    const isNativeNearPrefill = resolveIsNativeNearPrefill({
+        tokenParam,
+        networkParam,
+    });
+    const exactTokenNetworkId =
+        !isNativeNearPrefill &&
+        networkParam &&
+        (isIntentsNetworkId(networkParam) || isFtNetworkPrefill)
+            ? networkParam
+            : null;
     const preferredNetworks = useMemo(
         () =>
-            (searchParams.get("networks") ?? searchParams.get("network") ?? "")
-                .split(",")
-                .map((network) => network.trim())
-                .filter(Boolean),
-        [searchParams],
+            resolvePreferredNetworks({
+                softNetworks,
+                networkParam,
+                isFtNetworkPrefill,
+                isNativeNearPrefill,
+            }),
+        [softNetworks, networkParam, isFtNetworkPrefill, isNativeNearPrefill],
     );
     const {
         data: bridgeAssets = [],
@@ -737,39 +694,91 @@ export default function PaymentsPage() {
     } = useBridgeTokens(true);
     // Generic default (highest-USD → USDC) lives in TokenSelect.autoSelect.
     // Page only seeds from URL overrides so the two don't fight.
+    const namePreferredNetworks = useMemo(
+        () =>
+            preferredNetworks.filter((network) => !isIntentsNetworkId(network)),
+        [preferredNetworks],
+    );
+    // Address-book links often list many chains — still pick a send token, but
+    // leave destination empty so the user chooses among preferred networks.
+    const hasAmbiguousSoftNetworks = namePreferredNetworks.length > 1;
+    const plainTokenAssetId =
+        tokenParam && !isJsonTokenQueryParam(tokenParam) ? tokenParam : null;
     const compatibleDefaultToken = useMemo(() => {
-        if (tokenParam || preferredNetworks.length === 0) {
+        if (isNativeNearPrefill) return null;
+        if (namePreferredNetworks.length === 0) return null;
+        return pickCompatibleFallbackToken(
+            namePreferredNetworks,
+            bridgeAssets,
+            plainTokenAssetId,
+        );
+    }, [
+        bridgeAssets,
+        namePreferredNetworks,
+        plainTokenAssetId,
+        isNativeNearPrefill,
+    ]);
+
+    const urlOverrideToken = useMemo(() => {
+        if (
+            isBridgeAssetsLoading &&
+            (tokenParam || preferredNetworks.length > 0)
+        ) {
             return null;
         }
 
-        return pickCompatibleFallbackToken(preferredNetworks, bridgeAssets);
-    }, [bridgeAssets, preferredNetworks, tokenParam]);
-
-    const urlOverrideToken = useMemo(() => {
-        if (tokenParam) {
+        // 1) Legacy assets-table JSON blob (read-only compat).
+        if (tokenParam && isJsonTokenQueryParam(tokenParam)) {
             return parseTokenQueryParam(tokenParam, default_usdc_near_token());
         }
-        if (preferredNetworks.length === 0) return null;
-        if (isBridgeAssetsLoading) return null;
+
+        // 2) Native NEAR (not intents wrap.near).
+        if (isNativeNearPrefill) {
+            return default_near_token(isConfidential);
+        }
+
+        // 3) Exact: prefixed network → Intents; bare NEAR contract → Ft.
+        const exact = resolveExactBridgeToken(
+            bridgeAssets,
+            plainTokenAssetId,
+            exactTokenNetworkId,
+        );
+        if (exact) return exact;
+
+        // 4) Soft: `?networks=…` (+ optional asset id filter).
         return compatibleDefaultToken;
     }, [
         tokenParam,
+        plainTokenAssetId,
+        exactTokenNetworkId,
+        isNativeNearPrefill,
+        isConfidential,
+        bridgeAssets,
         preferredNetworks.length,
         isBridgeAssetsLoading,
         compatibleDefaultToken,
     ]);
 
-    // Let TokenSelect pick when there's no URL token and no compatible
-    // ?networks= match (or no networks param at all).
+    // Let TokenSelect pick when there's no URL seed (or seed failed to resolve).
     const tokenAutoSelect =
         !tokenParam &&
-        (preferredNetworks.length === 0 ||
-            (!isBridgeAssetsLoading && !compatibleDefaultToken));
+        namePreferredNetworks.length === 0 &&
+        !exactTokenNetworkId &&
+        !isNativeNearPrefill;
+
+    const prefersNearCom = useMemo(
+        () =>
+            preferredNetworks.some(
+                (network) =>
+                    network.trim().toLowerCase() === NEAR_COM_NETWORK_ID,
+            ),
+        [preferredNetworks],
+    );
 
     const preferredBlockchainTypes = useMemo(() => {
         const set = new Set<string>();
         for (const network of preferredNetworks) {
-            const type = getBlockchainType(network);
+            const type = getBlockchainType(normalizePreferredNetwork(network));
             if (type !== "unknown") set.add(type);
         }
         return set;
@@ -1009,27 +1018,44 @@ export default function PaymentsPage() {
     // ── Destination network auto-wiring ───────────────────────────────────────
 
     const compatibleDestination = useMemo(() => {
-        if (
-            preferredBlockchainTypes.size === 0 ||
-            !watchedToken ||
-            bridgeAssets.length === 0
-        ) {
+        if (!watchedToken) return null;
+
+        // Soft near.com / Ft / native NEAR → NEAR or near.com destination.
+        if (prefersNearCom || isFtNetworkPrefill || isNativeNearPrefill) {
+            return nearChainDestination(prefersNearCom || isConfidential);
+        }
+
+        // Multiple soft chain prefs (address book) — leave destination empty.
+        if (hasAmbiguousSoftNetworks) return null;
+
+        if (preferredNetworks.length === 0 || bridgeAssets.length === 0) {
             return null;
         }
 
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
 
-        const matches = bridgeAsset.networks.filter((network) =>
-            preferredBlockchainTypes.has(getBlockchainType(network.name)),
+        return resolvePreferredDestinationNetwork(
+            bridgeAsset,
+            preferredNetworks,
+            preferredBlockchainTypes,
         );
-        if (matches.length !== 1) return null;
+    }, [
+        bridgeAssets,
+        preferredNetworks,
+        preferredBlockchainTypes,
+        watchedToken,
+        prefersNearCom,
+        hasAmbiguousSoftNetworks,
+        isFtNetworkPrefill,
+        isNativeNearPrefill,
+        isConfidential,
+    ]);
 
-        return {
-            id: matches[0].id,
-            networkName: matches[0].name,
-        };
-    }, [bridgeAssets, preferredBlockchainTypes, watchedToken]);
+    // Stable id/name so destination seed effect doesn't re-run every render.
+    const compatibleDestinationId = compatibleDestination?.id ?? null;
+    const compatibleDestinationName =
+        compatibleDestination?.networkName ?? null;
 
     // ── Ensure quote is fresh before entering the review step ─────────────────
 
@@ -1084,45 +1110,64 @@ export default function PaymentsPage() {
 
     // ── Effects ───────────────────────────────────────────────────────────────
 
-    // Seed only URL overrides; TokenSelect.autoSelect handles the rest.
+    // Seed URL token/network overrides; TokenSelect.autoSelect handles the rest.
     useEffect(() => {
         if (!urlOverrideToken) return;
-        if (tokenParam) {
-            form.setValue("token", urlOverrideToken);
+        // Deep-link seeds always win over a prior selection.
+        if (tokenParam || preferredNetworks.length > 0) {
+            const current = form.getValues("token");
+            const sameToken =
+                current?.address === urlOverrideToken.address &&
+                current?.residency === urlOverrideToken.residency;
+            if (!sameToken) {
+                form.setValue("token", urlOverrideToken);
+                // Clear so destination can re-resolve for the preferred network.
+                form.setValue("destinationNetwork", "");
+                form.setValue("destinationNetworkName", "");
+            }
             return;
         }
         const currentToken = form.getValues("token");
         if (!currentToken) {
             form.setValue("token", urlOverrideToken);
         }
-    }, [urlOverrideToken, form, tokenParam]);
+    }, [urlOverrideToken, form, tokenParam, preferredNetworks.length]);
 
     useEffect(() => {
-        if (!compatibleDestination) return;
-        if (watchedDestinationNetwork) return;
-        const timeoutId = window.setTimeout(() => {
-            form.setValue("destinationNetwork", compatibleDestination.id, {
-                shouldDirty: true,
-            });
-            form.setValue(
-                "destinationNetworkName",
-                compatibleDestination.networkName,
-                { shouldDirty: true },
-            );
-        }, 150);
-        return () => window.clearTimeout(timeoutId);
-    }, [compatibleDestination, form, watchedDestinationNetwork]);
+        if (!compatibleDestinationId || !compatibleDestinationName) return;
+        if (watchedDestinationNetwork === compatibleDestinationId) return;
+        // Prefer URL-resolved destination over a stale/empty selection.
+        if (
+            watchedDestinationNetwork &&
+            preferredNetworks.length === 0 &&
+            !prefersNearCom
+        ) {
+            return;
+        }
+        form.setValue("destinationNetwork", compatibleDestinationId, {
+            shouldDirty: true,
+        });
+        form.setValue("destinationNetworkName", compatibleDestinationName, {
+            shouldDirty: true,
+        });
+    }, [
+        compatibleDestinationId,
+        compatibleDestinationName,
+        form,
+        watchedDestinationNetwork,
+        preferredNetworks.length,
+        prefersNearCom,
+    ]);
 
     useEffect(() => {
         if (!defaultAddress) return;
-        if (!watchedDestinationNetwork) return;
         if (form.getValues("address") === defaultAddress) return;
         form.setValue("address", defaultAddress, {
             shouldDirty: true,
             shouldTouch: true,
             shouldValidate: true,
         });
-    }, [defaultAddress, watchedDestinationNetwork, form]);
+    }, [defaultAddress, form]);
 
     useEffect(() => {
         if (!isCrossChainIntentsToken) {

@@ -11,17 +11,12 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
-import { CreateRequestButton } from "@/components/create-request-button";
 import { Input } from "@/components/input";
 import { TreasuryLogo } from "@/components/treasury-info";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { useTreasury } from "@/hooks/use-treasury";
-import {
-    useTreasuryConfig,
-    useTreasuryPolicy,
-} from "@/hooks/use-treasury-queries";
-import { encodeToMarkdown, jsonToBase64 } from "@/lib/utils";
+import { updateTreasurySettings } from "@/lib/api";
 import { useNear } from "@/stores/near-store";
 
 const COLOR_OPTIONS = [
@@ -54,6 +49,7 @@ type GeneralFormValues = {
 
 export function GeneralTab() {
     const t = useTranslations("settings.general");
+    const tAuth = useTranslations("auth");
     const generalSchema = useMemo(
         () =>
             z.object({
@@ -67,13 +63,15 @@ export function GeneralTab() {
             }),
         [t],
     );
-    const { treasuryId, config } = useTreasury();
-    const { createProposal } = useNear();
-    const { data: policy } = useTreasuryPolicy(treasuryId);
+    const { treasuryId, config, isGuestTreasury } = useTreasury();
+    const { accountId } = useNear();
     const queryClient = useQueryClient();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Any DAO member (not guest / Everyone-only). Backend enforces membership.
+    const canEdit = Boolean(accountId && !isGuestTreasury);
 
     const form = useForm<GeneralFormValues>({
         resolver: zodResolver(generalSchema),
@@ -91,7 +89,6 @@ export function GeneralTab() {
             const treasuryData = {
                 displayName: config?.name || "",
                 accountName: treasuryId || "",
-                // Keep empty when unset so we don't invent a color in the proposal payload
                 primaryColor: config.metadata?.primaryColor || "",
                 logo: config.metadata?.flagLogo || null,
             };
@@ -104,59 +101,35 @@ export function GeneralTab() {
             toast.error(t("treasuryNotFound"));
             return;
         }
+        if (!canEdit) {
+            toast.error(tAuth("noPermission"));
+            return;
+        }
 
         setIsSubmitting(true);
         try {
-            const proposalBond = policy?.proposal_bond || "0";
-
-            // ChangeConfig replaces the entire metadata blob. Preserve the
-            // on-chain primaryColor unless the user actually picked a new one,
-            // and never invent a default color for logo-only updates.
-            const metadata: Record<string, string | null> = {
-                flagLogo: data.logo,
-            };
-
-            const existingColor = config.metadata?.primaryColor;
-            if (data.primaryColor && data.primaryColor !== existingColor) {
-                metadata.primaryColor = data.primaryColor;
-            } else if (existingColor) {
-                metadata.primaryColor = existingColor;
-            }
-
-            const description = {
-                title: t("proposalDescriptionTitle"),
-            };
-
-            await createProposal(t("proposalSubmitted"), {
-                treasuryId: treasuryId,
-                proposal: {
-                    description: encodeToMarkdown(description),
-                    kind: {
-                        ChangeConfig: {
-                            config: {
-                                name: data.displayName,
-                                purpose: config.purpose,
-                                metadata: jsonToBase64(metadata),
-                            },
-                        },
-                    },
-                },
-                proposalBond: proposalBond,
-                proposalType: "other",
+            await updateTreasurySettings({
+                treasuryId,
+                displayName: data.displayName.trim(),
+                flagLogo: data.logo?.trim() || null,
+                primaryColor: data.primaryColor.trim() || null,
             });
 
-            // Refetch proposals to show the newly created proposal
-            queryClient.invalidateQueries({
-                queryKey: ["proposals", treasuryId],
-            });
+            await Promise.all([
+                queryClient.invalidateQueries({
+                    queryKey: ["treasuryConfig", treasuryId],
+                }),
+                queryClient.invalidateQueries({ queryKey: ["userTreasuries"] }),
+            ]);
 
-            // Reset form to mark as not dirty
             form.reset(data);
+            toast.success(t("savedToast"));
             trackEvent("treasury-settings-updated", {
                 treasury_id: treasuryId ?? "",
             });
         } catch (error) {
-            console.error("Error creating proposal:", error);
+            console.error("Error saving treasury settings:", error);
+            toast.error(t("saveFailed"));
         } finally {
             setIsSubmitting(false);
         }
@@ -264,6 +237,7 @@ export function GeneralTab() {
                                                 placeholder={t(
                                                     "displayNamePlaceholder",
                                                 )}
+                                                disabled={!canEdit}
                                             />
                                         </FormControl>
                                         {form.formState.errors.displayName && (
@@ -331,13 +305,16 @@ export function GeneralTab() {
                                         accept="image/png, image/jpeg, image/svg+xml"
                                         onChange={handleImageChange}
                                         className="hidden"
+                                        disabled={!canEdit}
                                     />
                                     <div className="flex gap-2">
                                         <Button
                                             type="button"
                                             variant="outline"
                                             onClick={handleUploadClick}
-                                            disabled={uploadingImage}
+                                            disabled={
+                                                uploadingImage || !canEdit
+                                            }
                                         >
                                             {uploadingImage ? (
                                                 <>
@@ -358,7 +335,9 @@ export function GeneralTab() {
                                                         shouldDirty: true,
                                                     });
                                                 }}
-                                                disabled={uploadingImage}
+                                                disabled={
+                                                    uploadingImage || !canEdit
+                                                }
                                             >
                                                 {t("removeLogo")}
                                             </Button>
@@ -383,45 +362,75 @@ export function GeneralTab() {
                     <FormField
                         control={form.control}
                         name="primaryColor"
-                        render={({ field }) => (
-                            <FormItem>
-                                <div className="flex flex-wrap gap-2">
-                                    {COLOR_OPTIONS.map((color) => (
-                                        <button
-                                            key={color}
-                                            type="button"
-                                            onClick={() =>
-                                                handleColorChange(color)
-                                            }
-                                            className={`h-8 w-8 rounded-full transition-all hover:scale-110 cursor-pointer ${
-                                                field.value === color
-                                                    ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
-                                                    : ""
-                                            } ${color === "#000000" ? "bg-black dark:bg-white" : ""}`}
-                                            style={
-                                                color === "#000000"
-                                                    ? {}
-                                                    : { backgroundColor: color }
-                                            }
-                                            aria-label={t("selectColorLabel", {
-                                                color,
-                                            })}
-                                        />
-                                    ))}
-                                </div>
-                            </FormItem>
-                        )}
+                        render={({ field }) => {
+                            // Unset color uses theme default (black / reverse in dark),
+                            // same as the first swatch — show it as selected.
+                            const selectedColor =
+                                field.value || COLOR_OPTIONS[0];
+
+                            return (
+                                <FormItem>
+                                    <div className="flex flex-wrap gap-2">
+                                        {COLOR_OPTIONS.map((color) => (
+                                            <button
+                                                key={color}
+                                                type="button"
+                                                onClick={() =>
+                                                    handleColorChange(color)
+                                                }
+                                                disabled={!canEdit}
+                                                className={`h-8 w-8 rounded-full transition-all hover:scale-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                    selectedColor === color
+                                                        ? "ring-2 ring-offset-2 ring-offset-background ring-primary"
+                                                        : ""
+                                                } ${color === "#000000" ? "bg-black dark:bg-white" : ""}`}
+                                                style={
+                                                    color === "#000000"
+                                                        ? {}
+                                                        : {
+                                                              backgroundColor:
+                                                                  color,
+                                                          }
+                                                }
+                                                aria-label={t(
+                                                    "selectColorLabel",
+                                                    {
+                                                        color,
+                                                    },
+                                                )}
+                                            />
+                                        ))}
+                                    </div>
+                                </FormItem>
+                            );
+                        }}
                     />
                 </PageCard>
 
-                <div className="rounded-lg border bg-card">
-                    <CreateRequestButton
-                        type="submit"
-                        isSubmitting={isSubmitting}
-                        permissions={{ kind: "config", action: "AddProposal" }}
-                        disabled={!form.formState.isDirty}
-                    />
-                </div>
+                <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={
+                        isSubmitting ||
+                        uploadingImage ||
+                        !form.formState.isDirty ||
+                        !canEdit
+                    }
+                >
+                    {isSubmitting ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {t("saving")}
+                        </>
+                    ) : (
+                        t("saveChanges")
+                    )}
+                </Button>
+                {!canEdit && (
+                    <p className="text-sm text-muted-foreground text-center">
+                        {accountId ? tAuth("noPermission") : tAuth("noWallet")}
+                    </p>
+                )}
             </form>
         </Form>
     );

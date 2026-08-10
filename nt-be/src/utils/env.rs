@@ -19,12 +19,15 @@ pub struct EnvVars {
     pub disable_stats_generation: bool,
     pub disable_ft_lockup_scheduler: bool,
     pub disable_balance_changes_usd_backfill: bool,
-    pub disable_gold_public_usd_backfill: bool,
-    pub disable_gold_confidential_usd_backfill: bool,
-    /// Global public read switch. False keeps public APIs on the legacy
-    /// `balance_changes` table; true enables gold reads for DAOs whose bronze
-    /// backfill is complete.
-    pub public_history_medallion_reads: bool,
+    pub disable_gold_ledger_usd_backfill: bool,
+    /// Single public read switch. True serves public activity, charts, and
+    /// asset balances from `gold_treasury_ledger_events`; false keeps the
+    /// legacy `balance_changes` paths.
+    pub unified_gold_ledger_reads: bool,
+    /// Allowed absolute drift (in NEAR) between the bronze-derived native
+    /// ledger head and the on-chain balance before verification fails. Drift
+    /// within tolerance is absorbed by a hidden reconciliation rebase.
+    pub public_native_verification_tolerance_near: f64,
     pub monitor_interval_seconds: u64,
     pub telegram_bot_token: Option<String>,
     /// General notifications channel (user creation, treasury creation, etc.)
@@ -66,6 +69,8 @@ pub struct EnvVars {
     pub telegram_webhook_secret: Option<String>,
     // Static API key guarding the internal analytics export endpoint
     pub analytics_api_key: Option<String>,
+    // Basic-auth credentials for browser access to the analytics export endpoint
+    pub analytics_users: Vec<crate::utils::admin_auth::AdminCredential>,
     pub frontend_base_url: String,
     pub admin_users: Vec<crate::utils::admin_auth::AdminCredential>,
     // Confidential auth token lifetime in days (default: 36500 ≈ 100 years)
@@ -138,20 +143,22 @@ impl Default for EnvVars {
             .unwrap_or_else(|_| "false".to_string())
             .parse()
             .unwrap_or(false),
-            disable_gold_public_usd_backfill: std::env::var("DISABLE_GOLD_PUBLIC_USD_BACKFILL")
+            // DISABLE_GOLD_PUBLIC_USD_BACKFILL is the deployed legacy name.
+            disable_gold_ledger_usd_backfill: std::env::var("DISABLE_GOLD_LEDGER_USD_BACKFILL")
+                .or_else(|_| std::env::var("DISABLE_GOLD_PUBLIC_USD_BACKFILL"))
                 .unwrap_or_else(|_| "false".to_string())
                 .parse()
                 .unwrap_or(false),
-            disable_gold_confidential_usd_backfill: std::env::var(
-                "DISABLE_GOLD_CONFIDENTIAL_USD_BACKFILL",
+            unified_gold_ledger_reads: std::env::var("UNIFIED_GOLD_LEDGER_READS")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
+            public_native_verification_tolerance_near: std::env::var(
+                "PUBLIC_NATIVE_VERIFICATION_TOLERANCE_NEAR",
             )
-            .unwrap_or_else(|_| "false".to_string())
-            .parse()
-            .unwrap_or(false),
-            public_history_medallion_reads: std::env::var("PUBLIC_HISTORY_MEDALLION_READS")
-                .unwrap_or_else(|_| "false".to_string())
-                .parse()
-                .unwrap_or(false),
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(0.1),
             monitor_interval_seconds: std::env::var("MONITOR_INTERVAL_SECONDS")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -244,6 +251,9 @@ impl Default for EnvVars {
             analytics_api_key: std::env::var("ANALYTICS_API_KEY")
                 .ok()
                 .filter(|s| !s.is_empty()),
+            analytics_users: crate::utils::admin_auth::parse_admin_users(
+                std::env::var("ANALYTICS_USERS").ok().as_deref(),
+            ),
             frontend_base_url: std::env::var("FRONTEND_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:3001".to_string()),
             admin_users: crate::utils::admin_auth::parse_admin_users(

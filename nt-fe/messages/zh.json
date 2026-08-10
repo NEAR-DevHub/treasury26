@@ -107,7 +107,8 @@
         "wallet": "钱包",
         "termsOfService": "服务条款",
         "privacyPolicy": "隐私政策",
-        "disconnect": "断开连接"
+        "disconnect": "退出登录",
+        "myAccount": "我的账户"
     },
     "auth": {
         "noWallet": "请连接您的钱包",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "Trezu 钱包",
             "description": "通过 Trezu 签署金库提案"
+        },
+        "account": {
+            "title": "我的账户",
+            "description": "管理您的个人资料和设置"
         }
     },
     "depositModal": {
@@ -271,7 +276,8 @@
         },
         "errors": {
             "addressUnavailable": "无法获取所选资产和网络的存款地址。",
-            "fetchFailed": "获取存款地址失败。请再试一次。"
+            "fetchFailed": "获取存款地址失败。请再试一次。",
+            "loginRequired": "请登录以生成一次性充值地址。"
         },
         "title": "存款",
         "subtitle": "选择资产和网络以查看存款地址",
@@ -284,7 +290,7 @@
         "depositAddressHeading": "存款地址",
         "depositAddressSubtitle": "请始终仔细核对您的存款地址。",
         "depositAddressSubtitleConfidential": "<semibold>一次性存款地址。</semibold> 重复使用该地址或在过期后转账，可能导致资金永久丢失。",
-        "depositAddressSubtitleConfidentialExpiry": "自生成时起 3 天内有效。距离过期还有：{expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "自生成起有效 14 天。剩余有效期：{expiresIn}",
         "singleUseAcknowledgement": "我只会使用该地址一次",
         "addressLabel": "地址",
         "addressCopied": "地址已复制到剪贴板",
@@ -307,7 +313,91 @@
             "fiatAnswer": "目前还不支持，但我们正在努力尽快上线法币充值。敬请期待 - 即将推出 🚀",
             "arrivalQuestion": "充值到账需要多长时间？",
             "arrivalAnswer": "处理时间取决于网络。"
-        }
+        },
+        "back": "返回",
+        "publicAddressTitle": "{network} 上的 {symbol} 充值地址",
+        "publicAddressSubtitle": "请仅通过此网络将此代币发送到下方地址。",
+        "oneTimeAddressTitle": "{network} 网络上的一次性 {symbol} 充值地址",
+        "oneTimeAddressSubtitle": "请仅通过此网络将此代币发送到下方地址。",
+        "confidentialTrezuTitle": "从机密 Trezu 在 near.com 网络充值",
+        "confidentialTrezuSubtitle": "接收来自机密 Trezu 的任意资产。",
+        "confidentialNearcomTitle": "从机密 near.com 在内部网络充值",
+        "confidentialNearcomSubtitle": "接收来自机密 near.com 的任意资产。",
+        "oneTimeSectionTitle": "一次性机密充值地址",
+        "oneTimeSectionSubtitle": "仅可使用一次，首次充值之后的资金将丢失。",
+        "internalAddressTitle": "这是你的内部机密地址",
+        "generateAddress": "生成地址",
+        "showAddress": "显示地址",
+        "copy": "复制",
+        "share": "分享",
+        "linkCopied": "链接已复制到剪贴板",
+        "minDepositValue": "最低充值金额 <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>请勿</bold>发送测试充值",
+        "doNotReuseAddress": "<bold>请勿</bold>重复使用、保存、加入白名单或分享该地址",
+        "doNotReuseAddressShort": "<bold>请勿</bold>重复使用、保存或将该地址加入白名单",
+        "oneTimeAckCheckbox": "我理解这是一次性地址，且必须在一次转账中至少发送 {amount} {symbol}。",
+        "oneTimeAckCheckboxNoMin": "我理解这是一次性地址，且只能用于一次转账。",
+        "onlySendAssetNetwork": "请仅在 <bold>{network}</bold> 网络发送 <bold>{symbol}</bold>。发送其他资产或使用其他网络将导致资金损失。",
+        "expiresInDays": "<bold>{days} 天后</bold>过期 – <bold>即使未使用</bold>。",
+        "createNewAddressHint": "需要其他充值信息？<link>创建新地址</link>。创建另一个地址不会停用此地址。",
+        "receivesOnlyConfidential": "仅接收来自机密 Trezu 或 near.com 账户的资金",
+        "receivesOnlyConfidentialSub": "可重复使用。不会过期。",
+        "anythingElseLost": "从其他地方发送的资金将丢失",
+        "anythingElseLostSub": "交易所、公开钱包、其他网络 – 无法找回。",
+        "confidentialAckCheckbox": "我理解从机密 Trezu 或 near.com 以外充值将会丢失。",
+        "onlyFromConfidentialTrezu": "仅来自机密 <bold>Trezu</bold>",
+        "onlyFromConfidentialNearcom": "仅来自机密 <bold>near.com</bold>",
+        "reusableDoesntExpire": "<bold>可重复使用。</bold>不会过期",
+        "fundsOutsideTrezuLost": "从机密 Trezu 以外发送的资金将丢失",
+        "fundsOutsideNearcomLost": "从机密 near.com 以外发送的资金将丢失",
+        "publicNetworkRecommendation": "请仅从 <bold>{network}</bold> 网络充值。建议先进行小额测试交易，再发送全额。",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "来自公开钱包",
+                "subtitle": "创建一次性充值地址"
+            },
+            "confidentialUser": {
+                "title": "来自机密用户",
+                "subtitle": "从机密 Trezu 与 near.com 充值"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "来自机密 Trezu",
+            "nearcom": "来自机密 near.com",
+            "short": "从保密"
+        },
+        "guestBanner": {
+            "title": "你正在以访客身份查看",
+            "description": "此地址属于他人的 treasury。发送前请仔细核对。"
+        },
+        "transfer": {
+            "title": "转账至 Treasury",
+            "waitingForPayment": "等待付款",
+            "youSendFromPublic": "你从任意公开钱包发送",
+            "youSend": "你发送",
+            "goesTo": "发送至",
+            "assetOnNetwork": "{network} 网络上的 {symbol}",
+            "anyAsset": "任意资产",
+            "onNetwork": "在 {network} 网络",
+            "onNearcomNetwork": "在 near.com 网络",
+            "anyAssetOnNearcom": "near.com 网络上的任意资产",
+            "securedOnTrezu": "由 Trezu 保障安全",
+            "payWithTrezu": "使用 Trezu 支付",
+            "payWithNearcom": "使用 near.com 支付",
+            "payRequiresTreasury": "请使用 Trezu treasury 登录以支付。",
+            "copyLink": "复制链接",
+            "titleConfidential": "转账至机密 Treasury",
+            "chooseTreasuryTitle": "选择 Treasury",
+            "chooseTreasuryDescription": "这笔付款来自哪个 treasury？",
+            "noMemberTreasuries": "你还不是任何 treasury 的成员。",
+            "createTreasury": "创建 treasury",
+            "expired": "已过期",
+            "used": "已使用",
+            "linkInactiveTitle": "此链接已失效",
+            "linkInactiveDescription": "如需完成此付款，请向发送链接的人索取新链接。"
+        },
+        "expiresInRemaining": "<time>{duration}</time>后过期 – <bold>即使未使用</bold>。",
+        "addressExpired": "此地址已过期。"
     },
     "assetDetails": {
         "coinPrice": "币价",
@@ -845,7 +935,8 @@
             "yourLink": "你的邀请链接",
             "copyLink": "复制链接",
             "linkCopied": "已复制邀请链接",
-            "generateNewLink": "生成新链接"
+            "generateNewLink": "生成新链接",
+            "generatingNewLink": "正在生成新链接"
         },
         "joinRequests": {
             "title": "希望加入",
@@ -873,6 +964,9 @@
             "successTitle": "快要加入了",
             "successDescription": "团队审核你的请求后，\n你就可以加入。现在无需再做任何事。",
             "seeTreasury": "查看金库",
+            "alreadyMemberTitle": "您已是成员",
+            "alreadyMemberDescription": "无需申请访问权限 — 您已是 {treasury} 的成员。",
+            "goToTreasury": "前往金库",
             "invalidTitle": "未找到邀请",
             "invalidDescription": "此邀请链接无效或已不可用。",
             "usedTitle": "邀请已使用",
@@ -980,7 +1074,11 @@
             "fileReadError": "读取文件时出错。请再试一次。",
             "primaryColor": "主色",
             "primaryColorDescription": "为金库界面元素设置主色。该颜色将在浅色和深色模式中均会使用,因此选择中性色调时请注意对比度。",
-            "selectColorLabel": "选择颜色 {color}"
+            "selectColorLabel": "选择颜色 {color}",
+            "saveChanges": "保存更改",
+            "saving": "保存中...",
+            "savedToast": "您的更改已保存。",
+            "saveFailed": "无法保存更改。请重试。"
         },
         "voting": {
             "validation": {
@@ -2043,10 +2141,9 @@
         "exchangeFulfillment": "兑换",
         "stakingRewards": "质押奖励",
         "proposalAction": "提案操作",
-        "deposit": "存入 {symbol}",
-        "paymentSent": "付款已发送",
+        "deposit": "存款",
+        "transfer": "转账",
         "transaction": "交易",
-        "fallbackToken": "代币",
         "viaIntents": "通过 NEAR Intents",
         "from": "来自 {account}",
         "to": "至 {account}",
@@ -2284,6 +2381,10 @@
             "title": "探索 Trezu",
             "description": "创建账户以解锁 Trezu 所有功能与权益的访问权限。",
             "cta": "创建金库"
+        },
+        "pendingJoinBanner": {
+            "title": "您的加入请求正在等待审批",
+            "description": "您现在可以查看此金库。成员批准后，您将可以根据角色创建请求、投票或管理资金。"
         },
         "infoBox": {
             "title": "更好地利用 Trezu",
@@ -2540,5 +2641,23 @@
         "errorTitle": "无法加载激活状态",
         "noPermissionNote": "您没有权限启动激活。请让具有提案权限的金库成员激活批量支付。",
         "awaitingApproverHint": "拥有批准权限的金库成员需要批准待处理的请求以完成激活。"
+    },
+    "account": {
+        "personalSettings": "个人设置",
+        "uploadAvatar": "上传头像",
+        "removeAvatar": "移除头像",
+        "uploading": "上传中...",
+        "displayName": "显示名称",
+        "displayNamePlaceholder": "输入显示名称",
+        "myWallet": "我的钱包",
+        "saveChanges": "保存更改",
+        "saving": "保存中...",
+        "saveSuccess": "您的更改已保存。",
+        "saveError": "无法保存更改。请重试。",
+        "invalidImage": "请选择有效的图片文件。",
+        "imageTooLarge": "图片大小不能超过 2 MB。",
+        "signInRequired": "连接钱包以管理您的账户。",
+        "avatarUploaded": "头像上传成功",
+        "uploadError": "上传图片时出错，请重试。"
     }
 }

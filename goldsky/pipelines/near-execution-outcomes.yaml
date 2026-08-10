@@ -1,6 +1,7 @@
 name: treasury-dao-outcomes
 apiVersion: 3
 resource_size: s
+use_dedicated_ip: true
 
 sources:
   near_outcomes:
@@ -13,35 +14,95 @@ transforms:
   # Dynamic lookup table for non-DAO accounts (e.g. meta-pool-dao-4.near).
   # Add accounts at runtime via SQL:
   #   INSERT INTO streamling.tracked_accounts (value) VALUES ('meta-pool-dao-4.near');
+  # Keep this table small (lookup cost scales with size) and never insert ''.
   tracked_accounts:
     type: dynamic_table
     backend_type: Postgres
     backend_entity_name: tracked_accounts
     secret_name: TREZU_RENDER
 
-  # Captures ALL execution outcomes relevant to monitored treasuries:
+  # Stage 1 (pure CPU, no I/O): flatten logs ONCE and extract candidate
+  # account ids from log text into plain columns.
   #
-  # Path 1 (sputnik-dao.near — static wildcards):
-  # - Logs mention a sputnik-dao account (FT/MT transfers, wrap.near, swaps)
-  # - receiver_id or executor_id is a sputnik-dao account
+  # Field set validated against 1.02M real log-only DAO mentions in
+  # prod indexed_dao_outcomes (2026-08-01): these 12 patterns capture
+  # 99.61% of them. Candidates cover:
+  # - NEP-297 EVENT_JSON fields: old_owner_id / new_owner_id (ft/nft/mt
+  #   transfers, intents), owner_id (mint/burn), account_id (storage etc.),
+  #   receiver_id / sender_id (ft_transfer_call & custom events — receiver_id
+  #   alone was 87% of the misses of the original 6-field set),
+  #   merchant_id / to / account (payment & custom events)
+  # - Text logs: "Transfer N from X to Y" (wrap.near style),
+  #   "... (beneficiary: X)"
   #
-  # Path 2 (tracked_accounts dynamic table — non-DAO accounts):
-  # - receiver_id or executor_id matches a tracked account
-  # - Logs mention a tracked account (catches FT/MT transfers, intents, etc.)
-  #
-  # Note: logs is List(Utf8) at runtime, so use array_to_string() for filtering.
-  # Note: Log-based matching for non-DAO accounts uses hardcoded LIKE
-  # patterns because dynamic_table_check + regexp_extract doesn't work
-  # reliably in Turbo streaming SQL. Add LIKE patterns here when new
-  # non-DAO accounts are added to the tracked_accounts table.
+  # regexp_extract returns the FIRST match per pattern; the residual 0.39%
+  # (later duplicate fields in multi-event receipts, accounts inside JSON
+  # arrays) is reconciled by the NearBlocks backfill.
+  # Candidates are COALESCEd to '' so downstream lookups never see NULL.
+  outcome_candidates:
+    type: sql
+    primary_key: id
+    sql: |
+      WITH flat AS (
+        SELECT
+          _gs_op,
+          id,
+          executor_id,
+          status,
+          transaction_hash,
+          signer_id,
+          receiver_id,
+          gas_burnt,
+          tokens_burnt,
+          trigger_block_height,
+          trigger_block_hash,
+          trigger_block_timestamp,
+          array_to_string(logs, '\n') AS flat_logs
+        FROM near_outcomes
+      )
+      SELECT
+        _gs_op,
+        id,
+        executor_id,
+        flat_logs AS logs,
+        status,
+        transaction_hash,
+        signer_id,
+        receiver_id,
+        gas_burnt,
+        tokens_burnt,
+        trigger_block_height,
+        trigger_block_hash,
+        trigger_block_timestamp,
+        COALESCE(regexp_extract(flat_logs, '"old_owner_id"\s*:\s*"([^"]+)"', 1), '') AS log_old_owner,
+        COALESCE(regexp_extract(flat_logs, '"new_owner_id"\s*:\s*"([^"]+)"', 1), '') AS log_new_owner,
+        COALESCE(regexp_extract(flat_logs, '"owner_id"\s*:\s*"([^"]+)"', 1), '') AS log_owner,
+        COALESCE(regexp_extract(flat_logs, '"account_id"\s*:\s*"([^"]+)"', 1), '') AS log_account,
+        COALESCE(regexp_extract(flat_logs, ' from ([a-z0-9_.\-]+)', 1), '') AS log_text_from,
+        COALESCE(regexp_extract(flat_logs, ' to ([a-z0-9_.\-]+)', 1), '') AS log_text_to,
+        COALESCE(regexp_extract(flat_logs, '"receiver_id"\s*:\s*"([^"]+)"', 1), '') AS log_receiver,
+        COALESCE(regexp_extract(flat_logs, '"sender_id"\s*:\s*"([^"]+)"', 1), '') AS log_sender,
+        COALESCE(regexp_extract(flat_logs, '"merchant_id"\s*:\s*"([^"]+)"', 1), '') AS log_merchant,
+        COALESCE(regexp_extract(flat_logs, '"to"\s*:\s*"([^"]+)"', 1), '') AS log_to,
+        COALESCE(regexp_extract(flat_logs, '"account"\s*:\s*"([^"]+)"', 1), '') AS log_account_alt,
+        COALESCE(regexp_extract(flat_logs, 'beneficiary: ([a-z0-9_.\-]+)', 1), '') AS log_beneficiary
+      FROM flat
+
+  # Stage 2: filtering. Cheap static checks first; dynamic_table_check calls
+  # are applied only to plain columns at the top level of the WHERE — the
+  # documented, reliable pattern (batched ANY(ARRAY[...]) lookups against
+  # Postgres). This is what makes log-based matching of tracked_accounts
+  # work: the account ids were already extracted into columns in stage 1,
+  # so the exact-match lookup can see them.
   dao_outcomes:
     type: sql
     primary_key: id
     sql: |
       SELECT
+        _gs_op,
         id,
         executor_id,
-        array_to_string(logs, '\n') as logs,
+        logs,
         status,
         transaction_hash,
         signer_id,
@@ -51,13 +112,25 @@ transforms:
         trigger_block_height,
         trigger_block_hash,
         trigger_block_timestamp
-      FROM near_outcomes
-      WHERE array_to_string(logs, ' ') LIKE '%sputnik-dao.near%'
-         OR receiver_id LIKE '%.sputnik-dao.near'
+      FROM outcome_candidates
+      WHERE receiver_id LIKE '%.sputnik-dao.near'
          OR executor_id LIKE '%.sputnik-dao.near'
+         OR logs LIKE '%sputnik-dao.near%'
+         OR logs LIKE '%meta-pool-dao-4.near%'
          OR dynamic_table_check('tracked_accounts', receiver_id)
          OR dynamic_table_check('tracked_accounts', executor_id)
-         OR array_to_string(logs, ' ') LIKE '%meta-pool-dao-4.near%'
+         OR dynamic_table_check('tracked_accounts', log_old_owner)
+         OR dynamic_table_check('tracked_accounts', log_new_owner)
+         OR dynamic_table_check('tracked_accounts', log_owner)
+         OR dynamic_table_check('tracked_accounts', log_account)
+         OR dynamic_table_check('tracked_accounts', log_text_from)
+         OR dynamic_table_check('tracked_accounts', log_text_to)
+         OR dynamic_table_check('tracked_accounts', log_receiver)
+         OR dynamic_table_check('tracked_accounts', log_sender)
+         OR dynamic_table_check('tracked_accounts', log_merchant)
+         OR dynamic_table_check('tracked_accounts', log_to)
+         OR dynamic_table_check('tracked_accounts', log_account_alt)
+         OR dynamic_table_check('tracked_accounts', log_beneficiary)
 
 sinks:
   postgres:

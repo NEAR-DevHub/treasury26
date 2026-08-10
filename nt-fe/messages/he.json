@@ -107,7 +107,8 @@
         "wallet": "ארנק",
         "termsOfService": "תנאי שימוש",
         "privacyPolicy": "מדיניות פרטיות",
-        "disconnect": "התנתקות"
+        "disconnect": "התנתקות",
+        "myAccount": "החשבון שלי"
     },
     "auth": {
         "noWallet": "חבר את הארנק שלך",
@@ -253,6 +254,10 @@
         "wallet": {
             "title": "ארנק Trezu",
             "description": "חתום על הצעות אוצר באמצעות Trezu"
+        },
+        "account": {
+            "title": "החשבון שלי",
+            "description": "נהל את הפרופיל וההגדרות האישיות שלך"
         }
     },
     "depositModal": {
@@ -271,7 +276,8 @@
         },
         "errors": {
             "addressUnavailable": "לא ניתן היה לאחזר כתובת הפקדה עבור הנכס והרשת שנבחרו.",
-            "fetchFailed": "אחזור כתובת ההפקדה נכשל. אנא נסה שוב."
+            "fetchFailed": "אחזור כתובת ההפקדה נכשל. אנא נסה שוב.",
+            "loginRequired": "התחבר כדי ליצור כתובת הפקדה חד-פעמית."
         },
         "title": "הפקדה",
         "subtitle": "בחר נכס ורשת כדי לראות כתובת הפקדה",
@@ -284,7 +290,7 @@
         "depositAddressHeading": "כתובת הפקדה",
         "depositAddressSubtitle": "תמיד בדוק שוב את כתובת ההפקדה שלך.",
         "depositAddressSubtitleConfidential": "<semibold>כתובת הפקדה לשימוש חד-פעמי.</semibold> שימוש חוזר בכתובת זו או שליחת כספים לאחר התפוגה עלולים לגרום לאובדן כספים לצמיתות.",
-        "depositAddressSubtitleConfidentialExpiry": "בתוקף למשך 3 ימים מרגע היצירה. פג תוקף בעוד: {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "בתוקף ל-14 יום ממועד היצירה. פג תוקף בעוד: נותרו {expiresIn}",
         "singleUseAcknowledgement": "אשתמש בכתובת הזו פעם אחת בלבד",
         "addressLabel": "כתובת",
         "addressCopied": "הכתובת הועתקה ללוח",
@@ -307,7 +313,91 @@
             "fiatAnswer": "כרגע עדיין לא, אבל אנחנו עובדים כדי להביא תמיכה בהפקדות פיאט בקרוב. הישארו מעודכנים - זה בדרך 🚀",
             "arrivalQuestion": "כמה זמן לוקח עד שהפקדה מגיעה?",
             "arrivalAnswer": "זמן העיבוד תלוי ברשת."
-        }
+        },
+        "back": "חזרה",
+        "publicAddressTitle": "כתובת הפקדה של {symbol} ב-{network}",
+        "publicAddressSubtitle": "שלח רק את הטוקן הזה, ברשת הזו, לכתובת למטה.",
+        "oneTimeAddressTitle": "כתובת הפקדה חד-פעמית של {symbol} ברשת {network}",
+        "oneTimeAddressSubtitle": "שלח רק את הטוקן הזה, ברשת הזו, לכתובת למטה.",
+        "confidentialTrezuTitle": "הפקדה מ-Trezu חסוי ברשת near.com",
+        "confidentialTrezuSubtitle": "קבל כל נכס מ-Trezu חסוי.",
+        "confidentialNearcomTitle": "הפקדה מ-near.com חסוי ברשת הפנימית",
+        "confidentialNearcomSubtitle": "קבל כל נכס מ-near.com חסוי.",
+        "oneTimeSectionTitle": "כתובת הפקדה חסויה חד-פעמית",
+        "oneTimeSectionSubtitle": "השתמש בה פעם אחת בלבד; כל דבר אחרי ההפקדה הראשונה יאבד.",
+        "internalAddressTitle": "זו כתובת החסויה הפנימית שלך",
+        "generateAddress": "צור כתובת",
+        "showAddress": "הצג כתובת",
+        "copy": "העתק",
+        "share": "שתף",
+        "linkCopied": "הקישור הועתק ללוח",
+        "minDepositValue": "סכום הפקדה מינימלי <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>אל</bold> תשלח הפקדת בדיקה",
+        "doNotReuseAddress": "<bold>אל</bold> תעשה שימוש חוזר, תשמור, תוסיף לרשימה לבנה או תשתף את הכתובת",
+        "doNotReuseAddressShort": "<bold>אל</bold> תעשה שימוש חוזר, תשמור או תוסיף את הכתובת לרשימה לבנה",
+        "oneTimeAckCheckbox": "אני מבין שזו כתובת חד-פעמית ושעליי לשלוח לפחות {amount} {symbol} בהעברה אחת.",
+        "oneTimeAckCheckboxNoMin": "אני מבין שזו כתובת חד-פעמית שיש להשתמש בה בהעברה אחת בלבד.",
+        "onlySendAssetNetwork": "שלח רק <bold>{symbol}</bold> ברשת <bold>{network}</bold>. נכסים או רשתות אחרים יובילו לאובדן כספים.",
+        "expiresInDays": "פג תוקף בעוד <bold>{days} ימים</bold> – <bold>גם אם לא נעשה שימוש</bold>.",
+        "createNewAddressHint": "צריך פרטי הפקדה אחרים? <link>צור כתובת חדשה</link>. יצירת כתובת נוספת לא תשבית את זו.",
+        "receivesOnlyConfidential": "מקבל כספים רק מחשבונות Trezu או near.com חסויים",
+        "receivesOnlyConfidentialSub": "ניתן לשימוש חוזר. לא פג תוקף.",
+        "anythingElseLost": "כל דבר שנשלח ממקום אחר יאבד",
+        "anythingElseLostSub": "בורסות, ארנקים ציבוריים, רשתות אחרות – לא ניתן לשחזר.",
+        "confidentialAckCheckbox": "אני מבין שהפקדות מחוץ ל-Trezu או near.com חסויים יאבדו.",
+        "onlyFromConfidentialTrezu": "רק מ-<bold>Trezu</bold> חסוי",
+        "onlyFromConfidentialNearcom": "רק מ-<bold>near.com</bold> חסוי",
+        "reusableDoesntExpire": "<bold>ניתן לשימוש חוזר.</bold> לא פג תוקף",
+        "fundsOutsideTrezuLost": "כספים שנשלחו מחוץ ל-Trezu חסוי יאבדו",
+        "fundsOutsideNearcomLost": "כספים שנשלחו מחוץ ל-near.com חסוי יאבדו",
+        "publicNetworkRecommendation": "הפקד רק מרשת <bold>{network}</bold>. התחל בעסקה קטנה לבדיקה לפני שליחת הסכום המלא.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "מארנק ציבורי",
+                "subtitle": "צור כתובת הפקדה חד-פעמית"
+            },
+            "confidentialUser": {
+                "title": "ממשתמש חסוי",
+                "subtitle": "הפקדה מ-Trezu ו-near.com חסויים"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "מ-Trezu חסוי",
+            "nearcom": "מ-near.com חסוי",
+            "short": "מחסוי"
+        },
+        "guestBanner": {
+            "title": "אתה צופה כאורח",
+            "description": "כתובת זו שייכת ל-treasury של מישהו אחר. בדוק שוב לפני השליחה."
+        },
+        "transfer": {
+            "title": "העברה ל-Treasury",
+            "waitingForPayment": "ממתין לתשלום",
+            "youSendFromPublic": "אתה שולח מכל ארנק ציבורי",
+            "youSend": "אתה שולח",
+            "goesTo": "מגיע אל",
+            "assetOnNetwork": "{symbol} ברשת {network}",
+            "anyAsset": "כל נכס",
+            "onNetwork": "ברשת {network}",
+            "onNearcomNetwork": "ברשת near.com",
+            "anyAssetOnNearcom": "כל נכס ברשת near.com",
+            "securedOnTrezu": "מאובטח ב-Trezu",
+            "payWithTrezu": "שלם עם Trezu",
+            "payWithNearcom": "שלם עם near.com",
+            "payRequiresTreasury": "התחבר עם treasury של Trezu כדי לשלם.",
+            "copyLink": "העתק קישור",
+            "titleConfidential": "העברה ל-Treasury חסוי",
+            "chooseTreasuryTitle": "בחר Treasury",
+            "chooseTreasuryDescription": "מאיזו treasury מגיע התשלום הזה?",
+            "noMemberTreasuries": "אינך חבר עדיין באף treasury.",
+            "createTreasury": "צור treasury",
+            "expired": "פג תוקף",
+            "used": "בשימוש",
+            "linkInactiveTitle": "הקישור הזה כבר לא פעיל",
+            "linkInactiveDescription": "כדי לבצע את התשלום, בקשו מהשולח קישור חדש."
+        },
+        "expiresInRemaining": "פג תוקף בעוד <time>{duration}</time> – <bold>גם אם לא נעשה בו שימוש</bold>.",
+        "addressExpired": "תוקף הכתובת הזו פג."
     },
     "assetDetails": {
         "coinPrice": "מחיר מטבע",
@@ -845,7 +935,8 @@
             "yourLink": "קישור ההזמנה שלכם",
             "copyLink": "העתקת קישור",
             "linkCopied": "קישור ההזמנה הועתק",
-            "generateNewLink": "יצירת קישור חדש"
+            "generateNewLink": "יצירת קישור חדש",
+            "generatingNewLink": "יוצר קישור חדש"
         },
         "joinRequests": {
             "title": "רוצה להצטרף",
@@ -873,6 +964,9 @@
             "successTitle": "כמעט בפנים",
             "successDescription": "תוכלו להצטרף אחרי שהצוות יבדוק\nאת הבקשה. בינתיים אין מה לעשות.",
             "seeTreasury": "צפייה באוצר",
+            "alreadyMemberTitle": "אתה כבר חבר",
+            "alreadyMemberDescription": "אין צורך לבקש גישה — אתה כבר חלק מ-{treasury}.",
+            "goToTreasury": "עבור לאוצר",
             "invalidTitle": "ההזמנה לא נמצאה",
             "invalidDescription": "קישור ההזמנה אינו תקף או שאינו זמין יותר.",
             "usedTitle": "ההזמנה כבר נוצלה",
@@ -980,7 +1074,11 @@
             "fileReadError": "שגיאה בקריאת הקובץ. אנא נסה שוב.",
             "primaryColor": "צבע ראשי",
             "primaryColorDescription": "הגדר את הצבע הראשי עבור רכיבי הממשק של האוצר שלך. צבע זה ישמש במצבים בהירים וכהים כאחד, אז שמור על ניגודיות בחירה בגוונים ניטרליים.",
-            "selectColorLabel": "בחר צבע {color}"
+            "selectColorLabel": "בחר צבע {color}",
+            "saveChanges": "שמור שינויים",
+            "saving": "שומר...",
+            "savedToast": "השינויים שלך נשמרו.",
+            "saveFailed": "לא ניתן לשמור את השינויים. נסה שוב."
         },
         "voting": {
             "validation": {
@@ -2060,10 +2158,9 @@
         "exchangeFulfillment": "החלפה",
         "stakingRewards": "תגמולי סטייקינג",
         "proposalAction": "פעולת הצעה",
-        "deposit": "הפקדת {symbol}",
-        "paymentSent": "תשלום נשלח",
+        "deposit": "הפקדה",
+        "transfer": "העברה",
         "transaction": "עסקה",
-        "fallbackToken": "טוקן",
         "viaIntents": "דרך NEAR Intents",
         "from": "מאת {account}",
         "to": "אל {account}",
@@ -2301,6 +2398,10 @@
             "title": "גלה את Trezu",
             "description": "צור חשבון כדי לפתוח הרשאות לכל התכונות והיתרונות של Trezu.",
             "cta": "יצירת אוצר"
+        },
+        "pendingJoinBanner": {
+            "title": "בקשת ההצטרפות שלך ממתינה",
+            "description": "אפשר כבר לצפות באוצר הזה. כשחבר יאשר אותך, תוכל ליצור בקשות, להצביע או לנהל כספים בהתאם לתפקיד שלך."
         },
         "infoBox": {
             "title": "קבל יותר מ-Trezu",
@@ -2540,5 +2641,23 @@
             "min": "{label} חייב להיות לפחות {min}",
             "max": "{label} חייב להיות לכל היותר {max}"
         }
+    },
+    "account": {
+        "personalSettings": "הגדרות אישיות",
+        "uploadAvatar": "העלה תמונת פרופיל",
+        "removeAvatar": "הסר תמונת פרופיל",
+        "uploading": "מעלה...",
+        "displayName": "שם תצוגה",
+        "displayNamePlaceholder": "הזן שם תצוגה",
+        "myWallet": "הארנק שלי",
+        "saveChanges": "שמור שינויים",
+        "saving": "שומר...",
+        "saveSuccess": "השינויים שלך נשמרו.",
+        "saveError": "לא ניתן לשמור את השינויים. נסה שוב.",
+        "invalidImage": "בחר קובץ תמונה תקין.",
+        "imageTooLarge": "התמונה חייבת להיות עד 2 MB.",
+        "signInRequired": "חבר את הארנק כדי לנהל את החשבון שלך.",
+        "avatarUploaded": "תמונת הפרופיל הועלתה בהצלחה",
+        "uploadError": "אירעה שגיאה בהעלאת התמונה, נסה שוב."
     }
 }

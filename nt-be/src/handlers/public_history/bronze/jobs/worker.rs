@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use apalis::layers::WorkerBuilderExt;
 use apalis::prelude::*;
 use apalis_core::backend::TaskSinkError;
+use apalis_core::backend::poll_strategy::{IntervalStrategy, StrategyBuilder};
 use apalis_core::task::Task;
 use apalis_postgres::{Config, PgContext, PgTask, PostgresStorage};
 use axum::http::StatusCode;
@@ -16,6 +17,9 @@ use super::PublicHistorySupervisorFuture;
 use super::model::PublicHistoryJob;
 use crate::AppState;
 use crate::handlers::public_history::bronze::NearblocksPriority;
+use crate::handlers::public_history::bronze::api::{
+    NearblocksCursor, fetch_latest_indexed_block_height,
+};
 use crate::handlers::public_history::bronze::ingest_worker::{
     HandlerResult, fetch_source_page, latest_seen,
 };
@@ -26,16 +30,30 @@ use crate::handlers::public_history::bronze::store::{
 use crate::handlers::public_history::gold::projector::project_public_gold_for_account;
 use crate::handlers::public_history::proposals::linker::link_public_proposal_receipts;
 use crate::handlers::public_history::silver::worker::project_public_silver_for_account;
+use crate::handlers::public_history::verification::BalanceVerifier;
 use crate::jobs::context::JobContext;
 
 use super::postgres::{
     PUBLIC_HISTORY_BACKFILL_NAMESPACE, PUBLIC_HISTORY_INFLIGHT_INDEX, PUBLIC_HISTORY_JOB_KEY_FIELD,
     PUBLIC_HISTORY_LATEST_NAMESPACE, active_public_history_job_exists, is_unique_violation_on,
+    set_active_public_history_job_priority,
 };
 
-pub(crate) const JOB_CONCURRENCY: usize = 2;
+pub(crate) const JOB_CONCURRENCY_DEFAULT: usize = 2;
+
+/// Latest-refresh worker slots, overridable via
+/// `PUBLIC_HISTORY_LATEST_CONCURRENCY`. Slots hold the shared NearBlocks
+/// rate gate while fetching, so raising this only helps together with a
+/// higher `NEARBLOCKS_MAX_PER_MINUTE`.
+pub(crate) fn job_concurrency() -> usize {
+    std::env::var("PUBLIC_HISTORY_LATEST_CONCURRENCY")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(JOB_CONCURRENCY_DEFAULT)
+        .max(1)
+}
 pub(crate) const BACKFILL_JOB_CONCURRENCY: usize = 2;
-pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 20;
+pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 50;
 
 const PUBLIC_HISTORY_LATEST_WORKER: &str = "public-history-latest";
 const PUBLIC_HISTORY_BACKFILL_WORKER: &str = "public-history-backfill";
@@ -69,32 +87,30 @@ fn public_history_error(message: impl Into<String>) -> BoxDynError {
     std::io::Error::other(message.into()).into()
 }
 
+/// Fixed poll cadence for the latency-sensitive latest queue. The apalis
+/// default strategy backs off exponentially to 60s while a queue is idle,
+/// which is exactly the state this queue is in between activity bursts — a
+/// detector enqueue would then wait up to a full minute to be picked up.
+const LATEST_POLL_INTERVAL: Duration = Duration::from_secs(1);
+
 fn latest_storage(pool: PgPool) -> PublicHistoryStorage {
-    public_history_storage(
-        pool,
-        PUBLIC_HISTORY_LATEST_NAMESPACE,
-        JOB_CONCURRENCY.max(1),
-    )
-}
-
-fn backfill_storage(pool: PgPool) -> PublicHistoryStorage {
-    public_history_storage(
-        pool,
-        PUBLIC_HISTORY_BACKFILL_NAMESPACE,
-        BACKFILL_JOB_CONCURRENCY.max(1),
-    )
-}
-
-fn public_history_storage(
-    pool: PgPool,
-    namespace: &'static str,
-    buffer_size: usize,
-) -> PublicHistoryStorage {
-    let config = Config::new(namespace).set_buffer_size(buffer_size);
+    let config = Config::new(PUBLIC_HISTORY_LATEST_NAMESPACE)
+        .set_buffer_size(job_concurrency())
+        .with_poll_interval(
+            StrategyBuilder::new()
+                .apply(IntervalStrategy::new(LATEST_POLL_INTERVAL))
+                .build(),
+        );
     PostgresStorage::new_with_config(&pool, &config)
 }
 
-fn task_with_job_key(job: PublicHistoryJob) -> PgTask<PublicHistoryJob> {
+fn backfill_storage(pool: PgPool) -> PublicHistoryStorage {
+    let config = Config::new(PUBLIC_HISTORY_BACKFILL_NAMESPACE)
+        .set_buffer_size(BACKFILL_JOB_CONCURRENCY.max(1));
+    PostgresStorage::new_with_config(&pool, &config)
+}
+
+fn task_with_job_key(job: PublicHistoryJob, priority: i32) -> PgTask<PublicHistoryJob> {
     let mut metadata = serde_json::Map::new();
     metadata.insert(
         PUBLIC_HISTORY_JOB_KEY_FIELD.to_string(),
@@ -102,15 +118,16 @@ fn task_with_job_key(job: PublicHistoryJob) -> PgTask<PublicHistoryJob> {
     );
 
     Task::builder(job)
-        .with_ctx(PgContext::new().with_meta(metadata))
+        .with_ctx(PgContext::new().with_meta(metadata).with_priority(priority))
         .build()
 }
 
 async fn push_job(
     storage: &mut PublicHistoryStorage,
     job: PublicHistoryJob,
+    priority: i32,
 ) -> Result<bool, sqlx::Error> {
-    match storage.push_task(task_with_job_key(job)).await {
+    match storage.push_task(task_with_job_key(job, priority)).await {
         Ok(_) => Ok(true),
         Err(TaskSinkError::PushError(error))
             if is_unique_violation_on(&error, PUBLIC_HISTORY_INFLIGHT_INDEX) =>
@@ -136,7 +153,30 @@ pub(crate) async fn enqueue_latest_refresh_job(
         trigger_transaction_hash,
     );
     let mut storage = latest_storage(pool.clone());
-    push_job(&mut storage, job).await
+    push_job(&mut storage, job, 0).await
+}
+
+pub(crate) async fn enqueue_preverification_refresh_job(
+    pool: &PgPool,
+    account_id: String,
+    source: PublicHistorySource,
+    trigger_block_height: i64,
+    priority: i32,
+) -> Result<bool, sqlx::Error> {
+    let job = PublicHistoryJob::refresh_latest(account_id, source, trigger_block_height, None);
+    let job_key = job.job_key().to_string();
+    let mut storage = latest_storage(pool.clone());
+    let inserted = push_job(&mut storage, job, priority).await?;
+    if !inserted {
+        set_active_public_history_job_priority(
+            pool,
+            PUBLIC_HISTORY_LATEST_NAMESPACE,
+            &job_key,
+            priority,
+        )
+        .await?;
+    }
+    Ok(inserted)
 }
 
 async fn consume_backfill_budget(
@@ -184,18 +224,8 @@ pub(crate) async fn enqueue_backfill_page_job(
         return Ok(false);
     }
 
-    let PublicHistoryJob::BackfillPage {
-        account_id, source, ..
-    } = &job
-    else {
-        unreachable!("constructed backfill job must be BackfillPage")
-    };
-    if !consume_backfill_budget(pool, account_id, *source).await? {
-        return Ok(false);
-    }
-
     let mut storage = backfill_storage(pool.clone());
-    push_job(&mut storage, job).await
+    push_job(&mut storage, job, 0).await
 }
 
 async fn ingest_page(
@@ -223,11 +253,53 @@ async fn ingest_page(
     ))
 }
 
+async fn trigger_transaction_is_ingested(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+    transaction_hash: &str,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT EXISTS (
+            SELECT 1
+            FROM bronze_public_history_events
+            WHERE account_id = $1
+              AND source = $2::public_history_source
+              AND transaction_hash = $3
+        )
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .bind(transaction_hash)
+    .fetch_one(pool)
+    .await
+}
+
 async fn run_latest_refresh(
     state: &AppState,
     account_id: &str,
     source: PublicHistorySource,
+    refresh_cutoff_block_height: i64,
+    trigger_transaction_hash: Option<&str>,
 ) -> HandlerResult<(u64, u64, u64)> {
+    // An inactive account can legitimately have no new events, so prove the
+    // provider has reached the lag-adjusted cutoff before reading this source.
+    // Starting the drain only after this preflight avoids certifying an account
+    // page that was read before the provider crossed the boundary.
+    let provider_head =
+        fetch_latest_indexed_block_height(state, NearblocksPriority::Latest).await?;
+    if provider_head < refresh_cutoff_block_height {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!(
+                "NearBlocks indexed head {} has not reached refresh cutoff {}",
+                provider_head, refresh_cutoff_block_height
+            ),
+        ));
+    }
+
     let watermark = load_public_history_cursor(&state.db_pool, account_id, source)
         .await
         .map_err(|error| {
@@ -238,16 +310,29 @@ async fn run_latest_refresh(
         })?
         .and_then(|cursor| cursor.last_seen_block_height);
 
-    let mut cursor: Option<String> = None;
+    let mut cursor: Option<NearblocksCursor> = None;
     let mut totals = (0, 0, 0);
     let mut max_seen_height: Option<i64> = None;
+    let mut trigger_ingested = match trigger_transaction_hash {
+        Some(transaction_hash) => {
+            trigger_transaction_is_ingested(&state.db_pool, account_id, source, transaction_hash)
+                .await
+                .map_err(|error| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        format!("trigger transaction verification failed: {error}"),
+                    )
+                })?
+        }
+        None => true,
+    };
 
     loop {
         let page = fetch_source_page(
             state,
             account_id,
             source,
-            cursor.as_deref(),
+            cursor.as_ref(),
             NearblocksPriority::Latest,
         )
         .await?;
@@ -260,6 +345,12 @@ async fn run_latest_refresh(
         if page_height > max_seen_height {
             max_seen_height = page_height;
         }
+        if let Some(transaction_hash) = trigger_transaction_hash {
+            trigger_ingested |= page
+                .events
+                .iter()
+                .any(|event| event.transaction_hash.as_deref() == Some(transaction_hash));
+        }
 
         // NearBlocks only paginates newest→older, so a refresh walks from the
         // head until it overlaps history it has already seen. An event strictly
@@ -271,9 +362,9 @@ async fn run_latest_refresh(
                 .events
                 .iter()
                 .any(|event| event.block_height < watermark),
-            // First refresh seeds the watermark from one page; backfill owns
-            // the rest of history.
-            None => true,
+            // A periodic first refresh seeds the watermark from one page;
+            // event-triggered work keeps paging until it finds its transaction.
+            None => trigger_ingested,
         };
         if page.events.is_empty() || page.next_cursor.is_none() || reached_watermark {
             break;
@@ -281,17 +372,35 @@ async fn run_latest_refresh(
         cursor = page.next_cursor;
     }
 
-    // One poll record per drain: the block-height watermark (GREATEST upsert)
-    // advances only after every fetched page ingested successfully, so a
-    // failed drain retries from an unmoved watermark.
-    record_public_history_poll_result(&state.db_pool, account_id, source, max_seen_height)
-        .await
-        .map_err(|error| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("public poll schedule update failed: {}", error),
-            )
-        })?;
+    if let Some(transaction_hash) = trigger_transaction_hash
+        && !trigger_ingested
+    {
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!(
+                "NearBlocks {} refresh has not indexed triggering transaction {}",
+                source, transaction_hash
+            ),
+        ));
+    }
+
+    // One poll record per verified drain: the block-height watermark (GREATEST
+    // upsert) advances only after every fetched page ingested successfully, so
+    // a failed drain retries from an unmoved watermark.
+    record_public_history_poll_result(
+        &state.db_pool,
+        account_id,
+        source,
+        max_seen_height,
+        provider_head,
+    )
+    .await
+    .map_err(|error| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("public poll schedule update failed: {}", error),
+        )
+    })?;
 
     Ok(totals)
 }
@@ -322,11 +431,28 @@ async fn run_backfill_page(
         return Ok((0, 0, 0));
     }
 
+    // Budget is consumed here, immediately before the provider request, so a
+    // job that dies before fetching (or scheduler re-enqueue churn) cannot
+    // burn the daily page allowance without ingesting anything.
+    let has_budget = consume_backfill_budget(&state.db_pool, account_id, source)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public backfill budget check failed: {}", error),
+            )
+        })?;
+    if !has_budget {
+        return Ok((0, 0, 0));
+    }
+
+    let request_cursor = job_cursor.clone().and_then(NearblocksCursor::new);
+
     let page = fetch_source_page(
         state,
         account_id,
         source,
-        job_cursor.as_deref(),
+        request_cursor.as_ref(),
         NearblocksPriority::Backfill,
     )
     .await?;
@@ -334,13 +460,14 @@ async fn run_backfill_page(
     let page_is_empty = page.events.is_empty();
     let (touched, inserted, changed) = ingest_page(state, source, &page.events).await?;
 
-    let backfill_done =
-        page_is_empty || next_cursor.is_none() || next_cursor.as_deref() == job_cursor.as_deref();
+    let backfill_done = page_is_empty
+        || next_cursor.is_none()
+        || next_cursor.as_ref().map(NearblocksCursor::as_str) == job_cursor.as_deref();
     save_public_backfill_progress(
         &state.db_pool,
         account_id,
         source,
-        next_cursor.as_deref(),
+        next_cursor.as_ref().map(NearblocksCursor::as_str),
         backfill_done,
     )
     .await
@@ -352,14 +479,19 @@ async fn run_backfill_page(
     })?;
 
     if !backfill_done {
-        enqueue_backfill_page_job(&state.db_pool, account_id.to_string(), source, next_cursor)
-            .await
-            .map_err(|error| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("public next backfill enqueue failed: {}", error),
-                )
-            })?;
+        enqueue_backfill_page_job(
+            &state.db_pool,
+            account_id.to_string(),
+            source,
+            next_cursor.map(NearblocksCursor::into_string),
+        )
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public next backfill enqueue failed: {}", error),
+            )
+        })?;
     }
 
     Ok((touched, inserted, changed))
@@ -370,20 +502,30 @@ async fn handle_latest_job(
     context: Data<JobContext>,
 ) -> Result<(), BoxDynError> {
     let PublicHistoryJob::RefreshLatest {
-        account_id, source, ..
+        account_id,
+        source,
+        trigger_block_height,
+        trigger_transaction_hash,
+        ..
     } = job
     else {
         return Ok(());
     };
 
-    let (touched, inserted, changed) = run_latest_refresh(&context.state, &account_id, source)
-        .await
-        .map_err(|(status, message)| {
-            public_history_error(format!(
-                "public latest refresh failed ({}): {}",
-                status, message
-            ))
-        })?;
+    let (touched, inserted, changed) = run_latest_refresh(
+        &context.state,
+        &account_id,
+        source,
+        trigger_block_height,
+        trigger_transaction_hash.as_deref(),
+    )
+    .await
+    .map_err(|(status, message)| {
+        public_history_error(format!(
+            "public latest refresh failed ({}): {}",
+            status, message
+        ))
+    })?;
 
     tracing::info!(
         account_id = account_id,
@@ -394,37 +536,42 @@ async fn handle_latest_job(
         "public latest refresh job finished"
     );
 
-    let silver_ready =
-        match project_public_silver_for_account(&context.state.db_pool, &account_id).await {
-            Ok(silver_stats) if silver_stats.skipped_locked => {
-                tracing::debug!(
-                    account_id = account_id,
-                    source = %source,
-                    "public latest refresh projection nudge skipped silver lock"
-                );
-                false
-            }
-            Ok(silver_stats) => {
-                tracing::debug!(
-                    account_id = account_id,
-                    source = %source,
-                    rows_projected = silver_stats.rows_projected,
-                    rows_deleted = silver_stats.rows_deleted,
-                    errors_written = silver_stats.errors_written,
-                    "public latest refresh projection nudge finished silver"
-                );
-                true
-            }
-            Err(error) => {
-                tracing::warn!(
-                    account_id = account_id,
-                    source = %source,
-                    error = %error,
-                    "public latest refresh projection nudge failed silver"
-                );
-                false
-            }
-        };
+    let silver_ready = match project_public_silver_for_account(
+        &context.state.db_pool,
+        &account_id,
+        context.state.signer_id.as_str(),
+    )
+    .await
+    {
+        Ok(silver_stats) if silver_stats.skipped_locked => {
+            tracing::debug!(
+                account_id = account_id,
+                source = %source,
+                "public latest refresh projection nudge skipped silver lock"
+            );
+            false
+        }
+        Ok(silver_stats) => {
+            tracing::debug!(
+                account_id = account_id,
+                source = %source,
+                rows_projected = silver_stats.rows_projected,
+                rows_deleted = silver_stats.rows_deleted,
+                errors_written = silver_stats.errors_written,
+                "public latest refresh projection nudge finished silver"
+            );
+            true
+        }
+        Err(error) => {
+            tracing::warn!(
+                account_id = account_id,
+                source = %source,
+                error = %error,
+                "public latest refresh projection nudge failed silver"
+            );
+            false
+        }
+    };
 
     if !silver_ready {
         return Ok(());
@@ -457,7 +604,34 @@ async fn handle_latest_job(
             if gold_stats.rows_projected > 0 || gold_stats.rows_deleted > 0 {
                 context
                     .state
-                    .publish_treasury_projection_updated(account_id.clone());
+                    .publish_treasury_projection_updated(account_id.clone())
+                    .await;
+            }
+
+            // First verification is event-driven: a freshly projected
+            // treasury gets its gate immediately (charts + ledger-fed
+            // dashboard in the same pass), instead of waiting for the next
+            // projection cycle. No-op for already-gated accounts.
+            let verifier = BalanceVerifier::new(
+                &context.state.db_pool,
+                &context.state.archival_network,
+                context
+                    .state
+                    .env_vars
+                    .public_native_verification_tolerance_near,
+            );
+            match verifier.nudge_account_gate(&account_id).await {
+                Ok(true) => {
+                    tracing::info!(account_id, "first balance verification passed via nudge");
+                }
+                Ok(false) => {}
+                Err(error) => {
+                    tracing::warn!(
+                        account_id,
+                        %error,
+                        "verification nudge failed; retried on the next ledger change"
+                    );
+                }
             }
         }
         Err(error) => {
@@ -644,7 +818,7 @@ pub(crate) fn public_history_job_worker_futures(
                     .data(JobContext::new(latest_state))
                     .timeout(crate::jobs::job_timeout())
                     .enable_tracing()
-                    .concurrency(JOB_CONCURRENCY)
+                    .concurrency(job_concurrency())
                     .build(handle_latest_job)
                     .run_until(async move {
                         worker_shutdown.cancelled().await;

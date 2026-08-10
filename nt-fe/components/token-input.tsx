@@ -406,7 +406,11 @@ export function TokenInput<
                                         {`≈ ${formatCurrency(estimatedUSDValue)}`}
                                     </p>
                                 )}
-                            {balanceWarning && (
+                            {displayError ? (
+                                <p className="text-destructive text-sm mt-2">
+                                    {String(displayError)}
+                                </p>
+                            ) : balanceWarning ? (
                                 <p className="text-general-info-foreground text-sm mt-2">
                                     {balanceWarning.type === "fee_not_covered"
                                         ? t("insufficientTokensForFee", {
@@ -418,11 +422,6 @@ export function TokenInput<
                                           })
                                         : t("insufficientTokens")}
                                 </p>
-                            )}
-                            {displayError ? (
-                                <p className="text-destructive text-sm mt-2">
-                                    {String(displayError)}
-                                </p>
                             ) : warningMessage ? (
                                 <WarningMessage
                                     variant="inline"
@@ -433,11 +432,11 @@ export function TokenInput<
                                 <p className="text-general-info-foreground text-sm mt-2">
                                     {infoMessage}
                                 </p>
-                            ) : !balanceWarning ? (
+                            ) : (
                                 <p className="text-muted-foreground text-xs invisible">
                                     Invisible
                                 </p>
-                            ) : null}
+                            )}
                         </>
                     </InputBlock>
                 );

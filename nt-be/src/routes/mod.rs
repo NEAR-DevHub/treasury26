@@ -146,6 +146,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             "/api/balance-history/export",
             get(handlers::balance_changes::history::export_balance),
         )
+        .route(
+            "/api/proposals/refresh",
+            post(handlers::public_history::proposals::refresh::refresh_public_proposal),
+        )
         // Token endpoints
         .route(
             "/api/token/metadata",
@@ -170,6 +174,7 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/treasury/config",
             get(handlers::treasury::config::get_treasury_config)
+                .put(handlers::treasury::config::update_treasury_settings),
         )
         .route(
             "/api/treasury/check-handle-unused",
@@ -206,7 +211,8 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         )
         .route(
             "/api/user/profile",
-            get(handlers::user::profile::get_profile),
+            get(handlers::user::profile::get_profile)
+                .put(handlers::user::profile::update_profile),
         )
         .route(
             "/api/user/check-account-exists",
@@ -305,6 +311,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/intents/deposit-address",
             post(handlers::intents::deposit_address::get_deposit_address),
+        )
+        .route(
+            "/api/intents/confidential/deposit-address/status",
+            get(handlers::intents::deposit_address::get_confidential_deposit_address_status),
         )
         .route(
             "/api/intents/bridge-tokens",
@@ -447,6 +457,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/member-invites/{token}/join",
             post(handlers::member_invites::join_via_invite),
+        )
+        .route(
+            "/api/treasury/{dao_id}/member-join-requests/me",
+            get(handlers::member_invites::get_my_member_join_status),
         )
         .route(
             "/api/treasury/{dao_id}/member-join-requests",

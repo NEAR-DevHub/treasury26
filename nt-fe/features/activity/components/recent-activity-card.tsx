@@ -409,23 +409,14 @@ export function RecentActivity() {
 
     const getActivityType = useCallback(
         (activity: RecentActivityType) => {
-            return getActivityLabel({
-                ...activity,
-                tokenSymbol: activity.tokenMetadata?.symbol,
-            });
+            return getActivityLabel(activity);
         },
         [getActivityLabel],
     );
 
     const getActivityFrom = useCallback(
         (activity: RecentActivityType) => {
-            return getActivitySubLabel(
-                {
-                    ...activity,
-                    tokenSymbol: activity.tokenMetadata?.symbol,
-                },
-                treasuryId,
-            );
+            return getActivitySubLabel(activity, treasuryId);
         },
         [getActivitySubLabel, treasuryId],
     );

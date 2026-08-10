@@ -10,6 +10,7 @@ import {
 import { OnboardingProgress } from "@/features/onboarding";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { InfoBox } from "@/features/onboarding/components/info-box";
+import { PendingJoinBanner } from "@/features/onboarding/components/pending-join-banner";
 import {
     CongratsTooltip,
     NotificationsTooltip,
@@ -47,6 +48,7 @@ export default function AppPage() {
                         <div className="lg:hidden empty:hidden">
                             <CreateBanner />
                         </div>
+                        <PendingJoinBanner />
                         <OnboardingProgress
                             onDepositClick={handleDepositOpen}
                         />

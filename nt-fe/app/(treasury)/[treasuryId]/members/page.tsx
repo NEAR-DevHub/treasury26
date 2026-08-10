@@ -420,27 +420,27 @@ export default function MembersPage() {
                         {[...Array(5)].map((_, i) => (
                             <TableRow key={i}>
                                 <TableCell className="pl-6">
-                                    <div className="w-4 h-4 bg-muted rounded animate-pulse" />
+                                    <div className="w-4 h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+                                        <div className="w-10 h-10 rounded-full bg-general-unofficial-accent-0 animate-pulse" />
                                         <div className="space-y-2 flex-1">
-                                            <div className="h-4 bg-muted rounded w-48 animate-pulse" />
-                                            <div className="h-3 bg-muted rounded w-32 animate-pulse" />
+                                            <div className="h-4 bg-general-unofficial-accent-0 rounded w-48 animate-pulse" />
+                                            <div className="h-3 bg-general-unofficial-accent-0 rounded w-32 animate-pulse" />
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell className="pr-6 md:pr-0">
                                     <div className="flex gap-2">
-                                        <div className="h-7 bg-muted rounded w-20 animate-pulse" />
-                                        <div className="h-7 bg-muted rounded w-24 animate-pulse" />
+                                        <div className="h-7 bg-general-unofficial-accent-0 rounded w-20 animate-pulse" />
+                                        <div className="h-7 bg-general-unofficial-accent-0 rounded w-24 animate-pulse" />
                                     </div>
                                 </TableCell>
                                 <TableCell className="pr-6 hidden md:table-cell">
                                     <div className="flex justify-end gap-2">
-                                        <div className="w-8 h-8 bg-muted rounded animate-pulse" />
-                                        <div className="w-8 h-8 bg-muted rounded animate-pulse" />
+                                        <div className="w-8 h-8 bg-general-unofficial-accent-0 rounded animate-pulse" />
+                                        <div className="w-8 h-8 bg-general-unofficial-accent-0 rounded animate-pulse" />
                                     </div>
                                 </TableCell>
                             </TableRow>

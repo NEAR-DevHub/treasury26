@@ -377,6 +377,140 @@ fn build_intents_tokens(
 
 pub const MIN_NEAR_DISPLAY_BALANCE: NearToken = NearToken::from_millinear(1);
 
+/// Override live NEAR/FT/intents balances with the verified ledger's
+/// user-owned balances (`gold_treasury_ledger_events`), so the dashboard's
+/// current balance is definitionally the chart's latest point. Once a
+/// treasury's ledger is chain-verified it stays authoritative — recompute
+/// windows serve the last projected balances (stale, never a silent switch
+/// back to live reads), and a failed ledger read fails the request. Live
+/// reads remain only for treasuries whose ledger was never verified.
+async fn apply_ledger_balances(
+    state: &Arc<AppState>,
+    account: &AccountId,
+    tokens: &mut [(SimplifiedToken, U128)],
+) -> Result<(), (StatusCode, String)> {
+    use crate::handlers::balance_changes::public_list;
+    use crate::handlers::public_history::charts::repository::load_chart_readiness;
+
+    if !state.env_vars.unified_gold_ledger_reads {
+        return Ok(());
+    }
+    let readiness = load_chart_readiness(&state.db_pool, account.as_str())
+        .await
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    if !readiness.verification_passed {
+        return Ok(());
+    }
+
+    let ledger = public_list::load_prior_balances(
+        &state.db_pool,
+        account.as_str(),
+        chrono::Utc::now(),
+        None,
+    )
+    .await
+    .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+
+    for (token, raw_balance) in tokens.iter_mut() {
+        let ledger_value = match token.residency {
+            TokenResidency::Near => ledger.get("near"),
+            TokenResidency::Ft => token
+                .contract_id
+                .as_deref()
+                .and_then(|contract| ledger.get(contract)),
+            // The ledger stores canonical asset ids (same convention as the
+            // chart's stored_asset_id): intents-held NEP-141s prefixed with
+            // the custodian, NEP-245s bare. `token.id` is the display id
+            // ("usdc") and must never key the lookup.
+            TokenResidency::Intents => token.contract_id.as_deref().and_then(|contract| {
+                if contract.starts_with("nep245:") {
+                    ledger.get(contract)
+                } else {
+                    ledger.get(&format!("intents.near:{contract}"))
+                }
+            }),
+            _ => None,
+        };
+        let Some(ledger_value) = ledger_value else {
+            continue;
+        };
+
+        let scale = crate::handlers::public_history::silver::models::decimal_denominator(
+            i32::from(token.decimals),
+        );
+        // Yocto-scale negatives are ledger drift, not holdings: display zero,
+        // still ledger-sourced.
+        let mut raw = if ledger_value.sign() == bigdecimal::num_bigint::Sign::Minus {
+            0
+        } else {
+            let Some(raw) = (ledger_value * &scale).with_scale(0).to_u128() else {
+                continue;
+            };
+            raw
+        };
+        if matches!(token.residency, TokenResidency::Near)
+            && raw < MIN_NEAR_DISPLAY_BALANCE.as_yoctonear()
+        {
+            raw = 0;
+        }
+
+        token.balance = Balance::Standard {
+            total: raw.to_string(),
+            locked: "0".to_string(),
+        };
+        *raw_balance = raw.into();
+    }
+    Ok(())
+}
+
+/// Confidential intents balances from the unified ledger's per-asset head
+/// balances — the values verified against the 1Click balances API at
+/// projection time — converted back to raw base units. Returns `None` when
+/// the DAO has no confidential ledger rows yet (fresh DAO, backfill not
+/// landed), in which case the caller falls back to the live 1Click read.
+async fn load_confidential_ledger_balances(
+    state: &Arc<AppState>,
+    account: &AccountId,
+) -> Result<Option<Vec<(String, String)>>, (StatusCode, String)> {
+    use bigdecimal::Zero;
+
+    use crate::constants::intents_tokens::get_defuse_tokens_map;
+    use crate::handlers::balance_changes::confidential_list;
+    use crate::handlers::public_history::silver::models::decimal_denominator;
+
+    let ledger = confidential_list::load_prior_balances(
+        &state.db_pool,
+        account.as_str(),
+        chrono::Utc::now(),
+        None,
+    )
+    .await
+    .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+    if ledger.is_empty() {
+        return Ok(None);
+    }
+
+    let defuse_map = get_defuse_tokens_map();
+    let mut balances = Vec::with_capacity(ledger.len());
+    for (asset, balance) in ledger {
+        if balance.sign() == bigdecimal::num_bigint::Sign::Minus || balance.is_zero() {
+            continue;
+        }
+        let Some(token_info) = defuse_map.get(&asset) else {
+            tracing::warn!(
+                "{} unknown defuse asset {} in ledger, skipping",
+                account,
+                asset
+            );
+            continue;
+        };
+        let scale = decimal_denominator(i32::from(token_info.decimals));
+        let raw = (&balance * &scale).with_scale(0);
+        balances.push((asset, raw.to_string()));
+    }
+    Ok(Some(balances))
+}
+
 /// Fetch NEAR balance for an account
 pub async fn fetch_near_balance(
     state: &Arc<AppState>,
@@ -446,7 +580,19 @@ pub async fn compute_user_assets(
     let ft_lockup_positions;
 
     if is_confidential {
-        intents_balances = fetch_confidential_balances(state, account).await?.balances;
+        // The unified ledger is authoritative once rows exist — its heads were
+        // verified against 1Click at projection time. Live 1Click reads remain
+        // for DAOs with no ledger rows yet, and for the legacy path while
+        // UNIFIED_GOLD_LEDGER_READS is off.
+        let ledger_balances = if state.env_vars.unified_gold_ledger_reads {
+            load_confidential_ledger_balances(state, account).await?
+        } else {
+            None
+        };
+        intents_balances = match ledger_balances {
+            Some(ledger_balances) => ledger_balances,
+            None => fetch_confidential_balances(state, account).await?.balances,
+        };
         ref_tokens_with_balances = Vec::new();
         near_balance = None;
         lockup_balance = None;
@@ -804,6 +950,13 @@ pub async fn compute_user_assets(
             },
             near_bal.balance,
         ));
+    }
+
+    // Verified public treasuries serve the same user-owned balances the
+    // chart's latest point shows; live reads stay only for never-verified
+    // treasuries.
+    if !is_confidential {
+        apply_ledger_balances(state, account, &mut all_simplified_tokens).await?;
     }
 
     // Sort combined list by balance (highest first)

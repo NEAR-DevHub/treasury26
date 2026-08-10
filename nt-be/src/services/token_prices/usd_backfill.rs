@@ -34,14 +34,18 @@ pub struct BalanceChangesUsdBackfill {
     inner: UsdBackfill,
 }
 
-/// Fills `gold_public_history_events.amount_in_usd / amount_out_usd` for
-/// rows the projector left NULL (price was missing at projection time).
-pub struct GoldPublicUsdBackfill {
+/// Fills `gold_treasury_ledger_events.amount_in_usd / amount_out_usd` for
+/// rows the projectors (public and confidential) left NULL (price was
+/// missing at projection time). Hidden ledger rows are enriched too — they
+/// carry token/amount/event_time like activity rows and would otherwise keep
+/// NULL USD forever.
+pub struct GoldLedgerUsdBackfill {
     inner: UsdBackfill,
 }
 
-/// Fills `gold_confidential_history_events.amount_in_usd / amount_out_usd`
-/// for rows whose 1Click quote carried no nominal USD.
+// TODO(confidential-v2): remove with the dual-write.
+/// Legacy fill for `gold_confidential_history_events` while
+/// `UNIFIED_GOLD_LEDGER_READS` can still serve confidential reads from it.
 pub struct GoldConfidentialUsdBackfill {
     inner: UsdBackfill,
 }
@@ -310,23 +314,23 @@ impl BalanceChangesUsdBackfill {
     }
 }
 
-impl GoldPublicUsdBackfill {
+impl GoldLedgerUsdBackfill {
     pub fn new(pool: PgPool, service: Arc<TokenPriceService>) -> Self {
         Self {
             inner: UsdBackfill {
                 pool,
                 service,
-                label: "gold public usd backfill",
+                label: "gold ledger usd backfill",
                 distinct_ids_sql: r#"
-                    SELECT DISTINCT token_in FROM gold_public_history_events
+                    SELECT DISTINCT token_in FROM gold_treasury_ledger_events
                     WHERE token_in IS NOT NULL AND amount_in_usd IS NULL
                     UNION
-                    SELECT DISTINCT token_out FROM gold_public_history_events
+                    SELECT DISTINCT token_out FROM gold_treasury_ledger_events
                     WHERE token_out IS NOT NULL AND amount_out_usd IS NULL
                 "#,
                 specs: vec![
                     UpdateSpec {
-                        table: "gold_public_history_events",
+                        table: "gold_treasury_ledger_events",
                         token_expr: "src.token_in",
                         time_expr: "src.event_time",
                         amount_expr: "src.amount_in",
@@ -335,7 +339,7 @@ impl GoldPublicUsdBackfill {
                         report_price_pending: true,
                     },
                     UpdateSpec {
-                        table: "gold_public_history_events",
+                        table: "gold_treasury_ledger_events",
                         token_expr: "src.token_out",
                         time_expr: "src.event_time",
                         amount_expr: "src.amount_out",
@@ -431,7 +435,7 @@ mod tests {
     #[test]
     fn spec_pending_price_count_checks_for_prior_local_price() {
         let spec = UpdateSpec {
-            table: "gold_public_history_events",
+            table: "gold_treasury_ledger_events",
             token_expr: "src.token_in",
             time_expr: "src.event_time",
             amount_expr: "src.amount_in",
@@ -440,7 +444,7 @@ mod tests {
             report_price_pending: true,
         };
         let sql = spec.pending_price_count_sql();
-        assert!(sql.contains("FROM gold_public_history_events src"));
+        assert!(sql.contains("FROM gold_treasury_ledger_events src"));
         assert!(sql.contains("JOIN mapping m ON m.raw_token_id = src.token_in"));
         assert!(sql.contains("WHERE src.amount_in_usd IS NULL AND src.amount_in IS NOT NULL"));
         assert!(sql.contains("NOT EXISTS"));
@@ -524,15 +528,23 @@ mod tests {
         .await?;
         sqlx::query(
             r#"
-            INSERT INTO gold_public_history_events (
-                gold_event_key, primary_transfer_leg_id, dao_id,
-                transaction_type, token_in, amount_in, event_time, status,
-                raw_payload
+            INSERT INTO monitored_accounts (account_id, enabled, is_confidential_account)
+            VALUES ('usd-test.sputnik-dao.near', true, false)
+            "#,
+        )
+        .execute(&pool)
+        .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO gold_treasury_ledger_events (
+                gold_event_key, dao_id, source_kind, history_visible,
+                transaction_type, status, event_time,
+                token_in, amount_in, primary_transfer_leg_id
             )
             VALUES (
-                'usd-gold', $1, 'usd-test.sputnik-dao.near',
-                'deposit', 'wrap.near', 2, '2026-07-10 08:03:00+00', 'success',
-                '{}'
+                'usd-gold', 'usd-test.sputnik-dao.near', 'public_silver_leg', TRUE,
+                'deposit', 'success', '2026-07-10 08:03:00+00',
+                'wrap.near', 2, $1
             )
             "#,
         )
@@ -554,14 +566,14 @@ mod tests {
             None
         );
 
-        let summary = GoldPublicUsdBackfill::new(pool.clone(), service)
+        let summary = GoldLedgerUsdBackfill::new(pool.clone(), service)
             .run()
             .await
             .expect("USD enrichment succeeds");
         assert_eq!(summary.rows_updated, 1);
 
         let amount_in_usd: Option<BigDecimal> = sqlx::query_scalar(
-            "SELECT amount_in_usd FROM gold_public_history_events WHERE gold_event_key = 'usd-gold'",
+            "SELECT amount_in_usd FROM gold_treasury_ledger_events WHERE gold_event_key = 'usd-gold'",
         )
         .fetch_one(&pool)
         .await?;

@@ -506,10 +506,10 @@ fn proposal_description_from_raw_add(event: &BronzePublicHistoryEvent) -> Option
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ProposalTransferAction {
-    receiver_id: String,
-    amount_raw: String,
-    origin_asset: String,
+pub(crate) struct ProposalTransferAction {
+    pub(crate) receiver_id: String,
+    pub(crate) amount_raw: String,
+    pub(crate) origin_asset: String,
 }
 
 fn decode_action_args(action: &Value) -> Option<Value> {
@@ -559,7 +559,7 @@ fn origin_asset_for_transfer(
     Some(format!("nep141:{function_receiver_id}"))
 }
 
-fn proposal_transfer_actions(kind: Option<&Value>) -> Vec<ProposalTransferAction> {
+pub(crate) fn proposal_transfer_actions(kind: Option<&Value>) -> Vec<ProposalTransferAction> {
     let Some(function_call) = kind.and_then(|kind| kind.get("FunctionCall")) else {
         return Vec::new();
     };
@@ -1051,6 +1051,41 @@ async fn link_proposal_group(
     }
 
     Ok(())
+}
+
+/// Chain-authoritative refresh of one proposal, callable outside the bronze
+/// linker (the `/api/proposals/refresh` hook). Everything comes from the live
+/// `get_proposal` RPC — clients only ever supply identifiers. Reuses the
+/// linker's monotonic upsert; execution receipt facts stay first-writer-wins
+/// for the indexer. Returns the fetched status when the RPC succeeded.
+pub(crate) async fn refresh_proposal_from_chain(
+    state: &AppState,
+    tx: &mut Transaction<'_, Postgres>,
+    dao_id: &str,
+    proposal_id: i64,
+) -> Result<Option<&'static str>, sqlx::Error> {
+    let details = fetch_proposal_details(state, dao_id, proposal_id).await;
+    if details.status.is_none() && details.kind.is_none() {
+        return Ok(None);
+    }
+
+    let snapshot =
+        quote_snapshot_from_proposal(details.description.as_deref(), details.kind.as_ref());
+    let quote_metadata = build_quote_metadata(None, snapshot.as_ref(), None);
+    let quote_deposit_address = snapshot.map(|snapshot| snapshot.deposit_address);
+
+    let upsert = DaoProposalUpsert {
+        dao_id,
+        proposal_id,
+        status: details.status,
+        proposal_kind: details.kind,
+        quote_metadata,
+        quote_deposit_address,
+        creation: None,
+        execution: None,
+    };
+    upsert.write(tx).await?;
+    Ok(details.status)
 }
 
 pub async fn link_public_proposal_receipts(

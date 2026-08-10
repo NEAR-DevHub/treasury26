@@ -1,8 +1,20 @@
 "use client";
 
-import { ChevronDown, FileText, Loader2, LogIn, LogOut } from "lucide-react";
+import {
+    ChevronDown,
+    FileText,
+    Loader2,
+    LogIn,
+    LogOut,
+    UserRound,
+} from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+    useParams,
+    usePathname,
+    useRouter,
+    useSearchParams,
+} from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/button";
@@ -76,6 +88,9 @@ export function AccountMenuItems({
     const t = useTranslations("signIn");
     const tAddress = useTranslations("address");
     const { disconnect } = useNear();
+    const params = useParams();
+    const treasuryId = params?.treasuryId as string | undefined;
+    const accountHref = treasuryId ? `/${treasuryId}/account` : null;
 
     return (
         <>
@@ -92,6 +107,16 @@ export function AccountMenuItems({
             >
                 {t("copyAddress")}
             </CopyButton>
+            {accountHref && (
+                <Link
+                    href={accountHref}
+                    className={accountMenuItemClass}
+                    onClick={onNavigate}
+                >
+                    <UserRound className="size-4" />
+                    {t("myAccount")}
+                </Link>
+            )}
             <Link
                 href={TERMS_OF_SERVICE_URL}
                 target="_blank"

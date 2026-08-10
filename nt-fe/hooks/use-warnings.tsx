@@ -544,12 +544,9 @@ export function useBridgeScopedWarning(
 }
 
 /** Fetch bridge assets only when a token/network-scoped warning is live on `slot`. */
-export function useBridgeAssetsForWarnings(
-    slot: string,
-    options?: { includeNearNetwork?: boolean },
-) {
+export function useBridgeAssetsForWarnings(slot: string) {
     const enabled = useHasTokenOrNetworkWarning(slot);
-    return useBridgeTokens(enabled, options);
+    return useBridgeTokens(enabled);
 }
 
 /**
@@ -610,7 +607,6 @@ export function useProposalApproveBlock(
         hasPaymentsTokenOrNetworkWarning || hasExchangeTokenOrNetworkWarning;
     const { data: bridgeAssets = [] } = useBridgeTokens(
         hasTokenOrNetworkFeatureWarning,
-        { includeNearNetwork: true },
     );
 
     return useMemo(() => {
