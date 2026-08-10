@@ -598,7 +598,6 @@ function buildIntentTransferDescription(
     return encodeToMarkdown({
         proposal_action: "payment-transfer",
         notes,
-        // Keep nearcom: in description for display; on-chain uses quote deposit.
         recipient: data.address,
         destinationNetwork: data.destinationNetwork || undefined,
         networkFee,
@@ -1021,12 +1020,12 @@ export default function PaymentsPage() {
 
         const rawAddress = (watchedAddress ?? "").trim();
         const bareRecipient = stripNearComAddressPrefix(rawAddress);
+        // nearcom: + any valid NEAR format (incl. eth-implicit 0x…).
         const isNearComRecipient =
             isConfidential &&
             hasNearComAddressPrefix(rawAddress) &&
             !!bareRecipient &&
-            isValidNearAddressFormat(bareRecipient) &&
-            !isEthImplicitNearAddress(bareRecipient);
+            isValidNearAddressFormat(bareRecipient);
 
         // Only auto-destination: confidential nearcom:<near> → near.com.
         // Plain NEAR / eth / etc. keep the original picker compatibility path
@@ -1171,8 +1170,7 @@ export default function PaymentsPage() {
             isConfidential &&
             hasNearComAddressPrefix(rawAddress) &&
             !!bareRecipient &&
-            isValidNearAddressFormat(bareRecipient) &&
-            !isEthImplicitNearAddress(bareRecipient);
+            isValidNearAddressFormat(bareRecipient);
 
         // Drop stale near.com when the address is no longer nearcom:<near>.
         if (
