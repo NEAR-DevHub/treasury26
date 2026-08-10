@@ -77,20 +77,13 @@ function isAddressCompatibleWithNetwork(
 ): boolean {
     if (!address) return true;
     const { hasPrefix, accountId } = parseNearComAddress(address);
-    const isNearAccount = !!accountId && isValidNearAddressFormat(accountId);
 
-    // nearcom:<nearAccount> → near.com only; plain near account → near only.
-    if (isNearAccount) {
-        if (hasPrefix) {
-            return optionId === NEAR_COM_NETWORK_ID;
-        }
-        return (
-            optionId !== NEAR_COM_NETWORK_ID &&
-            (optionId === NEAR_NETWORK_ID ||
-                getBlockchainType(networkName) === NEAR_NETWORK_ID)
-        );
+    // near.com only for nearcom:<validNear>. Never compatible otherwise.
+    if (optionId === NEAR_COM_NETWORK_ID) {
+        return hasPrefix && !!accountId && isValidNearAddressFormat(accountId);
     }
 
+    // Original per-chain format checks (ignore nearcom: — that route is above).
     if (hasPrefix) return false;
 
     const blockchain = getBlockchainType(networkName);
@@ -231,33 +224,23 @@ export function RecipientNetworkSelect({
 
     const availableOptions = useMemo(() => {
         const { hasPrefix, accountId } = parseNearComAddress(recipient);
-        const isNearAccount =
-            !!accountId && isValidNearAddressFormat(accountId);
+        const isNearComRecipient =
+            hasPrefix && !!accountId && isValidNearAddressFormat(accountId);
 
-        // Gate Near vs near.com by recipient shape when address is a NEAR account.
-        if (recipient && isNearAccount) {
-            if (hasPrefix) {
-                return isConfidential ? [nearComOption] : [];
-            }
-            const nearOnly = tokenNetworkOptions.filter(
-                (option) =>
-                    option.id === NEAR_NETWORK_ID ||
-                    getBlockchainType(option.networkName) === NEAR_NETWORK_ID,
-            );
-            return [...nearOnly].sort((a, b) => a.name.localeCompare(b.name));
+        // nearcom:<validNear> → near.com only (confidential). No near.com otherwise.
+        if (isNearComRecipient) {
+            return isConfidential ? [nearComOption] : [];
         }
 
-        const options = isConfidential
-            ? [...tokenNetworkOptions, nearComOption]
-            : tokenNetworkOptions;
-        return [...options].sort((a, b) => a.name.localeCompare(b.name));
+        return [...tokenNetworkOptions].sort((a, b) =>
+            a.name.localeCompare(b.name),
+        );
     }, [isConfidential, nearComOption, recipient, tokenNetworkOptions]);
 
     const selectedOption = useMemo(() => {
         if (!value) return null;
-        if (value === NEAR_COM_NETWORK_ID) return nearComOption;
         return availableOptions.find((o) => o.id === value) ?? null;
-    }, [availableOptions, nearComOption, value]);
+    }, [availableOptions, value]);
 
     const enrichedOptions = useMemo(() => {
         return availableOptions.map((option) => ({

@@ -82,13 +82,14 @@ export function resolvePreferredNetworks(params: {
     return singular ? [singular] : [];
 }
 
-/** NEAR / near.com destination for Ft, native NEAR, or confidential Trezu. */
-export function nearChainDestination(isConfidential: boolean): {
+/** Soft-prefill NEAR destination for Ft / native NEAR deep links. */
+export function nearChainDestination(): {
     id: string;
     networkName: string;
 } {
+    // near.com is never soft-seeded — only a nearcom:<account> address selects it.
     return {
-        id: isConfidential ? NEAR_COM_NETWORK_ID : NEAR_NETWORK_ID,
+        id: NEAR_NETWORK_ID,
         networkName: NEAR_NETWORK_ID,
     };
 }

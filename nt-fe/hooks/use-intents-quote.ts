@@ -355,6 +355,7 @@ export function useIntentsQuote({
             }
 
             if (feeErrorMessage) return { ok: false };
+            // Public + nearcom: is already blocked by isQuoteReady / no network.
             if (
                 !isConfidential &&
                 hasNearComAddressPrefix(formValues.address)

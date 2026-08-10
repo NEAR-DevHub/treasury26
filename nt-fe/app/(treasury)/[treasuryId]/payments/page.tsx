@@ -771,15 +771,6 @@ export default function PaymentsPage() {
         !exactTokenNetworkId &&
         !isNativeNearPrefill;
 
-    const prefersNearCom = useMemo(
-        () =>
-            preferredNetworks.some(
-                (network) =>
-                    network.trim().toLowerCase() === NEAR_COM_NETWORK_ID,
-            ),
-        [preferredNetworks],
-    );
-
     const preferredBlockchainTypes = useMemo(() => {
         const set = new Set<string>();
         for (const network of preferredNetworks) {
@@ -1030,60 +1021,28 @@ export default function PaymentsPage() {
 
         const rawAddress = (watchedAddress ?? "").trim();
         const bareRecipient = stripNearComAddressPrefix(rawAddress);
-        const isValidNearRecipient =
+        const isNearComRecipient =
+            isConfidential &&
+            hasNearComAddressPrefix(rawAddress) &&
             !!bareRecipient &&
             isValidNearAddressFormat(bareRecipient) &&
             !isEthImplicitNearAddress(bareRecipient);
 
-        // Recipient shape wins once the account is a complete NEAR address.
-        // Use a real selectable option id (Ft/Near → `near`; Intents → nep141:…).
-        if (isValidNearRecipient) {
-            // nearcom: → near.com is confidential-only. Don't seed on public
-            // treasuries (that triggered Intents quote fetches).
-            if (hasNearComAddressPrefix(rawAddress)) {
-                if (!isConfidential) return null;
-                return {
-                    id: NEAR_COM_NETWORK_ID,
-                    networkName: NEAR_NETWORK_ID,
-                };
-            }
-            if (
-                isNearChainFtToken(watchedToken) ||
-                isNearChainNativeToken(watchedToken) ||
-                watchedToken.address?.toLowerCase() === NEAR_NETWORK_ID
-            ) {
-                return {
-                    id: NEAR_NETWORK_ID,
-                    networkName: NEAR_NETWORK_ID,
-                };
-            }
-            const bridgeAsset = findBridgeAssetForToken(
-                bridgeAssets,
-                watchedToken,
-            );
-            const nearNetwork = bridgeAsset?.networks.find(
-                (network) =>
-                    getBlockchainType(network.name) === NEAR_NETWORK_ID,
-            );
-            if (nearNetwork) {
-                return {
-                    id: nearNetwork.id,
-                    networkName: nearNetwork.name,
-                };
-            }
-            // Don't invent `near` for Intents — that id isn't in the picker and
-            // previously clear↔seed looped. Leave destination alone until bridge
-            // data exposes a real NEAR network option.
-            return null;
+        // Only auto-destination: confidential nearcom:<near> → near.com.
+        // Plain NEAR / eth / etc. keep the original picker compatibility path
+        // (no force-to-near).
+        if (isNearComRecipient) {
+            return {
+                id: NEAR_COM_NETWORK_ID,
+                networkName: NEAR_NETWORK_ID,
+            };
         }
 
-        // Soft near.com / Ft / native NEAR → NEAR or near.com destination.
-        // If the recipient field is non-empty but not yet a complete NEAR
-        // account, skip these soft prefs so mid-edit does not bounce
-        // destination (near.com ↔ near) and hit max update depth.
-        if (prefersNearCom || isFtNetworkPrefill || isNativeNearPrefill) {
+        // Soft Ft / native NEAR → NEAR destination when recipient is empty.
+        // Never soft-seed near.com (including prefersNearCom / confidential).
+        if (isFtNetworkPrefill || isNativeNearPrefill) {
             if (rawAddress) return null;
-            return nearChainDestination(prefersNearCom || isConfidential);
+            return nearChainDestination();
         }
 
         // Multiple soft chain prefs (address book) — leave destination empty.
@@ -1097,12 +1056,19 @@ export default function PaymentsPage() {
             return null;
         }
 
+        // `networks=near.com` alone is not a bridge id — near.com is selected
+        // only via a nearcom: address (above).
+        const bridgePreferred = preferredNetworks.filter(
+            (network) => network.trim().toLowerCase() !== NEAR_COM_NETWORK_ID,
+        );
+        if (bridgePreferred.length === 0) return null;
+
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
 
         return resolvePreferredDestinationNetwork(
             bridgeAsset,
-            preferredNetworks,
+            bridgePreferred,
             preferredBlockchainTypes,
         );
     }, [
@@ -1111,7 +1077,6 @@ export default function PaymentsPage() {
         preferredBlockchainTypes,
         watchedToken,
         watchedAddress,
-        prefersNearCom,
         hasAmbiguousSoftNetworks,
         isFtNetworkPrefill,
         isNativeNearPrefill,
@@ -1200,20 +1165,30 @@ export default function PaymentsPage() {
     }, [urlOverrideToken, form, tokenParam, preferredNetworks.length]);
 
     useEffect(() => {
-        if (!compatibleDestinationId || !compatibleDestinationName) return;
-        if (watchedDestinationNetwork === compatibleDestinationId) return;
-
-        const bareRecipient = stripNearComAddressPrefix(watchedAddress ?? "");
-        const addressDrivesDestination =
+        const rawAddress = (watchedAddress ?? "").trim();
+        const bareRecipient = stripNearComAddressPrefix(rawAddress);
+        const isNearComRecipient =
+            isConfidential &&
+            hasNearComAddressPrefix(rawAddress) &&
             !!bareRecipient &&
             isValidNearAddressFormat(bareRecipient) &&
             !isEthImplicitNearAddress(bareRecipient);
 
-        // Soft/URL prefs only fill an empty destination. Address shape
-        // (nearcom: vs plain near) may overwrite a stale selection. Never
-        // keep rewriting soft prefs against a user/manual value — that was
-        // a clear↔seed loop vector with the network picker.
-        if (!addressDrivesDestination && watchedDestinationNetwork) {
+        // Drop stale near.com when the address is no longer nearcom:<near>.
+        if (
+            isNearComNetwork(watchedDestinationNetwork) &&
+            !isNearComRecipient
+        ) {
+            form.setValue("destinationNetwork", "", { shouldDirty: true });
+            form.setValue("destinationNetworkName", "", { shouldDirty: true });
+            return;
+        }
+
+        if (!compatibleDestinationId || !compatibleDestinationName) return;
+        if (watchedDestinationNetwork === compatibleDestinationId) return;
+
+        // Soft/URL prefs only fill an empty destination. nearcom: may overwrite.
+        if (!isNearComRecipient && watchedDestinationNetwork) {
             return;
         }
 
@@ -1229,6 +1204,7 @@ export default function PaymentsPage() {
         form,
         watchedDestinationNetwork,
         watchedAddress,
+        isConfidential,
     ]);
 
     // Prefill from ?address= once. Re-applying on every empty value fought the
