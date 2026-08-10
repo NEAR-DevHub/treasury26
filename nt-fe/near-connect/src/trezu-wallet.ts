@@ -4,6 +4,9 @@ import type { SignInParams } from "./utils/types";
 const DEFAULT_POPUP_WIDTH = 520;
 const DEFAULT_POPUP_HEIGHT = 700;
 const POLL_INTERVAL = 300;
+// Cadence for polling the backend while a created proposal awaits treasury
+// approval; matches the wallet page's own polling.
+const APPROVAL_POLL_INTERVAL = 10_000;
 
 const TREZU_URLS: Record<string, string> = {
     mainnet: "https://trezu.app",
@@ -11,10 +14,10 @@ const TREZU_URLS: Record<string, string> = {
     // testnet: "https://trezu.app",
 };
 
-const RPC_URLS: Record<string, string> = {
-    mainnet: "https://rpc.mainnet.near.org",
+const BACKEND_URLS: Record<string, string> = {
+    mainnet: "https://api.trezu.app",
     // Only mainnet is supported, but we keep it here just in case
-    // testnet: "https://rpc.testnet.near.org",
+    // testnet: "https://api.testenv.trezu.app",
 };
 
 // Built-in btoa() JS function fails on UTF8 inputs.
@@ -31,29 +34,24 @@ function toBase64(txt: string): string {
     return btoa(binary);
 }
 
+async function fetchJson(url: string): Promise<any> {
+    const res = await fetch(url);
+    if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+    }
+    return res.json();
+}
+
+// Final execution outcome in the NEAR `tx` RPC result shape, served by the
+// Trezu backend so the connector never talks to an RPC node directly.
 async function txStatus(
-    rpcUrl: string,
+    backendUrl: string,
     txHash: string,
     signerId: string,
 ): Promise<any> {
-    const res = await fetch(rpcUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            jsonrpc: "2.0",
-            id: 1,
-            method: "tx",
-            params: {
-                tx_hash: txHash,
-                sender_account_id: signerId,
-                wait_until: "NONE",
-            },
-        }),
-    });
-    const json = await res.json();
-    if (json.error)
-        throw new Error(json.error.message || JSON.stringify(json.error));
-    return json.result;
+    return fetchJson(
+        `${backendUrl}/api/wallet-adapter/tx-status/${txHash}/${signerId}`,
+    );
 }
 
 interface WalletMessage {
@@ -63,7 +61,19 @@ interface WalletMessage {
     publicKey?: string;
     transactionHashes?: string;
     errorMessage?: string;
+    daoId?: string;
+    proposalIds?: number[];
     [key: string]: unknown;
+}
+
+interface PendingProposals {
+    daoId: string;
+    proposalIds: number[];
+}
+
+interface Settle<T> {
+    resolve: (value: T) => void;
+    reject: (error: Error) => void;
 }
 
 class TrezuWalletConnector {
@@ -89,6 +99,10 @@ class TrezuWalletConnector {
     signOut(): void {
         this.signedAccountId = "";
         window.localStorage.removeItem("trezu:signedAccountId");
+    }
+
+    private backendUrl(): string {
+        return BACKEND_URLS[this.network] || BACKEND_URLS.mainnet;
     }
 
     async requestSignIn(): Promise<
@@ -123,19 +137,25 @@ class TrezuWalletConnector {
         );
         url.searchParams.set("signerId", this.signedAccountId);
 
-        return await this.handlePopup(url.toString(), async (data) => {
-            if (data.transactionHashes) {
-                const hashes = data.transactionHashes.split(",");
-                const rpcUrl = RPC_URLS[this.network] || RPC_URLS.mainnet;
-                const outcomes = await Promise.all(
-                    hashes.map((hash: string) =>
-                        txStatus(rpcUrl, hash, this.signedAccountId),
-                    ),
-                );
-                return outcomes;
-            }
-            return [];
-        });
+        return await this.handlePopup(
+            url.toString(),
+            async (data) => {
+                if (data.transactionHashes) {
+                    const hashes = data.transactionHashes.split(",");
+                    return await Promise.all(
+                        hashes.map((hash: string) =>
+                            txStatus(
+                                this.backendUrl(),
+                                hash,
+                                this.signedAccountId,
+                            ),
+                        ),
+                    );
+                }
+                return [];
+            },
+            (pending, settle) => this.pollPendingProposals(pending, settle),
+        );
     }
 
     async signAndSendTransaction(params: {
@@ -146,9 +166,89 @@ class TrezuWalletConnector {
         return results[0];
     }
 
+    /**
+     * Poll the backend until every pending proposal is approved (settles with
+     * the execution outcomes) or any is rejected (settles with an error).
+     * Returns a cleanup that stops the polling.
+     */
+    private pollPendingProposals(
+        pending: PendingProposals,
+        settle: Settle<any[]>,
+    ): () => void {
+        const backendUrl = this.backendUrl();
+        let checking = false;
+
+        const check = async () => {
+            if (checking) return;
+            checking = true;
+            try {
+                // The execution-transaction lookup requires a date window; the
+                // proposals were created in this session, so a generous fixed
+                // window around now is enough.
+                const now = Date.now();
+                const dayMs = 24 * 60 * 60 * 1000;
+                const afterDate = new Date(now - 30 * dayMs)
+                    .toISOString()
+                    .split("T")[0];
+                const beforeDate = new Date(now + 2 * dayMs)
+                    .toISOString()
+                    .split("T")[0];
+
+                const txHashes: string[] = [];
+                for (const proposalId of pending.proposalIds) {
+                    const proposal = await fetchJson(
+                        `${backendUrl}/api/wallet-adapter/proposal/${pending.daoId}/${proposalId}`,
+                    );
+                    if (!proposal || proposal.status === "InProgress") {
+                        return;
+                    }
+                    if (proposal.status !== "Approved") {
+                        settle.reject(
+                            new Error(
+                                `Proposal ${proposalId} was ${proposal.status.toLowerCase()}`,
+                            ),
+                        );
+                        return;
+                    }
+
+                    const tx = await fetchJson(
+                        `${backendUrl}/api/wallet-adapter/proposal/${pending.daoId}/${proposalId}/tx` +
+                            `?action=VoteApprove&afterDate=${afterDate}&beforeDate=${beforeDate}`,
+                    );
+                    if (!tx || !tx.transaction_hash) {
+                        // Approved but not indexed yet — keep polling.
+                        return;
+                    }
+                    txHashes.push(tx.transaction_hash);
+                }
+
+                const outcomes = await Promise.all(
+                    txHashes.map((hash) =>
+                        txStatus(backendUrl, hash, this.signedAccountId),
+                    ),
+                );
+                settle.resolve(outcomes);
+            } catch {
+                // Transient backend failure — keep polling.
+            } finally {
+                checking = false;
+            }
+        };
+
+        const intervalId = setInterval(
+            () => void check(),
+            APPROVAL_POLL_INTERVAL,
+        );
+        return () => clearInterval(intervalId);
+    }
+
     private async handlePopup<T>(
         url: string,
         callback: (result: WalletMessage) => T | Promise<T>,
+        onPending?: (
+            pending: PendingProposals,
+            settle: Settle<T>,
+        ) => () => void,
     ): Promise<T> {
         const screenWidth = window.innerWidth || screen.width;
         const screenHeight = window.innerHeight || screen.height;
@@ -163,15 +263,35 @@ class TrezuWalletConnector {
 
         const id = await childWindow.windowIdPromise;
         if (!id) {
+            // The popup was blocked: ask for an explicit approval so the next
+            // open() runs inside that click's user gesture.
             await window.selector.ui.whenApprove({
                 title: "Request action",
                 button: "Open Trezu Wallet",
             });
-            return await this.handlePopup(url, callback);
+            return await this.handlePopup(url, callback, onPending);
         }
 
-        return new Promise<T>((resolve, reject) => {
+        return new Promise<T>((resolvePromise, rejectPromise) => {
             let intervalId: ReturnType<typeof setInterval> | undefined;
+            let stopPendingPoll: (() => void) | undefined;
+            let pendingReceived = false;
+            let settled = false;
+
+            const cleanup = () => {
+                window.removeEventListener("message", handler);
+                if (intervalId !== undefined) {
+                    clearInterval(intervalId);
+                }
+                stopPendingPoll?.();
+            };
+
+            const settle = (finish: () => void) => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                finish();
+            };
 
             const handler = (event: MessageEvent) => {
                 const message = event.data as WalletMessage;
@@ -182,30 +302,52 @@ class TrezuWalletConnector {
                 )
                     return;
 
+                if (
+                    message.type === "trezu:pending" &&
+                    onPending &&
+                    !pendingReceived &&
+                    typeof message.daoId === "string" &&
+                    Array.isArray(message.proposalIds) &&
+                    message.proposalIds.length > 0
+                ) {
+                    // The proposals now exist on-chain: approval can complete
+                    // without the popup, so closing it is no longer a failure
+                    // and the connector tracks the outcome itself.
+                    pendingReceived = true;
+                    stopPendingPoll = onPending(
+                        {
+                            daoId: message.daoId,
+                            proposalIds: message.proposalIds,
+                        },
+                        {
+                            resolve: (value) =>
+                                settle(() => resolvePromise(value)),
+                            reject: (error) =>
+                                settle(() => rejectPromise(error)),
+                        },
+                    );
+                    return;
+                }
+
                 if (message.type === "trezu:result") {
                     if (message.status === "success") {
-                        cleanup();
-                        childWindow.close();
-                        Promise.resolve(callback(message)).then(
-                            resolve,
-                            reject,
-                        );
+                        settle(() => {
+                            childWindow.close();
+                            Promise.resolve(callback(message)).then(
+                                resolvePromise,
+                                rejectPromise,
+                            );
+                        });
                     } else if (message.status === "failure") {
-                        cleanup();
-                        childWindow.close();
-                        reject(
-                            new Error(
-                                message.errorMessage || "Operation failed",
-                            ),
-                        );
+                        settle(() => {
+                            childWindow.close();
+                            rejectPromise(
+                                new Error(
+                                    message.errorMessage || "Operation failed",
+                                ),
+                            );
+                        });
                     }
-                }
-            };
-
-            const cleanup = () => {
-                window.removeEventListener("message", handler);
-                if (intervalId !== undefined) {
-                    clearInterval(intervalId);
                 }
             };
 
@@ -213,8 +355,15 @@ class TrezuWalletConnector {
 
             intervalId = setInterval(() => {
                 if (childWindow.closed) {
-                    cleanup();
-                    reject(new Error("User closed the window"));
+                    clearInterval(intervalId);
+                    intervalId = undefined;
+                    // Once proposals are pending the popup may be closed
+                    // freely; the backend polling keeps driving the result.
+                    if (!pendingReceived) {
+                        settle(() =>
+                            rejectPromise(new Error("User closed the window")),
+                        );
+                    }
                 }
             }, POLL_INTERVAL);
         });
