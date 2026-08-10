@@ -510,6 +510,27 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .with_state(state)
 }
 
+/// Read-only endpoints consumed by the Trezu Wallet connector script, which
+/// runs on the calling dapp's origin. Mounted in `main.rs` behind an
+/// any-origin, credential-less CORS layer — the main API's origin allow-list
+/// would block it.
+pub fn create_wallet_adapter_routes(state: Arc<AppState>) -> Router {
+    Router::new()
+        .route(
+            "/api/wallet-adapter/proposal/{dao_id}/{proposal_id}",
+            get(handlers::proposals::get_proposals::get_proposal),
+        )
+        .route(
+            "/api/wallet-adapter/proposal/{dao_id}/{proposal_id}/tx",
+            get(handlers::proposals::tx::find_proposal_execution_transaction),
+        )
+        .route(
+            "/api/wallet-adapter/tx-status/{tx_hash}/{sender_id}",
+            get(handlers::wallet_adapter::get_tx_status),
+        )
+        .with_state(state)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -21,4 +21,5 @@ pub mod telegram;
 pub mod token;
 pub mod treasury;
 pub mod user;
+pub mod wallet_adapter;
 pub mod warnings;
