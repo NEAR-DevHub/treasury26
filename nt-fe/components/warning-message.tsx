@@ -263,7 +263,7 @@ export function WarningMessage(props: WarningMessageProps) {
                     className,
                 )}
             >
-                <span className="truncate">{inlineText}</span>
+                <span>{inlineText}</span>
                 {tooltipText && (
                     <Tooltip content={tooltipText}>
                         <Info className="size-3 shrink-0" />
