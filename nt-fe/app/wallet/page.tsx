@@ -754,12 +754,13 @@ function WalletPageContent() {
                                             }
                                             className="w-full p-3 text-left border border-border rounded-lg hover:bg-muted/50 transition-colors"
                                         >
-                                            <div className="font-mono text-sm font-medium">
-                                                {t.daoId}
+                                            <div className="text-sm font-medium truncate">
+                                                {t.config.name?.trim() ||
+                                                    t.daoId}
                                             </div>
-                                            {t.config.name && (
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                    {t.config.name}
+                                            {!!t.config.name?.trim() && (
+                                                <div className="text-xs text-muted-foreground mt-1 font-mono truncate">
+                                                    {t.daoId}
                                                 </div>
                                             )}
                                         </button>
