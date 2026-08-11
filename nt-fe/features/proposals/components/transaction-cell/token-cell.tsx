@@ -7,7 +7,7 @@ import {
     StakingData,
 } from "../../types/index";
 import { Amount } from "../amount";
-import { TooltipUser } from "@/components/user";
+import { resolveUserDisplayName, TooltipUser } from "@/components/user";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -48,7 +48,13 @@ export function TokenCell({
         />
     );
     const { data: profile } = useProfile(data.receiver);
-    const address = profile?.addressBookName ?? data.receiver;
+    const displayName = resolveUserDisplayName({
+        accountId: data.receiver,
+        profileName: profile?.name,
+        addressBookName: profile?.addressBookName,
+    });
+    const nameIsAddress =
+        displayName.trim().toLowerCase() === data.receiver.trim().toLowerCase();
     const destinationAssetId =
         "destinationAssetId" in data ? data.destinationAssetId : undefined;
     const showConfidentialAddressShield =
@@ -69,20 +75,27 @@ export function TokenCell({
             {isUser ? (
                 <TooltipUser
                     accountId={data.receiver}
-                    useAddressBook
                     chainName={destinationAssetId}
                 >
                     <div className="ml-1 min-w-0 flex-1 overflow-hidden">
-                        <Address
-                            address={address}
-                            prefixLength={6}
-                            suffixLength={6}
-                            className="min-w-0 truncate"
-                        />
+                        {nameIsAddress ? (
+                            <Address
+                                address={data.receiver}
+                                prefixLength={6}
+                                suffixLength={6}
+                                className="min-w-0 truncate"
+                            />
+                        ) : (
+                            <span className="min-w-0 truncate block">
+                                {displayName}
+                            </span>
+                        )}
                     </div>
                 </TooltipUser>
             ) : (
-                <span className="ml-1 min-w-0 flex-1 truncate">{address}</span>
+                <span className="ml-1 min-w-0 flex-1 truncate">
+                    {displayName}
+                </span>
             )}
         </div>
     ) : undefined;

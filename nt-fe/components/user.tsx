@@ -41,8 +41,44 @@ const avatarTextSizeClasses = {
     lg: "text-sm",
 } as const;
 
+/** Trim and drop empty / whitespace-only display names. */
+export function normalizeDisplayName(
+    name: string | null | undefined,
+): string | undefined {
+    const trimmed = name?.trim();
+    return trimmed ? trimmed : undefined;
+}
+
+/**
+ * Resolve the label to show for an account.
+ * Prefer override → address-book → profile/DB (includes treasury branding) →
+ * account id.
+ */
+export function resolveUserDisplayName({
+    accountId,
+    name,
+    profileName,
+    addressBookName,
+}: {
+    accountId: string;
+    name?: string | null;
+    profileName?: string | null;
+    addressBookName?: string | null;
+}): string {
+    return (
+        normalizeDisplayName(name) ??
+        normalizeDisplayName(addressBookName) ??
+        normalizeDisplayName(profileName) ??
+        accountId
+    );
+}
+
+function isSameAccountLabel(name: string, address: string): boolean {
+    return name.trim().toLowerCase() === address.trim().toLowerCase();
+}
+
 function getUserAvatarInitial(name: string, address: string): string {
-    if (name && name !== address) {
+    if (name && !isSameAccountLabel(name, address)) {
         return name.charAt(0).toUpperCase();
     }
     return address.charAt(0).toLowerCase();
@@ -148,12 +184,10 @@ interface UserWithDataProps {
     address: string;
     imageUrl?: string;
     variant?: UserVariant;
-    truncatePrimaryAddress?: boolean;
     size?: UserSize;
     withLink?: boolean;
     withHoverCard?: boolean;
     chainName?: string;
-    useAddressBook?: boolean;
     /** When set, matching substrings in name/address are highlighted. */
     highlightQuery?: string;
 }
@@ -164,18 +198,17 @@ export function UserWithData({
     imageUrl,
     size = "sm",
     variant = "full",
-    truncatePrimaryAddress = false,
     withLink = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
-    useAddressBook = false,
     highlightQuery,
 }: UserWithDataProps) {
     const explorerUrl = getExplorerAddressUrl(chainName, address);
     const showAvatar = variant !== "details";
     const showDetails = variant !== "avatar";
 
-    const nameIsAddress = name === address;
+    // When there is no distinct display name, show the address once (never twice).
+    const nameIsAddress = isSameAccountLabel(name, address);
 
     const content = (
         <>
@@ -189,7 +222,7 @@ export function UserWithData({
             )}
             {showDetails && (
                 <div className="flex flex-col items-start min-w-0 max-w-[min(100%,15rem)] md:max-w-[min(100%,20rem)]">
-                    {truncatePrimaryAddress && nameIsAddress ? (
+                    {nameIsAddress ? (
                         highlightQuery ? (
                             <HighlightedText
                                 text={address}
@@ -199,32 +232,30 @@ export function UserWithData({
                         ) : (
                             <Address
                                 address={address}
-                                prefixLength={6}
-                                suffixLength={4}
                                 className="font-medium max-w-full text-sm"
                             />
                         )
                     ) : (
-                        <HighlightedText
-                            text={name}
-                            query={highlightQuery}
-                            className="font-medium truncate max-w-full text-sm"
-                        />
-                    )}
-                    {/* Avoid duplicating the wallet when there is no display name */}
-                    {!nameIsAddress &&
-                        (highlightQuery ? (
+                        <>
                             <HighlightedText
-                                text={address}
+                                text={name}
                                 query={highlightQuery}
-                                className="text-xs text-muted-foreground truncate max-w-full"
+                                className="font-medium truncate max-w-full text-sm"
                             />
-                        ) : (
-                            <Address
-                                address={address}
-                                className="text-xs text-muted-foreground max-w-full"
-                            />
-                        ))}
+                            {highlightQuery ? (
+                                <HighlightedText
+                                    text={address}
+                                    query={highlightQuery}
+                                    className="text-xs text-muted-foreground truncate max-w-full"
+                                />
+                            ) : (
+                                <Address
+                                    address={address}
+                                    className="text-xs text-muted-foreground max-w-full"
+                                />
+                            )}
+                        </>
+                    )}
                 </div>
             )}
         </>
@@ -249,7 +280,6 @@ export function UserWithData({
                 accountId={address}
                 name={name}
                 chainName={chainName}
-                useAddressBook={useAddressBook}
                 triggerProps={{ asChild: false }}
             >
                 {userElement}
@@ -266,7 +296,6 @@ interface TooltipUserProps {
     accountId: string;
     name?: string;
     chainName?: string;
-    useAddressBook?: boolean;
     children: React.ReactNode;
     triggerProps?: TooltipProps["triggerProps"];
 }
@@ -275,7 +304,6 @@ export function TooltipUser({
     accountId,
     name,
     chainName = NEAR_NETWORK_ID,
-    useAddressBook = false,
     children,
     triggerProps,
 }: TooltipUserProps) {
@@ -285,7 +313,12 @@ export function TooltipUser({
         useProfile(accountId);
     const isSavedInAddressBook = profile?.isInAddressBook ?? false;
     const addressBookParams = new URLSearchParams({
-        name: name ?? profile?.name ?? accountId,
+        name: resolveUserDisplayName({
+            accountId,
+            name,
+            profileName: profile?.name,
+            addressBookName: profile?.addressBookName,
+        }),
         address: accountId,
     });
     addressBookParams.set("network", chainName);
@@ -301,7 +334,6 @@ export function TooltipUser({
                     <User
                         accountId={accountId}
                         name={name}
-                        useAddressBook={useAddressBook}
                         size="lg"
                         withLink={false}
                     />
@@ -344,11 +376,7 @@ interface UserProps {
     accountId: string;
     /** Override the display name instead of fetching from profile */
     name?: string;
-    /** Prefer treasury address-book name when available */
-    useAddressBook?: boolean;
     variant?: UserVariant;
-    /** Use address-style truncation for the primary line when name equals address */
-    truncatePrimaryAddress?: boolean;
     size?: UserSize;
     withLink?: boolean;
     withHoverCard?: boolean;
@@ -360,9 +388,7 @@ interface UserProps {
 export function User({
     accountId,
     name: nameProp,
-    useAddressBook = false,
     variant = "full",
-    truncatePrimaryAddress = false,
     size = "sm",
     withLink = true,
     withHoverCard = false,
@@ -371,26 +397,24 @@ export function User({
 }: UserProps) {
     const { data: profile, isLoading } = useProfile(accountId);
 
-    if (isLoading && !nameProp) {
+    if (isLoading && !normalizeDisplayName(nameProp)) {
         return <UserSkeleton variant={variant} size={size} />;
     }
 
-    const resolvedName =
-        nameProp ??
-        (useAddressBook
-            ? (profile?.addressBookName ?? profile?.name)
-            : profile?.name) ??
-        accountId;
+    const resolvedName = resolveUserDisplayName({
+        accountId,
+        name: nameProp,
+        profileName: profile?.name,
+        addressBookName: profile?.addressBookName,
+    });
 
     return (
         <UserWithData
             name={resolvedName}
             address={accountId}
             imageUrl={resolveProfileImageUrl(profile?.image)}
-            useAddressBook={useAddressBook}
             size={size}
             variant={variant}
-            truncatePrimaryAddress={truncatePrimaryAddress}
             withLink={withLink}
             withHoverCard={withHoverCard}
             chainName={chainName}

@@ -45,21 +45,26 @@ export function SelectTreasuryStep({
                 </p>
             ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {treasuries.map((t) => (
-                        <button
-                            key={t.daoId}
-                            type="button"
-                            onClick={() => onSelect(t.daoId)}
-                            className="w-full p-3 text-left bg-muted/50 rounded-lg cursor-pointer hover:bg-muted active:bg-muted/80 transition-colors"
-                        >
-                            <div className="text-sm font-medium">
-                                {t.config.name || t.daoId}
-                            </div>
-                            <div className="font-mono text-xs text-muted-foreground mt-1">
-                                {t.daoId}
-                            </div>
-                        </button>
-                    ))}
+                    {treasuries.map((t) => {
+                        const displayName = t.config.name?.trim() || null;
+                        return (
+                            <button
+                                key={t.daoId}
+                                type="button"
+                                onClick={() => onSelect(t.daoId)}
+                                className="w-full p-3 text-left bg-muted/50 rounded-lg cursor-pointer hover:bg-muted active:bg-muted/80 transition-colors"
+                            >
+                                <div className="text-sm font-medium truncate">
+                                    {displayName || t.daoId}
+                                </div>
+                                {displayName && (
+                                    <div className="font-mono text-xs text-muted-foreground mt-1 truncate">
+                                        {t.daoId}
+                                    </div>
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             )}
         </div>
