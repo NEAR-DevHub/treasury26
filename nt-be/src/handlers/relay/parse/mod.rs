@@ -67,6 +67,10 @@ pub struct RelayResponse {
     pub success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// Ids of the proposals created by an `add_proposal` relay, in submission
+    /// order. Absent on vote relays and on failures.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub proposal_ids: Option<Vec<u64>>,
 }
 
 /// Build an error response from a status and message.
@@ -90,15 +94,18 @@ pub fn error_response(status: StatusCode, msg: impl Into<String>) -> RelayError 
         Json(RelayResponse {
             success: false,
             error: Some(msg),
+            proposal_ids: None,
         }),
     )
 }
 
-/// The success body (`{ "success": true }`).
-pub fn success_response() -> Json<RelayResponse> {
+/// The success body (`{ "success": true }`), carrying the created proposal ids
+/// when the relay was an `add_proposal`.
+pub fn success_response(proposal_ids: Option<Vec<u64>>) -> Json<RelayResponse> {
     Json(RelayResponse {
         success: true,
         error: None,
+        proposal_ids,
     })
 }
 
