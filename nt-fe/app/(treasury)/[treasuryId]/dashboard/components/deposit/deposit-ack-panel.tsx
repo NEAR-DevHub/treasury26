@@ -26,6 +26,8 @@ interface DepositAckPanelProps {
     onCheckedChange: (checked: boolean) => void;
     ctaLabel: string;
     onCta: () => void;
+    /** Disables checkbox + CTA (e.g. slot-wide deposit pause). */
+    disabled?: boolean;
     ctaDisabled?: boolean;
     ctaLoading?: boolean;
     className?: string;
@@ -40,10 +42,13 @@ export function DepositAckPanel({
     onCheckedChange,
     ctaLabel,
     onCta,
+    disabled,
     ctaDisabled,
     ctaLoading,
     className,
 }: DepositAckPanelProps) {
+    const controlsDisabled = Boolean(disabled || ctaDisabled);
+
     return (
         <div className={cn("space-y-3", className)}>
             <div>
@@ -67,9 +72,17 @@ export function DepositAckPanel({
                     ))}
                 </div>
 
-                <label className="flex gap-2.5 items-start cursor-pointer">
+                <label
+                    className={cn(
+                        "flex gap-2.5 items-start",
+                        disabled
+                            ? "cursor-not-allowed opacity-50"
+                            : "cursor-pointer",
+                    )}
+                >
                     <Checkbox
                         checked={checked}
+                        disabled={disabled}
                         onCheckedChange={(value) =>
                             onCheckedChange(value === true)
                         }
@@ -84,7 +97,7 @@ export function DepositAckPanel({
                 <Button
                     type="button"
                     onClick={onCta}
-                    disabled={!checked || ctaDisabled || ctaLoading}
+                    disabled={!checked || controlsDisabled || ctaLoading}
                     data-testid="deposit-ack-cta"
                     className="w-full"
                 >
