@@ -704,6 +704,41 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
         );
     }
 
+    // Two more stranding states the Running-reclaim above cannot see, both
+    // observed in production incidents:
+    // - `Queued` with a stale lock: the claiming worker died between claim
+    //   and start; the row holds its in-flight idempotency key forever, so
+    //   re-enqueues of the same work silently no-op.
+    // - `Pending` never attempted: seeded work that was permanently outranked
+    //   by newer higher-priority rows. Killing it frees the idempotency key;
+    //   the scheduler re-seeds anything still needed at current priority.
+    let unstranded = sqlx::query(
+        r#"UPDATE apalis.jobs
+           SET status = 'Killed',
+               done_at = NOW(),
+               last_result = '{"Err": "Reclaimed: stranded without execution (stale claim or starved seed)"}'::jsonb
+           WHERE (
+                 status = 'Queued'
+                 AND lock_at IS NOT NULL
+                 AND lock_at < now() - make_interval(secs => $1::double precision)
+             ) OR (
+                 status = 'Pending'
+                 AND attempts = 0
+                 AND run_at < now() - make_interval(secs => $1::double precision)
+             )"#,
+    )
+    .bind(reclaim_secs)
+    .execute(&state.db_pool)
+    .await?;
+    let unstranded = unstranded.rows_affected();
+    if unstranded > 0 {
+        tracing::warn!(
+            unstranded,
+            reclaim_secs,
+            "reclaimed apalis tasks stranded in Queued/Pending"
+        );
+    }
+
     const BATCH_SIZE: i64 = 10_000;
     // Backstop against a runaway loop; 100 batches = up to 1M rows per run.
     const MAX_BATCHES: usize = 100;

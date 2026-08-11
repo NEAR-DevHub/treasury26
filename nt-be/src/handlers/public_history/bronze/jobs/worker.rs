@@ -24,7 +24,8 @@ use crate::handlers::public_history::bronze::ingest_worker::{
     HandlerResult, fetch_source_page, latest_seen,
 };
 use crate::handlers::public_history::bronze::store::{
-    PublicHistorySource, load_public_history_cursor, record_public_history_poll_result,
+    PublicHistorySource, advance_public_history_last_seen, complete_latest_demand,
+    defer_latest_demand, load_public_history_cursor, record_public_history_source_coverage,
     save_public_backfill_progress, upsert_public_history_events,
 };
 use crate::handlers::public_history::gold::projector::project_public_gold_for_account;
@@ -36,15 +37,14 @@ use crate::jobs::context::JobContext;
 use super::postgres::{
     PUBLIC_HISTORY_BACKFILL_NAMESPACE, PUBLIC_HISTORY_INFLIGHT_INDEX, PUBLIC_HISTORY_JOB_KEY_FIELD,
     PUBLIC_HISTORY_LATEST_NAMESPACE, active_public_history_job_exists, is_unique_violation_on,
-    set_active_public_history_job_priority,
 };
 
-pub(crate) const JOB_CONCURRENCY_DEFAULT: usize = 2;
+pub(crate) const JOB_CONCURRENCY_DEFAULT: usize = 4;
 
 /// Latest-refresh worker slots, overridable via
-/// `PUBLIC_HISTORY_LATEST_CONCURRENCY`. Slots hold the shared NearBlocks
-/// rate gate while fetching, so raising this only helps together with a
-/// higher `NEARBLOCKS_MAX_PER_MINUTE`.
+/// `PUBLIC_HISTORY_LATEST_CONCURRENCY`. Concurrency hides database and
+/// network latency between rate-gate permits; it cannot bypass the shared
+/// NearBlocks budget, so raise `NEARBLOCKS_MAX_PER_MINUTE` for throughput.
 pub(crate) fn job_concurrency() -> usize {
     std::env::var("PUBLIC_HISTORY_LATEST_CONCURRENCY")
         .ok()
@@ -53,7 +53,6 @@ pub(crate) fn job_concurrency() -> usize {
         .max(1)
 }
 pub(crate) const BACKFILL_JOB_CONCURRENCY: usize = 2;
-pub(crate) const BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY: i32 = 50;
 
 const PUBLIC_HISTORY_LATEST_WORKER: &str = "public-history-latest";
 const PUBLIC_HISTORY_BACKFILL_WORKER: &str = "public-history-backfill";
@@ -145,70 +144,30 @@ pub(crate) async fn enqueue_latest_refresh_job(
     source: PublicHistorySource,
     trigger_block_height: i64,
     trigger_transaction_hash: Option<String>,
+    generation: i64,
 ) -> Result<bool, sqlx::Error> {
     let job = PublicHistoryJob::refresh_latest(
         account_id,
         source,
         trigger_block_height,
         trigger_transaction_hash,
+        generation,
     );
     let mut storage = latest_storage(pool.clone());
     push_job(&mut storage, job, 0).await
 }
 
-pub(crate) async fn enqueue_preverification_refresh_job(
+/// Readiness jobs run below every transaction-triggered job (priority 0):
+/// verification coverage is maintenance and must never preempt realtime.
+pub(crate) const READINESS_JOB_PRIORITY: i32 = -100;
+
+pub(crate) async fn enqueue_readiness_refresh_job(
     pool: &PgPool,
     account_id: String,
-    source: PublicHistorySource,
-    trigger_block_height: i64,
-    priority: i32,
 ) -> Result<bool, sqlx::Error> {
-    let job = PublicHistoryJob::refresh_latest(account_id, source, trigger_block_height, None);
-    let job_key = job.job_key().to_string();
+    let job = PublicHistoryJob::refresh_readiness(account_id);
     let mut storage = latest_storage(pool.clone());
-    let inserted = push_job(&mut storage, job, priority).await?;
-    if !inserted {
-        set_active_public_history_job_priority(
-            pool,
-            PUBLIC_HISTORY_LATEST_NAMESPACE,
-            &job_key,
-            priority,
-        )
-        .await?;
-    }
-    Ok(inserted)
-}
-
-async fn consume_backfill_budget(
-    pool: &PgPool,
-    account_id: &str,
-    source: PublicHistorySource,
-) -> Result<bool, sqlx::Error> {
-    let row = sqlx::query_scalar::<_, i32>(
-        r#"
-        INSERT INTO public_history_backfill_usage (
-            account_id,
-            source,
-            usage_date,
-            pages_fetched,
-            created_at,
-            updated_at
-        )
-        VALUES ($1, $2::public_history_source, CURRENT_DATE, 1, NOW(), NOW())
-        ON CONFLICT (account_id, source, usage_date) DO UPDATE SET
-            pages_fetched = public_history_backfill_usage.pages_fetched + 1,
-            updated_at = NOW()
-        WHERE public_history_backfill_usage.pages_fetched < $3
-        RETURNING pages_fetched
-        "#,
-    )
-    .bind(account_id)
-    .bind(source.as_str())
-    .bind(BACKFILL_MAX_PAGES_PER_ACCOUNT_PER_DAY)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(row.is_some())
+    push_job(&mut storage, job, READINESS_JOB_PRIORITY).await
 }
 
 pub(crate) async fn enqueue_backfill_page_job(
@@ -281,23 +240,47 @@ async fn run_latest_refresh(
     state: &AppState,
     account_id: &str,
     source: PublicHistorySource,
-    refresh_cutoff_block_height: i64,
+    trigger_block_height: i64,
     trigger_transaction_hash: Option<&str>,
 ) -> HandlerResult<(u64, u64, u64)> {
-    // An inactive account can legitimately have no new events, so prove the
-    // provider has reached the lag-adjusted cutoff before reading this source.
-    // Starting the drain only after this preflight avoids certifying an account
-    // page that was read before the provider crossed the boundary.
-    let provider_head =
-        fetch_latest_indexed_block_height(state, NearblocksPriority::Latest).await?;
-    if provider_head < refresh_cutoff_block_height {
-        return Err((
-            StatusCode::BAD_GATEWAY,
-            format!(
-                "NearBlocks indexed head {} has not reached refresh cutoff {}",
-                provider_head, refresh_cutoff_block_height
-            ),
-        ));
+    match trigger_transaction_hash {
+        // The trigger transaction is its own completion proof: already
+        // stored means the drain is done without any provider request, and
+        // otherwise the drain below pages until it finds it.
+        Some(transaction_hash) => {
+            let already_ingested = trigger_transaction_is_ingested(
+                &state.db_pool,
+                account_id,
+                source,
+                transaction_hash,
+            )
+            .await
+            .map_err(|error| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("trigger transaction verification failed: {error}"),
+                )
+            })?;
+            if already_ingested {
+                return Ok((0, 0, 0));
+            }
+        }
+        // Without a hash there is no completion proof in the feed, so prove
+        // the provider indexed past the trigger before reading — an inactive
+        // account can legitimately return no new events.
+        None => {
+            let provider_head =
+                fetch_latest_indexed_block_height(state, NearblocksPriority::Latest).await?;
+            if provider_head < trigger_block_height {
+                return Err((
+                    StatusCode::BAD_GATEWAY,
+                    format!(
+                        "NearBlocks indexed head {} has not reached trigger block {}",
+                        provider_head, trigger_block_height
+                    ),
+                ));
+            }
+        }
     }
 
     let watermark = load_public_history_cursor(&state.db_pool, account_id, source)
@@ -313,19 +296,7 @@ async fn run_latest_refresh(
     let mut cursor: Option<NearblocksCursor> = None;
     let mut totals = (0, 0, 0);
     let mut max_seen_height: Option<i64> = None;
-    let mut trigger_ingested = match trigger_transaction_hash {
-        Some(transaction_hash) => {
-            trigger_transaction_is_ingested(&state.db_pool, account_id, source, transaction_hash)
-                .await
-                .map_err(|error| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("trigger transaction verification failed: {error}"),
-                    )
-                })?
-        }
-        None => true,
-    };
+    let mut trigger_ingested = trigger_transaction_hash.is_none();
 
     loop {
         let page = fetch_source_page(
@@ -384,23 +355,109 @@ async fn run_latest_refresh(
         ));
     }
 
-    // One poll record per verified drain: the block-height watermark (GREATEST
-    // upsert) advances only after every fetched page ingested successfully, so
-    // a failed drain retries from an unmoved watermark.
-    record_public_history_poll_result(
-        &state.db_pool,
-        account_id,
-        source,
-        max_seen_height,
-        provider_head,
-    )
-    .await
-    .map_err(|error| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("public poll schedule update failed: {}", error),
-        )
-    })?;
+    // Realtime drains advance the ingestion watermark only; verification
+    // coverage stamps are the coordinated readiness refresh's to publish.
+    advance_public_history_last_seen(&state.db_pool, account_id, source, max_seen_height)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public last-seen advance failed: {}", error),
+            )
+        })?;
+
+    Ok(totals)
+}
+
+/// Drain one source newest→older until it overlaps the ingestion watermark
+/// (or seeds a first page when no watermark exists). Advances `last_seen`
+/// on success but never writes coverage stamps — that is the caller's
+/// all-sources-succeeded decision.
+async fn drain_source_to_watermark(
+    state: &AppState,
+    account_id: &str,
+    source: PublicHistorySource,
+    priority: NearblocksPriority,
+) -> HandlerResult<(u64, u64, u64)> {
+    let watermark = load_public_history_cursor(&state.db_pool, account_id, source)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public cursor load failed: {}", error),
+            )
+        })?
+        .and_then(|cursor| cursor.last_seen_block_height);
+
+    let mut cursor: Option<NearblocksCursor> = None;
+    let mut totals = (0, 0, 0);
+    let mut max_seen_height: Option<i64> = None;
+
+    loop {
+        let page = fetch_source_page(state, account_id, source, cursor.as_ref(), priority).await?;
+        let (touched, inserted, changed) = ingest_page(state, source, &page.events).await?;
+        totals.0 += touched;
+        totals.1 += inserted;
+        totals.2 += changed;
+
+        let page_height = latest_seen(&page);
+        if page_height > max_seen_height {
+            max_seen_height = page_height;
+        }
+
+        let reached_watermark = match watermark {
+            Some(watermark) => page
+                .events
+                .iter()
+                .any(|event| event.block_height < watermark),
+            None => true,
+        };
+        if page.events.is_empty() || page.next_cursor.is_none() || reached_watermark {
+            break;
+        }
+        cursor = page.next_cursor;
+    }
+
+    advance_public_history_last_seen(&state.db_pool, account_id, source, max_seen_height)
+        .await
+        .map_err(|error| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("public last-seen advance failed: {}", error),
+            )
+        })?;
+
+    Ok(totals)
+}
+
+/// Account-level verification-coverage refresh: one provider-head request
+/// covers all three sources; each drains to its watermark, and the coverage
+/// stamps the verifier trusts publish only after every drain succeeded, so a
+/// partial refresh can never certify coverage the account does not have.
+async fn run_readiness_refresh(state: &AppState, account_id: &str) -> HandlerResult<(u64, u64, u64)> {
+    let provider_head =
+        fetch_latest_indexed_block_height(state, NearblocksPriority::Readiness).await?;
+
+    let mut totals = (0, 0, 0);
+    for source in PublicHistorySource::all() {
+        let (touched, inserted, changed) =
+            drain_source_to_watermark(state, account_id, source, NearblocksPriority::Readiness)
+                .await?;
+        totals.0 += touched;
+        totals.1 += inserted;
+        totals.2 += changed;
+    }
+
+    for source in PublicHistorySource::all() {
+        record_public_history_source_coverage(&state.db_pool, account_id, source, provider_head)
+            .await
+            .map_err(|error| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("public coverage stamp failed: {}", error),
+                )
+            })?;
+    }
 
     Ok(totals)
 }
@@ -428,21 +485,6 @@ async fn run_backfill_page(
         .as_ref()
         .and_then(|cursor| cursor.backward_cursor.clone());
     if current_backward_cursor != job_cursor {
-        return Ok((0, 0, 0));
-    }
-
-    // Budget is consumed here, immediately before the provider request, so a
-    // job that dies before fetching (or scheduler re-enqueue churn) cannot
-    // burn the daily page allowance without ingesting anything.
-    let has_budget = consume_backfill_budget(&state.db_pool, account_id, source)
-        .await
-        .map_err(|error| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("public backfill budget check failed: {}", error),
-            )
-        })?;
-    if !has_budget {
         return Ok((0, 0, 0));
     }
 
@@ -478,22 +520,9 @@ async fn run_backfill_page(
         )
     })?;
 
-    if !backfill_done {
-        enqueue_backfill_page_job(
-            &state.db_pool,
-            account_id.to_string(),
-            source,
-            next_cursor.map(NearblocksCursor::into_string),
-        )
-        .await
-        .map_err(|error| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("public next backfill enqueue failed: {}", error),
-            )
-        })?;
-    }
-
+    // No immediate next-page chaining: the backfill scheduler selects the
+    // next page in oldest-updated order, so many accounts progress fairly
+    // instead of one account monopolizing the backfill lane.
     Ok((touched, inserted, changed))
 }
 
@@ -501,40 +530,90 @@ async fn handle_latest_job(
     job: PublicHistoryJob,
     context: Data<JobContext>,
 ) -> Result<(), BoxDynError> {
-    let PublicHistoryJob::RefreshLatest {
-        account_id,
-        source,
-        trigger_block_height,
-        trigger_transaction_hash,
-        ..
-    } = job
-    else {
-        return Ok(());
+    let account_id = match job {
+        // Single-shot dispatch token for a durable demand: success completes
+        // the demand (unless a newer trigger bumped its generation — the
+        // dispatcher then issues a follow-up token), failure defers the
+        // demand on its retry schedule. Either way the token itself never
+        // retries, so a failing account cannot pin a worker slot. Downstream
+        // silver/gold/verification runs off the dirty cursors written by the
+        // ingest, on the projector cadence.
+        PublicHistoryJob::RefreshLatest {
+            account_id,
+            source,
+            trigger_block_height,
+            trigger_transaction_hash,
+            generation,
+            ..
+        } => {
+            match run_latest_refresh(
+                &context.state,
+                &account_id,
+                source,
+                trigger_block_height,
+                trigger_transaction_hash.as_deref(),
+            )
+            .await
+            {
+                Ok((touched, inserted, changed)) => {
+                    complete_latest_demand(
+                        &context.state.db_pool,
+                        &account_id,
+                        source,
+                        generation,
+                    )
+                    .await
+                    .map_err(|error| {
+                        public_history_error(format!("latest demand completion failed: {error}"))
+                    })?;
+                    tracing::info!(
+                        account_id = account_id,
+                        source = %source,
+                        rows_touched = touched,
+                        rows_inserted = inserted,
+                        rows_changed = changed,
+                        "public latest refresh job finished"
+                    );
+                }
+                Err((status, message)) => {
+                    let error = format!("{status}: {message}");
+                    tracing::warn!(
+                        account_id = account_id,
+                        source = %source,
+                        error = error,
+                        "public latest refresh failed; demand deferred for retry"
+                    );
+                    defer_latest_demand(&context.state.db_pool, &account_id, source, &error)
+                        .await
+                        .map_err(|error| {
+                            public_history_error(format!("latest demand defer failed: {error}"))
+                        })?;
+                }
+            }
+            return Ok(());
+        }
+        PublicHistoryJob::RefreshReadiness { account_id, .. } => {
+            let (touched, inserted, changed) =
+                run_readiness_refresh(&context.state, &account_id)
+                    .await
+                    .map_err(|(status, message)| {
+                        public_history_error(format!(
+                            "public readiness refresh failed ({}): {}",
+                            status, message
+                        ))
+                    })?;
+
+            tracing::info!(
+                account_id = account_id,
+                rows_touched = touched,
+                rows_inserted = inserted,
+                rows_changed = changed,
+                "public readiness refresh job finished"
+            );
+            account_id
+        }
+        PublicHistoryJob::BackfillPage { .. } => return Ok(()),
     };
-
-    let (touched, inserted, changed) = run_latest_refresh(
-        &context.state,
-        &account_id,
-        source,
-        trigger_block_height,
-        trigger_transaction_hash.as_deref(),
-    )
-    .await
-    .map_err(|(status, message)| {
-        public_history_error(format!(
-            "public latest refresh failed ({}): {}",
-            status, message
-        ))
-    })?;
-
-    tracing::info!(
-        account_id = account_id,
-        source = %source,
-        rows_touched = touched,
-        rows_inserted = inserted,
-        rows_changed = changed,
-        "public latest refresh job finished"
-    );
 
     let silver_ready = match project_public_silver_for_account(
         &context.state.db_pool,
@@ -546,7 +625,6 @@ async fn handle_latest_job(
         Ok(silver_stats) if silver_stats.skipped_locked => {
             tracing::debug!(
                 account_id = account_id,
-                source = %source,
                 "public latest refresh projection nudge skipped silver lock"
             );
             false
@@ -554,7 +632,6 @@ async fn handle_latest_job(
         Ok(silver_stats) => {
             tracing::debug!(
                 account_id = account_id,
-                source = %source,
                 rows_projected = silver_stats.rows_projected,
                 rows_deleted = silver_stats.rows_deleted,
                 errors_written = silver_stats.errors_written,
@@ -565,7 +642,6 @@ async fn handle_latest_job(
         Err(error) => {
             tracing::warn!(
                 account_id = account_id,
-                source = %source,
                 error = %error,
                 "public latest refresh projection nudge failed silver"
             );
@@ -588,14 +664,12 @@ async fn handle_latest_job(
         Ok(gold_stats) if gold_stats.skipped_locked => {
             tracing::debug!(
                 account_id = account_id,
-                source = %source,
                 "public latest refresh projection nudge skipped gold lock"
             );
         }
         Ok(gold_stats) => {
             tracing::debug!(
                 account_id = account_id,
-                source = %source,
                 rows_projected = gold_stats.rows_projected,
                 rows_deleted = gold_stats.rows_deleted,
                 errors_written = gold_stats.errors_written,
@@ -637,7 +711,6 @@ async fn handle_latest_job(
         Err(error) => {
             tracing::warn!(
                 account_id = account_id,
-                source = %source,
                 error = %error,
                 "public latest refresh projection nudge failed gold"
             );

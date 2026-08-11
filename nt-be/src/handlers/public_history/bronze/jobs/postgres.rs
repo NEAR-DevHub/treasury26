@@ -33,6 +33,19 @@ pub(crate) async fn setup_public_history_jobs(pool: &PgPool) -> Result<(), sqlx:
     );
 
     sqlx::query(&sql).execute(pool).await?;
+
+    // Claim-path index for the workers' fetch: highest priority first among
+    // runnable rows of one namespace. Created here (not in migrations)
+    // because the apalis schema only exists once apalis setup has run.
+    sqlx::query(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_apalis_jobs_claimable
+        ON apalis.jobs (job_type, priority DESC, run_at, id)
+        WHERE status = 'Pending'
+        "#,
+    )
+    .execute(pool)
+    .await?;
     Ok(())
 }
 
@@ -61,31 +74,29 @@ pub(crate) async fn active_public_history_job_exists(
     .await
 }
 
-pub(crate) async fn set_active_public_history_job_priority(
+/// Active jobs whose job_key starts with `key_prefix` — the readiness
+/// scheduler's in-flight bound.
+pub(crate) async fn count_active_public_history_jobs_with_prefix(
     pool: &PgPool,
     namespace: &str,
-    job_key: &str,
-    priority: i32,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    key_prefix: &str,
+) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar::<_, i64>(
         r#"
-        UPDATE apalis.jobs
-        SET priority = $3
+        SELECT COUNT(*)
+        FROM apalis.jobs
         WHERE job_type = $1
-          AND metadata->>'job_key' = $2
+          AND metadata->>'job_key' LIKE $2 || '%'
           AND (
               status IN ('Pending', 'Queued', 'Running')
               OR (status = 'Failed' AND attempts < max_attempts)
           )
-          AND priority IS DISTINCT FROM $3
         "#,
     )
     .bind(namespace)
-    .bind(job_key)
-    .bind(priority)
-    .execute(pool)
-    .await?;
-    Ok(())
+    .bind(key_prefix)
+    .fetch_one(pool)
+    .await
 }
 
 pub(crate) fn is_unique_violation_on(error: &sqlx::Error, constraint_name: &str) -> bool {

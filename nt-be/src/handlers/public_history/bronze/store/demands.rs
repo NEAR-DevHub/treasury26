@@ -1,0 +1,271 @@
+use chrono::{DateTime, Utc};
+use sqlx::PgPool;
+
+use super::models::PublicHistorySource;
+
+/// Retry backoff per prior attempt; the last entry repeats. Authentication
+/// or schema failures stay visible in `last_error` and retry slowly instead
+/// of hot-looping or being lost.
+const RETRY_BACKOFF_SECONDS: [i64; 4] = [15, 30, 60, 120];
+
+pub fn retry_backoff_seconds(attempts: i32) -> i64 {
+    let index = (attempts.max(0) as usize).min(RETRY_BACKOFF_SECONDS.len() - 1);
+    RETRY_BACKOFF_SECONDS[index]
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+struct LatestDemandRow {
+    account_id: String,
+    source: String,
+    trigger_block_height: i64,
+    trigger_transaction_hash: Option<String>,
+    generation: i64,
+    attempts: i32,
+    next_attempt_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LatestDemand {
+    pub account_id: String,
+    pub source: PublicHistorySource,
+    pub trigger_block_height: i64,
+    pub trigger_transaction_hash: Option<String>,
+    pub generation: i64,
+    pub attempts: i32,
+    pub next_attempt_at: DateTime<Utc>,
+}
+
+impl TryFrom<LatestDemandRow> for LatestDemand {
+    type Error = super::models::PublicHistorySourceParseError;
+
+    fn try_from(row: LatestDemandRow) -> Result<Self, Self::Error> {
+        Ok(Self {
+            account_id: row.account_id,
+            source: PublicHistorySource::from_db(&row.source)?,
+            trigger_block_height: row.trigger_block_height,
+            trigger_transaction_hash: row.trigger_transaction_hash,
+            generation: row.generation,
+            attempts: row.attempts,
+            next_attempt_at: row.next_attempt_at,
+        })
+    }
+}
+
+/// Record (or refresh) the realtime demand for one (account, source). A
+/// newer trigger landing while a token job is pending or running bumps the
+/// generation and re-arms immediate dispatch — nothing is discarded.
+pub async fn upsert_latest_demand(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+    trigger_block_height: i64,
+    trigger_transaction_hash: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        INSERT INTO public_history_latest_demands (
+            account_id, source, trigger_block_height, trigger_transaction_hash
+        )
+        VALUES ($1, $2::public_history_source, $3, $4)
+        ON CONFLICT (account_id, source) DO UPDATE SET
+            trigger_block_height = GREATEST(
+                public_history_latest_demands.trigger_block_height,
+                EXCLUDED.trigger_block_height
+            ),
+            trigger_transaction_hash = CASE
+                WHEN EXCLUDED.trigger_block_height
+                     >= public_history_latest_demands.trigger_block_height
+                    THEN EXCLUDED.trigger_transaction_hash
+                ELSE public_history_latest_demands.trigger_transaction_hash
+            END,
+            generation = public_history_latest_demands.generation + 1,
+            attempts = 0,
+            next_attempt_at = NOW(),
+            last_error = NULL,
+            updated_at = NOW()
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .bind(trigger_block_height)
+    .bind(trigger_transaction_hash)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn load_ready_latest_demands(
+    pool: &PgPool,
+    limit: i64,
+) -> Result<Vec<LatestDemand>, sqlx::Error> {
+    let rows: Vec<LatestDemandRow> = sqlx::query_as(
+        r#"
+        SELECT account_id, source::text AS source, trigger_block_height,
+               trigger_transaction_hash, generation, attempts, next_attempt_at
+        FROM public_history_latest_demands
+        WHERE next_attempt_at <= NOW()
+        ORDER BY next_attempt_at
+        LIMIT $1
+        "#,
+    )
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+    rows.into_iter()
+        .map(|row| {
+            LatestDemand::try_from(row)
+                .map_err(|error| sqlx::Error::Decode(Box::new(std::io::Error::other(error))))
+        })
+        .collect()
+}
+
+/// Age of the oldest ready demand — the realtime-lag health signal.
+pub async fn oldest_ready_latest_demand_age_seconds(
+    pool: &PgPool,
+) -> Result<Option<f64>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT EXTRACT(epoch FROM NOW() - MIN(next_attempt_at))::double precision
+        FROM public_history_latest_demands
+        WHERE next_attempt_at <= NOW()
+        "#,
+    )
+    .fetch_one(pool)
+    .await
+}
+
+/// Delete the demand only if no newer trigger arrived while the job ran;
+/// a survived generation means the dispatcher issues a follow-up token.
+pub async fn complete_latest_demand(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+    generation: i64,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        DELETE FROM public_history_latest_demands
+        WHERE account_id = $1
+          AND source = $2::public_history_source
+          AND generation = $3
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .bind(generation)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+/// Keep the demand after a failed attempt and schedule the exponential
+/// retry. `retry_after` overrides the schedule when the provider sent one.
+pub async fn defer_latest_demand(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+    error: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE public_history_latest_demands
+        SET attempts = attempts + 1,
+            next_attempt_at = NOW() + make_interval(secs => $3::double precision),
+            last_error = LEFT($4, 500),
+            updated_at = NOW()
+        WHERE account_id = $1 AND source = $2::public_history_source
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .bind(retry_backoff_seconds(
+        current_attempts(pool, account_id, source).await?,
+    ) as f64)
+    .bind(error)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+async fn current_attempts(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+) -> Result<i32, sqlx::Error> {
+    Ok(sqlx::query_scalar::<_, i32>(
+        r#"
+        SELECT attempts FROM public_history_latest_demands
+        WHERE account_id = $1 AND source = $2::public_history_source
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .fetch_optional(pool)
+    .await?
+    .unwrap_or(0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn backoff_schedule_caps_at_the_last_step() {
+        assert_eq!(retry_backoff_seconds(0), 15);
+        assert_eq!(retry_backoff_seconds(1), 30);
+        assert_eq!(retry_backoff_seconds(2), 60);
+        assert_eq!(retry_backoff_seconds(3), 120);
+        assert_eq!(retry_backoff_seconds(50), 120);
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn newer_trigger_bumps_generation_and_survives_completion(pool: PgPool) {
+        upsert_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksFt, 100, Some("tx1"))
+            .await
+            .unwrap();
+        let demand = &load_ready_latest_demands(&pool, 10).await.unwrap()[0];
+        assert_eq!((demand.generation, demand.trigger_block_height), (1, 100));
+
+        // A newer trigger lands while the token job is running.
+        upsert_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksFt, 105, Some("tx2"))
+            .await
+            .unwrap();
+
+        // The job finishes carrying generation 1 — the demand must survive.
+        let completed =
+            complete_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksFt, 1)
+                .await
+                .unwrap();
+        assert!(!completed);
+        let demand = &load_ready_latest_demands(&pool, 10).await.unwrap()[0];
+        assert_eq!((demand.generation, demand.trigger_block_height), (2, 105));
+        assert_eq!(demand.trigger_transaction_hash.as_deref(), Some("tx2"));
+
+        let completed =
+            complete_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksFt, 2)
+                .await
+                .unwrap();
+        assert!(completed);
+        assert!(load_ready_latest_demands(&pool, 10).await.unwrap().is_empty());
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn deferred_demand_leaves_the_ready_set_and_records_the_error(pool: PgPool) {
+        upsert_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksMt, 100, None)
+            .await
+            .unwrap();
+        defer_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksMt, "502 upstream")
+            .await
+            .unwrap();
+
+        assert!(load_ready_latest_demands(&pool, 10).await.unwrap().is_empty());
+        let (attempts, error): (i32, Option<String>) = sqlx::query_as(
+            "SELECT attempts, last_error FROM public_history_latest_demands WHERE account_id='dao.near'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(attempts, 1);
+        assert_eq!(error.as_deref(), Some("502 upstream"));
+    }
+}

@@ -117,6 +117,70 @@ pub async fn save_public_backfill_progress(
     Ok(())
 }
 
+/// Advance only the ingestion watermark after a successful drain. Coverage
+/// stamps (`latest_refresh_at`/cutoff) are published separately by the
+/// coordinated readiness refresh once ALL sources drained — a single-source
+/// drain must never certify verification coverage.
+pub async fn advance_public_history_last_seen(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+    last_seen_block_height: Option<i64>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        INSERT INTO bronze_public_history_cursors (
+            account_id, source, last_seen_block_height, updated_at
+        )
+        VALUES ($1, $2::public_history_source, $3, NOW())
+        ON CONFLICT (account_id, source) DO UPDATE SET
+            last_seen_block_height = COALESCE(
+                GREATEST(
+                    bronze_public_history_cursors.last_seen_block_height,
+                    EXCLUDED.last_seen_block_height
+                ),
+                bronze_public_history_cursors.last_seen_block_height,
+                EXCLUDED.last_seen_block_height
+            ),
+            updated_at = NOW()
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .bind(last_seen_block_height)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+/// Publish one source's verified coverage: the drain completed through the
+/// lag-adjusted provider cutoff. Called for all three sources together by
+/// the readiness refresh after every drain succeeded.
+pub async fn record_public_history_source_coverage(
+    pool: &PgPool,
+    account_id: &str,
+    source: PublicHistorySource,
+    verified_provider_head: i64,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE bronze_public_history_cursors
+        SET latest_refresh_at = NOW(),
+            latest_refresh_cutoff_block_height = GREATEST(
+                COALESCE(latest_refresh_cutoff_block_height, 0), $3
+            ),
+            updated_at = NOW()
+        WHERE account_id = $1 AND source = $2::public_history_source
+        "#,
+    )
+    .bind(account_id)
+    .bind(source.as_str())
+    .bind(verified_provider_head)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
 pub async fn record_public_history_poll_result(
     pool: &PgPool,
     account_id: &str,

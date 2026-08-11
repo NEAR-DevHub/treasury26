@@ -22,7 +22,13 @@ use crate::services::public_balance_reader::{
     get_public_balance_at_block, get_public_gross_native_balance_at_block,
 };
 
-const FAILED_RETRY_AFTER_HOURS: i64 = 6;
+/// Cool-off before a failed gate re-verifies. Shared with the readiness
+/// scheduler so coverage refreshes are only produced when the verifier can
+/// consume them.
+pub const FAILED_RETRY_AFTER_HOURS: i64 = 6;
+/// Floor between failed-gate retries even when the ledger was rebuilt —
+/// bounds RPC spend for accounts with constant activity.
+pub const FAILED_RETRY_MIN_MINUTES: i64 = 15;
 const WATERMARK_MAX_AGE_MINUTES: i64 = 15;
 /// Contract accounts earn 30% of the gas fees burned by calls into them —
 /// balance accretion the receipt feed cannot itemize (~0.0002 NEAR observed
@@ -94,7 +100,10 @@ impl<'a> BalanceVerifier<'a> {
     pub async fn run_cycle(&self) -> Result<VerificationCycleStats, VerificationError> {
         let mut stats = VerificationCycleStats::default();
 
-        for account_id in load_gate_candidates(self.pool, FAILED_RETRY_AFTER_HOURS).await? {
+        for account_id in
+            load_gate_candidates(self.pool, FAILED_RETRY_AFTER_HOURS, FAILED_RETRY_MIN_MINUTES)
+                .await?
+        {
             stats.gates_run += 1;
             match self.verify_account_gate(&account_id, &mut stats).await {
                 Ok(AccountGateOutcome::Passed) => stats.gates_passed += 1,
@@ -132,12 +141,13 @@ impl<'a> BalanceVerifier<'a> {
         Ok(stats)
     }
 
-    /// Event-driven first verification for one account, called right after
-    /// its drain → silver → gold nudge chain so a new treasury reaches
+    /// Event-driven verification for one account, called right after its
+    /// drain → silver → gold nudge chain so a new treasury reaches
     /// chart-ready in the same pass instead of waiting for the next
-    /// projection cycle. Only runs when the projection is ready and the account has
-    /// never been gated (passed accounts are done; failed accounts respect
-    /// the cool-off). Returns whether the gate passed.
+    /// projection cycle. Runs when the projection is ready and the account
+    /// was never gated, or a failed gate is retry-eligible (cool-off
+    /// expired, or the ledger was rebuilt since the failed check, floored at
+    /// the minimum retry interval). Returns whether the gate passed.
     pub async fn nudge_account_gate(&self, account_id: &str) -> Result<bool, VerificationError> {
         let eligible: bool = sqlx::query_scalar(
             r#"
@@ -146,16 +156,30 @@ impl<'a> BalanceVerifier<'a> {
                 FROM gold_public_history_cursors gold_cursor
                 LEFT JOIN public_balance_verification_cursors verification
                   ON verification.account_id = gold_cursor.account_id
+                LEFT JOIN silver_public_history_cursors silver
+                  ON silver.account_id = gold_cursor.account_id
                 WHERE gold_cursor.account_id = $1
                   AND gold_cursor.projection_ready_at IS NOT NULL
                   AND (
                       verification.account_id IS NULL
                       OR verification.status = 'unverified'
+                      OR (
+                          verification.status = 'failed'
+                          AND verification.updated_at
+                                < NOW() - make_interval(mins => $3::integer)
+                          AND (
+                              verification.updated_at
+                                    < NOW() - make_interval(hours => $2::integer)
+                              OR silver.updated_at > verification.updated_at
+                          )
+                      )
                   )
             )
             "#,
         )
         .bind(account_id)
+        .bind(FAILED_RETRY_AFTER_HOURS as i32)
+        .bind(FAILED_RETRY_MIN_MINUTES as i32)
         .fetch_one(self.pool)
         .await?;
         if !eligible {
