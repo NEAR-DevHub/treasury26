@@ -163,7 +163,6 @@ export function AddressBookTable({
                                             accountId={entry.address}
                                             name={entry.name}
                                             withLink={false}
-                                            useAddressBook
                                             size="md"
                                             withHoverCard
                                             highlightQuery={searchQuery}

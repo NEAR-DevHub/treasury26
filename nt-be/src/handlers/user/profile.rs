@@ -187,6 +187,35 @@ fn apply_local_profile_overrides(
     }
 }
 
+/// Apply DAO branding from `treasury_settings` onto a profile response.
+///
+/// Display name always wins when non-empty (treasury branding is the source of
+/// truth for DAO accounts). Logo fills image when present as https or raw CID.
+fn apply_treasury_settings_to_profile(
+    profile: &mut ProfileData,
+    display_name: Option<String>,
+    flag_logo: Option<String>,
+) {
+    if let Some(name) = display_name
+        .map(|n| n.trim().to_string())
+        .filter(|n| !n.is_empty())
+    {
+        profile.name = Some(name);
+    }
+
+    if let Some(logo) = flag_logo
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    {
+        let url = if logo.starts_with("https://") || logo.starts_with("http://") {
+            logo
+        } else {
+            format!("https://ipfs.near.social/ipfs/{logo}")
+        };
+        profile.image = Some(serde_json::json!({ "url": url }));
+    }
+}
+
 /// Main handler for single profile endpoint
 pub async fn get_profile(
     State(state): State<Arc<AppState>>,
@@ -247,6 +276,17 @@ pub async fn get_profile(
     .await
     {
         apply_local_profile_overrides(&mut profile, row.display_name, row.avatar_url);
+    }
+
+    // DAO branding from treasury_settings overrides Social (and any prior name) when set.
+    if let Ok(Some(row)) = sqlx::query!(
+        "SELECT display_name, flag_logo FROM treasury_settings WHERE account_id = $1",
+        params.account_id.trim()
+    )
+    .fetch_optional(&state.db_pool)
+    .await
+    {
+        apply_treasury_settings_to_profile(&mut profile, row.display_name, row.flag_logo);
     }
 
     Ok(Json(profile))
@@ -400,6 +440,34 @@ mod tests {
         assert_eq!(
             profile.image,
             Some(serde_json::json!({ "ipfs_cid": "social-cid" }))
+        );
+    }
+
+    #[test]
+    fn apply_treasury_settings_overrides_name_and_logo() {
+        let mut profile = ProfileData {
+            name: Some("social".into()),
+            address_book_name: None,
+            image: None,
+            background_image: None,
+            description: None,
+            linktree: None,
+            tags: None,
+            is_in_address_book: false,
+        };
+
+        apply_treasury_settings_to_profile(
+            &mut profile,
+            Some("  Treasury One  ".into()),
+            Some("bafytestcid".into()),
+        );
+
+        assert_eq!(profile.name.as_deref(), Some("Treasury One"));
+        assert_eq!(
+            profile.image,
+            Some(serde_json::json!({
+                "url": "https://ipfs.near.social/ipfs/bafytestcid"
+            }))
         );
     }
 }

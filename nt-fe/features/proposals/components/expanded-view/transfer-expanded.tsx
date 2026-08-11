@@ -76,7 +76,6 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
             value: (
                 <User
                     accountId={data.receiver}
-                    useAddressBook
                     chainName={recipientChainName}
                     withHoverCard
                 />

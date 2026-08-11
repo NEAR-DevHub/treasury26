@@ -322,9 +322,7 @@ function AccountIdentity({
     if (!accountId) {
         return <span className="text-sm font-medium">{fallbackLabel}</span>;
     }
-    return (
-        <User accountId={accountId} useAddressBook withHoverCard size="md" />
-    );
+    return <User accountId={accountId} withHoverCard size="md" />;
 }
 
 function PartyRow({

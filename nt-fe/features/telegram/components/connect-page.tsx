@@ -391,12 +391,14 @@ function ConnectPageInner() {
                                     />
                                     <span className="block min-w-0">
                                         <span className="block text-sm font-medium truncate">
-                                            {treasury.config.name ??
+                                            {treasury.config.name?.trim() ||
                                                 treasury.daoId}
                                         </span>
-                                        <span className="block text-xs text-muted-foreground truncate">
-                                            {treasury.daoId}
-                                        </span>
+                                        {!!treasury.config.name?.trim() && (
+                                            <span className="block text-xs text-muted-foreground truncate">
+                                                {treasury.daoId}
+                                            </span>
+                                        )}
                                     </span>
                                 </label>
                                 {!alreadyHere && elsewhereStatus && (

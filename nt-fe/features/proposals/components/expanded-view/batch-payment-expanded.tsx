@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
-import { Address } from "@/components/address";
 import { User } from "@/components/user";
 import Link from "next/link";
 import { StatusPill } from "../proposal-status-pill";
@@ -96,13 +95,7 @@ function PaymentDisplay({
     let items: InfoItem[] = [
         {
             label: t("recipient"),
-            value: (
-                <User
-                    useAddressBook
-                    accountId={payment.recipient}
-                    chainName={chainName}
-                />
-            ),
+            value: <User accountId={payment.recipient} chainName={chainName} />,
         },
         {
             label: t("amount"),
@@ -156,7 +149,11 @@ function PaymentDisplay({
                     {t("recipientNumber", { number })}
                 </div>
                 <div className="hidden md:flex gap-3 items-baseline text-sm text-muted-foreground">
-                    <Address address={payment.recipient} />
+                    <User
+                        accountId={payment.recipient}
+                        variant="details"
+                        withLink={false}
+                    />
                     <Amount
                         amount={payment.amount.toString()}
                         textOnly
