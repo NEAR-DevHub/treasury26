@@ -24,6 +24,12 @@ use crate::services::public_balance_reader::{
 
 const FAILED_RETRY_AFTER_HOURS: i64 = 6;
 const WATERMARK_MAX_AGE_MINUTES: i64 = 15;
+/// Contract accounts earn 30% of the gas fees burned by calls into them —
+/// balance accretion the receipt feed cannot itemize (~0.0002 NEAR observed
+/// per ledger event). The native drift budget scales with event count at
+/// this rate so busy DAOs are not failed on accumulated gas rewards, while
+/// the configured flat tolerance stays the floor for quiet accounts.
+const NATIVE_DUST_PER_EVENT_NEAR: &str = "0.002";
 /// Bound on archival head-anchor reads per silver cycle so a mass-dirty
 /// event cannot turn one tick into an unbounded sequential RPC sweep.
 const HEAD_ANCHORS_PER_CYCLE: usize = 25;
@@ -426,6 +432,22 @@ impl<'a> BalanceVerifier<'a> {
         Ok(Some(watermark))
     }
 
+    /// Allowed native drift for a ledger of `event_count` entries: the flat
+    /// configured tolerance or the per-event gas-reward allowance, whichever
+    /// is larger. Gas rewards only ever ADD to a contract's chain balance,
+    /// so only positive drift (chain above ledger) can be dust; negative
+    /// drift means phantom inflows or missed outflows — a pipeline bug — and
+    /// stays on the flat floor no matter how long the history is.
+    fn native_drift_budget(&self, drift: &BigDecimal, event_count: i64) -> BigDecimal {
+        if drift.is_negative() {
+            return self.native_tolerance.clone();
+        }
+        let scaled = BigDecimal::from_str(NATIVE_DUST_PER_EVENT_NEAR)
+            .expect("NATIVE_DUST_PER_EVENT_NEAR is a valid decimal")
+            * BigDecimal::from(event_count.max(0));
+        scaled.max(self.native_tolerance.clone())
+    }
+
     async fn check_assets(
         &self,
         account_id: &str,
@@ -466,7 +488,7 @@ impl<'a> BalanceVerifier<'a> {
 
             let drift = &chain_balance - &head.balance_after;
             let drift_ok = if head.token_standard == "native" {
-                drift.abs() <= self.native_tolerance
+                drift.abs() <= self.native_drift_budget(&drift, head.event_count)
             } else {
                 drift.is_zero()
             };
@@ -517,5 +539,46 @@ impl<'a> BalanceVerifier<'a> {
             .await?;
         }
         Ok(written)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn verifier_budget(drift: &str, event_count: i64) -> BigDecimal {
+        let pool = sqlx::PgPool::connect_lazy("postgres://unused/unused").unwrap();
+        let network = NetworkConfig::mainnet();
+        let drift = BigDecimal::from_str(drift).unwrap();
+        BalanceVerifier::new(&pool, &network, 0.1).native_drift_budget(&drift, event_count)
+    }
+
+    #[tokio::test]
+    async fn drift_budget_floors_at_flat_tolerance_for_quiet_accounts() {
+        assert_eq!(verifier_budget("0.05", 0), BigDecimal::from_str("0.1").unwrap());
+        assert_eq!(verifier_budget("0.05", 49), BigDecimal::from_str("0.1").unwrap());
+    }
+
+    #[tokio::test]
+    async fn drift_budget_scales_with_event_count_for_positive_drift() {
+        assert_eq!(verifier_budget("0.1", 50), BigDecimal::from_str("0.100").unwrap());
+        assert_eq!(verifier_budget("0.15", 100), BigDecimal::from_str("0.2").unwrap());
+        assert_eq!(
+            verifier_budget("0.148", 1392),
+            BigDecimal::from_str("2.784").unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn negative_drift_never_scales_past_the_flat_floor() {
+        // Gas rewards only add balance; ledger-above-chain is a bug, not dust.
+        assert_eq!(
+            verifier_budget("-0.218", 640),
+            BigDecimal::from_str("0.1").unwrap()
+        );
+        assert_eq!(
+            verifier_budget("-0.477", 252),
+            BigDecimal::from_str("0.1").unwrap()
+        );
     }
 }

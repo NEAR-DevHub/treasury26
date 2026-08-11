@@ -81,16 +81,17 @@ impl<'r> ReceiptDepositGroup<'r> {
     /// separate `system` refund receipt that is booked as a normal inflow.
     /// Booking the debit here keeps the pair net-zero on the chain series —
     /// booking neither leg was impossible because the refund receipt itself
-    /// reports a successful outcome. Nothing ever reached the receiver, and
-    /// failed receipts without deposit data stay skipped instead of raising
-    /// projection errors.
+    /// reports a successful outcome. Nothing ever reached the receiver —
+    /// including a failed SELF-receipt, whose credit leg never executed even
+    /// though receiver == predecessor — and failed receipts without deposit
+    /// data stay skipped instead of raising projection errors.
     fn signed_delta_raw(&self, account_id: &str) -> Result<Option<BigDecimal>, String> {
         let first = self.first();
         let receiver_is_account = first.affected_account_id == account_id;
         let predecessor_is_account = first.involved_account_id.as_deref() == Some(account_id);
 
         if self.is_failed() {
-            if !predecessor_is_account || receiver_is_account {
+            if !predecessor_is_account {
                 return Ok(None);
             }
             return Ok(self
@@ -639,6 +640,29 @@ mod tests {
         let result = build(&[row]);
 
         assert!(result.entries.is_empty());
+    }
+
+    #[test]
+    fn failed_self_receipt_and_system_refund_net_to_zero() {
+        // The meta-pool-dao-4.near pattern: an account calls itself (e.g. a
+        // deploy + init on its own contract) with an attached deposit and the
+        // receipt fails. The deposit was debited at receipt creation and the
+        // credit leg never executed, so the system refund needs a pairing
+        // debit even though receiver == predecessor. A successful self-receipt
+        // stays net-zero and skipped.
+        let mut failed = receipt_row(1, "self", 0, 100, DAO, Some(DAO), None, Some("6000"));
+        failed.outcome_status = Some(false);
+        let refund = receipt_row(2, "refund", 0, 102, DAO, Some("system"), None, Some("6000"));
+
+        let result = build(&[failed, refund]);
+
+        assert!(result.errors.is_empty());
+        assert_eq!(result.entries.len(), 2);
+        assert_eq!(result.entries[0].delta_raw, BigDecimal::from(-6000));
+        let last = result.entries.last().unwrap();
+        assert_eq!(last.balance_after, BigDecimal::zero());
+        assert_eq!(last.user_balance_after, BigDecimal::zero());
+        assert!(result.entries.iter().all(|e| !e.affects_user_balance));
     }
 
     #[test]

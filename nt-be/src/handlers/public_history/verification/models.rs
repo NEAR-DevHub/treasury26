@@ -52,6 +52,7 @@ pub struct AssetLedgerHead {
     pub min_user_balance_after: BigDecimal,
     pub head_block_height: i64,
     pub decimals: i32,
+    pub event_count: i64,
 }
 
 #[derive(Debug, Clone)]

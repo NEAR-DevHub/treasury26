@@ -111,24 +111,44 @@ pub async fn load_asset_ledger_heads(
 ) -> Result<Vec<AssetLedgerHead>, sqlx::Error> {
     sqlx::query_as::<_, AssetLedgerHead>(
         r#"
-        SELECT DISTINCT ON (asset)
-            asset,
+        WITH ledger AS (
+            SELECT *
+            FROM silver_balance_history
+            WHERE account_id = $1
+              -- Verification is native-NEAR only. Staking series ARE
+              -- authoritative RPC readings (observations), and FT/MT balances
+              -- can accrue without transfer events (venear.dao vote-escrow), so
+              -- an exact-drift chain check would fail ledgers that are correct.
+              AND token_standard = 'native'::public_token_standard
+              AND asset NOT LIKE 'staking:%'
+        ),
+        anchors AS (
+            SELECT asset, MAX(block_height) AS anchor_block
+            FROM ledger
+            WHERE entry_kind = 'reconciliation'
+            GROUP BY asset
+        )
+        SELECT DISTINCT ON (ledger.asset)
+            ledger.asset,
             token_standard::text AS token_standard,
             balance_after,
-            MIN(balance_after) OVER (PARTITION BY asset) AS min_balance_after,
+            MIN(balance_after) OVER (PARTITION BY ledger.asset) AS min_balance_after,
             user_balance_after,
-            MIN(user_balance_after) OVER (PARTITION BY asset) AS min_user_balance_after,
+            MIN(user_balance_after) OVER (PARTITION BY ledger.asset) AS min_user_balance_after,
             block_height AS head_block_height,
-            decimals
-        FROM silver_balance_history
-        WHERE account_id = $1
-          -- Verification is native-NEAR only. Staking series ARE
-          -- authoritative RPC readings (observations), and FT/MT balances
-          -- can accrue without transfer events (venear.dao vote-escrow), so
-          -- an exact-drift chain check would fail ledgers that are correct.
-          AND token_standard = 'native'::public_token_standard
-          AND asset NOT LIKE 'staking:%'
-        ORDER BY asset, block_time DESC, block_height DESC, intra_block_seq DESC
+            decimals,
+            -- Drift is measured since the last reconciliation anchor (each
+            -- pass rebases drift to zero there), so the gas-dust budget
+            -- scales over the same window: entries past the anchor, or the
+            -- full history before the first pass.
+            COUNT(CASE
+                WHEN ledger.entry_kind != 'reconciliation'
+                     AND ledger.block_height > COALESCE(anchors.anchor_block, -1)
+                THEN 1
+            END) OVER (PARTITION BY ledger.asset) AS event_count
+        FROM ledger
+        LEFT JOIN anchors ON anchors.asset = ledger.asset
+        ORDER BY ledger.asset, block_time DESC, block_height DESC, intra_block_seq DESC
         "#,
     )
     .bind(account_id)
