@@ -464,7 +464,6 @@ impl<'a> BalanceVerifier<'a> {
         Ok(Some(watermark))
     }
 
-
     /// Determine signer capability from the account state at the exact
     /// verification watermark. Account-name suffixes are not an authority:
     /// arbitrary contract accounts may live outside the Sputnik namespace.
