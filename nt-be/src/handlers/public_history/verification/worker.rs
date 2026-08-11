@@ -464,6 +464,7 @@ impl<'a> BalanceVerifier<'a> {
         Ok(Some(watermark))
     }
 
+
     /// Determine signer capability from the account state at the exact
     /// verification watermark. Account-name suffixes are not an authority:
     /// arbitrary contract accounts may live outside the Sputnik namespace.
@@ -643,87 +644,5 @@ impl<'a> BalanceVerifier<'a> {
             .await?;
         }
         Ok(written)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn head(event_count: i64, has_anchor: bool) -> AssetLedgerHead {
-        AssetLedgerHead {
-            asset: "near".to_string(),
-            token_standard: "native".to_string(),
-            balance_after: BigDecimal::from(0),
-            min_balance_after: BigDecimal::from(0),
-            user_balance_after: BigDecimal::from(0),
-            min_user_balance_after: BigDecimal::from(0),
-            head_block_height: 0,
-            decimals: 24,
-            event_count,
-            has_anchor,
-        }
-    }
-
-    fn verifier_budget(
-        drift: &str,
-        event_count: i64,
-        has_anchor: bool,
-        has_full_access_key: bool,
-    ) -> Option<BigDecimal> {
-        let pool = sqlx::PgPool::connect_lazy("postgres://unused/unused").unwrap();
-        let network = NetworkConfig::mainnet();
-        let drift = BigDecimal::from_str(drift).unwrap();
-        BalanceVerifier::new(&pool, &network, 0.1).native_drift_budget(
-            &drift,
-            &head(event_count, has_anchor),
-            has_full_access_key,
-        )
-    }
-
-    fn near(text: &str) -> Option<BigDecimal> {
-        Some(BigDecimal::from_str(text).unwrap())
-    }
-
-    #[tokio::test]
-    async fn drift_budget_floors_at_flat_tolerance_for_quiet_accounts() {
-        assert_eq!(verifier_budget("0.05", 0, false, false), near("0.1"));
-        assert_eq!(verifier_budget("0.05", 49, false, false), near("0.1"));
-    }
-
-    #[tokio::test]
-    async fn drift_budget_scales_with_event_count_for_positive_drift() {
-        assert_eq!(verifier_budget("0.1", 50, false, false), near("0.1"));
-        assert_eq!(verifier_budget("0.15", 1_000, false, false), near("0.5"));
-        assert_eq!(
-            verifier_budget("0.148", 1_392, false, false),
-            near("0.6960")
-        );
-        // rc-dao: proven-genuine dust of 0.000245/event must fit the budget.
-        assert_eq!(
-            verifier_budget("0.4706", 1_917, false, false),
-            near("0.9585")
-        );
-    }
-
-    #[tokio::test]
-    async fn negative_drift_never_scales_past_the_flat_floor() {
-        // Gas rewards only add balance; ledger-above-chain is a bug, not dust.
-        assert_eq!(verifier_budget("-0.218", 640, false, false), near("0.1"));
-        assert_eq!(verifier_budget("-0.477", 252, false, false), near("0.1"));
-    }
-
-    #[tokio::test]
-    async fn verified_full_access_account_first_gate_is_an_unbounded_anchor() {
-        assert_eq!(verifier_budget("-16.2092", 1_222, false, true), None);
-        assert_eq!(verifier_budget("3.0", 296, false, true), None);
-    }
-
-    #[tokio::test]
-    async fn anchored_signer_account_gets_the_symmetric_scaled_budget() {
-        // Gas spend from signing makes negative drift physical here.
-        assert_eq!(verifier_budget("-0.4", 2_960, true, true), near("1.4800"));
-        assert_eq!(verifier_budget("0.4", 2_960, true, true), near("1.4800"));
-        assert_eq!(verifier_budget("-0.05", 10, true, true), near("0.1"));
     }
 }

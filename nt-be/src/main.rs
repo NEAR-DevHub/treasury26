@@ -82,8 +82,16 @@ async fn async_main() {
         .allow_methods([Method::POST, Method::OPTIONS])
         .allow_headers([header::CONTENT_TYPE, header::ACCEPT]);
 
+    // The Trezu Wallet connector script polls these reads from arbitrary dapp
+    // origins, so they are served without credentials to any origin.
+    let open_get_cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::OPTIONS])
+        .allow_headers([header::CONTENT_TYPE, header::ACCEPT]);
+
     let app = Router::new()
         .merge(nt_be::routes::create_routes(state.clone()).layer(cors))
+        .merge(nt_be::routes::create_wallet_adapter_routes(state.clone()).layer(open_get_cors))
         .merge(
             Router::new()
                 .route(

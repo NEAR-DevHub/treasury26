@@ -31,7 +31,7 @@ import { Policy } from "@/types/policy";
 import { TreasuryConfig } from "@/lib/api";
 import { FormattedDate } from "@/components/formatted-date";
 
-import { TooltipUser } from "@/components/user";
+import { User } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
 import { useProposalKindLabel } from "../hooks/use-proposal-kind-label";
@@ -59,7 +59,6 @@ import {
     getPaginationRowModel,
 } from "@tanstack/react-table";
 import { VoteModal } from "./vote-modal";
-import { Address } from "@/components/address";
 import { EmptyState } from "@/components/empty-state";
 import { AuthButton } from "@/components/auth-button";
 import { useRouter } from "next/navigation";
@@ -340,12 +339,12 @@ export function ProposalsTable({
                 cell: (info) => {
                     const value = info.getValue();
                     return (
-                        <TooltipUser
+                        <User
                             accountId={value}
-                            triggerProps={{ asChild: false }}
-                        >
-                            <Address address={value} />
-                        </TooltipUser>
+                            variant="details"
+                            withLink={false}
+                            withHoverCard
+                        />
                     );
                 },
             }),

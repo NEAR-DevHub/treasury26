@@ -4,7 +4,9 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getLocaleDirection } from "@/i18n/config";
 import "../globals.css";
+import { NearInitializer } from "@/components/near-initializer";
 import { QueryProvider } from "@/components/query-provider";
+import { Toaster } from "@/components/toaster";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -38,7 +40,9 @@ export default async function WalletLayout({
             lang={locale}
             dir={dir}
             suppressHydrationWarning
-            className={`${geistSans.variable} ${geistMono.variable}`}
+            // The wallet popup is always dark, matching the Trezu Wallet
+            // branding regardless of the visitor's system theme.
+            className={`${geistSans.variable} ${geistMono.variable} dark`}
         >
             <head>
                 <link
@@ -58,7 +62,11 @@ export default async function WalletLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
             >
                 <NextIntlClientProvider locale={locale} messages={messages}>
-                    <QueryProvider>{children}</QueryProvider>
+                    <QueryProvider>
+                        <NearInitializer />
+                        {children}
+                        <Toaster />
+                    </QueryProvider>
                 </NextIntlClientProvider>
             </body>
         </html>

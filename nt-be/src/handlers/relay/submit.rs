@@ -4,7 +4,13 @@ use std::sync::Arc;
 
 use axum::{Json, extract::State, http::StatusCode};
 use borsh::BorshDeserialize;
-use near_api::{NearToken, types::transaction::delegate_action::SignedDelegateAction};
+use near_api::{
+    AccountId, NearToken,
+    types::transaction::{
+        delegate_action::SignedDelegateAction,
+        result::{ExecutionFinalResult, ValueOrReceiptId},
+    },
+};
 
 use crate::{
     AppState,
@@ -132,8 +138,8 @@ pub async fn relay_delegate_action(
 
     // 6. Submit (retried on transient send errors via on-chain nonce protection).
     //    On failure the NEAR already fronted is still recorded; no credit is spent.
-    let outcome_debug = match submit_relay(&state, submission).await {
-        Ok(outcome_debug) => outcome_debug,
+    let outcome = match submit_relay(&state, submission).await {
+        Ok(outcome) => outcome,
         Err(submit_error) => {
             accounting::spawn_record_spend(
                 &state,
@@ -161,6 +167,7 @@ pub async fn relay_delegate_action(
         proposal_type.as_deref(),
         address_book_payment,
     );
+    let outcome_debug: OutcomeDebug = format!("{:?}", outcome);
     // Empty for add-proposal relays, so this is a no-op outside confidential votes.
     confidential::spawn_auto_submit_intents(
         &state,
@@ -169,16 +176,34 @@ pub async fn relay_delegate_action(
         &outcome_debug,
     );
 
-    Ok(success_response())
+    let proposal_ids = operation
+        .is_add_proposals()
+        .then(|| created_proposal_ids(&outcome, &treasury_id));
+    Ok(success_response(proposal_ids))
 }
 
-/// Submit the relay transaction and return the execution outcome's debug string,
-/// which `confidential` later mines for MPC signatures.
+/// Ids of the proposals this relay created, read from the execution outcome:
+/// `add_proposal` returns the new proposal's id, so every receipt executed on
+/// the treasury whose success value is a bare integer contributes one.
+fn created_proposal_ids(outcome: &ExecutionFinalResult, treasury_id: &AccountId) -> Vec<u64> {
+    outcome
+        .receipt_outcomes()
+        .iter()
+        .filter(|receipt| &receipt.executor_id == treasury_id)
+        .filter_map(|receipt| match receipt.clone().into_result() {
+            Ok(ValueOrReceiptId::Value(value)) => value.json::<u64>().ok(),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Submit the relay transaction and return its execution outcome; `confidential`
+/// later mines its debug form for MPC signatures.
 #[tracing::instrument(level = "info", skip_all, fields(step = "submit_relay"))]
 async fn submit_relay(
     state: &Arc<AppState>,
     submission: RelaySubmission,
-) -> Result<OutcomeDebug, RelayError> {
+) -> Result<ExecutionFinalResult, RelayError> {
     let sponsor = Sponsor::from_state(state);
     let result = match submission {
         RelaySubmission::WalletContract(replay) => {

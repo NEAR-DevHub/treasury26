@@ -84,7 +84,7 @@ impl Sponsor {
     pub async fn relay_meta_tx(
         &self,
         signed: SignedDelegateAction,
-    ) -> Result<OutcomeDebug, String> {
+    ) -> Result<ExecutionFinalResult, String> {
         let outer_receiver = signed.delegate_action.sender_id.clone();
         let outcome = self
             .send_retried("relay meta-tx", || async {
@@ -96,14 +96,14 @@ impl Sponsor {
             })
             .await
             .map_err(|e| format!("Failed to relay: {}", e))?;
-        let debug = format!("{:?}", outcome);
         if let Some(receipt_failure) = receipt_failure_message(&outcome) {
             return Err(receipt_failure);
         }
         outcome
+            .clone()
             .into_result()
             .map_err(|e| format!("Execution failed: {}", e))?;
-        Ok(debug)
+        Ok(outcome)
     }
 
     /// Replay the sponsor's prepared actions directly to the user's wallet contract.
@@ -112,7 +112,7 @@ impl Sponsor {
         &self,
         receiver: &AccountId,
         actions: Vec<Action>,
-    ) -> Result<OutcomeDebug, String> {
+    ) -> Result<ExecutionFinalResult, String> {
         let outcome = self
             .send_retried("replay w_execute_signed", || async {
                 let mut transaction =
@@ -127,14 +127,14 @@ impl Sponsor {
             })
             .await
             .map_err(|e| format!("Failed to relay: {}", e))?;
-        let debug = format!("{:?}", outcome);
         if let Some(receipt_failure) = receipt_failure_message(&outcome) {
             return Err(receipt_failure);
         }
         outcome
+            .clone()
             .into_result()
             .map_err(|e| format!("Execution failed: {}", e))?;
-        Ok(debug)
+        Ok(outcome)
     }
 
     /// Transfer NEAR to `receiver`. NOT retried after broadcast: a bare transfer has
