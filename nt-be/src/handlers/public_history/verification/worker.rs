@@ -24,6 +24,12 @@ use crate::services::public_balance_reader::{
 
 const FAILED_RETRY_AFTER_HOURS: i64 = 6;
 const WATERMARK_MAX_AGE_MINUTES: i64 = 15;
+/// Contract accounts earn 30% of the gas fees burned by calls into them —
+/// balance accretion the receipt feed cannot itemize (~0.0002 NEAR observed
+/// per ledger event). The native drift budget scales with event count at
+/// this rate so busy DAOs are not failed on accumulated gas rewards, while
+/// the configured flat tolerance stays the floor for quiet accounts.
+const NATIVE_DUST_PER_EVENT_NEAR: &str = "0.002";
 /// Bound on archival head-anchor reads per silver cycle so a mass-dirty
 /// event cannot turn one tick into an unbounded sequential RPC sweep.
 const HEAD_ANCHORS_PER_CYCLE: usize = 25;
@@ -426,6 +432,52 @@ impl<'a> BalanceVerifier<'a> {
         Ok(Some(watermark))
     }
 
+    /// Allowed native drift for a ledger of `event_count` entries: the flat
+    /// Sputnik DAO contract accounts hold no full-access keys, so they never
+    /// sign transactions and their ledger is fully receipt-derivable. Any
+    /// other monitored account can sign, which burns gas and moves deposits
+    /// invisibly to the receipt feed — those are verified in anchored mode:
+    /// trust chain at the first watermark, verify deltas forward.
+    fn is_contract_treasury(account_id: &str) -> bool {
+        account_id.ends_with(".sputnik-dao.near")
+    }
+
+    fn scaled_dust_budget(&self, event_count: i64) -> BigDecimal {
+        let scaled = BigDecimal::from_str(NATIVE_DUST_PER_EVENT_NEAR)
+            .expect("NATIVE_DUST_PER_EVENT_NEAR is a valid decimal")
+            * BigDecimal::from(event_count.max(0));
+        scaled.max(self.native_tolerance.clone())
+    }
+
+    /// Allowed native drift for one check, or None for the unbounded
+    /// first-gate anchor of a signer-capable account (the rebase records the
+    /// absorbed drift in the results, so anchor size stays auditable).
+    ///
+    /// Contract treasuries: gas rewards only ever ADD to a contract's chain
+    /// balance, so only positive drift (chain above ledger) can be dust;
+    /// negative drift means phantom inflows or missed outflows — a pipeline
+    /// bug — and stays on the flat floor no matter how long the history is.
+    /// Anchored accounts: gas spend from signing makes negative drift just
+    /// as physical as positive, so the scaled budget applies symmetrically
+    /// after the anchor.
+    fn native_drift_budget(
+        &self,
+        account_id: &str,
+        drift: &BigDecimal,
+        head: &AssetLedgerHead,
+    ) -> Option<BigDecimal> {
+        if Self::is_contract_treasury(account_id) {
+            if drift.is_negative() {
+                return Some(self.native_tolerance.clone());
+            }
+            return Some(self.scaled_dust_budget(head.event_count));
+        }
+        if !head.has_anchor {
+            return None;
+        }
+        Some(self.scaled_dust_budget(head.event_count))
+    }
+
     async fn check_assets(
         &self,
         account_id: &str,
@@ -466,7 +518,10 @@ impl<'a> BalanceVerifier<'a> {
 
             let drift = &chain_balance - &head.balance_after;
             let drift_ok = if head.token_standard == "native" {
-                drift.abs() <= self.native_tolerance
+                match self.native_drift_budget(account_id, &drift, head) {
+                    Some(budget) => drift.abs() <= budget,
+                    None => true,
+                }
             } else {
                 drift.is_zero()
             };
@@ -517,5 +572,82 @@ impl<'a> BalanceVerifier<'a> {
             .await?;
         }
         Ok(written)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DAO: &str = "treasury.sputnik-dao.near";
+    const SIGNER: &str = "meta-pool-dao-4.near";
+
+    fn head(event_count: i64, has_anchor: bool) -> AssetLedgerHead {
+        AssetLedgerHead {
+            asset: "near".to_string(),
+            token_standard: "native".to_string(),
+            balance_after: BigDecimal::from(0),
+            min_balance_after: BigDecimal::from(0),
+            user_balance_after: BigDecimal::from(0),
+            min_user_balance_after: BigDecimal::from(0),
+            head_block_height: 0,
+            decimals: 24,
+            event_count,
+            has_anchor,
+        }
+    }
+
+    fn verifier_budget(
+        account_id: &str,
+        drift: &str,
+        event_count: i64,
+        has_anchor: bool,
+    ) -> Option<BigDecimal> {
+        let pool = sqlx::PgPool::connect_lazy("postgres://unused/unused").unwrap();
+        let network = NetworkConfig::mainnet();
+        let drift = BigDecimal::from_str(drift).unwrap();
+        BalanceVerifier::new(&pool, &network, 0.1).native_drift_budget(
+            account_id,
+            &drift,
+            &head(event_count, has_anchor),
+        )
+    }
+
+    fn near(text: &str) -> Option<BigDecimal> {
+        Some(BigDecimal::from_str(text).unwrap())
+    }
+
+    #[tokio::test]
+    async fn drift_budget_floors_at_flat_tolerance_for_quiet_accounts() {
+        assert_eq!(verifier_budget(DAO, "0.05", 0, false), near("0.1"));
+        assert_eq!(verifier_budget(DAO, "0.05", 49, false), near("0.1"));
+    }
+
+    #[tokio::test]
+    async fn drift_budget_scales_with_event_count_for_positive_drift() {
+        assert_eq!(verifier_budget(DAO, "0.1", 50, false), near("0.100"));
+        assert_eq!(verifier_budget(DAO, "0.15", 100, false), near("0.2"));
+        assert_eq!(verifier_budget(DAO, "0.148", 1392, false), near("2.784"));
+    }
+
+    #[tokio::test]
+    async fn negative_drift_never_scales_past_the_flat_floor() {
+        // Gas rewards only add balance; ledger-above-chain is a bug, not dust.
+        assert_eq!(verifier_budget(DAO, "-0.218", 640, false), near("0.1"));
+        assert_eq!(verifier_budget(DAO, "-0.477", 252, false), near("0.1"));
+    }
+
+    #[tokio::test]
+    async fn signer_account_first_gate_is_an_unbounded_anchor() {
+        assert_eq!(verifier_budget(SIGNER, "-16.2092", 1222, false), None);
+        assert_eq!(verifier_budget(SIGNER, "3.0", 296, false), None);
+    }
+
+    #[tokio::test]
+    async fn anchored_signer_account_gets_the_symmetric_scaled_budget() {
+        // Gas spend from signing makes negative drift physical here.
+        assert_eq!(verifier_budget(SIGNER, "-0.4", 296, true), near("0.592"));
+        assert_eq!(verifier_budget(SIGNER, "0.4", 296, true), near("0.592"));
+        assert_eq!(verifier_budget(SIGNER, "-0.05", 10, true), near("0.1"));
     }
 }
