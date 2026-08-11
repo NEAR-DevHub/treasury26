@@ -149,10 +149,8 @@ pub async fn upsert_public_history_events(
         "#,
     );
 
-    let changed_rows: Vec<(chrono::DateTime<chrono::Utc>, bool)> = builder
-        .build_query_as()
-        .fetch_all(&mut *tx)
-        .await?;
+    let changed_rows: Vec<(chrono::DateTime<chrono::Utc>, bool)> =
+        builder.build_query_as().fetch_all(&mut *tx).await?;
 
     for (block_time, inserted) in &changed_rows {
         if *inserted {

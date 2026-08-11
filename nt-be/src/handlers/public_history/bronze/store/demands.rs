@@ -100,11 +100,23 @@ pub async fn load_ready_latest_demands(
 ) -> Result<Vec<LatestDemand>, sqlx::Error> {
     let rows: Vec<LatestDemandRow> = sqlx::query_as(
         r#"
-        SELECT account_id, source::text AS source, trigger_block_height,
-               trigger_transaction_hash, generation, attempts, next_attempt_at
-        FROM public_history_latest_demands
-        WHERE next_attempt_at <= NOW()
-        ORDER BY next_attempt_at
+        SELECT demand.account_id, demand.source::text AS source,
+               demand.trigger_block_height, demand.trigger_transaction_hash,
+               demand.generation, demand.attempts, demand.next_attempt_at
+        FROM public_history_latest_demands AS demand
+        WHERE demand.next_attempt_at <= NOW()
+          AND NOT EXISTS (
+              SELECT 1
+              FROM apalis.jobs AS job
+              WHERE job.job_type = 'public_history_latest'
+                AND job.metadata->>'job_key' =
+                    'latest:' || demand.account_id || ':' || demand.source::text
+                AND (
+                    job.status IN ('Pending', 'Queued', 'Running')
+                    OR (job.status = 'Failed' AND job.attempts < job.max_attempts)
+                )
+          )
+        ORDER BY demand.next_attempt_at
         LIMIT $1
         "#,
     )
@@ -126,6 +138,21 @@ pub async fn oldest_ready_latest_demand_age_seconds(
     sqlx::query_scalar(
         r#"
         SELECT EXTRACT(epoch FROM NOW() - MIN(next_attempt_at))::double precision
+        FROM public_history_latest_demands
+        WHERE next_attempt_at <= NOW()
+        "#,
+    )
+    .fetch_one(pool)
+    .await
+}
+
+/// Number of durable realtime demands ready to receive a dispatch token.
+/// This is the real backlog metric; the Apalis queue intentionally contains
+/// only enough tokens to fill currently available worker slots.
+pub async fn ready_latest_demand_count(pool: &PgPool) -> Result<i64, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
         FROM public_history_latest_demands
         WHERE next_attempt_at <= NOW()
         "#,
@@ -164,45 +191,35 @@ pub async fn defer_latest_demand(
     pool: &PgPool,
     account_id: &str,
     source: PublicHistorySource,
+    generation: i64,
     error: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
         r#"
         UPDATE public_history_latest_demands
         SET attempts = attempts + 1,
-            next_attempt_at = NOW() + make_interval(secs => $3::double precision),
+            next_attempt_at = NOW() + make_interval(
+                secs => CASE LEAST(GREATEST(attempts, 0), 3)
+                    WHEN 0 THEN 15::double precision
+                    WHEN 1 THEN 30::double precision
+                    WHEN 2 THEN 60::double precision
+                    ELSE 120::double precision
+                END
+            ),
             last_error = LEFT($4, 500),
             updated_at = NOW()
-        WHERE account_id = $1 AND source = $2::public_history_source
+        WHERE account_id = $1
+          AND source = $2::public_history_source
+          AND generation = $3
         "#,
     )
     .bind(account_id)
     .bind(source.as_str())
-    .bind(retry_backoff_seconds(
-        current_attempts(pool, account_id, source).await?,
-    ) as f64)
+    .bind(generation)
     .bind(error)
     .execute(pool)
     .await?;
-    Ok(())
-}
-
-async fn current_attempts(
-    pool: &PgPool,
-    account_id: &str,
-    source: PublicHistorySource,
-) -> Result<i32, sqlx::Error> {
-    Ok(sqlx::query_scalar::<_, i32>(
-        r#"
-        SELECT attempts FROM public_history_latest_demands
-        WHERE account_id = $1 AND source = $2::public_history_source
-        "#,
-    )
-    .bind(account_id)
-    .bind(source.as_str())
-    .fetch_optional(pool)
-    .await?
-    .unwrap_or(0))
+    Ok(result.rows_affected() > 0)
 }
 
 #[cfg(test)]
@@ -220,16 +237,29 @@ mod tests {
 
     #[sqlx::test(migrations = "./migrations")]
     async fn newer_trigger_bumps_generation_and_survives_completion(pool: PgPool) {
-        upsert_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksFt, 100, Some("tx1"))
-            .await
-            .unwrap();
+        crate::jobs::setup_apalis(&pool).await.unwrap();
+        upsert_latest_demand(
+            &pool,
+            "dao.near",
+            PublicHistorySource::NearblocksFt,
+            100,
+            Some("tx1"),
+        )
+        .await
+        .unwrap();
         let demand = &load_ready_latest_demands(&pool, 10).await.unwrap()[0];
         assert_eq!((demand.generation, demand.trigger_block_height), (1, 100));
 
         // A newer trigger lands while the token job is running.
-        upsert_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksFt, 105, Some("tx2"))
-            .await
-            .unwrap();
+        upsert_latest_demand(
+            &pool,
+            "dao.near",
+            PublicHistorySource::NearblocksFt,
+            105,
+            Some("tx2"),
+        )
+        .await
+        .unwrap();
 
         // The job finishes carrying generation 1 — the demand must survive.
         let completed =
@@ -246,19 +276,43 @@ mod tests {
                 .await
                 .unwrap();
         assert!(completed);
-        assert!(load_ready_latest_demands(&pool, 10).await.unwrap().is_empty());
+        assert!(
+            load_ready_latest_demands(&pool, 10)
+                .await
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[sqlx::test(migrations = "./migrations")]
     async fn deferred_demand_leaves_the_ready_set_and_records_the_error(pool: PgPool) {
-        upsert_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksMt, 100, None)
-            .await
-            .unwrap();
-        defer_latest_demand(&pool, "dao.near", PublicHistorySource::NearblocksMt, "502 upstream")
-            .await
-            .unwrap();
+        crate::jobs::setup_apalis(&pool).await.unwrap();
+        upsert_latest_demand(
+            &pool,
+            "dao.near",
+            PublicHistorySource::NearblocksMt,
+            100,
+            None,
+        )
+        .await
+        .unwrap();
+        let deferred = defer_latest_demand(
+            &pool,
+            "dao.near",
+            PublicHistorySource::NearblocksMt,
+            1,
+            "502 upstream",
+        )
+        .await
+        .unwrap();
+        assert!(deferred);
 
-        assert!(load_ready_latest_demands(&pool, 10).await.unwrap().is_empty());
+        assert!(
+            load_ready_latest_demands(&pool, 10)
+                .await
+                .unwrap()
+                .is_empty()
+        );
         let (attempts, error): (i32, Option<String>) = sqlx::query_as(
             "SELECT attempts, last_error FROM public_history_latest_demands WHERE account_id='dao.near'",
         )
@@ -267,5 +321,47 @@ mod tests {
         .unwrap();
         assert_eq!(attempts, 1);
         assert_eq!(error.as_deref(), Some("502 upstream"));
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn stale_failure_cannot_defer_a_newer_generation(pool: PgPool) {
+        crate::jobs::setup_apalis(&pool).await.unwrap();
+        upsert_latest_demand(
+            &pool,
+            "dao.near",
+            PublicHistorySource::NearblocksReceipt,
+            100,
+            Some("tx1"),
+        )
+        .await
+        .unwrap();
+        let stale_generation = load_ready_latest_demands(&pool, 10).await.unwrap()[0].generation;
+
+        upsert_latest_demand(
+            &pool,
+            "dao.near",
+            PublicHistorySource::NearblocksReceipt,
+            101,
+            Some("tx2"),
+        )
+        .await
+        .unwrap();
+
+        let deferred = defer_latest_demand(
+            &pool,
+            "dao.near",
+            PublicHistorySource::NearblocksReceipt,
+            stale_generation,
+            "stale failure",
+        )
+        .await
+        .unwrap();
+        assert!(!deferred);
+
+        let ready = load_ready_latest_demands(&pool, 10).await.unwrap();
+        assert_eq!(ready.len(), 1);
+        assert_eq!(ready[0].generation, stale_generation + 1);
+        assert_eq!(ready[0].attempts, 0);
+        assert_eq!(ready[0].trigger_transaction_hash.as_deref(), Some("tx2"));
     }
 }

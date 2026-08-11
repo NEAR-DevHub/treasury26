@@ -5,10 +5,11 @@ use std::collections::{HashMap, HashSet};
 
 use super::postgres::{
     PUBLIC_HISTORY_BACKFILL_NAMESPACE, PUBLIC_HISTORY_LATEST_NAMESPACE,
-    count_active_public_history_jobs_with_prefix,
+    PUBLIC_HISTORY_READINESS_NAMESPACE, count_active_public_history_jobs_with_prefix,
 };
 use super::worker::{
     enqueue_backfill_page_job, enqueue_latest_refresh_job, enqueue_readiness_refresh_job,
+    job_concurrency,
 };
 use crate::AppState;
 use crate::handlers::balance_changes::confidential_enrichment::{
@@ -22,25 +23,27 @@ use crate::handlers::intents::confidential::gold::history_events::refresh_gold_m
 use crate::handlers::intents::confidential::link_intent_to_history_event;
 use crate::handlers::public_history::bronze::store::{
     PublicHistorySource, load_ready_latest_demands, oldest_ready_latest_demand_age_seconds,
-    upsert_latest_demand,
+    ready_latest_demand_count, upsert_latest_demand,
 };
-use crate::services::goldsky_cursor::{load_goldsky_cursor, save_goldsky_cursor};
 use crate::handlers::public_history::verification::worker::{
     FAILED_RETRY_AFTER_HOURS, FAILED_RETRY_MIN_MINUTES,
 };
+use crate::services::goldsky_cursor::{load_goldsky_cursor, save_goldsky_cursor};
 
 const SCHEDULER_BATCH_SIZE: i64 = 2_000;
 const SCHEDULER_MAX_BATCHES: usize = 5;
 /// Backfill pages in flight at once across all accounts and sources.
 const BACKFILL_MAX_ACTIVE_JOBS: usize = 10;
 const CONSUMER_NAME: &str = "public_history_scheduler";
-const LATEST_DEMAND_DISPATCH_BATCH: i64 = 100;
+const LATEST_JOB_KEY_PREFIX: &str = "latest:";
+const PUBLIC_HISTORY_RENOTIFY_BATCH: i64 = 256;
+const PUBLIC_HISTORY_RENOTIFY_ALERT_AGE_SECONDS: f64 = 10.0;
 /// Realtime objective: the oldest ready demand should dispatch well inside
 /// this window during healthy operation.
 const LATEST_DEMAND_ALERT_AGE_SECONDS: f64 = 120.0;
 /// Readiness refreshes in flight at once — maintenance uses spare capacity
 /// and must never flood the queue ahead of transaction-triggered work.
-const READINESS_MAX_IN_FLIGHT: usize = 5;
+const READINESS_MAX_IN_FLIGHT: usize = 1;
 /// Freshness window on `latest_refresh_at` before an unverified account
 /// triggers another priority drain of the NearBlocks sources.
 pub const SOURCE_REFRESH_MAX_AGE_MINUTES: i64 = 15;
@@ -578,13 +581,78 @@ async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
     Ok(enqueued)
 }
 
-/// Ensure every ready realtime demand holds exactly one dispatch token; the
-/// in-flight job key dedups, and a demand whose generation outlived its
-/// token gets a fresh one on the next cycle. Alerts when the oldest ready
-/// demand exceeds the realtime latency objective.
+/// Re-ring notifications that could have been lost while a listener was
+/// starting or reconnecting. The query is deliberately bounded: the durable
+/// demand dispatcher will continue invoking it once per second, while an
+/// unexpected historical backlog cannot flood PostgreSQL's notify queue.
+pub(super) async fn renotify_due_public_history_tokens(
+    pool: &PgPool,
+) -> Result<(i64, Option<f64>), sqlx::Error> {
+    sqlx::query_as(
+        r#"
+        WITH due AS MATERIALIZED (
+            SELECT id, job_type, run_at
+            FROM apalis.jobs
+            WHERE job_type IN ('public_history_latest', 'public_history_readiness')
+              AND status = 'Pending'
+              AND run_at <= NOW() - INTERVAL '1 second'
+            ORDER BY run_at ASC, id ASC
+            LIMIT $1
+        )
+        SELECT COUNT(pg_notify(
+                   'apalis::job::insert',
+                   json_build_object(
+                       'job_type', job_type,
+                       'id', id,
+                       'run_at', run_at
+                   )::text
+               ))::bigint,
+               EXTRACT(epoch FROM NOW() - MIN(run_at))::double precision
+        FROM due
+        "#,
+    )
+    .bind(PUBLIC_HISTORY_RENOTIFY_BATCH)
+    .fetch_one(pool)
+    .await
+}
+
+/// Keep only enough Apalis tokens to fill the latest worker's execution
+/// slots. Excess work remains in the durable demand table, avoiding a second
+/// 100-row queue whose claim state obscures the actual provider bottleneck.
 async fn dispatch_latest_demands(state: &AppState) -> Result<usize, sqlx::Error> {
+    // Recovery runs first so a failure while loading or inserting new demands
+    // cannot suppress wakeups for tokens that already exist.
+    let (renotified, oldest_pending_token_age_seconds) =
+        renotify_due_public_history_tokens(&state.db_pool).await?;
+    if renotified > 0 {
+        if oldest_pending_token_age_seconds
+            .is_some_and(|age| age > PUBLIC_HISTORY_RENOTIFY_ALERT_AGE_SECONDS)
+        {
+            tracing::warn!(
+                renotified,
+                oldest_pending_token_age_seconds,
+                "re-notified stale public-history tokens"
+            );
+        } else {
+            tracing::info!(
+                renotified,
+                oldest_pending_token_age_seconds,
+                "re-notified unclaimed public-history tokens"
+            );
+        }
+    }
+
+    let active = count_active_public_history_jobs_with_prefix(
+        &state.db_pool,
+        PUBLIC_HISTORY_LATEST_NAMESPACE,
+        LATEST_JOB_KEY_PREFIX,
+    )
+    .await?;
+    let max_active = job_concurrency();
+    let available = max_active.saturating_sub(active.max(0) as usize);
+
     let mut dispatched = 0usize;
-    for demand in load_ready_latest_demands(&state.db_pool, LATEST_DEMAND_DISPATCH_BATCH).await? {
+    for demand in load_ready_latest_demands(&state.db_pool, available as i64).await? {
         if enqueue_latest_refresh_job(
             &state.db_pool,
             demand.account_id,
@@ -599,7 +667,33 @@ async fn dispatch_latest_demands(state: &AppState) -> Result<usize, sqlx::Error>
         }
     }
 
-    if let Some(age) = oldest_ready_latest_demand_age_seconds(&state.db_pool).await?
+    let ready_demands = ready_latest_demand_count(&state.db_pool).await?;
+    let oldest_ready_demand_age_seconds =
+        oldest_ready_latest_demand_age_seconds(&state.db_pool).await?;
+    let completed_latest_tokens_last_minute: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM apalis.jobs
+        WHERE job_type = $1
+          AND status = 'Done'
+          AND done_at >= NOW() - INTERVAL '1 minute'
+        "#,
+    )
+    .bind(PUBLIC_HISTORY_LATEST_NAMESPACE)
+    .fetch_one(&state.db_pool)
+    .await?;
+    tracing::debug!(
+        active_latest_tokens = active,
+        max_active_latest_tokens = max_active,
+        available_latest_slots = available,
+        dispatched,
+        ready_demands,
+        oldest_ready_demand_age_seconds,
+        completed_latest_tokens_last_minute,
+        "public-history latest dispatcher capacity"
+    );
+
+    if let Some(age) = oldest_ready_demand_age_seconds
         && age > LATEST_DEMAND_ALERT_AGE_SECONDS
     {
         tracing::warn!(
@@ -616,17 +710,18 @@ async fn dispatch_latest_demands(state: &AppState) -> Result<usize, sqlx::Error>
 /// cool-off (or with a ledger rebuilt since the failed check, floored at the
 /// minimum retry interval). Ordered stalest-coverage-first so a
 /// never-refreshed account can never be starved by re-refresh churn.
-async fn load_readiness_candidates(
-    pool: &PgPool,
-    limit: i64,
-) -> Result<Vec<String>, sqlx::Error> {
+async fn load_readiness_candidates(pool: &PgPool, limit: i64) -> Result<Vec<String>, sqlx::Error> {
     sqlx::query_scalar(
         r#"
         WITH sources AS (
             SELECT account_id,
                    COUNT(*) AS cursor_rows,
                    COUNT(*) FILTER (WHERE backfill_done) AS backfilled,
-                   MIN(latest_refresh_at) AS oldest_refresh
+                   CASE
+                       WHEN COUNT(latest_refresh_at) = 3
+                           THEN MIN(latest_refresh_at)
+                       ELSE NULL
+                   END AS oldest_refresh
             FROM bronze_public_history_cursors
             WHERE source IN (
                 'nearblocks_ft'::public_history_source,
@@ -690,7 +785,7 @@ async fn seed_readiness_jobs(
 ) -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
     let active = count_active_public_history_jobs_with_prefix(
         &state.db_pool,
-        PUBLIC_HISTORY_LATEST_NAMESPACE,
+        PUBLIC_HISTORY_READINESS_NAMESPACE,
         "readiness:",
     )
     .await?;
@@ -719,10 +814,15 @@ pub(crate) async fn run_public_history_detector_cycle(
         );
         PublicHistoryDetectorStats::default()
     };
-    // Runs every detector tick regardless of new outcomes: deferred demands
-    // whose backoff expired re-token here.
-    dispatch_latest_demands(state).await?;
     Ok(stats)
+}
+
+/// Independent from the Goldsky scan: persisted or deferred demands keep
+/// dispatching even when the external sink is unavailable or its scan stalls.
+pub(crate) async fn run_public_history_latest_dispatcher_cycle(
+    state: &AppState,
+) -> Result<usize, sqlx::Error> {
+    dispatch_latest_demands(state).await
 }
 
 pub(crate) async fn run_public_history_readiness_scheduler_cycle(
@@ -739,7 +839,10 @@ pub(crate) async fn run_public_history_backfill_scheduler_cycle(
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use super::*;
+    use sqlx::postgres::PgListener;
 
     fn outcome() -> IndexedDaoOutcome {
         IndexedDaoOutcome {
@@ -877,6 +980,156 @@ mod tests {
         .execute(pool)
         .await
         .unwrap();
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn dispatcher_keeps_apalis_bounded_and_refills_from_durable_demands(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        crate::jobs::setup_apalis(&pool).await?;
+        super::super::postgres::setup_public_history_jobs(&pool).await?;
+        for index in 0..100 {
+            upsert_latest_demand(
+                &pool,
+                &format!("dispatch-{index}.near"),
+                PublicHistorySource::NearblocksFt,
+                index,
+                Some(&format!("tx-{index}")),
+            )
+            .await?;
+        }
+
+        let state = crate::AppState::builder()
+            .db_pool(pool.clone())
+            .build()
+            .await
+            .map_err(|error| sqlx::Error::Protocol(error.to_string()))?;
+        // The dispatcher cycle never touches the Goldsky pool, so this test
+        // holds whether or not the environment can reach the sink.
+        let max_active = job_concurrency();
+        let first_fill = max_active.min(100);
+        assert_eq!(
+            run_public_history_latest_dispatcher_cycle(&state).await?,
+            first_fill
+        );
+        assert_eq!(run_public_history_latest_dispatcher_cycle(&state).await?, 0);
+
+        let active = count_active_public_history_jobs_with_prefix(
+            &pool,
+            PUBLIC_HISTORY_LATEST_NAMESPACE,
+            LATEST_JOB_KEY_PREFIX,
+        )
+        .await?;
+        assert_eq!(active, first_fill as i64);
+        assert_eq!(ready_latest_demand_count(&pool).await?, 100);
+
+        // Simulate exactly one slot completing: production deletes its demand
+        // row from the handler before Apalis acknowledges the token. The next
+        // cycle must skip still-active demands and refill that one slot.
+        let completed_account: String = sqlx::query_scalar(
+            r#"
+            SELECT split_part(metadata->>'job_key', ':', 2)
+            FROM apalis.jobs
+            WHERE job_type = $1
+              AND status = 'Pending'
+            ORDER BY id
+            LIMIT 1
+            "#,
+        )
+        .bind(PUBLIC_HISTORY_LATEST_NAMESPACE)
+        .fetch_one(&pool)
+        .await?;
+        sqlx::query("DELETE FROM public_history_latest_demands WHERE account_id = $1")
+            .bind(&completed_account)
+            .execute(&pool)
+            .await?;
+        sqlx::query(
+            r#"
+            UPDATE apalis.jobs
+            SET status = 'Done', done_at = NOW()
+            WHERE job_type = $1
+              AND status = 'Pending'
+              AND metadata->>'job_key' = $2
+            "#,
+        )
+        .bind(PUBLIC_HISTORY_LATEST_NAMESPACE)
+        .bind(format!("latest:{completed_account}:nearblocks_ft"))
+        .execute(&pool)
+        .await?;
+
+        assert_eq!(run_public_history_latest_dispatcher_cycle(&state).await?, 1);
+        let active = count_active_public_history_jobs_with_prefix(
+            &pool,
+            PUBLIC_HISTORY_LATEST_NAMESPACE,
+            LATEST_JOB_KEY_PREFIX,
+        )
+        .await?;
+        assert_eq!(active, first_fill as i64);
+        assert!(active <= max_active as i64);
+        assert_eq!(ready_latest_demand_count(&pool).await?, 99);
+        Ok(())
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn recovery_renotifies_only_the_oldest_bounded_batch_with_trigger_payload(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        crate::jobs::setup_apalis(&pool).await?;
+
+        // Insert before LISTEN so every trigger notification is intentionally
+        // missed. The recovery query must be the only wakeup the test sees.
+        let ids: Vec<String> = (0..300).map(|index| format!("{index:026}")).collect();
+        let ages: Vec<i64> = (2..302).collect();
+        sqlx::query(
+            r#"
+            INSERT INTO apalis.jobs (job, id, job_type, run_at)
+            SELECT decode('7b7d', 'hex'), pending.id,
+                   'public_history_latest',
+                   NOW() - make_interval(secs => pending.age::double precision)
+            FROM UNNEST($1::text[], $2::bigint[]) AS pending(id, age)
+            "#,
+        )
+        .bind(&ids)
+        .bind(&ages)
+        .execute(&pool)
+        .await?;
+
+        let mut listener = PgListener::connect_with(&pool).await?;
+        listener.listen("apalis::job::insert").await?;
+
+        let (renotified, oldest_age) = renotify_due_public_history_tokens(&pool).await?;
+        assert_eq!(renotified, PUBLIC_HISTORY_RENOTIFY_BATCH);
+        assert!(oldest_age.is_some_and(|age| age >= 300.0));
+
+        let expected: std::collections::HashSet<&str> = ids
+            .iter()
+            .skip(ids.len() - PUBLIC_HISTORY_RENOTIFY_BATCH as usize)
+            .map(String::as_str)
+            .collect();
+        let received = tokio::time::timeout(Duration::from_secs(3), async {
+            let mut received = std::collections::HashSet::new();
+            for _ in 0..PUBLIC_HISTORY_RENOTIFY_BATCH {
+                let notification = listener.recv().await?;
+                let payload: serde_json::Value = serde_json::from_str(notification.payload())
+                    .map_err(|error| sqlx::Error::Decode(Box::new(error)))?;
+                assert_eq!(
+                    payload.get("job_type").and_then(serde_json::Value::as_str),
+                    Some(PUBLIC_HISTORY_LATEST_NAMESPACE)
+                );
+                assert!(payload.get("run_at").is_some());
+                let id = payload
+                    .get("id")
+                    .and_then(serde_json::Value::as_str)
+                    .expect("notification id");
+                assert!(expected.contains(id), "recovery notified a newer token");
+                received.insert(id.to_string());
+            }
+            Ok::<_, sqlx::Error>(received)
+        })
+        .await
+        .expect("bounded recovery notifications should arrive")?;
+        assert_eq!(received.len(), PUBLIC_HISTORY_RENOTIFY_BATCH as usize);
+        Ok(())
     }
 
     #[sqlx::test(migrations = "./migrations")]

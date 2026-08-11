@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
@@ -241,7 +241,24 @@ async fn fetch_raw_json(
         // Draw on the shared NearBlocks budget before every request so all
         // callers stay collectively under the plan's per-minute ceiling; latest
         // requests preempt backfill for the next permit.
+        let gate_started_at = Instant::now();
         state.nearblocks_gate.acquire(priority).await;
+        let gate_wait_ms = gate_started_at.elapsed().as_millis();
+        if gate_wait_ms >= 1_000 {
+            tracing::info!(
+                operation,
+                priority = ?priority,
+                gate_wait_ms,
+                "NearBlocks request waited for shared rate budget"
+            );
+        } else {
+            tracing::debug!(
+                operation,
+                priority = ?priority,
+                gate_wait_ms,
+                "NearBlocks rate-budget permit acquired"
+            );
+        }
 
         let response = state
             .http_client

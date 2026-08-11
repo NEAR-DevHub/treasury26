@@ -153,31 +153,43 @@ pub async fn advance_public_history_last_seen(
     Ok(())
 }
 
-/// Publish one source's verified coverage: the drain completed through the
-/// lag-adjusted provider cutoff. Called for all three sources together by
-/// the readiness refresh after every drain succeeded.
-pub async fn record_public_history_source_coverage(
+/// Atomically publish the common verified coverage after all three source
+/// drains succeeded. Requiring exactly three cursor rows prevents a partial
+/// stamp from delaying or incorrectly advancing verification readiness.
+pub async fn record_public_history_coverage(
     pool: &PgPool,
     account_id: &str,
-    source: PublicHistorySource,
     verified_provider_head: i64,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    let mut tx = pool.begin().await?;
+    let result = sqlx::query(
         r#"
         UPDATE bronze_public_history_cursors
         SET latest_refresh_at = NOW(),
             latest_refresh_cutoff_block_height = GREATEST(
-                COALESCE(latest_refresh_cutoff_block_height, 0), $3
+                COALESCE(latest_refresh_cutoff_block_height, 0), $2
             ),
             updated_at = NOW()
-        WHERE account_id = $1 AND source = $2::public_history_source
+        WHERE account_id = $1
+          AND source IN (
+              'nearblocks_ft'::public_history_source,
+              'nearblocks_mt'::public_history_source,
+              'nearblocks_receipt'::public_history_source
+          )
         "#,
     )
     .bind(account_id)
-    .bind(source.as_str())
     .bind(verified_provider_head)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
+    if result.rows_affected() != 3 {
+        tx.rollback().await?;
+        return Err(sqlx::Error::Protocol(format!(
+            "expected three public-history cursor rows for {account_id}, updated {}",
+            result.rows_affected()
+        )));
+    }
+    tx.commit().await?;
     Ok(())
 }
 
@@ -333,6 +345,52 @@ mod tests {
         assert_eq!(after_latest.last_seen_block_height, Some(123));
         assert!(after_latest.latest_refresh_at.is_some());
         assert_eq!(after_latest.latest_refresh_cutoff_block_height, Some(150));
+
+        Ok(())
+    }
+
+    #[sqlx::test]
+    async fn coordinated_coverage_requires_and_stamps_all_three_sources(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let complete = "coverage-complete.sputnik-dao.near";
+        for source in PublicHistorySource::all() {
+            save_public_backfill_progress(&pool, complete, source, None, true).await?;
+        }
+        record_public_history_coverage(&pool, complete, 999).await?;
+        let (stamped, timestamps, min_cutoff): (i64, i64, Option<i64>) = sqlx::query_as(
+            r#"
+            SELECT COUNT(latest_refresh_at),
+                   COUNT(DISTINCT latest_refresh_at),
+                   MIN(latest_refresh_cutoff_block_height)
+            FROM bronze_public_history_cursors
+            WHERE account_id = $1
+            "#,
+        )
+        .bind(complete)
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!((stamped, timestamps, min_cutoff), (3, 1, Some(999)));
+
+        let incomplete = "coverage-incomplete.sputnik-dao.near";
+        for source in [
+            PublicHistorySource::NearblocksFt,
+            PublicHistorySource::NearblocksMt,
+        ] {
+            save_public_backfill_progress(&pool, incomplete, source, None, true).await?;
+        }
+        assert!(
+            record_public_history_coverage(&pool, incomplete, 999)
+                .await
+                .is_err()
+        );
+        let stamped: i64 = sqlx::query_scalar(
+            "SELECT COUNT(latest_refresh_at) FROM bronze_public_history_cursors WHERE account_id = $1",
+        )
+        .bind(incomplete)
+        .fetch_one(&pool)
+        .await?;
+        assert_eq!(stamped, 0);
 
         Ok(())
     }

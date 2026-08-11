@@ -210,6 +210,26 @@ pub async fn public_history_scheduler(
     ))
 }
 
+/// Durable realtime-demand dispatcher. This is deliberately a separate cron
+/// worker from Goldsky detection so sink outages cannot strand demands that
+/// are already persisted in the application database.
+pub async fn public_history_latest_dispatcher(
+    tick: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let tick_age_ms = public_history_tick_age_ms(&tick, Utc::now());
+    if tick_age_ms > PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS * 1_000 {
+        return Ok(format!("skipped_stale_tick age_ms={tick_age_ms}"));
+    }
+
+    let dispatched =
+        crate::handlers::public_history::bronze::jobs::run_public_history_latest_dispatcher_cycle(
+            &state,
+        )
+        .await?;
+    Ok(format!("dispatched={dispatched}"))
+}
+
 /// Snapshot source-readiness scheduler. It deliberately runs outside the
 /// Goldsky detector so finalized-block RPC and provider coverage work cannot
 /// delay recent activity detection.
@@ -650,9 +670,7 @@ pub async fn ft_lockup_refresh(
 /// var is set. Deletes `Done`/`Killed` **and** exhausted `Failed`
 /// (`attempts >= max_attempts`) rows — the latter are terminal too and were
 /// never cleaned before, so they accumulated. Retryable `Failed` rows
-/// (`attempts < max_attempts`) and any Pending/Queued/Running task are left
-/// untouched. Runs in bounded batches so a large backlog can't hold a long
-/// lock on the table the workers are actively polling.
+/// (`attempts < max_attempts`) and every Pending task are left untouched.
 pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
     // Clamp so a misconfigured (negative) value can't flip the cutoff into the
     // future and delete *every* terminal task; cap at ~10y for sanity.
@@ -667,77 +685,6 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
         })
         .unwrap_or(48)
         .clamp(0, 3650 * 24);
-
-    // Reclaim tasks stuck in `Running` well past the handler timeout. apalis's
-    // own orphan-reclaim only fires when the *worker's* heartbeat is stale, so a
-    // task whose ack never landed (e.g. the handler hit `job_timeout` during DB
-    // instability, or the ack UPDATE failed) is left `Running` forever while the
-    // worker stays alive — these phantom rows accumulate (one per timeout) and
-    // are never reclaimed or pruned. The threshold is at least 2× `job_timeout`,
-    // so a genuinely-running task (bounded by `job_timeout`) is never touched.
-    // Reclaimed rows become `Killed` (terminal, not retried) and are then
-    // removed by the retention sweep below once they age out.
-    let reclaim_secs: i64 = std::env::var("APALIS_STUCK_RUNNING_RECLAIM_SECONDS")
-        .ok()
-        .and_then(|s| s.parse::<i64>().ok())
-        .filter(|&n| n >= 1)
-        .unwrap_or(3600)
-        .max((crate::jobs::job_timeout().as_secs() as i64).saturating_mul(2));
-    let reclaimed = sqlx::query(
-        r#"UPDATE apalis.jobs
-           SET status = 'Killed',
-               done_at = NOW(),
-               last_result = '{"Err": "Reclaimed: stuck in Running past threshold (ack likely failed)"}'::jsonb
-           WHERE status = 'Running'
-             AND lock_at IS NOT NULL
-             AND lock_at < now() - make_interval(secs => $1::double precision)"#,
-    )
-    .bind(reclaim_secs)
-    .execute(&state.db_pool)
-    .await?;
-    let reclaimed = reclaimed.rows_affected();
-    if reclaimed > 0 {
-        tracing::warn!(
-            reclaimed,
-            reclaim_secs,
-            "reclaimed apalis tasks stuck in Running (orphaned locks)"
-        );
-    }
-
-    // Two more stranding states the Running-reclaim above cannot see, both
-    // observed in production incidents:
-    // - `Queued` with a stale lock: the claiming worker died between claim
-    //   and start; the row holds its in-flight idempotency key forever, so
-    //   re-enqueues of the same work silently no-op.
-    // - `Pending` never attempted: seeded work that was permanently outranked
-    //   by newer higher-priority rows. Killing it frees the idempotency key;
-    //   the scheduler re-seeds anything still needed at current priority.
-    let unstranded = sqlx::query(
-        r#"UPDATE apalis.jobs
-           SET status = 'Killed',
-               done_at = NOW(),
-               last_result = '{"Err": "Reclaimed: stranded without execution (stale claim or starved seed)"}'::jsonb
-           WHERE (
-                 status = 'Queued'
-                 AND lock_at IS NOT NULL
-                 AND lock_at < now() - make_interval(secs => $1::double precision)
-             ) OR (
-                 status = 'Pending'
-                 AND attempts = 0
-                 AND run_at < now() - make_interval(secs => $1::double precision)
-             )"#,
-    )
-    .bind(reclaim_secs)
-    .execute(&state.db_pool)
-    .await?;
-    let unstranded = unstranded.rows_affected();
-    if unstranded > 0 {
-        tracing::warn!(
-            unstranded,
-            reclaim_secs,
-            "reclaimed apalis tasks stranded in Queued/Pending"
-        );
-    }
 
     const BATCH_SIZE: i64 = 10_000;
     // Backstop against a runaway loop; 100 batches = up to 1M rows per run.
@@ -784,8 +731,10 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
         tracing::warn!(error = %e, "VACUUM apalis.jobs after prune failed");
     }
 
+    let reclaim_audits_pruned = crate::jobs::reclaimer::prune_reclaim_audit(&state.db_pool).await?;
+
     Ok(format!(
-        "reclaimed {reclaimed} stuck-Running, pruned {total} terminal tasks older than {retention_hours}h"
+        "pruned {total} terminal tasks older than {retention_hours}h and {reclaim_audits_pruned} reclaim audit rows"
     ))
 }
 

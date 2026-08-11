@@ -6,6 +6,10 @@ use bigdecimal::{
 };
 use chrono::{DateTime, Utc};
 use near_api::NetworkConfig;
+use near_jsonrpc_client::methods;
+use near_jsonrpc_primitives::types::query::QueryResponseKind;
+use near_primitives::types::{BlockId, BlockReference};
+use near_primitives::views::{AccessKeyPermissionView, QueryRequest};
 use sqlx::PgPool;
 
 use super::models::{
@@ -19,8 +23,9 @@ use super::repository::{
 };
 use crate::handlers::public_history::gold::unified::sync_hidden_ledger_rows;
 use crate::services::public_balance_reader::{
-    get_public_balance_at_block, get_public_gross_native_balance_at_block,
+    get_public_balance_at_block, get_public_gross_native_balance_at_block, with_transport_retry,
 };
+use crate::utils::jsonrpc::create_rpc_client;
 
 /// Cool-off before a failed gate re-verifies. Shared with the readiness
 /// scheduler so coverage refreshes are only produced when the verifier can
@@ -35,7 +40,7 @@ const WATERMARK_MAX_AGE_MINUTES: i64 = 15;
 /// per ledger event). The native drift budget scales with event count at
 /// this rate so busy DAOs are not failed on accumulated gas rewards, while
 /// the configured flat tolerance stays the floor for quiet accounts.
-const NATIVE_DUST_PER_EVENT_NEAR: &str = "0.002";
+const NATIVE_DUST_PER_EVENT_NEAR: &str = "0.0005";
 /// Bound on archival head-anchor reads per silver cycle so a mass-dirty
 /// event cannot turn one tick into an unbounded sequential RPC sweep.
 const HEAD_ANCHORS_PER_CYCLE: usize = 25;
@@ -100,9 +105,12 @@ impl<'a> BalanceVerifier<'a> {
     pub async fn run_cycle(&self) -> Result<VerificationCycleStats, VerificationError> {
         let mut stats = VerificationCycleStats::default();
 
-        for account_id in
-            load_gate_candidates(self.pool, FAILED_RETRY_AFTER_HOURS, FAILED_RETRY_MIN_MINUTES)
-                .await?
+        for account_id in load_gate_candidates(
+            self.pool,
+            FAILED_RETRY_AFTER_HOURS,
+            FAILED_RETRY_MIN_MINUTES,
+        )
+        .await?
         {
             stats.gates_run += 1;
             match self.verify_account_gate(&account_id, &mut stats).await {
@@ -456,14 +464,47 @@ impl<'a> BalanceVerifier<'a> {
         Ok(Some(watermark))
     }
 
-    /// Allowed native drift for a ledger of `event_count` entries: the flat
-    /// Sputnik DAO contract accounts hold no full-access keys, so they never
-    /// sign transactions and their ledger is fully receipt-derivable. Any
-    /// other monitored account can sign, which burns gas and moves deposits
-    /// invisibly to the receipt feed — those are verified in anchored mode:
-    /// trust chain at the first watermark, verify deltas forward.
-    fn is_contract_treasury(account_id: &str) -> bool {
-        account_id.ends_with(".sputnik-dao.near")
+    /// Determine signer capability from the account state at the exact
+    /// verification watermark. Account-name suffixes are not an authority:
+    /// arbitrary contract accounts may live outside the Sputnik namespace.
+    async fn has_full_access_key_at_block(
+        &self,
+        account_id: &str,
+        block_height: i64,
+    ) -> Result<bool, VerificationError> {
+        let block_height = u64::try_from(block_height).map_err(|_| {
+            VerificationError(format!(
+                "negative verification block height: {block_height}"
+            ))
+        })?;
+        let account_id: near_primitives::types::AccountId = account_id
+            .parse()
+            .map_err(|error| VerificationError(format!("invalid account id: {error}")))?;
+        let client = create_rpc_client(self.archival_network)
+            .map_err(|error| VerificationError(error.to_string()))?;
+
+        let response = with_transport_retry("public_history_access_keys", || {
+            client.call(methods::query::RpcQueryRequest {
+                block_reference: BlockReference::BlockId(BlockId::Height(block_height)),
+                request: QueryRequest::ViewAccessKeyList {
+                    account_id: account_id.clone(),
+                },
+            })
+        })
+        .await
+        .map_err(|error| VerificationError(format!("access-key query failed: {error:?}")))?;
+
+        let QueryResponseKind::AccessKeyList(list) = response.kind else {
+            return Err(VerificationError(
+                "unexpected response to access-key-list query".to_string(),
+            ));
+        };
+        Ok(list.keys.iter().any(|key| {
+            matches!(
+                key.access_key.permission,
+                AccessKeyPermissionView::FullAccess
+            )
+        }))
     }
 
     fn scaled_dust_budget(&self, event_count: i64) -> BigDecimal {
@@ -486,11 +527,11 @@ impl<'a> BalanceVerifier<'a> {
     /// after the anchor.
     fn native_drift_budget(
         &self,
-        account_id: &str,
         drift: &BigDecimal,
         head: &AssetLedgerHead,
+        has_full_access_key: bool,
     ) -> Option<BigDecimal> {
-        if Self::is_contract_treasury(account_id) {
+        if !has_full_access_key {
             if drift.is_negative() {
                 return Some(self.native_tolerance.clone());
             }
@@ -508,6 +549,12 @@ impl<'a> BalanceVerifier<'a> {
         heads: &[AssetLedgerHead],
         watermark: &VerificationWatermark,
     ) -> Result<Vec<AssetCheckOutcome>, VerificationError> {
+        let has_full_access_key = if heads.iter().any(|head| head.token_standard == "native") {
+            self.has_full_access_key_at_block(account_id, watermark.cutoff_block_height)
+                .await?
+        } else {
+            false
+        };
         let mut outcomes = Vec::with_capacity(heads.len());
         for head in heads {
             // Coverage through the watermark plus no newer ledger events
@@ -542,7 +589,7 @@ impl<'a> BalanceVerifier<'a> {
 
             let drift = &chain_balance - &head.balance_after;
             let drift_ok = if head.token_standard == "native" {
-                match self.native_drift_budget(account_id, &drift, head) {
+                match self.native_drift_budget(&drift, head, has_full_access_key) {
                     Some(budget) => drift.abs() <= budget,
                     None => true,
                 }
@@ -603,9 +650,6 @@ impl<'a> BalanceVerifier<'a> {
 mod tests {
     use super::*;
 
-    const DAO: &str = "treasury.sputnik-dao.near";
-    const SIGNER: &str = "meta-pool-dao-4.near";
-
     fn head(event_count: i64, has_anchor: bool) -> AssetLedgerHead {
         AssetLedgerHead {
             asset: "near".to_string(),
@@ -622,18 +666,18 @@ mod tests {
     }
 
     fn verifier_budget(
-        account_id: &str,
         drift: &str,
         event_count: i64,
         has_anchor: bool,
+        has_full_access_key: bool,
     ) -> Option<BigDecimal> {
         let pool = sqlx::PgPool::connect_lazy("postgres://unused/unused").unwrap();
         let network = NetworkConfig::mainnet();
         let drift = BigDecimal::from_str(drift).unwrap();
         BalanceVerifier::new(&pool, &network, 0.1).native_drift_budget(
-            account_id,
             &drift,
             &head(event_count, has_anchor),
+            has_full_access_key,
         )
     }
 
@@ -643,35 +687,43 @@ mod tests {
 
     #[tokio::test]
     async fn drift_budget_floors_at_flat_tolerance_for_quiet_accounts() {
-        assert_eq!(verifier_budget(DAO, "0.05", 0, false), near("0.1"));
-        assert_eq!(verifier_budget(DAO, "0.05", 49, false), near("0.1"));
+        assert_eq!(verifier_budget("0.05", 0, false, false), near("0.1"));
+        assert_eq!(verifier_budget("0.05", 49, false, false), near("0.1"));
     }
 
     #[tokio::test]
     async fn drift_budget_scales_with_event_count_for_positive_drift() {
-        assert_eq!(verifier_budget(DAO, "0.1", 50, false), near("0.100"));
-        assert_eq!(verifier_budget(DAO, "0.15", 100, false), near("0.2"));
-        assert_eq!(verifier_budget(DAO, "0.148", 1392, false), near("2.784"));
+        assert_eq!(verifier_budget("0.1", 50, false, false), near("0.1"));
+        assert_eq!(verifier_budget("0.15", 1_000, false, false), near("0.5"));
+        assert_eq!(
+            verifier_budget("0.148", 1_392, false, false),
+            near("0.6960")
+        );
+        // rc-dao: proven-genuine dust of 0.000245/event must fit the budget.
+        assert_eq!(
+            verifier_budget("0.4706", 1_917, false, false),
+            near("0.9585")
+        );
     }
 
     #[tokio::test]
     async fn negative_drift_never_scales_past_the_flat_floor() {
         // Gas rewards only add balance; ledger-above-chain is a bug, not dust.
-        assert_eq!(verifier_budget(DAO, "-0.218", 640, false), near("0.1"));
-        assert_eq!(verifier_budget(DAO, "-0.477", 252, false), near("0.1"));
+        assert_eq!(verifier_budget("-0.218", 640, false, false), near("0.1"));
+        assert_eq!(verifier_budget("-0.477", 252, false, false), near("0.1"));
     }
 
     #[tokio::test]
-    async fn signer_account_first_gate_is_an_unbounded_anchor() {
-        assert_eq!(verifier_budget(SIGNER, "-16.2092", 1222, false), None);
-        assert_eq!(verifier_budget(SIGNER, "3.0", 296, false), None);
+    async fn verified_full_access_account_first_gate_is_an_unbounded_anchor() {
+        assert_eq!(verifier_budget("-16.2092", 1_222, false, true), None);
+        assert_eq!(verifier_budget("3.0", 296, false, true), None);
     }
 
     #[tokio::test]
     async fn anchored_signer_account_gets_the_symmetric_scaled_budget() {
         // Gas spend from signing makes negative drift physical here.
-        assert_eq!(verifier_budget(SIGNER, "-0.4", 296, true), near("0.592"));
-        assert_eq!(verifier_budget(SIGNER, "0.4", 296, true), near("0.592"));
-        assert_eq!(verifier_budget(SIGNER, "-0.05", 10, true), near("0.1"));
+        assert_eq!(verifier_budget("-0.4", 2_960, true, true), near("1.4800"));
+        assert_eq!(verifier_budget("0.4", 2_960, true, true), near("1.4800"));
+        assert_eq!(verifier_budget("-0.05", 10, true, true), near("0.1"));
     }
 }

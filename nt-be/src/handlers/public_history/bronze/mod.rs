@@ -9,7 +9,7 @@ use crate::utils::priority_rate_gate::GatePriority;
 /// (transaction-triggered realtime refresh) always gets the next permit;
 /// Readiness (verification-coverage refresh) runs on spare capacity ahead of
 /// Backfill (bulk historical paging).
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum NearblocksPriority {
     Latest,
     Readiness,
