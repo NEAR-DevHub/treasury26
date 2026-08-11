@@ -199,13 +199,22 @@ export function buildDepositAssetCatalog(params: {
     const otherAssets: SelectOption[] = [];
 
     for (const asset of bridgeAssets) {
-        const networks = asset.networks.map(toNetworkOption);
+        // Public deposits need Bridge/POA chain support; confidential uses 1Click.
+        const depositNetworks = isConfidential
+            ? asset.networks
+            : asset.networks.filter(
+                  (network) => network.publicDepositSupported !== false,
+              );
+        if (depositNetworks.length === 0) {
+            continue;
+        }
+        const networks = depositNetworks.map(toNetworkOption);
         newAssetNetworksMap.set(asset.id, networks);
         networkBalancesByAssetId.set(
             asset.id,
             buildNetworkBalanceMap(
                 asset.id,
-                asset.networks,
+                depositNetworks,
                 ownedTreasuryAssetsById,
             ),
         );
@@ -215,10 +224,10 @@ export function buildDepositAssetCatalog(params: {
         const selectOption: SelectOption = {
             id: asset.id,
             name: asset.name,
-            symbol: asset.networks[0]?.symbol,
+            symbol: depositNetworks[0]?.symbol,
             icon: asset.icon,
             gradient: "bg-brand-blue",
-            networks: asset.networks,
+            networks: depositNetworks,
         };
 
         if (ownedAsset) {

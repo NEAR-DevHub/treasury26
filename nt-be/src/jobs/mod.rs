@@ -760,6 +760,15 @@ fn configure_cron_runtime(
         handlers::dao_list_sync
     );
 
+    monitor = register_cron_worker!(
+        monitor,
+        queues,
+        state,
+        "nearcom-catalog-watch",
+        schedule_every_secs(env_secs("NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS", 3600)),
+        handlers::nearcom_catalog_watch
+    );
+
     // Was a 1s poll; 5s keeps dirty-DAO latency low without writing a task
     // row to Postgres every second.
     monitor = register_cron_worker!(

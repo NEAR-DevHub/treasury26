@@ -1,28 +1,49 @@
+//! Deposit / withdraw asset catalog.
+//!
+//! Built as: vendored near.com `production.json` ∩ 1Click `/v0/tokens`,
+//! enriched with Bridge RPC min amounts / chain ids when available.
+//! Each network exposes `balanceAssetId` (Intents ledger) and `quoteAssetId`
+//! (1Click routing; may be a `1cs_v1:` id).
+
 use crate::{
-    constants::intents_tokens::{find_unified_asset_id, get_tokens_map},
+    constants::intents_tokens::{
+        BaseTokenInfo, TokenDeployment, find_unified_asset_id, get_tokens_map,
+    },
     utils::cache::CacheTier,
 };
 use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::supported_tokens::fetch_supported_tokens_data;
 use crate::{
     AppState,
     constants::intents_chains::{ChainIcons, get_chain_metadata_by_name},
-    handlers::token::metadata::fetch_tokens_metadata_enriched,
+    services::oneclick_asset_routing::{
+        NBTC_BALANCE_ASSET_ID, is_one_click_routing_asset, price_lookup_asset_ids, quote_asset_id,
+    },
+    services::oneclick_tokens::fetch_oneclick_tokens,
 };
 
 const NEAR_MAINNET_NETWORK_ID: &str = "near:mainnet";
-const BLOCKED_NETWORK_IDS: [&str; 1] = ["nep141:nbtc.bridge.near"];
 
-fn metadata_lookup_key(intents_id: &str) -> String {
-    format!("intents.near:{intents_id}")
-}
+/// near.com `DEPRECATED_TOKENS` — keep out of the deposit catalog.
+const DEPRECATED_BALANCE_ASSET_IDS: [&str; 3] = [
+    "nep141:aurora",
+    "nep141:btc.omft.near",
+    "nep141:btc.stft.near",
+];
 
 fn chain_id_from_defuse_id(defuse_id: &str) -> String {
+    if defuse_id.starts_with("1cs_v1:") {
+        // `1cs_v1:<chain>:…` — origin chain is the second segment.
+        let mut parts = defuse_id.split(':');
+        let _ = parts.next();
+        if let Some(chain) = parts.next() {
+            return fallback_chain_id_for_name(chain);
+        }
+    }
     let parts: Vec<&str> = defuse_id.split(':').collect();
     if parts.len() >= 2 {
         format!("{}:{}", parts[0], parts[1])
@@ -31,17 +52,132 @@ fn chain_id_from_defuse_id(defuse_id: &str) -> String {
     }
 }
 
+fn fallback_chain_id_for_name(chain_name: &str) -> String {
+    let normalized = chain_name.to_lowercase();
+    // Source of truth: Defuse `PoaBridgeNetworkReference` /
+    // `BlockchainEnum` in `@defuse-protocol/internal-utils`
+    // (packages/internal-utils/src/poaBridge/constants/blockchains.ts).
+    // near.com maps UI chain names via `assetNetworkAdapter` → these ids
+    // before calling POA `deposit_address`. Prefer Bridge
+    // `defuse_asset_identifier` prefixes when available; this is fallback only.
+    match normalized.as_str() {
+        "eth" | "ethereum" => "eth:1".to_string(),
+        "base" => "eth:8453".to_string(),
+        "arbitrum" | "arb" => "eth:42161".to_string(),
+        "bitcoin" | "btc" => "btc:mainnet".to_string(),
+        "bitcoincash" | "bch" => "bch:mainnet".to_string(),
+        "solana" | "sol" => "sol:mainnet".to_string(),
+        "near" => NEAR_MAINNET_NETWORK_ID.to_string(),
+        "polygon" | "pol" | "matic" => "eth:137".to_string(),
+        "bsc" | "bnb" => "eth:56".to_string(),
+        "optimism" | "op" => "eth:10".to_string(),
+        "avalanche" | "avax" => "eth:43114".to_string(),
+        "gnosis" => "eth:100".to_string(),
+        "berachain" | "bera" => "eth:80094".to_string(),
+        "tron" => "tron:mainnet".to_string(),
+        "ton" => "ton:mainnet".to_string(),
+        "sui" => "sui:mainnet".to_string(),
+        "aptos" => "aptos:mainnet".to_string(),
+        "stellar" => "stellar:mainnet".to_string(),
+        "starknet" => "starknet:mainnet".to_string(),
+        "xrpledger" | "xrp" => "xrp:mainnet".to_string(),
+        "zcash" | "zec" => "zec:mainnet".to_string(),
+        "dogecoin" | "doge" => "doge:mainnet".to_string(),
+        "cardano" => "cardano:mainnet".to_string(),
+        "litecoin" | "ltc" => "ltc:mainnet".to_string(),
+        "monad" => "eth:143".to_string(),
+        "layerx" => "eth:196".to_string(),
+        "plasma" => "eth:9745".to_string(),
+        "scroll" => "eth:534352".to_string(),
+        "aleo" => "aleo:mainnet".to_string(),
+        "dash" => "dash:mainnet".to_string(),
+        "movement" => "movement:mainnet".to_string(),
+        "fogo" => "fogo:mainnet".to_string(),
+        // Defuse: "Hyperliquid is only available as a withdrawal destination"
+        // (not in PoaBridgeNetworkReference; no public POA deposit).
+        "hyperliquid" | "hypercore" => "hyperliquid:999".to_string(),
+        other => format!("{other}:mainnet"),
+    }
+}
+
+/// Extract an EVM/SPL-style contract address from a defuse / 1cs asset id.
+fn contract_address_from_asset_id(asset_id: &str) -> Option<String> {
+    let last = asset_id.split(':').next_back()?.to_lowercase();
+    if last.starts_with("0x") && last.len() >= 42 {
+        return Some(last);
+    }
+    // nep141:base-0xabc….omft.near
+    if let Some(idx) = last.find("0x") {
+        let rest = &last[idx..];
+        let addr: String = rest
+            .chars()
+            .take_while(|c| c.is_ascii_hexdigit() || *c == 'x')
+            .collect();
+        if addr.starts_with("0x") && addr.len() >= 42 {
+            return Some(addr);
+        }
+    }
+    None
+}
+
+fn deployment_decimals(base: &BaseTokenInfo) -> u8 {
+    base.deployments
+        .first()
+        .map(|d| match d {
+            TokenDeployment::Native { decimals, .. } => *decimals,
+            TokenDeployment::Fungible { decimals, .. } => *decimals,
+        })
+        .unwrap_or(base.decimals)
+}
+
+fn network_name_for_base(base: &BaseTokenInfo) -> String {
+    get_chain_metadata_by_name(&base.origin_chain_name)
+        .map(|m| m.name.to_lowercase())
+        .unwrap_or_else(|| base.origin_chain_name.to_lowercase())
+}
+
+/// Group Bridge-only catalog rows by near.com unified id when known, otherwise
+/// by symbol so multi-chain duplicates (e.g. WETH, COCA) collapse to one asset.
+fn bridge_only_group_key(intents_id: &str, symbol: &str) -> String {
+    find_unified_asset_id(intents_id)
+        .map(String::from)
+        .unwrap_or_else(|| symbol.to_lowercase())
+}
+
+fn catalog_token_in_oneclick(balance_id: &str, oneclick_ids: &HashSet<String>) -> bool {
+    let quote_id = quote_asset_id(balance_id);
+    if oneclick_ids.contains(quote_id) || oneclick_ids.contains(balance_id) {
+        return true;
+    }
+    price_lookup_asset_ids(balance_id)
+        .into_iter()
+        .chain(price_lookup_asset_ids(quote_id))
+        .any(|id| oneclick_ids.contains(&id))
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NetworkOption {
-    pub id: String, // This will be the intents_token_id
+    /// Back-compat: Intents balance / catalog asset id.
+    pub id: String,
     pub name: String,
     pub symbol: String,
     pub chain_icons: Option<ChainIcons>,
-    pub chain_id: String, // This will be like "eth:1"
+    pub chain_id: String,
     pub decimals: u8,
     pub min_deposit_amount: Option<String>,
     pub min_withdrawal_amount: Option<String>,
+    /// Intents ledger / balance id (`nep141:` / `nep245:` / catalog id).
+    pub balance_asset_id: String,
+    /// 1Click quote routing id (may be `1cs_v1:`).
+    pub quote_asset_id: String,
+    /// Whether Bridge/POA can mint a stable public deposit address for `chain_id`.
+    #[serde(default = "default_true")]
+    pub public_deposit_supported: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -59,6 +195,13 @@ pub struct DepositAssetsResponse {
     pub assets: Vec<AssetOption>,
 }
 
+#[derive(Clone)]
+struct BridgeTokenExtras {
+    chain_id: String,
+    min_deposit_amount: Option<String>,
+    min_withdrawal_amount: Option<String>,
+}
+
 pub async fn get_bridge_tokens(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<DepositAssetsResponse>, (StatusCode, String)> {
@@ -68,131 +211,221 @@ pub async fn get_bridge_tokens(
         .cache
         .cached(
             CacheTier::LongTerm,
-            "deposit-assets".to_string(),
+            "deposit-assets-v4".to_string(),
             async move {
-                // Step 1: Fetch supported tokens using existing helper
-                let supported = fetch_supported_tokens_data(&state_clone).await?;
-
-                // Step 2: Filter for nep141 and nep245 tokens
-                let all_tokens = supported.get("tokens").and_then(|t| t.as_array()).ok_or((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Invalid format".to_string(),
-                ))?;
-
-                let supported_tokens: Vec<&Value> = all_tokens
+                let oneclick_tokens = fetch_oneclick_tokens(&state_clone).await?;
+                let oneclick_ids: HashSet<String> = oneclick_tokens
                     .iter()
-                    .filter(|t| {
-                        t.get("standard")
-                            .and_then(|s| s.as_str())
-                            .map(|s| s == "nep141" || s == "nep245")
-                            .unwrap_or(false)
-                    })
+                    .map(|t| t.asset_id.clone())
                     .collect();
 
-                // Step 3: Deduplicate by intents_token_id
-                let mut token_map: HashMap<String, &Value> = HashMap::new();
-                for token in supported_tokens {
-                    if let Some(intents_id) =
-                        token.get("intents_token_id").and_then(|id| id.as_str())
-                    {
-                        token_map.entry(intents_id.to_string()).or_insert(token);
+                // Bridge RPC: mins + authoritative chain ids for public deposits.
+                let mut bridge_by_intents: HashMap<String, Vec<BridgeTokenExtras>> = HashMap::new();
+                let mut bridge_by_contract: HashMap<String, Vec<BridgeTokenExtras>> = HashMap::new();
+                let mut bridge_supported_chains: HashSet<String> = HashSet::new();
+                if let Ok(supported) = fetch_supported_tokens_data(&state_clone).await
+                    && let Some(tokens) = supported.get("tokens").and_then(|t| t.as_array())
+                {
+                    for token in tokens {
+                        let Some(intents_id) =
+                            token.get("intents_token_id").and_then(|id| id.as_str())
+                        else {
+                            continue;
+                        };
+                        let standard = token
+                            .get("standard")
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("");
+                        if standard != "nep141" && standard != "nep245" {
+                            continue;
+                        }
+                        let defuse_id = token
+                            .get("defuse_asset_identifier")
+                            .and_then(|d| d.as_str())
+                            .unwrap_or("");
+                        let extras = BridgeTokenExtras {
+                            chain_id: chain_id_from_defuse_id(defuse_id),
+                            min_deposit_amount: token
+                                .get("min_deposit_amount")
+                                .and_then(|v| v.as_str())
+                                .map(String::from),
+                            min_withdrawal_amount: token
+                                .get("min_withdrawal_amount")
+                                .and_then(|v| v.as_str())
+                                .map(String::from),
+                        };
+                        bridge_supported_chains.insert(extras.chain_id.clone());
+                        bridge_by_intents
+                            .entry(intents_id.to_string())
+                            .or_default()
+                            .push(extras.clone());
+                        if let Some(addr) = contract_address_from_asset_id(defuse_id) {
+                            bridge_by_contract.entry(addr).or_default().push(extras);
+                        }
                     }
                 }
 
-                let tokens: Vec<&Value> = token_map.values().copied().collect();
-                // Keep lookup keys aligned with caller expectations across all consumers.
-                let metadata_ids: Vec<String> = tokens
-                    .iter()
-                    .filter_map(|t| {
-                        t.get("intents_token_id")
-                            .and_then(|id| id.as_str())
-                            .map(metadata_lookup_key)
-                    })
-                    .collect();
+                let resolve_bridge = |balance_id: &str,
+                                      preferred_chain: &str|
+                 -> Option<BridgeTokenExtras> {
+                    let pick = |entries: &[BridgeTokenExtras]| {
+                        entries
+                            .iter()
+                            .find(|e| e.chain_id == preferred_chain)
+                            .or_else(|| entries.first())
+                            .cloned()
+                    };
+                    if let Some(entries) = bridge_by_intents.get(balance_id) {
+                        return pick(entries);
+                    }
+                    if let Some(addr) = contract_address_from_asset_id(balance_id)
+                        && let Some(entries) = bridge_by_contract.get(&addr)
+                    {
+                        return pick(entries);
+                    }
+                    None
+                };
 
-                // Step 4: Batch fetch token metadata using the unified metadata function
-                let metadata_map =
-                    fetch_tokens_metadata_enriched(&state_clone, &metadata_ids, false).await;
-
-                // Step 5: Group by unified_asset_id
                 let mut asset_map: HashMap<String, AssetOption> = HashMap::new();
 
-                for token in tokens {
-                    let Some(intents_id) = token.get("intents_token_id").and_then(|id| id.as_str())
-                    else {
-                        continue;
-                    };
+                for (unified_id, unified) in get_tokens_map().iter() {
+                    for base in &unified.grouped_tokens {
+                        let balance_id = base.defuse_asset_id.as_str();
+                        if DEPRECATED_BALANCE_ASSET_IDS.contains(&balance_id) {
+                            continue;
+                        }
+                        if !catalog_token_in_oneclick(balance_id, &oneclick_ids) {
+                            continue;
+                        }
 
-                    if BLOCKED_NETWORK_IDS.contains(&intents_id) {
-                        continue;
-                    }
+                        let quote_id = quote_asset_id(balance_id).to_string();
+                        let group_key = find_unified_asset_id(balance_id)
+                            .map(String::from)
+                            .unwrap_or_else(|| unified_id.clone());
 
-                    let lookup_key = metadata_lookup_key(intents_id);
-                    let Some(meta) = metadata_map.get(&lookup_key) else {
-                        continue;
-                    };
+                        let network_name = network_name_for_base(base);
+                        let chain_meta = get_chain_metadata_by_name(&base.origin_chain_name)
+                            .or_else(|| get_chain_metadata_by_name(&network_name));
 
-                    // Skip if chainName is missing (no valid chain metadata)
-                    if meta.network.is_none() {
-                        continue;
-                    }
+                        let preferred_chain = if balance_id == NBTC_BALANCE_ASSET_ID {
+                            fallback_chain_id_for_name("bitcoin")
+                        } else if is_one_click_routing_asset(balance_id) {
+                            chain_id_from_defuse_id(balance_id)
+                        } else {
+                            fallback_chain_id_for_name(&base.origin_chain_name)
+                        };
+                        // Prefer Bridge chain id for public stable deposits when present.
+                        let bridge = resolve_bridge(balance_id, &preferred_chain);
+                        let chain_id = bridge
+                            .as_ref()
+                            .map(|b| b.chain_id.clone())
+                            .unwrap_or(preferred_chain);
+                        let public_deposit_supported =
+                            bridge_supported_chains.contains(&chain_id);
 
-                    // Derive chain_id from defuse_asset_identifier
-                    let defuse_id = token
-                        .get("defuse_asset_identifier")
-                        .and_then(|d| d.as_str())
-                        .unwrap_or("");
-                    let chain_id = chain_id_from_defuse_id(defuse_id);
-
-                    // Resolve unified_asset_id from tokens.json for proper grouping
-                    let group_key = find_unified_asset_id(intents_id)
-                        .map(String::from)
-                        .unwrap_or_else(|| meta.symbol.to_lowercase());
-
-                    // Use chain name from metadata directly.
-                    let resolved_network_name =
-                        meta.network.as_ref().or(meta.chain_name.as_ref()).cloned();
-
-                    // Extract min deposit and withdrawal amounts
-                    let min_deposit_amount = token
-                        .get("min_deposit_amount")
-                        .and_then(|v| v.as_str())
-                        .map(String::from);
-
-                    let min_withdrawal_amount = token
-                        .get("min_withdrawal_amount")
-                        .and_then(|v| v.as_str())
-                        .map(String::from);
-
-                    // Prefer tokens.json for asset-level name/icon/symbol when available.
-                    let unified = get_tokens_map().get(&group_key);
-                    let asset = asset_map
-                        .entry(group_key.clone())
-                        .or_insert_with(|| AssetOption {
-                            id: group_key.clone(),
-                            asset_name: unified
-                                .map(|u| u.symbol.clone())
-                                .unwrap_or_else(|| meta.symbol.clone()),
-                            name: unified
-                                .map(|u| u.name.clone())
-                                .unwrap_or_else(|| meta.name.clone()),
-                            icon: unified
-                                .map(|u| Some(u.icon.clone()))
-                                .unwrap_or_else(|| meta.icon.clone()),
-                            networks: Vec::new(),
+                        let asset = asset_map.entry(group_key.clone()).or_insert_with(|| {
+                            AssetOption {
+                                id: group_key.clone(),
+                                asset_name: unified.symbol.clone(),
+                                name: unified.name.clone(),
+                                icon: Some(unified.icon.clone()),
+                                networks: Vec::new(),
+                            }
                         });
 
-                    // Check if network with this intents_token_id already exists
-                    if !asset.networks.iter().any(|n| n.id == intents_id) {
+                        if asset.networks.iter().any(|n| n.balance_asset_id == balance_id) {
+                            continue;
+                        }
+
                         asset.networks.push(NetworkOption {
-                            symbol: meta.symbol.clone(),
-                            name: resolved_network_name.unwrap_or_default(),
-                            id: intents_id.to_string(),
-                            chain_icons: meta.chain_icons.clone(),
+                            id: balance_id.to_string(),
+                            name: network_name,
+                            symbol: base.symbol.clone(),
+                            chain_icons: chain_meta.map(|m| m.icon),
                             chain_id,
-                            decimals: meta.decimals,
-                            min_deposit_amount,
-                            min_withdrawal_amount,
+                            decimals: deployment_decimals(base),
+                            min_deposit_amount: bridge
+                                .as_ref()
+                                .and_then(|b| b.min_deposit_amount.clone()),
+                            min_withdrawal_amount: bridge
+                                .as_ref()
+                                .and_then(|b| b.min_withdrawal_amount.clone()),
+                            balance_asset_id: balance_id.to_string(),
+                            quote_asset_id: quote_id,
+                            public_deposit_supported,
+                        });
+                    }
+                }
+
+                // Also surface Bridge-only nep141/nep245 tokens that are in
+                // /v0/tokens but missing from the near.com catalog (parity).
+                for (intents_id, extras_list) in &bridge_by_intents {
+                    for extras in extras_list {
+                        if DEPRECATED_BALANCE_ASSET_IDS.contains(&intents_id.as_str()) {
+                            continue;
+                        }
+                        if !catalog_token_in_oneclick(intents_id, &oneclick_ids) {
+                            continue;
+                        }
+                        let already = asset_map.values().any(|a| {
+                            a.networks.iter().any(|n| {
+                                n.balance_asset_id == *intents_id
+                                    && n.chain_id == extras.chain_id
+                            })
+                        });
+                        if already {
+                            continue;
+                        }
+
+                        let oneclick = oneclick_tokens.iter().find(|t| {
+                            t.asset_id == *intents_id || t.asset_id == quote_asset_id(intents_id)
+                        });
+                        let symbol = oneclick
+                            .map(|t| t.symbol.clone())
+                            .unwrap_or_else(|| intents_id.clone());
+                        let group_key = bridge_only_group_key(intents_id, &symbol);
+                        // If an existing catalog asset already uses this display symbol,
+                        // fold into it instead of creating a second picker row.
+                        let group_key = asset_map
+                            .iter()
+                            .find(|(k, a)| {
+                                *k != &group_key && a.asset_name.eq_ignore_ascii_case(&symbol)
+                            })
+                            .map(|(k, _)| k.clone())
+                            .unwrap_or(group_key);
+                        let unified = get_tokens_map().get(&group_key);
+                        let name = unified
+                            .map(|u| u.name.clone())
+                            .unwrap_or_else(|| symbol.clone());
+                        let icon = unified.map(|u| u.icon.clone()).or_else(|| {
+                            asset_map.get(&group_key).and_then(|a| a.icon.clone())
+                        });
+                        let network_name = oneclick
+                            .map(|t| t.blockchain.to_lowercase())
+                            .unwrap_or_else(|| "unknown".to_string());
+                        let chain_icons =
+                            get_chain_metadata_by_name(&network_name).map(|m| m.icon);
+
+                        let asset =
+                            asset_map.entry(group_key.clone()).or_insert_with(|| AssetOption {
+                                id: group_key.clone(),
+                                asset_name: symbol.clone(),
+                                name,
+                                icon,
+                                networks: Vec::new(),
+                            });
+                        asset.networks.push(NetworkOption {
+                            id: intents_id.clone(),
+                            name: network_name,
+                            symbol,
+                            chain_icons,
+                            chain_id: extras.chain_id.clone(),
+                            decimals: oneclick.map(|t| t.decimals as u8).unwrap_or(18),
+                            min_deposit_amount: extras.min_deposit_amount.clone(),
+                            min_withdrawal_amount: extras.min_withdrawal_amount.clone(),
+                            balance_asset_id: intents_id.clone(),
+                            quote_asset_id: quote_asset_id(intents_id).to_string(),
+                            public_deposit_supported: true,
                         });
                     }
                 }
@@ -206,10 +439,7 @@ pub async fn get_bridge_tokens(
                             icon: "https://near.com/static/icons/network/near.svg".to_string(),
                         })
                     });
-                // Normalize to at most one canonical NEAR network entry — only when
-                // the asset already has a real Near network. Do not synthesize NEAR
-                // for assets that only exist on other chains (those cannot accept a
-                // public-wallet NEAR deposit for this token).
+
                 for asset in &mut assets {
                     let existing_near_network = asset
                         .networks
@@ -235,13 +465,13 @@ pub async fn get_bridge_tokens(
                         decimals: existing_near_network.decimals,
                         min_deposit_amount: existing_near_network.min_deposit_amount,
                         min_withdrawal_amount: existing_near_network.min_withdrawal_amount,
+                        balance_asset_id: existing_near_network.balance_asset_id,
+                        quote_asset_id: existing_near_network.quote_asset_id,
+                        public_deposit_supported: existing_near_network.public_deposit_supported,
                     });
                 }
 
-                // Sort assets by symbol alphabetically
                 assets.sort_by(|a, b| a.id.cmp(&b.id));
-
-                // Sort networks within each asset by name alphabetically
                 for asset in &mut assets {
                     asset.networks.sort_by(|a, b| a.name.cmp(&b.name));
                 }
@@ -252,4 +482,95 @@ pub async fn get_bridge_tokens(
         .await?;
 
     Ok(Json(result))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::constants::intents_tokens::get_defuse_tokens_map;
+
+    #[test]
+    fn chain_id_from_1cs_uses_origin_chain() {
+        assert_eq!(
+            chain_id_from_defuse_id("1cs_v1:sol:spl:Abc"),
+            "sol:mainnet"
+        );
+        assert_eq!(
+            chain_id_from_defuse_id("1cs_v1:btc:native:coin"),
+            "btc:mainnet"
+        );
+        // Bridge depositAddressFetch expects eth:<id> for EVM L2s.
+        assert_eq!(
+            chain_id_from_defuse_id(
+                "1cs_v1:base:erc20:0x0382e3fee4a420bd446367d468a6f00225853420"
+            ),
+            "eth:8453"
+        );
+        assert_eq!(
+            chain_id_from_defuse_id("eth:8453:0x0382e3fee4a420bd446367d468a6f00225853420"),
+            "eth:8453"
+        );
+    }
+
+    #[test]
+    fn contract_address_extracted_from_1cs_and_bridge_ids() {
+        assert_eq!(
+            contract_address_from_asset_id(
+                "1cs_v1:base:erc20:0x0382e3fee4a420bd446367d468a6f00225853420"
+            )
+            .as_deref(),
+            Some("0x0382e3fee4a420bd446367d468a6f00225853420")
+        );
+        assert_eq!(
+            contract_address_from_asset_id(
+                "eth:8453:0x0382e3fee4a420bd446367d468a6f00225853420"
+            )
+            .as_deref(),
+            Some("0x0382e3fee4a420bd446367d468a6f00225853420")
+        );
+    }
+
+    #[test]
+    fn bridge_only_groups_unknown_tokens_by_symbol() {
+        let eth_weth = "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near";
+        let base_weth = "nep141:base-0x4200000000000000000000000000000000000006.omft.near";
+        let pol_coca = "nep141:pol-0x7b12598e3616261df1c05ec28de0d2fb10c1f206.omdep.near";
+        let base_coca = "nep141:base-0x959fc04dbf97a27073f89237cd62605f4d1b906d.omft.near";
+
+        assert_eq!(bridge_only_group_key(eth_weth, "WETH"), "weth");
+        assert_eq!(bridge_only_group_key(base_weth, "WETH"), "weth");
+        assert_eq!(bridge_only_group_key(pol_coca, "COCA"), "coca");
+        assert_eq!(bridge_only_group_key(base_coca, "COCA"), "coca");
+    }
+
+    #[test]
+    fn catalog_match_accepts_btc_routing_alias() {
+        let mut ids = HashSet::new();
+        ids.insert(
+            crate::services::oneclick_asset_routing::ONE_CLICK_BTC_NATIVE_ASSET_ID.to_string(),
+        );
+        assert!(catalog_token_in_oneclick(NBTC_BALANCE_ASSET_ID, &ids));
+    }
+
+    #[test]
+    fn nearcom_catalog_loads_and_includes_curated_1cs_deployments() {
+        let map = get_defuse_tokens_map();
+        assert!(
+            map.len() > 50,
+            "expected vendored near.com catalog to load"
+        );
+        assert!(
+            map.contains_key("1cs_v1:hypercore:erc20:0xb88339CB7199b77E23DB6E890353E22632Ba630f")
+                || map.keys().any(|k| k.starts_with("1cs_v1:hypercore:")),
+            "expected Hyperliquid USDC 1cs deployment in catalog"
+        );
+        assert!(
+            map.contains_key(NBTC_BALANCE_ASSET_ID),
+            "expected nBTC balance id in catalog"
+        );
+        assert_eq!(
+            quote_asset_id(NBTC_BALANCE_ASSET_ID),
+            crate::services::oneclick_asset_routing::ONE_CLICK_BTC_NATIVE_ASSET_ID
+        );
+    }
 }

@@ -1,7 +1,6 @@
-//! Minute-by-minute token price ingestion from the chaindefuser tokens API.
+//! Minute-by-minute token price ingestion from the 1Click `/v0/tokens` API.
 //!
-//! One request per tick (~49 KB, ETag-aware so unchanged payloads cost a
-//! 304 with an empty body), two batched statements: upsert the `tokens`
+//! One request per tick, two batched statements: upsert the `tokens`
 //! registry and append changed prices to the `token_prices` 5-minute series.
 //! Prices that did not move since the last persisted row are skipped, so
 //! quiet assets write far fewer than 288 rows/day. Monthly partitions are
@@ -14,24 +13,18 @@ use std::time::Duration as StdDuration;
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Datelike, Duration, DurationRound, NaiveDate, Timelike, Utc};
-use serde::Deserialize;
 use sqlx::PgPool;
 
 use super::service::TokenPriceService;
 use crate::AppState;
+use crate::services::oneclick_tokens::{OneClickToken, ONECLICK_TOKENS_PATH};
 
 pub const TOKEN_PRICE_INGEST_TICK: StdDuration = StdDuration::from_secs(60);
 
-const TOKENS_API_URL: &str = "https://api-mng-console.chaindefuser.com/api/tokens";
 const TOKENS_API_TIMEOUT: StdDuration = StdDuration::from_secs(30);
 const TOKEN_PRICE_PERSIST_INTERVAL_MINUTES: u32 = 5;
 
-#[derive(Debug, Deserialize)]
-struct TokensApiResponse {
-    items: Vec<TokenApiItem>,
-}
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone)]
 struct TokenApiItem {
     defuse_asset_id: String,
     symbol: String,
@@ -41,6 +34,21 @@ struct TokenApiItem {
     coingecko_id: Option<String>,
     price: Option<f64>,
     price_updated_at: Option<DateTime<Utc>>,
+}
+
+impl From<OneClickToken> for TokenApiItem {
+    fn from(token: OneClickToken) -> Self {
+        Self {
+            defuse_asset_id: token.asset_id,
+            symbol: token.symbol,
+            decimals: token.decimals,
+            blockchain: token.blockchain,
+            contract_address: token.contract_address,
+            coingecko_id: token.coingecko_id,
+            price: token.price,
+            price_updated_at: token.price_updated_at,
+        }
+    }
 }
 
 impl TokenApiItem {
@@ -168,7 +176,11 @@ impl TokenPriceIngestor {
     async fn fetch_tokens(
         &mut self,
     ) -> Result<Option<Vec<TokenApiItem>>, Box<dyn std::error::Error + Send + Sync>> {
-        let mut request = self.http.get(TOKENS_API_URL).timeout(TOKENS_API_TIMEOUT);
+        let url = format!(
+            "https://1click.chaindefuser.com{}",
+            ONECLICK_TOKENS_PATH
+        );
+        let mut request = self.http.get(&url).timeout(TOKENS_API_TIMEOUT);
         if let Some(etag) = &self.etag {
             request = request.header(reqwest::header::IF_NONE_MATCH, etag);
         }
@@ -185,8 +197,8 @@ impl TokenPriceIngestor {
             .and_then(|v| v.to_str().ok())
             .map(str::to_string);
 
-        let body: TokensApiResponse = response.json().await?;
-        Ok(Some(body.items))
+        let body: Vec<OneClickToken> = response.json().await?;
+        Ok(Some(body.into_iter().map(TokenApiItem::from).collect()))
     }
 
     async fn upsert_registry(&self, items: &[TokenApiItem]) -> Result<(), sqlx::Error> {

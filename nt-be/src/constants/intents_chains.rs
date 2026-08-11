@@ -145,6 +145,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "hyperliquid".to_string(),
         ChainMetadata::new("Hyperliquid", "hyperliquid.svg"),
     );
+    add_chain_alias(&mut metadata, "hypercore", "hyperliquid");
     metadata.insert("ton".to_string(), ChainMetadata::new("TON", "ton.svg"));
     metadata.insert(
         "optimism".to_string(),

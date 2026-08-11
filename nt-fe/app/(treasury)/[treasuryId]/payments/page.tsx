@@ -935,6 +935,28 @@ export default function PaymentsPage() {
         ],
     );
 
+    const destinationQuoteAssetId = useMemo(() => {
+        if (
+            !watchedDestinationNetwork ||
+            isNearComNetwork(watchedDestinationNetwork)
+        ) {
+            return watchedDestinationNetwork;
+        }
+        for (const asset of bridgeAssets) {
+            const network = asset.networks.find(
+                (n) => n.id === watchedDestinationNetwork,
+            );
+            if (network) {
+                return (
+                    network.quoteAssetId ||
+                    network.balanceAssetId ||
+                    network.id
+                );
+            }
+        }
+        return watchedDestinationNetwork;
+    }, [bridgeAssets, watchedDestinationNetwork]);
+
     // ── Live quote (drives step-1 fee preview & step-2 review) ───────────────
 
     const {
@@ -957,6 +979,7 @@ export default function PaymentsPage() {
         proposalPeriod: policy?.proposal_period,
         amountMode: intentsAmountMode,
         destinationNetwork: watchedDestinationNetwork,
+        destinationQuoteAssetId,
         isPayment: true,
         // Paused payment (critical warning on token/network or app-wide): don't
         // fetch the quote. Also wait until the default token is ready.
@@ -1265,6 +1288,17 @@ export default function PaymentsPage() {
                             undefined,
                             data.destinationNetwork,
                             true, // isPayment
+                            {
+                                destinationQuoteAssetId:
+                                    bridgeAssets
+                                        .flatMap((a) => a.networks)
+                                        .find(
+                                            (n) =>
+                                                n.id ===
+                                                data.destinationNetwork,
+                                        )?.quoteAssetId ||
+                                    data.destinationNetwork,
+                            },
                         ),
                         false,
                     ));

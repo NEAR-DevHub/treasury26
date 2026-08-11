@@ -258,6 +258,12 @@ pub fn quote_destination_token_id(destination_asset: &str) -> String {
     if destination_asset.starts_with("intents.near:") {
         return destination_asset.to_string();
     }
+    // Map 1Click routing ids (e.g. BTC native) back to Intents balance ids.
+    let balance_id =
+        crate::services::oneclick_asset_routing::balance_asset_id_from_quote(destination_asset);
+    if balance_id.starts_with("nep141:") || balance_id.starts_with("nep245:") {
+        return format!("intents.near:{balance_id}");
+    }
     if destination_asset.starts_with("nep141:") || destination_asset.starts_with("nep245:") {
         return format!("intents.near:{destination_asset}");
     }
@@ -305,6 +311,10 @@ mod tests {
         assert_eq!(
             quote_destination_token_id("nep141:usdt.near"),
             "intents.near:nep141:usdt.near"
+        );
+        assert_eq!(
+            quote_destination_token_id("1cs_v1:btc:native:coin"),
+            "intents.near:nep141:nbtc.bridge.near"
         );
     }
 

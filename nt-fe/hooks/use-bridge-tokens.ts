@@ -11,6 +11,12 @@ export interface BridgeNetwork {
     decimals: number;
     minDepositAmount?: string;
     minWithdrawalAmount?: string;
+    /** Intents ledger / catalog id */
+    balanceAssetId?: string;
+    /** 1Click quote routing id (may be 1cs_v1:) */
+    quoteAssetId?: string;
+    /** False when Bridge/POA cannot mint a stable public deposit address for this chain. */
+    publicDepositSupported?: boolean;
 }
 
 export interface BridgeAsset {
@@ -57,6 +63,14 @@ export function useBridgeTokens(enabled: boolean = true) {
                             decimals: network.decimals,
                             minDepositAmount: network.minDepositAmount,
                             minWithdrawalAmount: network.minWithdrawalAmount,
+                            balanceAssetId:
+                                network.balanceAssetId || network.id,
+                            quoteAssetId:
+                                network.quoteAssetId ||
+                                network.balanceAssetId ||
+                                network.id,
+                            publicDepositSupported:
+                                network.publicDepositSupported !== false,
                         })),
                     };
                 },

@@ -663,6 +663,7 @@ export async function getTokenMetadata(
     const noPrefixNoNear =
         !token.startsWith("nep141:") &&
         !token.startsWith("nep245:") &&
+        !token.startsWith("1cs_v1:") &&
         token.toLowerCase() !== NEAR_NETWORK_ID;
 
     if (noPrefixNoNear && token.split(":").length === 2) {

@@ -31,6 +31,8 @@ export interface MergedNetwork {
     lockedBalance?: string;
     minWithdrawalAmount?: string;
     minDepositAmount?: string;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
 }
 
 export interface MergedToken {
@@ -97,6 +99,11 @@ const mapBridgeMatchedNetwork = (
     residency: treasuryNetwork.residency,
     minWithdrawalAmount: bridgeNetwork.minWithdrawalAmount,
     minDepositAmount: bridgeNetwork.minDepositAmount,
+    balanceAssetId: bridgeNetwork.balanceAssetId || bridgeNetwork.id,
+    quoteAssetId:
+        bridgeNetwork.quoteAssetId ||
+        bridgeNetwork.balanceAssetId ||
+        bridgeNetwork.id,
     lockedBalance:
         treasuryNetwork.balance.type === "Standard"
             ? treasuryNetwork.balance.locked.toFixed(0)
@@ -130,6 +137,11 @@ const toBridgeVariants = (
             residency,
             minWithdrawalAmount,
             minDepositAmount,
+            balanceAssetId: bridgeNetwork.balanceAssetId || bridgeNetwork.id,
+            quoteAssetId:
+                bridgeNetwork.quoteAssetId ||
+                bridgeNetwork.balanceAssetId ||
+                bridgeNetwork.id,
         },
     ];
 

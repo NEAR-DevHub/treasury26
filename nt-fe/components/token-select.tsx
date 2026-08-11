@@ -50,6 +50,8 @@ export interface SelectedTokenData {
     minDepositAmount?: string;
     balance?: string;
     price?: number;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
 }
 
 interface TokenSelectProps {
@@ -274,6 +276,11 @@ export default function TokenSelect({
                 minDepositAmount: network.minDepositAmount,
                 balance: network.balance,
                 price: network.price,
+                balanceAssetId: network.balanceAssetId || network.id,
+                quoteAssetId:
+                    network.quoteAssetId ||
+                    network.balanceAssetId ||
+                    network.id,
             });
 
             setOpen(false);

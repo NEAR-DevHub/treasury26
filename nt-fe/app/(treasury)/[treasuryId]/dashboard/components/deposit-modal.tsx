@@ -551,7 +551,9 @@ export function DepositModal({
                 const result = await fetchDepositAddress(
                     treasuryId,
                     selectedNetwork.chainId ?? selectedNetwork.id,
-                    selectedNetwork.id,
+                    // Confidential quotes need the 1Click routing id (may be 1cs_v1:).
+                    selectedBridgeNetwork?.quoteAssetId ||
+                        selectedNetwork.id,
                     selectedBridgeNetwork?.minDepositAmount,
                 );
 
