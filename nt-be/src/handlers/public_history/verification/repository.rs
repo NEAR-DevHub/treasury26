@@ -145,7 +145,8 @@ pub async fn load_asset_ledger_heads(
                 WHEN ledger.entry_kind != 'reconciliation'
                      AND ledger.block_height > COALESCE(anchors.anchor_block, -1)
                 THEN 1
-            END) OVER (PARTITION BY ledger.asset) AS event_count
+            END) OVER (PARTITION BY ledger.asset) AS event_count,
+            anchors.anchor_block IS NOT NULL AS has_anchor
         FROM ledger
         LEFT JOIN anchors ON anchors.asset = ledger.asset
         ORDER BY ledger.asset, block_time DESC, block_height DESC, intra_block_seq DESC
