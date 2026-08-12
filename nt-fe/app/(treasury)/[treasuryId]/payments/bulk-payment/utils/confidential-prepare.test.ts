@@ -81,6 +81,20 @@ describe("buildPrepareRequest", () => {
         expect(request.toNearCom).toBe(true);
         expect(request.destinationAsset).toBeUndefined();
     });
+
+    it("strips nearcom: from recipients before prepare", () => {
+        const request = buildPrepareRequest({
+            daoId: "dao.sputnik-dao.near",
+            token: { address: "nep141:usdc.near", decimals: 6 },
+            payments: [{ recipient: "nearcom:alice.near", amount: "1" }],
+            networkFeePerRecipient: null,
+            toNearCom: true,
+        });
+
+        expect(request.payments).toEqual([
+            { recipient: "alice.near", amount: "1000000" },
+        ]);
+    });
 });
 
 describe("deriveQuoteFees", () => {

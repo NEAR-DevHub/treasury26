@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+    formatRecipientForNearComDestination,
     hasNearComAddressPrefix,
     parseNearComAddress,
     stripNearComAddressPrefix,
@@ -35,5 +36,32 @@ describe("nearcom-address", () => {
             hasPrefix: false,
             accountId: "dao.sputnik-dao.near",
         });
+    });
+
+    it("formats display address only for near.com destination", () => {
+        expect(
+            formatRecipientForNearComDestination("alice.near", "near.com"),
+        ).toBe("nearcom:alice.near");
+        expect(
+            formatRecipientForNearComDestination(
+                "nearcom:alice.near",
+                "near.com",
+            ),
+        ).toBe("nearcom:alice.near");
+        expect(formatRecipientForNearComDestination("alice.near", "near")).toBe(
+            "alice.near",
+        );
+        expect(
+            formatRecipientForNearComDestination(
+                "alice.near",
+                "near.com:direct",
+            ),
+        ).toBe("alice.near");
+        expect(formatRecipientForNearComDestination("alice.near", "eth")).toBe(
+            "alice.near",
+        );
+        expect(
+            formatRecipientForNearComDestination("alice.near", undefined),
+        ).toBe("alice.near");
     });
 });

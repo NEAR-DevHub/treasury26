@@ -16,6 +16,7 @@ import type {
     BulkPaymentPrepareResponse,
 } from "@/lib/api";
 import Big from "@/lib/big";
+import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 
 // ─── Request building ───
 
@@ -46,7 +47,8 @@ export function buildPrepareRequest(args: {
         destinationAsset: args.toNearCom ? undefined : args.destinationAsset,
         decimals: args.token.decimals,
         payments: args.payments.map((p) => ({
-            recipient: p.recipient,
+            // 1Click / BE want the bare account — nearcom: is FE display only.
+            recipient: stripNearComAddressPrefix(p.recipient),
             amount: Big(p.amount || "0")
                 .add(feePerRecipient)
                 .times(Big(10).pow(args.token.decimals))

@@ -15,27 +15,30 @@ export function isNearComNetwork(value?: string | null): boolean {
 }
 
 /**
- * Detect near.com payment routes from decoded proposal metadata.
+ * True only when the payment's receive network is exactly `near.com`
+ * (intra-Intents). Cross-chain 1Click legs, `near.com:direct`, and bare
+ * `near` are not near.com payment routes — so no `nearcom:` prefix.
+ *
+ * Accepts either a destination id string or a payment-shaped object with
+ * `destinationAssetId`. Quote metadata fields on the object are ignored.
  */
-export function isNearComPaymentRoute({
-    destinationAssetId,
-    depositAddress,
-    quoteSignature,
-    networkFee,
-}: {
-    destinationAssetId?: string;
-    depositAddress?: string;
-    quoteSignature?: string;
-    networkFee?: string;
-}): boolean {
-    if (isNearComNetwork(destinationAssetId)) {
-        return true;
-    }
-
-    return (
-        !destinationAssetId &&
-        !!(depositAddress || quoteSignature || networkFee)
-    );
+export function isNearComPaymentRoute(
+    destinationOrPayment?:
+        | string
+        | null
+        | {
+              destinationAssetId?: string;
+              depositAddress?: string;
+              quoteSignature?: string;
+              networkFee?: string;
+          },
+): boolean {
+    const destinationAssetId =
+        typeof destinationOrPayment === "string" ||
+        destinationOrPayment == null
+            ? destinationOrPayment
+            : destinationOrPayment.destinationAssetId;
+    return destinationAssetId?.trim().toLowerCase() === NEAR_COM_NETWORK_ID;
 }
 
 export function getNearComChainIcons(): ChainIcons {
