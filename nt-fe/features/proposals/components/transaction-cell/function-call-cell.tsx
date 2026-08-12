@@ -2,6 +2,7 @@ import { useTranslations } from "next-intl";
 import { FunctionCallData } from "../../types/index";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
 import { useProfile } from "@/hooks/use-treasury-queries";
+import { resolveUserDisplayName } from "@/components/user";
 
 interface FunctionCallCellProps {
     data: FunctionCallData;
@@ -12,7 +13,11 @@ interface FunctionCallCellProps {
 export function FunctionCallCell({ data, timestamp }: FunctionCallCellProps) {
     const t = useTranslations("proposals.expanded");
     const { data: profile } = useProfile(data.receiver);
-    const receiver = profile?.addressBookName ?? data.receiver;
+    const receiver = resolveUserDisplayName({
+        accountId: data.receiver,
+        profileName: profile?.name,
+        addressBookName: profile?.addressBookName,
+    });
     const subtitle = t("onReceiver", { receiver });
     const title =
         data.actions.length === 1

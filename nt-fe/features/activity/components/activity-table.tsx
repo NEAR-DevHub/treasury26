@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { Address } from "@/components/address";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
@@ -28,7 +27,7 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { TokenAmountDisplay } from "@/components/token-display";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
-import { TooltipUser } from "@/components/user";
+import { User } from "@/components/user";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity } from "@/lib/api";
 import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
@@ -356,18 +355,16 @@ export function ActivityTable({
                                     </TableCell>
                                     <TableCell className="min-w-[150px] max-w-[200px]">
                                         {fromId ? (
-                                            <TooltipUser
+                                            <User
                                                 accountId={fromId}
+                                                variant="details"
+                                                withLink={false}
+                                                withHoverCard
                                                 chainName={
                                                     activity.tokenMetadata
                                                         ?.chainName
                                                 }
-                                            >
-                                                <Address
-                                                    address={fromId}
-                                                    className="text-sm"
-                                                />
-                                            </TooltipUser>
+                                            />
                                         ) : (
                                             <span className="text-sm truncate block">
                                                 {getFromAccount(
@@ -381,18 +378,16 @@ export function ActivityTable({
                                     </TableCell>
                                     <TableCell className="min-w-[150px] max-w-[200px]">
                                         {toId ? (
-                                            <TooltipUser
+                                            <User
                                                 accountId={toId}
+                                                variant="details"
+                                                withLink={false}
+                                                withHoverCard
                                                 chainName={
                                                     activity.tokenMetadata
                                                         ?.chainName
                                                 }
-                                            >
-                                                <Address
-                                                    address={toId}
-                                                    className="text-sm"
-                                                />
-                                            </TooltipUser>
+                                            />
                                         ) : (
                                             <span className="text-sm truncate block">
                                                 {getToAccount(
