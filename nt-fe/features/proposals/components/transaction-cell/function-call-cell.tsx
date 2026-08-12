@@ -16,7 +16,6 @@ export function FunctionCallCell({ data, timestamp }: FunctionCallCellProps) {
     const receiver = resolveUserDisplayName({
         accountId: data.receiver,
         profileName: profile?.name,
-        addressBookName: profile?.addressBookName,
     });
     const subtitle = t("onReceiver", { receiver });
     const title =
