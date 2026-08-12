@@ -36,20 +36,6 @@ pub fn alert_after_failures(service: &str) -> i32 {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn intents_services_use_longer_alert_threshold() {
-        assert_eq!(alert_after_failures("intents-explorer"), 5);
-        assert_eq!(alert_after_failures("near-intents"), 5);
-        assert_eq!(alert_after_failures("exchange"), 5);
-        assert_eq!(alert_after_failures("backend"), 3);
-        assert_eq!(alert_after_failures("near-rpc"), 3);
-    }
-}
-
 impl Default for OhDearHealthConfig {
     fn default() -> Self {
         Self {
@@ -72,5 +58,19 @@ impl Default for OhDearHealthConfig {
             fastnear_probe_account_id: "trezu.sputnik-dao.near".to_string(),
             neardata_probe_block_height: 100_000_000,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn intents_services_use_longer_alert_threshold() {
+        assert_eq!(alert_after_failures("intents-explorer"), 5);
+        assert_eq!(alert_after_failures("near-intents"), 5);
+        assert_eq!(alert_after_failures("exchange"), 5);
+        assert_eq!(alert_after_failures("backend"), 3);
+        assert_eq!(alert_after_failures("near-rpc"), 3);
     }
 }

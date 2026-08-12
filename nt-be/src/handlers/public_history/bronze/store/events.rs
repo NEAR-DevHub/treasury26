@@ -1,48 +1,88 @@
+use std::collections::HashMap;
+
 use sqlx::PgPool;
 
 use super::models::{BronzePublicHistoryEvent, PublicHistoryUpsertResult, min_datetime};
 use crate::handlers::public_history::silver::cursors::mark_silver_dirty_tx;
 
+/// One page-level multi-row upsert instead of a statement per event.
+/// Duplicate (source, source_event_key) rows within a page are deduped
+/// last-write-wins before building the statement — `ON CONFLICT DO UPDATE`
+/// cannot touch the same row twice in one command.
 pub async fn upsert_public_history_events(
     pool: &PgPool,
     events: &[BronzePublicHistoryEvent],
 ) -> Result<PublicHistoryUpsertResult, sqlx::Error> {
-    let mut tx = pool.begin().await?;
-    let mut result = PublicHistoryUpsertResult::default();
+    let mut result = PublicHistoryUpsertResult {
+        rows_touched: events.len() as u64,
+        ..Default::default()
+    };
+    if events.is_empty() {
+        return Ok(result);
+    }
 
+    let mut deduped: HashMap<(&str, &str), &BronzePublicHistoryEvent> = HashMap::new();
     for event in events {
-        result.rows_touched += 1;
+        deduped.insert(
+            (event.source.as_str(), event.source_event_key.as_str()),
+            event,
+        );
+    }
+    let deduped: Vec<&BronzePublicHistoryEvent> = deduped.into_values().collect();
 
-        let changed_row = sqlx::query_as::<_, (i64, chrono::DateTime<chrono::Utc>, bool)>(
-            r#"
-            INSERT INTO bronze_public_history_events (
-                account_id,
-                source,
-                source_event_key,
-                transaction_hash,
-                receipt_id,
-                event_index,
-                block_height,
-                block_timestamp,
-                block_time,
-                affected_account_id,
-                involved_account_id,
-                contract_account_id,
-                token_id,
-                cause,
-                action_kind,
-                method_name,
-                delta_amount_raw,
-                decimals,
-                deposit_raw,
-                outcome_status,
-                raw_payload
-            )
-            VALUES (
-                $1, $2::public_history_source, $3, $4, $5, $6, $7, $8,
-                $9, $10, $11, $12, $13, $14, $15, $16, $17, $18,
-                $19, $20, $21
-            )
+    let mut tx = pool.begin().await?;
+
+    let mut builder = sqlx::QueryBuilder::<sqlx::Postgres>::new(
+        r#"INSERT INTO bronze_public_history_events (
+            account_id,
+            source,
+            source_event_key,
+            transaction_hash,
+            receipt_id,
+            event_index,
+            block_height,
+            block_timestamp,
+            block_time,
+            affected_account_id,
+            involved_account_id,
+            contract_account_id,
+            token_id,
+            cause,
+            action_kind,
+            method_name,
+            delta_amount_raw,
+            decimals,
+            deposit_raw,
+            outcome_status,
+            raw_payload
+        ) "#,
+    );
+    builder.push_values(deduped.iter(), |mut row, event| {
+        row.push_bind(&event.account_id);
+        row.push_bind(event.source.as_str());
+        row.push_unseparated("::public_history_source");
+        row.push_bind(&event.source_event_key);
+        row.push_bind(&event.transaction_hash);
+        row.push_bind(&event.receipt_id);
+        row.push_bind(event.event_index);
+        row.push_bind(event.block_height);
+        row.push_bind(&event.block_timestamp);
+        row.push_bind(event.block_time);
+        row.push_bind(&event.affected_account_id);
+        row.push_bind(&event.involved_account_id);
+        row.push_bind(&event.contract_account_id);
+        row.push_bind(&event.token_id);
+        row.push_bind(&event.cause);
+        row.push_bind(&event.action_kind);
+        row.push_bind(&event.method_name);
+        row.push_bind(&event.delta_amount_raw);
+        row.push_bind(event.decimals);
+        row.push_bind(&event.deposit_raw);
+        row.push_bind(event.outcome_status);
+        row.push_bind(&event.raw_payload);
+    });
+    builder.push(
+        r#"
             ON CONFLICT (source, source_event_key) DO UPDATE SET
                 account_id = EXCLUDED.account_id,
                 transaction_hash = EXCLUDED.transaction_hash,
@@ -105,46 +145,26 @@ pub async fn upsert_public_history_events(
                 EXCLUDED.outcome_status,
                 EXCLUDED.raw_payload
             )
-            RETURNING id, block_time, xmax = 0 AS inserted
-            "#,
-        )
-        .bind(&event.account_id)
-        .bind(event.source.as_str())
-        .bind(&event.source_event_key)
-        .bind(&event.transaction_hash)
-        .bind(&event.receipt_id)
-        .bind(event.event_index)
-        .bind(event.block_height)
-        .bind(&event.block_timestamp)
-        .bind(event.block_time)
-        .bind(&event.affected_account_id)
-        .bind(&event.involved_account_id)
-        .bind(&event.contract_account_id)
-        .bind(&event.token_id)
-        .bind(&event.cause)
-        .bind(&event.action_kind)
-        .bind(&event.method_name)
-        .bind(&event.delta_amount_raw)
-        .bind(event.decimals)
-        .bind(&event.deposit_raw)
-        .bind(event.outcome_status)
-        .bind(&event.raw_payload)
-        .fetch_optional(&mut *tx)
-        .await?;
+            RETURNING block_time, xmax = 0 AS inserted
+        "#,
+    );
 
-        if let Some((_id, block_time, inserted)) = changed_row {
-            if inserted {
-                result.rows_inserted += 1;
-            } else {
-                result.rows_changed += 1;
-            }
-            // Reproject from the earliest changed source event; later silver/gold
-            // stages delete stale derived rows beyond that point.
-            result.earliest_changed_at = min_datetime(result.earliest_changed_at, Some(block_time));
+    let changed_rows: Vec<(chrono::DateTime<chrono::Utc>, bool)> =
+        builder.build_query_as().fetch_all(&mut *tx).await?;
+
+    for (block_time, inserted) in &changed_rows {
+        if *inserted {
+            result.rows_inserted += 1;
         } else {
-            result.rows_unchanged += 1;
+            result.rows_changed += 1;
         }
+        // Reproject from the earliest changed source event; later silver/gold
+        // stages delete stale derived rows beyond that point.
+        result.earliest_changed_at = min_datetime(result.earliest_changed_at, Some(*block_time));
     }
+    result.rows_unchanged = (deduped.len() as u64)
+        .saturating_sub(result.rows_inserted)
+        .saturating_sub(result.rows_changed);
 
     if let Some(recompute_from) = result.earliest_changed_at
         && let Some(account_id) = events.first().map(|event| event.account_id.as_str())

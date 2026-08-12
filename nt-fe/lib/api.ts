@@ -1607,6 +1607,8 @@ export function refreshProposal(accountId: string, proposalId: number): void {
 export interface RelayDelegateActionResponse {
     success: boolean;
     error?: string;
+    /** Ids of the proposals created by an add_proposal relay, in submission order. */
+    proposalIds?: number[];
 }
 
 export async function relayDelegateAction(

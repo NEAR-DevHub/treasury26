@@ -110,7 +110,7 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
     const headerItems: InfoItem[] = [
         {
             label: t("contract"),
-            value: <User accountId={data.receiver} useAddressBook />,
+            value: <User accountId={data.receiver} />,
         },
     ];
 
