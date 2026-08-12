@@ -1,44 +1,93 @@
 name: Cleanup E2E Report
 
-# Removes a PR's published report from gh-pages when the PR is closed/merged.
-# `pull_request_target` runs in the base repo with a write token (fork-safe);
-# it never checks out or runs PR code — it only deletes a folder on gh-pages.
+# When a PR closes, drop its folder from the accumulated Pages site and
+# redeploy, so closed PRs stop taking up space. Mirrors the publish workflow's
+# accumulate-and-deploy flow. `pull_request_target` runs in the base repo with a
+# token that can deploy Pages (fork-safe); it never checks out or runs PR code.
 
 on:
   pull_request_target:
     types: [closed]
 
 permissions:
-  contents: write
+  pull-requests: read
+  actions: read # read/download the pages-site state artifact
+  pages: write # redeploy Pages
+  id-token: write # Pages deployment OIDC
 
+# Share the publish workflow's group so a close can't race a publish.
 concurrency:
-  group: gh-pages-e2e-report
+  group: e2e-report-pages
   cancel-in-progress: false
 
 jobs:
   cleanup:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Checkout gh-pages
-        id: checkout
-        uses: actions/checkout@v4
-        continue-on-error: true
-        with:
-          ref: gh-pages
-
-      - name: Remove PR report folder
-        if: steps.checkout.outcome == 'success'
+      - name: Restore accumulated site
+        id: restore
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          dir="pr-${PR_NUMBER}"
-          if [ ! -d "$dir" ]; then
-            echo "No report at $dir; nothing to clean up."
+          mkdir -p site
+          id="$(gh api "/repos/${{ github.repository }}/actions/artifacts?name=pages-site&per_page=1" --jq '.artifacts[0].id // empty')"
+          if [ -z "$id" ]; then
+            echo "No pages-site artifact; nothing to clean up."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git rm -rf "$dir"
-          git commit -m "cleanup e2e report for PR #${PR_NUMBER}"
-          git push
+          gh api "/repos/${{ github.repository }}/actions/artifacts/$id/zip" > site.zip
+          unzip -q -o site.zip -d site || true
+          rm -f site.zip
+          echo "ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Remove this PR's report
+        id: prune
+        if: steps.restore.outputs.ok == 'true'
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ ! -d "site/pr-${PR}" ]; then
+            echo "No report for PR #${PR}; nothing to do."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          rm -rf "site/pr-${PR}"
+          {
+            echo '<!doctype html><meta charset="utf-8"><title>E2E reports</title>'
+            echo '<h1>Playwright E2E reports</h1><ul>'
+            for d in site/pr-*/; do
+              [ -d "$d" ] || continue
+              n="$(basename "$d")"
+              echo "<li><a href=\"./${n}/\">${n}</a></li>"
+            done
+            echo '</ul>'
+          } > site/index.html
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Save accumulated site
+        if: steps.prune.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-site
+          path: site
+          retention-days: 90
+          overwrite: true
+
+      - name: Configure Pages
+        if: steps.prune.outputs.changed == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: steps.prune.outputs.changed == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to Pages
+        id: deploy
+        if: steps.prune.outputs.changed == 'true'
+        uses: actions/deploy-pages@v4
