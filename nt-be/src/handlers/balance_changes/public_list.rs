@@ -46,6 +46,7 @@ struct PublicGoldRow {
     proposal_execution_transaction_hash: Option<String>,
     status: String,
     quote_metadata: Option<Value>,
+    quote_deposit_address: Option<String>,
     created_at: DateTime<Utc>,
 }
 
@@ -77,6 +78,7 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for PublicGoldRow {
                 .try_get("proposal_execution_transaction_hash")?,
             status: row.try_get("status")?,
             quote_metadata: row.try_get("quote_metadata")?,
+            quote_deposit_address: row.try_get("quote_deposit_address")?,
             created_at: row.try_get("created_at")?,
         })
     }
@@ -435,6 +437,12 @@ pub async fn fetch_balance_change_legs(
                 WHERE proposal.dao_id = gold_treasury_ledger_events.dao_id
                   AND proposal.proposal_id = gold_treasury_ledger_events.proposal_id
             ) AS quote_metadata,
+            (
+                SELECT proposal.quote_deposit_address
+                FROM dao_proposals proposal
+                WHERE proposal.dao_id = gold_treasury_ledger_events.dao_id
+                  AND proposal.proposal_id = gold_treasury_ledger_events.proposal_id
+            ) AS quote_deposit_address,
             created_at
         FROM gold_treasury_ledger_events
         "#,
@@ -495,6 +503,7 @@ struct LegRow {
     receipt_id: Vec<String>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
+    quote_deposit_address: Option<String>,
     usd_value: Option<BigDecimal>,
     action_kind: String,
     swap_sent_token: Option<String>,
@@ -561,6 +570,7 @@ impl LegRow {
                             .unwrap_or_default(),
                         created_at: row.created_at,
                         proposal_id: row.proposal_id,
+                        quote_deposit_address: row.quote_deposit_address.clone(),
                         usd_value: row.amount_in_usd.clone(),
                         action_kind: "PublicDeposit".to_string(),
                         swap_sent_token: None,
@@ -619,6 +629,7 @@ impl LegRow {
                             .unwrap_or_default(),
                         created_at: row.created_at,
                         proposal_id: row.proposal_id,
+                        quote_deposit_address: row.quote_deposit_address.clone(),
                         usd_value: row.amount_out_usd.clone(),
                         action_kind,
                         swap_sent_token: None,
@@ -679,6 +690,7 @@ impl LegRow {
                 .unwrap_or_default(),
             created_at: row.created_at,
             proposal_id: row.proposal_id,
+            quote_deposit_address: row.quote_deposit_address.clone(),
             usd_value: row
                 .amount_out_usd
                 .clone()
@@ -730,6 +742,7 @@ impl LegRow {
             actions: None,
             usd_value: self.usd_value.clone(),
             proposal_id: self.proposal_id,
+            quote_deposit_address: self.quote_deposit_address.clone(),
         }
     }
 
@@ -798,6 +811,7 @@ mod tests {
             proposal_execution_transaction_hash: None,
             status: "success".to_string(),
             quote_metadata: None,
+            quote_deposit_address: None,
             created_at: ts(),
         }
     }

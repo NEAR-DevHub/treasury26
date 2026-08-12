@@ -490,6 +490,12 @@ export function ActivityTable({
                                                         activity.tokenMetadata
                                                             ?.chainName
                                                     }
+                                                    depositAddress={
+                                                        activity.quoteDepositAddress
+                                                    }
+                                                    isConfidential={
+                                                        isConfidential
+                                                    }
                                                 />
                                                 <Button
                                                     type="button"

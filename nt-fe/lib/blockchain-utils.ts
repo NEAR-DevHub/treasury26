@@ -1,4 +1,5 @@
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { getIntentsExplorerUrl } from "@/lib/utils";
 
 /**
  * Maps chainName from backend to blockchain identifiers for address validation
@@ -396,4 +397,36 @@ export function getExplorerAddressUrl(
             // Return null for unknown chains - no link will be shown
             return null;
     }
+}
+
+export type TransactionExplorerLink = {
+    url: string;
+    source: "intents" | "chain";
+};
+
+/**
+ * Universal explorer-link resolver for transaction rows.
+ *
+ * Intents-routed rows (any transfer, deposit or exchange carrying a 1Click
+ * deposit address) link to the NEAR Intents explorer — `/mask/` for
+ * confidential treasuries, `/transactions/` for public ones. Everything else
+ * falls back to the per-chain tx explorer (nearblocks for NEAR). Rows whose
+ * token metadata carries no chain are NEAR movements.
+ */
+export function getTransactionExplorerLink({
+    depositAddress,
+    isConfidential = false,
+    transactionHash,
+    chainName,
+}: {
+    depositAddress?: string | null;
+    isConfidential?: boolean;
+    transactionHash?: string | null;
+    chainName?: string | null;
+}): TransactionExplorerLink | null {
+    const intentsUrl = getIntentsExplorerUrl(depositAddress, isConfidential);
+    if (intentsUrl) return { url: intentsUrl, source: "intents" };
+    if (!transactionHash) return null;
+    const url = getExplorerTxUrl(chainName ?? NEAR_NETWORK_ID, transactionHash);
+    return url ? { url, source: "chain" } : null;
 }

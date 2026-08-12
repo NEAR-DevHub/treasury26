@@ -4,7 +4,8 @@ import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
 import type { Proposal } from "@/lib/proposals-api";
-import { getIntentsExplorerUrl, nanosToMs } from "@/lib/utils";
+import { getTransactionExplorerLink } from "@/lib/blockchain-utils";
+import { nanosToMs } from "@/lib/utils";
 import type { Policy } from "@/types/policy";
 import type {
     ConfidentialRequestData,
@@ -162,25 +163,20 @@ export function useProposalDetails(proposal: Proposal, policy: Policy) {
     const isDateLoading = isExecuted && resolvedDateLoading;
     const isHidden = isConfidential && isGuestTreasury;
 
-    // Confidential exchange (a confidential request that is not a payment).
-    const isConfidentialExchange =
-        isConfidentialRequestProposal && !isConfidentialPayment;
     // Swap is still settling (no finalized transaction yet).
     const isSwapProcessing = swapStatus?.status === "PROCESSING";
     // Hide the transaction link for confidential requests while the swap is
     // still processing — there is no finalized transaction to link to yet.
     const hideTransactionLink =
         isConfidentialRequestProposal && isSwapProcessing;
-    // Confidential exchanges and near.com confidential payments link to NEAR
-    // Blocks; other intents-routed proposals use the NEAR Intents explorer
-    // (masked for confidential).
+    // near.com confidential payments link to NEAR Blocks; all other
+    // intents-routed proposals use the NEAR Intents explorer (masked for
+    // confidential).
     const isConfidentialNearComPayment =
         isConfidentialPayment &&
         isNearComPaymentRoute(confidentialPaymentData ?? {});
     const useNearblocksLink =
-        !hasDepositAddress ||
-        isConfidentialExchange ||
-        isConfidentialNearComPayment;
+        !hasDepositAddress || isConfidentialNearComPayment;
     // Receipt button visibility rules:
     // - Proposal must be executed and of a receipt-eligible kind.
     // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
@@ -215,12 +211,12 @@ export function useProposalDetails(proposal: Proposal, policy: Policy) {
         publicProposalCreatedAt ??
         new Date(nanosToMs(proposal.submission_time));
 
-    const transactionUrl = useNearblocksLink
-        ? (transaction?.nearblocks_url ?? null)
-        : (getIntentsExplorerUrl(
-              depositAddress,
-              isConfidentialRequestProposal,
-          ) ?? null);
+    const transactionUrl =
+        getTransactionExplorerLink({
+            depositAddress: useNearblocksLink ? null : depositAddress,
+            isConfidential: isConfidentialRequestProposal,
+            transactionHash: transaction?.transaction_hash,
+        })?.url ?? null;
 
     return {
         status,

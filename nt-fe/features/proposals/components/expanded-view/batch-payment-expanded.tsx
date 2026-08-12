@@ -22,6 +22,7 @@ import {
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { EmptyState } from "@/components/empty-state";
+import { getTransactionExplorerLink } from "@/lib/blockchain-utils";
 import { cn } from "@/lib/utils";
 import { User } from "@/components/user";
 import Link from "next/link";
@@ -87,10 +88,8 @@ function PaymentDisplay({
     );
     const transactionHash = txData?.transactionHash;
 
-    // Transaction links are always NEAR (nearblocks)
-    const nearBlocksUrl = transactionHash
-        ? `https://nearblocks.io/txns/${transactionHash}`
-        : null;
+    // Batch payment transactions execute on NEAR (nearblocks link).
+    const explorerLink = getTransactionExplorerLink({ transactionHash });
 
     let items: InfoItem[] = [
         {
@@ -117,13 +116,13 @@ function PaymentDisplay({
         });
     }
 
-    if (isPaid && nearBlocksUrl && nearBlocksUrl.length > 0) {
+    if (isPaid && explorerLink) {
         items.push({
             label: t("transactionLink"),
             value: (
                 <Link
                     className="flex items-center gap-2"
-                    href={nearBlocksUrl}
+                    href={explorerLink.url}
                     target="_blank"
                     rel="noopener noreferrer"
                 >
