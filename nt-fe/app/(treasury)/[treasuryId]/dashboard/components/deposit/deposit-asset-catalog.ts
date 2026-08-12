@@ -1,4 +1,7 @@
-import { getNetworkDisplayName } from "@/components/token-display";
+import {
+    getNetworkDisplayName,
+    networksMatchForWarningScope,
+} from "@/components/token-display";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import type { AggregatedAsset } from "@/hooks/use-assets";
@@ -60,11 +63,10 @@ export function matchNetworkPrefill(
     );
     if (byChainId) return byChainId;
 
-    const byExactName = networks.filter((network) => {
-        const canonical = network.name.toLowerCase();
-        const display = getNetworkDisplayName(network.name).toLowerCase();
-        return canonical === normalized || display === normalized;
-    });
+    // Same alias rules as warning scope (`arb`/`arbitrum`, `eth`/`ethereum`).
+    const byExactName = networks.filter((network) =>
+        networksMatchForWarningScope(network.name, normalized),
+    );
     if (byExactName.length === 1) return byExactName[0];
     if (byExactName.length > 1) return null;
 
@@ -409,10 +411,7 @@ export function resolvePrefillSelection(params: {
         };
     }
 
-    const availableNetworks = assetNetworksMap.get(targetAsset.id) || [];
-    // Keep canonical bridge network names (e.g. `eth`) for warning matching;
-    // UI layers call getNetworkDisplayName when rendering.
-    const filteredNetworks = [...availableNetworks];
+    const filteredNetworks = assetNetworksMap.get(targetAsset.id) || [];
     const selectedNetworkBalances =
         networkBalancesByAsset.get(targetAsset.id) || new Map();
 
@@ -422,7 +421,7 @@ export function resolvePrefillSelection(params: {
     let networkToSelect: SelectOption | null = networkFromTokenPrefill;
     if (prefillNetworkId) {
         networkToSelect =
-            matchNetworkPrefill(availableNetworks, prefillNetworkId) ??
+            matchNetworkPrefill(filteredNetworks, prefillNetworkId) ??
             networkFromTokenPrefill;
     }
 

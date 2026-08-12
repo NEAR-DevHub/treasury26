@@ -511,7 +511,6 @@ export function DepositModal({
             dispatchDepositAssets({
                 type: "SELECT_ASSET",
                 payload: {
-                    // Canonical bridge names (`eth`) — required for warning match.
                     filteredNetworks: availableNetworks,
                     selectedNetworkBalances:
                         networkBalancesByAsset.get(asset.id) || new Map(),
