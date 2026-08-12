@@ -62,12 +62,64 @@ export function useWalletFlow() {
     const daoIdParam = searchParams.get("daoId") || "";
     const proposalIdsParam = searchParams.get("proposalIds") || "";
 
-    const [step, setStep] = useState<WalletStep>("connect");
+    // The initial flow state must be derived from the URL synchronously: an
+    // authenticated session mounts the page with `accountId` already set, so
+    // an effect-based restore would race the treasuries fetch (which only
+    // runs from the "connect" step) and lose the restored step.
+    const [initial] = useState(() => {
+        // Restore waiting-approval state from URL if present
+        if (daoIdParam && proposalIdsParam) {
+            const ids = proposalIdsParam
+                .split(",")
+                .map(Number)
+                .filter((n) => !isNaN(n));
+            if (ids.length > 0) {
+                return {
+                    step: "waiting-approval" as WalletStep,
+                    selectedDao: daoIdParam,
+                    proposalIds: ids,
+                    transactions: [] as TransactionRequest[],
+                    error: null as string | null,
+                };
+            }
+        }
+
+        // Parse transactions if present
+        let transactions: TransactionRequest[] = [];
+        try {
+            if (transactionsParam) {
+                transactions = base64ToJson(
+                    transactionsParam,
+                ) as TransactionRequest[];
+            }
+        } catch (e) {
+            console.error("Failed to parse transactions:", e);
+            return {
+                step: "error" as WalletStep,
+                selectedDao: null,
+                proposalIds: [],
+                transactions: [] as TransactionRequest[],
+                error: tWErr("parseTx"),
+            };
+        }
+
+        return {
+            step: "connect" as WalletStep,
+            selectedDao: null,
+            proposalIds: [],
+            transactions,
+            error: null as string | null,
+        };
+    });
+
+    const [step, setStep] = useState<WalletStep>(initial.step);
     const [treasuries, setTreasuries] = useState<Treasury[]>([]);
     const [treasuriesLoading, setTreasuriesLoading] = useState(false);
-    const [selectedDao, setSelectedDao] = useState<string | null>(null);
-    const [transactions, setTransactions] = useState<TransactionRequest[]>([]);
-    const [error, setError] = useState<string | null>(null);
+    const [selectedDao, setSelectedDao] = useState<string | null>(
+        initial.selectedDao,
+    );
+    const [transactions] = useState<TransactionRequest[]>(initial.transactions);
+    const [error, setError] = useState<string | null>(initial.error);
     const [note, setNote] = useState<string | null>(null);
     const [proposalDescription, setProposalDescription] = useState("");
     const previewProposals = useMemo(() => {
@@ -88,8 +140,9 @@ export function useWalletFlow() {
             return [];
         }
     }, [selectedDao, transactions, walletProposalLabels]);
-    const [proposalIds, setProposalIds] = useState<number[]>([]);
-    const initRef = useRef(false);
+    const [proposalIds, setProposalIds] = useState<number[]>(
+        initial.proposalIds,
+    );
     const checkingRef = useRef(false);
 
     // Hostname of the dApp that opened the popup, shown in the
@@ -101,43 +154,6 @@ export function useWalletFlow() {
             return null;
         }
     }, [callbackUrl]);
-
-    // Initialize the flow from URL parameters
-    useEffect(() => {
-        if (initRef.current) return;
-        initRef.current = true;
-
-        // Restore waiting-approval state from URL if present
-        if (daoIdParam && proposalIdsParam) {
-            const ids = proposalIdsParam
-                .split(",")
-                .map(Number)
-                .filter((n) => !isNaN(n));
-            if (ids.length > 0) {
-                setSelectedDao(daoIdParam);
-                setProposalIds(ids);
-                setStep("waiting-approval");
-                return;
-            }
-        }
-
-        // Parse transactions if present
-        if (transactionsParam) {
-            try {
-                const txs = base64ToJson(
-                    transactionsParam,
-                ) as TransactionRequest[];
-                setTransactions(txs);
-            } catch (e) {
-                console.error("Failed to parse transactions:", e);
-                setError(tWErr("parseTx"));
-                setStep("error");
-                return;
-            }
-        }
-
-        setStep("connect");
-    }, [transactionsParam, daoIdParam, proposalIdsParam, tWErr]);
 
     // Fetch treasuries when the account is fully authenticated
     useEffect(() => {
