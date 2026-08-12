@@ -132,7 +132,6 @@ export function SignIn() {
                             accountId={signedAccountId}
                             withLink={false}
                             size="md"
-                            truncatePrimaryAddress
                         />
                     </div>
                     <div className="flex md:hidden">
@@ -153,7 +152,6 @@ export function SignIn() {
                             accountId={signedAccountId}
                             withLink={false}
                             size="md"
-                            truncatePrimaryAddress
                         />
                     </div>
                     <CopyButton

@@ -12,11 +12,14 @@ use super::models::{
 const REBASE_INTRA_BLOCK_SEQ: i32 = 1_000_000;
 
 /// Accounts whose gold projection is ready but whose ledger has not passed
-/// on-chain verification. Failed accounts retry after the cool-off so a
-/// broken account cannot monopolize RPC.
+/// on-chain verification. Failed accounts retry after the cool-off — or as
+/// soon as their silver ledger was rebuilt after the failed check (new
+/// evidence), floored at a minimum interval so a busy account cannot burn
+/// RPC on every ledger write.
 pub async fn load_gate_candidates(
     pool: &PgPool,
     failed_retry_after_hours: i64,
+    failed_retry_min_minutes: i64,
 ) -> Result<Vec<String>, sqlx::Error> {
     sqlx::query_scalar(
         r#"
@@ -28,6 +31,8 @@ pub async fn load_gate_candidates(
          AND COALESCE(monitored.is_confidential_account, false) = false
         LEFT JOIN public_balance_verification_cursors verification
           ON verification.account_id = gold_cursor.account_id
+        LEFT JOIN silver_public_history_cursors silver
+          ON silver.account_id = gold_cursor.account_id
         WHERE gold_cursor.projection_ready_at IS NOT NULL
           AND (
               verification.account_id IS NULL
@@ -35,13 +40,19 @@ pub async fn load_gate_candidates(
               OR (
                   verification.status = 'failed'
                   AND verification.updated_at
-                        < NOW() - make_interval(hours => $1::integer)
+                        < NOW() - make_interval(mins => $2::integer)
+                  AND (
+                      verification.updated_at
+                            < NOW() - make_interval(hours => $1::integer)
+                      OR silver.updated_at > verification.updated_at
+                  )
               )
           )
         ORDER BY gold_cursor.account_id
         "#,
     )
     .bind(failed_retry_after_hours as i32)
+    .bind(failed_retry_min_minutes as i32)
     .fetch_all(pool)
     .await
 }
@@ -111,24 +122,45 @@ pub async fn load_asset_ledger_heads(
 ) -> Result<Vec<AssetLedgerHead>, sqlx::Error> {
     sqlx::query_as::<_, AssetLedgerHead>(
         r#"
-        SELECT DISTINCT ON (asset)
-            asset,
+        WITH ledger AS (
+            SELECT *
+            FROM silver_balance_history
+            WHERE account_id = $1
+              -- Verification is native-NEAR only. Staking series ARE
+              -- authoritative RPC readings (observations), and FT/MT balances
+              -- can accrue without transfer events (venear.dao vote-escrow), so
+              -- an exact-drift chain check would fail ledgers that are correct.
+              AND token_standard = 'native'::public_token_standard
+              AND asset NOT LIKE 'staking:%'
+        ),
+        anchors AS (
+            SELECT asset, MAX(block_height) AS anchor_block
+            FROM ledger
+            WHERE entry_kind = 'reconciliation'
+            GROUP BY asset
+        )
+        SELECT DISTINCT ON (ledger.asset)
+            ledger.asset,
             token_standard::text AS token_standard,
             balance_after,
-            MIN(balance_after) OVER (PARTITION BY asset) AS min_balance_after,
+            MIN(balance_after) OVER (PARTITION BY ledger.asset) AS min_balance_after,
             user_balance_after,
-            MIN(user_balance_after) OVER (PARTITION BY asset) AS min_user_balance_after,
+            MIN(user_balance_after) OVER (PARTITION BY ledger.asset) AS min_user_balance_after,
             block_height AS head_block_height,
-            decimals
-        FROM silver_balance_history
-        WHERE account_id = $1
-          -- Verification is native-NEAR only. Staking series ARE
-          -- authoritative RPC readings (observations), and FT/MT balances
-          -- can accrue without transfer events (venear.dao vote-escrow), so
-          -- an exact-drift chain check would fail ledgers that are correct.
-          AND token_standard = 'native'::public_token_standard
-          AND asset NOT LIKE 'staking:%'
-        ORDER BY asset, block_time DESC, block_height DESC, intra_block_seq DESC
+            decimals,
+            -- Drift is measured since the last reconciliation anchor (each
+            -- pass rebases drift to zero there), so the gas-dust budget
+            -- scales over the same window: entries past the anchor, or the
+            -- full history before the first pass.
+            COUNT(CASE
+                WHEN ledger.entry_kind != 'reconciliation'
+                     AND ledger.block_height > COALESCE(anchors.anchor_block, -1)
+                THEN 1
+            END) OVER (PARTITION BY ledger.asset) AS event_count,
+            anchors.anchor_block IS NOT NULL AS has_anchor
+        FROM ledger
+        LEFT JOIN anchors ON anchors.asset = ledger.asset
+        ORDER BY ledger.asset, block_time DESC, block_height DESC, intra_block_seq DESC
         "#,
     )
     .bind(account_id)

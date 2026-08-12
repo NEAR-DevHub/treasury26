@@ -6,6 +6,10 @@ use bigdecimal::{
 };
 use chrono::{DateTime, Utc};
 use near_api::NetworkConfig;
+use near_jsonrpc_client::methods;
+use near_jsonrpc_primitives::types::query::QueryResponseKind;
+use near_primitives::types::{BlockId, BlockReference};
+use near_primitives::views::{AccessKeyPermissionView, QueryRequest};
 use sqlx::PgPool;
 
 use super::models::{
@@ -19,11 +23,24 @@ use super::repository::{
 };
 use crate::handlers::public_history::gold::unified::sync_hidden_ledger_rows;
 use crate::services::public_balance_reader::{
-    get_public_balance_at_block, get_public_gross_native_balance_at_block,
+    get_public_balance_at_block, get_public_gross_native_balance_at_block, with_transport_retry,
 };
+use crate::utils::jsonrpc::create_rpc_client;
 
-const FAILED_RETRY_AFTER_HOURS: i64 = 6;
+/// Cool-off before a failed gate re-verifies. Shared with the readiness
+/// scheduler so coverage refreshes are only produced when the verifier can
+/// consume them.
+pub const FAILED_RETRY_AFTER_HOURS: i64 = 6;
+/// Floor between failed-gate retries even when the ledger was rebuilt —
+/// bounds RPC spend for accounts with constant activity.
+pub const FAILED_RETRY_MIN_MINUTES: i64 = 15;
 const WATERMARK_MAX_AGE_MINUTES: i64 = 15;
+/// Contract accounts earn 30% of the gas fees burned by calls into them —
+/// balance accretion the receipt feed cannot itemize (~0.0002 NEAR observed
+/// per ledger event). The native drift budget scales with event count at
+/// this rate so busy DAOs are not failed on accumulated gas rewards, while
+/// the configured flat tolerance stays the floor for quiet accounts.
+const NATIVE_DUST_PER_EVENT_NEAR: &str = "0.0005";
 /// Bound on archival head-anchor reads per silver cycle so a mass-dirty
 /// event cannot turn one tick into an unbounded sequential RPC sweep.
 const HEAD_ANCHORS_PER_CYCLE: usize = 25;
@@ -88,7 +105,13 @@ impl<'a> BalanceVerifier<'a> {
     pub async fn run_cycle(&self) -> Result<VerificationCycleStats, VerificationError> {
         let mut stats = VerificationCycleStats::default();
 
-        for account_id in load_gate_candidates(self.pool, FAILED_RETRY_AFTER_HOURS).await? {
+        for account_id in load_gate_candidates(
+            self.pool,
+            FAILED_RETRY_AFTER_HOURS,
+            FAILED_RETRY_MIN_MINUTES,
+        )
+        .await?
+        {
             stats.gates_run += 1;
             match self.verify_account_gate(&account_id, &mut stats).await {
                 Ok(AccountGateOutcome::Passed) => stats.gates_passed += 1,
@@ -126,12 +149,13 @@ impl<'a> BalanceVerifier<'a> {
         Ok(stats)
     }
 
-    /// Event-driven first verification for one account, called right after
-    /// its drain → silver → gold nudge chain so a new treasury reaches
+    /// Event-driven verification for one account, called right after its
+    /// drain → silver → gold nudge chain so a new treasury reaches
     /// chart-ready in the same pass instead of waiting for the next
-    /// projection cycle. Only runs when the projection is ready and the account has
-    /// never been gated (passed accounts are done; failed accounts respect
-    /// the cool-off). Returns whether the gate passed.
+    /// projection cycle. Runs when the projection is ready and the account
+    /// was never gated, or a failed gate is retry-eligible (cool-off
+    /// expired, or the ledger was rebuilt since the failed check, floored at
+    /// the minimum retry interval). Returns whether the gate passed.
     pub async fn nudge_account_gate(&self, account_id: &str) -> Result<bool, VerificationError> {
         let eligible: bool = sqlx::query_scalar(
             r#"
@@ -140,16 +164,30 @@ impl<'a> BalanceVerifier<'a> {
                 FROM gold_public_history_cursors gold_cursor
                 LEFT JOIN public_balance_verification_cursors verification
                   ON verification.account_id = gold_cursor.account_id
+                LEFT JOIN silver_public_history_cursors silver
+                  ON silver.account_id = gold_cursor.account_id
                 WHERE gold_cursor.account_id = $1
                   AND gold_cursor.projection_ready_at IS NOT NULL
                   AND (
                       verification.account_id IS NULL
                       OR verification.status = 'unverified'
+                      OR (
+                          verification.status = 'failed'
+                          AND verification.updated_at
+                                < NOW() - make_interval(mins => $3::integer)
+                          AND (
+                              verification.updated_at
+                                    < NOW() - make_interval(hours => $2::integer)
+                              OR silver.updated_at > verification.updated_at
+                          )
+                      )
                   )
             )
             "#,
         )
         .bind(account_id)
+        .bind(FAILED_RETRY_AFTER_HOURS as i32)
+        .bind(FAILED_RETRY_MIN_MINUTES as i32)
         .fetch_one(self.pool)
         .await?;
         if !eligible {
@@ -426,12 +464,97 @@ impl<'a> BalanceVerifier<'a> {
         Ok(Some(watermark))
     }
 
+    /// Determine signer capability from the account state at the exact
+    /// verification watermark. Account-name suffixes are not an authority:
+    /// arbitrary contract accounts may live outside the Sputnik namespace.
+    async fn has_full_access_key_at_block(
+        &self,
+        account_id: &str,
+        block_height: i64,
+    ) -> Result<bool, VerificationError> {
+        let block_height = u64::try_from(block_height).map_err(|_| {
+            VerificationError(format!(
+                "negative verification block height: {block_height}"
+            ))
+        })?;
+        let account_id: near_primitives::types::AccountId = account_id
+            .parse()
+            .map_err(|error| VerificationError(format!("invalid account id: {error}")))?;
+        let client = create_rpc_client(self.archival_network)
+            .map_err(|error| VerificationError(error.to_string()))?;
+
+        let response = with_transport_retry("public_history_access_keys", || {
+            client.call(methods::query::RpcQueryRequest {
+                block_reference: BlockReference::BlockId(BlockId::Height(block_height)),
+                request: QueryRequest::ViewAccessKeyList {
+                    account_id: account_id.clone(),
+                },
+            })
+        })
+        .await
+        .map_err(|error| VerificationError(format!("access-key query failed: {error:?}")))?;
+
+        let QueryResponseKind::AccessKeyList(list) = response.kind else {
+            return Err(VerificationError(
+                "unexpected response to access-key-list query".to_string(),
+            ));
+        };
+        Ok(list.keys.iter().any(|key| {
+            matches!(
+                key.access_key.permission,
+                AccessKeyPermissionView::FullAccess
+            )
+        }))
+    }
+
+    fn scaled_dust_budget(&self, event_count: i64) -> BigDecimal {
+        let scaled = BigDecimal::from_str(NATIVE_DUST_PER_EVENT_NEAR)
+            .expect("NATIVE_DUST_PER_EVENT_NEAR is a valid decimal")
+            * BigDecimal::from(event_count.max(0));
+        scaled.max(self.native_tolerance.clone())
+    }
+
+    /// Allowed native drift for one check, or None for the unbounded
+    /// first-gate anchor of a signer-capable account (the rebase records the
+    /// absorbed drift in the results, so anchor size stays auditable).
+    ///
+    /// Contract treasuries: gas rewards only ever ADD to a contract's chain
+    /// balance, so only positive drift (chain above ledger) can be dust;
+    /// negative drift means phantom inflows or missed outflows — a pipeline
+    /// bug — and stays on the flat floor no matter how long the history is.
+    /// Anchored accounts: gas spend from signing makes negative drift just
+    /// as physical as positive, so the scaled budget applies symmetrically
+    /// after the anchor.
+    fn native_drift_budget(
+        &self,
+        drift: &BigDecimal,
+        head: &AssetLedgerHead,
+        has_full_access_key: bool,
+    ) -> Option<BigDecimal> {
+        if !has_full_access_key {
+            if drift.is_negative() {
+                return Some(self.native_tolerance.clone());
+            }
+            return Some(self.scaled_dust_budget(head.event_count));
+        }
+        if !head.has_anchor {
+            return None;
+        }
+        Some(self.scaled_dust_budget(head.event_count))
+    }
+
     async fn check_assets(
         &self,
         account_id: &str,
         heads: &[AssetLedgerHead],
         watermark: &VerificationWatermark,
     ) -> Result<Vec<AssetCheckOutcome>, VerificationError> {
+        let has_full_access_key = if heads.iter().any(|head| head.token_standard == "native") {
+            self.has_full_access_key_at_block(account_id, watermark.cutoff_block_height)
+                .await?
+        } else {
+            false
+        };
         let mut outcomes = Vec::with_capacity(heads.len());
         for head in heads {
             // Coverage through the watermark plus no newer ledger events
@@ -466,7 +589,10 @@ impl<'a> BalanceVerifier<'a> {
 
             let drift = &chain_balance - &head.balance_after;
             let drift_ok = if head.token_standard == "native" {
-                drift.abs() <= self.native_tolerance
+                match self.native_drift_budget(&drift, head, has_full_access_key) {
+                    Some(budget) => drift.abs() <= budget,
+                    None => true,
+                }
             } else {
                 drift.is_zero()
             };

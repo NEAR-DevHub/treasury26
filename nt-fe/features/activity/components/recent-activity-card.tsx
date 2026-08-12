@@ -6,6 +6,7 @@ import {
     ArrowRightLeft,
     ChevronRight,
     Clock,
+    Loader2,
     Minus,
     Shield,
 } from "lucide-react";
@@ -206,6 +207,7 @@ function RecentActivityUnavailableOverlay({
 export function RecentActivity() {
     const t = useTranslations("activity");
     const tCommon = useTranslations("common");
+    const tDetails = useTranslations("activity.details");
     const getActivityLabel = useGetActivityLabel();
     const getActivitySubLabel = useGetActivitySubLabel();
     const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
@@ -428,18 +430,6 @@ export function RecentActivity() {
                                             <span className="font-medium text-general-success-foreground truncate">
                                                 {receivedSymbol}
                                             </span>
-                                            {status ? (
-                                                <span
-                                                    className={cn(
-                                                        "text-xs font-medium capitalize shrink-0",
-                                                        status === "failed"
-                                                            ? "text-general-destructive-foreground"
-                                                            : "text-muted-foreground",
-                                                    )}
-                                                >
-                                                    {status}
-                                                </span>
-                                            ) : null}
                                         </>
                                     ) : (
                                         <>
@@ -464,12 +454,30 @@ export function RecentActivity() {
                                         </>
                                     )}
                                 </div>
-                                <div className="text-sm text-muted-foreground">
-                                    <FormattedDate
-                                        date={new Date(activity.blockTime)}
-                                        relative
-                                    />
-                                </div>
+                                {status ? (
+                                    <div
+                                        className={cn(
+                                            "flex items-center gap-1 text-xs font-medium",
+                                            status === "failed"
+                                                ? "text-general-destructive-foreground"
+                                                : "text-general-orange-foreground",
+                                        )}
+                                    >
+                                        {status === "pending" ? (
+                                            <Loader2 className="size-3 animate-spin" />
+                                        ) : null}
+                                        {status === "pending"
+                                            ? tDetails("processing")
+                                            : tDetails("failed")}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-muted-foreground">
+                                        <FormattedDate
+                                            date={new Date(activity.blockTime)}
+                                            relative
+                                        />
+                                    </div>
+                                )}
                             </div>
                         );
                     }

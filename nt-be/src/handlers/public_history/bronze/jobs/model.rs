@@ -11,6 +11,11 @@ pub enum PublicHistoryJob {
         source: PublicHistorySource,
         trigger_block_height: i64,
         trigger_transaction_hash: Option<String>,
+        /// Demand generation this token was dispatched for; completion only
+        /// clears the demand if no newer trigger bumped it meanwhile.
+        /// Defaults to 0 for legacy queued jobs, which have no demand row.
+        #[serde(default)]
+        generation: i64,
     },
     BackfillPage {
         job_key: String,
@@ -18,6 +23,10 @@ pub enum PublicHistoryJob {
         source: PublicHistorySource,
         cursor: Option<String>,
     },
+    /// Account-level verification-coverage refresh: one provider-head
+    /// request, then all three sources drained; the common coverage
+    /// watermark publishes only after every drain succeeds.
+    RefreshReadiness { job_key: String, account_id: String },
 }
 
 impl PublicHistoryJob {
@@ -26,6 +35,7 @@ impl PublicHistoryJob {
         source: PublicHistorySource,
         trigger_block_height: i64,
         trigger_transaction_hash: Option<String>,
+        generation: i64,
     ) -> Self {
         let job_key = latest_job_key(&account_id, source);
         Self::RefreshLatest {
@@ -34,6 +44,7 @@ impl PublicHistoryJob {
             source,
             trigger_block_height,
             trigger_transaction_hash,
+            generation,
         }
     }
 
@@ -51,11 +62,25 @@ impl PublicHistoryJob {
         }
     }
 
-    pub fn job_key(&self) -> &str {
-        match self {
-            Self::RefreshLatest { job_key, .. } | Self::BackfillPage { job_key, .. } => job_key,
+    pub fn refresh_readiness(account_id: String) -> Self {
+        let job_key = readiness_job_key(&account_id);
+        Self::RefreshReadiness {
+            job_key,
+            account_id,
         }
     }
+
+    pub fn job_key(&self) -> &str {
+        match self {
+            Self::RefreshLatest { job_key, .. }
+            | Self::BackfillPage { job_key, .. }
+            | Self::RefreshReadiness { job_key, .. } => job_key,
+        }
+    }
+}
+
+pub fn readiness_job_key(account_id: &str) -> String {
+    format!("readiness:{}", account_id)
 }
 
 pub fn latest_job_key(account_id: &str, source: PublicHistorySource) -> String {

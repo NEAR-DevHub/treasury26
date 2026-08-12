@@ -7,16 +7,22 @@
  *
  * The full flow being tested:
  *   1. dApp opens /wallet?action=sign_in  → user selects treasury  → dApp gets accountId
- *   2. dApp opens /wallet?action=sign_transactions → user reviews proposal → cancels or...
- *   3. After DAO approval, dApp opens waiting-approval popup → clicks Proceed → gets tx hash
+ *   2. dApp opens /wallet?action=sign_transactions → user reviews proposal → closes or...
+ *   3. After DAO approval, the waiting-approval popup polls the backend and
+ *      auto-advances → dApp gets the tx hash (no manual clicking).
  *
  * The confirm-transactions step requires the user's personal NEAR wallet to sign
  * add_proposal on chain. Rather than bootstrapping a full NEAR signing stack, we
- * test that step at the UI level (correct preview, cancel works) and test the
- * post-creation flow (waiting-approval → approved → tx hash) separately.
+ * test that step at the UI level (correct preview, closing the popup fails the
+ * dApp promise) and test the post-creation flow (waiting-approval → approved →
+ * tx hash) separately.
+ *
+ * The wallet page requires a full session: a backend session cookie (mocked
+ * via /api/auth/me) AND a connected near-connect wallet (mock manifest +
+ * seeded localStorage).
  */
 
-import { test, expect, BrowserContext, Page, Route } from "@playwright/test";
+import { test, expect, BrowserContext, Page } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -69,6 +75,19 @@ async function mockBackendRoutes(context: BrowserContext) {
             status: 200,
             contentType: "text/html",
             body: TEST_DAPP_HTML,
+        });
+    });
+
+    // Backend session — the wallet page only acts on a fully authenticated
+    // account (session + accepted terms).
+    await context.route("**/api/auth/me", async (route) => {
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+                accountId: SIGNED_IN_ACCOUNT,
+                termsAccepted: true,
+            }),
         });
     });
 
@@ -173,7 +192,7 @@ test.describe("sign_in: connect via Trezu Wallet popup", () => {
         const popup = await popupPromise;
 
         // Wallet popup should reach the select-treasury step
-        await popup.waitForSelector("text=Select a treasury", {
+        await popup.waitForSelector("text=Choose which treasury", {
             timeout: 15_000,
         });
 
@@ -181,7 +200,7 @@ test.describe("sign_in: connect via Trezu Wallet popup", () => {
         await popup.click(`button:has-text("${DAO_ID}")`);
 
         // Popup shows done confirmation
-        await popup.waitForSelector("text=Signed in successfully", {
+        await popup.waitForSelector("text=Treasury connected", {
             timeout: 8_000,
         });
 
@@ -208,7 +227,7 @@ test.describe("sign_in: connect via Trezu Wallet popup", () => {
 /* ------------------------------------------------------------------ */
 
 test.describe("sign_transactions: Transfer NEAR proposal preview", () => {
-    test("wallet popup shows Transfer proposal; cancelling returns failure to dApp", async ({
+    test("wallet popup shows Transfer proposal; closing the popup fails the dApp promise", async ({
         page,
         context,
     }) => {
@@ -237,19 +256,13 @@ test.describe("sign_transactions: Transfer NEAR proposal preview", () => {
         // Acting-as block shows the selected DAO
         await expect(popup.locator(`text=${DAO_ID}`).first()).toBeVisible();
 
-        // Cancel → popup closes and dApp receives failure
-        await popup.click("button:has-text('Cancel')");
+        // Closing the popup without signing → dApp promise rejects
+        await popup.close();
 
-        const msg = await page
-            .waitForFunction(() => (window as any).__lastMessage, {
-                timeout: 5_000,
-            })
-            .then((h) => h.jsonValue());
-        expect(msg).toMatchObject({
-            type: "trezu:result",
-            status: "failure",
-            errorMessage: "User cancelled",
-        });
+        await expect(page.locator("#status")).toContainText(
+            "Popup was closed",
+            { timeout: 5_000 },
+        );
     });
 });
 
@@ -258,7 +271,7 @@ test.describe("sign_transactions: Transfer NEAR proposal preview", () => {
 /* ------------------------------------------------------------------ */
 
 test.describe("sign_transactions: FunctionCall (ft_transfer) proposal preview", () => {
-    test("wallet popup shows ft_transfer method and usdt.tether-token.near contract; cancel returns failure", async ({
+    test("wallet popup shows the ft_transfer recipient; closing the popup fails the dApp promise", async ({
         page,
         context,
     }) => {
@@ -282,21 +295,15 @@ test.describe("sign_transactions: FunctionCall (ft_transfer) proposal preview", 
         // not from the raw function name.
         await expect(popup.locator("text=alice.near").first()).toBeVisible();
 
-        // Amount is shown in token units for the FT contract used in this call.
-        await expect(popup.getByText("Amount1.00 USDT")).toBeVisible();
+        // Acting-as block shows the selected DAO
+        await expect(popup.locator(`text=${DAO_ID}`).first()).toBeVisible();
 
-        await popup.click("button:has-text('Cancel')");
+        await popup.close();
 
-        const msg = await page
-            .waitForFunction(() => (window as any).__lastMessage, {
-                timeout: 5_000,
-            })
-            .then((h) => h.jsonValue());
-        expect(msg).toMatchObject({
-            type: "trezu:result",
-            status: "failure",
-            errorMessage: "User cancelled",
-        });
+        await expect(page.locator("#status")).toContainText(
+            "Popup was closed",
+            { timeout: 5_000 },
+        );
     });
 });
 
@@ -308,12 +315,13 @@ test.describe("waiting-approval: after DAO votes Approve, dApp receives tx hash"
     /**
      * This test simulates the second phase of the sign_transactions flow:
      * the proposal was already submitted (proposalId=42), treasury members voted,
-     * and now the user clicks "Proceed" in the wallet popup to retrieve the tx hash.
+     * and now the wallet popup's status poll (which runs immediately on entry)
+     * discovers the approval and retrieves the tx hash — no clicking involved.
      *
      * The popup is opened by the dApp via window.open() so window.opener is set,
      * and the URL includes daoId+proposalIds to jump straight to waiting-approval.
      */
-    test("Proceed after approval sends transactionHashes to dApp opener", async ({
+    test("approval poll sends transactionHashes to dApp opener automatically", async ({
         page,
         context,
     }) => {
@@ -321,6 +329,7 @@ test.describe("waiting-approval: after DAO votes Approve, dApp receives tx hash"
 
         await mockBackendRoutes(context);
         await page.goto(DUMMY_DAPP_URL);
+        await seedWalletAccount(page, SIGNED_IN_ACCOUNT);
 
         // Open the wallet popup from the dApp page so window.opener is set.
         // Use waiting-approval URL params to skip the signing step.
@@ -342,23 +351,9 @@ test.describe("waiting-approval: after DAO votes Approve, dApp receives tx hash"
         );
         const popup = await popupPromise;
 
-        // Should be at the waiting-approval step immediately
-        await popup.waitForSelector("text=Proposal Submitted", {
-            timeout: 10_000,
-        });
-
-        // Shows the proposal link
-        await expect(
-            popup.locator(`text=${DAO_ID} — Proposal #${PROPOSAL_ID}`),
-        ).toBeVisible();
-
-        // Click "Proceed" — proposal API is mocked as Approved
-        await popup.click(
-            "button:has-text('The Proposal is Approved. Proceed')",
-        );
-
-        // Popup shows "done" step
-        await popup.waitForSelector("text=Proposal created successfully", {
+        // The proposal API is mocked as Approved with an indexed tx, so the
+        // immediate poll advances straight to the done step.
+        await popup.waitForSelector("text=You can close this window.", {
             timeout: 10_000,
         });
 
@@ -375,7 +370,7 @@ test.describe("waiting-approval: after DAO votes Approve, dApp receives tx hash"
         });
     });
 
-    test("InProgress status shows 'still pending' error without closing popup", async ({
+    test("InProgress status keeps the checklist open without notifying the dApp", async ({
         page,
         context,
     }) => {
@@ -405,6 +400,7 @@ test.describe("waiting-approval: after DAO votes Approve, dApp receives tx hash"
         );
 
         await page.goto(DUMMY_DAPP_URL);
+        await seedWalletAccount(page, SIGNED_IN_ACCOUNT);
 
         const popupPromise = context.waitForEvent("page");
         await page.evaluate(
@@ -424,21 +420,18 @@ test.describe("waiting-approval: after DAO votes Approve, dApp receives tx hash"
         );
         const popup = await popupPromise;
 
-        await popup.waitForSelector("text=Proposal Submitted", {
+        // Shows the approval checklist with the proposal link
+        await popup.waitForSelector("text=What To Do Next", {
             timeout: 10_000,
         });
+        await expect(
+            popup.locator(`text=${DAO_ID} — Proposal #${PROPOSAL_ID}`),
+        ).toBeVisible();
 
-        await popup.click(
-            "button:has-text('The Proposal is Approved. Proceed')",
-        );
-
-        // Shows pending message instead of closing
-        await popup.waitForSelector("text=Proposal is still pending approval", {
-            timeout: 8_000,
-        });
-
-        // Popup stays open; dApp has not received any message
-        // (use evaluate, not waitForFunction — we assert the value is absent)
+        // The immediate poll found InProgress — the popup stays open and the
+        // dApp has not received any message.
+        await popup.waitForTimeout(1_000);
+        await popup.waitForSelector("text=What To Do Next");
         const msg = await page.evaluate(() => (window as any).__lastMessage);
         expect(msg).toBeUndefined();
     });

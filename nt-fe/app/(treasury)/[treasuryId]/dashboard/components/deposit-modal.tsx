@@ -18,7 +18,11 @@ import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { HighlightedText } from "@/components/highlighted-text";
 import { getNetworkDisplayName } from "@/components/token-display";
-import { SlotWarning, WarningMessage } from "@/components/warning-message";
+import {
+    parseWarningCopy,
+    SlotWarning,
+    WarningMessage,
+} from "@/components/warning-message";
 import {
     NEAR_COM_DIRECT_NETWORK_ID,
     NEAR_NETWORK_ID,
@@ -262,26 +266,66 @@ export function DepositModal({
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
+    // Confidential path has no asset/network pickers — no scoped warnings UI.
+    const depositWarningToken =
+        depositSource === "confidential_user" ? undefined : selectedAsset?.id;
+    const depositWarningNetwork =
+        depositSource === "confidential_user"
+            ? undefined
+            : selectedNetwork?.name;
     const {
         warning: depositScopeWarning,
         blocked: depositBlocked,
         scopedMessage: depositScopedMessage,
     } = useScopedSlotWarning(
         "deposit",
-        selectedAsset?.id,
-        selectedNetwork?.name,
+        depositWarningToken,
+        depositWarningNetwork,
     );
-    // A token/network-scoped pause only blocks that combination — keep the
-    // selectors enabled so the user can switch. Only disable them when the whole
-    // deposit slot is paused or the app is in maintenance.
+    // Token/network-scoped pause: keep selectors enabled so the user can switch.
+    // Slot-wide / app pause: disable selectors and confidential Show address.
     const depositTokenNetworkScoped =
         isTokenOrNetworkScopedWarning(depositScopeWarning);
+    const isDepositSlotWideBlocked =
+        depositBlocked && !depositTokenNetworkScoped;
+    const isConfidentialUserSource = depositSource === "confidential_user";
+    // Public wallet (or public treasury): scoped pause/slow placement.
+    const showPublicSelectWarnings =
+        step === "select" && !isConfidentialUserSource && depositBlocked;
+    const showSelectTokenNetworkBannerBelow =
+        showPublicSelectWarnings &&
+        Boolean(depositScopeWarning?.token && depositScopeWarning?.network);
+    const showSelectTokenPausedInline =
+        showPublicSelectWarnings &&
+        Boolean(depositScopeWarning?.token && !depositScopeWarning?.network);
+    const showSelectNetworkPausedInline =
+        showPublicSelectWarnings &&
+        Boolean(depositScopeWarning?.network && !depositScopeWarning?.token);
+    const showSelectSlotWideBanner =
+        step === "select" && isDepositSlotWideBlocked;
+    const showAddressWarningBanner =
+        step === "address" &&
+        !isConfidentialUserSource &&
+        depositScopeWarning?.response === "notice" &&
+        depositTokenNetworkScoped;
+    // Flatten heading+body so inline field copy shows the full sentence.
+    let inlineScopedMessage: string | null = null;
+    if (
+        depositScopedMessage &&
+        (showSelectTokenPausedInline || showSelectNetworkPausedInline)
+    ) {
+        const { heading, body } = parseWarningCopy(depositScopedMessage);
+        inlineScopedMessage =
+            heading && body
+                ? `${heading} ${body}`
+                : heading || body || depositScopedMessage;
+    }
     const {
         data: bridgeAssets = STABLE_EMPTY_ARRAY,
         isLoading: isLoadingAssets,
     } = useBridgeTokens(true);
     const depositSelectorsDisabled =
-        isLoadingAssets || (depositBlocked && !depositTokenNetworkScoped);
+        isLoadingAssets || isDepositSlotWideBlocked;
 
     const invalidatePendingAddressRequest = useCallback(() => {
         latestAddressRequestRef.current += 1;
@@ -731,7 +775,9 @@ export function DepositModal({
     const handleCreateNewAddress = () => mintOneTimeAddress();
 
     const handleShowConfidentialAddress = () => {
-        if (!hasAcknowledged || !treasuryId) return;
+        if (!hasAcknowledged || !treasuryId || isDepositSlotWideBlocked) {
+            return;
+        }
         setDepositInfo({
             address: treasuryId,
             memo: null,
@@ -935,6 +981,10 @@ export function DepositModal({
 
                 {step === "select" && showGuestBanner && <DepositGuestBanner />}
 
+                {showSelectSlotWideBanner && (
+                    <SlotWarning slot="deposit" className="mb-0" />
+                )}
+
                 {step === "select" && isConfidential && (
                     <DepositSourceCards
                         value={depositSource}
@@ -943,43 +993,43 @@ export function DepositModal({
                 )}
 
                 {step === "select" && showAssetNetworkForm && (
-                    <>
-                        <SlotWarning slot="deposit" className="mb-0" />
-                        <DepositAssetNetworkForm
-                            form={form}
-                            selectedAsset={selectedAsset}
-                            selectedNetwork={selectedNetwork}
-                            selectorsDisabled={depositSelectorsDisabled}
-                            isAssetsPending={isAssetsPending}
-                            showTopBorder={isConfidential}
-                            onOpenAssetModal={() => setModalType("asset")}
-                            onOpenNetworkModal={() => setModalType("network")}
-                        />
-                    </>
+                    <DepositAssetNetworkForm
+                        form={form}
+                        selectedAsset={selectedAsset}
+                        selectedNetwork={selectedNetwork}
+                        selectorsDisabled={depositSelectorsDisabled}
+                        isAssetsPending={isAssetsPending}
+                        showTopBorder={isConfidential}
+                        onOpenAssetModal={() => setModalType("asset")}
+                        onOpenNetworkModal={() => setModalType("network")}
+                        tokenWarning={
+                            showSelectTokenPausedInline ? (
+                                <WarningMessage
+                                    variant="inline"
+                                    message={inlineScopedMessage}
+                                    className="text-sm whitespace-normal"
+                                />
+                            ) : null
+                        }
+                        networkWarning={
+                            showSelectNetworkPausedInline ? (
+                                <WarningMessage
+                                    variant="inline"
+                                    message={inlineScopedMessage}
+                                    className="text-sm whitespace-normal"
+                                />
+                            ) : null
+                        }
+                    />
                 )}
 
-                {depositBlocked &&
-                    selectedAsset &&
-                    selectedNetwork &&
-                    step === "select" &&
-                    showAssetNetworkForm && (
-                        <div className="space-y-3">
-                            <SlotWarning
-                                slot={depositScopeWarning?.slot ?? "deposit"}
-                                token={depositScopeWarning?.token ?? undefined}
-                                network={
-                                    depositScopeWarning?.network ?? undefined
-                                }
-                                action="deposit"
-                            />
-                        </div>
-                    )}
-
-                {depositScopedMessage && step === "select" && (
-                    <WarningMessage
-                        variant="inline"
-                        message={depositScopedMessage}
-                        className="text-sm"
+                {/* Token + one network paused (public wallet) → banner below selectors */}
+                {showSelectTokenNetworkBannerBelow && (
+                    <SlotWarning
+                        slot={depositScopeWarning?.slot ?? "deposit"}
+                        token={depositScopeWarning?.token ?? undefined}
+                        network={depositScopeWarning?.network ?? undefined}
+                        action="deposit"
                     />
                 )}
 
@@ -1074,6 +1124,7 @@ export function DepositModal({
                         onCheckedChange={setHasAcknowledged}
                         ctaLabel={t("showAddress")}
                         onCta={handleShowConfidentialAddress}
+                        disabled={isDepositSlotWideBlocked}
                     />
                 )}
 
@@ -1101,6 +1152,23 @@ export function DepositModal({
                                 : undefined
                         }
                         createNewAddressDisabled={isLoadingAddress}
+                        warningSlot={
+                            showAddressWarningBanner ? (
+                                <SlotWarning
+                                    slot={
+                                        depositScopeWarning?.slot ?? "deposit"
+                                    }
+                                    token={
+                                        depositScopeWarning?.token ?? undefined
+                                    }
+                                    network={
+                                        depositScopeWarning?.network ??
+                                        undefined
+                                    }
+                                    action="deposit"
+                                />
+                            ) : undefined
+                        }
                         headerSlot={
                             isConfidential &&
                             depositSource === "confidential_user" ? (

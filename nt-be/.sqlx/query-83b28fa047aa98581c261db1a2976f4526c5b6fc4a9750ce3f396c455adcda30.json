@@ -6,7 +6,7 @@
     "parameters": {
       "Left": [
         "Varchar",
-        "Varchar",
+        "Text",
         "Text",
         "Int2",
         "Text"

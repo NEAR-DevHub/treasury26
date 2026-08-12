@@ -253,8 +253,8 @@ interface NearStore {
         storageBytes: Big,
         proposalType?: string,
         addressBookPayment?: boolean,
-    ) => Promise<boolean>;
-    createProposal: (params: CreateProposalParams) => Promise<void>;
+    ) => Promise<number[]>;
+    createProposal: (params: CreateProposalParams) => Promise<number[]>;
     voteProposals: (treasuryId: string, votes: Vote[]) => Promise<void>;
 }
 
@@ -622,7 +622,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         storageBytes: Big,
         proposalType?: string,
         addressBookPayment?: boolean,
-    ): Promise<boolean> => {
+    ): Promise<number[]> => {
         const state = get();
         if (!isFullyAuthenticated(state)) {
             throw new Error(
@@ -638,6 +638,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         // Relay each signed delegate action to the backend for gas-sponsored submission.
         // proposalType is only passed for the first action (the actual proposal/vote);
         // subsequent actions are helper calls like storage_deposit.
+        const proposalIds: number[] = [];
         for (let i = 0; i < result.signedDelegateActions.length; i++) {
             const relayResult = await relayDelegateAction(
                 treasuryId,
@@ -651,9 +652,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     relayResult.error || "Failed to relay delegate action",
                 );
             }
+            if (relayResult.proposalIds) {
+                proposalIds.push(...relayResult.proposalIds);
+            }
         }
 
-        return true;
+        return proposalIds;
     },
 
     createProposal: async (params: CreateProposalParams) => {
@@ -710,7 +714,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         }));
 
         try {
-            await get().signAndSendDelegateAction(
+            return await get().signAndSendDelegateAction(
                 params.treasuryId,
                 { delegateActions, network: "mainnet" },
                 storageBytes,
@@ -840,14 +844,21 @@ export const useNear = () => {
         params: CreateProposalParams,
         showToast: boolean = true,
     ) => {
-        await storeCreateProposal(params);
+        const proposalIds = await storeCreateProposal(params);
         // Nudge the backend about the new proposal (fire-and-forget): it
         // re-fetches from chain RPC and projects it, so history reflects the
         // proposal seconds after submission instead of at indexer speed. The
-        // newest proposal's id is the DAO's counter minus one.
-        void getLastProposalId(params.treasuryId)
-            .then((count) => refreshProposal(params.treasuryId, count - 1))
-            .catch(() => {});
+        // relay reports the created ids; if it didn't, fall back to the DAO's
+        // counter minus one.
+        if (proposalIds.length > 0) {
+            for (const id of proposalIds) {
+                refreshProposal(params.treasuryId, id);
+            }
+        } else {
+            void getLastProposalId(params.treasuryId)
+                .then((count) => refreshProposal(params.treasuryId, count - 1))
+                .catch(() => {});
+        }
         // Signal the onboarding flow that a payment request was just made so it
         // can poll for it while the backend indexer catches up.
         if (params.proposalType === "payment") {
