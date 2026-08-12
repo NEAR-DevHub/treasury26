@@ -12,11 +12,14 @@ use super::models::{
 const REBASE_INTRA_BLOCK_SEQ: i32 = 1_000_000;
 
 /// Accounts whose gold projection is ready but whose ledger has not passed
-/// on-chain verification. Failed accounts retry after the cool-off so a
-/// broken account cannot monopolize RPC.
+/// on-chain verification. Failed accounts retry after the cool-off — or as
+/// soon as their silver ledger was rebuilt after the failed check (new
+/// evidence), floored at a minimum interval so a busy account cannot burn
+/// RPC on every ledger write.
 pub async fn load_gate_candidates(
     pool: &PgPool,
     failed_retry_after_hours: i64,
+    failed_retry_min_minutes: i64,
 ) -> Result<Vec<String>, sqlx::Error> {
     sqlx::query_scalar(
         r#"
@@ -28,6 +31,8 @@ pub async fn load_gate_candidates(
          AND COALESCE(monitored.is_confidential_account, false) = false
         LEFT JOIN public_balance_verification_cursors verification
           ON verification.account_id = gold_cursor.account_id
+        LEFT JOIN silver_public_history_cursors silver
+          ON silver.account_id = gold_cursor.account_id
         WHERE gold_cursor.projection_ready_at IS NOT NULL
           AND (
               verification.account_id IS NULL
@@ -35,13 +40,19 @@ pub async fn load_gate_candidates(
               OR (
                   verification.status = 'failed'
                   AND verification.updated_at
-                        < NOW() - make_interval(hours => $1::integer)
+                        < NOW() - make_interval(mins => $2::integer)
+                  AND (
+                      verification.updated_at
+                            < NOW() - make_interval(hours => $1::integer)
+                      OR silver.updated_at > verification.updated_at
+                  )
               )
           )
         ORDER BY gold_cursor.account_id
         "#,
     )
     .bind(failed_retry_after_hours as i32)
+    .bind(failed_retry_min_minutes as i32)
     .fetch_all(pool)
     .await
 }
