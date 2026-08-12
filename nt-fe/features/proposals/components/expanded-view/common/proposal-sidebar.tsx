@@ -48,7 +48,7 @@ import { isNearComPaymentRoute } from "@/lib/intents-network";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
 import { getTransactionExplorerLink } from "@/lib/blockchain-utils";
-import { cn, decodeProposalDescription, nanosToMs } from "@/lib/utils";
+import { nanosToMs } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
 import { NotEnoughBalance } from "../../not-enough-balance";
@@ -413,7 +413,8 @@ export function ProposalSidebar({
     const isConfidentialNearComPayment =
         isConfidentialPayment &&
         isNearComPaymentRoute(confidentialPaymentData ?? {});
-    const useNearblocksLink = !hasDepositAddress || isConfidentialNearComPayment;
+    const useNearblocksLink =
+        !hasDepositAddress || isConfidentialNearComPayment;
     const transactionExplorerLink = getTransactionExplorerLink({
         depositAddress: useNearblocksLink ? null : depositAddress,
         isConfidential: isConfidentialRequestProposal,

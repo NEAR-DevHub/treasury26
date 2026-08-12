@@ -196,8 +196,13 @@ fn build_filtered_legs_query(
                     (
                         SELECT ci.deposit_address
                         FROM confidential_intents ci
-                        WHERE ci.history_event_id =
-                            split_part(gold_treasury_ledger_events.gold_event_key, ':', 2)::bigint
+                        WHERE ci.history_event_id = CASE
+                            WHEN gold_treasury_ledger_events.gold_event_key
+                                ~ '^confidential:[0-9]+$'
+                            THEN split_part(
+                                gold_treasury_ledger_events.gold_event_key, ':', 2
+                            )::bigint
+                        END
                           AND ci.deposit_address IS NOT NULL
                         ORDER BY ci.id DESC
                         LIMIT 1
