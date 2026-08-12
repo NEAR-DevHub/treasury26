@@ -4,8 +4,7 @@ import { warningMatchesQuery } from "@/hooks/use-warnings";
 import { networksMatchForWarningScope } from "@/components/token-display";
 
 function scopedWarning(
-    overrides: Partial<Warning> &
-        Pick<Warning, "token" | "network">,
+    overrides: Partial<Warning> & Pick<Warning, "token" | "network">,
 ): Warning {
     return {
         id: 1,
@@ -24,9 +23,7 @@ function scopedWarning(
 describe("networksMatchForWarningScope", () => {
     it("matches exact names case-insensitively", () => {
         expect(networksMatchForWarningScope("eth", "ETH")).toBe(true);
-        expect(networksMatchForWarningScope("arbitrum", "Arbitrum")).toBe(
-            true,
-        );
+        expect(networksMatchForWarningScope("arbitrum", "Arbitrum")).toBe(true);
     });
 
     it("matches short and long aliases that share a display name", () => {
@@ -46,9 +43,7 @@ describe("networksMatchForWarningScope", () => {
 
     it("rejects missing values", () => {
         expect(networksMatchForWarningScope("arb", null)).toBe(false);
-        expect(networksMatchForWarningScope(undefined, "arbitrum")).toBe(
-            false,
-        );
+        expect(networksMatchForWarningScope(undefined, "arbitrum")).toBe(false);
     });
 });
 
@@ -91,15 +86,15 @@ describe("warningMatchesQuery scope AND semantics", () => {
         expect(warningMatchesQuery(warning, "deposit", "eth", "arb")).toBe(
             false,
         );
-        expect(
-            warningMatchesQuery(warning, "deposit", "eth", "arbitrum"),
-        ).toBe(false);
+        expect(warningMatchesQuery(warning, "deposit", "eth", "arbitrum")).toBe(
+            false,
+        );
         expect(warningMatchesQuery(warning, "deposit", "eth", "eth")).toBe(
             true,
         );
-        expect(
-            warningMatchesQuery(warning, "deposit", "eth", "ethereum"),
-        ).toBe(true);
+        expect(warningMatchesQuery(warning, "deposit", "eth", "ethereum")).toBe(
+            true,
+        );
     });
 
     it("rejects when query omits network but warning is network-scoped", () => {
