@@ -88,7 +88,13 @@ function PaymentDisplay({
     let items: InfoItem[] = [
         {
             label: t("recipient"),
-            value: <User accountId={payment.recipient} chainName={chainName} />,
+            value: (
+                <User
+                    accountId={payment.recipient}
+                    chainName={chainName}
+                    preferAddressBook
+                />
+            ),
         },
         {
             label: t("amount"),
@@ -145,6 +151,7 @@ function PaymentDisplay({
                         accountId={payment.recipient}
                         variant="details"
                         withLink={false}
+                        preferAddressBook
                     />
                     <Amount
                         amount={payment.amount.toString()}
