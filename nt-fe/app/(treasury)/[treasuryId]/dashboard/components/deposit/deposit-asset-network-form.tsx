@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/button";
 import { InputBlock } from "@/components/input-block";
@@ -40,6 +41,8 @@ export function DepositAssetNetworkForm({
     showTopBorder = false,
     onOpenAssetModal,
     onOpenNetworkModal,
+    tokenWarning = null,
+    networkWarning = null,
 }: {
     form: UseFormReturn<DepositAssetNetworkFormValues>;
     selectedAsset: DepositAssetNetworkFormValues["asset"];
@@ -50,6 +53,10 @@ export function DepositAssetNetworkForm({
     showTopBorder?: boolean;
     onOpenAssetModal: () => void;
     onOpenNetworkModal: () => void;
+    /** Inline token-paused copy under the asset row (inside the muted card). */
+    tokenWarning?: ReactNode;
+    /** Inline network-paused copy under the network row (inside the muted card). */
+    networkWarning?: ReactNode;
 }) {
     const t = useTranslations("depositModal");
 
@@ -117,7 +124,12 @@ export function DepositAssetNetworkForm({
                                             <ChevronDown className="w-5 h-5" />
                                         </div>
                                     </Button>
-                                    <FormMessage />
+                                    {fieldState.error ? <FormMessage /> : null}
+                                    {tokenWarning ? (
+                                        <div className="mt-2">
+                                            {tokenWarning}
+                                        </div>
+                                    ) : null}
                                 </InputBlock>
                             </FormItem>
                         )}
@@ -203,6 +215,11 @@ export function DepositAssetNetworkForm({
                                         </div>
                                     </Button>
                                     {fieldState.error ? <FormMessage /> : null}
+                                    {networkWarning ? (
+                                        <div className="mt-2">
+                                            {networkWarning}
+                                        </div>
+                                    ) : null}
                                 </InputBlock>
                             </FormItem>
                         )}
