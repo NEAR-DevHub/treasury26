@@ -25,13 +25,13 @@ continue serving HTTP, and retry election with jittered exponential backoff
 (2s→30s). PostgreSQL automatically releases the lock if the leader process or
 connection dies.
 
-The leader runs all cron workers under one Apalis `Monitor` and starts the two
-public-history payload consumers (`public-history-latest` and
-`public-history-backfill`) in the same leadership session. This prevents a
-rolling deployment from creating a second scheduler or a second fixed-name
-payload worker. Startup tasks are pushed only on the first leadership
-acquisition per process and are skipped when an active task for that queue
-already exists.
+The leader runs all cron workers under one Apalis `Monitor` and starts the three
+public-history payload consumers (`public_history_latest`,
+`public_history_readiness`, and `public_history_backfill`) in the same
+leadership session. This prevents a rolling deployment from creating a second
+scheduler or a second fixed-name payload worker. Startup tasks are pushed only
+on the first leadership acquisition per process and are skipped when an active
+task for that queue already exists.
 
 Failure containment and coordinated shutdown have four layers:
 
@@ -40,8 +40,8 @@ Failure containment and coordinated shutdown have four layers:
    deliberately **no automatic task-level retry**: several handlers have
    non-idempotent side effects (on-chain `payout_batch` / `claim` txs,
    Telegram sends), so re-running the whole handler on any error could
-   duplicate them. The cron schedule *is* the retry, and apalis-postgres
-   retries transient DB/poll errors at the backend with its own backoff.
+   duplicate them. The cron schedule *is* the retry. The platform claim
+   backend retries transient database errors with jittered 1s→30s backoff.
 2. **Handler panics** — `catch_panic` turns a panic into a task error
    (same path as #1) instead of tearing the worker down.
 3. **Worker exit** — if a worker's run loop exits on a sustained
@@ -58,20 +58,64 @@ Failure containment and coordinated shutdown have four layers:
    connection to the pool; any unlock failure closes the connection instead,
    so a lock-bearing session is never reused.
 
-Cron worker restarts remain immediate because apalis's `Monitor` hook is
-synchronous. The public-history payload consumers instead retry every
-unexpected worker-loop exit with jittered exponential backoff (2s→60s),
-including `WORKER_ALREADY_EXISTS` as a final safeguard and terminal
+Rebuilt cron backends delay their first claim with jittered exponential
+backoff (1s→30s), preventing Apalis's synchronous restart hook from becoming a
+hot loop. Claim-query database failures remain inside the backend and use the
+same bounds without exiting the worker. The public-history payload consumers
+also retry every unexpected worker-loop exit with jittered exponential backoff
+(1s→30s), including `WORKER_ALREADY_EXISTS` as a final safeguard and terminal
 database/TLS disconnects. Ordinary task-handler failures remain task results
 inside Apalis and do not restart a consumer. A shared shutdown token cancels
 election/backoff sleeps and lets active workers drain without delaying HTTP
 readiness or shared HTTP clients.
 
 The durable `background_job_leader` row records the current generation and
-heartbeat for operations; `/api/health` reports both the local role and global
-leadership record without making followers unhealthy. The leader reserves one
-slot from the 20-connection application pool, leaving up to 19 for application
-and worker queries.
+heartbeat for operations. `/api/health` reports both the local role and global
+leadership record without making followers unhealthy. The authenticated
+`/api/jobs/health` endpoint returns 503 if the global heartbeat is more than 30
+seconds old; production uptime monitoring must call it at least once per
+minute. One connection is reserved for leadership and one shared connection
+fans PostgreSQL insert notifications out to the latency-critical queues. A
+pool below four connections logs a startup warning.
+
+## Claim latency and recovery
+
+Every registered queue uses the same `QueueSpec` policy and worker-side
+PostgreSQL backend. Empty queues are checked once per second with no adaptive
+idle backoff; a non-empty batch is drained immediately. Database errors alone
+use jittered exponential backoff. Fetch batch size equals worker concurrency,
+so a worker cannot strand a large prefetched set in `Queued`. Latest and
+readiness also subscribe to the single shared PostgreSQL listener for normal
+sub-second wake-up, while polling remains the missed-notification fallback.
+
+After a stable worker id registers, the backend repairs locks left by its dead
+predecessor before allowing the first new claim. Predecessor `Queued` rows are
+returned to `Pending`; predecessor `Running` rows are marked `Killed` because
+their side effects are ambiguous. Both have their locks cleared, which fences
+late predecessor acknowledgements, and every mutation is audited. This startup
+barrier also applies to the emergency adaptive-poller fallback. The platform
+does not run Apalis's generic orphan retry because it requeues `Running` work;
+the state-aware startup recovery and minute reclaimer are authoritative.
+
+`apalis-reclaimer` evaluates registered namespaces every minute in batches of
+256. It never deletes old `Pending` work. A `Queued` claim older than five
+minutes is returned to `Pending` without incrementing attempts; a `Running`
+claim older than the greater of twice its handler timeout or one hour becomes
+`Killed`, because its side effects are ambiguous. Enforced changes are written
+to `background_job_reclaims` for seven days. Set
+`APALIS_RECLAIMER_MODE=report` for dry-run rollout or `enforce` to recover;
+the default is report-only.
+
+For a queue-level canary, set `APALIS_STEADY_POLLER_QUEUES` to a comma-separated
+allowlist. Without an allowlist the steady backend is enabled globally; set
+`APALIS_STEADY_POLLER_ENABLED=false` for the one-release emergency fallback to
+Apalis's legacy adaptive poller.
+
+`/api/jobs/health` reports status depths, free slots, oldest runnable/locked
+ages, 15-minute start-latency p50/p95/max, and hourly reclaim counts. It labels
+failures as `wake`, `capacity`, `claim_stuck`, `execution_stuck`, `progress`,
+or `reclaim_rate`, so provider throughput pressure is not confused with a
+worker that failed to notice work.
 
 Leadership guarantees one active scheduler/runtime during normal operation.
 Task processing itself remains at-least-once: after a crash, Apalis may retry a
@@ -162,7 +206,8 @@ returning a plain `404` (the board only owns `/api/v1`).
 | subscription-monthly-reset | daily 00:00 UTC + startup task | — | |
 | public-dashboard-refresh | Mondays 00:00 UTC + startup task | — | gated by DISABLE_STATS_GENERATION; skips when this week's snapshot exists |
 | ft-lockup-refresh | every 6h + startup task | — | gated by DISABLE_FT_LOCKUP_SCHEDULER |
-| apalis-prune | daily 03:30 UTC | APALIS_TASK_RETENTION_DAYS (7) | deletes finished tasks so 5s queues don't grow unbounded |
+| apalis-reclaimer | every 60s | APALIS_RECLAIMER_MODE | bounded audited recovery; report-only by default |
+| apalis-prune | hourly | APALIS_TASK_RETENTION_HOURS (48) | deletes terminal tasks and old reclaim audits; runs non-blocking VACUUM |
 
 ## Behavior changes vs the old loops
 
@@ -173,6 +218,5 @@ returning a plain `404` (the board only owns `/api/v1`).
 - `dao-policy-dirty` runs every 5s instead of every 1s.
 - A single apalis migration set (`PostgresStorage::setup`) creates the
   `apalis` schema in the app database at boot (idempotent).
-- Multiple backend replicas would each run their own cron ticks; the
-  Postgres queue dedupes execution per task, but tick production assumes
-  a single instance (same as the old loops).
+- Multiple backend replicas coordinate through PostgreSQL leadership; only
+  the active leader produces cron ticks or consumes payload queues.

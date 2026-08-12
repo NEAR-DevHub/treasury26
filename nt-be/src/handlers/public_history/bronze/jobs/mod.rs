@@ -13,15 +13,9 @@ mod worker;
 
 pub(crate) use scheduler::{
     run_public_history_backfill_scheduler_cycle, run_public_history_detector_cycle,
-    run_public_history_readiness_scheduler_cycle,
+    run_public_history_latest_dispatcher_cycle, run_public_history_readiness_scheduler_cycle,
 };
-pub(crate) use worker::board_storages;
-
-/// Queue names of the two event-driven workers, for watchdog registration.
-pub(crate) const QUEUE_NAMES: [&str; 2] = [
-    postgres::PUBLIC_HISTORY_LATEST_NAMESPACE,
-    postgres::PUBLIC_HISTORY_BACKFILL_NAMESPACE,
-];
+pub(crate) use worker::{board_storages, public_history_queue_specs};
 
 /// A public-history consumer supervisor owned and polled by the elected leader
 /// runtime. Keeping these as futures (rather than pre-spawned tasks) guarantees
@@ -42,9 +36,10 @@ pub async fn setup_public_history_queue_workers(state: &AppState) -> Result<(), 
 pub(crate) fn public_history_queue_worker_futures(
     state: Arc<AppState>,
     shutdown: CancellationToken,
+    wake_hub: crate::jobs::platform::JobWakeHub,
 ) -> Vec<PublicHistorySupervisorFuture> {
     if state.env_vars.nearblocks_api_key.is_none() {
         return Vec::new();
     }
-    worker::public_history_job_worker_futures(state, shutdown)
+    worker::public_history_job_worker_futures(state, shutdown, wake_hub)
 }
