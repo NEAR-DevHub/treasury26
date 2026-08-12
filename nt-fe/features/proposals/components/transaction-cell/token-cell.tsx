@@ -74,7 +74,6 @@ export function TokenCell({
     const displayName = resolveUserDisplayName({
         accountId: data.receiver,
         profileName: profile?.name,
-        addressBookName: profile?.addressBookName,
     });
     const nameIsAddress =
         displayName.trim().toLowerCase() === data.receiver.trim().toLowerCase();
