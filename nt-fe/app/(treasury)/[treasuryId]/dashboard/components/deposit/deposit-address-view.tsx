@@ -37,6 +37,8 @@ interface DepositAddressViewProps {
     /** In-flow back to the previous deposit step (asset/network select). */
     onBack?: () => void;
     className?: string;
+    /** Shown above tabs/title (e.g. public slow-network banner). */
+    warningSlot?: ReactNode;
     headerSlot?: ReactNode;
 }
 
@@ -91,12 +93,14 @@ export function DepositAddressView({
     showShare = true,
     onBack,
     className,
+    warningSlot,
     headerSlot,
 }: DepositAddressViewProps) {
     const t = useTranslations("depositModal");
 
     return (
         <div className={cn("space-y-6", className)}>
+            {warningSlot}
             {headerSlot}
             <div>
                 {onBack && (
