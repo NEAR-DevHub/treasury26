@@ -381,7 +381,6 @@ export function PaymentFormSection<
                             <User
                                 accountId={selectedContact.address}
                                 name={selectedContact.name}
-                                useAddressBook
                                 size="md"
                                 withLink={false}
                             />
@@ -543,7 +542,6 @@ export function PaymentFormSection<
                             <User
                                 accountId={entry.address}
                                 name={entry.name}
-                                useAddressBook
                                 size="sm"
                                 withLink={false}
                                 highlightQuery={searchQuery}

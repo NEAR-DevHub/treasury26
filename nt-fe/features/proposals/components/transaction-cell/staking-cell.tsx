@@ -5,6 +5,7 @@ import { useLockupPool, useProfile } from "@/hooks/use-treasury-queries";
 import { Proposal } from "@/lib/proposals-api";
 import { useStakingFullAmount } from "../../hooks/use-staking-full-amount";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
+import { resolveUserDisplayName } from "@/components/user";
 
 interface StakingCellProps {
     data: StakingData;
@@ -33,7 +34,13 @@ export function StakingCell({
         treasuryId,
     );
     const { data: profile } = useProfile(validator);
-    const address = profile?.addressBookName ?? validator;
+    const address = validator
+        ? resolveUserDisplayName({
+              accountId: validator,
+              profileName: profile?.name,
+              addressBookName: profile?.addressBookName,
+          })
+        : validator;
 
     const showAllLabel = data.isFullAmount && !resolvedAmount;
 
