@@ -5,9 +5,9 @@ describe("isNearComPaymentRoute", () => {
     it("is true only for exact near.com destination", () => {
         expect(isNearComPaymentRoute("near.com")).toBe(true);
         expect(isNearComPaymentRoute("NEAR.COM")).toBe(true);
-        expect(
-            isNearComPaymentRoute({ destinationAssetId: "near.com" }),
-        ).toBe(true);
+        expect(isNearComPaymentRoute({ destinationAssetId: "near.com" })).toBe(
+            true,
+        );
     });
 
     it("is false for near, near.com:direct, bridge assets, and missing destination", () => {

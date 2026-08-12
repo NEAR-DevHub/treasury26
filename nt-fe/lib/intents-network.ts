@@ -34,8 +34,7 @@ export function isNearComPaymentRoute(
           },
 ): boolean {
     const destinationAssetId =
-        typeof destinationOrPayment === "string" ||
-        destinationOrPayment == null
+        typeof destinationOrPayment === "string" || destinationOrPayment == null
             ? destinationOrPayment
             : destinationOrPayment.destinationAssetId;
     return destinationAssetId?.trim().toLowerCase() === NEAR_COM_NETWORK_ID;
