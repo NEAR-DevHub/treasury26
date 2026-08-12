@@ -60,15 +60,19 @@ export function matchNetworkPrefill(
     );
     if (byChainId) return byChainId;
 
-    const byExactName = networks.filter(
-        (network) => network.name.toLowerCase() === normalized,
-    );
+    const byExactName = networks.filter((network) => {
+        const canonical = network.name.toLowerCase();
+        const display = getNetworkDisplayName(network.name).toLowerCase();
+        return canonical === normalized || display === normalized;
+    });
     if (byExactName.length === 1) return byExactName[0];
     if (byExactName.length > 1) return null;
 
-    const byIncludes = networks.filter((network) =>
-        network.name.toLowerCase().includes(normalized),
-    );
+    const byIncludes = networks.filter((network) => {
+        const canonical = network.name.toLowerCase();
+        const display = getNetworkDisplayName(network.name).toLowerCase();
+        return canonical.includes(normalized) || display.includes(normalized);
+    });
     if (byIncludes.length === 1) return byIncludes[0];
     return null;
 }
@@ -406,10 +410,9 @@ export function resolvePrefillSelection(params: {
     }
 
     const availableNetworks = assetNetworksMap.get(targetAsset.id) || [];
-    const filteredNetworks = availableNetworks.map((n) => ({
-        ...n,
-        name: getNetworkDisplayName(n.name),
-    }));
+    // Keep canonical bridge network names (e.g. `eth`) for warning matching;
+    // UI layers call getNetworkDisplayName when rendering.
+    const filteredNetworks = [...availableNetworks];
     const selectedNetworkBalances =
         networkBalancesByAsset.get(targetAsset.id) || new Map();
 

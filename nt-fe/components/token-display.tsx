@@ -51,6 +51,25 @@ export const getNetworkDisplayName = (name: string): string => {
     return NETWORK_DISPLAY_NAMES[name.toLowerCase()] ?? name;
 };
 
+/**
+ * Warning admin + bridge metadata sometimes disagree on short vs long chain
+ * ids (`arb` vs `arbitrum`, `eth` vs `ethereum`). Treat them as the same when
+ * they share a display name (or match exactly, case-insensitive).
+ */
+export function networksMatchForWarningScope(
+    a?: string | null,
+    b?: string | null,
+): boolean {
+    const left = a?.trim().toLowerCase();
+    const right = b?.trim().toLowerCase();
+    if (!left || !right) return false;
+    if (left === right) return true;
+    return (
+        getNetworkDisplayName(left).toLowerCase() ===
+        getNetworkDisplayName(right).toLowerCase()
+    );
+}
+
 const useResidencyLabel = () => {
     const t = useTranslations("residency");
     return (residency?: string): string => {
