@@ -81,6 +81,39 @@ describe("buildPrepareRequest", () => {
         expect(request.toNearCom).toBe(true);
         expect(request.destinationAsset).toBeUndefined();
     });
+
+    it("strips nearcom: from recipients before prepare", () => {
+        const request = buildPrepareRequest({
+            daoId: "dao.sputnik-dao.near",
+            token: { address: "nep141:usdc.near", decimals: 6 },
+            payments: [{ recipient: "nearcom:alice.near", amount: "1" }],
+            networkFeePerRecipient: null,
+            toNearCom: true,
+        });
+
+        expect(request.payments).toEqual([
+            { recipient: "alice.near", amount: "1000000" },
+        ]);
+    });
+
+    it("lowercases eth-implicit recipients like public quote", () => {
+        const checksummed = "0xD7A7486Dba405cBd55FA685Dce53E6E2B755485B";
+        const request = buildPrepareRequest({
+            daoId: "dao.sputnik-dao.near",
+            token: { address: "nep141:usdc.near", decimals: 6 },
+            payments: [
+                { recipient: `nearcom:${checksummed}`, amount: "1" },
+                { recipient: checksummed, amount: "2" },
+            ],
+            networkFeePerRecipient: null,
+            toNearCom: true,
+        });
+
+        expect(request.payments.map((p) => p.recipient)).toEqual([
+            checksummed.toLowerCase(),
+            checksummed.toLowerCase(),
+        ]);
+    });
 });
 
 describe("deriveQuoteFees", () => {

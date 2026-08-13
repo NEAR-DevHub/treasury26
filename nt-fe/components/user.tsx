@@ -7,6 +7,7 @@ import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
+import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { cn } from "@/lib/utils";
 import { Address } from "./address";
@@ -220,6 +221,11 @@ export function UserSkeleton({
 interface UserWithDataProps {
     name: string;
     address: string;
+    /**
+     * Visual override (e.g. `nearcom:alice.near`). Explorer / profile keep
+     * using the bare `address`.
+     */
+    displayAddress?: string;
     imageUrl?: string;
     variant?: UserVariant;
     size?: UserSize;
@@ -233,6 +239,7 @@ interface UserWithDataProps {
 export function UserWithData({
     name,
     address,
+    displayAddress,
     imageUrl,
     size = "sm",
     variant = "full",
@@ -241,19 +248,27 @@ export function UserWithData({
     chainName = NEAR_NETWORK_ID,
     highlightQuery,
 }: UserWithDataProps) {
-    const explorerUrl = getExplorerAddressUrl(chainName, address);
+    const bareAddress = stripNearComAddressPrefix(address);
+    const visibleAddress = displayAddress ?? address;
+    const explorerUrl = getExplorerAddressUrl(chainName, bareAddress);
     const showAvatar = variant !== "details";
     const showDetails = variant !== "avatar";
 
     // When there is no distinct display name, show the address once (never twice).
-    const nameIsAddress = isSameAccountLabel(name, address);
+    // Treat bare account and nearcom:-prefixed display as the same label so the
+    // prefixed form is shown instead of hiding behind the bare id.
+    const nameIsAddress =
+        isSameAccountLabel(name, address) ||
+        isSameAccountLabel(name, visibleAddress) ||
+        isSameAccountLabel(name, bareAddress);
+    const primaryText = nameIsAddress ? visibleAddress : name;
 
     const content = (
         <>
             {showAvatar && (
                 <UserAvatar
                     name={name}
-                    address={address}
+                    address={visibleAddress}
                     imageUrl={imageUrl}
                     size={size}
                 />
@@ -263,13 +278,13 @@ export function UserWithData({
                     {nameIsAddress ? (
                         highlightQuery ? (
                             <HighlightedText
-                                text={address}
+                                text={primaryText}
                                 query={highlightQuery}
                                 className="font-medium max-w-full text-sm truncate"
                             />
                         ) : (
                             <Address
-                                address={address}
+                                address={primaryText}
                                 className="font-medium max-w-full text-sm"
                             />
                         )
@@ -282,13 +297,13 @@ export function UserWithData({
                             />
                             {highlightQuery ? (
                                 <HighlightedText
-                                    text={address}
+                                    text={visibleAddress}
                                     query={highlightQuery}
                                     className="text-xs text-muted-foreground truncate max-w-full"
                                 />
                             ) : (
                                 <Address
-                                    address={address}
+                                    address={visibleAddress}
                                     className="text-xs text-muted-foreground max-w-full"
                                 />
                             )}
@@ -315,8 +330,9 @@ export function UserWithData({
     if (withHoverCard) {
         return (
             <TooltipUser
-                accountId={address}
+                accountId={bareAddress}
                 name={name}
+                displayAddress={displayAddress}
                 chainName={chainName}
                 triggerProps={{ asChild: false }}
             >
@@ -342,6 +358,8 @@ const TOOLTIP_ACTION_ICON_CLASS = "size-[13.25px]";
 interface TooltipUserProps {
     accountId: string;
     name?: string;
+    /** Copied / shown in the card when set (e.g. nearcom: prefix). */
+    displayAddress?: string;
     chainName?: string;
     /** Prefer address-book name in the tooltip User (request details). */
     preferAddressBook?: boolean;
@@ -352,6 +370,7 @@ interface TooltipUserProps {
 export function TooltipUser({
     accountId,
     name,
+    displayAddress,
     chainName = NEAR_NETWORK_ID,
     preferAddressBook = false,
     children,
@@ -359,8 +378,9 @@ export function TooltipUser({
 }: TooltipUserProps) {
     const t = useTranslations("user");
     const { treasuryId, isGuestTreasury } = useTreasury();
+    const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading: isProfileLoading } =
-        useProfile(accountId);
+        useProfile(bareAccountId);
     const isSavedInAddressBook = profile?.isInAddressBook ?? false;
     const resolvedName = resolveUserDisplayName({
         accountId,
@@ -371,15 +391,16 @@ export function TooltipUser({
     });
     const addressBookParams = new URLSearchParams({
         name: resolveUserDisplayName({
-            accountId,
+            accountId: bareAccountId,
             name,
             profileName: profile?.name,
             addressBookName: profile?.addressBookName,
             preferAddressBook,
         }),
-        address: accountId,
+        address: bareAccountId,
     });
     addressBookParams.set("network", chainName);
+    const copyText = displayAddress ?? bareAccountId;
 
     const addToAddressBookUrl = treasuryId
         ? `/${treasuryId}/address-book?${addressBookParams.toString()}`
@@ -445,7 +466,7 @@ export function TooltipUser({
                                 </Button>
                             )}
                         <CopyButton
-                            text={accountId}
+                            text={copyText}
                             variant="ghost"
                             className={TOOLTIP_ACTION_CLASS}
                             iconClassName={TOOLTIP_ACTION_ICON_CLASS}
@@ -472,6 +493,11 @@ interface UserProps {
     accountId: string;
     /** Override the display name instead of fetching from profile */
     name?: string;
+    /**
+     * Visual address override (e.g. `nearcom:…`). Does not affect profile
+     * lookup or explorer links.
+     */
+    displayAddress?: string;
     variant?: UserVariant;
     size?: UserSize;
     withLink?: boolean;
@@ -489,6 +515,7 @@ interface UserProps {
 export function User({
     accountId,
     name: nameProp,
+    displayAddress,
     variant = "full",
     size = "sm",
     withLink = true,
@@ -497,14 +524,15 @@ export function User({
     preferAddressBook = false,
     highlightQuery,
 }: UserProps) {
-    const { data: profile, isLoading } = useProfile(accountId);
+    const bareAccountId = stripNearComAddressPrefix(accountId);
+    const { data: profile, isLoading } = useProfile(bareAccountId);
 
     if (isLoading && !normalizeDisplayName(nameProp)) {
         return <UserSkeleton variant={variant} size={size} />;
     }
 
     const resolvedName = resolveUserDisplayName({
-        accountId,
+        accountId: bareAccountId,
         name: nameProp,
         profileName: profile?.name,
         addressBookName: profile?.addressBookName,
@@ -514,7 +542,8 @@ export function User({
     return (
         <UserWithData
             name={resolvedName}
-            address={accountId}
+            address={bareAccountId}
+            displayAddress={displayAddress}
             imageUrl={resolveProfileImageUrl(profile?.image)}
             size={size}
             variant={variant}

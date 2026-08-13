@@ -41,6 +41,7 @@ import { Tooltip } from "@/components/tooltip";
 import { Address } from "@/components/address";
 import { toast } from "sonner";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 
 interface ReviewPaymentsStepProps extends StepProps {
     initialPaymentData: BulkPaymentData[];
@@ -456,9 +457,10 @@ export function ReviewPaymentsStep({
                                                                     )}
 
                                                                     <Address
-                                                                        address={
-                                                                            payment.recipient
-                                                                        }
+                                                                        address={formatRecipientForNearComDestination(
+                                                                            payment.recipient,
+                                                                            destinationNetworkId,
+                                                                        )}
                                                                         className={cn(
                                                                             "min-w-0",
                                                                             contact

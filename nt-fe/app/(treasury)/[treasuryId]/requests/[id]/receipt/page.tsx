@@ -14,6 +14,7 @@ import { NetworkIconDisplay } from "@/components/token-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LANDING_PAGE } from "@/constants/config";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { StatusPill } from "@/features/proposals/components/proposal-status-pill";
 import type { BatchPaymentRequestData } from "@/features/proposals/types/index";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
@@ -682,7 +683,10 @@ function BatchReceiptCard({
             >
                 <PaymentReceiptSections
                     recipientAddress={{
-                        value: batchPayment.recipient,
+                        value: formatRecipientForNearComDestination(
+                            batchPayment.recipient,
+                            destinationAssetId,
+                        ),
                         isLoading: false,
                     }}
                     sourceToken={batchTokenInfo}
@@ -1177,7 +1181,12 @@ export default function RequestReceiptPage({
                     ) : (
                         <PaymentReceiptSections
                             recipientAddress={{
-                                value: receiverAddress ?? null,
+                                value: receiverAddress
+                                    ? formatRecipientForNearComDestination(
+                                          receiverAddress,
+                                          destinationTokenId,
+                                      )
+                                    : null,
                                 isLoading: false,
                             }}
                             sourceToken={sourceTokenInfo}

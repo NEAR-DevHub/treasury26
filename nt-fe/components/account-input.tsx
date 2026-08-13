@@ -15,6 +15,7 @@ import {
 import { translateNearValidationError } from "@/lib/near-validation-i18n";
 import type { BlockchainType } from "@/lib/blockchain-utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 
 /**
  * Unified Account Input Component
@@ -93,7 +94,8 @@ const AccountInput = ({
     // NEAR full validation (format + blockchain check)
     const validateNearFull = useCallback(
         async (address: string) => {
-            if (!address || address.trim() === "") {
+            const bareAddress = stripNearComAddressPrefix(address);
+            if (!bareAddress) {
                 resetValidation();
                 return;
             }
@@ -101,7 +103,7 @@ const AccountInput = ({
             updateValidationState(true);
             setHasValidated(false); // Reset validation state
             try {
-                const errorCode = await validateNearAddress(address);
+                const errorCode = await validateNearAddress(bareAddress);
                 setValidationError(
                     errorCode
                         ? translateNearValidationError(t, errorCode)
@@ -134,9 +136,10 @@ const AccountInput = ({
             return;
         }
 
-        // NEAR validation (async)
+        // NEAR validation (async) — nearcom: is display/routing only.
         if (isNear) {
-            if (!isValidNearAddressFormat(value)) {
+            const bareAddress = stripNearComAddressPrefix(value);
+            if (!isValidNearAddressFormat(bareAddress)) {
                 setValidationError(t("invalidNearFormat"));
                 setIsValid(false);
                 setHasValidated(false);
@@ -203,10 +206,11 @@ const AccountInput = ({
 
         // Immediate validation feedback for NEAR
         if (isNear) {
+            const bareVal = stripNearComAddressPrefix(val);
             setHasValidated(false);
-            if (!val) {
+            if (!bareVal) {
                 resetValidation();
-            } else if (!isValidNearAddressFormat(val)) {
+            } else if (!isValidNearAddressFormat(bareVal)) {
                 setValidationError(t("invalidNearFormat"));
                 setIsValid(false);
                 updateValidationState(false);
