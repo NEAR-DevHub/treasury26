@@ -118,6 +118,7 @@ export function MemberReviewStep({
                                             accountId={member.accountId}
                                             variant="details"
                                             withLink={false}
+                                            truncateAddress={false}
                                         />
                                     ) : (
                                         <span className="font-medium break-all">

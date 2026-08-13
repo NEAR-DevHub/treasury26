@@ -195,6 +195,8 @@ interface UserWithDataProps {
     chainName?: string;
     /** When set, matching substrings in name/address are highlighted. */
     highlightQuery?: string;
+    /** When false, show the full address (no middle ellipsis). Default true. */
+    truncateAddress?: boolean;
 }
 
 export function UserWithData({
@@ -207,6 +209,7 @@ export function UserWithData({
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
     highlightQuery,
+    truncateAddress = true,
 }: UserWithDataProps) {
     const explorerUrl = getExplorerAddressUrl(chainName, address);
     const showAvatar = variant !== "details";
@@ -214,6 +217,42 @@ export function UserWithData({
 
     // When there is no distinct display name, show the address once (never twice).
     const nameIsAddress = isSameAccountLabel(name, address);
+
+    const addressNode = truncateAddress ? (
+        highlightQuery ? (
+            <HighlightedText
+                text={address}
+                query={highlightQuery}
+                className={cn(
+                    "max-w-full",
+                    nameIsAddress
+                        ? "font-medium text-sm truncate"
+                        : "text-xs text-muted-foreground truncate",
+                )}
+            />
+        ) : (
+            <Address
+                address={address}
+                className={cn(
+                    "max-w-full",
+                    nameIsAddress
+                        ? "font-medium text-sm"
+                        : "text-xs text-muted-foreground",
+                )}
+            />
+        )
+    ) : (
+        <span
+            className={cn(
+                "max-w-full break-all",
+                nameIsAddress
+                    ? "font-medium text-sm"
+                    : "text-xs text-muted-foreground",
+            )}
+        >
+            {address}
+        </span>
+    );
 
     const content = (
         <>
@@ -226,20 +265,16 @@ export function UserWithData({
                 />
             )}
             {showDetails && (
-                <div className="flex flex-col items-start min-w-0 max-w-[min(100%,15rem)] md:max-w-[min(100%,20rem)]">
+                <div
+                    className={cn(
+                        "flex flex-col items-start min-w-0",
+                        truncateAddress
+                            ? "max-w-[min(100%,15rem)] md:max-w-[min(100%,20rem)]"
+                            : "max-w-full",
+                    )}
+                >
                     {nameIsAddress ? (
-                        highlightQuery ? (
-                            <HighlightedText
-                                text={address}
-                                query={highlightQuery}
-                                className="font-medium max-w-full text-sm truncate"
-                            />
-                        ) : (
-                            <Address
-                                address={address}
-                                className="font-medium max-w-full text-sm"
-                            />
-                        )
+                        addressNode
                     ) : (
                         <>
                             <HighlightedText
@@ -247,18 +282,7 @@ export function UserWithData({
                                 query={highlightQuery}
                                 className="font-medium truncate max-w-full text-sm"
                             />
-                            {highlightQuery ? (
-                                <HighlightedText
-                                    text={address}
-                                    query={highlightQuery}
-                                    className="text-xs text-muted-foreground truncate max-w-full"
-                                />
-                            ) : (
-                                <Address
-                                    address={address}
-                                    className="text-xs text-muted-foreground max-w-full"
-                                />
-                            )}
+                            {addressNode}
                         </>
                     )}
                 </div>
@@ -398,6 +422,8 @@ interface UserProps {
     preferAddressBook?: boolean;
     /** When set, matching substrings in name/address are highlighted. */
     highlightQuery?: string;
+    /** When false, show the full address (no middle ellipsis). Default true. */
+    truncateAddress?: boolean;
 }
 
 export function User({
@@ -410,6 +436,7 @@ export function User({
     chainName = NEAR_NETWORK_ID,
     preferAddressBook = false,
     highlightQuery,
+    truncateAddress = true,
 }: UserProps) {
     const { data: profile, isLoading } = useProfile(accountId);
 
@@ -436,6 +463,7 @@ export function User({
             withHoverCard={withHoverCard}
             chainName={chainName}
             highlightQuery={highlightQuery}
+            truncateAddress={truncateAddress}
         />
     );
 }

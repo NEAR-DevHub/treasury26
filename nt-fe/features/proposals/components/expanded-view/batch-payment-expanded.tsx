@@ -17,6 +17,7 @@ import { ArrowUpRight, ChevronDown, FileText, SearchX } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { getTransactionExplorerLink } from "@/lib/blockchain-utils";
 import { cn } from "@/lib/utils";
+import { Address } from "@/components/address";
 import { User } from "@/components/user";
 import Link from "next/link";
 import { StatusPill } from "../proposal-status-pill";
@@ -91,6 +92,7 @@ function PaymentDisplay({
                 <User
                     accountId={payment.recipient}
                     chainName={chainName}
+                    withHoverCard
                     preferAddressBook
                 />
             ),
@@ -146,12 +148,7 @@ function PaymentDisplay({
                     {t("recipientNumber", { number })}
                 </div>
                 <div className="hidden md:flex gap-3 items-baseline text-sm text-muted-foreground">
-                    <User
-                        accountId={payment.recipient}
-                        variant="details"
-                        withLink={false}
-                        preferAddressBook
-                    />
+                    <Address address={payment.recipient} />
                     <Amount
                         amount={payment.amount.toString()}
                         textOnly

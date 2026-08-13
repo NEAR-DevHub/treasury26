@@ -1,15 +1,13 @@
 import { useTranslations } from "next-intl";
 import { Shield } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import {
     PaymentRequestData,
     VestingData,
     StakingData,
 } from "../../types/index";
 import { Amount } from "../amount";
-import { resolveUserDisplayName, TooltipUser } from "@/components/user";
+import { TooltipUser } from "@/components/user";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
-import { useProfile } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { Tooltip } from "@/components/tooltip";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
@@ -47,13 +45,6 @@ export function TokenCell({
             nearFt={nearFt}
         />
     );
-    const { data: profile } = useProfile(data.receiver);
-    const displayName = resolveUserDisplayName({
-        accountId: data.receiver,
-        profileName: profile?.name,
-    });
-    const nameIsAddress =
-        displayName.trim().toLowerCase() === data.receiver.trim().toLowerCase();
     const destinationAssetId =
         "destinationAssetId" in data ? data.destinationAssetId : undefined;
     const showConfidentialAddressShield =
@@ -77,23 +68,17 @@ export function TokenCell({
                     chainName={destinationAssetId}
                 >
                     <div className="ml-1 min-w-0 flex-1 overflow-hidden">
-                        {nameIsAddress ? (
-                            <Address
-                                address={data.receiver}
-                                prefixLength={6}
-                                suffixLength={6}
-                                className="min-w-0 truncate"
-                            />
-                        ) : (
-                            <span className="min-w-0 truncate block">
-                                {displayName}
-                            </span>
-                        )}
+                        <Address
+                            address={data.receiver}
+                            prefixLength={6}
+                            suffixLength={6}
+                            className="min-w-0 truncate"
+                        />
                     </div>
                 </TooltipUser>
             ) : (
                 <span className="ml-1 min-w-0 flex-1 truncate">
-                    {displayName}
+                    {data.receiver}
                 </span>
             )}
         </div>
