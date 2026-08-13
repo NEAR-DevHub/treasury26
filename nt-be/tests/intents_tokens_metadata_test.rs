@@ -106,11 +106,11 @@ async fn test_intents_tokens_metadata_discovery() {
         println!("✓ ETH metadata correct");
     }
 
-    // BTC
+    // Legacy OMFT BTC (near.com `btc-legacy` / "BTC (Legacy)")
     if let Some(btc) = token_map.get("intents.near:nep141:btc.omft.near") {
-        assert_eq!(btc.token_symbol.as_deref(), Some("BTC"));
+        assert_eq!(btc.token_symbol.as_deref(), Some("BTC (Legacy)"));
         assert_eq!(btc.token_decimals, Some(8));
-        println!("✓ BTC metadata correct");
+        println!("✓ BTC (Legacy) metadata correct");
     }
 
     // USDC (optional - not all blocks have this token)
