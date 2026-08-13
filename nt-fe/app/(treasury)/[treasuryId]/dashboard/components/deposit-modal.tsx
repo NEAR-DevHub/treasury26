@@ -45,6 +45,7 @@ import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
+import { withNearComAddressPrefix } from "@/lib/nearcom-address";
 import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { DepositAckPanel } from "./deposit/deposit-ack-panel";
@@ -777,7 +778,8 @@ export function DepositModal({
             return;
         }
         setDepositInfo({
-            address: treasuryId,
+            // Trezu / near.com confidential deposits use a nearcom: recipient.
+            address: withNearComAddressPrefix(treasuryId),
             memo: null,
             minDepositAmount: null,
             expiresAtMs: null,

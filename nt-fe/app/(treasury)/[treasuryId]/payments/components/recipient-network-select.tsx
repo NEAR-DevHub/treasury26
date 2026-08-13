@@ -19,6 +19,7 @@ import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { isValidAddress } from "@/lib/address-validation";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import { parseNearComAddress } from "@/lib/nearcom-address";
 import { isValidNearAddressFormat } from "@/lib/near-validation";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
@@ -72,17 +73,28 @@ export type RecipientNetworkRuleOption = RecipientNetworkOption & {
 function isAddressCompatibleWithNetwork(
     address: string,
     networkName: string,
+    optionId?: string,
 ): boolean {
     if (!address) return true;
+    const { hasPrefix, accountId } = parseNearComAddress(address);
+
+    // near.com only for nearcom:<validNear>. Never compatible otherwise.
+    if (optionId === NEAR_COM_NETWORK_ID) {
+        return hasPrefix && !!accountId && isValidNearAddressFormat(accountId);
+    }
+
+    // Original per-chain format checks (ignore nearcom: — that route is above).
+    if (hasPrefix) return false;
+
     const blockchain = getBlockchainType(networkName);
     if (blockchain === "unknown") {
         return false;
     }
     if (blockchain === NEAR_NETWORK_ID) {
         // NEAR full check is async; sync format check is enough for sectioning.
-        return isValidNearAddressFormat(address);
+        return isValidNearAddressFormat(accountId);
     }
-    return isValidAddress(address, blockchain);
+    return isValidAddress(accountId, blockchain);
 }
 
 function NetworkRow({
@@ -211,23 +223,34 @@ export function RecipientNetworkSelect({
     }, [bridgeAssetMatch, isConfidential, t, token]);
 
     const availableOptions = useMemo(() => {
-        const options = isConfidential
-            ? [...tokenNetworkOptions, nearComOption]
-            : tokenNetworkOptions;
-        return [...options].sort((a, b) => a.name.localeCompare(b.name));
-    }, [isConfidential, nearComOption, tokenNetworkOptions]);
+        const { hasPrefix, accountId } = parseNearComAddress(recipient);
+        const isNearComRecipient =
+            hasPrefix && !!accountId && isValidNearAddressFormat(accountId);
+
+        // nearcom:<validNear> → near.com only (confidential). No near.com otherwise.
+        if (isNearComRecipient) {
+            return isConfidential ? [nearComOption] : [];
+        }
+
+        return [...tokenNetworkOptions].sort((a, b) =>
+            a.name.localeCompare(b.name),
+        );
+    }, [isConfidential, nearComOption, recipient, tokenNetworkOptions]);
 
     const selectedOption = useMemo(() => {
         if (!value) return null;
-        if (value === NEAR_COM_NETWORK_ID) return nearComOption;
         return availableOptions.find((o) => o.id === value) ?? null;
-    }, [availableOptions, nearComOption, value]);
+    }, [availableOptions, value]);
 
     const enrichedOptions = useMemo(() => {
         return availableOptions.map((option) => ({
             ...option,
             isCompatible: requireRecipient
-                ? isAddressCompatibleWithNetwork(recipient, option.networkName)
+                ? isAddressCompatibleWithNetwork(
+                      recipient,
+                      option.networkName,
+                      option.id,
+                  )
                 : true,
         }));
     }, [availableOptions, recipient, requireRecipient]);
@@ -261,31 +284,24 @@ export function RecipientNetworkSelect({
         ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
         : isBridgeAssetsLoading || availableOptions.length === 0;
 
-    // Clear on address wipe (non-empty → empty) or incompatible format.
-    // Do not clear on initial empty address — URL deep links prefill
-    // destination before recipient, and that fought the page seed in a loop.
+    // Only clear when the user wipes the address. Do not clear on
+    // incompatible network during typing — the payments page reseeds
+    // destination from address shape, and clear↔seed loops hard.
+    // Keep onChange in a ref so an inline parent callback can't re-fire this.
     const hadRecipientRef = useRef(false);
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
     useEffect(() => {
         if (!requireRecipient) return;
         if (recipient) {
             hadRecipientRef.current = true;
-        } else if (hadRecipientRef.current && value) {
-            hadRecipientRef.current = false;
-            onChange("");
             return;
         }
-        if (!value || !recipient) return;
-        if (availableOptions.length === 0) return;
-        if (compatibleOptions.some((o) => o.id === value)) return;
-        onChange("");
-    }, [
-        value,
-        recipient,
-        availableOptions,
-        compatibleOptions,
-        onChange,
-        requireRecipient,
-    ]);
+        if (hadRecipientRef.current && value) {
+            hadRecipientRef.current = false;
+            onChangeRef.current("");
+        }
+    }, [recipient, value, requireRecipient]);
 
     const placeholderText = requireRecipient
         ? !recipient

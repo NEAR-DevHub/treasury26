@@ -25,6 +25,7 @@ import { Proposal } from "@/lib/proposals-api";
 import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { NetworkIconDisplay } from "@/components/token-display";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { useDestinationNetworkMeta } from "../../hooks/use-destination-network-meta";
 import { useRequestDisplayContext } from "./common/request-display-context";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -47,6 +48,8 @@ interface PaymentDisplayProps {
     proposalId: number;
     showReceiptButton: boolean;
     chainName: string;
+    /** Receive network — only `near.com` gets a nearcom: display prefix. */
+    destinationAssetId?: string;
 }
 
 const paymentStatusToText = (status: PaymentStatus): "Pending" | "Paid" => {
@@ -68,6 +71,7 @@ function PaymentDisplay({
     proposalId,
     showReceiptButton,
     chainName,
+    destinationAssetId,
 }: PaymentDisplayProps) {
     const t = useTranslations("proposals.expanded");
     const tReceipt = useTranslations("receiptPage");
@@ -75,6 +79,10 @@ function PaymentDisplay({
     const status = paymentStatusToText(payment.status);
     const isPaid = status === "Paid";
     const resolvedAmountTokenId = amountTokenId || tokenId;
+    const displayRecipient = formatRecipientForNearComDestination(
+        payment.recipient,
+        destinationAssetId,
+    );
     const { data: txData } = useBulkPaymentTransactionHash(
         isPaid ? batchId : null,
         isPaid ? payment.recipient : null,
@@ -90,6 +98,7 @@ function PaymentDisplay({
             value: (
                 <User
                     accountId={payment.recipient}
+                    displayAddress={displayRecipient}
                     chainName={chainName}
                     preferAddressBook
                 />
@@ -148,6 +157,7 @@ function PaymentDisplay({
                 <div className="hidden md:flex gap-3 items-baseline text-sm text-muted-foreground">
                     <User
                         accountId={payment.recipient}
+                        displayAddress={displayRecipient}
                         variant="details"
                         withLink={false}
                         preferAddressBook
@@ -380,6 +390,7 @@ export function BatchPaymentExpandedView({
                             proposalId={proposalId ?? 0}
                             showReceiptButton={showReceiptButton}
                             chainName={recipientChainName}
+                            destinationAssetId={destinationAssetId}
                         />
                     ))}
                 </div>
@@ -480,6 +491,7 @@ export function BatchPaymentRequestExpanded({
             batchId={data.batchId}
             proposalId={proposal.id}
             showReceiptButton={showReceiptButton}
+            destinationAssetId={data.destinationAssetId}
         />
     );
 }

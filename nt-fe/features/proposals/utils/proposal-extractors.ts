@@ -676,15 +676,22 @@ export function extractBatchPaymentRequestData(
         batchId = String(args.msg) || "";
     }
 
-    // Extract notes and URL from proposal description (same as single payments)
+    // Extract notes and URL from proposal description (same as single payments).
+    // Public bulk does not currently persist destinationNetwork (unlike single
+    // payment). Destination picker + near.com routing are confidential-only.
     const notes = decodeProposalDescription("notes", proposal.description);
     const title = decodeProposalDescription("title", proposal.description);
+    const destinationAssetId = decodeProposalDescription(
+        "destinationNetwork",
+        proposal.description,
+    );
 
     return {
         tokenId,
         totalAmount,
         batchId,
         notes: title ? title : notes,
+        ...(destinationAssetId ? { destinationAssetId } : {}),
     };
 }
 

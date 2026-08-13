@@ -12,6 +12,7 @@ import { NetworkIconDisplay } from "@/components/token-display";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useDestinationNetworkMeta } from "../../hooks/use-destination-network-meta";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import {
     formatCurrencyWithSubCent,
     formatTokenDisplayAmount,
@@ -41,11 +42,6 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
         originTokenId: data.tokenId,
         originNetwork: tokenChainName,
         originChainIcons: tokenData?.chainIcons,
-        nearComRoute: {
-            depositAddress: data.depositAddress,
-            quoteSignature: data.quoteSignature,
-            networkFee: data.networkFee,
-        },
     });
     const hasFeeData = !!data.networkFee;
     const shouldLoadQuoteUsd =
@@ -67,12 +63,18 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
             ? formatCurrencyWithSubCent(Number(amountUsdFromQuote))
             : null;
 
+    const displayReceiver = formatRecipientForNearComDestination(
+        data.receiver,
+        data.destinationAssetId,
+    );
+
     const infoItems: InfoItem[] = [
         {
             label: t("recipient"),
             value: (
                 <User
                     accountId={data.receiver}
+                    displayAddress={displayReceiver}
                     chainName={recipientChainName}
                     withHoverCard
                     preferAddressBook

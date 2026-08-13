@@ -65,6 +65,8 @@ interface UploadDataStepProps {
      * validation falls back to the selected token's own network.
      */
     destinationNetwork?: string;
+    /** Network option id — `near.com` stores recipients with a nearcom: prefix. */
+    destinationNetworkId?: string;
     /**
      * Destination intents asset id (e.g. "nep141:arb-...omft.near") used for
      * fee estimation in confidential bulk where source token chain differs
@@ -80,6 +82,7 @@ export function UploadDataStep({
     isConfidential = false,
     networkSlot,
     destinationNetwork,
+    destinationNetworkId,
     destinationAssetId,
 }: UploadDataStepProps) {
     const t = useTranslations("bulkPayment.upload");
@@ -244,6 +247,7 @@ export function UploadDataStep({
                     parsingLabels,
                     selectedToken,
                     destinationNetwork,
+                    destinationNetworkId,
                 );
             } else {
                 result = parseAndValidatePasteData(
@@ -251,6 +255,7 @@ export function UploadDataStep({
                     parsingLabels,
                     selectedToken,
                     destinationNetwork,
+                    destinationNetworkId,
                 );
             }
 

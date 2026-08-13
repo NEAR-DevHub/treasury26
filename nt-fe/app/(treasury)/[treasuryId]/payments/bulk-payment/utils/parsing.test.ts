@@ -100,4 +100,38 @@ describe("parseAndValidateCsv destination network", () => {
         expect(result.errors.length).toBeGreaterThan(0);
         expect(result.errors[0]?.message.toLowerCase()).toContain("eth");
     });
+
+    it("requires nearcom: prefix for near.com destination", () => {
+        const bare = parseAndValidateCsv(
+            nearCsv,
+            parsingLabels,
+            { symbol: "USDC", network: "near", residency: "intents" },
+            "near",
+            "near.com",
+        );
+        expect(bare.payments).toHaveLength(0);
+        expect(bare.errors.length).toBeGreaterThan(0);
+
+        const prefixed = parseAndValidateCsv(
+            `recipient,amount\nnearcom:alice.near,10`,
+            parsingLabels,
+            { symbol: "USDC", network: "near", residency: "intents" },
+            "near",
+            "near.com",
+        );
+        expect(prefixed.errors).toEqual([]);
+        expect(prefixed.payments[0]?.recipient).toBe("nearcom:alice.near");
+    });
+
+    it("rejects nearcom: when destination is not near.com", () => {
+        const result = parseAndValidateCsv(
+            `recipient,amount\nnearcom:alice.near,10`,
+            parsingLabels,
+            { symbol: "USDC", network: "near", residency: "intents" },
+            "near",
+            "near",
+        );
+        expect(result.payments).toHaveLength(0);
+        expect(result.errors.length).toBeGreaterThan(0);
+    });
 });

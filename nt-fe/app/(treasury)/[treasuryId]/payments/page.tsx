@@ -28,7 +28,7 @@ import { Textarea } from "@/components/textarea";
 import { Tooltip } from "@/components/tooltip";
 import { type Token, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
-import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { default_near_token, default_usdc_near_token } from "@/constants/token";
 import { useAddressBook } from "@/features/address-book";
 import {
@@ -60,6 +60,10 @@ import {
     isEthImplicitNearAddress,
     isValidNearAddressFormat,
 } from "@/lib/near-validation";
+import {
+    hasNearComAddressPrefix,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { useNear } from "@/stores/near-store";
 import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
 import { PaymentFormSection } from "./components/payment-form-section";
@@ -766,15 +770,6 @@ export default function PaymentsPage() {
         !exactTokenNetworkId &&
         !isNativeNearPrefill;
 
-    const prefersNearCom = useMemo(
-        () =>
-            preferredNetworks.some(
-                (network) =>
-                    network.trim().toLowerCase() === NEAR_COM_NETWORK_ID,
-            ),
-        [preferredNetworks],
-    );
-
     const preferredBlockchainTypes = useMemo(() => {
         const set = new Set<string>();
         for (const network of preferredNetworks) {
@@ -864,7 +859,10 @@ export default function PaymentsPage() {
     const isWatchedNearFtToken =
         watchedTokenClassification?.isNearFtToken ?? false;
 
-    const normalizedWatchedAddress = watchedAddress.trim().toLowerCase();
+    // Strip nearcom: for format checks only — prefix is routing/display.
+    const normalizedWatchedAddress = stripNearComAddressPrefix(
+        watchedAddress ?? "",
+    ).toLowerCase();
     const isWatchedEthImplicit = isEthImplicitNearAddress(
         normalizedWatchedAddress,
     );
@@ -1041,24 +1039,56 @@ export default function PaymentsPage() {
     const compatibleDestination = useMemo(() => {
         if (!watchedToken) return null;
 
-        // Soft near.com / Ft / native NEAR → NEAR or near.com destination.
-        if (prefersNearCom || isFtNetworkPrefill || isNativeNearPrefill) {
-            return nearChainDestination(prefersNearCom || isConfidential);
+        const rawAddress = (watchedAddress ?? "").trim();
+        const bareRecipient = stripNearComAddressPrefix(rawAddress);
+        // nearcom: + any valid NEAR format (incl. eth-implicit 0x…).
+        const isNearComRecipient =
+            isConfidential &&
+            hasNearComAddressPrefix(rawAddress) &&
+            !!bareRecipient &&
+            isValidNearAddressFormat(bareRecipient);
+
+        // Only auto-destination: confidential nearcom:<near> → near.com.
+        // Plain NEAR / eth / etc. keep the original picker compatibility path
+        // (no force-to-near).
+        if (isNearComRecipient) {
+            return {
+                id: NEAR_COM_NETWORK_ID,
+                networkName: NEAR_NETWORK_ID,
+            };
+        }
+
+        // Soft Ft / native NEAR → NEAR destination when recipient is empty.
+        // Never soft-seed near.com (including prefersNearCom / confidential).
+        if (isFtNetworkPrefill || isNativeNearPrefill) {
+            if (rawAddress) return null;
+            return nearChainDestination();
         }
 
         // Multiple soft chain prefs (address book) — leave destination empty.
         if (hasAmbiguousSoftNetworks) return null;
 
+        // Soft multi-chain prefs: only when recipient is empty. Typing an
+        // address must not keep re-resolving preferred destination.
+        if (rawAddress) return null;
+
         if (preferredNetworks.length === 0 || bridgeAssets.length === 0) {
             return null;
         }
+
+        // `networks=near.com` alone is not a bridge id — near.com is selected
+        // only via a nearcom: address (above).
+        const bridgePreferred = preferredNetworks.filter(
+            (network) => network.trim().toLowerCase() !== NEAR_COM_NETWORK_ID,
+        );
+        if (bridgePreferred.length === 0) return null;
 
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
 
         return resolvePreferredDestinationNetwork(
             bridgeAsset,
-            preferredNetworks,
+            bridgePreferred,
             preferredBlockchainTypes,
         );
     }, [
@@ -1066,7 +1096,7 @@ export default function PaymentsPage() {
         preferredNetworks,
         preferredBlockchainTypes,
         watchedToken,
-        prefersNearCom,
+        watchedAddress,
         hasAmbiguousSoftNetworks,
         isFtNetworkPrefill,
         isNativeNearPrefill,
@@ -1155,16 +1185,32 @@ export default function PaymentsPage() {
     }, [urlOverrideToken, form, tokenParam, preferredNetworks.length]);
 
     useEffect(() => {
-        if (!compatibleDestinationId || !compatibleDestinationName) return;
-        if (watchedDestinationNetwork === compatibleDestinationId) return;
-        // Prefer URL-resolved destination over a stale/empty selection.
+        const rawAddress = (watchedAddress ?? "").trim();
+        const bareRecipient = stripNearComAddressPrefix(rawAddress);
+        const isNearComRecipient =
+            isConfidential &&
+            hasNearComAddressPrefix(rawAddress) &&
+            !!bareRecipient &&
+            isValidNearAddressFormat(bareRecipient);
+
+        // Drop stale near.com when the address is no longer nearcom:<near>.
         if (
-            watchedDestinationNetwork &&
-            preferredNetworks.length === 0 &&
-            !prefersNearCom
+            isNearComNetwork(watchedDestinationNetwork) &&
+            !isNearComRecipient
         ) {
+            form.setValue("destinationNetwork", "", { shouldDirty: true });
+            form.setValue("destinationNetworkName", "", { shouldDirty: true });
             return;
         }
+
+        if (!compatibleDestinationId || !compatibleDestinationName) return;
+        if (watchedDestinationNetwork === compatibleDestinationId) return;
+
+        // Soft/URL prefs only fill an empty destination. nearcom: may overwrite.
+        if (!isNearComRecipient && watchedDestinationNetwork) {
+            return;
+        }
+
         form.setValue("destinationNetwork", compatibleDestinationId, {
             shouldDirty: true,
         });
@@ -1176,12 +1222,16 @@ export default function PaymentsPage() {
         compatibleDestinationName,
         form,
         watchedDestinationNetwork,
-        preferredNetworks.length,
-        prefersNearCom,
+        watchedAddress,
+        isConfidential,
     ]);
 
+    // Prefill from ?address= once. Re-applying on every empty value fought the
+    // recipient wipe clearer and bounced destination seed.
+    const didSeedDefaultAddressRef = useRef(false);
     useEffect(() => {
-        if (!defaultAddress) return;
+        if (!defaultAddress || didSeedDefaultAddressRef.current) return;
+        didSeedDefaultAddressRef.current = true;
         if (form.getValues("address") === defaultAddress) return;
         form.setValue("address", defaultAddress, {
             shouldDirty: true,
@@ -1208,12 +1258,15 @@ export default function PaymentsPage() {
 
         try {
             const proposalBond = policy?.proposal_bond || "0";
+            // Form may include nearcom: (routing/display). 1Click gets bare via
+            // buildIntentsQuoteRequest; direct transfers use bareAddress.
             const trimmedAddress = data.address.trim();
+            const bareAddress = stripNearComAddressPrefix(trimmedAddress);
             const tokenClassification = classifyPaymentToken(
                 token,
                 data.destinationNetwork,
             );
-            const normalizedNearAddress = trimmedAddress.toLowerCase();
+            const normalizedNearAddress = bareAddress.toLowerCase();
             const { isNearNativeToken, isNearFtToken, isNearComRoute } =
                 tokenClassification;
 
@@ -1353,7 +1406,7 @@ export default function PaymentsPage() {
             } else {
                 // Direct NEAR or NEAR FT transfer
                 proposalKind = buildDirectTransferKind(
-                    trimmedAddress,
+                    bareAddress,
                     token,
                     directTransferAmount,
                     isConfidential,
