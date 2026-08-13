@@ -11,15 +11,23 @@ import {
     Shield,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
-import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
+import Big from "@/lib/big";
+import { cn } from "@/lib/utils";
+import {
+    activityUnitPriceUsd,
+    groupedActivityUnitPriceUsd,
+    isPositiveActivityAmount,
+    unitPriceUsdForAmount,
+} from "../utils/activity-amount";
 import {
     getActivityStatus,
     useGetActivityLabel,
@@ -63,6 +71,14 @@ import { TransactionDetailsModal } from "./transaction-details-modal";
 
 const ITEMS_ON_DASHBOARD = 10;
 const MAX_ITEMS = 100;
+const RECENT_ACTIVITY_SKELETON_IDS = [
+    "recent-activity-skeleton-1",
+    "recent-activity-skeleton-2",
+    "recent-activity-skeleton-3",
+    "recent-activity-skeleton-4",
+    "recent-activity-skeleton-5",
+    "recent-activity-skeleton-6",
+];
 
 const columnHelper = createColumnHelper<GroupedActivity>();
 
@@ -71,7 +87,7 @@ const isStakingReward = (activity: RecentActivityType): boolean => {
     // Must be NEAR token with positive amount
     if (
         activity.tokenId !== NEAR_NETWORK_ID ||
-        parseFloat(activity.amount) <= 0
+        !isPositiveActivityAmount(activity.amount)
     ) {
         return false;
     }
@@ -117,11 +133,8 @@ const groupStakingActivities = (
             // Only group if there are 2 or more transactions from the same pool
             if (group.length >= 2) {
                 const totalAmount = group
-                    .reduce(
-                        (sum, activity) => sum + parseFloat(activity.amount),
-                        0,
-                    )
-                    .toString();
+                    .reduce((sum, activity) => sum.add(activity.amount), Big(0))
+                    .toFixed();
 
                 grouped.push({
                     type: "grouped",
@@ -149,9 +162,9 @@ const groupStakingActivities = (
 export function RecentActivitySkeleton() {
     return (
         <div className="space-y-4 px-4 py-2">
-            {[...Array(6)].map((_, i) => (
+            {RECENT_ACTIVITY_SKELETON_IDS.map((id) => (
                 <div
-                    key={i}
+                    key={id}
                     className="grid grid-cols-[1fr_auto] items-center gap-6 border-b border-border pb-3 last:border-b-0"
                 >
                     <div className="flex items-center gap-3 min-w-0">
@@ -321,7 +334,9 @@ export function RecentActivity() {
 
                     const activity = grouped.activity;
                     const isSwap = !!activity.swap;
-                    const isReceived = parseFloat(activity.amount) > 0;
+                    const isReceived = isPositiveActivityAmount(
+                        activity.amount,
+                    );
                     const activityType = getActivityType(activity);
 
                     return (
@@ -361,11 +376,22 @@ export function RecentActivity() {
                             <div className="flex items-center justify-end min-w-0">
                                 <div className="flex flex-col items-end gap-0.5 min-w-0 flex-1">
                                     <div className="text-sm sm:text-base font-semibold text-general-success-foreground truncate w-full text-right">
-                                        {formatActivityAmount(
-                                            grouped.totalAmount,
-                                        )}{" "}
-                                        {grouped.tokenMetadata?.symbol ??
-                                            grouped.activities[0]?.tokenId}
+                                        <FormattedAmount
+                                            kind="token"
+                                            value={grouped.totalAmount}
+                                            symbol={
+                                                grouped.tokenMetadata?.symbol ??
+                                                grouped.activities[0]?.tokenId
+                                            }
+                                            tokenDecimals={
+                                                grouped.tokenMetadata?.decimals
+                                            }
+                                            unitPriceUsd={groupedActivityUnitPriceUsd(
+                                                grouped.activities,
+                                            )}
+                                            profile="compact"
+                                            signDisplay="always"
+                                        />
                                     </div>
                                     <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                         <FormattedDate
@@ -394,7 +420,9 @@ export function RecentActivity() {
                     }
 
                     const activity = grouped.activity;
-                    const isReceived = parseFloat(activity.amount) > 0;
+                    const isReceived = isPositiveActivityAmount(
+                        activity.amount,
+                    );
 
                     if (activity.swap) {
                         const swap = activity.swap;
@@ -413,10 +441,26 @@ export function RecentActivity() {
                                             {swap.sentAmount &&
                                             swap.sentTokenMetadata ? (
                                                 <span className="font-medium text-foreground hidden sm:inline truncate">
-                                                    {formatSmartAmount(
-                                                        swap.sentAmount,
-                                                    )}{" "}
-                                                    {sentSymbol}
+                                                    <FormattedAmount
+                                                        kind="token"
+                                                        value={swap.sentAmount}
+                                                        symbol={
+                                                            sentSymbol ?? ""
+                                                        }
+                                                        tokenDecimals={
+                                                            swap
+                                                                .sentTokenMetadata
+                                                                .decimals
+                                                        }
+                                                        unitPriceUsd={unitPriceUsdForAmount(
+                                                            swap.sentAmount,
+                                                            swap.sentAmountUsd,
+                                                            swap
+                                                                .sentTokenMetadata
+                                                                .price,
+                                                        )}
+                                                        profile="compact"
+                                                    />
                                                 </span>
                                             ) : (
                                                 <span className="font-medium text-muted-foreground hidden sm:inline">
@@ -434,20 +478,46 @@ export function RecentActivity() {
                                     ) : (
                                         <>
                                             {sentSymbol ? (
-                                                <span className="font-medium text-foreground truncate">
-                                                    {swap.sentAmount}{" "}
-                                                    {sentSymbol}
-                                                </span>
+                                                <FormattedAmount
+                                                    kind="token"
+                                                    value={swap.sentAmount}
+                                                    symbol={sentSymbol}
+                                                    tokenDecimals={
+                                                        swap.sentTokenMetadata
+                                                            ?.decimals
+                                                    }
+                                                    unitPriceUsd={unitPriceUsdForAmount(
+                                                        swap.sentAmount,
+                                                        swap.sentAmountUsd,
+                                                        swap.sentTokenMetadata
+                                                            ?.price,
+                                                    )}
+                                                    profile="compact"
+                                                    className="font-medium text-foreground truncate"
+                                                />
                                             ) : null}
                                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                            <span className="font-medium hidden sm:inline truncate">
-                                                {swap.receivedAmount
-                                                    ? formatSmartAmount(
-                                                          swap.receivedAmount,
-                                                      )
-                                                    : ""}{" "}
-                                                {receivedSymbol}
-                                            </span>
+                                            {swap.receivedAmount ? (
+                                                <FormattedAmount
+                                                    kind="token"
+                                                    value={swap.receivedAmount}
+                                                    symbol={receivedSymbol}
+                                                    tokenDecimals={
+                                                        swap
+                                                            .receivedTokenMetadata
+                                                            .decimals
+                                                    }
+                                                    unitPriceUsd={unitPriceUsdForAmount(
+                                                        swap.receivedAmount,
+                                                        swap.receivedAmountUsd,
+                                                        swap
+                                                            .receivedTokenMetadata
+                                                            .price,
+                                                    )}
+                                                    profile="compact"
+                                                    className="font-medium hidden sm:inline truncate"
+                                                />
+                                            ) : null}
                                             <span className="font-medium text-general-success-foreground sm:hidden truncate">
                                                 {receivedSymbol}
                                             </span>
@@ -493,9 +563,22 @@ export function RecentActivity() {
                                             : "text-foreground",
                                     )}
                                 >
-                                    {formatActivityAmount(activity.amount)}{" "}
-                                    {activity.tokenMetadata?.symbol ??
-                                        activity.tokenId}
+                                    <FormattedAmount
+                                        kind="token"
+                                        value={activity.amount}
+                                        symbol={
+                                            activity.tokenMetadata?.symbol ??
+                                            activity.tokenId
+                                        }
+                                        tokenDecimals={
+                                            activity.tokenMetadata?.decimals
+                                        }
+                                        unitPriceUsd={activityUnitPriceUsd(
+                                            activity,
+                                        )}
+                                        profile="compact"
+                                        signDisplay="always"
+                                    />
                                 </div>
                                 <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                     <FormattedDate
@@ -509,7 +592,7 @@ export function RecentActivity() {
                 },
             }),
         ],
-        [expandedGroups, getActivityFrom, getActivityType, t],
+        [expandedGroups, getActivityFrom, getActivityType, t, tDetails],
     );
 
     const table = useReactTable({
@@ -625,9 +708,8 @@ export function RecentActivity() {
                                             expandedGroups.has(groupId);
 
                                         return (
-                                            <>
+                                            <Fragment key={row.id}>
                                                 <TableRow
-                                                    key={row.id}
                                                     className="group cursor-pointer"
                                                     onClick={() => {
                                                         if (isGroup) {
@@ -705,13 +787,28 @@ export function RecentActivity() {
                                                                     <div className="flex items-center justify-end min-w-0">
                                                                         <div className="flex flex-col items-end gap-0.5 min-w-0 w-full">
                                                                             <div className="text-sm sm:text-base font-semibold text-general-success-foreground truncate w-full text-right">
-                                                                                {formatActivityAmount(
-                                                                                    activity.amount,
-                                                                                )}{" "}
-                                                                                {activity
-                                                                                    .tokenMetadata
-                                                                                    ?.symbol ??
-                                                                                    activity.tokenId}
+                                                                                <FormattedAmount
+                                                                                    kind="token"
+                                                                                    value={
+                                                                                        activity.amount
+                                                                                    }
+                                                                                    symbol={
+                                                                                        activity
+                                                                                            .tokenMetadata
+                                                                                            ?.symbol ??
+                                                                                        activity.tokenId
+                                                                                    }
+                                                                                    tokenDecimals={
+                                                                                        activity
+                                                                                            .tokenMetadata
+                                                                                            ?.decimals
+                                                                                    }
+                                                                                    unitPriceUsd={activityUnitPriceUsd(
+                                                                                        activity,
+                                                                                    )}
+                                                                                    profile="compact"
+                                                                                    signDisplay="always"
+                                                                                />
                                                                             </div>
                                                                             <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                                                                 <FormattedDate
@@ -729,7 +826,7 @@ export function RecentActivity() {
                                                             </TableRow>
                                                         ),
                                                     )}
-                                            </>
+                                            </Fragment>
                                         );
                                     })}
                                 </TableBody>

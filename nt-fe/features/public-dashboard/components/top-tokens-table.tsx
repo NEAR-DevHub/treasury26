@@ -1,11 +1,11 @@
 "use client";
 
+import { Coins } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { formatCurrency } from "@/lib/utils";
 import { PageCard } from "@/components/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StepperHeader } from "@/components/step-wizard";
 import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { StepperHeader } from "@/components/step-wizard";
 import {
     Table,
     TableBody,
@@ -14,8 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
-import { Coins } from "lucide-react";
-import Big from "@/lib/big";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { PublicDashboardToken } from "../api";
 
 interface TopTokensTableProps {
@@ -44,14 +43,6 @@ function TokenIcon({ icon, symbol }: { icon: string | null; symbol: string }) {
             {symbol.charAt(0).toUpperCase()}
         </div>
     );
-}
-
-function formatTokenUsd(usd: string): string {
-    try {
-        return formatCurrency(new Big(usd || "0"));
-    } catch {
-        return "$0.00";
-    }
 }
 
 export function TopTokensTable({ tokens }: TopTokensTableProps) {
@@ -108,7 +99,10 @@ export function TopTokensTable({ tokens }: TopTokensTableProps) {
                                 </TableCell>
 
                                 <TableCell className="pr-4 text-right font-semibold tabular-nums">
-                                    {formatTokenUsd(token.totalUsd)}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={token.totalUsd}
+                                    />
                                 </TableCell>
                             </TableRow>
                         ))}

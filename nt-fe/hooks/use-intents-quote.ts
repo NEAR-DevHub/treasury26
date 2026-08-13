@@ -1,23 +1,23 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
-import { useTranslations } from "next-intl";
-import { useQuery } from "@tanstack/react-query";
-import * as Sentry from "@sentry/nextjs";
+import type { Token } from "@/components/token-input";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { getAddressPattern } from "@/lib/address-validation";
+import { getIntentsQuote, type IntentsQuoteResponse } from "@/lib/api";
 import Big from "@/lib/big";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import { isIntentsToken } from "@/lib/intents-fee";
 import { isNearComNetwork } from "@/lib/intents-network";
 import {
     isEthImplicitNearAddress,
     isValidNearAddressFormat,
 } from "@/lib/near-validation";
-import { getIntentsQuote, type IntentsQuoteResponse } from "@/lib/api";
-import { formatBalance, nanosToMs } from "@/lib/utils";
-import type { Token } from "@/components/token-input";
-import { isIntentsToken } from "@/lib/intents-fee";
+import { nanosToMs } from "@/lib/utils";
 
 export type IntentsAmountMode = "recipient" | "total";
 

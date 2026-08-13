@@ -1,28 +1,29 @@
 "use client";
 
+import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { InfoDisplay, type InfoItem } from "@/components/info-display";
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/modal";
-import { Button } from "@/components/button";
-import { TreasuryAsset } from "@/lib/api";
-import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { formatBalance } from "@/lib/utils";
-import {
-    buildEarningOverviewItems,
-    hasStakingActivity,
-} from "@/lib/earning-utils";
-import Big from "@/lib/big";
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import type { TreasuryAsset } from "@/lib/api";
+import type Big from "@/lib/big";
+import {
+    buildEarningOverviewItems,
+    hasStakingActivity,
+} from "@/lib/earning-utils";
 import { AmountSummary } from "./amount-summary";
 
 interface EarningDetailsModalProps {
@@ -47,16 +48,25 @@ export function EarningDetailsModal({
     );
 
     // Format balances
-    const formatTokenBalance = (balance: Big) => {
-        return Big(formatBalance(balance, asset.decimals)).toString();
-    };
+    const exactTokenBalance = (balance: Big) =>
+        decimalFromBaseUnits(balance, asset.decimals).toFixed();
+    const formatTokenBalance = (balance: Big) => (
+        <FormattedAmount
+            kind="raw-token"
+            value={balance}
+            symbol={asset.symbol}
+            tokenDecimals={asset.decimals}
+            unitPriceUsd={asset.price}
+            profile="standard"
+            rounding="down"
+        />
+    );
 
     // Earning Overview items using shared function
     const earningOverviewItems = buildEarningOverviewItems({
         staked: staking.stakedBalance,
         unstakedBalance: staking.unstakedBalance,
         canWithdraw: staking.canWithdraw,
-        symbol: asset.symbol,
         formatTokenBalance,
         labels: {
             staked: t("overview.staked"),
@@ -73,14 +83,14 @@ export function EarningDetailsModal({
         const items: InfoItem[] = [
             {
                 label: pool.poolId,
-                value: `${formatTokenBalance(pool.stakedBalance)} ${asset.symbol}`,
+                value: formatTokenBalance(pool.stakedBalance),
             },
         ];
         if (pool.unstakedBalance.gt(0)) {
             items.push({
                 label: pool.canWithdraw ? t("readyToWithdraw") : t("unstaking"),
                 subItem: true,
-                value: `${formatTokenBalance(pool.unstakedBalance)} ${asset.symbol}`,
+                value: formatTokenBalance(pool.unstakedBalance),
             });
         }
         return items;
@@ -96,7 +106,7 @@ export function EarningDetailsModal({
                 <div className="flex flex-col gap-5">
                     <AmountSummary
                         title={t("totalStaked")}
-                        total={formatTokenBalance(totalStaked)}
+                        total={exactTokenBalance(totalStaked)}
                         totalUSD={asset.balanceUSD}
                         token={{
                             address: asset.contractId || "",

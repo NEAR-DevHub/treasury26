@@ -1,35 +1,37 @@
 "use client";
 
+import {
+    ArrowLeftRight,
+    ArrowUpRight,
+    ChevronRight,
+    Info,
+    Lock,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { buildPaymentsDeepLinkForAsset } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
+import { FormattedAmount } from "@/components/formatted-amount";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
-import { AggregatedAsset } from "@/hooks/use-assets";
-import { TreasuryAsset } from "@/lib/api";
-import { formatBalance, formatCurrency } from "@/lib/utils";
+import { useAmountFormat } from "@/hooks/use-amount-format";
+import type { AggregatedAsset } from "@/hooks/use-assets";
+import { useTreasury } from "@/hooks/use-treasury";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import type { TreasuryAsset } from "@/lib/api";
 import { availableBalance, lockedBalance } from "@/lib/balance";
-import Big from "@/lib/big";
-import { NetworkDisplay, BalanceCell } from "./token-display";
+import type Big from "@/lib/big";
+import { buildTokenQueryParam } from "@/lib/token-query-param";
 import { AuthButton } from "./auth-button";
 import { Button } from "./button";
-import { VestingDetailsModal } from "./vesting-details-modal";
 import { EarningDetailsModal } from "./earning-details-modal";
+import { BalanceCell, NetworkDisplay } from "./token-display";
 import { Tooltip } from "./tooltip";
-import { useTreasury } from "@/hooks/use-treasury";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { buildPaymentsDeepLinkForAsset } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
-import { buildTokenQueryParam } from "@/lib/token-query-param";
-import {
-    ArrowUpRight,
-    ArrowLeftRight,
-    ChevronRight,
-    Lock,
-    Info,
-} from "lucide-react";
+import { VestingDetailsModal } from "./vesting-details-modal";
 
 interface Props {
     isOpen: boolean;
@@ -38,11 +40,12 @@ interface Props {
 }
 
 const calculateBalanceUSD = (balance: Big, price: number, decimals: number) => {
-    return balance.div(Big(10).pow(decimals)).mul(price).toNumber();
+    return decimalFromBaseUnits(balance, decimals).mul(price).toNumber();
 };
 
 export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
     const t = useTranslations("assetDetails");
+    const amountFormat = useAmountFormat();
     const { treasuryId } = useTreasury();
     const router = useRouter();
     const [selectedVestingNetwork, setSelectedVestingNetwork] =
@@ -95,7 +98,10 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                 {t("coinPrice")}
                             </span>
                             <span className="text-sm font-medium">
-                                {formatCurrency(asset.price)}
+                                <FormattedAmount
+                                    kind="unit-price"
+                                    value={asset.price}
+                                />
                             </span>
                         </div>
 
@@ -111,7 +117,10 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                 />
                             </div>
                             <span className="text-xs font-medium w-14 text-right shrink-0">
-                                {asset.weight.toFixed(2)}%
+                                <FormattedAmount
+                                    kind="percent"
+                                    value={asset.weight}
+                                />
                             </span>
                         </div>
 
@@ -156,12 +165,9 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <BalanceCell
-                                                    balance={Big(
-                                                        formatBalance(
-                                                            available,
-                                                            network.decimals,
-                                                            network.decimals,
-                                                        ),
+                                                    balance={decimalFromBaseUnits(
+                                                        available,
+                                                        network.decimals,
                                                     )}
                                                     symbol={network.symbol}
                                                     balanceUSD={calculateBalanceUSD(
@@ -236,12 +242,9 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                             </div>
                                             <div className="text-right shrink-0">
                                                 <BalanceCell
-                                                    balance={Big(
-                                                        formatBalance(
-                                                            available,
-                                                            network.decimals,
-                                                            network.decimals,
-                                                        ),
+                                                    balance={decimalFromBaseUnits(
+                                                        available,
+                                                        network.decimals,
                                                     )}
                                                     symbol={network.symbol}
                                                     balanceUSD={calculateBalanceUSD(
@@ -299,9 +302,11 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                             </div>
                                             <span className="text-xxs text-muted-foreground whitespace-nowrap">
                                                 {t("vestedPercent", {
-                                                    percent:
-                                                        vestedPercent.toFixed(
-                                                            0,
+                                                    percent: amountFormat
+                                                        .percent(vestedPercent)
+                                                        .display.replace(
+                                                            "%",
+                                                            "",
                                                         ),
                                                 })}
                                             </span>
@@ -335,12 +340,9 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                 </div>
                                                 <div className="text-right shrink-0">
                                                     <BalanceCell
-                                                        balance={Big(
-                                                            formatBalance(
-                                                                available,
-                                                                network.decimals,
-                                                                network.decimals,
-                                                            ),
+                                                        balance={decimalFromBaseUnits(
+                                                            available,
+                                                            network.decimals,
                                                         )}
                                                         symbol={network.symbol}
                                                         balanceUSD={calculateBalanceUSD(
@@ -397,12 +399,9 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                     </div>
                                                     <div className="text-right shrink-0">
                                                         <BalanceCell
-                                                            balance={Big(
-                                                                formatBalance(
-                                                                    locked,
-                                                                    network.decimals,
-                                                                    network.decimals,
-                                                                ),
+                                                            balance={decimalFromBaseUnits(
+                                                                locked,
+                                                                network.decimals,
                                                             )}
                                                             symbol={
                                                                 network.symbol
@@ -425,22 +424,41 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                         {t("vested")}
                                                     </span>
                                                     <span className="text-sm font-medium">
-                                                        {formatBalance(
-                                                            network.balance.lockup.totalAllocated.sub(
+                                                        <FormattedAmount
+                                                            kind="raw-token"
+                                                            value={network.balance.lockup.totalAllocated.sub(
                                                                 network.balance
                                                                     .lockup
                                                                     .unvested,
-                                                            ),
-                                                            network.decimals,
-                                                        )}
+                                                            )}
+                                                            symbol=""
+                                                            tokenDecimals={
+                                                                network.decimals
+                                                            }
+                                                            unitPriceUsd={
+                                                                network.price
+                                                            }
+                                                            profile="standard"
+                                                        />
                                                         /
-                                                        {formatBalance(
-                                                            network.balance
-                                                                .lockup
-                                                                .totalAllocated,
-                                                            network.decimals,
-                                                        )}{" "}
-                                                        {network.symbol}
+                                                        <FormattedAmount
+                                                            kind="raw-token"
+                                                            value={
+                                                                network.balance
+                                                                    .lockup
+                                                                    .totalAllocated
+                                                            }
+                                                            symbol={
+                                                                network.symbol
+                                                            }
+                                                            tokenDecimals={
+                                                                network.decimals
+                                                            }
+                                                            unitPriceUsd={
+                                                                network.price
+                                                            }
+                                                            profile="standard"
+                                                        />
                                                     </span>
                                                 </div>
                                             )}

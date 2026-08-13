@@ -13,6 +13,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { FormattedDate } from "@/components/formatted-date";
 import { Pagination } from "@/components/pagination";
 import {
@@ -24,13 +25,17 @@ import {
     TableRow,
 } from "@/components/table";
 import { TableSkeleton } from "@/components/table-skeleton";
-import { TokenAmountDisplay } from "@/components/token-display";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
 import { User } from "@/components/user";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity } from "@/lib/api";
-import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import {
+    activityUnitPriceUsd,
+    isPositiveActivityAmount,
+    unitPriceUsdForAmount,
+} from "../utils/activity-amount";
 import {
     getActivityStatus,
     getFromAccountId,
@@ -128,7 +133,9 @@ export function ActivityTable({
                     <TableBody>
                         {activities.map((activity) => {
                             const isSwap = !!activity.swap;
-                            const isReceived = parseFloat(activity.amount) > 0;
+                            const isReceived = isPositiveActivityAmount(
+                                activity.amount,
+                            );
                             const typeLabel = getTypeLabel(activity);
                             const status = getActivityStatus(activity);
                             const fromId = getFromAccountId(
@@ -210,17 +217,34 @@ export function ActivityTable({
                                                 {activity.swap.sentAmount &&
                                                 activity.swap
                                                     .sentTokenMetadata ? (
-                                                    <span className="font-normal text-foreground whitespace-nowrap">
-                                                        {formatSmartAmount(
+                                                    <FormattedAmount
+                                                        kind="token"
+                                                        value={
                                                             activity.swap
-                                                                .sentAmount,
-                                                        )}{" "}
-                                                        {
+                                                                .sentAmount
+                                                        }
+                                                        symbol={
                                                             activity.swap
                                                                 .sentTokenMetadata
                                                                 .symbol
                                                         }
-                                                    </span>
+                                                        tokenDecimals={
+                                                            activity.swap
+                                                                .sentTokenMetadata
+                                                                .decimals
+                                                        }
+                                                        unitPriceUsd={unitPriceUsdForAmount(
+                                                            activity.swap
+                                                                .sentAmount,
+                                                            activity.swap
+                                                                .sentAmountUsd,
+                                                            activity.swap
+                                                                .sentTokenMetadata
+                                                                .price,
+                                                        )}
+                                                        profile="compact"
+                                                        className="font-normal text-foreground whitespace-nowrap"
+                                                    />
                                                 ) : (
                                                     <span className="font-normal text-muted-foreground">
                                                         ?
@@ -316,41 +340,95 @@ export function ActivityTable({
                                                     iconSize="sm"
                                                 />
                                                 {/* Received amount with + sign */}
-                                                <span className="font-normal text-general-success-foreground whitespace-nowrap">
-                                                    {activity.swap
-                                                        .receivedAmount
-                                                        ? `+${formatSmartAmount(activity.swap.receivedAmount)} `
-                                                        : ""}
-                                                    {
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .symbol
-                                                    }
-                                                </span>
+                                                {activity.swap
+                                                    .receivedAmount ? (
+                                                    <FormattedAmount
+                                                        kind="token"
+                                                        value={
+                                                            activity.swap
+                                                                .receivedAmount
+                                                        }
+                                                        symbol={
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .symbol
+                                                        }
+                                                        tokenDecimals={
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .decimals
+                                                        }
+                                                        unitPriceUsd={unitPriceUsdForAmount(
+                                                            activity.swap
+                                                                .receivedAmount,
+                                                            activity.swap
+                                                                .receivedAmountUsd,
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .price,
+                                                        )}
+                                                        profile="compact"
+                                                        signDisplay="always"
+                                                        className="font-normal text-general-success-foreground whitespace-nowrap"
+                                                    />
+                                                ) : (
+                                                    <span className="font-normal text-general-success-foreground whitespace-nowrap">
+                                                        {
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .symbol
+                                                        }
+                                                    </span>
+                                                )}
                                             </div>
                                         ) : (
-                                            <TokenAmountDisplay
-                                                icon={
-                                                    activity.tokenMetadata.icon
-                                                }
-                                                chainIcons={
+                                            <div className="flex items-center gap-2">
+                                                {(activity.tokenMetadata.icon ||
                                                     activity.tokenMetadata
-                                                        .chainIcons
-                                                }
-                                                symbol={
-                                                    activity.tokenMetadata
-                                                        .symbol
-                                                }
-                                                amount={formatActivityAmount(
-                                                    activity.amount,
+                                                        .chainIcons) && (
+                                                    <TokenDisplay
+                                                        symbol={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .symbol
+                                                        }
+                                                        icon={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .icon || ""
+                                                        }
+                                                        chainIcons={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .chainIcons
+                                                        }
+                                                        iconSize="lg"
+                                                    />
                                                 )}
-                                                className={cn(
-                                                    "font-normal",
-                                                    isReceived
-                                                        ? "text-general-success-foreground"
-                                                        : "text-foreground",
-                                                )}
-                                            />
+                                                <FormattedAmount
+                                                    kind="token"
+                                                    value={activity.amount}
+                                                    symbol={
+                                                        activity.tokenMetadata
+                                                            .symbol
+                                                    }
+                                                    tokenDecimals={
+                                                        activity.tokenMetadata
+                                                            .decimals
+                                                    }
+                                                    unitPriceUsd={activityUnitPriceUsd(
+                                                        activity,
+                                                    )}
+                                                    profile="compact"
+                                                    signDisplay="always"
+                                                    className={cn(
+                                                        "font-normal",
+                                                        isReceived
+                                                            ? "text-general-success-foreground"
+                                                            : "text-foreground",
+                                                    )}
+                                                />
+                                            </div>
                                         )}
                                     </TableCell>
                                     <TableCell className="min-w-[150px] max-w-[200px]">

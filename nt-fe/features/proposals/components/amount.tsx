@@ -1,20 +1,21 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Skeleton } from "@/components/ui/skeleton";
-import { TokenDisplay } from "@/components/token-display-with-network";
+import { useMemo } from "react";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { getNetworkDisplayName } from "@/components/token-display";
+import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useToken } from "@/hooks/use-treasury-queries";
-import { getLocalizedNetworkDisplayName } from "@/lib/intents-network";
 import {
-    formatBalance,
-    formatCurrencyWithSubCent,
-    formatTokenDisplayAmount,
-    getNearTokenTypeLabel,
-} from "@/lib/utils";
-import { useMemo } from "react";
+    type AmountRounding,
+    decimalFromBaseUnitsOrNull,
+    decimalOrNull,
+} from "@/lib/amount-format";
+import { getLocalizedNetworkDisplayName } from "@/lib/intents-network";
+import { getNearTokenTypeLabel } from "@/lib/utils";
 import { useRequestDisplayContext } from "./expanded-view/common/request-display-context";
 
 interface AmountProps {
@@ -29,9 +30,10 @@ interface AmountProps {
     network?: string; // Optional override for network display
     textOnly?: boolean;
     iconSize?: "sm" | "md" | "lg";
-    usdTextOverride?: string | null;
+    usdTextOverride?: React.ReactNode;
     /** Enable NearBlocks FT metadata fallback for native NEAR tokens */
     nearFt?: boolean;
+    rounding?: AmountRounding;
 }
 
 function resolveAmountNetworkLabel({
@@ -88,8 +90,9 @@ export function Amount({
     usdValue,
     network,
     iconSize = "lg",
-    usdTextOverride = null,
+    usdTextOverride,
     nearFt,
+    rounding,
 }: AmountProps) {
     const tCommon = useTranslations("common");
     const tAmount = useTranslations("amount");
@@ -101,28 +104,43 @@ export function Amount({
             usdValue !== undefined);
     const tokenOpts = nearFt ? { nearFt: true } : undefined;
     const { data: tokenData, isLoading } = useToken(tokenId, tokenOpts);
-    const rawAmountValue = amount
-        ? formatBalance(amount, tokenData?.decimals || 24)
-        : amountWithDecimals || "0";
-    const amountValue = formatTokenDisplayAmount(rawAmountValue);
+    const decimalAmount = useMemo(() => {
+        return amount
+            ? decimalFromBaseUnitsOrNull(amount, tokenData?.decimals || 24)
+            : decimalOrNull(amountWithDecimals);
+    }, [amount, amountWithDecimals, tokenData?.decimals]);
     const estimatedUSDValue = useMemo(() => {
         if (usdValue !== undefined) {
-            return `≈ ${formatCurrencyWithSubCent(usdValue)}`;
+            return decimalOrNull(usdValue);
         }
 
-        const isPriceAvailable = tokenData?.price;
-        const parsedAmount = Number(rawAmountValue);
-        if (
-            !isPriceAvailable ||
-            !rawAmountValue ||
-            !Number.isFinite(parsedAmount)
-        ) {
-            return tCommon("notAvailable");
-        }
+        const price = decimalOrNull(tokenData?.price);
+        if (!price?.gt(0) || !decimalAmount) return null;
 
-        const price = tokenData?.price;
-        return `≈ ${formatCurrencyWithSubCent(parsedAmount * price!)}`;
-    }, [usdTextOverride, tokenData, rawAmountValue, tCommon, usdValue]);
+        return decimalAmount.mul(price);
+    }, [tokenData?.price, decimalAmount, usdValue]);
+    const amountDisplay = (
+        <FormattedAmount
+            kind="token"
+            value={decimalAmount}
+            symbol={tokenData?.symbol ?? ""}
+            tokenDecimals={tokenData?.decimals}
+            unitPriceUsd={tokenData?.price}
+            profile="standard"
+            rounding={rounding}
+        />
+    );
+    const usdDisplay = (
+        <>
+            ≈{" "}
+            {usdTextOverride ??
+                (estimatedUSDValue ? (
+                    <FormattedAmount kind="fiat" value={estimatedUSDValue} />
+                ) : (
+                    tCommon("notAvailable")
+                ))}
+        </>
+    );
     const networkLabel = resolveAmountNetworkLabel({
         tokenId,
         tokenNetwork: tokenData?.network,
@@ -153,12 +171,10 @@ export function Amount({
     if (textOnly) {
         const textOnlyAmount = (
             <div className="flex flex-col items-end gap-0.5">
-                <p className="text-sm font-semibold">
-                    {amountValue} {tokenData?.symbol}
-                </p>
+                <p className="text-sm font-semibold">{amountDisplay}</p>
                 {effectiveShowUSDValue && (
                     <span className="text-muted-foreground text-xs">
-                        {estimatedUSDValue}
+                        {usdDisplay}
                     </span>
                 )}
             </div>
@@ -187,14 +203,12 @@ export function Amount({
                     />
                 )}
                 {tokenData && (
-                    <span className="font-medium">
-                        {amountValue} {tokenData?.symbol}
-                    </span>
+                    <span className="font-medium">{amountDisplay}</span>
                 )}
             </div>
             {effectiveShowUSDValue && (
                 <span className="text-muted-foreground text-xs">
-                    {estimatedUSDValue}
+                    {usdDisplay}
                 </span>
             )}
             {showNetwork &&

@@ -4,6 +4,7 @@ import { ArrowRight, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { FormattedDate } from "@/components/formatted-date";
 import { NearIntentsLogo } from "@/components/icons/near-intents-logo";
 import { InfoDisplay, type InfoItem } from "@/components/info-display";
@@ -19,17 +20,16 @@ import { Tooltip } from "@/components/tooltip";
 import { User } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useTreasury } from "@/hooks/use-treasury";
+import { decimalOrNull } from "@/lib/amount-format";
 import type { RecentActivity, SwapInfo, TokenMetadataInfo } from "@/lib/api";
 import Big from "@/lib/big";
 import { calculateExchangeFeeAmount } from "@/lib/exchange-fee";
+import { cn } from "@/lib/utils";
 import {
-    cn,
-    formatActivityAmount,
-    formatCurrency,
-    formatCurrencyWithSubCent,
-    formatSmartAmount,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
+    activityUnitPriceUsd,
+    isPositiveActivityAmount,
+    unitPriceUsdForAmount,
+} from "../utils/activity-amount";
 import {
     getActivityStatus,
     getFromAccountId,
@@ -65,7 +65,7 @@ function getActivityDetailsVariant(
     activity: RecentActivity,
 ): ActivityDetailsVariant {
     if (activity.swap) return "exchange";
-    return parseFloat(activity.amount) > 0 ? "deposit" : "transfer";
+    return isPositiveActivityAmount(activity.amount) ? "deposit" : "transfer";
 }
 
 function isProposalCall(activity: RecentActivity): boolean {
@@ -77,66 +77,46 @@ function isProposalCall(activity: RecentActivity): boolean {
  * receipt page. Prefers the activity's own USD valuation over the current
  * token price.
  */
-function tokenRateLabel(activity: RecentActivity): string | null {
+function tokenRateLabel(activity: RecentActivity): React.ReactNode | null {
     const symbol = activity.tokenMetadata?.symbol;
     if (!symbol) return null;
 
-    const amount = Math.abs(parseFloat(activity.amount));
-    const unitPrice =
-        activity.valueUsd && amount > 0
-            ? activity.valueUsd / amount
-            : activity.tokenMetadata?.price;
+    const unitPrice = activityUnitPriceUsd(activity);
     if (!unitPrice) return null;
 
-    return `1 ${symbol} = ${formatCurrencyWithSubCent(unitPrice)}`;
+    return (
+        <span>
+            1 {symbol} = <FormattedAmount kind="unit-price" value={unitPrice} />
+        </span>
+    );
 }
 
 interface ExchangeRateDetails {
-    unitAmount: string;
     sentSymbol: string;
-    receivedPerSent: string;
+    receivedPerSent: Big;
     receivedSymbol: string;
-    sentUnitUsd: number | null;
-    receivedUnitUsd: number | null;
-}
-
-function swapUnitUsdPrice(
-    amount: string,
-    amountUsd?: number,
-    fallbackPrice?: number,
-): number | null {
-    try {
-        const parsedAmount = Big(amount);
-        if (
-            parsedAmount.gt(0) &&
-            amountUsd != null &&
-            Number.isFinite(amountUsd) &&
-            amountUsd > 0
-        ) {
-            const unitPrice = Big(amountUsd.toString())
-                .div(parsedAmount)
-                .toNumber();
-            if (Number.isFinite(unitPrice) && unitPrice > 0) return unitPrice;
-        }
-    } catch {
-        // Fall through to the token metadata price.
-    }
-
-    return fallbackPrice != null &&
-        Number.isFinite(fallbackPrice) &&
-        fallbackPrice > 0
-        ? fallbackPrice
-        : null;
+    sentUnitUsd: Big | null;
+    receivedUnitUsd: Big | null;
 }
 
 // Same calculation as the request page (lib/exchange-fee), denominated in
 // the sent token.
-function exchangeFeeLabel(swap: SwapInfo): string | null {
+function exchangeFeeLabel(swap: SwapInfo): React.ReactNode | null {
     if (!swap.sentAmount || !swap.sentTokenMetadata) return null;
     try {
         if (Big(swap.sentAmount).lte(0)) return null;
         const fee = calculateExchangeFeeAmount(swap.sentAmount);
-        return `${formatTokenDisplayAmount(fee)} ${swap.sentTokenMetadata.symbol}`;
+        return (
+            <FormattedAmount
+                kind="token"
+                value={fee}
+                symbol={swap.sentTokenMetadata.symbol}
+                tokenDecimals={swap.sentTokenMetadata.decimals}
+                unitPriceUsd={swap.sentTokenMetadata.price}
+                profile="standard"
+                rounding="up"
+            />
+        );
     } catch {
         return null;
     }
@@ -153,16 +133,15 @@ function exchangeRateDetails(swap: SwapInfo): ExchangeRateDetails | null {
         if (sentAmount.lte(0) || receivedAmount.lte(0)) return null;
 
         return {
-            unitAmount: formatSmartAmount(1),
             sentSymbol: swap.sentTokenMetadata.symbol,
-            receivedPerSent: formatSmartAmount(receivedAmount.div(sentAmount)),
+            receivedPerSent: receivedAmount.div(sentAmount),
             receivedSymbol: swap.receivedTokenMetadata.symbol,
-            sentUnitUsd: swapUnitUsdPrice(
+            sentUnitUsd: unitPriceUsdForAmount(
                 swap.sentAmount,
                 swap.sentAmountUsd,
                 swap.sentTokenMetadata.price,
             ),
-            receivedUnitUsd: swapUnitUsdPrice(
+            receivedUnitUsd: unitPriceUsdForAmount(
                 swap.receivedAmount,
                 swap.receivedAmountUsd,
                 swap.receivedTokenMetadata.price,
@@ -176,8 +155,13 @@ function exchangeRateDetails(swap: SwapInfo): ExchangeRateDetails | null {
 function ExchangeRateValue({ details }: { details: ExchangeRateDetails }) {
     const rate = (
         <span>
-            {details.unitAmount} {details.sentSymbol} ≈{" "}
-            {details.receivedPerSent} {details.receivedSymbol}
+            1 {details.sentSymbol} ≈{" "}
+            <FormattedAmount
+                kind="token"
+                value={details.receivedPerSent}
+                symbol={details.receivedSymbol}
+                profile="standard"
+            />
         </span>
     );
 
@@ -192,14 +176,20 @@ function ExchangeRateValue({ details }: { details: ExchangeRateDetails }) {
                 <div className="flex flex-col gap-1 whitespace-nowrap">
                     {details.sentUnitUsd != null ? (
                         <p>
-                            {details.unitAmount} {details.sentSymbol} ={" "}
-                            {formatCurrencyWithSubCent(details.sentUnitUsd)}
+                            1 {details.sentSymbol} ={" "}
+                            <FormattedAmount
+                                kind="unit-price"
+                                value={details.sentUnitUsd}
+                            />
                         </p>
                     ) : null}
                     {details.receivedUnitUsd != null ? (
                         <p>
-                            {details.unitAmount} {details.receivedSymbol} ={" "}
-                            {formatCurrencyWithSubCent(details.receivedUnitUsd)}
+                            1 {details.receivedSymbol} ={" "}
+                            <FormattedAmount
+                                kind="unit-price"
+                                value={details.receivedUnitUsd}
+                            />
                         </p>
                     ) : null}
                 </div>
@@ -255,7 +245,7 @@ function TokenAmountColumn({
 }: {
     title?: string;
     token: Token;
-    amount: string;
+    amount: React.ReactNode;
     usdValue?: number;
 }) {
     return (
@@ -273,14 +263,11 @@ function TokenAmountColumn({
             />
             <div className="flex flex-col gap-0.5">
                 <p className="text-lg font-semibold text-foreground break-all">
-                    {amount}{" "}
-                    <span className="text-muted-foreground font-medium text-xs">
-                        {token.symbol}
-                    </span>
+                    {amount}
                 </p>
-                {usdValue ? (
+                {decimalOrNull(usdValue)?.gt(0) ? (
                     <p className="text-xxs text-muted-foreground break-all">
-                        ≈ {formatCurrency(usdValue)}
+                        ≈ <FormattedAmount kind="fiat" value={usdValue} />
                     </p>
                 ) : null}
             </div>
@@ -297,7 +284,17 @@ function TokenAmountHeader({ activity }: { activity: RecentActivity }) {
         <ModalSection className="items-center py-8 rounded-b-[12px]">
             <TokenAmountColumn
                 token={activityToken(activity.tokenMetadata)}
-                amount={formatActivityAmount(activity.amount)}
+                amount={
+                    <FormattedAmount
+                        kind="token"
+                        value={activity.amount}
+                        symbol={activity.tokenMetadata.symbol}
+                        tokenDecimals={activity.tokenMetadata.decimals}
+                        unitPriceUsd={activityUnitPriceUsd(activity)}
+                        profile="standard"
+                        signDisplay="always"
+                    />
+                }
                 usdValue={activity.valueUsd}
             />
         </ModalSection>
@@ -317,7 +314,20 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
                     <TokenAmountColumn
                         title={t("sell")}
                         token={activityToken(swap.sentTokenMetadata)}
-                        amount={formatSmartAmount(swap.sentAmount)}
+                        amount={
+                            <FormattedAmount
+                                kind="token"
+                                value={swap.sentAmount}
+                                symbol={swap.sentTokenMetadata.symbol}
+                                tokenDecimals={swap.sentTokenMetadata.decimals}
+                                unitPriceUsd={unitPriceUsdForAmount(
+                                    swap.sentAmount,
+                                    swap.sentAmountUsd,
+                                    swap.sentTokenMetadata.price,
+                                )}
+                                profile="standard"
+                            />
+                        }
                         usdValue={swap.sentAmountUsd}
                     />
                 ) : null}
@@ -332,9 +342,24 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
                     title={t("receive")}
                     token={activityToken(swap.receivedTokenMetadata)}
                     amount={
-                        swap.receivedAmount
-                            ? formatSmartAmount(swap.receivedAmount)
-                            : t("pending")
+                        swap.receivedAmount ? (
+                            <FormattedAmount
+                                kind="token"
+                                value={swap.receivedAmount}
+                                symbol={swap.receivedTokenMetadata.symbol}
+                                tokenDecimals={
+                                    swap.receivedTokenMetadata.decimals
+                                }
+                                unitPriceUsd={unitPriceUsdForAmount(
+                                    swap.receivedAmount,
+                                    swap.receivedAmountUsd,
+                                    swap.receivedTokenMetadata.price,
+                                )}
+                                profile="standard"
+                            />
+                        ) : (
+                            t("pending")
+                        )
                     }
                     usdValue={swap.receivedAmountUsd}
                 />
@@ -401,7 +426,7 @@ function PartiesSection({
     const getFromAccount = useGetFromAccount();
     const { isConfidential } = useTreasury();
 
-    const isReceived = parseFloat(activity.amount) > 0;
+    const isReceived = isPositiveActivityAmount(activity.amount);
     const fromAccountId = getFromAccountId(activity, isReceived, treasuryId);
     const toAccountId = getToAccountId(activity, isReceived, treasuryId);
     const fromLabel = getFromAccount(

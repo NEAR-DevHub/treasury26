@@ -1,46 +1,49 @@
-import { FunctionCallKind, Proposal } from "@/lib/proposals-api";
-import {
-    decodeArgs,
-    decodeProposalDescription,
-    formatBalance,
-} from "@/lib/utils";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
-import {
-    PaymentRequestData,
-    FunctionCallData,
-    ChangePolicyData,
-    ChangeConfigData,
-    StakingData,
-    VestingData,
-    SwapRequestData,
-    UnknownData,
-    VestingSchedule,
-    AnyProposalData,
-    BatchPaymentRequestData,
-    ConfidentialBulkRecipient,
-    ConfidentialRequestData,
-    MappedConfidentialRequest,
-    MembersData,
-    UpgradeData,
-    SetStakingContractData,
-    BountyData,
-    VoteData,
-    FactoryInfoUpdateData,
-} from "../types/index";
-import { getProposalUIKind } from "./proposal-utils";
-import { ProposalUIKind } from "../types/index";
-import { Policy } from "@/types/policy";
-import { getKindFromProposal } from "@/lib/config-utils";
-import { FunctionCallAction } from "@/lib/proposals-api";
-import { IntentsQuoteResponse } from "@/lib/api";
-import { extractConfidentialBulkDestinationAssetId } from "./confidential-bulk-utils";
 import {
     NEAR_COM_NETWORK_ID,
     NEAR_NETWORK_ID,
     WRAP_NEAR_TOKEN_ID,
 } from "@/constants/network-ids";
 import { NEAR_TOKEN_DECIMALS } from "@/constants/token";
+import {
+    decimalFromBaseUnitsOrNull,
+    legacyGroupedDecimalOrNull,
+} from "@/lib/amount-format";
+import type { IntentsQuoteResponse } from "@/lib/api";
+import { getKindFromProposal } from "@/lib/config-utils";
 import { computeQuoteNetworkFee } from "@/lib/intents-fee";
+import type {
+    FunctionCallAction,
+    FunctionCallKind,
+    Proposal,
+} from "@/lib/proposals-api";
+import { decodeArgs, decodeProposalDescription } from "@/lib/utils";
+import type { Policy } from "@/types/policy";
+import type {
+    AnyProposalData,
+    BatchPaymentRequestData,
+    BountyData,
+    ChangeConfigData,
+    ChangePolicyData,
+    ConfidentialBulkRecipient,
+    ConfidentialRequestData,
+    FactoryInfoUpdateData,
+    FunctionCallData,
+    MappedConfidentialRequest,
+    MembersData,
+    PaymentRequestData,
+    ProposalUIKind,
+    SetStakingContractData,
+    StakingData,
+    SwapRequestData,
+    UnknownData,
+    UpgradeData,
+    VestingData,
+    VestingSchedule,
+    VoteData,
+} from "../types/index";
+import { extractConfidentialBulkDestinationAssetId } from "./confidential-bulk-utils";
+import { getProposalUIKind } from "./proposal-utils";
 
 function normalizeTimeEstimateSeconds(value?: string): string | undefined {
     if (!value) return undefined;
@@ -223,10 +226,9 @@ export function extractPaymentRequestData(
         "signature",
         proposal.description,
     );
-    const networkFee = decodeProposalDescription(
-        "networkFee",
-        proposal.description,
-    );
+    const networkFee = legacyGroupedDecimalOrNull(
+        decodeProposalDescription("networkFee", proposal.description),
+    )?.toFixed();
     let destinationAssetId = decodeProposalDescription(
         "destinationNetwork",
         proposal.description,
@@ -611,7 +613,9 @@ export function extractNearWrapSwapRequestData(
     }
     const isWrap = action.method_name === "near_deposit";
     const amountRaw = isWrap ? action.deposit || "0" : args.amount || "0";
-    const amountFormatted = formatBalance(amountRaw, NEAR_TOKEN_DECIMALS);
+    const amountFormatted =
+        decimalFromBaseUnitsOrNull(amountRaw, NEAR_TOKEN_DECIMALS)?.toFixed() ??
+        "";
 
     return {
         source: WRAP_NEAR_TOKEN_ID,

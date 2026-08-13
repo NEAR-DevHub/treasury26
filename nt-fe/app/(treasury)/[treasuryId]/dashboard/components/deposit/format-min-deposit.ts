@@ -1,5 +1,8 @@
+import {
+    decimalFromBaseUnitsOrNull,
+    formatTokenQuantity,
+} from "@/lib/amount-format";
 import Big from "@/lib/big";
-import { formatBalance } from "@/lib/utils";
 
 /**
  * Format a raw min-deposit amount for UI notices.
@@ -8,14 +11,24 @@ import { formatBalance } from "@/lib/utils";
 export function formatMinDepositDisplay(
     raw: string | null | undefined,
     decimals: number,
+    locale: string = "en-US",
 ): string | null {
-    if (!raw) return null;
-    try {
-        if (!Big(raw).gt(0)) return null;
-    } catch {
-        return null;
-    }
-    // Small mins (e.g. 1e-7 ETH) round to "0" with the default 5 decimals.
-    const formatted = formatBalance(raw, decimals, 10);
-    return formatted === "0" ? null : formatted;
+    const amount = decimalFromBaseUnitsOrNull(raw, decimals);
+    if (!amount?.gt(0)) return null;
+
+    const formatted = formatTokenQuantity(amount, {
+        profile: "standard",
+        tokenDecimals: decimals,
+        rounding: "up",
+        locale,
+    });
+    if (!formatted.isBelowThreshold) return formatted.display;
+
+    const visibleDecimals = Math.min(decimals, 8);
+    const threshold = Big(10).pow(-visibleDecimals);
+    return formatTokenQuantity(threshold, {
+        profile: "exact",
+        tokenDecimals: decimals,
+        locale,
+    }).display;
 }

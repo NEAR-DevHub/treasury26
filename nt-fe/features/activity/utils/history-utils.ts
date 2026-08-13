@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import Big from "@/lib/big";
 
 /**
  * Format history duration based on months
@@ -155,12 +156,17 @@ export function getActivityLabel(
         return labels.proposalAction;
     }
 
-    const amount = parseFloat(activity.amount ?? "0");
+    let amount = Big(0);
+    try {
+        amount = Big(activity.amount ?? "0");
+    } catch {
+        // Malformed API amounts are treated as directionless transactions.
+    }
 
-    if (amount > 0) {
+    if (amount.gt(0)) {
         return labels.deposit;
     }
-    if (amount < 0 || activity.actionKind) {
+    if (amount.lt(0) || activity.actionKind) {
         return labels.transfer;
     }
 
@@ -200,7 +206,12 @@ export function getActivitySubLabel(
         return "";
     }
 
-    const isReceived = parseFloat(activity.amount ?? "0") > 0;
+    let isReceived = false;
+    try {
+        isReceived = Big(activity.amount ?? "0").gt(0);
+    } catch {
+        // Malformed API amounts are treated as outgoing/directionless.
+    }
 
     if (isReceived) {
         const from = activity.counterparty || activity.signerId;

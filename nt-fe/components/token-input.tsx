@@ -1,34 +1,41 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
     type ChangeEvent,
     type ClipboardEvent,
     type KeyboardEvent,
     useMemo,
 } from "react";
-import { useTranslations } from "next-intl";
-import { Button } from "./button";
-import { useTreasury } from "@/hooks/use-treasury";
-import { DEFAULT_ASSETS_QUERY, useAssets } from "@/hooks/use-assets";
-import { availableBalance } from "@/lib/balance";
-import { findMatchingTreasuryAsset } from "@/lib/match-treasury-asset";
-import { cn, formatBalance, formatCurrency } from "@/lib/utils";
-import TokenSelect, { SelectedTokenData } from "./token-select";
-import { WarningMessage } from "./warning-message";
-import { LargeInput } from "./large-input";
-import { InputBlock } from "./input-block";
-import { FormField } from "./ui/form";
 import {
-    Control,
-    FieldValues,
-    Path,
-    PathValue,
+    type Control,
+    type FieldValues,
+    type Path,
+    type PathValue,
     useFormContext,
     useWatch,
 } from "react-hook-form";
 import z from "zod";
+import { useAmountFormat } from "@/hooks/use-amount-format";
+import { DEFAULT_ASSETS_QUERY, useAssets } from "@/hooks/use-assets";
+import { useTreasury } from "@/hooks/use-treasury";
+import {
+    decimalFromBaseUnits,
+    decimalFromBaseUnitsOrNull,
+    decimalOrNull,
+} from "@/lib/amount-format";
+import { availableBalance } from "@/lib/balance";
 import Big from "@/lib/big";
 import { getPaymentBalanceWarning } from "@/lib/intents-fee";
+import { findMatchingTreasuryAsset } from "@/lib/match-treasury-asset";
+import { cn } from "@/lib/utils";
+import { Button } from "./button";
+import { FormattedAmount } from "./formatted-amount";
+import { InputBlock } from "./input-block";
+import { LargeInput } from "./large-input";
+import TokenSelect, { type SelectedTokenData } from "./token-select";
+import { FormField } from "./ui/form";
+import { WarningMessage } from "./warning-message";
 
 function sanitizeAmountInput(value: string): string {
     return value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
@@ -148,6 +155,7 @@ export function TokenInput<
     usdValueOverride,
 }: TokenInputProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("tokenInput");
+    const amountFormat = useAmountFormat();
     const { treasuryId } = useTreasury();
     const { setValue } = useFormContext<TFieldValues>();
     const amount = useWatch({ control, name: amountName });
@@ -177,27 +185,21 @@ export function TokenInput<
         if (!showInsufficientBalance || !token || tokenBalance == null) {
             return null;
         }
-        if (!amount || isNaN(amount) || amount <= 0) {
-            return null;
-        }
+        const parsedAmount = decimalOrNull(amount);
+        if (!parsedAmount?.gt(0)) return null;
 
         const decimals = tokenDecimals || 24;
-        const balance = Big(tokenBalance).div(Big(10).pow(decimals));
-        let fee: Big | undefined;
-        if (networkFee) {
-            try {
-                fee = Big(networkFee);
-            } catch {
-                fee = undefined;
-            }
-        }
+        const balance = decimalFromBaseUnitsOrNull(tokenBalance, decimals);
+        if (!balance) return null;
+        const fee = decimalOrNull(networkFee) ?? undefined;
 
         return getPaymentBalanceWarning({
-            amount: String(amount),
+            amount: parsedAmount.toFixed(),
             balance,
             networkFee: fee,
             decimals,
             symbol: token.symbol,
+            locale: amountFormat.locale,
         });
     }, [
         showInsufficientBalance,
@@ -206,16 +208,18 @@ export function TokenInput<
         amount,
         tokenDecimals,
         networkFee,
+        amountFormat.locale,
     ]);
 
     const estimatedUSDValue = useMemo(() => {
         if (usdValueOverride !== undefined && usdValueOverride !== null) {
-            return usdValueOverride;
+            return decimalOrNull(usdValueOverride);
         }
-        if (!tokenPrice || !amount || isNaN(amount) || amount <= 0) {
-            return null;
-        }
-        return amount * tokenPrice;
+        const price = decimalOrNull(tokenPrice);
+        const parsedAmount = decimalOrNull(amount);
+        return price?.gt(0) && parsedAmount?.gt(0)
+            ? parsedAmount.mul(price)
+            : null;
     }, [amount, tokenPrice, usdValueOverride]);
 
     return (
@@ -228,9 +232,10 @@ export function TokenInput<
 
                 const handleMaxClick = () => {
                     if (!tokenBalance || !tokenDecimals) return;
-                    const maxAmount = Big(tokenBalance)
-                        .div(Big(10).pow(tokenDecimals))
-                        .toFixed(tokenDecimals);
+                    const maxAmount = decimalFromBaseUnits(
+                        tokenBalance,
+                        tokenDecimals,
+                    ).toFixed();
                     setValue(
                         amountName,
                         maxAmount as PathValue<
@@ -302,10 +307,16 @@ export function TokenInput<
                                         <>
                                             <p className="text-xs text-muted-foreground">
                                                 {t("balance", {
-                                                    amount: formatBalance(
+                                                    amount: amountFormat.rawToken(
                                                         tokenBalance,
                                                         tokenDecimals,
-                                                    ),
+                                                        {
+                                                            profile: "compact",
+                                                            unitPriceUsd:
+                                                                tokenPrice,
+                                                            rounding: "down",
+                                                        },
+                                                    ).display,
                                                     symbol: token.symbol.toUpperCase(),
                                                 })}
                                             </p>
@@ -400,12 +411,15 @@ export function TokenInput<
                                     }}
                                 />
                             </div>
-                            {estimatedUSDValue !== null &&
-                                estimatedUSDValue > 0 && (
-                                    <p className="text-muted-foreground text-xs truncate">
-                                        {`≈ ${formatCurrency(estimatedUSDValue)}`}
-                                    </p>
-                                )}
+                            {estimatedUSDValue?.gt(0) && (
+                                <p className="text-muted-foreground text-xs truncate">
+                                    ≈{" "}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={estimatedUSDValue}
+                                    />
+                                </p>
+                            )}
                             {displayError ? (
                                 <p className="text-destructive text-sm mt-2">
                                     {String(displayError)}

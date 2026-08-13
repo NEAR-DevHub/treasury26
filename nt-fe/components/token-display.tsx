@@ -1,21 +1,15 @@
 import { useTranslations } from "next-intl";
-import { ChainIcons, TreasuryAsset } from "@/lib/api";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
-import Big from "@/lib/big";
-import {
-    getNetworkDisplayCaseClass,
-    getLocalizedNetworkDisplayName,
-} from "@/lib/intents-network";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { decimalOrNull } from "@/lib/amount-format";
+import type { ChainIcons, TreasuryAsset } from "@/lib/api";
+import type Big from "@/lib/big";
+import {
+    getLocalizedNetworkDisplayName,
+    getNetworkDisplayCaseClass,
+} from "@/lib/intents-network";
+import { cn } from "@/lib/utils";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
-
-interface NetworkIconDisplayProps {
-    chainIcons: ChainIcons | null;
-    networkName: string;
-    residency?: string;
-    networkNameClassName?: string;
-    expandNearComLabel?: boolean;
-}
 
 const NETWORK_DISPLAY_NAMES: Record<string, string> = {
     eth: "Ethereum",
@@ -142,7 +136,7 @@ export const NetworkDisplay = ({
     const tRes = useTranslations("residency");
     const tAddressBookTable = useTranslations("addressBookTable");
 
-    let type;
+    let type: string | undefined;
     switch (asset.residency) {
         case "Lockup":
             type = tRes("vestedToken");
@@ -195,13 +189,26 @@ export const BalanceCell = ({
     symbol: string;
     balanceUSD: number;
 }) => {
+    const parsedBalanceUSD = decimalOrNull(balanceUSD);
+    const unitPriceUsd =
+        balance.gt(0) && parsedBalanceUSD
+            ? parsedBalanceUSD.div(balance)
+            : null;
+
     return (
         <div className="min-w-0 max-w-full overflow-hidden text-right">
             <div className="truncate font-medium text-sm">
-                {formatCurrencyWithSubCent(balanceUSD)}
+                <FormattedAmount kind="fiat" value={parsedBalanceUSD} />
             </div>
             <div className="truncate text-xxs text-muted-foreground">
-                {formatSmartAmount(balance)} {symbol}
+                <FormattedAmount
+                    kind="token"
+                    value={balance}
+                    symbol={symbol}
+                    unitPriceUsd={unitPriceUsd}
+                    profile="compact"
+                    rounding="down"
+                />
             </div>
         </div>
     );

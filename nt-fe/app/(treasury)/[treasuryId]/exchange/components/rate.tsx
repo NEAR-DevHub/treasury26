@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Token } from "@/components/token-input";
-import { cn, formatSmartAmount } from "@/lib/utils";
+import { useState } from "react";
+import { FormattedAmount } from "@/components/formatted-amount";
+import type { Token } from "@/components/token-input";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import Big from "@/lib/big";
+import { cn } from "@/lib/utils";
 
 interface Quote {
     amountIn: string;
@@ -21,133 +23,76 @@ interface RateProps {
     className?: string;
 }
 
-/**
- * Calculate exchange rate between two tokens
- */
-function calculateExchangeRate(
-    amountIn: string,
-    amountOut: string,
-    amountInUsd: string,
-    amountOutUsd: string,
-    sellTokenDecimals: number,
-    receiveTokenDecimals: number,
-    sellTokenSymbol: string,
-    receiveTokenSymbol: string,
-    isReversed: boolean,
-    notAvailable: string,
-): string {
-    const sellAmount = Big(amountIn).div(Big(10).pow(sellTokenDecimals));
-    const receiveAmount = Big(amountOut).div(Big(10).pow(receiveTokenDecimals));
-
-    if (sellAmount.lte(0) || receiveAmount.lte(0)) {
-        return notAvailable;
-    }
-
-    if (isReversed) {
-        // Show: 1 ReceiveToken ($X) ≈ Y SellToken
-        const usdPerReceiveToken = Big(amountOutUsd)
-            .div(receiveAmount)
-            .toFixed(2);
-        const sellPerReceive = formatSmartAmount(sellAmount.div(receiveAmount));
-        return `1 ${receiveTokenSymbol} ($${usdPerReceiveToken}) ≈ ${sellPerReceive} ${sellTokenSymbol}`;
-    } else {
-        // Show: 1 SellToken ($X) ≈ Y ReceiveToken
-        const usdPerSellToken = Big(amountInUsd).div(sellAmount).toFixed(2);
-        const receivePerSell = formatSmartAmount(receiveAmount.div(sellAmount));
-        return `1 ${sellTokenSymbol} ($${usdPerSellToken}) ≈ ${receivePerSell} ${receiveTokenSymbol}`;
-    }
-}
-
-/**
- * Calculate detailed exchange rate with better formatting
- */
-function calculateDetailedExchangeRate(
-    amountIn: string,
-    amountOut: string,
-    amountInUsd: string,
-    amountOutUsd: string,
-    sellTokenDecimals: number,
-    receiveTokenDecimals: number,
-    sellTokenSymbol: string,
-    receiveTokenSymbol: string,
-    isReversed: boolean,
-    notAvailable: string,
-): string {
-    const sellAmount = Big(amountIn).div(Big(10).pow(sellTokenDecimals));
-    const receiveAmount = Big(amountOut).div(Big(10).pow(receiveTokenDecimals));
-
-    if (sellAmount.lte(0) || receiveAmount.lte(0)) {
-        return notAvailable;
-    }
-
-    if (isReversed) {
-        // Show: 1 ReceiveToken ($X) ≈ Y SellToken
-        const usdPerReceiveToken =
-            parseFloat(amountOut) > 0
-                ? Big(amountOutUsd).div(receiveAmount).toFixed(2)
-                : "0";
-        const sellPerReceive = receiveAmount.gt(0)
-            ? formatSmartAmount(sellAmount.div(receiveAmount))
-            : "0";
-        return `1 ${receiveTokenSymbol} ($${usdPerReceiveToken}) ≈ ${sellPerReceive} ${sellTokenSymbol}`;
-    } else {
-        // Show: 1 SellToken ($X) ≈ Y ReceiveToken
-        const usdPerSellToken =
-            parseFloat(amountIn) > 0
-                ? Big(amountInUsd).div(sellAmount).toFixed(2)
-                : "0";
-        const receivePerSell = sellAmount.gt(0)
-            ? formatSmartAmount(receiveAmount.div(sellAmount))
-            : "0";
-        return `1 ${sellTokenSymbol} ($${usdPerSellToken}) ≈ ${receivePerSell} ${receiveTokenSymbol}`;
-    }
-}
-
-/**
- * Displays the exchange rate with click-to-reverse functionality
- * Manages its own reversed state internally
- */
 export function Rate({
     quote,
     sellToken,
     receiveToken,
-    detailed = false,
+    detailed: _detailed = false,
     className = "",
 }: RateProps) {
     const t = useTranslations("exchangeRate");
+    const tCommon = useTranslations("common");
     const [isReversed, setIsReversed] = useState(false);
 
     if (!quote) return null;
 
-    const calculateRate = detailed
-        ? calculateDetailedExchangeRate
-        : calculateExchangeRate;
+    let baseSymbol: string;
+    let quoteSymbol: string;
+    let unitUsd: Big | null = null;
+    let quotePerBase: Big | null = null;
 
-    const tCommon = useTranslations("common");
-    const rate = calculateRate(
-        quote.amountIn,
-        quote.amountOut,
-        quote.amountInUsd,
-        quote.amountOutUsd,
-        sellToken.decimals,
-        receiveToken.decimals,
-        sellToken.symbol,
-        receiveToken.symbol,
-        isReversed,
-        tCommon("notAvailable"),
-    );
+    try {
+        const sellAmount = decimalFromBaseUnits(
+            quote.amountIn,
+            sellToken.decimals,
+        );
+        const receiveAmount = decimalFromBaseUnits(
+            quote.amountOut,
+            receiveToken.decimals,
+        );
+        if (isReversed) {
+            baseSymbol = receiveToken.symbol;
+            quoteSymbol = sellToken.symbol;
+            if (receiveAmount.gt(0)) {
+                unitUsd = Big(quote.amountOutUsd).div(receiveAmount);
+                quotePerBase = sellAmount.div(receiveAmount);
+            }
+        } else {
+            baseSymbol = sellToken.symbol;
+            quoteSymbol = receiveToken.symbol;
+            if (sellAmount.gt(0)) {
+                unitUsd = Big(quote.amountInUsd).div(sellAmount);
+                quotePerBase = receiveAmount.div(sellAmount);
+            }
+        }
+    } catch {
+        baseSymbol = isReversed ? receiveToken.symbol : sellToken.symbol;
+        quoteSymbol = isReversed ? sellToken.symbol : receiveToken.symbol;
+    }
 
     return (
-        <div
+        <button
+            type="button"
             className={cn(
-                "flex gap-2 justify-between items-center cursor-pointer",
+                "flex w-full gap-2 justify-between items-center cursor-pointer text-left",
                 className,
             )}
             onClick={() => setIsReversed(!isReversed)}
             title={t("clickToReverse")}
         >
             <span className="text-muted-foreground">{t("rate")}</span>
-            <span className="font-medium">{rate}</span>
-        </div>
+            <span className="font-medium">
+                {quotePerBase && unitUsd ? (
+                    <>
+                        1 {baseSymbol} (
+                        <FormattedAmount kind="unit-price" value={unitUsd} />) ≈{" "}
+                        <FormattedAmount kind="rate" value={quotePerBase} />{" "}
+                        {quoteSymbol}
+                    </>
+                ) : (
+                    tCommon("notAvailable")
+                )}
+            </span>
+        </button>
     );
 }

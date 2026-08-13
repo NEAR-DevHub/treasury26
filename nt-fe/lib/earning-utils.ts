@@ -1,12 +1,12 @@
+import type { ReactNode } from "react";
+import type { InfoItem } from "@/components/info-display";
 import Big from "@/lib/big";
-import { InfoItem } from "@/components/info-display";
 
 interface EarningOverviewParams {
     staked: Big;
     unstakedBalance: Big;
     canWithdraw: boolean;
-    symbol: string;
-    formatTokenBalance: (balance: Big) => string;
+    formatTokenBalance: (balance: Big) => ReactNode;
     labels: {
         staked: string;
         stakedInfo: string;
@@ -25,7 +25,6 @@ export function buildEarningOverviewItems({
     staked,
     unstakedBalance,
     canWithdraw,
-    symbol,
     formatTokenBalance,
     labels,
 }: EarningOverviewParams): InfoItem[] {
@@ -36,17 +35,17 @@ export function buildEarningOverviewItems({
         {
             label: labels.staked,
             info: labels.stakedInfo,
-            value: `${formatTokenBalance(staked)} ${symbol}`,
+            value: formatTokenBalance(staked),
         },
         {
             label: labels.pendingRelease,
             info: labels.pendingReleaseInfo,
-            value: `${formatTokenBalance(pendingRelease)} ${symbol}`,
+            value: formatTokenBalance(pendingRelease),
         },
         {
             label: labels.availableForWithdraw,
             info: labels.availableForWithdrawInfo,
-            value: `${formatTokenBalance(availableForWithdraw)} ${symbol}`,
+            value: formatTokenBalance(availableForWithdraw),
         },
     ];
 }

@@ -4,22 +4,19 @@ import { ChevronDown, ChevronLeft, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    useMergedTokens,
     type MergedNetwork,
     type MergedToken,
+    useMergedTokens,
 } from "@/hooks/use-merged-tokens";
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import type { ChainIcons } from "@/lib/api";
 import Big from "@/lib/big";
 import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
-import {
-    canonicalizeTokenIdForMatch,
-    cn,
-    formatBalance,
-    formatCurrencyWithSubCent,
-    formatSmartAmount,
-} from "@/lib/utils";
+import { canonicalizeTokenIdForMatch, cn } from "@/lib/utils";
 import { Button } from "./button";
+import { FormattedAmount } from "./formatted-amount";
+import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
 import {
     Dialog,
@@ -34,7 +31,6 @@ import { TokenDisplay } from "./token-display-with-network";
 import { Tooltip } from "./tooltip";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
-import { HighlightedText } from "./highlighted-text";
 
 // Selected token (asset + specific network)
 export interface SelectedTokenData {
@@ -356,13 +352,29 @@ export default function TokenSelect({
                 {token.totalBalance !== undefined && token.totalBalance > 0 && (
                     <div className="flex flex-col items-end">
                         <span className="font-semibold">
-                            {formatSmartAmount(token.totalBalance)}
+                            <FormattedAmount
+                                kind="token"
+                                value={token.totalBalance}
+                                symbol=""
+                                unitPriceUsd={
+                                    token.totalBalance > 0
+                                        ? Big(
+                                              (
+                                                  token.totalBalanceUSD || 0
+                                              ).toString(),
+                                          ).div(token.totalBalance.toString())
+                                        : null
+                                }
+                                profile="compact"
+                                rounding="down"
+                            />
                         </span>
                         <span className="text-sm text-muted-foreground">
                             ≈
-                            {formatCurrencyWithSubCent(
-                                token.totalBalanceUSD || 0,
-                            )}
+                            <FormattedAmount
+                                kind="fiat"
+                                value={token.totalBalanceUSD || 0}
+                            />
                         </span>
                     </div>
                 )}
@@ -565,11 +577,9 @@ export default function TokenSelect({
                                 }
 
                                 try {
-                                    return !Big(
-                                        formatBalance(
-                                            item.balance,
-                                            item.decimals,
-                                        ),
+                                    return !decimalFromBaseUnits(
+                                        item.balance,
+                                        item.decimals,
                                     ).eq(0);
                                 } catch {
                                     return false;
@@ -642,18 +652,28 @@ export default function TokenSelect({
                                         {hasBalance(item) && (
                                             <div className="flex flex-col items-end">
                                                 <span className="font-semibold">
-                                                    {formatSmartAmount(
-                                                        formatBalance(
-                                                            item.balance!,
-                                                            item.decimals!,
-                                                        ),
-                                                    )}
+                                                    <FormattedAmount
+                                                        kind="raw-token"
+                                                        value={item.balance!}
+                                                        symbol=""
+                                                        tokenDecimals={
+                                                            item.decimals!
+                                                        }
+                                                        unitPriceUsd={
+                                                            item.price
+                                                        }
+                                                        profile="compact"
+                                                        rounding="down"
+                                                    />
                                                 </span>
                                                 <span className="text-sm text-muted-foreground">
                                                     ≈
-                                                    {formatCurrencyWithSubCent(
-                                                        item.balanceUSD || 0,
-                                                    )}
+                                                    <FormattedAmount
+                                                        kind="fiat"
+                                                        value={
+                                                            item.balanceUSD || 0
+                                                        }
+                                                    />
                                                 </span>
                                             </div>
                                         )}

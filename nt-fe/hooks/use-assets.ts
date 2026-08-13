@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { getTreasuryAssets } from "@/lib/api";
 import { useMemo } from "react";
-import { TreasuryAsset } from "@/lib/api";
-import { formatBalance } from "@/lib/utils";
-import Big from "@/lib/big";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import { getTreasuryAssets, type TreasuryAsset } from "@/lib/api";
 import { availableBalance, totalBalance } from "@/lib/balance";
+import Big from "@/lib/big";
 
 const isTokenValidByOptions = (
     token: TreasuryAsset,
@@ -122,19 +121,13 @@ export function useAggregatedTokens(
                 }
 
                 // Normalize token balances (accounting for different decimals)
-                const tokenTotalBalance = Big(
-                    formatBalance(
-                        totalBalance(token.balance),
-                        token.decimals,
-                        token.decimals,
-                    ),
+                const tokenTotalBalance = decimalFromBaseUnits(
+                    totalBalance(token.balance),
+                    token.decimals,
                 );
-                const tokenAvailableBalance = Big(
-                    formatBalance(
-                        availableBalance(token.balance),
-                        token.decimals,
-                        token.decimals,
-                    ),
+                const tokenAvailableBalance = decimalFromBaseUnits(
+                    availableBalance(token.balance),
+                    token.decimals,
                 );
 
                 // Aggregate total balance
