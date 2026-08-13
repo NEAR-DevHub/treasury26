@@ -136,9 +136,9 @@ const manifestFieldBase = z.object({
     label: nonBlankString("field.label"),
     type: manifestFieldTypeSchema,
     required: z.boolean().optional(),
-    // zod v4: z.unknown() accepts a missing key, so no `.optional()` is needed (the key may be
-    // omitted entirely); its shape is tied to `type` by the refinements below, not left arbitrary.
-    default: z.unknown(),
+    // The key may be omitted entirely; its shape is tied to `type` by the refinements below. `.optional()`
+    // is required: zod 4.4 stopped treating a bare `z.unknown()` as accepting a missing key.
+    default: z.unknown().optional(),
     help: z.string().optional(),
     /** Choices for a `select` field (required there, forbidden elsewhere). */
     options: z.array(z.string()).optional(),

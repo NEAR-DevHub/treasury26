@@ -77,6 +77,7 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
                     displayAddress={displayReceiver}
                     chainName={recipientChainName}
                     withHoverCard
+                    preferAddressBook
                 />
             ),
         },

@@ -38,7 +38,6 @@ export function StakingCell({
         ? resolveUserDisplayName({
               accountId: validator,
               profileName: profile?.name,
-              addressBookName: profile?.addressBookName,
           })
         : validator;
 

@@ -304,6 +304,8 @@ export interface RecentActivity {
     receiptIds: string[];
     valueUsd?: number;
     proposalId?: number | null;
+    /** 1Click deposit address of the linked quote proposal; marks the row as intents-routed. */
+    quoteDepositAddress?: string | null;
     swap?: SwapInfo;
     actionKind?: string | null;
     methodName?: string | null;

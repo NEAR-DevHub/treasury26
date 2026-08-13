@@ -34,6 +34,8 @@ interface DepositAddressViewProps {
     createNewAddressDisabled?: boolean;
     showShare?: boolean;
     className?: string;
+    /** Shown above tabs/title (e.g. public slow-network banner). */
+    warningSlot?: ReactNode;
     headerSlot?: ReactNode;
 }
 
@@ -87,12 +89,14 @@ export function DepositAddressView({
     createNewAddressDisabled = false,
     showShare = true,
     className,
+    warningSlot,
     headerSlot,
 }: DepositAddressViewProps) {
     const t = useTranslations("depositModal");
 
     return (
         <div className={cn("space-y-4", className)}>
+            {warningSlot}
             {headerSlot}
             <div>
                 <h2 className="font-semibold text-base leading-snug">

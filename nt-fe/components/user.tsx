@@ -52,23 +52,28 @@ export function normalizeDisplayName(
 
 /**
  * Resolve the label to show for an account.
- * Prefer override → address-book → profile/DB (includes treasury branding) →
- * account id.
+ * Default: override → profile/DB (includes treasury branding) → account id.
+ * With `preferAddressBook`: override → address-book → profile/DB → account id.
  */
 export function resolveUserDisplayName({
     accountId,
     name,
     profileName,
     addressBookName,
+    preferAddressBook = false,
 }: {
     accountId: string;
     name?: string | null;
     profileName?: string | null;
     addressBookName?: string | null;
+    /** When true (request details only), prefer address-book name over profile. */
+    preferAddressBook?: boolean;
 }): string {
     return (
         normalizeDisplayName(name) ??
-        normalizeDisplayName(addressBookName) ??
+        (preferAddressBook
+            ? normalizeDisplayName(addressBookName)
+            : undefined) ??
         normalizeDisplayName(profileName) ??
         accountId
     );
@@ -314,6 +319,8 @@ interface TooltipUserProps {
     /** Copied / shown in the card when set (e.g. nearcom: prefix). */
     displayAddress?: string;
     chainName?: string;
+    /** Prefer address-book name in the tooltip User (request details). */
+    preferAddressBook?: boolean;
     children: React.ReactNode;
     triggerProps?: TooltipProps["triggerProps"];
 }
@@ -323,6 +330,7 @@ export function TooltipUser({
     name,
     displayAddress,
     chainName = NEAR_NETWORK_ID,
+    preferAddressBook = false,
     children,
     triggerProps,
 }: TooltipUserProps) {
@@ -338,6 +346,7 @@ export function TooltipUser({
             name,
             profileName: profile?.name,
             addressBookName: profile?.addressBookName,
+            preferAddressBook,
         }),
         address: bareAccountId,
     });
@@ -356,6 +365,7 @@ export function TooltipUser({
                         accountId={bareAccountId}
                         name={name}
                         displayAddress={displayAddress}
+                        preferAddressBook={preferAddressBook}
                         size="lg"
                         withLink={false}
                     />
@@ -408,6 +418,11 @@ interface UserProps {
     withLink?: boolean;
     withHoverCard?: boolean;
     chainName?: string;
+    /**
+     * Prefer treasury address-book name over profile/Social.
+     * Use only in request (proposal) details.
+     */
+    preferAddressBook?: boolean;
     /** When set, matching substrings in name/address are highlighted. */
     highlightQuery?: string;
 }
@@ -421,6 +436,7 @@ export function User({
     withLink = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
+    preferAddressBook = false,
     highlightQuery,
 }: UserProps) {
     const bareAccountId = stripNearComAddressPrefix(accountId);
@@ -435,6 +451,7 @@ export function User({
         name: nameProp,
         profileName: profile?.name,
         addressBookName: profile?.addressBookName,
+        preferAddressBook,
     });
 
     return (

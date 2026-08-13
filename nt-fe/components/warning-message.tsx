@@ -263,7 +263,7 @@ export function WarningMessage(props: WarningMessageProps) {
                     className,
                 )}
             >
-                <span>{inlineText}</span>
+                <span className="min-w-0">{inlineText}</span>
                 {tooltipText && (
                     <Tooltip content={tooltipText}>
                         <Info className="size-3 shrink-0" />

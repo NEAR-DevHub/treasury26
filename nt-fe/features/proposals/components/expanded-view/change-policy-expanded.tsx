@@ -136,7 +136,7 @@ function getMemberItems(
     const items: InfoItem[] = [
         {
             label: t("member"),
-            value: <User accountId={change.member} />,
+            value: <User accountId={change.member} preferAddressBook />,
         },
     ];
 

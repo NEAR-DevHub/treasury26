@@ -1,5 +1,5 @@
 use std::str::FromStr;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use axum::http::StatusCode;
 use bigdecimal::BigDecimal;
@@ -179,6 +179,10 @@ fn success_status(outcome: Option<&NearblocksReceiptOutcome>) -> Option<bool> {
 
 /// Max attempts (including the first) before a 429 is surfaced as an error.
 const NEARBLOCKS_MAX_ATTEMPTS: u32 = 4;
+
+/// Hard bound per HTTP request so a hung provider connection can never pin a
+/// worker slot toward the job timeout / stuck-Running reclaim.
+const NEARBLOCKS_REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 /// Fallback backoff when a 429 response omits a usable `Retry-After` header.
 const NEARBLOCKS_DEFAULT_BACKOFF: Duration = Duration::from_secs(6);
 /// Cap on any single backoff so a hostile `Retry-After` can't stall a worker.
@@ -237,7 +241,24 @@ async fn fetch_raw_json(
         // Draw on the shared NearBlocks budget before every request so all
         // callers stay collectively under the plan's per-minute ceiling; latest
         // requests preempt backfill for the next permit.
+        let gate_started_at = Instant::now();
         state.nearblocks_gate.acquire(priority).await;
+        let gate_wait_ms = gate_started_at.elapsed().as_millis();
+        if gate_wait_ms >= 1_000 {
+            tracing::info!(
+                operation,
+                priority = ?priority,
+                gate_wait_ms,
+                "NearBlocks request waited for shared rate budget"
+            );
+        } else {
+            tracing::debug!(
+                operation,
+                priority = ?priority,
+                gate_wait_ms,
+                "NearBlocks rate-budget permit acquired"
+            );
+        }
 
         let response = state
             .http_client
@@ -245,6 +266,7 @@ async fn fetch_raw_json(
             .query(&params)
             .header("accept", "application/json")
             .header("Authorization", format!("Bearer {}", api_key))
+            .timeout(NEARBLOCKS_REQUEST_TIMEOUT)
             .send()
             .await;
 

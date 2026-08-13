@@ -19,6 +19,8 @@
 pub mod context;
 pub mod handlers;
 pub mod leadership;
+pub mod platform;
+pub mod reclaimer;
 pub mod watchdog;
 
 use std::str::FromStr;
@@ -41,6 +43,7 @@ use sqlx::PgPool;
 use tokio_util::sync::CancellationToken;
 
 use crate::AppState;
+use platform::{JobWakeHub, QueueSpec, SteadyPostgresStorage};
 
 /// Queue backend shared by all jobs: cron ticks persisted to Postgres.
 pub type TickStorage = PostgresStorage<Tick>;
@@ -67,7 +70,7 @@ impl JobQueues {
 #[derive(Default)]
 struct QueueRegistry {
     entries: Vec<(&'static str, TickStorage)>,
-    specs: Vec<watchdog::JobSpec>,
+    specs: Vec<QueueSpec>,
 }
 
 impl QueueRegistry {
@@ -78,20 +81,9 @@ impl QueueRegistry {
             .map(|(_, storage)| storage)
     }
 
-    fn register(&mut self, name: &'static str, storage: TickStorage, interval_secs: Option<u64>) {
+    fn register(&mut self, name: &'static str, storage: TickStorage, spec: QueueSpec) {
         self.entries.push((name, storage));
-        match interval_secs {
-            Some(interval_secs) => self.specs.push(watchdog::JobSpec {
-                queue: name,
-                kind: watchdog::QueueKind::Cron { interval_secs },
-            }),
-            // A schedule with fewer than two upcoming ticks can't yield a
-            // cadence; leave the queue off the watchdog rather than guess.
-            None => tracing::warn!(
-                queue = name,
-                "could not derive cron interval; queue not watched for staleness"
-            ),
-        }
+        self.specs.push(spec);
     }
 }
 
@@ -283,7 +275,14 @@ async fn tune_apalis_autovacuum(pool: &PgPool) {
 async fn ensure_board_indexes(pool: &PgPool) {
     use sqlx::Executor as _;
 
-    const INDEXES: [(&str, &str); 5] = [
+    const INDEXES: [(&str, &str); 6] = [
+        (
+            "idx_apalis_jobs_claimable_v2",
+            "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_apalis_jobs_claimable_v2 \
+             ON apalis.jobs (job_type, priority DESC, run_at, id) \
+             WHERE status = 'Pending' \
+                OR (status = 'Failed' AND attempts < max_attempts)",
+        ),
         (
             "idx_jobs_status_doneat_runat",
             "CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_jobs_status_doneat_runat \
@@ -323,8 +322,9 @@ async fn ensure_board_indexes(pool: &PgPool) {
     }
 }
 
+#[cfg(test)]
 fn storage(pool: &PgPool, queue: &str) -> TickStorage {
-    PostgresStorage::new_with_config(pool, &Config::new(queue))
+    PostgresStorage::new_with_config(pool, &Config::new(queue).set_buffer_size(1))
 }
 
 /// Resolves on the first shutdown signal so the monitor can drain in-flight
@@ -407,33 +407,51 @@ async fn push_now(storage: &TickStorage, queue: &'static str) {
 /// The optional `Monitor` is passed by value and reassigned (`register` is
 /// builder-style), so this must be used as `monitor = register_cron_worker!(monitor, …)`.
 macro_rules! register_cron_worker {
-    ($monitor:expr, $queues:expr, $state:expr, $name:literal, $schedule:expr, $handler:path) => {{
+    ($monitor:expr, $queues:expr, $state:expr, $wake_hub:expr, $name:literal, $schedule:expr, $handler:path) => {{
         let schedule = $schedule;
-        let store = match $queues.storage($name) {
-            Some(store) => store.clone(),
-            None => {
-                let store = storage(&$state.db_pool, $name);
-                $queues.register(
-                    $name,
-                    store.clone(),
-                    watchdog::schedule_interval_secs(&schedule),
-                );
-                store
-            }
-        };
+        let interval_secs = watchdog::schedule_interval_secs(&schedule).unwrap_or_else(|| {
+            tracing::warn!(
+                queue = $name,
+                "could not derive cron interval; using one-day health cadence"
+            );
+            86_400
+        });
+        let spec = QueueSpec::cron($name, interval_secs, 1, job_timeout());
+        if $queues.storage($name).is_none() {
+            let store = PostgresStorage::new_with_config(
+                &$state.db_pool,
+                &Config::new($name).set_buffer_size(spec.fetch_batch),
+            );
+            $queues.register($name, store, spec.clone());
+        }
         match $monitor {
             Some(monitor) => {
                 let state = $state.clone();
+                let steady = SteadyPostgresStorage::new(&$state.db_pool, &spec, $wake_hub);
+                let handler_timeout = spec.handler_timeout;
+                let concurrency = spec.concurrency;
                 // `register` takes a factory `Fn(attempt) -> Worker`: the Monitor
                 // calls it to (re)build the worker, so a restart gets a fresh
                 // backend/connection.
-                Some(monitor.register(move |_attempt| {
+                Some(monitor.register(move |attempt| {
+                    let restart_delay = platform::worker_restart_delay(attempt);
+                    if !restart_delay.is_zero() {
+                        tracing::warn!(
+                            worker = $name,
+                            attempt,
+                            restart_delay_ms = restart_delay.as_millis(),
+                            "rebuilding job worker after supervised backoff"
+                        );
+                    }
                     WorkerBuilder::new($name)
-                        .backend(CronStream::new(schedule.clone()).pipe_to(store.clone()))
+                        .backend(
+                            CronStream::new(schedule.clone())
+                                .pipe_to(steady.clone().with_startup_delay(restart_delay)),
+                        )
                         .data(state.clone())
                         // Bounds a hung handler so it cannot hold this queue's
                         // sole concurrency slot forever.
-                        .timeout(job_timeout())
+                        .timeout(handler_timeout)
                         .catch_panic()
                         // apalis's Sentry integration: captures a task failure once
                         // (after catch_panic has converted any panic to an error) with
@@ -452,14 +470,8 @@ macro_rules! register_cron_worker {
                         // warning, and this keeps the tracing→Sentry bridge
                         // (ERROR→event) from emitting a *second* event for the same
                         // failure the SentryLayer already captured.
-                        .layer(
-                            TraceLayer::new()
-                                .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
-                                .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
-                                .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
-                                .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN)),
-                        )
-                        .concurrency(1)
+                        .layer(job_trace_layer())
+                        .concurrency(concurrency)
                         .build($handler)
                 }))
             }
@@ -468,19 +480,24 @@ macro_rules! register_cron_worker {
     }};
 }
 
+pub(crate) fn job_trace_layer() -> TraceLayer {
+    TraceLayer::new()
+        .make_span_with(DefaultMakeSpan::new().level(tracing::Level::INFO))
+        .on_request(DefaultOnRequest::new().level(tracing::Level::INFO))
+        .on_response(DefaultOnResponse::new().level(tracing::Level::INFO))
+        .on_failure(DefaultOnFailure::new().level(tracing::Level::WARN))
+}
+
 fn job_monitor() -> Monitor {
     // apalis's own supervisor: runs every cron worker, restarts one that
     // exits (backend/storage failure) via `should_restart`, and drains
-    // in-flight tasks on shutdown. The two public-history payload consumers
+    // in-flight tasks on shutdown. The three public-history payload consumers
     // use their targeted supervisors below.
     //
-    // The restart is immediate (the `should_restart` hook is synchronous, so
-    // it can't back off). That doesn't hot-loop in practice: transient DB
-    // outages are absorbed by apalis-postgres's own fetcher backoff
-    // (1s→5min) *inside* `worker.run()`, so a worker rarely exits at all on a
-    // blip; it only exits on a terminal condition, which is rare. A restart
-    // then re-establishes the connection. (If a cooldown on repeated exits is
-    // ever needed, apalis's `circuit_breaker` worker ext is the native tool.)
+    // The `should_restart` hook is synchronous, so each rebuilt backend delays
+    // its first claim with the platform's jittered 1-30s restart backoff.
+    // Transient database outages remain inside the claim stream and use the
+    // same bounds without forcing a worker rebuild.
     //
     // A `GracefulExit` (worker stopped via `.stop()`, i.e. shutdown) must NOT
     // be restarted: during shutdown the Monitor stops each rebuilt worker
@@ -509,6 +526,7 @@ fn configure_cron_runtime(
     state: Arc<AppState>,
     mut queues: QueueRegistry,
     mut monitor: Option<Monitor>,
+    wake_hub: &JobWakeHub,
 ) -> (Option<Monitor>, QueueRegistry) {
     let preparing_queues = monitor.is_none();
 
@@ -517,6 +535,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "account-maintenance",
             schedule_every_secs(env_secs("MAINTENANCE_INTERVAL_SECONDS", 60)),
             handlers::account_maintenance
@@ -525,6 +544,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "confidential-poll",
             schedule_every_secs(env_secs("CONFIDENTIAL_POLL_INTERVAL_SECONDS", 300)),
             handlers::confidential_poll
@@ -536,6 +556,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "public-history-scheduler",
             schedule_every_secs(2),
             handlers::public_history_scheduler
@@ -544,6 +565,16 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
+            "public-history-latest-dispatcher",
+            schedule_every_secs(1),
+            handlers::public_history_latest_dispatcher
+        );
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            wake_hub,
             "public-history-readiness-scheduler",
             schedule_every_secs(60),
             handlers::public_history_readiness_scheduler
@@ -552,6 +583,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "public-history-backfill-scheduler",
             schedule_every_secs(10),
             handlers::public_history_backfill_scheduler
@@ -560,6 +592,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "public-silver-projection",
             schedule_every_secs(5),
             handlers::public_silver_projection
@@ -568,6 +601,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "public-gold-projection",
             schedule_every_secs(5),
             handlers::public_gold_projection
@@ -576,6 +610,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "public-proposal-reconciliation",
             schedule_every_secs(600),
             handlers::public_proposal_reconciliation
@@ -584,6 +619,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "public-quote-status-refresh",
             schedule_every_secs(env_secs("PUBLIC_QUOTE_REFRESH_INTERVAL_SECONDS", 120)),
             handlers::public_quote_status_refresh
@@ -592,6 +628,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "staking-observation",
             schedule_every_secs(env_secs("STAKING_OBSERVATION_INTERVAL_SECONDS", 900)),
             handlers::staking_observation
@@ -600,6 +637,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "price-history-backfill",
             schedule_every_secs(3600),
             handlers::price_history_backfill
@@ -614,6 +652,17 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
+        "apalis-reclaimer",
+        schedule_every_secs(60),
+        reclaimer::apalis_reclaimer
+    );
+
+    monitor = register_cron_worker!(
+        monitor,
+        queues,
+        state,
+        wake_hub,
         "price-sync",
         schedule_every_secs(60),
         handlers::price_sync
@@ -623,6 +672,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "token-price-ingest",
         schedule_every_secs(60),
         handlers::token_price_ingest
@@ -648,6 +698,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "gold-usd-enrichment",
             schedule_every_secs(env_secs("GOLD_USD_ENRICHMENT_INTERVAL_SECONDS", 300)),
             handlers::gold_usd_enrichment
@@ -658,6 +709,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "confidential-history-ingest",
         schedule_every_secs(10),
         handlers::confidential_history_ingest
@@ -667,6 +719,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "confidential-snapshots",
         schedule_every_secs(3600),
         handlers::confidential_snapshots
@@ -676,6 +729,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "confidential-gold-reconciliation",
         schedule_every_secs(86_400),
         handlers::confidential_gold_reconciliation
@@ -685,6 +739,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "bulk-payment-payout",
         schedule_every_secs(5),
         handlers::bulk_payment_payout
@@ -695,6 +750,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "goldsky-enrichment",
             schedule_every_secs(env_secs("ENRICHMENT_INTERVAL_SECONDS", 15)),
             handlers::goldsky_enrichment
@@ -718,6 +774,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "treasury-creation-sweeper",
             schedule_every_secs(15),
             handlers::treasury_creation_sweeper
@@ -728,6 +785,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "status-monitor",
         schedule_every_secs(60),
         handlers::status_monitor
@@ -737,6 +795,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "notifications",
         schedule_every_secs(15),
         handlers::notifications
@@ -746,6 +805,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "sponsor-balance-monitor",
         schedule_every_secs(env_secs("SPONSOR_BALANCE_POLL_INTERVAL_SECONDS", 60)),
         handlers::sponsor_balance_monitor
@@ -755,6 +815,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "dao-list-sync",
         schedule_every_secs(1800),
         handlers::dao_list_sync
@@ -766,6 +827,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "dao-policy-dirty",
         schedule_every_secs(5),
         handlers::dao_policy_dirty
@@ -775,6 +837,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "dao-policy-stale",
         schedule_every_secs(60),
         handlers::dao_policy_stale
@@ -784,6 +847,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "subscription-monthly-reset",
         Schedule::from_str("0 0 0 * * *").expect("valid cron"),
         handlers::subscription_monthly_reset
@@ -794,6 +858,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "public-dashboard-refresh",
             Schedule::from_str("0 0 0 * * Mon").expect("valid cron"),
             handlers::public_dashboard_refresh
@@ -805,6 +870,7 @@ fn configure_cron_runtime(
             monitor,
             queues,
             state,
+            wake_hub,
             "ft-lockup-refresh",
             Schedule::from_str("0 0 */6 * * *").expect("valid cron"),
             handlers::ft_lockup_refresh
@@ -823,6 +889,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "apalis-prune",
         Schedule::from_str("0 0 * * * *").expect("valid cron"),
         handlers::apalis_prune
@@ -832,6 +899,7 @@ fn configure_cron_runtime(
         monitor,
         queues,
         state,
+        wake_hub,
         "job-watchdog",
         schedule_every_secs(60),
         watchdog::job_watchdog
@@ -840,30 +908,32 @@ fn configure_cron_runtime(
     (monitor, queues)
 }
 
-fn prepare_job_queues(state: Arc<AppState>) -> (JobQueues, Vec<watchdog::JobSpec>) {
-    let (_, mut registry) = configure_cron_runtime(state.clone(), QueueRegistry::default(), None);
+fn prepare_job_queues(state: Arc<AppState>) -> (JobQueues, Vec<QueueSpec>) {
+    let wake_hub = JobWakeHub::default();
+    let (_, mut registry) =
+        configure_cron_runtime(state.clone(), QueueRegistry::default(), None, &wake_hub);
 
     if state.env_vars.nearblocks_api_key.is_some() {
-        registry.specs.extend(
-            crate::handlers::public_history::bronze::jobs::QUEUE_NAMES
-                .into_iter()
-                .map(|queue| watchdog::JobSpec {
-                    queue,
-                    kind: watchdog::QueueKind::Queue,
-                }),
-        );
+        registry
+            .specs
+            .extend(crate::handlers::public_history::bronze::jobs::public_history_queue_specs());
     }
 
     let QueueRegistry { entries, specs } = registry;
     (JobQueues { entries }, specs)
 }
 
-fn build_cron_runtime(state: Arc<AppState>, queues: JobQueues) -> (Monitor, JobQueues) {
+fn build_cron_runtime(
+    state: Arc<AppState>,
+    queues: JobQueues,
+    wake_hub: &JobWakeHub,
+) -> (Monitor, JobQueues) {
     let registry = QueueRegistry {
         entries: queues.entries,
         specs: Vec::new(),
     };
-    let (monitor, registry) = configure_cron_runtime(state, registry, Some(job_monitor()));
+    let (monitor, registry) =
+        configure_cron_runtime(state, registry, Some(job_monitor()), wake_hub);
     (
         monitor.expect("cron monitor must be present when starting workers"),
         JobQueues {
@@ -960,7 +1030,8 @@ async fn run_leader_runtime(
     shutdown: CancellationToken,
     run_startup_tasks: bool,
 ) -> Result<(), String> {
-    let (monitor, queues) = build_cron_runtime(state.clone(), queues);
+    let wake_hub = JobWakeHub::default();
+    let (monitor, queues) = build_cron_runtime(state.clone(), queues, &wake_hub);
     if run_startup_tasks {
         push_startup_tasks(&queues, &state.db_pool).await;
     }
@@ -970,10 +1041,15 @@ async fn run_leader_runtime(
         crate::handlers::public_history::bronze::jobs::public_history_queue_worker_futures(
             state.clone(),
             shutdown.clone(),
+            wake_hub.clone(),
         );
     let mut consumer_futures: FuturesUnordered<_> = payload_consumers.into_iter().collect();
 
     let mut children = tokio::task::JoinSet::new();
+    let listener_pool = state.db_pool.clone();
+    let listener_shutdown = shutdown.clone();
+    let wake_listener = wake_hub.run(listener_pool, listener_shutdown);
+    tokio::pin!(wake_listener);
     let monitor_shutdown = shutdown.clone();
     children.spawn(async move {
         monitor
@@ -999,6 +1075,13 @@ async fn run_leader_runtime(
         _ = consumer_futures.next(), if !consumer_futures.is_empty() => {
             Some("public history consumer supervisor exited unexpectedly".to_string())
         },
+        _ = &mut wake_listener => {
+            if shutdown.is_cancelled() {
+                None
+            } else {
+                Some("job wake listener exited unexpectedly".to_string())
+            }
+        },
         _ = &mut liveness => Some("job liveness monitor exited unexpectedly".to_string()),
     };
 
@@ -1019,6 +1102,16 @@ pub async fn spawn_all(
     state: Arc<AppState>,
     shutdown: CancellationToken,
 ) -> (JobQueues, tokio::task::JoinHandle<()>) {
+    const MIN_JOB_POOL_CONNECTIONS: u32 = 4;
+    let max_connections = state.db_pool.options().get_max_connections();
+    if max_connections < MIN_JOB_POOL_CONNECTIONS {
+        tracing::warn!(
+            max_connections,
+            recommended_minimum = MIN_JOB_POOL_CONNECTIONS,
+            "database pool is undersized for job leadership, wake listening, and ordinary queries"
+        );
+    }
+
     setup_apalis(&state.db_pool)
         .await
         .expect("failed to run apalis migrations");
@@ -1208,6 +1301,7 @@ mod tests {
         let (queues, specs) = super::prepare_job_queues(state);
         for (queue, interval_secs) in [
             ("public-history-scheduler", 2),
+            ("public-history-latest-dispatcher", 1),
             ("public-history-readiness-scheduler", 60),
             ("public-history-backfill-scheduler", 10),
         ] {
@@ -1225,6 +1319,13 @@ mod tests {
                     interval_secs: actual
                 } if actual == interval_secs
             ));
+            assert_eq!(spec.fetch_batch, spec.concurrency);
+            assert_eq!(spec.poll_interval, std::time::Duration::from_secs(1));
+        }
+
+        for spec in crate::handlers::public_history::bronze::jobs::public_history_queue_specs() {
+            assert_eq!(spec.fetch_batch, spec.concurrency);
+            assert_eq!(spec.poll_interval, std::time::Duration::from_secs(1));
         }
     }
 

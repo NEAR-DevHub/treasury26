@@ -21,6 +21,7 @@ import {
     resolveBridgeScope,
 } from "@/lib/bridge-asset-resolver";
 import type { Proposal } from "@/lib/proposals-api";
+import { networksMatchForWarningScope } from "@/components/token-display";
 import {
     actionKeyForSlot,
     fillStoredWarningMessage,
@@ -116,7 +117,15 @@ function getCandidateSlots(slot: string): string[] {
     return [slot, ...getParentSlots(slot)];
 }
 
-function warningMatchesQuery(
+/**
+ * A scoped warning matches only when every set field agrees with the query:
+ * - token: exact (case-insensitive); never aliased
+ * - network: exact or same-chain alias (`arb`/`arbitrum`); never cross-chain
+ * - slot: exact, parent, or prefix match
+ *
+ * Null warning.token / warning.network means "any" for that dimension.
+ */
+export function warningMatchesQuery(
     warning: Warning,
     slot: string,
     token?: string,
@@ -127,11 +136,16 @@ function warningMatchesQuery(
     const warningToken = normalizeToken(warning.token);
     const warningNetwork = normalizeToken(warning.network);
 
+    // Token is never aliased — eth warning must not match usdc selection.
     if (warningToken && warningToken !== normalizedToken) {
         return false;
     }
 
-    if (warningNetwork && warningNetwork !== normalizedNetwork) {
+    // Network aliases only within the same chain; missing query network fails.
+    if (
+        warningNetwork &&
+        !networksMatchForWarningScope(warningNetwork, normalizedNetwork)
+    ) {
         return false;
     }
 
