@@ -72,6 +72,7 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
                     accountId={data.receiver}
                     chainName={recipientChainName}
                     withHoverCard
+                    preferAddressBook
                 />
             ),
         },
