@@ -231,6 +231,12 @@ export interface BatchPaymentRequestData {
     totalAmount: string;
     batchId: string;
     notes?: string;
+    /**
+     * Receive network from proposal description `destinationNetwork`, when
+     * present. Public bulk does not write this today (confidential uses
+     * quote metadata instead).
+     */
+    destinationAssetId?: string;
 }
 
 /**

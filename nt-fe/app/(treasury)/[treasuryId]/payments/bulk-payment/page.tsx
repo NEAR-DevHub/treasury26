@@ -637,6 +637,9 @@ export default function BulkPaymentPage() {
                         destinationNetwork={
                             isConfidential ? destinationNetworkName : undefined
                         }
+                        destinationNetworkId={
+                            isConfidential ? destinationNetworkId : undefined
+                        }
                         onSave={handleSaveEdit}
                         onCancel={handleCancelEdit}
                     />
@@ -661,6 +664,11 @@ export default function BulkPaymentPage() {
                             destinationNetwork={
                                 isConfidential
                                     ? destinationNetworkName
+                                    : undefined
+                            }
+                            destinationNetworkId={
+                                isConfidential
+                                    ? destinationNetworkId
                                     : undefined
                             }
                             destinationAssetId={
