@@ -178,8 +178,12 @@ async fn fetch_bridge_deposit_address(
 }
 
 /// Fetch deposit address for a specific account and chain.
-/// For confidential treasuries, this first obtains a confidential quote to get
-/// an intents deposit address, then fetches the bridge address for that.
+///
+/// **Public** treasuries use Bridge/POA `depositAddressFetch(account, chain)` —
+/// the address is stable for that treasury+chain (same as near.com).
+/// **Confidential** treasuries mint a rotating 1Click wet quote (`tokenId`
+/// should be the 1Click `quoteAssetId`, which may be `1cs_v1:…`), then map
+/// through the bridge when needed.
 ///
 /// Guests and non-members may generate addresses — depositing funds into a
 /// treasury is not a member-only action. Confidential quotes use the app API
@@ -339,17 +343,27 @@ async fn fetch_deposit_address(
         return Err(format!("HTTP error! status: {}", response.status()));
     }
 
-    let data = response
-        .json::<JsonRpcResponse<DepositAddressResult>>()
-        .await
-        .map_err(|e| {
-            eprintln!("Error parsing bridge response: {}", e);
-            "Failed to parse bridge response".to_string()
-        })?;
+    let raw = response.json::<serde_json::Value>().await.map_err(|e| {
+        eprintln!("Error parsing bridge response: {}", e);
+        "Failed to parse bridge response".to_string()
+    })?;
 
-    if let Some(error) = data.error {
-        return Err(error.message);
+    // Bridge sometimes returns `"error": "Network not supported"` (string) instead
+    // of a JSON-RPC `{ code, message }` object.
+    if let Some(error) = raw.get("error") {
+        if let Some(message) = error.as_str() {
+            return Err(message.to_string());
+        }
+        if let Some(message) = error.get("message").and_then(|m| m.as_str()) {
+            return Err(message.to_string());
+        }
+        return Err(format!("Bridge error: {error}"));
     }
+
+    let data: JsonRpcResponse<DepositAddressResult> = serde_json::from_value(raw).map_err(|e| {
+        eprintln!("Error parsing bridge response: {}", e);
+        "Failed to parse bridge response".to_string()
+    })?;
 
     data.result
         .ok_or_else(|| "No deposit address found".to_string())

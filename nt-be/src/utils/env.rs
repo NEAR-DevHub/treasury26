@@ -77,6 +77,9 @@ pub struct EnvVars {
     pub confidential_auth_expires_days: i64,
     pub testing_sputnik_dao_ids: HashSet<String>,
     pub testing_near_account_ids: HashSet<String>,
+    /// Fine-scoped GitHub token with read access to the private
+    /// `defuse-frontend-monorepos` repo (near.com catalog watch).
+    pub nearcom_catalog_github_token: Option<String>,
 }
 
 fn parse_csv_set(key: &str) -> HashSet<String> {
@@ -265,6 +268,9 @@ impl Default for EnvVars {
                 .unwrap_or(36500), // Default: ~100 years
             testing_sputnik_dao_ids: parse_csv_set("TESTING_SPUTNIK_DAO_IDS"),
             testing_near_account_ids: parse_csv_set("TESTING_NEAR_ACCOUNT_IDS"),
+            nearcom_catalog_github_token: std::env::var("NEARCOM_CATALOG_GITHUB_TOKEN")
+                .ok()
+                .filter(|s| !s.is_empty()),
         }
     }
 }

@@ -31,6 +31,8 @@ export interface MergedNetwork {
     lockedBalance?: string;
     minWithdrawalAmount?: string;
     minDepositAmount?: string;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
 }
 
 export interface MergedToken {
@@ -97,6 +99,11 @@ const mapBridgeMatchedNetwork = (
     residency: treasuryNetwork.residency,
     minWithdrawalAmount: bridgeNetwork.minWithdrawalAmount,
     minDepositAmount: bridgeNetwork.minDepositAmount,
+    balanceAssetId: bridgeNetwork.balanceAssetId || bridgeNetwork.id,
+    quoteAssetId:
+        bridgeNetwork.quoteAssetId ||
+        bridgeNetwork.balanceAssetId ||
+        bridgeNetwork.id,
     lockedBalance:
         treasuryNetwork.balance.type === "Standard"
             ? treasuryNetwork.balance.locked.toFixed(0)
@@ -130,6 +137,11 @@ const toBridgeVariants = (
             residency,
             minWithdrawalAmount,
             minDepositAmount,
+            balanceAssetId: bridgeNetwork.balanceAssetId || bridgeNetwork.id,
+            quoteAssetId:
+                bridgeNetwork.quoteAssetId ||
+                bridgeNetwork.balanceAssetId ||
+                bridgeNetwork.id,
         },
     ];
 
@@ -249,7 +261,7 @@ const mergeOwnedTokenWithBridge = (
     return {
         id: treasuryToken.id.toLowerCase(),
         name: bridgeAsset.name,
-        symbol: bridgeAsset.id.toUpperCase(),
+        symbol: bridgeAsset.symbol,
         icon: treasuryToken.icon || bridgeAsset.icon || "",
         networks,
         totalBalance: Number(treasuryToken.availableTotalBalance),
@@ -271,7 +283,7 @@ const buildBridgeOnlyTokens = (
             (a): MergedToken => ({
                 id: a.id,
                 name: a.name,
-                symbol: a.id.toUpperCase(),
+                symbol: a.symbol,
                 icon: a.icon,
                 networks: a.networks.flatMap((n) =>
                     toBridgeVariants(n, "Intents", {

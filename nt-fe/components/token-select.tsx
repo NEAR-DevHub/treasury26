@@ -50,6 +50,8 @@ export interface SelectedTokenData {
     minDepositAmount?: string;
     balance?: string;
     price?: number;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
 }
 
 interface TokenSelectProps {
@@ -274,6 +276,11 @@ export default function TokenSelect({
                 minDepositAmount: network.minDepositAmount,
                 balance: network.balance,
                 price: network.price,
+                balanceAssetId: network.balanceAssetId || network.id,
+                quoteAssetId:
+                    network.quoteAssetId ||
+                    network.balanceAssetId ||
+                    network.id,
             });
 
             setOpen(false);
@@ -325,7 +332,6 @@ export default function TokenSelect({
                 network.id === selectedToken?.address &&
                 network.name === selectedToken?.network,
         );
-
         return (
             <Button
                 key={token.id}
@@ -350,7 +356,9 @@ export default function TokenSelect({
                         />
                     </div>
                     <div className="text-sm text-muted-foreground">
-                        {t("networksCount", { count: token.networks.length })}
+                        {t("networksCount", {
+                            count: token.networks.length,
+                        })}
                     </div>
                 </div>
                 {token.totalBalance !== undefined && token.totalBalance > 0 && (

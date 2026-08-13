@@ -40,6 +40,9 @@ fn get_symbol_map() -> &'static HashMap<&'static str, &'static str> {
 
         // Major cryptocurrencies
         map.insert("BTC", "coingecko:bitcoin");
+        // near.com unified id `btc-legacy` and catalog symbol "BTC (Legacy)".
+        map.insert("BTC-LEGACY", "coingecko:bitcoin");
+        map.insert("BTC (LEGACY)", "coingecko:bitcoin");
         map.insert("WBTC", "coingecko:bitcoin");
         map.insert("XBTC", "coingecko:bitcoin");
         map.insert("CBBTC", "coingecko:bitcoin");
@@ -734,6 +737,10 @@ mod tests {
         // Known symbol - ignores contract
         assert_eq!(
             DeFiLlamaClient::symbol_to_asset_id("BTC", Some("btc.omft.near")),
+            Some("coingecko:bitcoin".to_string())
+        );
+        assert_eq!(
+            DeFiLlamaClient::symbol_to_asset_id("BTC (Legacy)", Some("btc.omft.near")),
             Some("coingecko:bitcoin".to_string())
         );
 

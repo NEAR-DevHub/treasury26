@@ -406,9 +406,14 @@ mod tests {
 
     #[test]
     fn test_token_id_to_unified_asset_id_btc() {
+        // near.com: current BTC is nBTC; omft BTC is the legacy unified id.
+        assert_eq!(
+            token_id_to_unified_asset_id("intents.near:nep141:nbtc.bridge.near"),
+            Some("btc".to_string())
+        );
         assert_eq!(
             token_id_to_unified_asset_id("intents.near:nep141:btc.omft.near"),
-            Some("btc".to_string())
+            Some("btc-legacy".to_string())
         );
     }
 

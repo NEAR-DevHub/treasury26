@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ChainIcons } from "@/lib/api";
 import { fetchBridgeTokens } from "@/lib/bridge-api";
+import { isIconUrl } from "@/lib/icon-url";
 
 export interface BridgeNetwork {
     id: string;
@@ -11,10 +12,19 @@ export interface BridgeNetwork {
     decimals: number;
     minDepositAmount?: string;
     minWithdrawalAmount?: string;
+    /** Intents ledger / catalog id */
+    balanceAssetId?: string;
+    /** 1Click quote routing id (may be 1cs_v1:) */
+    quoteAssetId?: string;
+    /** False when Bridge/POA cannot mint a stable public deposit address for this chain. */
+    publicDepositSupported?: boolean;
 }
 
 export interface BridgeAsset {
     id: string;
+    /** Catalog ticker (near.com `symbol` / API `assetName`), e.g. ETH */
+    symbol: string;
+    /** Catalog full name (near.com `name`), e.g. Ethereum */
     name: string;
     icon: string;
     networks: BridgeNetwork[];
@@ -31,20 +41,17 @@ export function useBridgeTokens(enabled: boolean = true) {
 
             const formattedAssets: BridgeAsset[] = fetchedAssets.map(
                 (asset: any) => {
-                    const hasValidIcon =
-                        asset.icon &&
-                        (asset.icon.startsWith("http") ||
-                            asset.icon.startsWith("data:") ||
-                            asset.icon.startsWith("/"));
+                    // near.com tokenlist: `symbol` = ticker, `name` = full name.
+                    const symbol = asset.assetName || asset.name || asset.id;
+                    const name = asset.name || asset.assetName || symbol;
 
                     return {
                         id: asset.id,
-                        name: asset.name || asset.assetName,
-                        icon: hasValidIcon
+                        symbol,
+                        name,
+                        icon: isIconUrl(asset.icon)
                             ? asset.icon
-                            : (asset.name || asset.assetName)
-                                  ?.charAt(0)
-                                  ?.toUpperCase() || "",
+                            : symbol?.charAt(0)?.toUpperCase() || "",
                         networks: asset.networks.map((network: any) => ({
                             id: network.id,
                             name: network.name,
@@ -57,6 +64,14 @@ export function useBridgeTokens(enabled: boolean = true) {
                             decimals: network.decimals,
                             minDepositAmount: network.minDepositAmount,
                             minWithdrawalAmount: network.minWithdrawalAmount,
+                            balanceAssetId:
+                                network.balanceAssetId || network.id,
+                            quoteAssetId:
+                                network.quoteAssetId ||
+                                network.balanceAssetId ||
+                                network.id,
+                            publicDepositSupported:
+                                network.publicDepositSupported !== false,
                         })),
                     };
                 },

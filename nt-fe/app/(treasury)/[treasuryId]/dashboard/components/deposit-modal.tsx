@@ -593,7 +593,8 @@ export function DepositModal({
                 const result = await fetchDepositAddress(
                     treasuryId,
                     selectedNetwork.chainId ?? selectedNetwork.id,
-                    selectedNetwork.id,
+                    // Confidential quotes need the 1Click routing id (may be 1cs_v1:).
+                    selectedBridgeNetwork?.quoteAssetId || selectedNetwork.id,
                     selectedBridgeNetwork?.minDepositAmount,
                 );
 
@@ -1227,10 +1228,7 @@ export function DepositModal({
                             <div
                                 className={cn(
                                     "font-semibold",
-                                    getNetworkDisplayCaseClass(
-                                        option.name,
-                                        "uppercase",
-                                    ),
+                                    getNetworkDisplayCaseClass(option.name),
                                 )}
                             >
                                 <HighlightedText
@@ -1242,14 +1240,6 @@ export function DepositModal({
                                 <div className="text-xs text-muted-foreground font-normal">
                                     <HighlightedText
                                         text={option.description}
-                                        query={searchQuery}
-                                    />
-                                </div>
-                            )}
-                            {option.symbol && (
-                                <div className="text-sm text-muted-foreground">
-                                    <HighlightedText
-                                        text={option.symbol}
                                         query={searchQuery}
                                     />
                                 </div>

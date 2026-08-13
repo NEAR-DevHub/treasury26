@@ -17,6 +17,7 @@ type DepositAssetNetworkFormValues = {
     asset: {
         id: string;
         name: string;
+        symbol?: string;
         icon: string;
         gradient?: string;
         networks?: unknown[];
@@ -59,6 +60,8 @@ export function DepositAssetNetworkForm({
     networkWarning?: ReactNode;
 }) {
     const t = useTranslations("depositModal");
+    const selectedAssetLabel =
+        selectedAsset?.symbol || selectedAsset?.name || "";
 
     return (
         <>
@@ -106,14 +109,14 @@ export function DepositAssetNetworkForm({
                                                             selectedAsset.icon
                                                         }
                                                         name={
-                                                            selectedAsset.name
+                                                            selectedAssetLabel
                                                         }
                                                         gradient={
                                                             selectedAsset.gradient
                                                         }
                                                     />
-                                                    <span className="text-foreground font-medium capitalize">
-                                                        {selectedAsset.name}
+                                                    <span className="text-foreground font-medium">
+                                                        {selectedAssetLabel}
                                                     </span>
                                                 </div>
                                             ) : (
@@ -176,7 +179,6 @@ export function DepositAssetNetworkForm({
                                                                         "text-foreground font-medium",
                                                                         getNetworkDisplayCaseClass(
                                                                             selectedNetwork.name,
-                                                                            "uppercase",
                                                                         ),
                                                                     )}
                                                                 >
