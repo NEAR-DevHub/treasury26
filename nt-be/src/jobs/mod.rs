@@ -826,7 +826,9 @@ fn configure_cron_runtime(
         queues,
         state,
         "nearcom-catalog-watch",
-        schedule_every_secs(env_secs("NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS", 3600)),
+        // Notify-only drift check vs near.com production.json; sync stays manual.
+        // Default: twice per day (12h). Override with NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS.
+        schedule_every_secs(env_secs("NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS", 43_200)),
         handlers::nearcom_catalog_watch
     );
 

@@ -211,17 +211,16 @@ pub async fn get_bridge_tokens(
         .cache
         .cached(
             CacheTier::LongTerm,
-            "deposit-assets-v4".to_string(),
+            "deposit-assets".to_string(),
             async move {
                 let oneclick_tokens = fetch_oneclick_tokens(&state_clone).await?;
-                let oneclick_ids: HashSet<String> = oneclick_tokens
-                    .iter()
-                    .map(|t| t.asset_id.clone())
-                    .collect();
+                let oneclick_ids: HashSet<String> =
+                    oneclick_tokens.iter().map(|t| t.asset_id.clone()).collect();
 
                 // Bridge RPC: mins + authoritative chain ids for public deposits.
                 let mut bridge_by_intents: HashMap<String, Vec<BridgeTokenExtras>> = HashMap::new();
-                let mut bridge_by_contract: HashMap<String, Vec<BridgeTokenExtras>> = HashMap::new();
+                let mut bridge_by_contract: HashMap<String, Vec<BridgeTokenExtras>> =
+                    HashMap::new();
                 let mut bridge_supported_chains: HashSet<String> = HashSet::new();
                 if let Ok(supported) = fetch_supported_tokens_data(&state_clone).await
                     && let Some(tokens) = supported.get("tokens").and_then(|t| t.as_array())
@@ -232,10 +231,7 @@ pub async fn get_bridge_tokens(
                         else {
                             continue;
                         };
-                        let standard = token
-                            .get("standard")
-                            .and_then(|s| s.as_str())
-                            .unwrap_or("");
+                        let standard = token.get("standard").and_then(|s| s.as_str()).unwrap_or("");
                         if standard != "nep141" && standard != "nep245" {
                             continue;
                         }
@@ -265,26 +261,25 @@ pub async fn get_bridge_tokens(
                     }
                 }
 
-                let resolve_bridge = |balance_id: &str,
-                                      preferred_chain: &str|
-                 -> Option<BridgeTokenExtras> {
-                    let pick = |entries: &[BridgeTokenExtras]| {
-                        entries
-                            .iter()
-                            .find(|e| e.chain_id == preferred_chain)
-                            .or_else(|| entries.first())
-                            .cloned()
+                let resolve_bridge =
+                    |balance_id: &str, preferred_chain: &str| -> Option<BridgeTokenExtras> {
+                        let pick = |entries: &[BridgeTokenExtras]| {
+                            entries
+                                .iter()
+                                .find(|e| e.chain_id == preferred_chain)
+                                .or_else(|| entries.first())
+                                .cloned()
+                        };
+                        if let Some(entries) = bridge_by_intents.get(balance_id) {
+                            return pick(entries);
+                        }
+                        if let Some(addr) = contract_address_from_asset_id(balance_id)
+                            && let Some(entries) = bridge_by_contract.get(&addr)
+                        {
+                            return pick(entries);
+                        }
+                        None
                     };
-                    if let Some(entries) = bridge_by_intents.get(balance_id) {
-                        return pick(entries);
-                    }
-                    if let Some(addr) = contract_address_from_asset_id(balance_id)
-                        && let Some(entries) = bridge_by_contract.get(&addr)
-                    {
-                        return pick(entries);
-                    }
-                    None
-                };
 
                 let mut asset_map: HashMap<String, AssetOption> = HashMap::new();
 
@@ -320,20 +315,24 @@ pub async fn get_bridge_tokens(
                             .as_ref()
                             .map(|b| b.chain_id.clone())
                             .unwrap_or(preferred_chain);
-                        let public_deposit_supported =
-                            bridge_supported_chains.contains(&chain_id);
+                        let public_deposit_supported = bridge_supported_chains.contains(&chain_id);
 
-                        let asset = asset_map.entry(group_key.clone()).or_insert_with(|| {
-                            AssetOption {
-                                id: group_key.clone(),
-                                asset_name: unified.symbol.clone(),
-                                name: unified.name.clone(),
-                                icon: Some(unified.icon.clone()),
-                                networks: Vec::new(),
-                            }
-                        });
+                        let asset =
+                            asset_map
+                                .entry(group_key.clone())
+                                .or_insert_with(|| AssetOption {
+                                    id: group_key.clone(),
+                                    asset_name: unified.symbol.clone(),
+                                    name: unified.name.clone(),
+                                    icon: Some(unified.icon.clone()),
+                                    networks: Vec::new(),
+                                });
 
-                        if asset.networks.iter().any(|n| n.balance_asset_id == balance_id) {
+                        if asset
+                            .networks
+                            .iter()
+                            .any(|n| n.balance_asset_id == balance_id)
+                        {
                             continue;
                         }
 
@@ -369,8 +368,7 @@ pub async fn get_bridge_tokens(
                         }
                         let already = asset_map.values().any(|a| {
                             a.networks.iter().any(|n| {
-                                n.balance_asset_id == *intents_id
-                                    && n.chain_id == extras.chain_id
+                                n.balance_asset_id == *intents_id && n.chain_id == extras.chain_id
                             })
                         });
                         if already {
@@ -397,23 +395,24 @@ pub async fn get_bridge_tokens(
                         let name = unified
                             .map(|u| u.name.clone())
                             .unwrap_or_else(|| symbol.clone());
-                        let icon = unified.map(|u| u.icon.clone()).or_else(|| {
-                            asset_map.get(&group_key).and_then(|a| a.icon.clone())
-                        });
+                        let icon = unified
+                            .map(|u| u.icon.clone())
+                            .or_else(|| asset_map.get(&group_key).and_then(|a| a.icon.clone()));
                         let network_name = oneclick
                             .map(|t| t.blockchain.to_lowercase())
                             .unwrap_or_else(|| "unknown".to_string());
-                        let chain_icons =
-                            get_chain_metadata_by_name(&network_name).map(|m| m.icon);
+                        let chain_icons = get_chain_metadata_by_name(&network_name).map(|m| m.icon);
 
                         let asset =
-                            asset_map.entry(group_key.clone()).or_insert_with(|| AssetOption {
-                                id: group_key.clone(),
-                                asset_name: symbol.clone(),
-                                name,
-                                icon,
-                                networks: Vec::new(),
-                            });
+                            asset_map
+                                .entry(group_key.clone())
+                                .or_insert_with(|| AssetOption {
+                                    id: group_key.clone(),
+                                    asset_name: symbol.clone(),
+                                    name,
+                                    icon,
+                                    networks: Vec::new(),
+                                });
                         asset.networks.push(NetworkOption {
                             id: intents_id.clone(),
                             name: network_name,
@@ -491,19 +490,14 @@ mod tests {
 
     #[test]
     fn chain_id_from_1cs_uses_origin_chain() {
-        assert_eq!(
-            chain_id_from_defuse_id("1cs_v1:sol:spl:Abc"),
-            "sol:mainnet"
-        );
+        assert_eq!(chain_id_from_defuse_id("1cs_v1:sol:spl:Abc"), "sol:mainnet");
         assert_eq!(
             chain_id_from_defuse_id("1cs_v1:btc:native:coin"),
             "btc:mainnet"
         );
         // Bridge depositAddressFetch expects eth:<id> for EVM L2s.
         assert_eq!(
-            chain_id_from_defuse_id(
-                "1cs_v1:base:erc20:0x0382e3fee4a420bd446367d468a6f00225853420"
-            ),
+            chain_id_from_defuse_id("1cs_v1:base:erc20:0x0382e3fee4a420bd446367d468a6f00225853420"),
             "eth:8453"
         );
         assert_eq!(
@@ -522,10 +516,8 @@ mod tests {
             Some("0x0382e3fee4a420bd446367d468a6f00225853420")
         );
         assert_eq!(
-            contract_address_from_asset_id(
-                "eth:8453:0x0382e3fee4a420bd446367d468a6f00225853420"
-            )
-            .as_deref(),
+            contract_address_from_asset_id("eth:8453:0x0382e3fee4a420bd446367d468a6f00225853420")
+                .as_deref(),
             Some("0x0382e3fee4a420bd446367d468a6f00225853420")
         );
     }
@@ -555,10 +547,7 @@ mod tests {
     #[test]
     fn nearcom_catalog_loads_and_includes_curated_1cs_deployments() {
         let map = get_defuse_tokens_map();
-        assert!(
-            map.len() > 50,
-            "expected vendored near.com catalog to load"
-        );
+        assert!(map.len() > 50, "expected vendored near.com catalog to load");
         assert!(
             map.contains_key("1cs_v1:hypercore:erc20:0xb88339CB7199b77E23DB6E890353E22632Ba630f")
                 || map.keys().any(|k| k.starts_with("1cs_v1:hypercore:")),

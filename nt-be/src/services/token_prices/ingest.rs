@@ -17,7 +17,7 @@ use sqlx::PgPool;
 
 use super::service::TokenPriceService;
 use crate::AppState;
-use crate::services::oneclick_tokens::{OneClickToken, ONECLICK_TOKENS_PATH};
+use crate::services::oneclick_tokens::{ONECLICK_TOKENS_PATH, OneClickToken};
 
 pub const TOKEN_PRICE_INGEST_TICK: StdDuration = StdDuration::from_secs(60);
 
@@ -176,10 +176,7 @@ impl TokenPriceIngestor {
     async fn fetch_tokens(
         &mut self,
     ) -> Result<Option<Vec<TokenApiItem>>, Box<dyn std::error::Error + Send + Sync>> {
-        let url = format!(
-            "https://1click.chaindefuser.com{}",
-            ONECLICK_TOKENS_PATH
-        );
+        let url = format!("https://1click.chaindefuser.com{}", ONECLICK_TOKENS_PATH);
         let mut request = self.http.get(&url).timeout(TOKENS_API_TIMEOUT);
         if let Some(etag) = &self.etag {
             request = request.header(reqwest::header::IF_NONE_MATCH, etag);

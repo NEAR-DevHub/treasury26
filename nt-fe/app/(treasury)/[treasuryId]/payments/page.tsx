@@ -948,9 +948,7 @@ export default function PaymentsPage() {
             );
             if (network) {
                 return (
-                    network.quoteAssetId ||
-                    network.balanceAssetId ||
-                    network.id
+                    network.quoteAssetId || network.balanceAssetId || network.id
                 );
             }
         }

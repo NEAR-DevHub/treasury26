@@ -3,7 +3,8 @@
 //! Fetches `apps/defuse-near/src/tokens/production.json` from the private
 //! `defuse-frontend-monorepos` repo via the GitHub Contents API, diffs it
 //! against our vendored [`nearcom-tokens.json`], and sends a Telegram ops
-//! alert summarizing changes. Never writes the vendored file.
+//! alert summarizing changes. Never writes the vendored file (manual sync).
+//! Scheduled twice daily by default (`NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS`).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -210,9 +211,7 @@ async fn fetch_upstream_catalog(
     state: &Arc<AppState>,
     github_token: &str,
 ) -> Result<(String, String), String> {
-    let url = format!(
-        "https://api.github.com/repos/{UPSTREAM_REPO}/contents/{UPSTREAM_PATH}"
-    );
+    let url = format!("https://api.github.com/repos/{UPSTREAM_REPO}/contents/{UPSTREAM_PATH}");
     let response = state
         .http_client
         .get(&url)
