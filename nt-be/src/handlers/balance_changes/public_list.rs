@@ -289,10 +289,6 @@ fn bind_public_filters<'a>(
         builder.push("))");
     }
 
-    if params.exclude_near_dust {
-        builder.push(" AND NOT ((token_in = 'near' OR token_out = 'near') AND ABS(COALESCE(amount_in, amount_out, 0)) < 0.09)");
-    }
-
     if !count_only {
         builder.push(" ORDER BY event_time DESC, id DESC");
         if params.limit.is_some() || params.offset.is_some() {
