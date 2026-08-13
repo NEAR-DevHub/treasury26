@@ -933,25 +933,30 @@ export default function PaymentsPage() {
         ],
     );
 
-    const destinationQuoteAssetId = useMemo(() => {
-        if (
-            !watchedDestinationNetwork ||
-            isNearComNetwork(watchedDestinationNetwork)
-        ) {
-            return watchedDestinationNetwork;
-        }
-        for (const asset of bridgeAssets) {
-            const network = asset.networks.find(
-                (n) => n.id === watchedDestinationNetwork,
-            );
-            if (network) {
-                return (
-                    network.quoteAssetId || network.balanceAssetId || network.id
-                );
+    const findQuoteAssetIdFor = useCallback(
+        (networkId: string | undefined): string | undefined => {
+            if (!networkId || isNearComNetwork(networkId)) {
+                return networkId;
             }
-        }
-        return watchedDestinationNetwork;
-    }, [bridgeAssets, watchedDestinationNetwork]);
+            for (const asset of bridgeAssets) {
+                const network = asset.networks.find((n) => n.id === networkId);
+                if (network) {
+                    return (
+                        network.quoteAssetId ||
+                        network.balanceAssetId ||
+                        network.id
+                    );
+                }
+            }
+            return networkId;
+        },
+        [bridgeAssets],
+    );
+
+    const destinationQuoteAssetId = useMemo(
+        () => findQuoteAssetIdFor(watchedDestinationNetwork),
+        [findQuoteAssetIdFor, watchedDestinationNetwork],
+    );
 
     // ── Live quote (drives step-1 fee preview & step-2 review) ───────────────
 
@@ -1341,14 +1346,9 @@ export default function PaymentsPage() {
                             true, // isPayment
                             {
                                 destinationQuoteAssetId:
-                                    bridgeAssets
-                                        .flatMap((a) => a.networks)
-                                        .find(
-                                            (n) =>
-                                                n.id ===
-                                                data.destinationNetwork,
-                                        )?.quoteAssetId ||
-                                    data.destinationNetwork,
+                                    findQuoteAssetIdFor(
+                                        data.destinationNetwork,
+                                    ) ?? data.destinationNetwork,
                             },
                         ),
                         false,
