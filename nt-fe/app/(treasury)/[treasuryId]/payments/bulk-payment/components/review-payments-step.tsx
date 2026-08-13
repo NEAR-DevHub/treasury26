@@ -298,10 +298,17 @@ export function ReviewPaymentsStep({
                 symbol: selectedToken.symbol,
             });
 
-            // Calculate USD value only if price is available
-            if (selectedTokenData?.price && balanceFormattedBig.gt(0)) {
+            // USD follows payment amount × price; do not require a non-zero
+            // treasury balance (that only gates the insufficient-funds warning).
+            if (selectedTokenData?.price && totalAmount.gt(0)) {
                 totalUSDValue = totalAmount.mul(selectedTokenData.price);
             }
+        } catch (error) {
+            console.error("Error calculating total USD value:", error);
+        }
+    } else if (selectedTokenData?.price && totalAmount.gt(0)) {
+        try {
+            totalUSDValue = totalAmount.mul(selectedTokenData.price);
         } catch (error) {
             console.error("Error calculating total USD value:", error);
         }
@@ -389,18 +396,15 @@ export function ReviewPaymentsStep({
                                       )
                                     : Big(displayAmount || "0");
                                 let estimatedUSDValue = 0;
-                                if (selectedTokenData?.price && balance) {
+                                if (selectedTokenData?.price) {
                                     try {
-                                        const balanceBig = Big(balance);
-                                        const balanceFormatted = Number(
-                                            formatBalance(
-                                                balanceBig.toString(),
-                                                selectedToken.decimals,
-                                            ),
-                                        );
-                                        if (balanceFormatted > 0) {
+                                        const amountNum = Number(displayAmount);
+                                        if (
+                                            Number.isFinite(amountNum) &&
+                                            amountNum > 0
+                                        ) {
                                             estimatedUSDValue =
-                                                Number(displayAmount) *
+                                                amountNum *
                                                 selectedTokenData.price;
                                         }
                                     } catch (error) {

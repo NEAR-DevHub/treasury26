@@ -16,8 +16,9 @@ export const ETH_TOKEN = {
     residency: "Intents",
 } satisfies Token;
 
+/** Current near.com BTC (nBTC). Legacy `btc.omft.near` is input-only / deprecated. */
 export const BTC_TOKEN = {
-    address: "nep141:btc.omft.near",
+    address: "nep141:nbtc.bridge.near",
     symbol: "BTC",
     decimals: 8,
     name: "Bitcoin",
@@ -27,4 +28,6 @@ export const BTC_TOKEN = {
         icon: "https://near.com/static/icons/network/btc.svg",
     },
     residency: "Intents",
+    balanceAssetId: "nep141:nbtc.bridge.near",
+    quoteAssetId: "1cs_v1:btc:native:coin",
 } satisfies Token;

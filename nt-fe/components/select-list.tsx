@@ -2,9 +2,11 @@
 
 import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { useImageLoadError } from "@/hooks/use-image-load-error";
+import { isIconUrl } from "@/lib/icon-url";
+import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { ScrollArea } from "./ui/scroll-area";
-import { cn } from "@/lib/utils";
 
 export interface SelectListItem {
     id: string;
@@ -13,6 +15,19 @@ export interface SelectListItem {
     icon: string;
     gradient?: string;
     disabled?: boolean;
+}
+
+/** near.com-style list labels: ticker primary, full name secondary when distinct. */
+export function getSelectOptionLabels(item: {
+    name?: string;
+    symbol?: string;
+}): { primary: string; secondary: string | null } {
+    const primary = item.symbol || item.name || "";
+    const secondary =
+        item.symbol && item.name && item.name !== item.symbol
+            ? item.name
+            : null;
+    return { primary, secondary };
 }
 
 interface SelectListProps<T extends SelectListItem> {
@@ -56,27 +71,31 @@ export function SelectListIcon({
     alt: string;
     size?: "sm" | "md" | "lg";
 }) {
+    const iconIsUrl = isIconUrl(icon);
+    const { showImage, onError } = useImageLoadError(iconIsUrl ? icon : null);
     const containerSizeClass =
         size === "sm" ? "size-6" : size === "lg" ? "size-14" : "size-12";
     const imagePaddingClass = size === "sm" ? "p-0.5" : "p-2";
     const fallbackSizeClass =
         size === "sm" ? "w-3.5 h-3.5 text-[9px]" : "w-8 h-8";
 
-    const isImageUrl =
-        icon?.startsWith("http") ||
-        icon?.startsWith("data:") ||
-        icon?.startsWith("/");
+    const fallbackLabel =
+        icon && !iconIsUrl && icon.length <= 2
+            ? icon
+            : (alt || "?").charAt(0).toUpperCase();
 
-    if (isImageUrl) {
+    if (showImage && icon) {
         return (
             <div className={containerSizeClass}>
                 <img
+                    key={icon}
                     src={icon}
                     alt={alt}
                     className={cn(
                         "w-full h-full object-contain rounded-full",
                         imagePaddingClass,
                     )}
+                    onError={onError}
                 />
             </div>
         );
@@ -96,7 +115,7 @@ export function SelectListIcon({
                     gradient || "bg-brand-blue",
                 )}
             >
-                <span>{icon}</span>
+                <span>{fallbackLabel}</span>
             </div>
         </div>
     );
@@ -120,42 +139,43 @@ export function SelectList<T extends SelectListItem>({
 
     return (
         <ScrollArea className="h-[400px]">
-            {items.map((item) => (
-                <Button
-                    key={item.id}
-                    onClick={() => onSelect(item)}
-                    variant="ghost"
-                    className={cn(
-                        "w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!",
-                        selectedId === item.id && "bg-muted",
-                    )}
-                >
-                    {renderIcon ? (
-                        renderIcon(item)
-                    ) : (
-                        <SelectListIcon
-                            icon={item.icon}
-                            gradient={item.gradient}
-                            alt={item.symbol || item.name}
-                        />
-                    )}
-                    {renderContent ? (
-                        renderContent(item)
-                    ) : (
-                        <div className="flex-1 text-left">
-                            <div className="font-semibold uppercase">
-                                {item.name || item.symbol}
+            {items.map((item) => {
+                const { primary, secondary } = getSelectOptionLabels(item);
+                return (
+                    <Button
+                        key={item.id}
+                        onClick={() => onSelect(item)}
+                        variant="ghost"
+                        className={cn(
+                            "w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!",
+                            selectedId === item.id && "bg-muted",
+                        )}
+                    >
+                        {renderIcon ? (
+                            renderIcon(item)
+                        ) : (
+                            <SelectListIcon
+                                icon={item.icon}
+                                gradient={item.gradient}
+                                alt={item.symbol || item.name}
+                            />
+                        )}
+                        {renderContent ? (
+                            renderContent(item)
+                        ) : (
+                            <div className="flex-1 text-left">
+                                <div className="font-semibold">{primary}</div>
+                                {secondary && (
+                                    <div className="text-sm text-muted-foreground">
+                                        {secondary}
+                                    </div>
+                                )}
                             </div>
-                            {item.symbol && (
-                                <div className="text-sm text-muted-foreground ">
-                                    {item.symbol}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {renderRight?.(item)}
-                </Button>
-            ))}
+                        )}
+                        {renderRight?.(item)}
+                    </Button>
+                );
+            })}
             {items.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                     {effectiveEmptyMessage}

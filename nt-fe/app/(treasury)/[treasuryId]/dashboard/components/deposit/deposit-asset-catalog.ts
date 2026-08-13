@@ -153,7 +153,7 @@ function buildOtherAsset(otherAssetName: string): SelectOption {
         networks: [
             {
                 id: "other:near",
-                name: "Near",
+                name: "NEAR",
                 symbol: "Other",
                 chainIcons: NEAR_CHAIN_ICONS,
                 chainId: "near:mainnet",
@@ -227,10 +227,11 @@ export function buildDepositAssetCatalog(params: {
 
         const normalizedId = asset.id.toLowerCase();
         const ownedAsset = ownedTreasuryAssetsById.get(normalizedId);
+        // near.com / SelectModal: ticker (`symbol`) primary, full `name` secondary.
         const selectOption: SelectOption = {
             id: asset.id,
+            symbol: asset.symbol,
             name: asset.name,
-            symbol: depositNetworks[0]?.symbol,
             icon: asset.icon,
             gradient: "bg-brand-blue",
             networks: depositNetworks,

@@ -332,7 +332,6 @@ export default function TokenSelect({
                 network.id === selectedToken?.address &&
                 network.name === selectedToken?.network,
         );
-
         return (
             <Button
                 key={token.id}
@@ -357,7 +356,9 @@ export default function TokenSelect({
                         />
                     </div>
                     <div className="text-sm text-muted-foreground">
-                        {t("networksCount", { count: token.networks.length })}
+                        {t("networksCount", {
+                            count: token.networks.length,
+                        })}
                     </div>
                 </div>
                 {token.totalBalance !== undefined && token.totalBalance > 0 && (

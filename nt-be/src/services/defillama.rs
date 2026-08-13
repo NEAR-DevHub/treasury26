@@ -40,6 +40,8 @@ fn get_symbol_map() -> &'static HashMap<&'static str, &'static str> {
 
         // Major cryptocurrencies
         map.insert("BTC", "coingecko:bitcoin");
+        // near.com unified id `btc-legacy` (uppercase lookup key).
+        map.insert("BTC-LEGACY", "coingecko:bitcoin");
         map.insert("WBTC", "coingecko:bitcoin");
         map.insert("XBTC", "coingecko:bitcoin");
         map.insert("CBBTC", "coingecko:bitcoin");

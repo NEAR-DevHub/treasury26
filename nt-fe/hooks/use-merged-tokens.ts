@@ -261,7 +261,7 @@ const mergeOwnedTokenWithBridge = (
     return {
         id: treasuryToken.id.toLowerCase(),
         name: bridgeAsset.name,
-        symbol: bridgeAsset.id.toUpperCase(),
+        symbol: bridgeAsset.symbol,
         icon: treasuryToken.icon || bridgeAsset.icon || "",
         networks,
         totalBalance: Number(treasuryToken.availableTotalBalance),
@@ -283,7 +283,7 @@ const buildBridgeOnlyTokens = (
             (a): MergedToken => ({
                 id: a.id,
                 name: a.name,
-                symbol: a.id.toUpperCase(),
+                symbol: a.symbol,
                 icon: a.icon,
                 networks: a.networks.flatMap((n) =>
                     toBridgeVariants(n, "Intents", {

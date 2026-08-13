@@ -35,6 +35,8 @@ fn get_coingecko_id_map() -> &'static HashMap<&'static str, &'static str> {
 
         // Major cryptocurrencies
         map.insert("btc", "bitcoin");
+        // near.com `btc-legacy` (nep141:btc.omft.near) — same BTC market price.
+        map.insert("btc-legacy", "bitcoin");
         map.insert("eth", "ethereum");
         map.insert("sol", "solana");
         map.insert("xrp", "ripple");

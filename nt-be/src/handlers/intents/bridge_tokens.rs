@@ -136,8 +136,41 @@ fn network_name_for_base(base: &BaseTokenInfo) -> String {
         .unwrap_or_else(|| base.origin_chain_name.to_lowercase())
 }
 
-/// Group Bridge-only catalog rows by near.com unified id when known, otherwise
-/// by symbol so multi-chain duplicates (e.g. WETH, COCA) collapse to one asset.
+/// Best-effort UI chain name from a Defuse/POA chain id (`eth:1` → `eth`).
+fn chain_name_from_chain_id(chain_id: &str) -> String {
+    chain_id
+        .split(':')
+        .next()
+        .unwrap_or(chain_id)
+        .to_lowercase()
+}
+
+/// near.com lists one deployment per chain in catalog order. When our build
+/// produces multiple rows for the same intents balance or POA `chain_id`, keep
+/// the first (catalog `groupedTokens` order).
+fn dedupe_asset_networks(networks: &mut Vec<NetworkOption>) {
+    let mut seen_balance = HashSet::new();
+    let mut seen_chain = HashSet::new();
+    networks.retain(|network| {
+        if !seen_balance.insert(network.balance_asset_id.clone()) {
+            return false;
+        }
+        if !seen_chain.insert(network.chain_id.clone()) {
+            return false;
+        }
+        true
+    });
+}
+
+fn has_tag(tags: &Option<Vec<String>>, tag: &str) -> bool {
+    tags.as_ref()
+        .is_some_and(|t| t.iter().any(|x| x.eq_ignore_ascii_case(tag)))
+}
+
+/// Catalog tokens use near.com `unifiedAssetId`.
+/// Bridge-only tokens (in Bridge + /v0/tokens but absent from the catalog) have
+/// no unified id — group those by ticker so multi-chain WETH/COCA/sUSDC become
+/// one asset with several networks instead of N duplicate picker rows.
 fn bridge_only_group_key(intents_id: &str, symbol: &str) -> String {
     find_unified_asset_id(intents_id)
         .map(String::from)
@@ -261,13 +294,16 @@ pub async fn get_bridge_tokens(
                     }
                 }
 
+                // Bridge sometimes lists the same intents_token_id under multiple
+                // defuse chains (e.g. eth AAVE also tagged aptos:mainnet). Never
+                // fall back to an unrelated chain — only use an exact preferred
+                // match so catalog rows keep the correct chain id / mins.
                 let resolve_bridge =
                     |balance_id: &str, preferred_chain: &str| -> Option<BridgeTokenExtras> {
                         let pick = |entries: &[BridgeTokenExtras]| {
                             entries
                                 .iter()
                                 .find(|e| e.chain_id == preferred_chain)
-                                .or_else(|| entries.first())
                                 .cloned()
                         };
                         if let Some(entries) = bridge_by_intents.get(balance_id) {
@@ -284,9 +320,16 @@ pub async fn get_bridge_tokens(
                 let mut asset_map: HashMap<String, AssetOption> = HashMap::new();
 
                 for (unified_id, unified) in get_tokens_map().iter() {
+                    // near.com `swap:input-only` (e.g. BTC Legacy) — not a deposit target.
+                    if has_tag(&unified.tags, "swap:input-only") {
+                        continue;
+                    }
                     for base in &unified.grouped_tokens {
                         let balance_id = base.defuse_asset_id.as_str();
                         if DEPRECATED_BALANCE_ASSET_IDS.contains(&balance_id) {
+                            continue;
+                        }
+                        if has_tag(&base.tags, "swap:input-only") {
                             continue;
                         }
                         if !catalog_token_in_oneclick(balance_id, &oneclick_ids) {
@@ -358,75 +401,87 @@ pub async fn get_bridge_tokens(
 
                 // Also surface Bridge-only nep141/nep245 tokens that are in
                 // /v0/tokens but missing from the near.com catalog (parity).
+                // One intents balance id = one network row. Bridge may attach
+                // extra defuse chains to the same intents_token_id (AAVE eth+aptos);
+                // those must not create duplicate Ethereum picker rows.
                 for (intents_id, extras_list) in &bridge_by_intents {
-                    for extras in extras_list {
-                        if DEPRECATED_BALANCE_ASSET_IDS.contains(&intents_id.as_str()) {
-                            continue;
-                        }
-                        if !catalog_token_in_oneclick(intents_id, &oneclick_ids) {
-                            continue;
-                        }
-                        let already = asset_map.values().any(|a| {
-                            a.networks.iter().any(|n| {
-                                n.balance_asset_id == *intents_id && n.chain_id == extras.chain_id
-                            })
-                        });
-                        if already {
-                            continue;
-                        }
-
-                        let oneclick = oneclick_tokens.iter().find(|t| {
-                            t.asset_id == *intents_id || t.asset_id == quote_asset_id(intents_id)
-                        });
-                        let symbol = oneclick
-                            .map(|t| t.symbol.clone())
-                            .unwrap_or_else(|| intents_id.clone());
-                        let group_key = bridge_only_group_key(intents_id, &symbol);
-                        // If an existing catalog asset already uses this display symbol,
-                        // fold into it instead of creating a second picker row.
-                        let group_key = asset_map
-                            .iter()
-                            .find(|(k, a)| {
-                                *k != &group_key && a.asset_name.eq_ignore_ascii_case(&symbol)
-                            })
-                            .map(|(k, _)| k.clone())
-                            .unwrap_or(group_key);
-                        let unified = get_tokens_map().get(&group_key);
-                        let name = unified
-                            .map(|u| u.name.clone())
-                            .unwrap_or_else(|| symbol.clone());
-                        let icon = unified
-                            .map(|u| u.icon.clone())
-                            .or_else(|| asset_map.get(&group_key).and_then(|a| a.icon.clone()));
-                        let network_name = oneclick
-                            .map(|t| t.blockchain.to_lowercase())
-                            .unwrap_or_else(|| "unknown".to_string());
-                        let chain_icons = get_chain_metadata_by_name(&network_name).map(|m| m.icon);
-
-                        let asset =
-                            asset_map
-                                .entry(group_key.clone())
-                                .or_insert_with(|| AssetOption {
-                                    id: group_key.clone(),
-                                    asset_name: symbol.clone(),
-                                    name,
-                                    icon,
-                                    networks: Vec::new(),
-                                });
-                        asset.networks.push(NetworkOption {
-                            id: intents_id.clone(),
-                            name: network_name,
-                            symbol,
-                            chain_icons,
-                            chain_id: extras.chain_id.clone(),
-                            decimals: oneclick.map(|t| t.decimals as u8).unwrap_or(18),
-                            min_deposit_amount: extras.min_deposit_amount.clone(),
-                            min_withdrawal_amount: extras.min_withdrawal_amount.clone(),
-                            balance_asset_id: intents_id.clone(),
-                            quote_asset_id: quote_asset_id(intents_id).to_string(),
-                            public_deposit_supported: true,
-                        });
+                    if DEPRECATED_BALANCE_ASSET_IDS.contains(&intents_id.as_str()) {
+                        continue;
                     }
+                    if !catalog_token_in_oneclick(intents_id, &oneclick_ids) {
+                        continue;
+                    }
+                    let already = asset_map
+                        .values()
+                        .any(|a| a.networks.iter().any(|n| n.balance_asset_id == *intents_id));
+                    if already {
+                        continue;
+                    }
+
+                    let oneclick = oneclick_tokens.iter().find(|t| {
+                        t.asset_id == *intents_id || t.asset_id == quote_asset_id(intents_id)
+                    });
+                    let preferred_chain = oneclick
+                        .map(|t| fallback_chain_id_for_name(&t.blockchain))
+                        .unwrap_or_else(|| chain_id_from_defuse_id(intents_id));
+                    let Some(extras) = extras_list
+                        .iter()
+                        .find(|e| e.chain_id == preferred_chain)
+                        .or_else(|| extras_list.first())
+                    else {
+                        continue;
+                    };
+
+                    let symbol = oneclick
+                        .map(|t| t.symbol.clone())
+                        .unwrap_or_else(|| intents_id.clone());
+                    let group_key = bridge_only_group_key(intents_id, &symbol);
+                    // Fold into an existing catalog asset with the same ticker
+                    // (e.g. bridge-only WBTC near → catalog `wbtc`).
+                    let group_key = asset_map
+                        .iter()
+                        .find(|(k, a)| {
+                            *k != &group_key && a.asset_name.eq_ignore_ascii_case(&symbol)
+                        })
+                        .map(|(k, _)| k.clone())
+                        .unwrap_or(group_key);
+                    let unified = get_tokens_map().get(&group_key);
+                    let name = unified
+                        .map(|u| u.name.clone())
+                        .unwrap_or_else(|| symbol.clone());
+                    let icon = unified
+                        .map(|u| u.icon.clone())
+                        .or_else(|| asset_map.get(&group_key).and_then(|a| a.icon.clone()));
+                    let network_name = oneclick
+                        .map(|t| t.blockchain.to_lowercase())
+                        .unwrap_or_else(|| chain_name_from_chain_id(&extras.chain_id));
+                    let network_name = get_chain_metadata_by_name(&network_name)
+                        .map(|m| m.name.to_lowercase())
+                        .unwrap_or(network_name);
+                    let chain_icons = get_chain_metadata_by_name(&network_name).map(|m| m.icon);
+
+                    let asset = asset_map
+                        .entry(group_key.clone())
+                        .or_insert_with(|| AssetOption {
+                            id: group_key.clone(),
+                            asset_name: symbol.clone(),
+                            name,
+                            icon,
+                            networks: Vec::new(),
+                        });
+                    asset.networks.push(NetworkOption {
+                        id: intents_id.clone(),
+                        name: network_name,
+                        symbol,
+                        chain_icons,
+                        chain_id: extras.chain_id.clone(),
+                        decimals: oneclick.map(|t| t.decimals as u8).unwrap_or(18),
+                        min_deposit_amount: extras.min_deposit_amount.clone(),
+                        min_withdrawal_amount: extras.min_withdrawal_amount.clone(),
+                        balance_asset_id: intents_id.clone(),
+                        quote_asset_id: quote_asset_id(intents_id).to_string(),
+                        public_deposit_supported: true,
+                    });
                 }
 
                 let mut assets: Vec<AssetOption> = asset_map.into_values().collect();
@@ -468,6 +523,10 @@ pub async fn get_bridge_tokens(
                         quote_asset_id: existing_near_network.quote_asset_id,
                         public_deposit_supported: existing_near_network.public_deposit_supported,
                     });
+                }
+
+                for asset in &mut assets {
+                    dedupe_asset_networks(&mut asset.networks);
                 }
 
                 assets.sort_by(|a, b| a.id.cmp(&b.id));
@@ -523,13 +582,63 @@ mod tests {
     }
 
     #[test]
+    fn chain_name_from_poa_chain_id() {
+        assert_eq!(chain_name_from_chain_id("eth:1"), "eth");
+        assert_eq!(chain_name_from_chain_id("aptos:mainnet"), "aptos");
+        assert_eq!(chain_name_from_chain_id("near:mainnet"), "near");
+    }
+
+    #[test]
+    fn dedupe_keeps_first_catalog_row_per_chain_and_balance() {
+        // Catalog order: native arb.omft before WETH wrap — first wins.
+        let mut networks = vec![
+            NetworkOption {
+                id: "nep141:arb.omft.near".into(),
+                name: "arbitrum".into(),
+                symbol: "ETH".into(),
+                chain_icons: None,
+                chain_id: "eth:42161".into(),
+                decimals: 18,
+                min_deposit_amount: Some("1".into()),
+                min_withdrawal_amount: Some("1".into()),
+                balance_asset_id: "nep141:arb.omft.near".into(),
+                quote_asset_id: "nep141:arb.omft.near".into(),
+                public_deposit_supported: true,
+            },
+            NetworkOption {
+                id: "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near".into(),
+                name: "arbitrum".into(),
+                symbol: "wETH".into(),
+                chain_icons: None,
+                chain_id: "eth:42161".into(),
+                decimals: 18,
+                min_deposit_amount: Some("1".into()),
+                min_withdrawal_amount: Some("1".into()),
+                balance_asset_id: "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near"
+                    .into(),
+                quote_asset_id: "nep141:arb-0x82af49447d8a07e3bd95bd0d56f35241523fbab1.omft.near"
+                    .into(),
+                public_deposit_supported: true,
+            },
+        ];
+        dedupe_asset_networks(&mut networks);
+        assert_eq!(networks.len(), 1);
+        assert_eq!(networks[0].balance_asset_id, "nep141:arb.omft.near");
+    }
+
+    #[test]
     fn bridge_only_groups_unknown_tokens_by_symbol() {
         let eth_weth = "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near";
         let base_weth = "nep141:base-0x4200000000000000000000000000000000000006.omft.near";
         let pol_coca = "nep141:pol-0x7b12598e3616261df1c05ec28de0d2fb10c1f206.omdep.near";
         let base_coca = "nep141:base-0x959fc04dbf97a27073f89237cd62605f4d1b906d.omft.near";
 
-        assert_eq!(bridge_only_group_key(eth_weth, "WETH"), "weth");
+        assert_eq!(
+            bridge_only_group_key(eth_weth, "WETH"),
+            find_unified_asset_id(eth_weth)
+                .map(String::from)
+                .unwrap_or_else(|| "weth".into())
+        );
         assert_eq!(bridge_only_group_key(base_weth, "WETH"), "weth");
         assert_eq!(bridge_only_group_key(pol_coca, "COCA"), "coca");
         assert_eq!(bridge_only_group_key(base_coca, "COCA"), "coca");
