@@ -396,8 +396,9 @@ mod tests {
     fn rejects_unsupported_intervals_and_oversized_ranges() {
         assert!(chart_interval(&Interval::Hourly).is_err());
         assert!(chart_interval(&Interval::Monthly).is_err());
-        assert!(!bucket_count_is_valid(91, SnapshotGridInterval::Daily));
-        assert!(bucket_count_is_valid(90, SnapshotGridInterval::Daily));
+        assert!(!bucket_count_is_valid(93, SnapshotGridInterval::Daily));
+        // The frontend's 3M window needs 91 buckets (90 days + now-bucket).
+        assert!(bucket_count_is_valid(91, SnapshotGridInterval::Daily));
         assert!(!bucket_count_is_valid(54, SnapshotGridInterval::Weekly));
     }
 
