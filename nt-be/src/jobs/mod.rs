@@ -821,13 +821,14 @@ fn configure_cron_runtime(
         handlers::dao_list_sync
     );
 
+    // Notify-only drift check vs near.com production.json; sync stays manual.
+    // Default: twice per day (12h). Override with NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS.
     monitor = register_cron_worker!(
         monitor,
         queues,
         state,
+        wake_hub,
         "nearcom-catalog-watch",
-        // Notify-only drift check vs near.com production.json; sync stays manual.
-        // Default: twice per day (12h). Override with NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS.
         schedule_every_secs(env_secs("NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS", 43_200)),
         handlers::nearcom_catalog_watch
     );
