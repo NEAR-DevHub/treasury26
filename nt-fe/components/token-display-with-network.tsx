@@ -1,4 +1,8 @@
+"use client";
+
+import { useImageLoadError } from "@/hooks/use-image-load-error";
 import type { ChainIcons } from "@/lib/api";
+import { isIconUrl } from "@/lib/icon-url";
 import { cn } from "@/lib/utils";
 
 const iconSizeClasses = {
@@ -37,21 +41,24 @@ export const TokenDisplay = ({
     iconSize = "md",
     className,
 }: TokenDisplayProps) => {
+    const tokenIconUrl = isIconUrl(icon) ? icon : null;
     const networkIcon = chainIcons?.icon ?? null;
-    const isImageIcon =
-        icon && (icon.startsWith("data:image") || icon.startsWith("http"));
+    const tokenImage = useImageLoadError(tokenIconUrl);
+    const networkImage = useImageLoadError(networkIcon);
 
     return (
         <div className="relative flex">
-            {isImageIcon ? (
+            {tokenImage.showImage && tokenIconUrl ? (
                 <img
-                    src={icon}
+                    key={tokenIconUrl}
+                    src={tokenIconUrl}
                     alt={symbol}
                     className={cn(
                         "rounded-full shrink-0",
                         iconSizeClasses[iconSize],
                         className,
                     )}
+                    onError={tokenImage.onError}
                 />
             ) : (
                 <div
@@ -61,10 +68,12 @@ export const TokenDisplay = ({
                         className,
                     )}
                 >
-                    {icon || symbol.charAt(0).toUpperCase()}
+                    {tokenIconUrl || !icon
+                        ? symbol.charAt(0).toUpperCase()
+                        : icon}
                 </div>
             )}
-            {networkIcon && (
+            {networkImage.showImage && networkIcon && (
                 <div
                     className={cn(
                         "absolute -right-1 -bottom-1 flex items-center justify-center rounded-full border bg-muted",
@@ -74,12 +83,14 @@ export const TokenDisplay = ({
                     )}
                 >
                     <img
+                        key={networkIcon}
                         src={networkIcon}
                         alt="network"
                         className={cn(
                             "shrink-0 p-0.5",
                             networkIconSizeClasses[iconSize],
                         )}
+                        onError={networkImage.onError}
                     />
                 </div>
             )}

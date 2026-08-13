@@ -60,6 +60,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "eth".to_string(),
         ChainMetadata::new("Ethereum", "ethereum.svg"),
     );
+    // Network picker label matches near.com (NEAR in all caps; other chains title case).
     metadata.insert("near".to_string(), ChainMetadata::new("NEAR", "near.svg"));
     metadata.insert("base".to_string(), ChainMetadata::new("Base", "base.svg"));
     metadata.insert(
@@ -145,6 +146,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "hyperliquid".to_string(),
         ChainMetadata::new("Hyperliquid", "hyperliquid.svg"),
     );
+    add_chain_alias(&mut metadata, "hypercore", "hyperliquid");
     metadata.insert("ton".to_string(), ChainMetadata::new("TON", "ton.svg"));
     metadata.insert(
         "optimism".to_string(),

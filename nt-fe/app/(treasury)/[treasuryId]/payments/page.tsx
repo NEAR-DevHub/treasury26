@@ -942,6 +942,31 @@ export default function PaymentsPage() {
         ],
     );
 
+    const findQuoteAssetIdFor = useCallback(
+        (networkId: string | undefined): string | undefined => {
+            if (!networkId || isNearComNetwork(networkId)) {
+                return networkId;
+            }
+            for (const asset of bridgeAssets) {
+                const network = asset.networks.find((n) => n.id === networkId);
+                if (network) {
+                    return (
+                        network.quoteAssetId ||
+                        network.balanceAssetId ||
+                        network.id
+                    );
+                }
+            }
+            return networkId;
+        },
+        [bridgeAssets],
+    );
+
+    const destinationQuoteAssetId = useMemo(
+        () => findQuoteAssetIdFor(watchedDestinationNetwork),
+        [findQuoteAssetIdFor, watchedDestinationNetwork],
+    );
+
     // ── Live quote (drives step-1 fee preview & step-2 review) ───────────────
 
     const {
@@ -964,6 +989,7 @@ export default function PaymentsPage() {
         proposalPeriod: policy?.proposal_period,
         amountMode: intentsAmountMode,
         destinationNetwork: watchedDestinationNetwork,
+        destinationQuoteAssetId,
         isPayment: true,
         // Paused payment (critical warning on token/network or app-wide): don't
         // fetch the quote. Also wait until the default token is ready.
@@ -1327,6 +1353,12 @@ export default function PaymentsPage() {
                             undefined,
                             data.destinationNetwork,
                             true, // isPayment
+                            {
+                                destinationQuoteAssetId:
+                                    findQuoteAssetIdFor(
+                                        data.destinationNetwork,
+                                    ) ?? data.destinationNetwork,
+                            },
                         ),
                         false,
                     ));

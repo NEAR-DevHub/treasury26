@@ -152,8 +152,11 @@ impl TokenPriceService {
     pub fn resolve(&self, raw_token_id: &str) -> Option<String> {
         let candidate = canonicalize_token_id(raw_token_id);
         let snapshot = self.snapshot();
-        if snapshot.by_token_id.contains_key(&candidate) {
-            return Some(candidate);
+        for lookup_id in crate::services::oneclick_asset_routing::price_lookup_asset_ids(&candidate)
+        {
+            if snapshot.by_token_id.contains_key(&lookup_id) {
+                return Some(lookup_id);
+            }
         }
         // Bare contract ids that are not NEP-141 on NEAR (e.g. a lowercased
         // EVM address) can still match via the contract-address index.
@@ -370,6 +373,7 @@ impl TokenPriceService {
 /// - HOT intent aliases (`intents.near:<chain>_<asset>`) become
 ///   `nep245:v2_1.omni.hot.tg:<chain>_<asset>`
 /// - bare multi-token ids (`v2_1.omni.hot.tg:<chain>_<asset>`) gain `nep245:`
+/// - `1cs_v1:` routing ids pass through unchanged (never prefixed with `nep141:`)
 /// - bare NEP-141 contract ids (`wrap.near`, balance_changes) gain `nep141:`
 pub fn canonicalize_token_id(raw: &str) -> String {
     if raw == "near" || raw.starts_with("staking:") {
@@ -381,7 +385,7 @@ pub fn canonicalize_token_id(raw: &str) -> String {
         }
         return canonicalize_token_id(stripped);
     }
-    if raw.starts_with("nep141:") || raw.starts_with("nep245:") {
+    if raw.starts_with("nep141:") || raw.starts_with("nep245:") || raw.starts_with("1cs_v1:") {
         return raw.to_string();
     }
     if raw.starts_with("v2_1.omni.hot.tg:") {
@@ -439,6 +443,14 @@ mod tests {
         assert_eq!(
             canonicalize_token_id("nep245:v2_1.omni.hot.tg:137_abc"),
             "nep245:v2_1.omni.hot.tg:137_abc"
+        );
+        assert_eq!(
+            canonicalize_token_id("1cs_v1:btc:native:coin"),
+            "1cs_v1:btc:native:coin"
+        );
+        assert_eq!(
+            canonicalize_token_id("1cs_v1:near:nep141:zec.omft.near"),
+            "1cs_v1:near:nep141:zec.omft.near"
         );
     }
 

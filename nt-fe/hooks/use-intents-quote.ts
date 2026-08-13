@@ -51,6 +51,10 @@ export function buildIntentsQuoteRequest(
     amountMode: IntentsAmountMode = "recipient",
     destinationNetwork?: string,
     isPayment: boolean = false,
+    options?: {
+        /** 1Click routing id for cross-chain destination (may be `1cs_v1:`) */
+        destinationQuoteAssetId?: string;
+    },
 ) {
     const deadlineMs = nanosToMs(proposalPeriod);
 
@@ -76,12 +80,15 @@ export function buildIntentsQuoteRequest(
             : ("INTENTS" as const)
         : ("DESTINATION_CHAIN" as const);
 
-    // near.com → keep origin token address (stays on Intents).
-    // Other networks → destinationNetwork IS the bridge network id (e.g.
-    // `nep141:usdc-eth.omft.near`) and serves as the destinationAsset.
+    // Held balance id for INTENTS origin; quoteAssetId only for routing aliases
+    // when the token itself is selected as a 1cs deployment network.
+    const originAsset = token.balanceAssetId || token.address;
+
+    // near.com → keep origin balance id (stays on Intents).
+    // Other networks → prefer 1Click quoteAssetId when provided (e.g. BTC native).
     const destinationAsset = isNearComRoute
-        ? token.address
-        : destinationNetwork!;
+        ? originAsset
+        : (options?.destinationQuoteAssetId ?? destinationNetwork!);
     // 1Click wants the bare account — nearcom: is FE routing/display only.
     const bareRecipient = stripNearComAddressPrefix(address.trim());
     const normalizedRecipient = isEthImplicitNearAddress(bareRecipient)
@@ -92,7 +99,7 @@ export function buildIntentsQuoteRequest(
         daoId: treasuryId,
         swapType: amountMode === "recipient" ? "EXACT_OUTPUT" : "EXACT_INPUT",
         slippageTolerance: 0,
-        originAsset: token.address,
+        originAsset,
         depositType,
         destinationAsset,
         amount: parsedAmount,
@@ -175,6 +182,8 @@ interface UseIntentsQuoteParams {
     feeErrorMessage?: string | null;
     amountMode?: IntentsAmountMode;
     destinationNetwork?: string;
+    /** 1Click routing id for cross-chain destination (may be `1cs_v1:`) */
+    destinationQuoteAssetId?: string;
     isPayment?: boolean;
     /** When false, the quote is never fetched (e.g. the action is paused). */
     enabled?: boolean;
@@ -191,6 +200,7 @@ export function useIntentsQuote({
     feeErrorMessage,
     amountMode = "recipient",
     destinationNetwork,
+    destinationQuoteAssetId,
     isPayment = false,
     enabled = true,
 }: UseIntentsQuoteParams) {
@@ -259,6 +269,7 @@ export function useIntentsQuote({
             debouncedAddress,
             amountMode,
             destinationNetwork,
+            destinationQuoteAssetId,
             isPayment,
         ],
         queryFn: async ({ signal }): Promise<IntentsQuoteResponse | null> => {
@@ -281,6 +292,7 @@ export function useIntentsQuote({
                     amountMode,
                     destinationNetwork,
                     isPayment,
+                    { destinationQuoteAssetId },
                 ),
                 false,
                 signal,
@@ -398,6 +410,7 @@ export function useIntentsQuote({
                         amountMode,
                         destinationNetwork,
                         isPayment,
+                        { destinationQuoteAssetId },
                     ),
                     false,
                 );
@@ -437,6 +450,7 @@ export function useIntentsQuote({
             isConfidential,
             amountMode,
             destinationNetwork,
+            destinationQuoteAssetId,
             requiresDestinationSelectionForPayment,
             requestAmountDecimals,
             captureMissingDestinationDecimals,

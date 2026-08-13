@@ -14,6 +14,7 @@ import {
 } from "@/components/modal";
 import { Button } from "@/components/button";
 import {
+    getSelectOptionLabels,
     SelectListIcon,
     SelectListItem,
     SelectListSkeleton,
@@ -149,13 +150,7 @@ export function SelectModal({
 
     const renderOptionRow = useCallback(
         (item: SelectOption) => {
-            const primary = item.symbol || item.name || "";
-            // Only show a secondary line when symbol is present and name differs —
-            // otherwise name-only options (e.g. networks) would duplicate the primary.
-            const secondary =
-                item.symbol && item.name && item.name !== item.symbol
-                    ? item.name
-                    : null;
+            const { primary, secondary } = getSelectOptionLabels(item);
 
             return (
                 <Button
@@ -282,38 +277,19 @@ export function SelectModal({
                                                                             "opacity-60 cursor-not-allowed pointer-events-none",
                                                                     )}
                                                                 >
-                                                                    {item.icon?.startsWith(
-                                                                        "http",
-                                                                    ) ||
-                                                                    item.icon?.startsWith(
-                                                                        "data:",
-                                                                    ) ||
-                                                                    item.icon?.startsWith(
-                                                                        "/",
-                                                                    ) ? (
-                                                                        <img
-                                                                            src={
-                                                                                item.icon
-                                                                            }
-                                                                            alt={
-                                                                                item.symbol ||
-                                                                                item.name
-                                                                            }
-                                                                            className="size-4 rounded-full object-contain"
-                                                                        />
-                                                                    ) : (
-                                                                        <div
-                                                                            className={cn(
-                                                                                "size-4 rounded-full text-white text-[10px] font-bold flex items-center justify-center",
-                                                                                item.gradient ||
-                                                                                    "bg-linear-to-br from-blue-500 to-purple-500",
-                                                                            )}
-                                                                        >
-                                                                            {
-                                                                                item.icon
-                                                                            }
-                                                                        </div>
-                                                                    )}
+                                                                    <SelectListIcon
+                                                                        icon={
+                                                                            item.icon
+                                                                        }
+                                                                        gradient={
+                                                                            item.gradient
+                                                                        }
+                                                                        alt={
+                                                                            item.symbol ||
+                                                                            item.name
+                                                                        }
+                                                                        size="sm"
+                                                                    />
                                                                     <HighlightedText
                                                                         text={
                                                                             item.symbol ||
