@@ -17,6 +17,13 @@ import type {
 } from "@/lib/api";
 import Big from "@/lib/big";
 import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
+import { isEthImplicitNearAddress } from "@/lib/near-validation";
+
+/** Same as public quote: bare account; eth-implicit 0x… lowercased for 1Click. */
+function normalizePrepareRecipient(recipient: string): string {
+    const bare = stripNearComAddressPrefix(recipient);
+    return isEthImplicitNearAddress(bare) ? bare.toLowerCase() : bare;
+}
 
 // ─── Request building ───
 
@@ -47,8 +54,7 @@ export function buildPrepareRequest(args: {
         destinationAsset: args.toNearCom ? undefined : args.destinationAsset,
         decimals: args.token.decimals,
         payments: args.payments.map((p) => ({
-            // 1Click / BE want the bare account — nearcom: is FE display only.
-            recipient: stripNearComAddressPrefix(p.recipient),
+            recipient: normalizePrepareRecipient(p.recipient),
             amount: Big(p.amount || "0")
                 .add(feePerRecipient)
                 .times(Big(10).pow(args.token.decimals))
