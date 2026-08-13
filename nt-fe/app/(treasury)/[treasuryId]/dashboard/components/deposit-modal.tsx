@@ -511,10 +511,7 @@ export function DepositModal({
             dispatchDepositAssets({
                 type: "SELECT_ASSET",
                 payload: {
-                    filteredNetworks: availableNetworks.map((n) => ({
-                        ...n,
-                        name: getNetworkDisplayName(n.name),
-                    })),
+                    filteredNetworks: availableNetworks,
                     selectedNetworkBalances:
                         networkBalancesByAsset.get(asset.id) || new Map(),
                 },
@@ -1221,6 +1218,9 @@ export function DepositModal({
                 selectedId={selectedNetwork?.id}
                 renderContent={(item, { searchQuery }) => {
                     const option = item as SelectOption;
+                    const networkLabel = getNetworkDisplayName(
+                        option.name || option.symbol || "",
+                    );
                     return (
                         <div className="flex-1 text-left">
                             <div
@@ -1233,7 +1233,7 @@ export function DepositModal({
                                 )}
                             >
                                 <HighlightedText
-                                    text={option.name || option.symbol || ""}
+                                    text={networkLabel}
                                     query={searchQuery}
                                 />
                             </div>

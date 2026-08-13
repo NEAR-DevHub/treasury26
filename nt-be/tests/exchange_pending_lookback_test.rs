@@ -479,8 +479,12 @@ async fn pending_exchange_recompute_widens_to_pair_delayed_fulfillment() {
                 signature: None,
             }),
             Some(serde_json::json!({
-                "status": "SUCCESS",
-                "nearTxHashes": ["fulfillment-tx"],
+                // 1Click can report PROCESSING with only an intermediate NEAR
+                // transaction even after the destination transfer has landed.
+                // The projector must use the unique observed destination leg
+                // instead of rendering it as an independent deposit.
+                "status": "PROCESSING",
+                "nearTxHashes": ["intermediate-tx"],
                 "quoteResponse": {
                     "quoteRequest": {
                         "originAsset": "nep141:wrap.near",

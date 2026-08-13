@@ -21,12 +21,14 @@ import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity, SwapInfo, TokenMetadataInfo } from "@/lib/api";
 import Big from "@/lib/big";
+import { calculateExchangeFeeAmount } from "@/lib/exchange-fee";
 import {
     cn,
     formatActivityAmount,
     formatCurrency,
     formatCurrencyWithSubCent,
     formatSmartAmount,
+    formatTokenDisplayAmount,
 } from "@/lib/utils";
 import {
     getActivityStatus,
@@ -125,6 +127,19 @@ function swapUnitUsdPrice(
         fallbackPrice > 0
         ? fallbackPrice
         : null;
+}
+
+// Same calculation as the request page (lib/exchange-fee), denominated in
+// the sent token.
+function exchangeFeeLabel(swap: SwapInfo): string | null {
+    if (!swap.sentAmount || !swap.sentTokenMetadata) return null;
+    try {
+        if (Big(swap.sentAmount).lte(0)) return null;
+        const fee = calculateExchangeFeeAmount(swap.sentAmount);
+        return `${formatTokenDisplayAmount(fee)} ${swap.sentTokenMetadata.symbol}`;
+    } catch {
+        return null;
+    }
 }
 
 function exchangeRateDetails(swap: SwapInfo): ExchangeRateDetails | null {
@@ -429,6 +444,8 @@ function DetailsSection({
     variant: ActivityDetailsVariant;
 }) {
     const t = useTranslations("activity.details");
+    const tExchange = useTranslations("exchange");
+    const { isConfidential } = useTreasury();
 
     const items: InfoItem[] = [
         {
@@ -437,6 +454,13 @@ function DetailsSection({
         },
     ];
     if (variant === "exchange" && activity.swap) {
+        const fee = exchangeFeeLabel(activity.swap);
+        if (fee) {
+            items.push({
+                label: tExchange("info.exchangeFee"),
+                value: fee,
+            });
+        }
         const rate = exchangeRateDetails(activity.swap);
         if (rate) {
             items.push({
@@ -472,7 +496,11 @@ function DetailsSection({
         );
     }
 
-    if (activity.transactionHashes?.length || activity.receiptIds?.length) {
+    if (
+        activity.transactionHashes?.length ||
+        activity.receiptIds?.length ||
+        activity.quoteDepositAddress
+    ) {
         items.push({
             label: t(TRANSACTION_LABEL_KEYS[variant]),
             value: (
@@ -480,6 +508,8 @@ function DetailsSection({
                     transactionHashes={activity.transactionHashes}
                     receiptIds={activity.receiptIds}
                     chainName={activity.tokenMetadata?.chainName}
+                    depositAddress={activity.quoteDepositAddress}
+                    isConfidential={isConfidential}
                     className="flex items-center gap-2"
                 />
             ),

@@ -409,6 +409,10 @@ export function ActivityTable({
                                                 activity.tokenMetadata
                                                     ?.chainName
                                             }
+                                            depositAddress={
+                                                activity.quoteDepositAddress
+                                            }
+                                            isConfidential={isConfidential}
                                         />
                                     </TableCell>
                                     <TableCell className="w-10 px-0 pr-4 text-right">
