@@ -1,15 +1,15 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import Big from "@/lib/big";
-import { Token } from "./token-input";
-import { formatCurrency, formatTokenDisplayAmount } from "@/lib/utils";
-import { TokenDisplay } from "./token-display-with-network";
+import { type AmountValue, decimalOrNull } from "@/lib/amount-format";
+import { FormattedAmount } from "./formatted-amount";
 import { SummaryBlock } from "./summary-block";
+import { TokenDisplay } from "./token-display-with-network";
+import type { Token } from "./token-input";
 
 interface AmountSummaryProps {
-    total: Big | string;
-    totalUSD?: number;
+    total: AmountValue | null | undefined;
+    totalUSD?: AmountValue | null;
     token: Token;
     title?: string;
     children?: React.ReactNode;
@@ -23,12 +23,6 @@ interface AmountSummaryProps {
      * Default: false
      */
     showNetworkIcon?: boolean;
-    /**
-     * When true, renders `total` as-is without applying amount formatter.
-     * Useful when caller already provides a fully formatted value.
-     * Default: false
-     */
-    preserveFormattedTotal?: boolean;
 }
 
 export function AmountSummary({
@@ -39,12 +33,14 @@ export function AmountSummary({
     children,
     useInputBlock = true,
     showNetworkIcon = false,
-    preserveFormattedTotal = false,
 }: AmountSummaryProps) {
     const t = useTranslations("amountSummary");
-    const totalString = preserveFormattedTotal
-        ? total.toString()
-        : formatTokenDisplayAmount(total.toString());
+    const parsedTotal = decimalOrNull(total);
+    const parsedTotalUSD = decimalOrNull(totalUSD);
+    const unitPriceUsd =
+        parsedTotalUSD && parsedTotal?.gt(0)
+            ? parsedTotalUSD.div(parsedTotal)
+            : null;
 
     return (
         <SummaryBlock
@@ -60,16 +56,20 @@ export function AmountSummary({
             }
             secondRow={
                 <p className="text-lg font-semibold text-foreground break-all">
-                    {totalString}{" "}
-                    <span className="text-muted-foreground font-medium text-xs">
-                        {token.symbol}
-                    </span>
+                    <FormattedAmount
+                        kind="token"
+                        value={parsedTotal}
+                        symbol={token.symbol}
+                        tokenDecimals={token.decimals}
+                        unitPriceUsd={unitPriceUsd}
+                        profile="standard"
+                    />
                 </p>
             }
             subRow={
-                totalUSD ? (
+                parsedTotalUSD ? (
                     <p className="text-xxs text-muted-foreground break-all">
-                        ≈{formatCurrency(totalUSD)}
+                        ≈<FormattedAmount kind="fiat" value={parsedTotalUSD} />
                     </p>
                 ) : undefined
             }

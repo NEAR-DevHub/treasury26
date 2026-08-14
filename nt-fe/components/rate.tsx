@@ -2,21 +2,21 @@
 
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { useToken } from "@/hooks/use-treasury-queries";
-import Big from "@/lib/big";
 import {
-    formatBalance,
-    formatCurrency,
-    formatCurrencyWithSubCent,
-} from "@/lib/utils";
+    type AmountValue,
+    decimalFromBaseUnitsOrNull,
+    decimalOrNull,
+} from "@/lib/amount-format";
 
 interface RateProps {
     tokenIn: string;
     tokenOut: string;
-    amountIn?: Big;
+    amountIn?: AmountValue;
     amountInWithDecimals?: string;
     amountInUsd?: number | null;
-    amountOut?: Big;
+    amountOut?: AmountValue;
     amountOutWithDecimals?: string;
 }
 
@@ -33,37 +33,49 @@ export function Rate({
     const { data: tokenInData } = useToken(tokenIn);
     const { data: tokenOutData } = useToken(tokenOut);
     const amount1 = amountIn
-        ? formatBalance(amountIn.toString(), tokenInData?.decimals || 24)
-        : amountInWithDecimals;
+        ? decimalFromBaseUnitsOrNull(amountIn, tokenInData?.decimals || 24)
+        : amountInWithDecimals
+          ? decimalOrNull(amountInWithDecimals)
+          : null;
     const amount2 = amountOut
-        ? formatBalance(amountOut.toString(), tokenOutData?.decimals || 24)
-        : amountOutWithDecimals;
+        ? decimalFromBaseUnitsOrNull(amountOut, tokenOutData?.decimals || 24)
+        : amountOutWithDecimals
+          ? decimalOrNull(amountOutWithDecimals)
+          : null;
 
     const cost = useMemo(() => {
-        if (!amount1 || !amount2 || amount1 === "0" || amount2 === "0") {
-            return tCommon("notAvailable");
-        }
-        return Big(amount2).div(Big(amount1)).toFixed(6);
-    }, [amount1, amount2, tCommon]);
+        if (!amount1 || !amount2 || amount1.eq(0) || amount2.eq(0)) return null;
+        return amount2.div(amount1);
+    }, [amount1, amount2]);
     const tokenInUnitUsd = useMemo(() => {
         if (amountInUsd === null) {
             return null;
         }
         if (amountInUsd !== undefined) {
-            if (!amount1 || amount1 === "0") {
-                return null;
-            }
-            return formatCurrencyWithSubCent(
-                Big(amountInUsd).div(Big(amount1)).toNumber(),
-            );
+            if (!amount1 || amount1.eq(0)) return null;
+            const parsedAmountUsd = decimalOrNull(amountInUsd);
+            return parsedAmountUsd ? parsedAmountUsd.div(amount1) : null;
         }
-        return formatCurrency(tokenInData?.price || 0);
+        return decimalOrNull(tokenInData?.price);
     }, [amount1, amountInUsd, tokenInData?.price]);
 
     return (
         <p className="text-sm text-foreground">
             1 {tokenInData?.symbol}
-            {tokenInUnitUsd ? ` (${tokenInUnitUsd})` : ""} ≈ {cost}{" "}
+            {tokenInUnitUsd ? (
+                <>
+                    {" "}
+                    (
+                    <FormattedAmount kind="unit-price" value={tokenInUnitUsd} />
+                    )
+                </>
+            ) : null}{" "}
+            ≈{" "}
+            {cost ? (
+                <FormattedAmount kind="rate" value={cost} />
+            ) : (
+                tCommon("notAvailable")
+            )}{" "}
             {tokenOutData?.symbol}
         </p>
     );

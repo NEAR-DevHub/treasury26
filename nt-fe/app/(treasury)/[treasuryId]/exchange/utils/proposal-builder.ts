@@ -1,9 +1,10 @@
-import type { IntentsQuoteResponse } from "@/lib/api";
 import type { Token } from "@/components/token-input";
+import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import type { IntentsQuoteResponse } from "@/lib/api";
 import { FT_TRANSFER_GAS, STORAGE_DEPOSIT_GAS } from "@/lib/near-ft-gas";
 import { buildIntentsTransferProposal } from "@/lib/near-proposal-builders";
 import { encodeToMarkdown, jsonToBase64 } from "@/lib/utils";
-import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 // NEP-141 `storage_deposit` registrations are handled by the backend at
 // approval time (see nt-be relay storage_deposit derivation), so these builders
@@ -56,8 +57,14 @@ export function buildProposalDescription(
         notes: `**Must be executed before ${deadline}** for transferring tokens to 1Click's deposit address for swap execution.`,
         tokenInAddress: sellToken.address,
         tokenOutAddress: receiveToken.address,
-        amountIn: proposalData.quote.amountInFormatted,
-        amountOut: proposalData.quote.amountOutFormatted,
+        amountIn: decimalFromBaseUnits(
+            proposalData.quote.amountIn,
+            sellToken.decimals,
+        ).toFixed(),
+        amountOut: decimalFromBaseUnits(
+            proposalData.quote.amountOut,
+            receiveToken.decimals,
+        ).toFixed(),
         slippage: slippageTolerance.toString(),
         quoteDeadline: deadline,
         timeEstimate: proposalData.quote.timeEstimate

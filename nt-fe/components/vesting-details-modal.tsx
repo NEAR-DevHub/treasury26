@@ -1,32 +1,34 @@
 "use client";
 
+import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { FormattedDate } from "@/components/formatted-date";
+import { InfoDisplay, type InfoItem } from "@/components/info-display";
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/modal";
-import { Button } from "@/components/button";
-import { TreasuryAsset } from "@/lib/api";
-import { FormattedDate } from "@/components/formatted-date";
-import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { useTreasuryLockup } from "@/hooks/use-lockup";
-import { availableBalance } from "@/lib/balance";
-import { formatBalance } from "@/lib/utils";
-import {
-    buildEarningOverviewItems,
-    hasStakingActivity,
-} from "@/lib/earning-utils";
-import Big from "@/lib/big";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAmountFormat } from "@/hooks/use-amount-format";
+import { useTreasuryLockup } from "@/hooks/use-lockup";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import type { TreasuryAsset } from "@/lib/api";
+import { availableBalance } from "@/lib/balance";
+import Big from "@/lib/big";
+import {
+    buildEarningOverviewItems,
+    hasStakingActivity,
+} from "@/lib/earning-utils";
 import { AmountSummary } from "./amount-summary";
 
 interface VestingDetailsModalProps {
@@ -43,6 +45,7 @@ export function VestingDetailsModal({
     treasuryId,
 }: VestingDetailsModalProps) {
     const t = useTranslations("vestingDetails");
+    const amountFormat = useAmountFormat();
     const tEarning = useTranslations("earningDetails");
     const { data: lockupContract, isLoading } = useTreasuryLockup(
         isOpen && treasuryId ? treasuryId : null,
@@ -66,9 +69,19 @@ export function VestingDetailsModal({
     const vestedAmount = lockup.totalAllocated.sub(lockup.unvested);
 
     // Format balances
-    const formatTokenBalance = (balance: Big) => {
-        return Big(formatBalance(balance, asset.decimals)).toString();
-    };
+    const exactTokenBalance = (balance: Big) =>
+        decimalFromBaseUnits(balance, asset.decimals).toFixed();
+    const formatTokenBalance = (balance: Big) => (
+        <FormattedAmount
+            kind="raw-token"
+            value={balance}
+            symbol={asset.symbol}
+            tokenDecimals={asset.decimals}
+            unitPriceUsd={asset.price}
+            profile="standard"
+            rounding="down"
+        />
+    );
 
     // Vesting Period items
     const vestingPeriodItems: InfoItem[] = [];
@@ -107,20 +120,38 @@ export function VestingDetailsModal({
     const tokenBreakdownItems: InfoItem[] = [
         {
             label: t("originalVestedAmount"),
-            value: `${formatTokenBalance(lockup.totalAllocated)} ${asset.symbol}`,
+            value: formatTokenBalance(lockup.totalAllocated),
         },
         {
             label: t("reservedForStorage"),
             info: t("reservedForStorageInfo"),
-            value: `${formatTokenBalance(lockup.storageLocked)} ${asset.symbol}`,
+            value: formatTokenBalance(lockup.storageLocked),
         },
         {
             label: t("percentVested", {
-                percent: vestedPercent.toFixed(0),
+                percent: amountFormat
+                    .percent(vestedPercent)
+                    .display.replace("%", ""),
             }),
             value: t("vestedOf", {
-                vested: formatTokenBalance(vestedAmount),
-                total: formatTokenBalance(lockup.totalAllocated),
+                vested: amountFormat.token(
+                    decimalFromBaseUnits(vestedAmount, asset.decimals),
+                    {
+                        profile: "standard",
+                        tokenDecimals: asset.decimals,
+                        unitPriceUsd: asset.price,
+                        rounding: "down",
+                    },
+                ).display,
+                total: amountFormat.token(
+                    decimalFromBaseUnits(lockup.totalAllocated, asset.decimals),
+                    {
+                        profile: "standard",
+                        tokenDecimals: asset.decimals,
+                        unitPriceUsd: asset.price,
+                        rounding: "down",
+                    },
+                ).display,
                 symbol: asset.symbol,
             }),
             afterValue: (
@@ -140,7 +171,6 @@ export function VestingDetailsModal({
               staked: lockup.staked,
               unstakedBalance: lockup.unstakedBalance,
               canWithdraw: lockup.canWithdraw,
-              symbol: asset.symbol,
               formatTokenBalance,
               labels: {
                   staked: tEarning("overview.staked"),
@@ -168,7 +198,7 @@ export function VestingDetailsModal({
                     {/* Available Balance Display */}
                     <AmountSummary
                         title={t("availableToUse")}
-                        total={formatTokenBalance(available)}
+                        total={exactTokenBalance(available)}
                         totalUSD={available
                             .mul(asset.price)
                             .div(Big(10).pow(asset.decimals))

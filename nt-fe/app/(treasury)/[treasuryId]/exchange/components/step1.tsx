@@ -2,7 +2,6 @@
 
 import { ArrowDown, Loader2, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useTheme } from "next-themes";
 import { useCallback, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/button";
@@ -36,7 +35,6 @@ export function Step1({
         isConfidential,
         isGuestTreasury,
     } = useTreasury();
-    const { resolvedTheme } = useTheme();
     const showConfidentialShield = isConfidential && !isGuestTreasury;
 
     const { blocked: exchangeSlotBlocked, scopedMessage: sendWarningMessage } =
@@ -60,7 +58,7 @@ export function Step1({
         quoteData,
         quoteError,
         isQuoteBusy,
-        formattedDerivedAmount,
+        derivedAmount,
         isSellDerived,
         isReceiveDerived,
         onSellAmountInput,
@@ -230,7 +228,7 @@ export function Step1({
                         loading={isSellDerived && isQuoteBusy}
                         customValue={
                             isSellDerived && isQuoteBusy
-                                ? formattedDerivedAmount
+                                ? (derivedAmount ?? "")
                                 : undefined
                         }
                         tokenSelect={{
@@ -274,7 +272,7 @@ export function Step1({
                     loading={isReceiveDerived && isQuoteBusy}
                     customValue={
                         isReceiveDerived && isQuoteBusy
-                            ? formattedDerivedAmount
+                            ? (derivedAmount ?? "")
                             : undefined
                     }
                     dynamicFontSize={true}

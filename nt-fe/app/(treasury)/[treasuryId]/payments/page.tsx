@@ -7,16 +7,15 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
-import { z } from "zod";
 import { toast } from "sonner";
-
+import { z } from "zod";
+import { Address } from "@/components/address";
 import { AmountSummary } from "@/components/amount-summary";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
-import { TokenDisplay } from "@/components/token-display-with-network";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { SlotWarning } from "@/components/warning-message";
 import { PendingButton } from "@/components/pending-button";
 import {
     ReviewStep,
@@ -25,9 +24,11 @@ import {
     StepWizard,
 } from "@/components/step-wizard";
 import { Textarea } from "@/components/textarea";
-import { Tooltip } from "@/components/tooltip";
+import { TokenDisplay } from "@/components/token-display-with-network";
 import { type Token, tokenSchema } from "@/components/token-input";
+import { Tooltip } from "@/components/tooltip";
 import { Form, FormField } from "@/components/ui/form";
+import { SlotWarning } from "@/components/warning-message";
 import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { default_near_token, default_usdc_near_token } from "@/constants/token";
 import { useAddressBook } from "@/features/address-book";
@@ -38,19 +39,34 @@ import {
     usePageTour,
 } from "@/features/onboarding/steps/page-tours";
 import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import {
+    buildIntentsQuoteRequest,
+    type IntentsAmountMode,
+    useIntentsQuote,
+} from "@/hooks/use-intents-quote";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import {
     scopedFieldMessage,
     useBridgeScopedWarning,
     useScopedSlotWarning,
 } from "@/hooks/use-warnings";
-import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { decimalFromBaseUnitsOrNull, decimalOrNull } from "@/lib/amount-format";
 import { trackEvent } from "@/lib/analytics";
-import { generateIntent, getIntentsQuote } from "@/lib/api";
 import type { IntentsQuoteResponse } from "@/lib/api";
+import { generateIntent, getIntentsQuote } from "@/lib/api";
 import Big from "@/lib/big";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import { findBridgeAssetForToken } from "@/lib/bridge-asset-resolver";
+import {
+    computeQuoteNetworkFee,
+    isIntentsCrossChainToken,
+    isIntentsToken,
+    isNearChainFtToken,
+    isNearChainNativeToken,
+} from "@/lib/intents-fee";
+import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
 import {
     buildIntentsTransferProposal,
     buildNativeNearIntentsKind,
@@ -64,42 +80,22 @@ import {
     hasNearComAddressPrefix,
     stripNearComAddressPrefix,
 } from "@/lib/nearcom-address";
+import type { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
+import { parseTokenQueryParam } from "@/lib/token-query-param";
+import { cn, encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
 import { PaymentFormSection } from "./components/payment-form-section";
-import { Address } from "@/components/address";
-import {
-    useIntentsQuote,
-    buildIntentsQuoteRequest,
-    type IntentsAmountMode,
-} from "@/hooks/use-intents-quote";
-import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
-import { parseTokenQueryParam } from "@/lib/token-query-param";
-import {
-    cn,
-    encodeToMarkdown,
-    formatCurrency,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
-import { findBridgeAssetForToken } from "@/lib/bridge-asset-resolver";
-import {
-    computeQuoteNetworkFee,
-    isIntentsCrossChainToken,
-    isIntentsToken,
-    isNearChainFtToken,
-    isNearChainNativeToken,
-} from "@/lib/intents-fee";
-import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
 import {
     isBareNearContractId,
     isIntentsNetworkId,
     isJsonTokenQueryParam,
-    isNativeNearPrefill as resolveIsNativeNearPrefill,
     nearChainDestination,
     normalizePreferredNetwork,
     parseSoftNetworks,
     pickCompatibleFallbackToken,
     resolveExactBridgeToken,
+    isNativeNearPrefill as resolveIsNativeNearPrefill,
     resolvePreferredDestinationNetwork,
     resolvePreferredNetworks,
 } from "./utils/payments-deep-link";
@@ -357,43 +353,41 @@ function Step2({
                 totalAmountWithFees: Big(0),
                 recipientAmount: Big(0),
                 displayNetworkFee: Big(0),
-                estimatedUSDValue: Big(0),
-                recipientEstimatedUSDValue: Big(0),
+                estimatedUSDValue: null,
+                recipientEstimatedUSDValue: null,
             };
         }
 
-        const enteredAmount = Big(amount || "0");
-        const price = tokenData?.price ?? 0;
+        const enteredAmount = decimalOrNull(amount) ?? Big(0);
+        const price = decimalOrNull(tokenData?.price);
 
         if (liveQuote?.quote) {
-            const divisor = Big(10).pow(token.decimals);
-            const quotedTotal = Big(
-                liveQuote.quote.amountInFormatted ||
-                    Big(liveQuote.quote.minAmountIn || "0")
-                        .div(divisor)
-                        .toString(),
-            );
-            const quotedRecipient = Big(
-                liveQuote.quote.amountOutFormatted ||
-                    Big(liveQuote.quote.minAmountOut || "0")
-                        .div(divisor)
-                        .toString(),
-            );
-            const feeValue = Big(
-                (computeQuoteNetworkFee(liveQuote.quote) || "0").replaceAll(
-                    ",",
-                    "",
-                ),
-            );
+            const quotedTotal =
+                decimalFromBaseUnitsOrNull(
+                    liveQuote.quote.amountIn || liveQuote.quote.minAmountIn,
+                    token.decimals,
+                ) ??
+                decimalOrNull(liveQuote.quote.amountInFormatted) ??
+                Big(0);
+            const quotedRecipient =
+                decimalOrNull(liveQuote.quote.amountOutFormatted) ??
+                decimalFromBaseUnitsOrNull(
+                    liveQuote.quote.amountOut || liveQuote.quote.minAmountOut,
+                    token.decimals,
+                ) ??
+                Big(0);
+            const feeValue =
+                decimalOrNull(computeQuoteNetworkFee(liveQuote.quote)) ??
+                Big(0);
 
             return {
                 totalAmountWithFees: quotedTotal,
                 recipientAmount: quotedRecipient,
                 displayNetworkFee: feeValue,
-                estimatedUSDValue: price ? quotedTotal.mul(price) : Big(0),
-                recipientEstimatedUSDValue: price
+                estimatedUSDValue: price?.gt(0) ? quotedTotal.mul(price) : null,
+                recipientEstimatedUSDValue: price?.gt(0)
                     ? quotedRecipient.mul(price)
-                    : Big(0),
+                    : null,
             };
         }
 
@@ -401,10 +395,10 @@ function Step2({
             totalAmountWithFees: enteredAmount,
             recipientAmount: enteredAmount,
             displayNetworkFee: Big(0),
-            estimatedUSDValue: price ? enteredAmount.mul(price) : Big(0),
-            recipientEstimatedUSDValue: price
+            estimatedUSDValue: price?.gt(0) ? enteredAmount.mul(price) : null,
+            recipientEstimatedUSDValue: price?.gt(0)
                 ? enteredAmount.mul(price)
-                : Big(0),
+                : null,
         };
     }, [amount, liveQuote, token, tokenData?.price]);
 
@@ -421,10 +415,9 @@ function Step2({
             >
                 <AmountSummary
                     total={totalAmountWithFees}
-                    totalUSD={estimatedUSDValue.toNumber()}
+                    totalUSD={estimatedUSDValue}
                     token={token}
                     showNetworkIcon={true}
-                    preserveFormattedTotal={!!liveQuote?.quote}
                 >
                     <p>{tPay("summaryRecipients", { count: 1 })}</p>
                 </AmountSummary>
@@ -458,17 +451,26 @@ function Step2({
                                 />
                                 <div className="flex flex-col gap-[3px] items-end">
                                     <p className="text-xs font-semibold text-wrap break-all">
-                                        {formatTokenDisplayAmount(
-                                            recipientAmount,
-                                        )}{" "}
-                                        {token.symbol}
+                                        <FormattedAmount
+                                            kind="token"
+                                            value={recipientAmount}
+                                            symbol={token.symbol}
+                                            tokenDecimals={token.decimals}
+                                            unitPriceUsd={tokenData?.price}
+                                            profile="standard"
+                                        />
                                     </p>
-                                    <p className="text-xxs text-muted-foreground text-wrap break-all">
-                                        ≈{" "}
-                                        {formatCurrency(
-                                            recipientEstimatedUSDValue,
-                                        )}
-                                    </p>
+                                    {recipientEstimatedUSDValue ? (
+                                        <p className="text-xxs text-muted-foreground text-wrap break-all">
+                                            ≈{" "}
+                                            <FormattedAmount
+                                                kind="fiat"
+                                                value={
+                                                    recipientEstimatedUSDValue
+                                                }
+                                            />
+                                        </p>
+                                    ) : null}
                                 </div>
                             </div>
                         </div>
@@ -487,10 +489,15 @@ function Step2({
                                     </Tooltip>
                                 </div>
                                 <p>
-                                    {formatTokenDisplayAmount(
-                                        displayNetworkFee,
-                                    )}{" "}
-                                    {token.symbol}
+                                    <FormattedAmount
+                                        kind="token"
+                                        value={displayNetworkFee}
+                                        symbol={token.symbol}
+                                        tokenDecimals={token.decimals}
+                                        unitPriceUsd={tokenData?.price}
+                                        profile="standard"
+                                        rounding="up"
+                                    />
                                 </p>
                             </div>
                         )}

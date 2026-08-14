@@ -1,10 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { formatCurrency } from "@/lib/utils";
 import { PageCard } from "@/components/card";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { Skeleton } from "@/components/ui/skeleton";
-import Big from "@/lib/big";
 
 interface AumStatCardProps {
     totalAumUsd: string;
@@ -27,15 +26,15 @@ export function AumStatCard({
     snapshotDate,
 }: AumStatCardProps) {
     const t = useTranslations("publicDashboard");
-    const aum = new Big(totalAumUsd || "0");
-
     return (
         <PageCard>
             <div className="flex flex-col gap-1">
                 <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     {t("assetsSecured")}
                 </h3>
-                <p className="text-3xl font-bold mt-2">{formatCurrency(aum)}</p>
+                <p className="text-3xl font-bold mt-2">
+                    <FormattedAmount kind="fiat" value={totalAumUsd} />
+                </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5 text-xs text-muted-foreground">

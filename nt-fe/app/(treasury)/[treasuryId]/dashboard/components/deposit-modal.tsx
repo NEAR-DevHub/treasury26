@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { HighlightedText } from "@/components/highlighted-text";
 import { getNetworkDisplayName } from "@/components/token-display";
 import {
@@ -46,7 +47,7 @@ import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { withNearComAddressPrefix } from "@/lib/nearcom-address";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { DepositAckPanel } from "./deposit/deposit-ack-panel";
 import {
@@ -179,17 +180,24 @@ function renderBalance(amount: number | string, amountUSD: number) {
     if (!Big(normalizedAmount).gt(0)) {
         return null;
     }
-    const normalizedUsd = Number.isFinite(amountUSD)
-        ? formatCurrencyWithSubCent(amountUSD)
-        : formatCurrencyWithSubCent(0);
+    const unitPriceUsd =
+        Number.isFinite(amountUSD) && Big(normalizedAmount).gt(0)
+            ? Big(amountUSD.toString()).div(normalizedAmount)
+            : null;
 
     return (
         <div className="flex flex-col items-end">
             <span className="font-semibold">
-                {formatSmartAmount(normalizedAmount)}
+                <FormattedAmount
+                    kind="token"
+                    value={normalizedAmount}
+                    symbol=""
+                    unitPriceUsd={unitPriceUsd}
+                    profile="compact"
+                />
             </span>
             <span className="text-sm text-muted-foreground">
-                ≈{normalizedUsd}
+                ≈<FormattedAmount kind="fiat" value={amountUSD} />
             </span>
         </div>
     );
@@ -723,11 +731,13 @@ export function DepositModal({
                 depositInfo?.minDepositAmount ??
                     selectedBridgeNetwork?.minDepositAmount,
                 selectedBridgeNetwork?.decimals ?? 0,
+                locale,
             ),
         [
             depositInfo?.minDepositAmount,
             selectedBridgeNetwork?.minDepositAmount,
             selectedBridgeNetwork?.decimals,
+            locale,
         ],
     );
 

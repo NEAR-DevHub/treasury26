@@ -18,8 +18,10 @@ import {
     useMemo,
     useState,
 } from "react";
+import { buildPaymentsDeepLinkForAsset } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
 import {
     Dialog,
     DialogContent,
@@ -42,21 +44,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAmountFormat } from "@/hooks/use-amount-format";
 import type { AggregatedAsset } from "@/hooks/use-assets";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import type { TreasuryAsset } from "@/lib/api";
 import { availableBalance, lockedBalance } from "@/lib/balance";
 import Big from "@/lib/big";
 import { getDashboardBucketVisibility } from "@/lib/dashboard-balance-view";
-import {
-    cn,
-    formatBalance,
-    formatCurrencyWithSubCent,
-    formatSmartAmount,
-} from "@/lib/utils";
-import { buildPaymentsDeepLinkForAsset } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { buildTokenQueryParam } from "@/lib/token-query-param";
+import { cn } from "@/lib/utils";
 import { EarningPoolDetailsModal } from "./earning-pool-details-modal";
 import { LockupDetailsModal } from "./lockup-details-modal";
 import { BalanceCell, NetworkDisplay } from "./token-display";
@@ -181,7 +179,7 @@ function getAssetMetrics(asset: AggregatedAsset): AssetMetrics {
 }
 
 function displayAmount(rawAmount: Big.Big, decimals: number): Big.Big {
-    return Big(formatBalance(rawAmount, decimals, decimals));
+    return decimalFromBaseUnits(rawAmount, decimals);
 }
 
 function sumTokenAmountsByNetwork(
@@ -312,7 +310,11 @@ function MobileAssetViewModal({
                                 {t("coinPrice")}
                             </span>
                             <span className="text-sm font-medium">
-                                {formatCurrencyWithSubCent(selectedAsset.price)}
+                                <FormattedAmount
+                                    kind="unit-price"
+                                    value={selectedAsset.price}
+                                    profile="compact"
+                                />
                             </span>
                         </div>
                         {view === "available" && (
@@ -329,7 +331,10 @@ function MobileAssetViewModal({
                                     />
                                 </div>
                                 <span className="text-xs font-medium w-14 text-right shrink-0">
-                                    {mobileModalData.weight.toFixed(2)}%
+                                    <FormattedAmount
+                                        kind="percent"
+                                        value={mobileModalData.weight}
+                                    />
                                 </span>
                             </div>
                         )}
@@ -548,12 +553,19 @@ function AvailableView({
                     />
                 </TableCell>
                 <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
-                    {formatCurrencyWithSubCent(asset.price)}
+                    <FormattedAmount
+                        kind="unit-price"
+                        value={asset.price}
+                        profile="compact"
+                    />
                 </TableCell>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <div className="flex items-center justify-end gap-3">
                         <span className="font-medium w-14 text-right">
-                            {(weight ?? 0).toFixed(2)}%
+                            <FormattedAmount
+                                kind="percent"
+                                value={weight ?? 0}
+                            />
                         </span>
                         <div className="w-24 bg-muted rounded-full h-2 overflow-hidden">
                             <div
@@ -837,7 +849,11 @@ function LockedView({
                     />
                 </TableCell>
                 <TableCell className="p-4 text-right font-medium overflow-hidden hidden sm:table-cell">
-                    {formatCurrencyWithSubCent(asset.price)}
+                    <FormattedAmount
+                        kind="unit-price"
+                        value={asset.price}
+                        profile="compact"
+                    />
                 </TableCell>
                 <TableCell className="p-4 text-right overflow-hidden hidden sm:table-cell">
                     <BalanceCell
@@ -1052,7 +1068,11 @@ function EarningView({
                     />
                 </TableCell>
                 <TableCell className="p-4 text-right font-medium hidden sm:table-cell">
-                    {formatCurrencyWithSubCent(asset.price)}
+                    <FormattedAmount
+                        kind="unit-price"
+                        value={asset.price}
+                        profile="compact"
+                    />
                 </TableCell>
                 <TableCell className="p-4 text-right hidden sm:table-cell">
                     <BalanceCell
@@ -1321,6 +1341,7 @@ function ExpandedRows({
 
 export function AssetsTable({ aggregatedTokens }: Props) {
     const t = useTranslations("assetsTable");
+    const amountFormat = useAmountFormat();
     const { treasuryId } = useTreasury();
     const router = useRouter();
     const isMobile = useMediaQuery("(max-width: 640px)");
@@ -1673,7 +1694,10 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                 {visibleViews.map(([id, label, value]) => (
                                     <SelectItem key={id} value={id}>
                                         {label}{" "}
-                                        {formatCurrencyWithSubCent(value)}
+                                        <FormattedAmount
+                                            kind="fiat"
+                                            value={value}
+                                        />
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -1717,7 +1741,10 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                             : "text-muted-foreground",
                                     )}
                                 >
-                                    {formatCurrencyWithSubCent(value)}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={value}
+                                    />
                                 </p>
                             </Button>
                         ))}
@@ -2109,9 +2136,15 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                                                   "partAllocatedBalance",
                                                               )}{" "}
                                                         {t("currentlyEarning", {
-                                                            amount: formatSmartAmount(
+                                                            amount: amountFormat.token(
                                                                 earningFromLockedAmount,
-                                                            ),
+                                                                {
+                                                                    profile:
+                                                                        "compact",
+                                                                    unitPriceUsd:
+                                                                        asset.price,
+                                                                },
+                                                            ).display,
                                                             symbol: asset.id,
                                                         })}
                                                         {isFullLockedInEarning &&

@@ -18,6 +18,7 @@ import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { ScrollContainer } from "@/components/scroll-container";
 import { Tooltip } from "@/components/tooltip";
 import {
@@ -38,6 +39,8 @@ import { useIsHistoryRefreshing } from "@/features/activity";
 import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import { trackEvent } from "@/lib/analytics";
 import type { ChartInterval, TreasuryAsset } from "@/lib/api";
 import { availableBalance, totalBalance } from "@/lib/balance";
 import { getBalanceHistoryTokenIds } from "@/lib/balance-history-token-ids";
@@ -47,8 +50,7 @@ import {
     getDashboardBreakdownItems,
     getDashboardBucketVisibility,
 } from "@/lib/dashboard-balance-view";
-import { trackEvent } from "@/lib/analytics";
-import { cn, formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import BalanceChart from "./chart";
 
 interface Props {
@@ -173,11 +175,9 @@ export default function BalanceWithGraph({
                 existing.tokens.push(token);
                 existing.totalBalanceUSD += token.balanceUSD;
                 existing.totalBalance = existing.totalBalance.add(
-                    Big(
-                        formatBalance(
-                            totalBalance(token.balance),
-                            token.decimals,
-                        ),
+                    decimalFromBaseUnits(
+                        totalBalance(token.balance),
+                        token.decimals,
                     ),
                 );
                 // Add all token IDs, deduplicating
@@ -191,11 +191,9 @@ export default function BalanceWithGraph({
                     symbol: token.symbol,
                     tokens: [token],
                     totalBalanceUSD: token.balanceUSD,
-                    totalBalance: Big(
-                        formatBalance(
-                            totalBalance(token.balance),
-                            token.decimals,
-                        ),
+                    totalBalance: decimalFromBaseUnits(
+                        totalBalance(token.balance),
+                        token.decimals,
                     ),
                     icon: token.icon,
                     tokenIds: tokenIdsForHistory,
@@ -388,7 +386,7 @@ export default function BalanceWithGraph({
                         const hasUSD =
                             snapshot.valueUsd !== null &&
                             snapshot.valueUsd !== undefined;
-                        const balanceValue = parseFloat(snapshot.balance) || 0;
+                        const balanceValue = Number(snapshot.balance) || 0;
 
                         timeMap.set(snapshot.timestamp, {
                             usdValue:
@@ -441,17 +439,18 @@ export default function BalanceWithGraph({
                 const nowUSD = hasHistoricalPrices
                     ? nonLockupTokens.reduce((sum, t) => sum + t.balanceUSD, 0)
                     : undefined;
-                const nowBalance = nonLockupTokens.reduce(
-                    (sum, t) =>
-                        sum +
-                        Big(
-                            formatBalance(
-                                availableBalance(t.balance),
-                                t.decimals,
+                const nowBalance = nonLockupTokens
+                    .reduce(
+                        (sum, t) =>
+                            sum.add(
+                                decimalFromBaseUnits(
+                                    availableBalance(t.balance),
+                                    t.decimals,
+                                ),
                             ),
-                        ).toNumber(),
-                    0,
-                );
+                        Big(0),
+                    )
+                    .toNumber();
                 data.push({
                     name: t("chartNow"),
                     fullDate: undefined,
@@ -466,9 +465,9 @@ export default function BalanceWithGraph({
         selectedToken,
         selectedTokenGroup,
         selectedPeriod,
-        tokens,
         groupedTokens,
         locale,
+        t,
     ]);
 
     // Symbols excluded from the "all tokens" chart USD calculation (no historical prices)
@@ -568,11 +567,14 @@ export default function BalanceWithGraph({
                                 )}
                         </h3>
                         <p className="text-3xl font-bold mt-2">
-                            {!isHidden
-                                ? formatCurrencyWithSubCent(
-                                      balanceView.totalUsd,
-                                  )
-                                : "••••••"}
+                            {!isHidden ? (
+                                <FormattedAmount
+                                    kind="fiat"
+                                    value={balanceView.totalUsd}
+                                />
+                            ) : (
+                                "••••••"
+                            )}
                         </p>
                         {showBreakdown && (
                             <div className="mt-2 hidden md:flex items-center gap-2 text-sm text-muted-foreground">
@@ -592,9 +594,10 @@ export default function BalanceWithGraph({
                                                     | "bucketEarning",
                                             )}{" "}
                                             <span className="font-semibold text-foreground">
-                                                {formatCurrencyWithSubCent(
-                                                    item.value,
-                                                )}
+                                                <FormattedAmount
+                                                    kind="fiat"
+                                                    value={item.value}
+                                                />
                                             </span>
                                         </span>
                                     </div>
@@ -745,7 +748,10 @@ export default function BalanceWithGraph({
                                     )}
                                 </span>
                                 <span className="font-semibold text-foreground">
-                                    {formatCurrencyWithSubCent(item.value)}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={item.value}
+                                    />
                                 </span>
                             </div>
                         ))}

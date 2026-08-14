@@ -1,30 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
 import {
     BadgeDollarSign,
-    Info,
     ChevronDown,
-    ChevronUp,
     ChevronLeft,
+    ChevronUp,
+    Info,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
-import { TreasuryAsset } from "@/lib/api";
-import Big from "@/lib/big";
-import { formatBalance, formatSmartAmount, formatUserDate } from "@/lib/utils";
-import { useTreasuryLockup } from "@/hooks/use-lockup";
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useAmountFormat } from "@/hooks/use-amount-format";
+import { useTreasuryLockup } from "@/hooks/use-lockup";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import type { TreasuryAsset } from "@/lib/api";
+import Big from "@/lib/big";
+import { formatUserDate } from "@/lib/utils";
 import { AmountSummary } from "./amount-summary";
 import { Tooltip } from "./tooltip";
 
@@ -155,6 +158,7 @@ export function LockupDetailsModal({
     treasuryId,
 }: LockupDetailsModalProps) {
     const t = useTranslations("lockupDetails");
+    const amountFormat = useAmountFormat();
     const [guideOpen, setGuideOpen] = useState(false);
     const isNearLockup = asset?.balance.type === "Vested";
     const isFtLockup = !isNearLockup && !!asset?.lockupInstanceId;
@@ -189,18 +193,16 @@ export function LockupDetailsModal({
         const roundsDone = asset.ftLockupSchedule?.roundsCompleted ?? 0;
         const roundsTotal = asset.ftLockupSchedule?.roundsTotal ?? 0;
 
-        total = Big(formatBalance(totalRaw, asset.decimals, asset.decimals));
-        unlocked = Big(
-            formatBalance(unlockedRaw, asset.decimals, asset.decimals),
-        );
-        locked = Big(formatBalance(lockedRaw, asset.decimals, asset.decimals));
+        total = decimalFromBaseUnits(totalRaw, asset.decimals);
+        unlocked = decimalFromBaseUnits(unlockedRaw, asset.decimals);
+        locked = decimalFromBaseUnits(lockedRaw, asset.decimals);
         summaryTotal = total;
 
         progressPct = total.gt(0) ? unlocked.div(total).mul(100).toNumber() : 0;
         progressLabel =
             roundsTotal > 0
                 ? `${roundsDone}/${roundsTotal} Rounds`
-                : `${progressPct.toFixed(0)}%`;
+                : amountFormat.percent(progressPct).display;
     }
 
     if (isNearLockup && asset.balance.type === "Vested") {
@@ -213,37 +215,30 @@ export function LockupDetailsModal({
         const unlockedRaw = allocatedRaw.sub(lockedRaw);
         lockupStaked = asset.balance.lockup.staked;
         allocatedForProgress = allocatedRaw;
-        allocatedFromContract = Big(
-            formatBalance(
-                allocatedRawForBreakdown,
-                asset.decimals,
-                asset.decimals,
-            ),
+        allocatedFromContract = decimalFromBaseUnits(
+            allocatedRawForBreakdown,
+            asset.decimals,
         );
 
-        total = Big(
-            formatBalance(allocatedRaw, asset.decimals, asset.decimals),
+        total = decimalFromBaseUnits(allocatedRaw, asset.decimals);
+        summaryTotal = decimalFromBaseUnits(
+            asset.balance.lockup.total,
+            asset.decimals,
         );
-        summaryTotal = Big(
-            formatBalance(
-                asset.balance.lockup.total,
-                asset.decimals,
-                asset.decimals,
-            ),
-        );
-        locked = Big(formatBalance(lockedRaw, asset.decimals, asset.decimals));
-        unlocked = Big(
-            formatBalance(unlockedRaw, asset.decimals, asset.decimals),
-        );
+        locked = decimalFromBaseUnits(lockedRaw, asset.decimals);
+        unlocked = decimalFromBaseUnits(unlockedRaw, asset.decimals);
         progressPct = total.gt(0) ? unlocked.div(total).mul(100).toNumber() : 0;
         // Avoid showing 100% while a non-zero locked balance still exists.
         if (locked.gt(0)) {
-            progressLabel = `${Math.min(progressPct, 99.9).toFixed(1)}%`;
+            progressLabel = amountFormat.percent(
+                Math.min(progressPct, 99.9),
+            ).display;
         } else {
             progressLabel = "100%";
         }
-        reservedStorage = Big(
-            formatBalance(asset.balance.lockup.storageLocked, asset.decimals),
+        reservedStorage = decimalFromBaseUnits(
+            asset.balance.lockup.storageLocked,
+            asset.decimals,
         );
     }
 
@@ -288,15 +283,17 @@ export function LockupDetailsModal({
     const allocatedAmountSummary = (
         <AmountSummary
             title={isNearLockup ? t("balance") : t("allocatedAmount")}
-            total={summaryTotal.toFixed(2)}
+            total={summaryTotal}
             totalUSD={totalUsd}
             token={amountSummaryToken}
         />
     );
     const hasLockupStakingNotice = isNearLockup && lockupStaked.gt(0);
-    const lockupStakedDisplay = formatSmartAmount(
-        Big(formatBalance(lockupStaked, asset.decimals)),
-    );
+    const lockupStakedDisplay = amountFormat.rawToken(
+        lockupStaked,
+        asset.decimals,
+        { profile: "compact", unitPriceUsd: asset.price },
+    ).display;
     const isFullLockupStaked =
         allocatedForProgress.gt(0) && lockupStaked.gte(allocatedForProgress);
     const earnedFromStaking =
@@ -349,8 +346,14 @@ export function LockupDetailsModal({
                                             </Tooltip>
                                         </div>
                                         <span className="text-foreground">
-                                            {reservedStorage.toFixed(2)}{" "}
-                                            {asset.symbol}
+                                            <FormattedAmount
+                                                kind="token"
+                                                value={reservedStorage}
+                                                symbol={asset.symbol}
+                                                tokenDecimals={asset.decimals}
+                                                unitPriceUsd={asset.price}
+                                                profile="standard"
+                                            />
                                         </span>
                                     </div>
                                 ) : null}
@@ -386,8 +389,14 @@ export function LockupDetailsModal({
                                             {t("allocatedAmount")}
                                         </p>
                                         <p className="font-medium">
-                                            {allocatedFromContract.toFixed(2)}{" "}
-                                            {asset.symbol}
+                                            <FormattedAmount
+                                                kind="token"
+                                                value={allocatedFromContract}
+                                                symbol={asset.symbol}
+                                                tokenDecimals={asset.decimals}
+                                                unitPriceUsd={asset.price}
+                                                profile="standard"
+                                            />
                                         </p>
                                     </div>
                                     <div className="flex items-center justify-between">
@@ -395,8 +404,15 @@ export function LockupDetailsModal({
                                             {t("earned")}
                                         </p>
                                         <p className="text-general-success-foreground font-medium">
-                                            +{earnedFromStaking.toFixed(2)}{" "}
-                                            {asset.symbol}
+                                            <FormattedAmount
+                                                kind="token"
+                                                value={earnedFromStaking}
+                                                symbol={asset.symbol}
+                                                tokenDecimals={asset.decimals}
+                                                unitPriceUsd={asset.price}
+                                                profile="standard"
+                                                signDisplay="always"
+                                            />
                                         </p>
                                     </div>
                                 </div>
@@ -422,7 +438,14 @@ export function LockupDetailsModal({
                                         {t("unlocked")}
                                     </p>
                                     <p className="text-general-success-foreground font-medium">
-                                        {unlocked.toFixed(2)} {asset.symbol}
+                                        <FormattedAmount
+                                            kind="token"
+                                            value={unlocked}
+                                            symbol={asset.symbol}
+                                            tokenDecimals={asset.decimals}
+                                            unitPriceUsd={asset.price}
+                                            profile="standard"
+                                        />
                                     </p>
                                 </div>
                                 <div className="text-right">
@@ -430,7 +453,14 @@ export function LockupDetailsModal({
                                         {t("locked")}
                                     </p>
                                     <p className="font-medium">
-                                        {locked.toFixed(2)} {asset.symbol}
+                                        <FormattedAmount
+                                            kind="token"
+                                            value={locked}
+                                            symbol={asset.symbol}
+                                            tokenDecimals={asset.decimals}
+                                            unitPriceUsd={asset.price}
+                                            profile="standard"
+                                        />
                                     </p>
                                 </div>
                             </div>

@@ -1,9 +1,9 @@
 import { IntentsSDK } from "@defuse-protocol/intents-sdk";
-import Big from "@/lib/big";
-import { validateAddress } from "@/lib/address-validation";
-import type { BlockchainType } from "@/lib/blockchain-utils";
-import { formatSmartAmount } from "@/lib/utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { validateAddress } from "@/lib/address-validation";
+import { formatTokenQuantity } from "@/lib/amount-format";
+import Big from "@/lib/big";
+import type { BlockchainType } from "@/lib/blockchain-utils";
 
 const intentsSdk = new IntentsSDK({
     referral: "",
@@ -89,7 +89,7 @@ export function computeQuoteNetworkFee(
         const fee = Big(args?.amountInFormatted || "0").minus(
             Big(args?.amountOutFormatted || "0"),
         );
-        return fee.gt(0) ? formatSmartAmount(fee.toString()) : undefined;
+        return fee.gt(0) ? fee.toFixed() : undefined;
     } catch {
         return undefined;
     }
@@ -137,22 +137,6 @@ export async function estimateIntentsNetworkFee(args: {
     };
 }
 
-function formatFeeAmountForMessage(value: Big, decimals: number): string {
-    const displayDecimals = Math.max(0, Math.min(decimals, 8));
-    const smallestDisplayUnit = Big(1).div(Big(10).pow(displayDecimals));
-    const formatted = value.toFixed(displayDecimals).replace(/\.?0+$/, "");
-
-    if (formatted && formatted !== "0") {
-        return formatted;
-    }
-
-    if (value.gt(0)) {
-        return `<${smallestDisplayUnit.toFixed(displayDecimals)}`;
-    }
-
-    return "0";
-}
-
 /** Non-blocking balance warning for payments (amount + fee vs treasury balance). */
 export function getPaymentBalanceWarning(args: {
     amount: string;
@@ -160,6 +144,7 @@ export function getPaymentBalanceWarning(args: {
     networkFee?: Big;
     decimals: number;
     symbol: string;
+    locale?: string;
 }): PaymentBalanceWarning | null {
     let enteredAmount: Big;
     try {
@@ -181,10 +166,12 @@ export function getPaymentBalanceWarning(args: {
         if (totalRequired.gt(args.balance)) {
             return {
                 type: "fee_not_covered",
-                formattedFee: formatFeeAmountForMessage(
-                    args.networkFee,
-                    args.decimals,
-                ),
+                formattedFee: formatTokenQuantity(args.networkFee, {
+                    profile: "compact",
+                    tokenDecimals: args.decimals,
+                    locale: args.locale,
+                    rounding: "up",
+                }).display,
                 symbol: args.symbol,
             };
         }

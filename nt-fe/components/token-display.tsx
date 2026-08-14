@@ -1,17 +1,19 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useImageLoadError } from "@/hooks/use-image-load-error";
-import { ChainIcons, TreasuryAsset } from "@/lib/api";
+import { decimalOrNull } from "@/lib/amount-format";
+import type { ChainIcons, TreasuryAsset } from "@/lib/api";
+import type Big from "@/lib/big";
 import {
-    getNetworkDisplayCaseClass,
     getLocalizedNetworkDisplayName,
+    getNetworkDisplayCaseClass,
     getNetworkDisplayName,
     networksMatchForWarningScope,
 } from "@/lib/intents-network";
-import Big from "@/lib/big";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { cn } from "@/lib/utils";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
 
 // Re-export network label helpers so existing `@/components/token-display` imports keep working.
@@ -112,7 +114,7 @@ export const NetworkDisplay = ({
     const tRes = useTranslations("residency");
     const tAddressBookTable = useTranslations("addressBookTable");
 
-    let type;
+    let type: string | undefined;
     switch (asset.residency) {
         case "Lockup":
             type = tRes("vestedToken");
@@ -165,13 +167,26 @@ export const BalanceCell = ({
     symbol: string;
     balanceUSD: number;
 }) => {
+    const parsedBalanceUSD = decimalOrNull(balanceUSD);
+    const unitPriceUsd =
+        balance.gt(0) && parsedBalanceUSD
+            ? parsedBalanceUSD.div(balance)
+            : null;
+
     return (
         <div className="min-w-0 max-w-full overflow-hidden text-right">
             <div className="truncate font-medium text-sm">
-                {formatCurrencyWithSubCent(balanceUSD)}
+                <FormattedAmount kind="fiat" value={parsedBalanceUSD} />
             </div>
             <div className="truncate text-xxs text-muted-foreground">
-                {formatSmartAmount(balance)} {symbol}
+                <FormattedAmount
+                    kind="token"
+                    value={balance}
+                    symbol={symbol}
+                    unitPriceUsd={unitPriceUsd}
+                    profile="compact"
+                    rounding="down"
+                />
             </div>
         </div>
     );

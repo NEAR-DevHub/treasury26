@@ -1,7 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { SlidersHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/button";
 import {
     Dialog,
     DialogContent,
@@ -9,13 +14,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/modal";
-import { Button } from "@/components/button";
-import { SlidersHorizontal } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
+import { cn } from "@/lib/utils";
 
 interface ExchangeSettingsModalProps {
     slippageTolerance: number;
@@ -166,7 +166,7 @@ export function ExchangeSettingsModal({
                                                         field.onChange(0);
                                                     } else {
                                                         field.onChange(
-                                                            parseFloat(value),
+                                                            Number(value),
                                                         );
                                                     }
                                                 }}

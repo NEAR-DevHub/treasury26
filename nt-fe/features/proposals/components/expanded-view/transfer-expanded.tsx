@@ -1,22 +1,19 @@
-import { useTranslations } from "next-intl";
-import { Amount } from "../amount";
-import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { User } from "@/components/user";
-import { PaymentRequestData } from "../../types/index";
-import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { useToken } from "@/hooks/use-treasury-queries";
-import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { Address } from "@/components/address";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { InfoDisplay, type InfoItem } from "@/components/info-display";
 import { NetworkIconDisplay } from "@/components/token-display";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { useDestinationNetworkMeta } from "../../hooks/use-destination-network-meta";
 import { Skeleton } from "@/components/ui/skeleton";
+import { User } from "@/components/user";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
+import { useToken } from "@/hooks/use-treasury-queries";
 import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
-import {
-    formatCurrencyWithSubCent,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
+import { useDestinationNetworkMeta } from "../../hooks/use-destination-network-meta";
+import type { PaymentRequestData } from "../../types/index";
+import { Amount } from "../amount";
 import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface TransferExpandedProps {
@@ -59,9 +56,9 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
     const amountUsdOverride =
         data.usdValue !== null &&
         amountUsdFromQuote &&
-        !Number.isNaN(Number(amountUsdFromQuote))
-            ? formatCurrencyWithSubCent(Number(amountUsdFromQuote))
-            : null;
+        !Number.isNaN(Number(amountUsdFromQuote)) ? (
+            <FormattedAmount kind="fiat" value={amountUsdFromQuote} />
+        ) : null;
 
     const displayReceiver = formatRecipientForNearComDestination(
         data.receiver,
@@ -113,7 +110,17 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
         infoItems.push({
             label: t("networkFee"),
             info: tIntents("networkFeeTooltip"),
-            value: `${formatTokenDisplayAmount(data.networkFee!)} ${tokenData?.symbol || ""}`.trim(),
+            value: (
+                <FormattedAmount
+                    kind="token"
+                    value={data.networkFee!}
+                    symbol={tokenData?.symbol || ""}
+                    tokenDecimals={tokenData?.decimals}
+                    unitPriceUsd={tokenData?.price}
+                    profile="standard"
+                    rounding="up"
+                />
+            ),
         });
     }
 

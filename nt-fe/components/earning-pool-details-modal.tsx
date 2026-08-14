@@ -1,9 +1,10 @@
 "use client";
 
+import { ChevronLeft, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { InfoDisplay, type InfoItem } from "@/components/info-display";
-import { ChevronLeft, Info } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -11,12 +12,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useStakingValidator } from "@/hooks/use-staking-validator";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import type { TreasuryAsset } from "@/lib/api";
 import Big from "@/lib/big";
-import { formatBalance } from "@/lib/utils";
 import { AmountSummary } from "./amount-summary";
-import { useStakingValidator } from "@/hooks/use-staking-validator";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface EarningPoolDetailsModalProps {
     isOpen: boolean;
@@ -82,8 +83,19 @@ export function EarningPoolDetailsModal({
     const pendingRelease = canWithdraw ? Big(0) : unstakedBalance;
     const availableForWithdraw = canWithdraw ? unstakedBalance : Big(0);
 
-    const formatTokenBalance = (balance: Big) =>
-        Big(formatBalance(balance, asset.decimals)).toString();
+    const exactTokenBalance = (balance: Big) =>
+        decimalFromBaseUnits(balance, asset.decimals).toFixed();
+    const formatTokenBalance = (balance: Big) => (
+        <FormattedAmount
+            kind="raw-token"
+            value={balance}
+            symbol={asset.symbol}
+            tokenDecimals={asset.decimals}
+            unitPriceUsd={asset.price}
+            profile="standard"
+            rounding="down"
+        />
+    );
 
     const summaryUsd = poolTotal
         .div(Big(10).pow(asset.decimals))
@@ -93,11 +105,11 @@ export function EarningPoolDetailsModal({
     const overviewItems: InfoItem[] = [
         {
             label: tEarning("overview.pendingRelease"),
-            value: `${formatTokenBalance(pendingRelease)} ${asset.symbol}`,
+            value: formatTokenBalance(pendingRelease),
         },
         {
             label: tEarning("overview.availableForWithdraw"),
-            value: `${formatTokenBalance(availableForWithdraw)} ${asset.symbol}`,
+            value: formatTokenBalance(availableForWithdraw),
         },
     ];
 
@@ -108,7 +120,10 @@ export function EarningPoolDetailsModal({
                 <Skeleton className="h-4 w-16" />
             ) : validatorDetails?.apy !== undefined ? (
                 <span className="text-general-success-foreground">
-                    {validatorDetails.apy.toFixed(2)}%
+                    <FormattedAmount
+                        kind="percent"
+                        value={validatorDetails.apy}
+                    />
                 </span>
             ) : (
                 t("notAvailable")
@@ -119,7 +134,10 @@ export function EarningPoolDetailsModal({
             value: isValidatorMetaLoading ? (
                 <Skeleton className="h-4 w-16" />
             ) : validatorDetails?.feePercent !== undefined ? (
-                `${validatorDetails.feePercent.toFixed(2)}%`
+                <FormattedAmount
+                    kind="percent"
+                    value={validatorDetails.feePercent}
+                />
             ) : (
                 t("notAvailable")
             ),
@@ -151,7 +169,7 @@ export function EarningPoolDetailsModal({
                 <div className="flex flex-col gap-6">
                     <AmountSummary
                         title={t("balance")}
-                        total={formatTokenBalance(poolTotal)}
+                        total={exactTokenBalance(poolTotal)}
                         totalUSD={summaryUsd}
                         token={{
                             address: asset.contractId || "",
