@@ -1,43 +1,42 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { useMemo, useState } from "react";
+import { useForm, useFormContext } from "react-hook-form";
+import z from "zod";
+import { AmountSummary } from "@/components/amount-summary";
 import { PageCard } from "@/components/card";
 import { CheckboxInput } from "@/components/checkbox-input";
+import { CreateRequestButton } from "@/components/create-request-button";
 import { DateInput } from "@/components/date-input";
+import { useFormatDate } from "@/components/formatted-date";
 import { InfoDisplay } from "@/components/info-display";
 import { InputBlock } from "@/components/input-block";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { RecipientInput } from "@/components/recipient-input";
 import {
     ReviewStep,
+    type StepProps,
     StepperHeader,
-    InlineNextButton,
-    StepProps,
     StepWizard,
 } from "@/components/step-wizard";
+import { Textarea } from "@/components/textarea";
 import { TokenInput, tokenSchema } from "@/components/token-input";
 import { Form, FormField } from "@/components/ui/form";
-import { Textarea } from "@/components/textarea";
+import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
 import { default_near_token } from "@/constants/token";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { decimalOrNull } from "@/lib/amount-format";
+import Big from "@/lib/big";
 import {
     encodeToMarkdown,
-    formatUserDate,
     formatTimestamp,
+    formatUserDate,
     jsonToBase64,
-    formatCurrency,
 } from "@/lib/utils";
-import { useFormatDate } from "@/components/formatted-date";
 import { useNear } from "@/stores/near-store";
-import { useTreasury } from "@/hooks/use-treasury";
-import { zodResolver } from "@hookform/resolvers/zod";
-import Big from "@/lib/big";
-import { useMemo, useState } from "react";
-import { useForm, useFormContext } from "react-hook-form";
-import z from "zod";
-import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
-import { AmountSummary } from "@/components/amount-summary";
-import { CreateRequestButton } from "@/components/create-request-button";
 
 function buildVestingFormSchema(messages: {
     recipientMin: string;
@@ -252,10 +251,10 @@ function Step3({ handleBack }: StepProps) {
     const formatDate = useFormatDate();
 
     const estimatedUSDValue = useMemo(() => {
-        if (!token?.price || !vesting.amount || isNaN(Number(vesting.amount))) {
-            return 0;
-        }
-        return Number(vesting.amount) * token.price;
+        const price = decimalOrNull(token?.price);
+        const amount = decimalOrNull(vesting.amount);
+        if (!price?.gt(0) || !amount) return null;
+        return amount.mul(price);
     }, [token?.price, vesting.amount]);
 
     const infoItems = useMemo(() => {
@@ -302,9 +301,7 @@ function Step3({ handleBack }: StepProps) {
                         total={vesting.amount}
                         totalUSD={estimatedUSDValue}
                         token={vesting.token}
-                    >
-                        <p>≈ {formatCurrency(estimatedUSDValue)}</p>
-                    </AmountSummary>
+                    />
                     <InfoDisplay items={infoItems} />
                 </div>
             </ReviewStep>

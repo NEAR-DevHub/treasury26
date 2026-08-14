@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo } from "react";
-import { useDebounce } from "use-debounce";
 import type { UseFormReturn } from "react-hook-form";
+import { useDebounce } from "use-debounce";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { decimalOrNull } from "@/lib/amount-format";
 import type { ExchangeFormValues } from "../exchange-form";
 import { type ExchangeSwapType, useExchangeQuote } from "./use-exchange-quote";
-import { useFormatQuoteAmount } from "./use-format-quote-amount";
+import { useQuoteDecimalAmount } from "./use-format-quote-amount";
 
 interface UseExchangeAmountQuoteParams {
     form: UseFormReturn<ExchangeFormValues>;
@@ -55,10 +56,8 @@ export function useExchangeAmountQuote({
         ],
     );
 
-    const hasValidAmount =
-        !!debouncedSourceAmount &&
-        !isNaN(Number(debouncedSourceAmount)) &&
-        Number(debouncedSourceAmount) > 0;
+    const parsedSourceAmount = decimalOrNull(debouncedSourceAmount);
+    const hasValidAmount = parsedSourceAmount?.gt(0) ?? false;
 
     const {
         data: quoteData,
@@ -90,19 +89,17 @@ export function useExchangeAmountQuote({
     const isQuoteBusy =
         isDebouncingSource || isLoadingQuote || (isFetchingQuote && !quoteData);
 
-    const formattedDerivedAmount = useFormatQuoteAmount(
+    const derivedAmount = useQuoteDecimalAmount(
         quoteData?.quote
             ? amountMode === "EXACT_INPUT"
                 ? {
                       amount: quoteData.quote.amountOut,
                       amountFormatted: quoteData.quote.amountOutFormatted,
-                      amountUsd: quoteData.quote.amountOutUsd,
                       tokenDecimals: receiveToken.decimals,
                   }
                 : {
                       amount: quoteData.quote.amountIn,
                       amountFormatted: quoteData.quote.amountInFormatted,
-                      amountUsd: quoteData.quote.amountInUsd,
                       tokenDecimals: sellToken.decimals,
                   }
             : null,
@@ -140,11 +137,7 @@ export function useExchangeAmountQuote({
         if (!quoteData?.quote) return;
 
         if (isDryRun) {
-            const derivedValue =
-                formattedDerivedAmount ||
-                (amountMode === "EXACT_INPUT"
-                    ? quoteData.quote.amountOutFormatted
-                    : quoteData.quote.amountInFormatted);
+            const derivedValue = derivedAmount ?? "";
             const derivedField =
                 amountMode === "EXACT_INPUT" ? "receiveAmount" : "sellAmount";
             // Skip no-op writes — setValue resets caret/selection.
@@ -165,7 +158,7 @@ export function useExchangeAmountQuote({
         quoteError,
         isDryRun,
         amountMode,
-        formattedDerivedAmount,
+        derivedAmount,
         form,
         clearDerivedAmount,
     ]);
@@ -215,7 +208,7 @@ export function useExchangeAmountQuote({
         isLoadingQuote,
         isFetchingQuote,
         isQuoteBusy,
-        formattedDerivedAmount,
+        derivedAmount,
         isSellDerived: amountMode === "EXACT_OUTPUT",
         isReceiveDerived: amountMode === "EXACT_INPUT",
         setAmountMode,

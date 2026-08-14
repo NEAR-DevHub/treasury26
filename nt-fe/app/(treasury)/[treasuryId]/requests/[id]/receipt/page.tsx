@@ -2,7 +2,7 @@
 import { Icon } from "@/components/icon";
 import { File01Icon } from "@hugeicons/core-free-icons";
 import { redirect, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { use, useEffect, useMemo, useRef } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/button";
@@ -43,6 +43,10 @@ import {
     useTreasuryPolicy,
 } from "@/hooks/use-treasury-queries";
 import {
+    decimalFromBaseUnitsOrNull,
+    formatTokenQuantity,
+} from "@/lib/amount-format";
+import {
     getNearComChainIcons,
     isNearComNetwork,
     isNearComPaymentRoute,
@@ -51,12 +55,7 @@ import {
     recordReceiptMetric,
     type SwapQuoteResponse,
 } from "@/lib/proposals-api";
-import {
-    cn,
-    formatBalance,
-    formatTokenDisplayAmount,
-    formatUserDate,
-} from "@/lib/utils";
+import { cn, formatUserDate } from "@/lib/utils";
 import {
     ReceiptSenderSection,
     ReceiptTokenAmountRow,
@@ -593,6 +592,7 @@ function BatchReceiptCard({
     proposalId,
 }: BatchReceiptCardProps) {
     const tReceipt = useTranslations("receiptPage");
+    const locale = useLocale();
     const executedTimeDisplay = transactionDate
         ? formatUserDate(transactionDate, {
               timezone: "UTC",
@@ -608,12 +608,17 @@ function BatchReceiptCard({
         !isNearComDestination && destinationTokenData
             ? destinationTokenData
             : tokenData;
-    const sourceAmountDecimal = formatBalance(
-        batchPayment.amount,
-        receiveToken?.decimals ?? 24,
-    );
-    const sourceAmountDisplayInput =
-        formatTokenDisplayAmount(sourceAmountDecimal);
+    const sourceAmountDecimal =
+        decimalFromBaseUnitsOrNull(
+            batchPayment.amount,
+            receiveToken?.decimals ?? 24,
+        )?.toFixed() ?? null;
+    const sourceAmountDisplayInput = formatTokenQuantity(sourceAmountDecimal, {
+        locale,
+        profile: "standard",
+        tokenDecimals: receiveToken?.decimals,
+        unitPriceUsd: receiveToken?.price,
+    }).display;
     const { sourceAmountDisplay, sourceAmountUsd, rateLabel } =
         buildReceiptAmountModel({
             isExchangeReceipt: false,
@@ -632,6 +637,7 @@ function BatchReceiptCard({
                 tokenPrice: receiveToken?.price ?? null,
                 historicalPriceUsd: sourceHistoricalPriceUsd,
             },
+            locale,
         });
 
     const sourceNetworkName = tokenData?.network || "NEAR";
@@ -709,6 +715,7 @@ export default function RequestReceiptPage({
     params,
 }: RequestReceiptPageProps) {
     const tReceipt = useTranslations("receiptPage");
+    const locale = useLocale();
     const hasRecordedGeneratedRef = useRef(false);
     const { id } = use(params);
     const searchParams = useSearchParams();
@@ -921,8 +928,13 @@ export default function RequestReceiptPage({
     );
     const sourceAmountDecimal =
         isSingleReceiptProposal && sourceAmountRaw
-            ? formatBalance(sourceAmountRaw, sourceToken?.decimals ?? 24)
-            : "0";
+            ? (decimalFromBaseUnitsOrNull(
+                  sourceAmountRaw,
+                  sourceToken?.decimals ?? 24,
+              )?.toFixed() ?? null)
+            : isSingleReceiptProposal
+              ? null
+              : "0";
     const isValidReceipt =
         !!proposal &&
         isReceiptEligibleProposal &&
@@ -972,8 +984,12 @@ export default function RequestReceiptPage({
                 quote: isSingleReceiptProposal ? effectiveQuote : null,
                 sourceToken: {
                     amountDecimal: sourceAmountDecimal,
-                    amountDisplay:
-                        formatTokenDisplayAmount(sourceAmountDecimal),
+                    amountDisplay: formatTokenQuantity(sourceAmountDecimal, {
+                        locale,
+                        profile: "standard",
+                        tokenDecimals: sourceToken?.decimals,
+                        unitPriceUsd: sourceToken?.price,
+                    }).display,
                     amountUsd: receiptSourceAmountUsd,
                     symbol: sourceToken?.symbol ?? "",
                     tokenPrice: sourceToken?.price ?? null,
@@ -987,6 +1003,7 @@ export default function RequestReceiptPage({
                     historicalPriceUsd:
                         destinationHistoricalPrice?.priceUsd ?? null,
                 },
+                locale,
             }),
         [
             isExchangeProposal,
@@ -999,10 +1016,12 @@ export default function RequestReceiptPage({
             sourceHistoricalPrice?.priceUsd,
             destinationHistoricalPrice?.priceUsd,
             sourceToken?.price,
+            sourceToken?.decimals,
             destinationToken?.price,
             sourceToken?.symbol,
             destinationToken?.symbol,
             isSingleReceiptProposal,
+            locale,
         ],
     );
     const isTransactionDateLoading =

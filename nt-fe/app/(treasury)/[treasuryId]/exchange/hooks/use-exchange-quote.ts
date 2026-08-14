@@ -1,22 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import Big from "@/lib/big";
+import type { Token } from "@/components/token-input";
+import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import {
     getIntentsQuote,
-    IntentsQuoteResponse,
     getTokenMetadata,
+    type IntentsQuoteResponse,
 } from "@/lib/api";
-import { Token } from "@/components/token-input";
+import Big from "@/lib/big";
+import { nanosToMs } from "@/lib/utils";
+import { formatQuoteErrorMessage, isAbortError } from "../quote-errors";
 import {
     formatAssetForIntentsAPI,
-    getRecipientType,
     getDepositAndRefundType,
+    getRecipientType,
     isNEARDeposit,
     isNEARWithdraw,
 } from "../utils";
-import { formatQuoteErrorMessage, isAbortError } from "../quote-errors";
-import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
-import { nanosToMs } from "@/lib/utils";
 
 export type ExchangeSwapType = "EXACT_INPUT" | "EXACT_OUTPUT";
 
@@ -88,9 +88,7 @@ export function useExchangeQuote({
                     const tokenMetadata =
                         await getTokenMetadata(WRAP_NEAR_TOKEN_ID);
                     const tokenPrice = tokenMetadata?.price || 0;
-                    const amountUsd = (
-                        parseFloat(amount) * tokenPrice
-                    ).toFixed();
+                    const amountUsd = Big(amount).mul(tokenPrice).toFixed();
 
                     return {
                         quote: {
