@@ -340,10 +340,7 @@ export function ProposalsTable({
                 cell: (info) => {
                     const value = info.getValue();
                     return (
-                        <TooltipUser
-                            accountId={value}
-                            triggerProps={{ asChild: false }}
-                        >
+                        <TooltipUser accountId={value}>
                             <Address address={value} />
                         </TooltipUser>
                     );
