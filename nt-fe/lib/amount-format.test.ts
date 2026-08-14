@@ -142,10 +142,66 @@ describe("fiat, prices, rates, percentages, and locales", () => {
             }).display,
         ).toBe("1.234.567,89");
         expect(formatFiatValue("1234.5", { locale: "es" }).display).toBe(
-            "1.234,50 US$",
+            "1234,50 US$",
         );
         expect(formatTokenQuantity("1234.5", { locale: "uk" }).display).toBe(
             "1 234,5",
         );
+    });
+
+    it("uses locale-specific grouping patterns and numbering systems", () => {
+        expect(
+            formatTokenQuantity("1234567.89", {
+                profile: "exact",
+                locale: "hi-IN",
+            }).display,
+        ).toBe("12,34,567.89");
+        expect(
+            formatTokenQuantity("1234567.89", {
+                profile: "exact",
+                locale: "de-CH",
+            }).display,
+        ).toBe("1’234’567.89");
+        expect(
+            formatTokenQuantity("1234567.89", {
+                profile: "exact",
+                locale: "ar-EG",
+            }).display,
+        ).toBe("١٬٢٣٤٬٥٦٧٫٨٩");
+    });
+
+    it("lets Intl place localized currency signs and affixes", () => {
+        expect(
+            formatFiatValue("1234.5", {
+                locale: "de-CH",
+                currency: "CHF",
+            }).display,
+        ).toBe("CHF 1’234.50");
+        expect(
+            formatFiatValue("-1234.5", {
+                locale: "de-CH",
+                currency: "CHF",
+            }).display,
+        ).toBe("CHF-1’234.50");
+        expect(
+            formatFiatValue("-1234.5", {
+                locale: "de-DE",
+                currency: "EUR",
+            }).display,
+        ).toBe("-1.234,50 €");
+    });
+
+    it("preserves large and high-precision canonical decimals through Intl", () => {
+        expect(
+            formatTokenQuantity(
+                "12345678901234567890.123456789012345678901234",
+                { profile: "exact", locale: "en-US" },
+            ).display,
+        ).toBe("12,345,678,901,234,567,890.123456789012345678901234");
+        expect(
+            formatFiatValue("12345678901234567890.125", {
+                locale: "en-US",
+            }).display,
+        ).toBe("$12,345,678,901,234,567,890.13");
     });
 });

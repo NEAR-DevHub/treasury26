@@ -134,31 +134,27 @@ export function baseUnitsFromDecimal(
     return parsed.mul(Big(10).pow(decimals));
 }
 
-interface LocaleSymbols {
-    decimal: string;
-    group: string;
-    minus: string;
-    plus: string;
+function canonicalFractionDigits(canonical: string): number {
+    const decimalIndex = canonical.indexOf(".");
+    return decimalIndex === -1 ? 0 : canonical.length - decimalIndex - 1;
 }
 
-function localeSymbols(locale: string): LocaleSymbols {
-    const parts = new Intl.NumberFormat(locale, {
-        signDisplay: "always",
-    }).formatToParts(-12345.6);
-
-    return {
-        decimal: parts.find((part) => part.type === "decimal")?.value ?? ".",
-        group: parts.find((part) => part.type === "group")?.value ?? ",",
-        minus: parts.find((part) => part.type === "minusSign")?.value ?? "-",
-        plus:
-            new Intl.NumberFormat(locale, { signDisplay: "always" })
-                .formatToParts(1)
-                .find((part) => part.type === "plusSign")?.value ?? "+",
-    };
-}
-
-function groupInteger(integer: string, separator: string): string {
-    return integer.replace(/\B(?=(\d{3})+(?!\d))/g, separator);
+/**
+ * Format a canonical decimal without converting it to an imprecise JS number.
+ * ECMA-402 accepts decimal strings as exact mathematical values, so Intl can
+ * own grouping, numbering systems, signs, bidi markers, and affix placement.
+ */
+function formatCanonicalWithIntl(
+    canonical: string,
+    locale: string,
+    options: Intl.NumberFormatOptions = {},
+): string {
+    const fractionDigits = canonicalFractionDigits(canonical);
+    return new Intl.NumberFormat(locale, {
+        ...options,
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+    }).format(canonical as Intl.StringNumericLiteral);
 }
 
 function localizeCanonical(
@@ -166,17 +162,7 @@ function localizeCanonical(
     locale: string,
     signDisplay: AmountSignDisplay = "auto",
 ): string {
-    const symbols = localeSymbols(locale);
-    const negative = canonical.startsWith("-");
-    const unsigned = negative ? canonical.slice(1) : canonical;
-    const [integer, fraction] = unsigned.split(".");
-    const localized = fraction
-        ? `${groupInteger(integer, symbols.group)}${symbols.decimal}${fraction}`
-        : groupInteger(integer, symbols.group);
-
-    if (signDisplay === "never") return localized;
-    if (negative) return `${symbols.minus}${localized}`;
-    return signDisplay === "always" ? `${symbols.plus}${localized}` : localized;
+    return formatCanonicalWithIntl(canonical, locale, { signDisplay });
 }
 
 function invalidResult(): FormattedAmountResult {
@@ -236,18 +222,25 @@ function thresholdDisplay(
     signDisplay: AmountSignDisplay,
 ): string {
     const threshold = Big(10).pow(-fractionDigits);
-    const localized = localizeCanonical(
-        canonicalDecimal(threshold),
-        locale,
-        "never",
-    );
-    const symbols = localeSymbols(locale);
-    const sign = value.lt(0)
-        ? symbols.minus
-        : signDisplay === "always"
-          ? symbols.plus
-          : "";
-    return `${sign}<${localized}`;
+    const signedThreshold = value.lt(0) ? threshold.mul(-1) : threshold;
+    const canonical = canonicalDecimal(signedThreshold);
+    const fractionCount = canonicalFractionDigits(canonical);
+    const parts = new Intl.NumberFormat(locale, {
+        signDisplay,
+        minimumFractionDigits: fractionCount,
+        maximumFractionDigits: fractionCount,
+    }).formatToParts(canonical as Intl.StringNumericLiteral);
+    const firstInteger = parts.findIndex((part) => part.type === "integer");
+
+    if (firstInteger === -1) {
+        return `<${parts.map((part) => part.value).join("")}`;
+    }
+
+    return parts
+        .map((part, index) =>
+            index === firstInteger ? `<${part.value}` : part.value,
+        )
+        .join("");
 }
 
 export function formatTokenQuantity(
@@ -337,31 +330,10 @@ function currencyFromCanonical(
     locale: string,
     currency: string,
 ): string {
-    const negative = canonical.startsWith("-");
-    const unsigned = negative ? canonical.slice(1) : canonical;
-    const localizedNumber = localizeCanonical(unsigned, locale, "never");
-    const parts = new Intl.NumberFormat(locale, {
+    return formatCanonicalWithIntl(canonical, locale, {
         style: "currency",
         currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: DISPLAY_FRACTION_CAP,
-    }).formatToParts(negative ? -12345.67 : 12345.67);
-    const numericTypes = new Set(["integer", "group", "decimal", "fraction"]);
-    const firstNumeric = parts.findIndex((part) => numericTypes.has(part.type));
-    let lastNumeric = firstNumeric;
-    for (let i = firstNumeric + 1; i < parts.length; i++) {
-        if (!numericTypes.has(parts[i].type)) break;
-        lastNumeric = i;
-    }
-    const prefix = parts
-        .slice(0, firstNumeric)
-        .map((part) => part.value)
-        .join("");
-    const suffix = parts
-        .slice(lastNumeric + 1)
-        .map((part) => part.value)
-        .join("");
-    return `${prefix}${localizedNumber}${suffix}`;
+    });
 }
 
 export function formatFiatValue(
