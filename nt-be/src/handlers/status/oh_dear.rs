@@ -956,6 +956,18 @@ fn map_exchange_quote_status(body: Value, duration_ms: u128, route: &str) -> OhD
     }
 }
 
+/// Whether a NEAR Intents status post should surface in health checks / status API.
+///
+/// Includes scheduled (not-yet-started) maintenance so ops are notified when a
+/// window is announced, not only when it begins. Posts with `ends_at` in the past
+/// are excluded.
+pub fn is_relevant_intents_post(ends_at: Option<i64>, now_ms: i64) -> bool {
+    match ends_at {
+        Some(end) => now_ms <= end,
+        None => true,
+    }
+}
+
 fn map_near_intents_status(
     status_page: IntentsStatusResponse,
     duration_ms: u128,
@@ -964,11 +976,7 @@ fn map_near_intents_status(
     let active_posts: Vec<_> = status_page
         .posts
         .into_iter()
-        .filter(|post| match (post.starts_at, post.ends_at) {
-            (Some(start), Some(end)) => now >= start && now <= end,
-            (Some(start), None) => now >= start,
-            _ => true,
-        })
+        .filter(|post| is_relevant_intents_post(post.ends_at, now))
         .collect();
 
     if let Some(incident) = active_posts
@@ -990,13 +998,24 @@ fn map_near_intents_status(
         .iter()
         .find(|post| post.post_type == INTENTS_POST_MAINTENANCE)
     {
+        let upcoming = maintenance.starts_at.is_some_and(|start| now < start);
+        let (notification, summary) = if upcoming {
+            (
+                "NEAR Intents has scheduled maintenance",
+                "Maintenance scheduled",
+            )
+        } else {
+            ("NEAR Intents has active maintenance", "Maintenance active")
+        };
         return NEAR_INTENTS_CHECK.warning(
-            "NEAR Intents has active maintenance",
-            "Maintenance active",
+            notification,
+            summary,
             json!({
                 "duration_ms": duration_ms,
                 "post_type": maintenance.post_type,
-                "title": maintenance.title
+                "title": maintenance.title,
+                "starts_at": maintenance.starts_at,
+                "ends_at": maintenance.ends_at
             }),
         );
     }
@@ -1563,6 +1582,80 @@ mod tests {
         let json = get_status_json(state, "/api/oh-dear/status/near-intents").await;
 
         assert_check(&json, "near-intents.status", "warning");
+        assert_eq!(
+            json["checkResults"][0]["shortSummary"],
+            "Maintenance active"
+        );
+    }
+
+    #[tokio::test]
+    async fn near_intents_endpoint_maps_scheduled_maintenance_to_warning() {
+        let mock_server = MockServer::start().await;
+        let now = Utc::now().timestamp_millis();
+        let starts_at = now + 86_400_000; // tomorrow
+        let ends_at = starts_at + 3_600_000;
+        Mock::given(method("GET"))
+            .and(path("/api/posts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "posts": [
+                    {
+                        "id": "PWRA2AY",
+                        "title": "zCash Bridge Maintenance",
+                        "post_type": "maintenance",
+                        "starts_at": starts_at,
+                        "ends_at": ends_at
+                    }
+                ]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| {
+            env.near_intents_status_api_url = format!("{}/api/posts", mock_server.uri());
+        })
+        .await;
+        let json = get_status_json(state, "/api/oh-dear/status/near-intents").await;
+
+        assert_check(&json, "near-intents.status", "warning");
+        assert_eq!(
+            json["checkResults"][0]["shortSummary"],
+            "Maintenance scheduled"
+        );
+        assert!(
+            json["checkResults"][0]["notificationMessage"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("scheduled maintenance")
+        );
+    }
+
+    #[tokio::test]
+    async fn near_intents_endpoint_ignores_expired_maintenance() {
+        let mock_server = MockServer::start().await;
+        let now = Utc::now().timestamp_millis();
+        Mock::given(method("GET"))
+            .and(path("/api/posts"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "posts": [
+                    {
+                        "id": "1",
+                        "title": "Past Maintenance",
+                        "post_type": "maintenance",
+                        "starts_at": now - 7_200_000,
+                        "ends_at": now - 3_600_000
+                    }
+                ]
+            })))
+            .mount(&mock_server)
+            .await;
+
+        let state = test_state(|env| {
+            env.near_intents_status_api_url = format!("{}/api/posts", mock_server.uri());
+        })
+        .await;
+        let json = get_status_json(state, "/api/oh-dear/status/near-intents").await;
+
+        assert_check(&json, "near-intents.status", "ok");
     }
 
     #[tokio::test]
@@ -1591,6 +1684,15 @@ mod tests {
         let json = get_status_json(state, "/api/oh-dear/status/near-intents").await;
 
         assert_check(&json, "near-intents.status", "failed");
+    }
+
+    #[test]
+    fn relevant_intents_post_includes_upcoming_and_excludes_expired() {
+        let now = 1_000_000_i64;
+        assert!(is_relevant_intents_post(Some(now + 1), now));
+        assert!(is_relevant_intents_post(Some(now), now));
+        assert!(!is_relevant_intents_post(Some(now - 1), now));
+        assert!(is_relevant_intents_post(None, now));
     }
 
     #[tokio::test]

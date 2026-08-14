@@ -13,6 +13,7 @@ import { CopyButton } from "./copy-button";
 import { Address } from "./address";
 import { HighlightedText } from "./highlighted-text";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
+import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 
@@ -187,6 +188,11 @@ export function UserSkeleton({
 interface UserWithDataProps {
     name: string;
     address: string;
+    /**
+     * Visual override (e.g. `nearcom:alice.near`). Explorer / profile keep
+     * using the bare `address`.
+     */
+    displayAddress?: string;
     imageUrl?: string;
     variant?: UserVariant;
     size?: UserSize;
@@ -202,6 +208,7 @@ interface UserWithDataProps {
 export function UserWithData({
     name,
     address,
+    displayAddress,
     imageUrl,
     size = "sm",
     variant = "full",
@@ -211,17 +218,25 @@ export function UserWithData({
     highlightQuery,
     truncateAddress = true,
 }: UserWithDataProps) {
-    const explorerUrl = getExplorerAddressUrl(chainName, address);
+    const bareAddress = stripNearComAddressPrefix(address);
+    const visibleAddress = displayAddress ?? address;
+    const explorerUrl = getExplorerAddressUrl(chainName, bareAddress);
     const showAvatar = variant !== "details";
     const showDetails = variant !== "avatar";
 
     // When there is no distinct display name, show the address once (never twice).
-    const nameIsAddress = isSameAccountLabel(name, address);
+    // Treat bare account and nearcom:-prefixed display as the same label so the
+    // prefixed form is shown instead of hiding behind the bare id.
+    const nameIsAddress =
+        isSameAccountLabel(name, address) ||
+        isSameAccountLabel(name, visibleAddress) ||
+        isSameAccountLabel(name, bareAddress);
+    const primaryText = nameIsAddress ? visibleAddress : name;
 
     const addressNode = truncateAddress ? (
         highlightQuery ? (
             <HighlightedText
-                text={address}
+                text={nameIsAddress ? primaryText : visibleAddress}
                 query={highlightQuery}
                 className={cn(
                     "max-w-full",
@@ -232,7 +247,7 @@ export function UserWithData({
             />
         ) : (
             <Address
-                address={address}
+                address={nameIsAddress ? primaryText : visibleAddress}
                 className={cn(
                     "max-w-full",
                     nameIsAddress
@@ -250,7 +265,7 @@ export function UserWithData({
                     : "text-xs text-muted-foreground",
             )}
         >
-            {address}
+            {nameIsAddress ? primaryText : visibleAddress}
         </span>
     );
 
@@ -259,7 +274,7 @@ export function UserWithData({
             {showAvatar && (
                 <UserAvatar
                     name={name}
-                    address={address}
+                    address={visibleAddress}
                     imageUrl={imageUrl}
                     size={size}
                 />
@@ -306,8 +321,9 @@ export function UserWithData({
     if (withHoverCard) {
         return (
             <TooltipUser
-                accountId={address}
+                accountId={bareAddress}
                 name={name}
+                displayAddress={displayAddress}
                 chainName={chainName}
                 triggerProps={{ asChild: false }}
             >
@@ -324,6 +340,8 @@ export function UserWithData({
 interface TooltipUserProps {
     accountId: string;
     name?: string;
+    /** Copied / shown in the card when set (e.g. nearcom: prefix). */
+    displayAddress?: string;
     chainName?: string;
     /** Prefer address-book name in the tooltip User (request details). */
     preferAddressBook?: boolean;
@@ -334,6 +352,7 @@ interface TooltipUserProps {
 export function TooltipUser({
     accountId,
     name,
+    displayAddress,
     chainName = NEAR_NETWORK_ID,
     preferAddressBook = false,
     children,
@@ -341,20 +360,22 @@ export function TooltipUser({
 }: TooltipUserProps) {
     const t = useTranslations("user");
     const { treasuryId, isGuestTreasury } = useTreasury();
+    const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading: isProfileLoading } =
-        useProfile(accountId);
+        useProfile(bareAccountId);
     const isSavedInAddressBook = profile?.isInAddressBook ?? false;
     const addressBookParams = new URLSearchParams({
         name: resolveUserDisplayName({
-            accountId,
+            accountId: bareAccountId,
             name,
             profileName: profile?.name,
             addressBookName: profile?.addressBookName,
             preferAddressBook,
         }),
-        address: accountId,
+        address: bareAccountId,
     });
     addressBookParams.set("network", chainName);
+    const copyText = displayAddress ?? bareAccountId;
 
     const addToAddressBookUrl = treasuryId
         ? `/${treasuryId}/address-book?${addressBookParams.toString()}`
@@ -365,8 +386,9 @@ export function TooltipUser({
             content={
                 <div className="flex flex-col gap-2">
                     <User
-                        accountId={accountId}
+                        accountId={bareAccountId}
                         name={name}
+                        displayAddress={displayAddress}
                         preferAddressBook={preferAddressBook}
                         size="lg"
                         withLink={false}
@@ -385,7 +407,7 @@ export function TooltipUser({
                                 </Button>
                             )}
                         <CopyButton
-                            text={accountId}
+                            text={copyText}
                             toastMessage={t("walletCopiedToast")}
                             variant="ghost"
                         >
@@ -410,6 +432,11 @@ interface UserProps {
     accountId: string;
     /** Override the display name instead of fetching from profile */
     name?: string;
+    /**
+     * Visual address override (e.g. `nearcom:…`). Does not affect profile
+     * lookup or explorer links.
+     */
+    displayAddress?: string;
     variant?: UserVariant;
     size?: UserSize;
     withLink?: boolean;
@@ -429,6 +456,7 @@ interface UserProps {
 export function User({
     accountId,
     name: nameProp,
+    displayAddress,
     variant = "full",
     size = "sm",
     withLink = true,
@@ -438,14 +466,15 @@ export function User({
     highlightQuery,
     truncateAddress = true,
 }: UserProps) {
-    const { data: profile, isLoading } = useProfile(accountId);
+    const bareAccountId = stripNearComAddressPrefix(accountId);
+    const { data: profile, isLoading } = useProfile(bareAccountId);
 
     if (isLoading && !normalizeDisplayName(nameProp)) {
         return <UserSkeleton variant={variant} size={size} />;
     }
 
     const resolvedName = resolveUserDisplayName({
-        accountId,
+        accountId: bareAccountId,
         name: nameProp,
         profileName: profile?.name,
         addressBookName: profile?.addressBookName,
@@ -455,7 +484,8 @@ export function User({
     return (
         <UserWithData
             name={resolvedName}
-            address={accountId}
+            address={bareAccountId}
+            displayAddress={displayAddress}
             imageUrl={resolveProfileImageUrl(profile?.image)}
             size={size}
             variant={variant}

@@ -70,9 +70,11 @@ fn search_token_in(
     for unified_token in tokens_map.values() {
         // Search through grouped tokens
         for base_token in &unified_token.grouped_tokens {
-            // Check if symbol or name matches
+            // Match symbol, name, or exact defuse / 1cs asset id.
+            let defuse_lower = base_token.defuse_asset_id.to_lowercase();
             if base_token.symbol.to_lowercase() != query_lower
                 && base_token.name.to_lowercase() != query_lower
+                && defuse_lower != query_lower
             {
                 continue;
             }
@@ -180,9 +182,10 @@ fn search_token_out(query: &str, destination_network: Option<&str>) -> Option<To
     for unified_token in tokens_map.values() {
         // Search through grouped tokens
         for base_token in &unified_token.grouped_tokens {
-            // Check if symbol or name matches
+            let defuse_lower = base_token.defuse_asset_id.to_lowercase();
             if base_token.symbol.to_lowercase() == query_lower
                 || base_token.name.to_lowercase() == query_lower
+                || defuse_lower == query_lower
             {
                 // Find the network deployment matching the destination network (chainId)
                 let network_info = if let Some(chain_id) = destination_network {

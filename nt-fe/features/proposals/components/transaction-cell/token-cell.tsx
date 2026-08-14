@@ -11,6 +11,7 @@ import { TitleSubtitleCell } from "./title-subtitle-cell";
 import { useTreasury } from "@/hooks/use-treasury";
 import { Tooltip } from "@/components/tooltip";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { Address } from "@/components/address";
 
 interface TokenCellProps {
@@ -33,24 +34,27 @@ export function TokenCell({
     const { isConfidential } = useTreasury();
     const effectivePrefix = prefix ?? t("toPrefix");
     const nearFt = "nearFt" in data ? data.nearFt : undefined;
+    const destinationAssetId =
+        "destinationAssetId" in data ? data.destinationAssetId : undefined;
+    const isNearComDestination = isNearComPaymentRoute(destinationAssetId);
+    const displayReceiver = formatRecipientForNearComDestination(
+        data.receiver,
+        destinationAssetId,
+    );
     const title = (
         <Amount
             amount={data.amount}
             tokenId={data.tokenId}
             showUSDValue={false}
             showNetworkTooltip
-            expandNearComLabel={"destinationAssetId" in data}
+            expandNearComLabel={isNearComDestination}
             iconSize="sm"
             textOnly={textOnly}
             nearFt={nearFt}
         />
     );
-    const destinationAssetId =
-        "destinationAssetId" in data ? data.destinationAssetId : undefined;
     const showConfidentialAddressShield =
-        isConfidential &&
-        "destinationAssetId" in data &&
-        isNearComPaymentRoute(data);
+        isConfidential && isNearComDestination;
 
     const subtitle = data.receiver ? (
         <div className="flex min-w-0 max-w-full items-center overflow-hidden">
@@ -65,11 +69,12 @@ export function TokenCell({
             {isUser ? (
                 <TooltipUser
                     accountId={data.receiver}
+                    displayAddress={displayReceiver}
                     chainName={destinationAssetId}
                 >
                     <div className="ml-1 min-w-0 flex-1 overflow-hidden">
                         <Address
-                            address={data.receiver}
+                            address={displayReceiver}
                             prefixLength={6}
                             suffixLength={6}
                             className="min-w-0 truncate"
@@ -78,7 +83,7 @@ export function TokenCell({
                 </TooltipUser>
             ) : (
                 <span className="ml-1 min-w-0 flex-1 truncate">
-                    {data.receiver}
+                    {displayReceiver}
                 </span>
             )}
         </div>

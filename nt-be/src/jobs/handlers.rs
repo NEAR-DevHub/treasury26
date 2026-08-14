@@ -738,6 +738,16 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
     ))
 }
 
+/// Diff near.com private production.json vs vendored catalog; Telegram notify-only.
+pub async fn nearcom_catalog_watch(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    crate::services::nearcom_catalog_watch::run_nearcom_catalog_watch_cycle(&state)
+        .await
+        .map_err(erase)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

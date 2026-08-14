@@ -79,11 +79,12 @@ export function isNEARWrapConversion(
  * Native NEAR uses "wrap.near", other tokens use their address as-is
  */
 export function formatAssetForIntentsAPI(tokenAddress: string): string {
-    return tokenAddress.startsWith("nep")
-        ? tokenAddress
-        : tokenAddress === NEAR_NETWORK_ID
-          ? NEP141_WRAP_NEAR_ASSET_ID
-          : `nep141:${tokenAddress}`;
+    if (tokenAddress.startsWith("nep") || tokenAddress.startsWith("1cs_v1:")) {
+        return tokenAddress;
+    }
+    return tokenAddress === NEAR_NETWORK_ID
+        ? NEP141_WRAP_NEAR_ASSET_ID
+        : `nep141:${tokenAddress}`;
 }
 
 /**

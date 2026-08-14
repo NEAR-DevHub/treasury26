@@ -1,3 +1,7 @@
+"use client";
+
+import { useImageLoadError } from "@/hooks/use-image-load-error";
+import { isIconUrl } from "@/lib/icon-url";
 import { cn } from "@/lib/utils";
 
 export function DepositOptionIcon({
@@ -9,18 +13,19 @@ export function DepositOptionIcon({
     name: string;
     gradient?: string;
 }) {
-    const isUrl =
-        icon?.startsWith("http") ||
-        icon?.startsWith("data:") ||
-        icon?.startsWith("/");
+    const iconUrl = isIconUrl(icon) ? icon : null;
+    const { showImage, onError } = useImageLoadError(iconUrl);
+    const fallbackLabel = (name || icon || "?").charAt(0).toUpperCase();
 
-    if (isUrl) {
+    if (showImage && iconUrl) {
         return (
             <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
                 <img
-                    src={icon}
+                    key={iconUrl}
+                    src={iconUrl}
                     alt={name}
                     className="w-full h-full rounded-full object-contain"
+                    onError={onError}
                 />
             </div>
         );
@@ -33,7 +38,7 @@ export function DepositOptionIcon({
                 gradient ?? "bg-brand-blue",
             )}
         >
-            {icon}
+            {iconUrl || !icon || icon.length > 2 ? fallbackLabel : icon}
         </div>
     );
 }
