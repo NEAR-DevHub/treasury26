@@ -132,9 +132,13 @@ export function useExchangeQuote({
                     .mul(Big(10).pow(amountToken.decimals))
                     .toFixed();
 
-                const originAsset = formatAssetForIntentsAPI(sellToken.address);
+                const originAsset = formatAssetForIntentsAPI(
+                    sellToken.balanceAssetId || sellToken.address,
+                );
                 const destinationAsset = formatAssetForIntentsAPI(
-                    receiveToken.address,
+                    receiveToken.quoteAssetId ||
+                        receiveToken.balanceAssetId ||
+                        receiveToken.address,
                 );
                 const depositAndRefundType = getDepositAndRefundType(
                     sellToken.residency || "",

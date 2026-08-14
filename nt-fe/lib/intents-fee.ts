@@ -23,7 +23,8 @@ export function isIntentsToken(token: { address?: string | null }): boolean {
     return (
         !!token.address &&
         (token.address.startsWith("nep141:") ||
-            token.address.startsWith("nep245:"))
+            token.address.startsWith("nep245:") ||
+            token.address.startsWith("1cs_v1:"))
     );
 }
 
@@ -34,7 +35,8 @@ export function isIntentsCrossChainToken(token: {
     return (
         !!token.address &&
         (token.address.startsWith("nep141:") ||
-            token.address.startsWith("nep245:")) &&
+            token.address.startsWith("nep245:") ||
+            token.address.startsWith("1cs_v1:")) &&
         (token.network || "").toLowerCase() !== NEAR_NETWORK_ID
     );
 }

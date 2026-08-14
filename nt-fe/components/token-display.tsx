@@ -1,67 +1,31 @@
+"use client";
+
 import { useTranslations } from "next-intl";
 import { FormattedAmount } from "@/components/formatted-amount";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useImageLoadError } from "@/hooks/use-image-load-error";
 import { decimalOrNull } from "@/lib/amount-format";
 import type { ChainIcons, TreasuryAsset } from "@/lib/api";
 import type Big from "@/lib/big";
 import {
     getLocalizedNetworkDisplayName,
     getNetworkDisplayCaseClass,
+    getNetworkDisplayName,
+    networksMatchForWarningScope,
 } from "@/lib/intents-network";
 import { cn } from "@/lib/utils";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
 
-const NETWORK_DISPLAY_NAMES: Record<string, string> = {
-    eth: "Ethereum",
-    ethereum: "Ethereum",
-    btc: "Bitcoin",
-    bitcoin: "Bitcoin",
-    sol: "Solana",
-    solana: "Solana",
-    arb: "Arbitrum",
-    arbitrum: "Arbitrum",
-    pol: "Polygon",
-    polygon: "Polygon",
-    bsc: "BNB Chain",
-    trx: "Tron",
-    tron: "Tron",
-    xlm: "Stellar",
-    stellar: "Stellar",
-    apt: "Aptos",
-    aptos: "Aptos",
-    ada: "Cardano",
-    cardano: "Cardano",
-    doge: "Dogecoin",
-    dogecoin: "Dogecoin",
-    zec: "Zcash",
-    zcash: "Zcash",
-    xrp: "XRP",
-    bera: "Berachain",
-    berachain: "Berachain",
-    near: "NEAR",
-};
+// Re-export network label helpers so existing `@/components/token-display` imports keep working.
+export { getNetworkDisplayName, networksMatchForWarningScope };
 
-export const getNetworkDisplayName = (name: string): string => {
-    return NETWORK_DISPLAY_NAMES[name.toLowerCase()] ?? name;
-};
-
-/**
- * Warning admin + bridge metadata sometimes disagree on short vs long chain
- * ids (`arb` vs `arbitrum`, `eth` vs `ethereum`). Treat them as the same when
- * they share a display name (or match exactly, case-insensitive).
- */
-export function networksMatchForWarningScope(
-    a?: string | null,
-    b?: string | null,
-): boolean {
-    const left = a?.trim().toLowerCase();
-    const right = b?.trim().toLowerCase();
-    if (!left || !right) return false;
-    if (left === right) return true;
-    return (
-        getNetworkDisplayName(left).toLowerCase() ===
-        getNetworkDisplayName(right).toLowerCase()
-    );
+interface NetworkIconDisplayProps {
+    chainIcons: ChainIcons | null;
+    networkName: string;
+    residency?: string;
+    networkNameClassName?: string;
+    expandNearComLabel?: boolean;
+    className?: string;
 }
 
 const useResidencyLabel = () => {
@@ -91,18 +55,11 @@ export const NetworkIconDisplay = ({
     networkNameClassName,
     expandNearComLabel = false,
     className,
-}: {
-    chainIcons: ChainIcons | null;
-    networkName: string;
-    residency?: string;
-    networkNameClassName?: string;
-    expandNearComLabel?: boolean;
-    className?: string;
-}) => {
+}: NetworkIconDisplayProps) => {
     const getResidencyLabel = useResidencyLabel();
     const tAddressBookTable = useTranslations("addressBookTable");
-
     const iconUrl = chainIcons?.icon ?? null;
+    const { showImage, onError } = useImageLoadError(iconUrl);
 
     const isNEAR = networkName.toLowerCase() === NEAR_NETWORK_ID;
     const displayName = getLocalizedNetworkDisplayName({
@@ -114,15 +71,17 @@ export const NetworkIconDisplay = ({
 
     return (
         <div className={cn("flex items-center gap-3", className)}>
-            {iconUrl ? (
+            {showImage && iconUrl ? (
                 <img
+                    key={iconUrl}
                     src={iconUrl}
                     alt={`${networkName} network`}
                     className="size-6 rounded-full object-cover"
+                    onError={onError}
                 />
             ) : (
                 <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
-                    {networkName.charAt(0)}
+                    {networkName.charAt(0).toUpperCase()}
                 </div>
             )}
             <div className="flex flex-col gap-0 items-baseline text-left">

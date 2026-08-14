@@ -61,7 +61,7 @@ fn test_nep141_token_lookup() {
     let test_cases = vec![
         ("nep141:wrap.near", "NEAR", 24),
         ("nep141:eth.omft.near", "ETH", 18),
-        ("nep141:btc.omft.near", "BTC", 8),
+        ("nep141:btc.omft.near", "BTC (Legacy)", 8),
     ];
 
     for (defuse_asset_id, expected_symbol, expected_decimals) in test_cases {

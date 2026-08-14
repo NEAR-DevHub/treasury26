@@ -418,6 +418,10 @@ export function msToNanos(ms: number): string {
  */
 export function normalizeNearAssetId(value?: string | null): string {
     const normalized = (value || "").trim().toLowerCase();
+    // Keep 1Click Omni routing ids intact (do not strip as nep141 contracts).
+    if (normalized.startsWith("1cs_v1:")) {
+        return normalized;
+    }
     return normalized.startsWith("nep141:")
         ? normalized.slice("nep141:".length)
         : normalized;
@@ -430,8 +434,13 @@ export function normalizeNearAssetId(value?: string | null): string {
  * - intents.near:nep245:v2_1.omni.hot.tg:56_... -> v2_1.omni.hot.tg:56_...
  * - nep245:v2_1.omni.hot.tg:56_... -> v2_1.omni.hot.tg:56_...
  * - nep141:wrap.near -> wrap.near
+ * - 1cs_v1:btc:native:coin -> 1cs_v1:btc:native:coin (unchanged)
  */
 export function canonicalizeTokenIdForMatch(value?: string | null): string {
+    const trimmed = (value || "").trim().toLowerCase();
+    if (trimmed.startsWith("1cs_v1:")) {
+        return trimmed;
+    }
     return normalizeNearAssetId(value)
         .replace(/^intents\.near:/i, "")
         .replace(/^nep245:/i, "")

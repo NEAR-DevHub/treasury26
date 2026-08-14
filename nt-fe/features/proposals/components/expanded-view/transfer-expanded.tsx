@@ -10,6 +10,7 @@ import { User } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
 import { useToken } from "@/hooks/use-treasury-queries";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { useDestinationNetworkMeta } from "../../hooks/use-destination-network-meta";
 import type { PaymentRequestData } from "../../types/index";
 import { Amount } from "../amount";
@@ -38,11 +39,6 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
         originTokenId: data.tokenId,
         originNetwork: tokenChainName,
         originChainIcons: tokenData?.chainIcons,
-        nearComRoute: {
-            depositAddress: data.depositAddress,
-            quoteSignature: data.quoteSignature,
-            networkFee: data.networkFee,
-        },
     });
     const hasFeeData = !!data.networkFee;
     const shouldLoadQuoteUsd =
@@ -64,12 +60,18 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
             <FormattedAmount kind="fiat" value={amountUsdFromQuote} />
         ) : null;
 
+    const displayReceiver = formatRecipientForNearComDestination(
+        data.receiver,
+        data.destinationAssetId,
+    );
+
     const infoItems: InfoItem[] = [
         {
             label: t("recipient"),
             value: (
                 <User
                     accountId={data.receiver}
+                    displayAddress={displayReceiver}
                     chainName={recipientChainName}
                     withHoverCard
                     preferAddressBook

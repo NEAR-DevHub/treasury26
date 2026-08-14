@@ -33,6 +33,7 @@ import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
 import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { cn } from "@/lib/utils";
 import type { BulkPaymentData, BulkPaymentFormValues } from "../schemas";
 import { validateAccountsAndStorage } from "../utils";
@@ -301,10 +302,17 @@ export function ReviewPaymentsStep({
                 locale,
             });
 
-            // Calculate USD value only if price is available
-            if (selectedTokenData?.price && balanceFormattedBig.gt(0)) {
+            // USD follows payment amount × price; do not require a non-zero
+            // treasury balance (that only gates the insufficient-funds warning).
+            if (selectedTokenData?.price && totalAmount.gt(0)) {
                 totalUSDValue = totalAmount.mul(selectedTokenData.price);
             }
+        } catch (error) {
+            console.error("Error calculating total USD value:", error);
+        }
+    } else if (selectedTokenData?.price && totalAmount.gt(0)) {
+        try {
+            totalUSDValue = totalAmount.mul(selectedTokenData.price);
         } catch (error) {
             console.error("Error calculating total USD value:", error);
         }
@@ -392,18 +400,15 @@ export function ReviewPaymentsStep({
                                       )
                                     : Big(displayAmount || "0");
                                 let estimatedUSDValue = Big(0);
-                                if (selectedTokenData?.price && balance) {
+                                if (selectedTokenData?.price) {
                                     try {
-                                        const balanceBig = Big(balance);
-                                        const balanceFormatted =
-                                            decimalFromBaseUnits(
-                                                balanceBig,
-                                                selectedToken.decimals,
+                                        const amountBig = Big(
+                                            displayAmount || "0",
+                                        );
+                                        if (amountBig.gt(0)) {
+                                            estimatedUSDValue = amountBig.mul(
+                                                selectedTokenData.price,
                                             );
-                                        if (balanceFormatted.gt(0)) {
-                                            estimatedUSDValue = Big(
-                                                displayAmount,
-                                            ).mul(selectedTokenData.price);
                                         }
                                     } catch (error) {
                                         console.error(
@@ -453,9 +458,10 @@ export function ReviewPaymentsStep({
                                                                     )}
 
                                                                     <Address
-                                                                        address={
-                                                                            payment.recipient
-                                                                        }
+                                                                        address={formatRecipientForNearComDestination(
+                                                                            payment.recipient,
+                                                                            destinationNetworkId,
+                                                                        )}
                                                                         className={cn(
                                                                             "min-w-0",
                                                                             contact

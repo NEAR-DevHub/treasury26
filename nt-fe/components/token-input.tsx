@@ -62,6 +62,10 @@ export const tokenSchema = z.object({
     minDepositAmount: z.string().optional(),
     balance: z.string().optional(),
     price: z.number().optional(),
+    /** Intents ledger id when it differs from `address` display id */
+    balanceAssetId: z.string().optional(),
+    /** 1Click routing id (may be `1cs_v1:`) for quotes */
+    quoteAssetId: z.string().optional(),
 });
 
 export type Token = z.infer<typeof tokenSchema>;
