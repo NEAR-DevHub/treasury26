@@ -25,6 +25,8 @@ interface PageComponentLayoutProps {
     hideAppWarningBanner?: boolean;
     transparentHeader?: boolean;
     hideHeaderBottomBorder?: boolean;
+    /** Renders an empty header: no logo/title, staging pill, language or theme controls. */
+    hideHeaderContent?: boolean;
     logo?: ReactNode;
     mainClassName?: string;
     children: ReactNode;
@@ -39,6 +41,7 @@ export function PageComponentLayout({
     hideAppWarningBanner,
     transparentHeader = false,
     hideHeaderBottomBorder = false,
+    hideHeaderContent = false,
     logo,
     mainClassName,
     children,
@@ -104,23 +107,24 @@ export function PageComponentLayout({
 
                         <ConfidentialBanner type="mini" className="lg:hidden" />
 
-                        {logo ?? (
-                            <div className="flex items-baseline gap-2">
-                                <h1 className="text-xl font-semibold tracking-tight">
-                                    {title}
-                                </h1>
-                                {description && (
-                                    <span className="hidden lg:inline text-xs text-muted-foreground">
-                                        {description}
-                                    </span>
-                                )}
-                            </div>
-                        )}
+                        {!hideHeaderContent &&
+                            (logo ?? (
+                                <div className="flex items-baseline gap-2">
+                                    <h1 className="text-xl font-semibold tracking-tight">
+                                        {title}
+                                    </h1>
+                                    {description && (
+                                        <span className="hidden lg:inline text-xs text-muted-foreground">
+                                            {description}
+                                        </span>
+                                    )}
+                                </div>
+                            ))}
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    {!hasSidebarRail && isStaging && (
+                    {!hasSidebarRail && !hideHeaderContent && isStaging && (
                         <>
                             <span
                                 className="size-2 rounded-full bg-general-orange-foreground md:hidden"
@@ -136,7 +140,7 @@ export function PageComponentLayout({
                             />
                         </>
                     )}
-                    {!hasSidebarRail && (
+                    {!hasSidebarRail && !hideHeaderContent && (
                         <>
                             <LanguageSwitcher />
                             <Button
