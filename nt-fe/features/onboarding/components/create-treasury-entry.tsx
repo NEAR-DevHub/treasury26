@@ -225,6 +225,7 @@ export function TreasuryOnboardingPage({
     const shouldKeepUserOnCreatePage = !!returnTo || forceStayOnCreatePage;
     const shouldShowHeaderLogo = !returnTo;
     const isCreateRoute = pathname === "/create";
+    const isRootSignInScreen = pathname === "/" && showLoginScreen;
     const isConnectWalletLogin = loginScreenSource === "connect-wallet";
 
     useEffect(() => {
@@ -923,6 +924,7 @@ export function TreasuryOnboardingPage({
                     hideAppWarningBanner
                     transparentHeader
                     hideHeaderBottomBorder
+                    hideHeaderContent={isRootSignInScreen}
                     logo={headerLogo}
                     mainClassName="pt-1"
                 >
@@ -945,6 +947,7 @@ export function TreasuryOnboardingPage({
             hideAppWarningBanner
             transparentHeader
             hideHeaderBottomBorder
+            hideHeaderContent={isRootSignInScreen}
             logo={headerLogo}
             mainClassName="pt-1"
         >
