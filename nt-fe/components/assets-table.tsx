@@ -903,7 +903,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
 
                             return (
                                 <Fragment key={asset.id}>
-                                    <TableRow className="cursor-pointer hover:bg-gray-50 dark:hover:bg-white/3">
+                                    <TableRow className="hover:bg-gray-50 dark:hover:bg-white/3">
                                         <TableCell className="overflow-hidden py-3 pr-3 pl-4 sm:pl-5">
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <img
