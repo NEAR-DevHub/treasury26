@@ -251,7 +251,7 @@ pub async fn get_swap_tokens(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<DepositAssetsResponse>, (StatusCode, String)> {
     let deposit = load_deposit_catalog(state.clone()).await?;
-    let oneclick_tokens = fetch_oneclick_tokens(&state).await?;
+    let oneclick_tokens = fetch_oneclick_tokens(&state).await.unwrap_or_default();
     let oneclick_ids: HashSet<String> = oneclick_tokens.into_iter().map(|t| t.asset_id).collect();
     Ok(Json(filter_catalog_for_oneclick(deposit, &oneclick_ids)))
 }

@@ -32,6 +32,7 @@ pub struct DepositAddressRequest {
 pub struct DepositAddressResult {
     pub address: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    /// Confidential: 1Click `quote.minAmountIn` (bridge floor). Public: unused/None.
     pub min_amount: Option<String>,
     pub memo: Option<String>,
     /// ISO-8601 expiry for one-time confidential deposit addresses.
@@ -69,11 +70,16 @@ pub struct ConfidentialDepositAddressStatusResult {
 /// Matches near.com confidential deposit slippage (0.1% → 10 bips).
 const CONFIDENTIAL_DEPOSIT_SLIPPAGE_TOLERANCE: u32 = 10;
 
-/// For confidential treasuries, get a confidential quote to obtain the intents
-/// deposit address, then fetch the bridge deposit address for that quote address.
+/// For confidential treasuries, mint a one-time 1Click wet quote and return its
+/// `depositAddress` (plus memo / bridge floor).
 ///
-/// Quote shape aligns with near.com: `FLEX_INPUT` + `ORIGIN_CHAIN` + `depositMode: SIMPLE`.
-/// Quote auth uses the app `ONECLICK_API_KEY` only — no DAO JWT required.
+/// Quote shape: `FLEX_INPUT` + `INTENTS` deposit type; auth uses the app
+/// `ONECLICK_API_KEY` only — no DAO JWT required.
+///
+/// `DepositAddressResult.min_amount` is always `quote.minAmountIn` (1Click's
+/// bridge floor). The FE-supplied `amount` is only used as the quote input and
+/// for retry probes when 1Click rejects the amount as too low — it is never
+/// returned as `min_amount`.
 async fn get_confidential_deposit_address(
     state: &Arc<AppState>,
     account_id: &near_account_id::AccountIdRef,
@@ -87,7 +93,7 @@ async fn get_confidential_deposit_address(
 
     let url = format!("{}/v0/quote", state.env_vars.confidential_api_url);
 
-    // Try with the FE-provided amount (usually minDeposit), retrying with the
+    // Try with the FE-provided amount (usually a UI probe), retrying with the
     // bridge floor from the error (or 10x) when the quote API rejects as too low.
     if amount == 0 {
         amount = 1;
@@ -135,18 +141,24 @@ async fn get_confidential_deposit_address(
                     .get("depositMemo")
                     .and_then(|v| v.as_str())
                     .map(str::to_string);
-                let quoted_min = quote
+                // Source of truth for the FE minimum: 1Click bridge floor only.
+                let min_amount = quote
                     .get("minAmountIn")
                     .and_then(|v| v.as_str())
+                    .filter(|s| !s.is_empty())
                     .map(str::to_string)
-                    .or_else(|| Some(amount.to_string()));
+                    .ok_or_else(|| {
+                        (
+                            StatusCode::BAD_GATEWAY,
+                            "Confidential quote did not return minAmountIn".to_string(),
+                        )
+                    })?;
 
-                // ORIGIN_CHAIN: quote.depositAddress is already the chain deposit
-                // address (same as near.com). No Bridge remap needed.
+                // Quote depositAddress is what the user funds; no Bridge remap.
                 let _ = chain;
                 return Ok(DepositAddressResult {
                     address: quote_deposit_address.clone(),
-                    min_amount: quoted_min,
+                    min_amount: Some(min_amount),
                     memo,
                     expires_at: Some(deadline.clone()),
                     quote_deposit_address: Some(quote_deposit_address),
@@ -178,11 +190,13 @@ async fn get_confidential_deposit_address(
 }
 
 /// Parse `try at least N` from 1Click bridge-floor errors.
+/// Searches and slices the lowercased string so non-ASCII before the marker
+/// cannot shift the byte offset relative to the original message.
 fn parse_bridge_minimum_hint(msg: &str) -> Option<u128> {
     let lower = msg.to_lowercase();
     let marker = "try at least ";
     let idx = lower.find(marker)?;
-    let rest = msg.get(idx + marker.len()..)?;
+    let rest = lower.get(idx + marker.len()..)?;
     let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
     digits.parse().ok().filter(|n| *n > 0)
 }
@@ -219,8 +233,8 @@ async fn fetch_bridge_deposit_address(
 /// **Public** treasuries use Bridge/POA `depositAddressFetch(account, chain)` —
 /// the address is stable for that treasury+chain (same as near.com).
 /// **Confidential** treasuries mint a rotating 1Click wet quote (`tokenId`
-/// should be the 1Click `quoteAssetId`, which may be `1cs_v1:…`), then map
-/// through the bridge when needed.
+/// should be the 1Click `quoteAssetId`, which may be `1cs_v1:…`) and return
+/// that quote's `depositAddress` / `minAmountIn` directly.
 ///
 /// Guests and non-members may generate addresses — depositing funds into a
 /// treasury is not a member-only action. Confidential quotes use the app API
