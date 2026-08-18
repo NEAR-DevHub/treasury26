@@ -443,8 +443,8 @@
             "description": "Transaksi Anda akan muncul di sini setelah terjadi"
         },
         "emptyDashboard": {
-            "title": "Belum ada apa-apa untuk ditampilkan",
-            "description": "Transaksi dan tindakan Anda akan muncul di sini setelah terjadi"
+            "title": "Belum ada transaksi terbaru.",
+            "description": "Transaksi Anda akan muncul di sini."
         },
         "recentTitle": "Transaksi Terbaru",
         "recentSubtitle": "Aktivitas transaksi selama setahun terakhir",
@@ -688,8 +688,8 @@
         "pending": {
             "title": "Permintaan Tertunda",
             "viewAll": "Lihat Semua",
-            "emptyTitle": "Semua sudah selesai!",
-            "emptyDescription": "Tidak ada permintaan yang tertunda."
+            "emptyTitle": "Belum ada permintaan terbaru.",
+            "emptyDescription": "Permintaan tertunda Anda akan muncul di sini"
         }
     },
     "proposals": {
@@ -2010,7 +2010,7 @@
     "assetsPage": {
         "title": "Aset",
         "noAssetsTitle": "Belum ada aset",
-        "noAssetsDescription": "Untuk memulai, tambahkan aset ke Treasury Anda dengan melakukan deposit."
+        "noAssetsDescription": "Aset Anda akan muncul di sini"
     },
     "newBadge": {
         "label": "Baru"
@@ -2235,7 +2235,7 @@
         "unlockedToken": "Token Tidak Terkunci",
         "lockedToken": "Token Terkunci",
         "lockupStakingPool": "Pool staking lockup",
-        "exchange": "Tukar",
+        "swap": "Tukar",
         "send": "Kirim",
         "details": "Detail",
         "columnAsset": "Aset",

@@ -443,8 +443,8 @@
             "description": "Your transactions will appear here once they happen"
         },
         "emptyDashboard": {
-            "title": "Nothing to show yet",
-            "description": "Your transactions and actions will appear here once they happen"
+            "title": "No recent transaction yet.",
+            "description": "Your transactions will appear here."
         },
         "recentTitle": "Recent Transactions",
         "recentSubtitle": "Transaction activity over the past year",
@@ -688,8 +688,8 @@
         "pending": {
             "title": "Pending Requests",
             "viewAll": "View All",
-            "emptyTitle": "All caught up!",
-            "emptyDescription": "There are no pending requests."
+            "emptyTitle": "No recent requests yet.",
+            "emptyDescription": "Your pending requests will show up here"
         }
     },
     "proposals": {
@@ -2010,7 +2010,7 @@
     "assetsPage": {
         "title": "Assets",
         "noAssetsTitle": "No assets yet",
-        "noAssetsDescription": "To get started, add assets to your Treasury by making a deposit."
+        "noAssetsDescription": "Your assets will show up here"
     },
     "newBadge": {
         "label": "New"
@@ -2235,7 +2235,7 @@
         "unlockedToken": "Unlocked Token",
         "lockedToken": "Locked Token",
         "lockupStakingPool": "Lockup staking pool",
-        "exchange": "Exchange",
+        "swap": "Swap",
         "send": "Send",
         "details": "Details",
         "columnAsset": "Asset",

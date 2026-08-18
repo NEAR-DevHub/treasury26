@@ -443,8 +443,8 @@
             "description": "העסקאות שלך יופיעו כאן לאחר שיתרחשו"
         },
         "emptyDashboard": {
-            "title": "אין מה להציג עדיין",
-            "description": "העסקאות והפעולות שלך יופיעו כאן לאחר שיתרחשו"
+            "title": "אין עסקאות אחרונות עדיין.",
+            "description": "העסקאות שלך יופיעו כאן."
         },
         "recentTitle": "עסקאות אחרונות",
         "recentSubtitle": "פעילות עסקאות בשנה האחרונה",
@@ -688,8 +688,8 @@
         "pending": {
             "title": "בקשות ממתינות",
             "viewAll": "הצג הכל",
-            "emptyTitle": "הכל מעודכן!",
-            "emptyDescription": "אין בקשות ממתינות."
+            "emptyTitle": "אין בקשות אחרונות עדיין.",
+            "emptyDescription": "הבקשות הממתינות שלך יופיעו כאן"
         }
     },
     "proposals": {
@@ -2010,7 +2010,7 @@
     "assetsPage": {
         "title": "נכסים",
         "noAssetsTitle": "אין נכסים עדיין",
-        "noAssetsDescription": "כדי להתחיל, הוסף נכסים לאוצר שלך על ידי ביצוע הפקדה."
+        "noAssetsDescription": "הנכסים שלך יופיעו כאן"
     },
     "newBadge": {
         "label": "חדש"
@@ -2235,7 +2235,7 @@
         "unlockedToken": "טוקן לא נעול",
         "lockedToken": "טוקן נעול",
         "lockupStakingPool": "מאגר סטייקינג של נעילה",
-        "exchange": "החלפה",
+        "swap": "החלפה",
         "send": "שליחה",
         "details": "פרטים",
         "columnAsset": "נכס",

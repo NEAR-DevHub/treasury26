@@ -443,8 +443,8 @@
             "description": "트랜잭션이 발생하면 여기에 표시됩니다"
         },
         "emptyDashboard": {
-            "title": "아직 표시할 내용이 없습니다",
-            "description": "트랜잭션과 작업이 발생하면 여기에 표시됩니다"
+            "title": "아직 최근 거래가 없습니다.",
+            "description": "거래가 여기에 표시됩니다."
         },
         "recentTitle": "최근 트랜잭션",
         "recentSubtitle": "지난 1년간의 거래 활동",
@@ -688,8 +688,8 @@
         "pending": {
             "title": "대기 중인 요청",
             "viewAll": "전체 보기",
-            "emptyTitle": "모두 처리되었습니다!",
-            "emptyDescription": "대기 중인 요청이 없습니다."
+            "emptyTitle": "아직 최근 요청이 없습니다.",
+            "emptyDescription": "대기 중인 요청이 여기에 표시됩니다"
         }
     },
     "proposals": {
@@ -2010,7 +2010,7 @@
     "assetsPage": {
         "title": "자산",
         "noAssetsTitle": "아직 자산이 없습니다",
-        "noAssetsDescription": "시작하려면 입금하여 트레저리에 자산을 추가하세요."
+        "noAssetsDescription": "자산이 여기에 표시됩니다"
     },
     "newBadge": {
         "label": "신규"
@@ -2235,7 +2235,7 @@
         "unlockedToken": "잠금 해제된 토큰",
         "lockedToken": "잠긴 토큰",
         "lockupStakingPool": "락업 스테이킹 풀",
-        "exchange": "교환",
+        "swap": "교환",
         "send": "보내기",
         "details": "세부정보",
         "columnAsset": "자산",

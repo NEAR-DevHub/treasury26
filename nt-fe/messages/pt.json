@@ -443,8 +443,8 @@
             "description": "Suas transações aparecerão aqui quando ocorrerem"
         },
         "emptyDashboard": {
-            "title": "Nada para mostrar ainda",
-            "description": "Suas transações e ações aparecerão aqui quando ocorrerem"
+            "title": "Nenhuma transação recente ainda.",
+            "description": "Suas transações aparecerão aqui."
         },
         "recentTitle": "Transações recentes",
         "recentSubtitle": "Atividade de transações no último ano",
@@ -688,8 +688,8 @@
         "pending": {
             "title": "Solicitações pendentes",
             "viewAll": "Ver tudo",
-            "emptyTitle": "Tudo em dia!",
-            "emptyDescription": "Não há solicitações pendentes."
+            "emptyTitle": "Nenhuma solicitação recente ainda.",
+            "emptyDescription": "Suas solicitações pendentes aparecerão aqui"
         }
     },
     "proposals": {
@@ -2010,7 +2010,7 @@
     "assetsPage": {
         "title": "Ativos",
         "noAssetsTitle": "Nenhum ativo ainda",
-        "noAssetsDescription": "Para começar, adicione ativos à sua tesouraria fazendo um depósito."
+        "noAssetsDescription": "Seus ativos aparecerão aqui"
     },
     "newBadge": {
         "label": "Novo"
@@ -2235,7 +2235,7 @@
         "unlockedToken": "Token desbloqueado",
         "lockedToken": "Token bloqueado",
         "lockupStakingPool": "Pool de staking de lockup",
-        "exchange": "Trocar",
+        "swap": "Trocar",
         "send": "Enviar",
         "details": "Detalhes",
         "columnAsset": "Ativo",

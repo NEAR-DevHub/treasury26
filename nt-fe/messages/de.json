@@ -443,8 +443,8 @@
             "description": "Ihre Transaktionen erscheinen hier, sobald sie ausgeführt werden"
         },
         "emptyDashboard": {
-            "title": "Noch nichts anzuzeigen",
-            "description": "Ihre Transaktionen und Aktionen erscheinen hier, sobald sie ausgeführt werden"
+            "title": "Noch keine kürzliche Transaktion.",
+            "description": "Ihre Transaktionen erscheinen hier."
         },
         "recentTitle": "Letzte Transaktionen",
         "recentSubtitle": "Transaktionsaktivität im letzten Jahr",
@@ -688,8 +688,8 @@
         "pending": {
             "title": "Ausstehende Anfragen",
             "viewAll": "Alle anzeigen",
-            "emptyTitle": "Alles erledigt!",
-            "emptyDescription": "Es gibt keine ausstehenden Anfragen."
+            "emptyTitle": "Noch keine kürzlichen Anfragen.",
+            "emptyDescription": "Ihre ausstehenden Anfragen erscheinen hier"
         }
     },
     "proposals": {
@@ -2010,7 +2010,7 @@
     "assetsPage": {
         "title": "Vermögenswerte",
         "noAssetsTitle": "Noch keine Vermögenswerte",
-        "noAssetsDescription": "Um zu beginnen, fügen Sie durch eine Einzahlung Vermögenswerte zu Ihrer Treasury hinzu."
+        "noAssetsDescription": "Ihre Vermögenswerte erscheinen hier"
     },
     "newBadge": {
         "label": "Neu"
@@ -2235,7 +2235,7 @@
         "unlockedToken": "Entsperrtes Token",
         "lockedToken": "Gesperrtes Token",
         "lockupStakingPool": "Lockup-Staking-Pool",
-        "exchange": "Tauschen",
+        "swap": "Tauschen",
         "send": "Senden",
         "details": "Details",
         "columnAsset": "Vermögenswert",

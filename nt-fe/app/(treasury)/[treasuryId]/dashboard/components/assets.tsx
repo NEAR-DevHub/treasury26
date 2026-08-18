@@ -1,6 +1,5 @@
 "use client";
 
-import { Coins } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { AssetsTable, AssetsTableSkeleton } from "@/components/assets-table";
 import { PageCard } from "@/components/card";
@@ -23,7 +22,7 @@ export default function Assets({ tokens, state }: Props) {
     const renderContent = () => {
         if (state === "hidden") {
             return (
-                <div className="px-4 pb-4">
+                <div className="px-3 pb-3">
                     <ConfidentialState skeleton={<AssetsTableSkeleton />} />
                 </div>
             );
@@ -31,7 +30,7 @@ export default function Assets({ tokens, state }: Props) {
 
         if (state === "loading" || isHistoryRefreshing) {
             return (
-                <div className="px-4 pb-4">
+                <div className="px-3 pb-3">
                     <AssetsTableSkeleton />
                 </div>
             );
@@ -39,11 +38,15 @@ export default function Assets({ tokens, state }: Props) {
 
         if (aggregatedTokens.length === 0) {
             return (
-                <div className="px-4 pb-4">
-                    <EmptyState
-                        icon={Coins}
-                        title={t("noAssetsTitle")}
-                        description={t("noAssetsDescription")}
+                <div className="px-3 pb-3">
+                    <AssetsTableSkeleton
+                        overlay={
+                            <EmptyState
+                                title={t("noAssetsTitle")}
+                                description={t("noAssetsDescription")}
+                                className="py-0"
+                            />
+                        }
                     />
                 </div>
             );

@@ -4,7 +4,6 @@ import {
     AlertTriangle,
     ArrowDown,
     ChevronRight,
-    Clock,
     Loader2,
     Navigation,
     Shield,
@@ -287,19 +286,33 @@ function SwapAmount({
 
 const SKELETON_ROWS = ["a", "b", "c", "d", "e", "f"];
 
-export function RecentActivitySkeleton() {
+export function RecentActivitySkeleton({
+    rows = SKELETON_ROWS.length,
+    fade = false,
+}: {
+    rows?: number;
+    fade?: boolean;
+}) {
     return (
         <div className="flex flex-col">
-            {SKELETON_ROWS.map((row) => (
-                <div key={row} className="flex h-16 items-center gap-4 px-3">
-                    <Skeleton className="size-9 shrink-0 rounded-full bg-general-unofficial-accent-0" />
-                    <div className="flex min-w-0 flex-1 flex-col gap-2">
-                        <Skeleton className="h-4 w-[min(240px,60%)] bg-general-unofficial-accent-0" />
-                        <Skeleton className="h-3 w-[min(160px,40%)] bg-general-unofficial-accent-0" />
+            {SKELETON_ROWS.slice(0, rows).map((row, index) => (
+                <div
+                    key={row}
+                    className="flex h-17 items-center gap-4 px-3"
+                    style={
+                        fade
+                            ? { opacity: Math.max(0.15, 1 - index * 0.55) }
+                            : undefined
+                    }
+                >
+                    <Skeleton className="size-10 shrink-0 rounded-full" />
+                    <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <Skeleton className="h-5 w-[min(140px,50%)]" />
+                        <Skeleton className="h-4 w-[min(240px,60%)]" />
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-2">
-                        <Skeleton className="h-4 w-28 bg-general-unofficial-accent-0" />
-                        <Skeleton className="h-3 w-20 bg-general-unofficial-accent-0" />
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <Skeleton className="h-5 w-28" />
+                        <Skeleton className="h-4 w-20" />
                     </div>
                 </div>
             ))}
@@ -548,9 +561,10 @@ export function RecentActivity() {
         if (activities.length === 0) {
             return (
                 <EmptyState
-                    icon={Clock}
                     title={t("emptyDashboard.title")}
                     description={t("emptyDashboard.description")}
+                    skeleton={<RecentActivitySkeleton rows={4} fade />}
+                    className="py-0"
                 />
             );
         }

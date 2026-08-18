@@ -12,7 +12,7 @@ import { useProposals } from "@/hooks/use-proposals";
 import { Proposal } from "@/lib/proposals-api";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { ChevronRight, Check, X, Download, Send } from "lucide-react";
+import { ChevronRight, Check, X, Download } from "lucide-react";
 import Link from "next/link";
 import { ProposalTypeIcon } from "../proposal-type-icon";
 import { TransactionCell } from "../transaction-cell";
@@ -34,16 +34,56 @@ import { useRouter } from "next/navigation";
 
 const MAX_DISPLAYED_REQUESTS = 3;
 
-function PendingRequestItemSkeleton() {
-    return <Skeleton className="h-16 w-full rounded-2xl" />;
+function PendingRequestItemSkeleton({ opacity }: { opacity?: number }) {
+    return (
+        <PageCard
+            className="flex-row items-center gap-3"
+            style={opacity == null ? undefined : { opacity }}
+        >
+            <Skeleton className="size-9 shrink-0 rounded-full" />
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <Skeleton className="h-3 w-1/4" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-1/2" />
+            </div>
+        </PageCard>
+    );
 }
 
-function PendingRequestsGridSkeleton() {
+function PendingRequestsGridSkeleton({
+    count = MAX_DISPLAYED_REQUESTS,
+    fade = false,
+}: {
+    count?: number;
+    fade?: boolean;
+}) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
-            {Array.from({ length: MAX_DISPLAYED_REQUESTS }).map((_, index) => (
-                <PendingRequestItemSkeleton key={index} />
+            {Array.from({ length: count }).map((_, index) => (
+                <PendingRequestItemSkeleton
+                    key={index}
+                    opacity={fade ? Math.max(0.2, 1 - index * 0.45) : undefined}
+                />
             ))}
+        </div>
+    );
+}
+
+function PendingRequestsEmpty() {
+    const t = useTranslations("requests.pending");
+    return (
+        <div className="flex flex-col gap-4 **:data-[slot=skeleton]:animate-none!">
+            <PendingRequestItemSkeleton />
+            <div className="relative">
+                <PendingRequestItemSkeleton opacity={0.2} />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
+                    <EmptyState
+                        title={t("emptyTitle")}
+                        description={t("emptyDescription")}
+                        className="py-0"
+                    />
+                </div>
+            </div>
         </div>
     );
 }
@@ -51,18 +91,10 @@ function PendingRequestsGridSkeleton() {
 function PendingRequestsSkeleton() {
     const t = useTranslations("requests.pending");
     return (
-        <div className="flex h-fit min-h-[300px] w-full flex-col gap-3">
-            <div className="flex justify-between">
-                <div className="flex items-center gap-1">
-                    <h2 className="text-nowrap font-bold text-base tracking-tight">
-                        {t("title")}
-                    </h2>
-                </div>
-                <Button variant="pill" size="sm" disabled>
-                    {t("viewAll")}
-                    <ChevronRight className="size-4" />
-                </Button>
-            </div>
+        <div className="flex h-fit w-full flex-col gap-3">
+            <h2 className="text-nowrap font-bold text-base tracking-tight">
+                {t("title")}
+            </h2>
             <PendingRequestsGridSkeleton />
         </div>
     );
@@ -348,11 +380,7 @@ export function PendingRequests() {
                             ))}
                     </div>
                 ) : (
-                    <EmptyState
-                        icon={Send}
-                        title={t("emptyTitle")}
-                        description={t("emptyDescription")}
-                    />
+                    <PendingRequestsEmpty />
                 )}
             </div>
             <VoteModal

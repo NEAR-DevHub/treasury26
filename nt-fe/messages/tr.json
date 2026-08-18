@@ -443,8 +443,8 @@
             "description": "İşlemleriniz gerçekleştiklerinde burada görünecek"
         },
         "emptyDashboard": {
-            "title": "Henüz gösterilecek bir şey yok",
-            "description": "İşlemleriniz ve eylemleriniz gerçekleştiklerinde burada görünecek"
+            "title": "Henüz yakın zamanda işlem yok.",
+            "description": "İşlemleriniz burada görünecek."
         },
         "recentTitle": "Son İşlemler",
         "recentSubtitle": "Son bir yıldaki işlem hareketleri",
@@ -688,8 +688,8 @@
         "pending": {
             "title": "Bekleyen Talepler",
             "viewAll": "Tümünü Görüntüle",
-            "emptyTitle": "Hepsi tamam!",
-            "emptyDescription": "Bekleyen talep yok."
+            "emptyTitle": "Henüz yakın zamanda talep yok.",
+            "emptyDescription": "Bekleyen talepleriniz burada görünecek"
         }
     },
     "proposals": {
@@ -2010,7 +2010,7 @@
     "assetsPage": {
         "title": "Varlıklar",
         "noAssetsTitle": "Henüz varlık yok",
-        "noAssetsDescription": "Başlamak için para yatırarak Hazinenize varlıklar ekleyin."
+        "noAssetsDescription": "Varlıklarınız burada görünecek"
     },
     "newBadge": {
         "label": "Yeni"
@@ -2235,7 +2235,7 @@
         "unlockedToken": "Kilitsiz Token",
         "lockedToken": "Kilitli Token",
         "lockupStakingPool": "Lockup staking havuzu",
-        "exchange": "Takas",
+        "swap": "Takas",
         "send": "Gönder",
         "details": "Ayrıntılar",
         "columnAsset": "Varlık",
