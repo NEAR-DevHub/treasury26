@@ -114,9 +114,11 @@ pub async fn relay_delegate_action(
     .await?;
 
     // 5. Atomically reserve the gas credit BEFORE any sponsor spend, so concurrent
-    //    relays cannot double-spend one credit. Nothing has moved yet, so a `402` here
-    //    needs no refund. On any later failure that abandons the relay we refund it
-    //    (preserving today's "a failed relay consumes no credit" behavior).
+    //    relays cannot double-spend one credit. Nothing has moved yet, so any failure
+    //    here (402 "no credits" or 500 "row missing") needs no refund — the credit
+    //    table is already in its final state from the conditional UPDATE itself.
+    //    On any later failure that abandons the relay we refund it (preserving today's
+    //    "a failed relay consumes no credit" behavior).
     let credit_reservation =
         accounting::reserve_gas_credit(&state.db_pool, &treasury_id, plan_type).await?;
 

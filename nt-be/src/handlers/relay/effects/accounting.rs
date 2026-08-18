@@ -41,6 +41,11 @@ pub enum CreditReservation {
 /// to exactly one successful reservation (the rest get `402`). Enterprise is unlimited
 /// and always reserves without decrementing.
 ///
+/// When the conditional `UPDATE` matches no row, a follow-up `EXISTS` lookup
+/// distinguishes the two failure modes so backend incidents (row missing for this
+/// account id) are returned as `500` rather than misreported to the user as "no
+/// credits left — upgrade your plan".
+///
 /// This closes the check-then-spend race: previously the credit was read during
 /// authorization and decremented only in a later background task, so concurrent
 /// requests could all observe the same balance.
@@ -53,6 +58,13 @@ pub async fn reserve_gas_credit(
         return Ok(CreditReservation::Unlimited);
     }
 
+    // The reservation is a single conditional UPDATE that only succeeds while
+    // credits remain ─ two concurrent reservations on a single-credit row resolve
+    // to exactly one winner here. A 0-row result is then disambiguated below:
+    //
+    //   * row missing entirely → 5xx: a backend incident (account row drift, plan
+    //     changes, etc.) must not be reported to the user as "upgrade your plan".
+    //   * row present, credits == 0 → 402: the user-facing "no credits left".
     let reserved = sqlx::query_scalar::<_, i32>(
         r#"
         UPDATE monitored_accounts
@@ -74,10 +86,44 @@ pub async fn reserve_gas_credit(
 
     match reserved {
         Some(_) => Ok(CreditReservation::Consumed),
-        None => Err(error_response(
-            StatusCode::PAYMENT_REQUIRED,
-            "No gas-covered transaction credits remaining. Please upgrade your plan.",
-        )),
+        None => {
+            // The conditional UPDATE matched no row. Look up the treasury row to
+            // distinguish a legitimate 402 ("no credits") from a 5xx incident (row
+            // missing for this account_id). A read after the conditional update is
+            // safe to disambiguate: if credits were just decremented to 0 by a
+            // concurrent winner, the user-facing "upgrade your plan" message is
+            // still correct.
+            let row_exists = sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS(SELECT 1 FROM monitored_accounts WHERE account_id = $1)",
+            )
+            .bind(treasury_id.as_str())
+            .fetch_one(pool)
+            .await
+            .map_err(|e| {
+                error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!(
+                        "Database error checking monitored_accounts after \
+                         gas-credit reservation: {e}"
+                    ),
+                )
+            })?;
+
+            if row_exists {
+                Err(error_response(
+                    StatusCode::PAYMENT_REQUIRED,
+                    "No gas-covered transaction credits remaining. Please upgrade your plan.",
+                ))
+            } else {
+                Err(error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!(
+                        "Cannot reserve gas credit: no monitored_accounts row \
+                         exists for `{treasury_id}`"
+                    ),
+                ))
+            }
+        }
     }
 }
 
@@ -294,6 +340,43 @@ mod tests {
             credits(&pool, account.as_str()).await,
             0,
             "no decrement for unlimited"
+        );
+    }
+
+    /// A treasury that exists but has zero credits returns 402 (legitimate "upgrade
+    /// your plan"); the client is correctly told it ran out of credits.
+    #[sqlx::test]
+    async fn zero_credits_returns_payment_required(pool: sqlx::PgPool) {
+        let account: AccountId = "zero.sputnik-dao.near".parse().unwrap();
+        seed(&pool, account.as_str(), "plus", 0).await;
+
+        let err = reserve_gas_credit(&pool, &account, PlanType::Plus)
+            .await
+            .expect_err("zero credits must be rejected");
+        assert_eq!(
+            err.0,
+            StatusCode::PAYMENT_REQUIRED,
+            "zero credits → 402 upgrade prompt"
+        );
+        assert_eq!(credits(&pool, account.as_str()).await, 0);
+    }
+
+    /// A treasury with no `monitored_accounts` row at all is a backend incident, not
+    /// a "no credits" condition — a 5xx keeps Sentry / on-call pages honest and
+    /// stops the user from being routed to "upgrade your plan" when the truth is
+    /// the row is missing (account drift, plan rollback, partial migration, etc.).
+    #[sqlx::test]
+    async fn missing_row_returns_internal_server_error(pool: sqlx::PgPool) {
+        let account: AccountId = "missing.sputnik-dao.near".parse().unwrap();
+        // Intentionally do NOT seed the row.
+
+        let err = reserve_gas_credit(&pool, &account, PlanType::Plus)
+            .await
+            .expect_err("missing row must be rejected");
+        assert_eq!(
+            err.0,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "missing row → 5xx, not 402"
         );
     }
 }
