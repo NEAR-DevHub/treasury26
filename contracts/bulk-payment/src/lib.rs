@@ -106,6 +106,47 @@ pub trait MultiTokenReceiver {
     ) -> PromiseOrValue<Vec<U128>>;
 }
 
+/// Build `ft_withdraw` call args for the NEAR Intents path.
+///
+/// `recipient` (an arbitrary external-chain address) and `token_contract` are
+/// untrusted, so args are always serialized with `serde_json` — never built by
+/// string interpolation, which would let a value containing `"`/`,`/`}` inject
+/// or override JSON fields (`amount`, `memo`, `receiver_id`).
+fn build_intents_withdraw_args(
+    token_contract: &str,
+    recipient: &str,
+    amount: U128,
+    is_poa_token: bool,
+) -> String {
+    if is_poa_token {
+        // PoA tokens require a WITHDRAW_TO memo for external-chain withdrawals;
+        // the real destination rides in the memo, receiver_id is the token.
+        json!({
+            "token": token_contract,
+            "receiver_id": token_contract,
+            "amount": amount,
+            "memo": format!("WITHDRAW_TO:{recipient}"),
+        })
+        .to_string()
+    } else {
+        json!({
+            "token": token_contract,
+            "receiver_id": recipient,
+            "amount": amount,
+        })
+        .to_string()
+    }
+}
+
+/// Build NEP-141 `ft_transfer` call args; `recipient` is untrusted → serialized.
+fn build_ft_transfer_args(recipient: &str, amount: U128) -> String {
+    json!({
+        "receiver_id": recipient,
+        "amount": amount,
+    })
+    .to_string()
+}
+
 #[near]
 impl BulkPaymentContract {
     /// Initialize the contract
@@ -451,17 +492,12 @@ impl BulkPaymentContract {
                     // PoA tokens require WITHDRAW_TO memo for external chain withdrawals
                     let is_poa_token = token_contract.ends_with(".omft.near");
 
-                    let args_json = if is_poa_token {
-                        format!(
-                            r#"{{"token":"{}","receiver_id":"{}","amount":"{}","memo":"WITHDRAW_TO:{}"}}"#,
-                            token_contract, token_contract, payment.amount.0, payment.recipient
-                        )
-                    } else {
-                        format!(
-                            r#"{{"token":"{}","receiver_id":"{}","amount":"{}"}}"#,
-                            token_contract, payment.recipient, payment.amount.0
-                        )
-                    };
+                    let args_json = build_intents_withdraw_args(
+                        token_contract,
+                        &payment.recipient,
+                        payment.amount,
+                        is_poa_token,
+                    );
 
                     Promise::new("intents.near".parse().unwrap())
                         .function_call(
@@ -489,10 +525,7 @@ impl BulkPaymentContract {
                         .parse()
                         .expect("Invalid token contract address");
 
-                    let args = format!(
-                        r#"{{"receiver_id":"{}","amount":"{}"}}"#,
-                        payment.recipient, payment.amount.0
-                    );
+                    let args = build_ft_transfer_args(&payment.recipient, payment.amount);
 
                     Promise::new(token_account)
                         .function_call(
@@ -1350,4 +1383,96 @@ mod tests {
     // The environment checks account balances and prevents unrealistic values before our
     // contract code executes, providing an additional layer of security. Our checked_*
     // operations ensure safety within the contract logic itself.
+
+    // ---- H-05: JSON injection in payout args ----
+    //
+    // A malicious `recipient` (unbounded external-chain string) must never be
+    // able to break out of its JSON string and inject/override sibling fields.
+    // These recipients each try to close the string and add/override keys.
+    const INJECTION_RECIPIENT: &str =
+        r#"evil.near","amount":"999999999999999999999999","memo":"pwned"#;
+    const BRACE_RECIPIENT: &str = r#"a"},{"receiver_id":"attacker.near"#;
+
+    #[test]
+    fn ft_transfer_args_escape_malicious_recipient() {
+        let amount = U128(1_000);
+        let args = build_ft_transfer_args(INJECTION_RECIPIENT, amount);
+
+        // Must be valid JSON with exactly the two intended keys.
+        let v: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&args).unwrap();
+        let obj = v.as_object().unwrap();
+        assert_eq!(obj.len(), 2, "no extra keys may be injected: {args}");
+
+        // The whole hostile string is a single escaped receiver_id value; the
+        // amount is the real one, not the attacker's overridden value.
+        assert_eq!(obj["receiver_id"], INJECTION_RECIPIENT);
+        assert_eq!(obj["amount"], "1000");
+    }
+
+    #[test]
+    fn ft_transfer_args_escape_braces() {
+        let args = build_ft_transfer_args(BRACE_RECIPIENT, U128(42));
+        let v: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&args).unwrap();
+        let obj = v.as_object().unwrap();
+        assert_eq!(obj.len(), 2);
+        assert_eq!(obj["receiver_id"], BRACE_RECIPIENT);
+        assert_eq!(obj["amount"], "42");
+    }
+
+    #[test]
+    fn intents_withdraw_args_escape_malicious_recipient() {
+        let args =
+            build_intents_withdraw_args("usdt.tether-token.near", INJECTION_RECIPIENT, U128(500), false);
+        let v: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&args).unwrap();
+        let obj = v.as_object().unwrap();
+        assert_eq!(obj.len(), 3, "no extra keys may be injected: {args}");
+        assert_eq!(obj["token"], "usdt.tether-token.near");
+        assert_eq!(obj["receiver_id"], INJECTION_RECIPIENT);
+        assert_eq!(obj["amount"], "500");
+    }
+
+    #[test]
+    fn intents_withdraw_poa_args_escape_recipient_in_memo() {
+        let args = build_intents_withdraw_args("eth.omft.near", INJECTION_RECIPIENT, U128(500), true);
+        let v: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&args).unwrap();
+        let obj = v.as_object().unwrap();
+        assert_eq!(obj.len(), 4, "no extra keys may be injected: {args}");
+        // For PoA the receiver is the token; the untrusted recipient sits inside
+        // the memo and must be escaped there, not break out into new fields.
+        assert_eq!(obj["token"], "eth.omft.near");
+        assert_eq!(obj["receiver_id"], "eth.omft.near");
+        assert_eq!(obj["amount"], "500");
+        assert_eq!(obj["memo"], format!("WITHDRAW_TO:{INJECTION_RECIPIENT}"));
+    }
+
+    #[test]
+    fn payout_args_carry_expected_fields_for_benign_input() {
+        // Regression guard: for well-formed input the args still carry exactly
+        // the fields the receiving contracts expect (order is irrelevant to
+        // JSON parsing), so real payouts to 1Click/NEP-141 are unchanged.
+        let ft: near_sdk::serde_json::Value =
+            near_sdk::serde_json::from_str(&build_ft_transfer_args("bob.near", U128(1000))).unwrap();
+        assert_eq!(ft["receiver_id"], "bob.near");
+        assert_eq!(ft["amount"], "1000");
+        assert_eq!(ft.as_object().unwrap().len(), 2);
+
+        let intents: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(
+            &build_intents_withdraw_args("usdt.tether-token.near", "bob.near", U128(1000), false),
+        )
+        .unwrap();
+        assert_eq!(intents["token"], "usdt.tether-token.near");
+        assert_eq!(intents["receiver_id"], "bob.near");
+        assert_eq!(intents["amount"], "1000");
+        assert_eq!(intents.as_object().unwrap().len(), 3);
+
+        let poa: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(
+            &build_intents_withdraw_args("eth.omft.near", "0xD7A7...", U128(1000), true),
+        )
+        .unwrap();
+        assert_eq!(poa["token"], "eth.omft.near");
+        assert_eq!(poa["receiver_id"], "eth.omft.near");
+        assert_eq!(poa["amount"], "1000");
+        assert_eq!(poa["memo"], "WITHDRAW_TO:0xD7A7...");
+        assert_eq!(poa.as_object().unwrap().len(), 4);
+    }
 }
