@@ -312,7 +312,9 @@ export function Sidebar({ onClose }: SidebarProps) {
                           : "w-20",
                 )}
             >
-                <div className={cn("shrink-0", isReduced ? "p-3.5 pt-8" : "p-3")}>
+                <div
+                    className={cn("shrink-0", isReduced ? "p-3.5 pt-8" : "p-3")}
+                >
                     {isReduced ? (
                         <div className="flex justify-center">
                             <TreasurySelector
