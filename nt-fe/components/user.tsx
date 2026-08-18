@@ -79,6 +79,17 @@ export function resolveUserDisplayName({
     );
 }
 
+/** Settings name when this account is the open treasury (Activity self-counterparty). */
+function resolveSelfTreasuryName(
+    accountId: string | undefined,
+    treasuryId: string | undefined,
+    configName: string | null | undefined,
+): string | undefined {
+    return accountId && treasuryId && accountId === treasuryId
+        ? normalizeDisplayName(configName)
+        : undefined;
+}
+
 function isSameAccountLabel(name: string, address: string): boolean {
     return name.trim().toLowerCase() === address.trim().toLowerCase();
 }
@@ -363,10 +374,11 @@ export function TooltipUser({
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading: isProfileLoading } =
         useProfile(bareAccountId);
-    const treasuryName =
-        bareAccountId && treasuryId && bareAccountId === treasuryId
-            ? config?.name
-            : undefined;
+    const treasuryName = resolveSelfTreasuryName(
+        bareAccountId,
+        treasuryId,
+        config?.name,
+    );
     const isSavedInAddressBook = profile?.isInAddressBook ?? false;
     const addressBookParams = new URLSearchParams({
         name: resolveUserDisplayName({
@@ -473,10 +485,11 @@ export function User({
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading } = useProfile(bareAccountId);
     const { treasuryId, config } = useTreasury();
-    const treasuryName =
-        bareAccountId && treasuryId && bareAccountId === treasuryId
-            ? config?.name
-            : undefined;
+    const treasuryName = resolveSelfTreasuryName(
+        bareAccountId,
+        treasuryId,
+        config?.name,
+    );
 
     if (
         isLoading &&
