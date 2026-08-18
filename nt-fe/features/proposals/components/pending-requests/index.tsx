@@ -72,18 +72,14 @@ function PendingRequestsGridSkeleton({
 function PendingRequestsEmpty() {
     const t = useTranslations("requests.pending");
     return (
-        <div className="flex flex-col gap-4 **:data-[slot=skeleton]:animate-none!">
+        <div className="flex flex-col gap-4">
             <PendingRequestItemSkeleton />
-            <div className="relative">
-                <PendingRequestItemSkeleton opacity={0.2} />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-4">
-                    <EmptyState
-                        title={t("emptyTitle")}
-                        description={t("emptyDescription")}
-                        className="py-0"
-                    />
-                </div>
-            </div>
+            <EmptyState
+                title={t("emptyTitle")}
+                description={t("emptyDescription")}
+                skeleton={<PendingRequestItemSkeleton opacity={0.2} />}
+                className="py-0"
+            />
         </div>
     );
 }

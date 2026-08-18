@@ -405,6 +405,7 @@
         "source": "Sumber",
         "send": "Kirim",
         "exchange": "Tukar",
+        "swap": "Tukar",
         "comingSoon": "Segera hadir",
         "vesting": "Vesting",
         "vestedPercent": "{percent}% Tervesting",

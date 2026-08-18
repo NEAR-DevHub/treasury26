@@ -405,6 +405,7 @@
         "source": "Nguồn",
         "send": "Gửi",
         "exchange": "Trao đổi",
+        "swap": "Hoán đổi",
         "comingSoon": "Sắp ra mắt",
         "vesting": "Vesting",
         "vestedPercent": "Đã vesting {percent}%",

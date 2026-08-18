@@ -405,6 +405,7 @@
         "source": "מקור",
         "send": "שליחה",
         "exchange": "החלפה",
+        "swap": "החלפה",
         "comingSoon": "בקרוב",
         "vesting": "הבשלה",
         "vestedPercent": "{percent}% הובשלו",

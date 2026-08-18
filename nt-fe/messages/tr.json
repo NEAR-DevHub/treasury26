@@ -405,6 +405,7 @@
         "source": "Kaynak",
         "send": "Gönder",
         "exchange": "Takas",
+        "swap": "Takas",
         "comingSoon": "Yakında",
         "vesting": "Vesting",
         "vestedPercent": "%{percent} Hak Edildi",

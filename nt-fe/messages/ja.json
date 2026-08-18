@@ -405,6 +405,7 @@
         "source": "ソース",
         "send": "送金",
         "exchange": "交換",
+        "swap": "スワップ",
         "comingSoon": "近日公開",
         "vesting": "ベスティング",
         "vestedPercent": "{percent}% ベスト済み",

@@ -405,6 +405,7 @@
         "source": "Джерело",
         "send": "Надіслати",
         "exchange": "Обмін",
+        "swap": "Обмін",
         "comingSoon": "Скоро",
         "vesting": "Вестинг",
         "vestedPercent": "{percent}% вестовано",

@@ -405,6 +405,7 @@
         "source": "Origen",
         "send": "Enviar",
         "exchange": "Intercambiar",
+        "swap": "Intercambiar",
         "comingSoon": "Próximamente",
         "vesting": "Vesting",
         "vestedPercent": "{percent}% adquirido",

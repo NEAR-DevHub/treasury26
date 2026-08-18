@@ -77,7 +77,7 @@ export function EmptyState({
     if (!skeleton) return content;
 
     return (
-        <div className="relative min-h-40 **:data-[slot=skeleton]:animate-none!">
+        <div className="relative **:data-[slot=skeleton]:animate-none!">
             <div aria-hidden className="pointer-events-none select-none">
                 {skeleton}
             </div>

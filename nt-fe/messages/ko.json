@@ -405,6 +405,7 @@
         "source": "출처",
         "send": "보내기",
         "exchange": "교환",
+        "swap": "스왑",
         "comingSoon": "출시 예정",
         "vesting": "베스팅",
         "vestedPercent": "{percent}% 베스팅됨",

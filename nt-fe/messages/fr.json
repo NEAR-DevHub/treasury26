@@ -405,6 +405,7 @@
         "source": "Source",
         "send": "Envoyer",
         "exchange": "Échanger",
+        "swap": "Échanger",
         "comingSoon": "Bientôt disponible",
         "vesting": "Vesting",
         "vestedPercent": "{percent}% acquis",

@@ -405,6 +405,7 @@
         "source": "来源",
         "send": "发送",
         "exchange": "兑换",
+        "swap": "兑换",
         "comingSoon": "即将推出",
         "vesting": "归属",
         "vestedPercent": "已归属 {percent}%",

@@ -405,6 +405,7 @@
         "source": "Quelle",
         "send": "Senden",
         "exchange": "Tauschen",
+        "swap": "Tauschen",
         "comingSoon": "Demnächst verfügbar",
         "vesting": "Vesting",
         "vestedPercent": "{percent}% gevestet",

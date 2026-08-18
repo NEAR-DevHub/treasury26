@@ -192,9 +192,7 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                     permissionAction="AddProposal"
                                                     variant="ghost"
                                                     size="icon"
-                                                    tooltipContent={t(
-                                                        "exchange",
-                                                    )}
+                                                    tooltipContent={t("swap")}
                                                     onClick={() => {
                                                         onClose();
                                                         router.push(

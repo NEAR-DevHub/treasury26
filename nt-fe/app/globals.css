@@ -104,7 +104,6 @@
     --general-unofficial-border-3: rgb(212, 212, 212);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgb(245, 245, 245);
-    --general-bg-secondary: rgba(242, 242, 242, 1);
     --general-unofficial-ghost-hover: rgba(0, 0, 0, 0.05);
     --onboarding-primary: rgb(0, 150, 96);
     --brand-blue: rgb(0, 150, 96);
@@ -211,7 +210,6 @@
     --general-unofficial-border-3: rgb(64, 64, 64);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgba(38, 38, 38);
-    --general-bg-secondary: rgba(38, 38, 38, 1);
     --general-unofficial-ghost-hover: rgba(255, 255, 255, 0.1);
     --onboarding-primary: rgb(0, 150, 96);
     --brand-blue: rgb(0, 150, 96);
@@ -259,9 +257,8 @@
     --muted-foreground: rgb(115, 115, 115);
     --accent: rgb(229, 229, 229);
     --accent-foreground: rgb(64, 64, 64);
-    /* Skeletons use general-bg-secondary; keep the light-theme value in forced light cards. */
+    /* Skeletons use accent-0; keep the light-theme value in forced light cards. */
     --general-unofficial-accent-0: rgba(250, 250, 250);
-    --general-bg-secondary: rgba(242, 242, 242, 1);
     --border: rgba(229, 229, 229);
     --general-border: rgba(229, 229, 229);
     --input: rgb(229, 229, 229);
@@ -322,7 +319,6 @@
     --color-general-unofficial-border-3: var(--general-unofficial-border-3);
     --color-general-unofficial-border-5: var(--general-unofficial-border-5);
     --color-general-secondary: var(--general-secondary);
-    --color-general-bg-secondary: var(--general-bg-secondary);
     --color-general-unofficial-ghost-hover: var(
         --general-unofficial-ghost-hover
     );
