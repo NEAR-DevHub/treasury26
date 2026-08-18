@@ -10,6 +10,7 @@ use std::sync::Arc;
 use crate::{
     AppState,
     auth::{AuthUser, OptionalAuthUser},
+    handlers::treasury::config::fetch_treasury_config,
     utils::cache::{CacheKey, CacheTier},
 };
 
@@ -161,6 +162,101 @@ async fn fetch_profile(state: &Arc<AppState>, account_id: &str) -> Result<Profil
     Ok(profile_data)
 }
 
+fn empty_profile() -> ProfileData {
+    ProfileData {
+        name: None,
+        address_book_name: None,
+        image: None,
+        background_image: None,
+        description: None,
+        linktree: None,
+        tags: None,
+        is_in_address_book: false,
+    }
+}
+
+/// Social is best-effort. A DAO with no NEAR Social profile (or a transient RPC
+/// failure) must still receive local / treasury branding below.
+async fn load_social_profile(state: &Arc<AppState>, account_id: &str) -> ProfileData {
+    let cache_key = CacheKey::new("profile").with(account_id).build();
+    let state_clone = state.clone();
+    let account_id = account_id.to_string();
+
+    match state
+        .cache
+        .cached(CacheTier::LongTerm, cache_key, async move {
+            fetch_profile(&state_clone, &account_id).await.map_err(|e| {
+                tracing::warn!("Error fetching social profile for {account_id}: {e}");
+                (StatusCode::INTERNAL_SERVER_ERROR, e)
+            })
+        })
+        .await
+    {
+        Ok(profile) => profile,
+        Err(e) => {
+            tracing::warn!("Social profile unavailable, using empty profile: {e:?}");
+            empty_profile()
+        }
+    }
+}
+
+async fn apply_treasury_branding(
+    state: &Arc<AppState>,
+    profile: &mut ProfileData,
+    account_id: &str,
+) {
+    match sqlx::query!(
+        "SELECT display_name, flag_logo FROM treasury_settings WHERE account_id = $1",
+        account_id
+    )
+    .fetch_optional(&state.db_pool)
+    .await
+    {
+        Ok(Some(row)) => {
+            apply_treasury_settings_to_profile(profile, row.display_name, row.flag_logo);
+        }
+        Ok(None) => {}
+        Err(e) => {
+            tracing::error!("Failed to load treasury_settings for {account_id}: {e}");
+        }
+    }
+
+    if profile
+        .name
+        .as_ref()
+        .is_some_and(|name| !name.trim().is_empty())
+    {
+        return;
+    }
+
+    let is_treasury: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM monitored_accounts WHERE account_id = $1)")
+            .bind(account_id)
+            .fetch_one(&state.db_pool)
+            .await
+            .unwrap_or(false);
+
+    if !is_treasury {
+        return;
+    }
+
+    let Ok(treasury_id) = account_id.parse::<AccountId>() else {
+        return;
+    };
+
+    if let Ok(config) = fetch_treasury_config(state, &treasury_id, None).await
+        && let Some(name) = config
+            .name
+            .map(|n| n.trim().to_string())
+            .filter(|n| !n.is_empty())
+    {
+        profile.name = Some(name);
+        if let Some(logo) = config.metadata.and_then(|m| m.flag_logo) {
+            apply_treasury_settings_to_profile(profile, None, Some(logo));
+        }
+    }
+}
+
 fn apply_local_profile_overrides(
     profile: &mut ProfileData,
     display_name: Option<String>,
@@ -231,18 +327,7 @@ pub async fn get_profile(
         ));
     }
 
-    let cache_key = CacheKey::new("profile").with(&account_id).build();
-    let state_clone = state.clone();
-
-    let mut profile = state
-        .cache
-        .cached(CacheTier::LongTerm, cache_key, async move {
-            fetch_profile(&state_clone, &account_id).await.map_err(|e| {
-                eprintln!("Error fetching profile: {}", e);
-                (StatusCode::INTERNAL_SERVER_ERROR, e)
-            })
-        })
-        .await?;
+    let mut profile = load_social_profile(&state, &account_id).await;
 
     // If the caller is authenticated and provided a dao_id, check whether the
     // address has an address book entry in that treasury.
@@ -278,16 +363,8 @@ pub async fn get_profile(
         apply_local_profile_overrides(&mut profile, row.display_name, row.avatar_url);
     }
 
-    // DAO branding from treasury_settings overrides Social (and any prior name) when set.
-    if let Ok(Some(row)) = sqlx::query!(
-        "SELECT display_name, flag_logo FROM treasury_settings WHERE account_id = $1",
-        params.account_id.trim()
-    )
-    .fetch_optional(&state.db_pool)
-    .await
-    {
-        apply_treasury_settings_to_profile(&mut profile, row.display_name, row.flag_logo);
-    }
+    // DAO branding must match /api/treasury/config for the same account.
+    apply_treasury_branding(&state, &mut profile, params.account_id.trim()).await;
 
     Ok(Json(profile))
 }
@@ -322,16 +399,7 @@ pub async fn update_profile(
     // Return the merged profile the same way GET does (Social + local overrides).
     let mut profile = fetch_profile(&state, account_id)
         .await
-        .unwrap_or(ProfileData {
-            name: None,
-            address_book_name: None,
-            image: None,
-            background_image: None,
-            description: None,
-            linktree: None,
-            tags: None,
-            is_in_address_book: false,
-        });
+        .unwrap_or_else(|_| empty_profile());
     apply_local_profile_overrides(&mut profile, Some(display_name), Some(avatar_url));
 
     Ok(Json(profile))
@@ -468,6 +536,96 @@ mod tests {
             Some(serde_json::json!({
                 "url": "https://ipfs.near.social/ipfs/bafytestcid"
             }))
+        );
+    }
+}
+
+#[cfg(test)]
+mod integration_tests {
+    use crate::{AppState, routes::create_routes, utils::test_utils::build_test_state};
+    use axum::{
+        body::{Body, to_bytes},
+        http::{Request, StatusCode},
+    };
+    use serde_json::Value;
+    use sqlx::PgPool;
+    use std::sync::Arc;
+    use tower::ServiceExt;
+
+    const TREASURY_ID: &str = "branded-dao.sputnik-dao.near";
+    const TREASURY_NAME: &str = "Ergosum Private";
+
+    fn test_state(pool: PgPool) -> Arc<AppState> {
+        Arc::new(build_test_state(pool))
+    }
+
+    async fn seed_treasury_settings(pool: &PgPool, account_id: &str, display_name: &str) {
+        sqlx::query(
+            "INSERT INTO monitored_accounts (account_id) VALUES ($1) ON CONFLICT (account_id) DO NOTHING",
+        )
+        .bind(account_id)
+        .execute(pool)
+        .await
+        .expect("Should insert monitored account for branded treasury");
+
+        sqlx::query(
+            r#"
+            INSERT INTO treasury_settings (account_id, display_name)
+            VALUES ($1, $2)
+            ON CONFLICT (account_id) DO UPDATE
+            SET display_name = EXCLUDED.display_name
+            "#,
+        )
+        .bind(account_id)
+        .bind(display_name)
+        .execute(pool)
+        .await
+        .expect("Should insert treasury_settings row");
+    }
+
+    async fn response_json(response: axum::response::Response) -> (StatusCode, Value) {
+        let status = response.status();
+        let body = String::from_utf8(
+            to_bytes(response.into_body(), usize::MAX)
+                .await
+                .expect("Should read response body")
+                .to_vec(),
+        )
+        .expect("Response body should be valid UTF-8");
+        let json: Value = serde_json::from_str(&body)
+            .unwrap_or_else(|_| panic!("Response should be JSON. Body: {body}"));
+        (status, json)
+    }
+
+    /// Regression for #1328: a treasury with Settings → General display name must
+    /// surface that name on GET /api/user/profile, not a raw address.
+    #[sqlx::test]
+    async fn get_profile_returns_treasury_settings_display_name(pool: PgPool) {
+        let state = test_state(pool.clone());
+        let app = create_routes(state);
+        seed_treasury_settings(&pool, TREASURY_ID, TREASURY_NAME).await;
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/api/user/profile?accountId={TREASURY_ID}"))
+                    .body(Body::empty())
+                    .expect("Should build profile request"),
+            )
+            .await
+            .expect("Profile request should complete");
+
+        let (status, body) = response_json(response).await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "Profile should succeed. Body: {body}"
+        );
+        assert_eq!(
+            body["name"].as_str(),
+            Some(TREASURY_NAME),
+            "GET /api/user/profile must return treasury_settings.display_name"
         );
     }
 }

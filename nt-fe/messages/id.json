@@ -1140,7 +1140,7 @@
         "review": {
             "header": "Tinjau Detail",
             "youAreAdding": "Anda menambahkan",
-            "newRecipients": "{count, plural, other {# penerima baru}}",
+            "newRecipients": "{count, plural, =0 {Tidak ada penerima baru} other {# penerima baru}}",
             "onNetworks": "di {count, plural, other {# jaringan}}",
             "recipients": "Penerima",
             "allDuplicates": "Semua penerima yang diimpor sudah ada di buku alamat Anda. Kembali untuk mengunggah daftar berbeda atau hapus duplikat dari tinjauan ini.",
@@ -1925,8 +1925,8 @@
         "incompatible": "Tidak Kompatibel",
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
-        "nearComDescription": "Jaringan untuk trezu rahasia",
-        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com"
+        "nearComDescription": "Jaringan untuk near.com dan Trezu rahasia",
+        "nearDescription": "Jaringan untuk penarikan publik"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",
@@ -2208,6 +2208,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# penerima ditambahkan}}",
+        "alreadyExistsToast": "Penerima sudah ada di buku alamat",
         "addedSingleToast": "Penerima ditambahkan",
         "addFailedToast": "Gagal menambahkan penerima",
         "addSingleFailedToast": "Gagal menambahkan penerima",

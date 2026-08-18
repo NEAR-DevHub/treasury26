@@ -11,15 +11,12 @@ import { Textarea } from "@/components/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { AddressBookEntry } from "../types";
+import { normalizeAddressBookAddress } from "../utils/normalize-address";
 import {
     AddRecipientInput,
     type FormValues,
     RecipientRow,
 } from "./add-recipient-form";
-
-function normalizeAddress(address: string) {
-    return address.trim();
-}
 
 interface ReviewRecipientsProps extends StepProps {
     control: Control<FormValues>;
@@ -52,7 +49,9 @@ export function ReviewRecipients({
     const existingAddresses = useMemo(
         () =>
             new Set(
-                existingEntries.map((entry) => normalizeAddress(entry.address)),
+                existingEntries.map((entry) =>
+                    normalizeAddressBookAddress(entry.address),
+                ),
             ),
         [existingEntries],
     );
@@ -62,7 +61,7 @@ export function ReviewRecipients({
         for (let index = 0; index < recipients.length; index++) {
             const address = recipients[index]?.address;
             if (!address) continue;
-            const normalized = normalizeAddress(address);
+            const normalized = normalizeAddressBookAddress(address);
             if (existingAddresses.has(normalized) || seen.has(normalized)) {
                 duplicates.push(index);
             } else {

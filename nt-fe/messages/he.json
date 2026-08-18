@@ -1140,7 +1140,7 @@
         "review": {
             "header": "סקירת פרטים",
             "youAreAdding": "אתה מוסיף",
-            "newRecipients": "{count, plural, one {# נמען חדש} two {# נמענים חדשים} many {# נמענים חדשים} other {# נמענים חדשים}}",
+            "newRecipients": "{count, plural, =0 {אין נמענים חדשים} one {# נמען חדש} two {# נמענים חדשים} many {# נמענים חדשים} other {# נמענים חדשים}}",
             "onNetworks": "ב-{count, plural, one {# רשת} two {# רשתות} many {# רשתות} other {# רשתות}}",
             "recipients": "נמענים",
             "allDuplicates": "כל הנמענים המיובאים כבר קיימים בספר הכתובות שלך. חזור כדי להעלות רשימה אחרת או הסר כפילויות מסקירה זו.",
@@ -1925,8 +1925,8 @@
         "incompatible": "לא תואם",
         "comingSoon": "בקרוב",
         "forMembersOnly": "לחברים בלבד",
-        "nearComDescription": "רשת עבור trezu חסוי",
-        "nearDescription": "רשת למשיכה ציבורית וארנק near.com"
+        "nearComDescription": "רשת עבור near.com ו-Trezu חסוי",
+        "nearDescription": "רשת למשיכה ציבורית"
     },
     "addressBookTable": {
         "emptyTitle": "אין נמענים עדיין",
@@ -2208,6 +2208,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {נמען נוסף} two {# נמענים נוספו} many {# נמענים נוספו} other {# נמענים נוספו}}",
+        "alreadyExistsToast": "הנמען כבר קיים בספר הכתובות",
         "addedSingleToast": "נמען נוסף",
         "addFailedToast": "הוספת הנמענים נכשלה",
         "addSingleFailedToast": "הוספת הנמען נכשלה",

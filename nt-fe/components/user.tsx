@@ -359,16 +359,20 @@ export function TooltipUser({
     triggerProps,
 }: TooltipUserProps) {
     const t = useTranslations("user");
-    const { treasuryId, isGuestTreasury } = useTreasury();
+    const { treasuryId, isGuestTreasury, config } = useTreasury();
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading: isProfileLoading } =
         useProfile(bareAccountId);
+    const treasuryName =
+        bareAccountId && treasuryId && bareAccountId === treasuryId
+            ? config?.name
+            : undefined;
     const isSavedInAddressBook = profile?.isInAddressBook ?? false;
     const addressBookParams = new URLSearchParams({
         name: resolveUserDisplayName({
             accountId: bareAccountId,
             name,
-            profileName: profile?.name,
+            profileName: profile?.name ?? treasuryName,
             addressBookName: profile?.addressBookName,
             preferAddressBook,
         }),
@@ -468,15 +472,24 @@ export function User({
 }: UserProps) {
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading } = useProfile(bareAccountId);
+    const { treasuryId, config } = useTreasury();
+    const treasuryName =
+        bareAccountId && treasuryId && bareAccountId === treasuryId
+            ? config?.name
+            : undefined;
 
-    if (isLoading && !normalizeDisplayName(nameProp)) {
+    if (
+        isLoading &&
+        !normalizeDisplayName(nameProp) &&
+        !normalizeDisplayName(treasuryName)
+    ) {
         return <UserSkeleton variant={variant} size={size} />;
     }
 
     const resolvedName = resolveUserDisplayName({
         accountId: bareAccountId,
         name: nameProp,
-        profileName: profile?.name,
+        profileName: profile?.name ?? treasuryName,
         addressBookName: profile?.addressBookName,
         preferAddressBook,
     });

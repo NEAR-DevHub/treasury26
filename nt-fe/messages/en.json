@@ -1140,7 +1140,7 @@
         "review": {
             "header": "Review Details",
             "youAreAdding": "You're adding",
-            "newRecipients": "{count, plural, one {# new recipient} other {# new recipients}}",
+            "newRecipients": "{count, plural, =0 {No new recipients} one {# new recipient} other {# new recipients}}",
             "onNetworks": "on {count, plural, one {# network} other {# networks}}",
             "recipients": "Recipients",
             "allDuplicates": "All imported recipients already exist in your address book. Go back to upload a different list or remove duplicates from this review.",
@@ -1925,8 +1925,8 @@
         "incompatible": "Incompatible",
         "comingSoon": "Coming Soon",
         "forMembersOnly": "For Members Only",
-        "nearComDescription": "Network for confidential trezu",
-        "nearDescription": "Network for public withdrawal and near.com wallet"
+        "nearComDescription": "Network for near.com and confidential Trezu",
+        "nearDescription": "Network for public withdrawals"
     },
     "addressBookTable": {
         "emptyTitle": "No recipients yet",
@@ -2208,6 +2208,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Recipient added} other {# recipients added}}",
+        "alreadyExistsToast": "Recipient is already in your address book",
         "addedSingleToast": "Recipient added",
         "addFailedToast": "Failed to add recipients",
         "addSingleFailedToast": "Failed to add recipient",
