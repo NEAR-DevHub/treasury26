@@ -366,10 +366,10 @@ export function ConnectWalletSelector({
                 title={badge.label}
                 info={badge.tooltip}
                 className={cn(
-                    "shrink-0 rounded-lg px-2 py-[3px] text-xs font-semibold",
+                    "min-h-6 shrink-0 justify-center rounded-[8px] px-2 py-[3px] text-xs font-semibold leading-[14px]",
                     badge.isOffline
                         ? "bg-general-warning-background-faded text-general-warning-foreground"
-                        : "bg-general-success-background-faded text-general-success-foreground",
+                        : "border border-[#D5FFF0] bg-[#F0FFF9] text-[#009660] dark:border-[#076042] dark:bg-[#00C076]/15 dark:text-[#00EC97]",
                 )}
             />
         );
