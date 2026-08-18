@@ -79,6 +79,8 @@
     --destructive: rgb(207, 0, 28);
     --destructive-foreground: rgb(255, 255, 255);
     --border: rgb(245, 245, 245);
+    --general-foreground: rgb(23, 23, 23);
+    --general-muted-foreground: rgb(161, 161, 161);
     --general-border: rgba(229, 229, 229);
     --input: rgb(229, 229, 229);
     --ring: rgb(0, 192, 118);
@@ -99,9 +101,11 @@
     --general-warning-background-faded: rgb(254, 252, 232);
     --general-warning-border: rgb(254, 240, 138);
     --general-warning-foreground: rgb(161, 98, 7);
-    --general-tertiary: rgb(250, 250, 249);
+    --general-tertiary: rgb(250, 250, 250);
     --chart-area-fill: rgb(2, 7, 6);
+    --general-unofficial-border-2: rgb(229, 229, 229);
     --general-unofficial-border-3: rgb(212, 212, 212);
+    --general-unofficial-border-4: rgb(161, 161, 161);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgb(245, 245, 245);
     --general-unofficial-ghost-hover: rgba(0, 0, 0, 0.05);
@@ -172,6 +176,8 @@
     --destructive: rgb(255, 101, 104);
     --destructive-foreground: rgb(250, 250, 250);
     --border: rgb(40, 40, 40);
+    --general-foreground: rgb(255, 255, 255);
+    --general-muted-foreground: rgb(82, 82, 82);
     --general-border: rgba(64, 64, 64);
     --input: rgb(52, 52, 52);
     --ring: rgb(0, 236, 151);
@@ -207,7 +213,9 @@
     --general-unofficial-ghost-foreground: rgba(229, 229, 229);
     --general-unofficial-accent: rgba(38, 38, 38);
     --general-unofficial-accent-0: rgba(23, 23, 23);
+    --general-unofficial-border-2: rgb(38, 38, 38);
     --general-unofficial-border-3: rgb(64, 64, 64);
+    --general-unofficial-border-4: rgb(82, 82, 82);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgba(38, 38, 38);
     --general-unofficial-ghost-hover: rgba(255, 255, 255, 0.1);
@@ -288,6 +296,8 @@
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
     --color-border: var(--border);
+    --color-general-foreground: var(--general-foreground);
+    --color-general-muted-foreground: var(--general-muted-foreground);
     --color-general-border: var(--general-border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -316,7 +326,9 @@
     );
     --color-general-unofficial-accent: var(--general-unofficial-accent);
     --color-general-unofficial-accent-0: var(--general-unofficial-accent-0);
+    --color-general-unofficial-border-2: var(--general-unofficial-border-2);
     --color-general-unofficial-border-3: var(--general-unofficial-border-3);
+    --color-general-unofficial-border-4: var(--general-unofficial-border-4);
     --color-general-unofficial-border-5: var(--general-unofficial-border-5);
     --color-general-secondary: var(--general-secondary);
     --color-general-unofficial-ghost-hover: var(

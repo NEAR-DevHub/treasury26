@@ -125,8 +125,8 @@ function WalletCard({
             disabled={disabled}
             aria-disabled={disabled || dimmed}
             className={cn(
-                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-[19px] text-left dark:border-[#262626] dark:bg-general-unofficial-accent-0",
-                "transition-colors hover:border-gray-400 dark:hover:border-[#525252]",
+                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-[19px] text-left dark:border-general-unofficial-border-2 dark:bg-general-unofficial-accent-0",
+                "transition-colors hover:border-general-unofficial-border-4",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 "disabled:pointer-events-none",
                 dimmed
@@ -403,10 +403,10 @@ export function ConnectWalletSelector({
                         <NearBusinessLogo className="h-7" />
                     </div>
                     <div className="flex flex-col gap-[9px]">
-                        <h1 className="text-2xl font-bold leading-[1.2] dark:text-white">
+                        <h1 className="text-2xl font-bold leading-[1.2] text-general-foreground">
                             {headerTitle}
                         </h1>
-                        <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-muted-foreground dark:text-[#525252]">
+                        <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-general-muted-foreground">
                             <p>{t("walletSelector.subtitle")}</p>
                             <button
                                 type="button"
@@ -494,8 +494,8 @@ export function ConnectWalletSelector({
                         setIsGuideOpen(false);
                     }}
                 >
-                    <DialogContent className="gap-4 bg-[#FAFAFA] p-5 dark:bg-[#262626] sm:max-w-md!">
-                        <DialogHeader className="mx-0 border-b-0 bg-[#FAFAFA] px-0 pb-0 dark:bg-[#262626]">
+                    <DialogContent className="gap-4 bg-general-tertiary p-5 dark:bg-general-unofficial-accent sm:max-w-md!">
+                        <DialogHeader className="mx-0 border-b-0 bg-general-tertiary px-0 pb-0 dark:bg-general-unofficial-accent">
                             <DialogTitle className="text-left text-base font-semibold">
                                 {t("walletSelector.chooseNearWallet")}
                             </DialogTitle>
@@ -518,7 +518,6 @@ export function ConnectWalletSelector({
                                         title={wallet.label}
                                         disabled={isConnectingWallet}
                                         dimmed={isOfflineBlocked}
-                                        className="border-[#E5E5E5] hover:border-[#A1A1A1] dark:border-[#262626] dark:bg-[#171717] dark:hover:border-[#525252]"
                                         onClick={() =>
                                             handleWalletChoice(wallet)
                                         }
