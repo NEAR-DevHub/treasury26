@@ -26,8 +26,9 @@ import {
 } from "@/components/table";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { TokenDisplay } from "@/components/token-display-with-network";
+import { Address } from "@/components/address";
 import { Tooltip } from "@/components/tooltip";
-import { User } from "@/components/user";
+import { TooltipUser } from "@/components/user";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -433,16 +434,18 @@ export function ActivityTable({
                                     </TableCell>
                                     <TableCell className="min-w-[150px] max-w-[200px]">
                                         {fromId ? (
-                                            <User
+                                            <TooltipUser
                                                 accountId={fromId}
-                                                variant="details"
-                                                withLink={false}
-                                                withHoverCard
                                                 chainName={
                                                     activity.tokenMetadata
                                                         ?.chainName
                                                 }
-                                            />
+                                            >
+                                                <Address
+                                                    address={fromId}
+                                                    className="text-sm"
+                                                />
+                                            </TooltipUser>
                                         ) : (
                                             <span className="text-sm truncate block">
                                                 {getFromAccount(
@@ -456,16 +459,18 @@ export function ActivityTable({
                                     </TableCell>
                                     <TableCell className="min-w-[150px] max-w-[200px]">
                                         {toId ? (
-                                            <User
+                                            <TooltipUser
                                                 accountId={toId}
-                                                variant="details"
-                                                withLink={false}
-                                                withHoverCard
                                                 chainName={
                                                     activity.tokenMetadata
                                                         ?.chainName
                                                 }
-                                            />
+                                            >
+                                                <Address
+                                                    address={toId}
+                                                    className="text-sm"
+                                                />
+                                            </TooltipUser>
                                         ) : (
                                             <span className="text-sm truncate block">
                                                 {getToAccount(

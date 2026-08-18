@@ -1,11 +1,10 @@
 import { useTranslations } from "next-intl";
 import { TokenCell } from "./token-cell";
 import { StakingData } from "../../types/index";
-import { useLockupPool, useProfile } from "@/hooks/use-treasury-queries";
+import { useLockupPool } from "@/hooks/use-treasury-queries";
 import { Proposal } from "@/lib/proposals-api";
 import { useStakingFullAmount } from "../../hooks/use-staking-full-amount";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
-import { resolveUserDisplayName } from "@/components/user";
 
 interface StakingCellProps {
     data: StakingData;
@@ -33,13 +32,6 @@ export function StakingCell({
         proposal,
         treasuryId,
     );
-    const { data: profile } = useProfile(validator);
-    const address = validator
-        ? resolveUserDisplayName({
-              accountId: validator,
-              profileName: profile?.name,
-          })
-        : validator;
 
     const showAllLabel = data.isFullAmount && !resolvedAmount;
 
@@ -49,7 +41,7 @@ export function StakingCell({
                 title={<span>{t("allNear")}</span>}
                 subtitle={
                     validator
-                        ? t("validatorSubtitle", { address: address ?? "" })
+                        ? t("validatorSubtitle", { address: validator })
                         : undefined
                 }
                 timestamp={timestamp}

@@ -122,7 +122,7 @@ function JoinRequestsAssignStep({
                                         size="md"
                                         variant="details"
                                         withLink={false}
-                                        withHoverCard
+                                        truncateAddress={false}
                                     />
                                 </div>
                                 <FormField

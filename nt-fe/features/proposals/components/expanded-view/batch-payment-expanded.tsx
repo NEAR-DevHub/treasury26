@@ -100,6 +100,7 @@ function PaymentDisplay({
                     accountId={payment.recipient}
                     displayAddress={displayRecipient}
                     chainName={chainName}
+                    withHoverCard
                     preferAddressBook
                 />
             ),

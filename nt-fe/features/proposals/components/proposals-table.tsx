@@ -31,7 +31,8 @@ import { Policy } from "@/types/policy";
 import { TreasuryConfig } from "@/lib/api";
 import { FormattedDate } from "@/components/formatted-date";
 
-import { User } from "@/components/user";
+import { Address } from "@/components/address";
+import { TooltipUser } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
 import { useProposalKindLabel } from "../hooks/use-proposal-kind-label";
@@ -339,12 +340,9 @@ export function ProposalsTable({
                 cell: (info) => {
                     const value = info.getValue();
                     return (
-                        <User
-                            accountId={value}
-                            variant="details"
-                            withLink={false}
-                            withHoverCard
-                        />
+                        <TooltipUser accountId={value}>
+                            <Address address={value} />
+                        </TooltipUser>
                     );
                 },
             }),
