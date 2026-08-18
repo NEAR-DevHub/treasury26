@@ -61,7 +61,10 @@ function formatCatalogAssets(fetchedAssets: CatalogAssetDto[]): BridgeAsset[] {
         const name = asset.name || asset.assetName || symbol;
 
         const fallbackIcon = symbol.charAt(0).toUpperCase() || "";
-        const icon: string = isIconUrl(asset.icon) ? asset.icon : fallbackIcon;
+        const icon: string =
+            typeof asset.icon === "string" && isIconUrl(asset.icon)
+                ? asset.icon
+                : fallbackIcon;
 
         return {
             id: asset.id,
