@@ -10,7 +10,7 @@ export function NearBusinessLogo({ className }: NearBusinessLogoProps) {
     return (
         <svg
             className={className}
-            viewBox="0 0 210 28"
+            viewBox="0 0 212 28"
             fill="none"
             role="img"
             aria-label="NEAR Business"

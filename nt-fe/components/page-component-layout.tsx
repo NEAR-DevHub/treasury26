@@ -62,7 +62,12 @@ export function PageComponentLayout({
     const router = useRouter();
 
     return (
-        <div className="flex flex-col h-full">
+        <div
+            className={cn(
+                "flex h-full flex-col",
+                hideHeaderContent && "bg-general-tertiary",
+            )}
+        >
             <header
                 className={cn(
                     "flex items-center min-h-16 justify-between px-2 md:px-6",
