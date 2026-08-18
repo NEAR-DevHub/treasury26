@@ -53,17 +53,31 @@ pub async fn reserve_gas_credit(
         return Ok(CreditReservation::Unlimited);
     }
 
-    let reserved = sqlx::query_scalar::<_, i32>(
+    // Single atomic statement that also tells us WHY a decrement didn't happen.
+    // `row_exists` disambiguates the two "no credit reserved" cases that a bare
+    // `UPDATE ... RETURNING` collapses into one: a genuinely out-of-credits
+    // account (row present, 402) vs. a missing `monitored_accounts` row
+    // (data drift / untracked account — a backend problem, not a billing state).
+    // The conditional UPDATE stays atomic, so concurrency safety is unchanged.
+    let row = sqlx::query_as::<_, (bool, Option<i32>)>(
         r#"
-        UPDATE monitored_accounts
-        SET gas_covered_transactions = gas_covered_transactions - 1,
-            updated_at = NOW()
-        WHERE account_id = $1 AND gas_covered_transactions > 0
-        RETURNING gas_covered_transactions
+        WITH existing AS (
+            SELECT account_id FROM monitored_accounts WHERE account_id = $1
+        ),
+        reserved AS (
+            UPDATE monitored_accounts
+            SET gas_covered_transactions = gas_covered_transactions - 1,
+                updated_at = NOW()
+            WHERE account_id = $1 AND gas_covered_transactions > 0
+            RETURNING gas_covered_transactions
+        )
+        SELECT
+            EXISTS (SELECT 1 FROM existing) AS row_exists,
+            (SELECT gas_covered_transactions FROM reserved) AS remaining
         "#,
     )
     .bind(treasury_id.as_str())
-    .fetch_optional(pool)
+    .fetch_one(pool)
     .await
     .map_err(|e| {
         error_response(
@@ -72,11 +86,19 @@ pub async fn reserve_gas_credit(
         )
     })?;
 
-    match reserved {
-        Some(_) => Ok(CreditReservation::Consumed),
-        None => Err(error_response(
+    match row {
+        // A credit was decremented.
+        (_, Some(_)) => Ok(CreditReservation::Consumed),
+        // Row exists but held no credits: genuine billing state.
+        (true, None) => Err(error_response(
             StatusCode::PAYMENT_REQUIRED,
             "No gas-covered transaction credits remaining. Please upgrade your plan.",
+        )),
+        // No `monitored_accounts` row for this treasury at all. Surface as a 5xx
+        // so it pages the operator instead of mis-routing the user to "upgrade".
+        (false, None) => Err(error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Treasury {treasury_id} is not tracked for gas sponsorship"),
         )),
     }
 }
@@ -278,6 +300,31 @@ mod tests {
             1,
             "refund restores the credit"
         );
+    }
+
+    /// An existing row with no credits left is a genuine billing state → 402.
+    #[sqlx::test]
+    async fn out_of_credits_returns_payment_required(pool: sqlx::PgPool) {
+        let account: AccountId = "empty.sputnik-dao.near".parse().unwrap();
+        seed(&pool, account.as_str(), "plus", 0).await;
+
+        let err = reserve_gas_credit(&pool, &account, PlanType::Plus)
+            .await
+            .expect_err("no credits");
+        assert_eq!(err.0, StatusCode::PAYMENT_REQUIRED);
+    }
+
+    /// A missing `monitored_accounts` row is a backend/data problem, not a
+    /// billing state → 5xx (so it pages instead of telling the user to upgrade).
+    #[sqlx::test]
+    async fn missing_account_row_returns_server_error(pool: sqlx::PgPool) {
+        let account: AccountId = "untracked.sputnik-dao.near".parse().unwrap();
+        // Intentionally not seeded.
+
+        let err = reserve_gas_credit(&pool, &account, PlanType::Plus)
+            .await
+            .expect_err("untracked account");
+        assert_eq!(err.0, StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     /// Enterprise is unlimited: reservation always succeeds and never decrements.
