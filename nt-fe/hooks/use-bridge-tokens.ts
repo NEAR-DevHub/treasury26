@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ChainIcons } from "@/lib/api";
-import { fetchBridgeTokens } from "@/lib/bridge-api";
+import { fetchTokenCatalog, type TokenCatalogKind } from "@/lib/bridge-api";
 import { isIconUrl } from "@/lib/icon-url";
 
 export interface BridgeNetwork {
@@ -30,57 +30,96 @@ export interface BridgeAsset {
     networks: BridgeNetwork[];
 }
 
+/** Raw network row from deposit/swap token catalog APIs. */
+interface CatalogNetworkDto {
+    id: string;
+    name: string;
+    symbol: string;
+    chainIcons?: ChainIcons | null;
+    chainId: string;
+    decimals: number;
+    minDepositAmount?: string;
+    minWithdrawalAmount?: string;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
+    publicDepositSupported?: boolean;
+}
+
+/** Raw asset row from deposit/swap token catalog APIs. */
+interface CatalogAssetDto {
+    id: string;
+    assetName?: string;
+    name?: string;
+    icon?: string | null;
+    networks: CatalogNetworkDto[];
+}
+
+function formatCatalogAssets(fetchedAssets: CatalogAssetDto[]): BridgeAsset[] {
+    return fetchedAssets.map((asset) => {
+        // near.com tokenlist: `symbol` = ticker, `name` = full name.
+        const symbol = asset.assetName || asset.name || asset.id;
+        const name = asset.name || asset.assetName || symbol;
+
+        const fallbackIcon = symbol.charAt(0).toUpperCase() || "";
+        const icon: string = isIconUrl(asset.icon) ? asset.icon : fallbackIcon;
+
+        return {
+            id: asset.id,
+            symbol,
+            name,
+            icon,
+            networks: asset.networks.map((network) => ({
+                id: network.id,
+                name: network.name,
+                symbol: network.symbol === "wNEAR" ? "NEAR" : network.symbol,
+                chainIcons: network.chainIcons || null,
+                chainId: network.chainId,
+                decimals: network.decimals,
+                minDepositAmount: network.minDepositAmount,
+                minWithdrawalAmount: network.minWithdrawalAmount,
+                balanceAssetId: network.balanceAssetId || network.id,
+                quoteAssetId:
+                    network.quoteAssetId ||
+                    network.balanceAssetId ||
+                    network.id,
+                publicDepositSupported:
+                    network.publicDepositSupported !== false,
+            })),
+        };
+    });
+}
+
+export type UseTokenCatalogOptions = {
+    /** deposit = catalog+Bridge; swap = ∩ 1Click `/v0/tokens` */
+    kind?: TokenCatalogKind;
+    enabled?: boolean;
+};
+
 /**
- * Hook to fetch bridge tokens with React Query
+ * Fetch deposit or swap token catalogs.
+ * - deposit (default): near.com + Bridge, no 1Click ∩
+ * - swap: catalog ∩ 1Click `/v0/tokens`
  */
-export function useBridgeTokens(enabled: boolean = true) {
+export function useTokenCatalog({
+    kind = "deposit",
+    enabled = true,
+}: UseTokenCatalogOptions = {}) {
     return useQuery({
-        queryKey: ["bridgeTokens"],
+        queryKey: ["tokenCatalog", kind],
         queryFn: async () => {
-            const fetchedAssets = await fetchBridgeTokens();
-
-            const formattedAssets: BridgeAsset[] = fetchedAssets.map(
-                (asset: any) => {
-                    // near.com tokenlist: `symbol` = ticker, `name` = full name.
-                    const symbol = asset.assetName || asset.name || asset.id;
-                    const name = asset.name || asset.assetName || symbol;
-
-                    return {
-                        id: asset.id,
-                        symbol,
-                        name,
-                        icon: isIconUrl(asset.icon)
-                            ? asset.icon
-                            : symbol?.charAt(0)?.toUpperCase() || "",
-                        networks: asset.networks.map((network: any) => ({
-                            id: network.id,
-                            name: network.name,
-                            symbol:
-                                network.symbol === "wNEAR"
-                                    ? "NEAR"
-                                    : network.symbol,
-                            chainIcons: network.chainIcons || null,
-                            chainId: network.chainId,
-                            decimals: network.decimals,
-                            minDepositAmount: network.minDepositAmount,
-                            minWithdrawalAmount: network.minWithdrawalAmount,
-                            balanceAssetId:
-                                network.balanceAssetId || network.id,
-                            quoteAssetId:
-                                network.quoteAssetId ||
-                                network.balanceAssetId ||
-                                network.id,
-                            publicDepositSupported:
-                                network.publicDepositSupported !== false,
-                        })),
-                    };
-                },
-            );
-
-            return formattedAssets;
+            const fetchedAssets = await fetchTokenCatalog(kind);
+            return formatCatalogAssets(fetchedAssets as CatalogAssetDto[]);
         },
         enabled,
         staleTime: 1000 * 60 * 10, // 10 minutes
-        gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
+        gcTime: 1000 * 60 * 30, // 30 minutes
     });
+}
+
+/** @deprecated Prefer {@link useTokenCatalog}. */
+export function useBridgeTokens(
+    enabled: boolean = true,
+    kind: TokenCatalogKind = "deposit",
+) {
+    return useTokenCatalog({ enabled, kind });
 }

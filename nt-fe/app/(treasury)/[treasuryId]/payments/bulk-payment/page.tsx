@@ -23,7 +23,7 @@ import {
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import {
     RecipientNetworkSelect,
     type RecipientNetworkRuleOption,
@@ -75,7 +75,7 @@ export default function BulkPaymentPage() {
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
     const { data: bridgeAssets = [], isLoading: isBridgeAssetsLoading } =
-        useBridgeTokens(true);
+        useTokenCatalog({ kind: "swap" });
 
     const [step, setStep] = useState(0);
     // Empty until the user adds a recipient address and picks a network —

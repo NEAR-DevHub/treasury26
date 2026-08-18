@@ -66,9 +66,13 @@ pub struct ConfidentialDepositAddressStatusResult {
     pub origin_asset: Option<String>,
 }
 
+/// Matches near.com confidential deposit slippage (0.1% → 10 bips).
+const CONFIDENTIAL_DEPOSIT_SLIPPAGE_TOLERANCE: u32 = 10;
+
 /// For confidential treasuries, get a confidential quote to obtain the intents
 /// deposit address, then fetch the bridge deposit address for that quote address.
 ///
+/// Quote shape aligns with near.com: `FLEX_INPUT` + `ORIGIN_CHAIN` + `depositMode: SIMPLE`.
 /// Quote auth uses the app `ONECLICK_API_KEY` only — no DAO JWT required.
 async fn get_confidential_deposit_address(
     state: &Arc<AppState>,
@@ -83,8 +87,8 @@ async fn get_confidential_deposit_address(
 
     let url = format!("{}/v0/quote", state.env_vars.confidential_api_url);
 
-    // Try with the FE-provided amount (usually minDeposit), retrying with 10x
-    // if the quote API rejects as too low. Cap retries to limit API-key spend.
+    // Try with the FE-provided amount (usually minDeposit), retrying with the
+    // bridge floor from the error (or 10x) when the quote API rejects as too low.
     if amount == 0 {
         amount = 1;
     }
@@ -93,8 +97,8 @@ async fn get_confidential_deposit_address(
     for attempt in 0..3 {
         let quote_body = serde_json::json!({
             "dry": false,
-            "swapType": "EXACT_INPUT",
-            "slippageTolerance": 100,
+            "swapType": "FLEX_INPUT",
+            "slippageTolerance": CONFIDENTIAL_DEPOSIT_SLIPPAGE_TOLERANCE,
             "originAsset": token_id,
             "depositType": "INTENTS",
             "destinationAsset": token_id,
@@ -110,9 +114,14 @@ async fn get_confidential_deposit_address(
         // API key is attached in send_oneclick_request; DAO JWT is not required.
         match super::quote::send_oneclick_request(state, &url, &quote_body, None).await {
             Ok(response_body) => {
-                let quote_deposit_address = response_body
-                    .get("quote")
-                    .and_then(|q| q.get("depositAddress"))
+                let quote = response_body.get("quote").ok_or_else(|| {
+                    (
+                        StatusCode::BAD_GATEWAY,
+                        "Confidential quote missing quote object".to_string(),
+                    )
+                })?;
+                let quote_deposit_address = quote
+                    .get("depositAddress")
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| {
                         (
@@ -122,12 +131,26 @@ async fn get_confidential_deposit_address(
                     })?
                     .to_string();
 
-                let mut bridge_result =
-                    fetch_bridge_deposit_address(state, &quote_deposit_address, chain).await?;
-                bridge_result.min_amount = Some(amount.to_string());
-                bridge_result.expires_at = Some(deadline.clone());
-                bridge_result.quote_deposit_address = Some(quote_deposit_address);
-                return Ok(bridge_result);
+                let memo = quote
+                    .get("depositMemo")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string);
+                let quoted_min = quote
+                    .get("minAmountIn")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string)
+                    .or_else(|| Some(amount.to_string()));
+
+                // ORIGIN_CHAIN: quote.depositAddress is already the chain deposit
+                // address (same as near.com). No Bridge remap needed.
+                let _ = chain;
+                return Ok(DepositAddressResult {
+                    address: quote_deposit_address.clone(),
+                    min_amount: quoted_min,
+                    memo,
+                    expires_at: Some(deadline.clone()),
+                    quote_deposit_address: Some(quote_deposit_address),
+                });
             }
             Err((status, msg)) => {
                 last_error = msg.clone();
@@ -137,17 +160,31 @@ async fn get_confidential_deposit_address(
                 if !is_amount_error || attempt == 2 {
                     return Err((status, msg));
                 }
+                let next_amount = parse_bridge_minimum_hint(&msg)
+                    .filter(|n| *n > amount)
+                    .unwrap_or_else(|| amount.saturating_mul(10).max(10));
                 tracing::info!(
-                    "Quote amount {} too low (attempt {}), retrying with 10x",
+                    "Quote amount {} too low (attempt {}), retrying with {}",
                     amount,
-                    attempt + 1
+                    attempt + 1,
+                    next_amount
                 );
-                amount *= 10;
+                amount = next_amount;
             }
         }
     }
 
     Err((StatusCode::BAD_GATEWAY, last_error))
+}
+
+/// Parse `try at least N` from 1Click bridge-floor errors.
+fn parse_bridge_minimum_hint(msg: &str) -> Option<u128> {
+    let lower = msg.to_lowercase();
+    let marker = "try at least ";
+    let idx = lower.find(marker)?;
+    let rest = msg.get(idx + marker.len()..)?;
+    let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+    digits.parse().ok().filter(|n| *n > 0)
 }
 
 /// Fetch deposit address from the bridge RPC for a given account and chain.
@@ -389,5 +426,15 @@ mod tests {
             serde_json::from_str(json).expect("bridge payloads omit expiresAt");
         assert_eq!(parsed.address, "abc");
         assert_eq!(parsed.expires_at, None);
+    }
+
+    #[test]
+    fn parse_bridge_minimum_hint_reads_try_at_least() {
+        assert_eq!(
+            parse_bridge_minimum_hint("Amount is too low for bridge, try at least 324044069993519"),
+            Some(324044069993519)
+        );
+        assert_eq!(parse_bridge_minimum_hint("tokenIn is not valid"), None);
+        assert_eq!(parse_bridge_minimum_hint("try at least 0"), None);
     }
 }
