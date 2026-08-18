@@ -122,13 +122,12 @@ pub async fn relay_delegate_action(
 
     // 6. Compensate the DAO contract for the new proposal's storage. This is the first
     //    step that moves sponsor NEAR; a failure refunds the reserved credit.
-    if compensate_proposal_storage {
-        if let Err(top_up_error) =
+    if compensate_proposal_storage
+        && let Err(top_up_error) =
             policy::top_up_proposal_storage(&state, &treasury_id, proposal_storage_cost).await
-        {
-            accounting::spawn_refund_gas_credit(&state, &treasury_id, credit_reservation);
-            return Err(top_up_error);
-        }
+    {
+        accounting::spawn_refund_gas_credit(&state, &treasury_id, credit_reservation);
+        return Err(top_up_error);
     }
     // The proposal-storage top-up leaves the sponsor's account the moment it lands,
     // so it is charged to `paid_near` even if a later step fails. (Already zero when

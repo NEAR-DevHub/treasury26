@@ -1421,8 +1421,12 @@ mod tests {
 
     #[test]
     fn intents_withdraw_args_escape_malicious_recipient() {
-        let args =
-            build_intents_withdraw_args("usdt.tether-token.near", INJECTION_RECIPIENT, U128(500), false);
+        let args = build_intents_withdraw_args(
+            "usdt.tether-token.near",
+            INJECTION_RECIPIENT,
+            U128(500),
+            false,
+        );
         let v: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&args).unwrap();
         let obj = v.as_object().unwrap();
         assert_eq!(obj.len(), 3, "no extra keys may be injected: {args}");
@@ -1433,7 +1437,8 @@ mod tests {
 
     #[test]
     fn intents_withdraw_poa_args_escape_recipient_in_memo() {
-        let args = build_intents_withdraw_args("eth.omft.near", INJECTION_RECIPIENT, U128(500), true);
+        let args =
+            build_intents_withdraw_args("eth.omft.near", INJECTION_RECIPIENT, U128(500), true);
         let v: near_sdk::serde_json::Value = near_sdk::serde_json::from_str(&args).unwrap();
         let obj = v.as_object().unwrap();
         assert_eq!(obj.len(), 4, "no extra keys may be injected: {args}");
@@ -1451,7 +1456,8 @@ mod tests {
         // the fields the receiving contracts expect (order is irrelevant to
         // JSON parsing), so real payouts to 1Click/NEP-141 are unchanged.
         let ft: near_sdk::serde_json::Value =
-            near_sdk::serde_json::from_str(&build_ft_transfer_args("bob.near", U128(1000))).unwrap();
+            near_sdk::serde_json::from_str(&build_ft_transfer_args("bob.near", U128(1000)))
+                .unwrap();
         assert_eq!(ft["receiver_id"], "bob.near");
         assert_eq!(ft["amount"], "1000");
         assert_eq!(ft.as_object().unwrap().len(), 2);

@@ -208,13 +208,11 @@ pub struct ParsedRelay {
     pub proposal_storage_bytes: u128,
 }
 
-/// Fixed per-`add_proposal` overhead (bytes) added to the measured proposal args when
-/// estimating the DAO storage a new proposal occupies. Covers the proposer account id,
-/// status, empty vote maps, and submission timestamp Sputnik stores alongside the
-/// caller-provided description + kind. Deliberately conservative: the estimate is
-/// derived server-side so a client cannot inflate the sponsored top-up, and it is
+/// Conservative flat padding (bytes) added to the measured proposal args for
+/// Sputnik's per-proposal overhead. The exact value isn't load-bearing: the
+/// estimate is derived server-side (a client can't inflate the top-up) and
 /// clamped to a hard maximum before any NEAR is fronted.
-const PROPOSAL_STORAGE_BASE_BYTES: u128 = 80;
+const PROPOSAL_STORAGE_BASE_BYTES: u128 = 64;
 
 /// The `proposal` argument of `add_proposal`. `kind` is kept as raw JSON because the
 /// relay does not authorize on it — DAO permissions are enforced on-chain and via
