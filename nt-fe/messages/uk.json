@@ -1909,6 +1909,7 @@
         "comingSoon": "Скоро",
         "forMembersOnly": "Лише для учасників",
         "nearComDescription": "Мережа для конфіденційного trezu",
+        "nearComDescriptionPublic": "Мережа для near.com",
         "nearDescription": "Мережа для публічного виведення та гаманця near.com"
     },
     "addressBookTable": {

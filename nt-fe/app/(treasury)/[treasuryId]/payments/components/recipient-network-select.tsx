@@ -170,7 +170,9 @@ export function RecipientNetworkSelect({
                 networkLabel: tAddressBookTable("network"),
                 fallbackName: "near.com",
             }),
-            description: isConfidential ? t("nearComDescription") : undefined,
+            description: isConfidential
+                ? t("nearComDescription")
+                : t("nearComDescriptionPublic"),
             icon: NEAR_COM_ICON,
             networkName: NEAR_NETWORK_ID,
         }),
@@ -227,15 +229,16 @@ export function RecipientNetworkSelect({
         const isNearComRecipient =
             hasPrefix && !!accountId && isValidNearAddressFormat(accountId);
 
-        // nearcom:<validNear> → near.com only (confidential). No near.com otherwise.
+        // nearcom:<validNear> → near.com only (public + confidential).
+        // Never listed as a free option — only when the recipient uses the prefix.
         if (isNearComRecipient) {
-            return isConfidential ? [nearComOption] : [];
+            return [nearComOption];
         }
 
         return [...tokenNetworkOptions].sort((a, b) =>
             a.name.localeCompare(b.name),
         );
-    }, [isConfidential, nearComOption, recipient, tokenNetworkOptions]);
+    }, [nearComOption, recipient, tokenNetworkOptions]);
 
     const selectedOption = useMemo(() => {
         if (!value) return null;
