@@ -125,8 +125,8 @@ function WalletCard({
             disabled={disabled}
             aria-disabled={disabled || dimmed}
             className={cn(
-                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-[19px] text-left dark:border-[#262626] dark:bg-general-unofficial-accent-0",
-                "transition-colors hover:border-gray-400 dark:hover:border-[#525252]",
+                "flex flex-col items-start gap-5 rounded-2xl border border-[#E5E5E5] bg-white p-[19px] text-left dark:border-[#262626] dark:bg-general-unofficial-accent-0",
+                "transition-colors hover:border-[#A1A1A1] dark:hover:border-[#525252]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 "disabled:pointer-events-none",
                 dimmed
@@ -403,10 +403,10 @@ export function ConnectWalletSelector({
                         <NearBusinessLogo className="h-7" />
                     </div>
                     <div className="flex flex-col gap-[9px]">
-                        <h1 className="text-2xl font-bold leading-[1.2] dark:text-white">
+                        <h1 className="text-2xl font-bold leading-[1.2] text-[#171717] dark:text-white">
                             {headerTitle}
                         </h1>
-                        <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-muted-foreground dark:text-[#525252]">
+                        <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-[#A1A1A1] dark:text-[#525252]">
                             <p>{t("walletSelector.subtitle")}</p>
                             <button
                                 type="button"
