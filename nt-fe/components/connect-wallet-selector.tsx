@@ -492,8 +492,8 @@ export function ConnectWalletSelector({
                         setIsGuideOpen(false);
                     }}
                 >
-                    <DialogContent className="gap-4 p-5 sm:max-w-md!">
-                        <DialogHeader className="mx-0 border-b-0 px-0 pb-0">
+                    <DialogContent className="gap-4 bg-[#FAFAFA] p-5 dark:bg-[#262626] sm:max-w-md!">
+                        <DialogHeader className="mx-0 border-b-0 bg-[#FAFAFA] px-0 pb-0 dark:bg-[#262626]">
                             <DialogTitle className="text-left text-base font-semibold">
                                 {t("walletSelector.chooseNearWallet")}
                             </DialogTitle>
@@ -516,6 +516,7 @@ export function ConnectWalletSelector({
                                         title={wallet.label}
                                         disabled={isConnectingWallet}
                                         dimmed={isOfflineBlocked}
+                                        className="border-[#E5E5E5] hover:border-[#A1A1A1] dark:border-[#262626] dark:bg-[#171717] dark:hover:border-[#525252]"
                                         onClick={() =>
                                             handleWalletChoice(wallet)
                                         }
