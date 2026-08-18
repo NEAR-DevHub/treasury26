@@ -762,7 +762,7 @@ export function TreasuryOnboardingPage({
     );
 
     const loginScreenBody = (
-        <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-8">
+        <div className="mx-auto w-full max-w-[448px] space-y-3 md:mt-3">
             <ConnectWalletSelector
                 source={isCreateRoute ? "/create" : "/"}
                 connectFlow={isCreateRoute ? "onboarding" : "within_treasury"}
@@ -926,7 +926,11 @@ export function TreasuryOnboardingPage({
                     hideHeaderBottomBorder
                     hideHeaderContent={isRootSignInScreen}
                     logo={headerLogo}
-                    mainClassName="pt-1"
+                    mainClassName={cn(
+                        "pt-1",
+                        isRootSignInScreen &&
+                            "min-h-[calc(100vh-4rem)] bg-general-tertiary",
+                    )}
                 >
                     {showLoginScreen
                         ? loginScreenBody
@@ -949,7 +953,11 @@ export function TreasuryOnboardingPage({
             hideHeaderBottomBorder
             hideHeaderContent={isRootSignInScreen}
             logo={headerLogo}
-            mainClassName="pt-1"
+            mainClassName={cn(
+                "pt-1",
+                isRootSignInScreen &&
+                    "min-h-[calc(100vh-4rem)] bg-general-tertiary",
+            )}
         >
             <CreationProgressModal
                 open={progressOpen}

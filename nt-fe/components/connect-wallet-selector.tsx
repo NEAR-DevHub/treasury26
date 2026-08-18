@@ -125,8 +125,8 @@ function WalletCard({
             disabled={disabled}
             aria-disabled={disabled || dimmed}
             className={cn(
-                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-5 text-left",
-                "transition-colors hover:border-gray-400 dark:hover:border-gray-500",
+                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-[19px] text-left dark:border-[#262626] dark:bg-general-unofficial-accent-0",
+                "transition-colors hover:border-gray-400 dark:hover:border-[#525252]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 "disabled:pointer-events-none",
                 dimmed
@@ -140,7 +140,7 @@ function WalletCard({
                 {badge}
             </div>
             <div className="flex w-full flex-col gap-[3px]">
-                <span className="text-base font-semibold leading-tight">
+                <span className="text-base font-semibold leading-[1.2]">
                     {title}
                 </span>
                 {description && (
@@ -398,22 +398,24 @@ export function ConnectWalletSelector({
                         <ArrowLeft className="size-4" />
                     </Button>
                 )}
-                <div className="flex items-center justify-start">
-                    <NearBusinessLogo className="h-7" />
-                </div>
-                <div className="flex flex-col gap-[9px]">
-                    <h1 className="text-2xl font-bold leading-tight">
-                        {headerTitle}
-                    </h1>
-                    <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-muted-foreground">
-                        <p>{t("walletSelector.subtitle")}</p>
-                        <button
-                            type="button"
-                            className="w-fit cursor-pointer rounded-sm underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            onClick={() => setIsGuideOpen(true)}
-                        >
-                            {t("walletSelector.helpCta")}
-                        </button>
+                <div className="flex flex-col gap-[42px]">
+                    <div className="flex items-center justify-start">
+                        <NearBusinessLogo className="h-7" />
+                    </div>
+                    <div className="flex flex-col gap-[9px]">
+                        <h1 className="text-2xl font-bold leading-[1.2] dark:text-white">
+                            {headerTitle}
+                        </h1>
+                        <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-muted-foreground dark:text-[#525252]">
+                            <p>{t("walletSelector.subtitle")}</p>
+                            <button
+                                type="button"
+                                className="w-fit cursor-pointer rounded-sm underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                onClick={() => setIsGuideOpen(true)}
+                            >
+                                {t("walletSelector.helpCta")}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <SlotWarning slot="login" />
@@ -454,11 +456,11 @@ export function ConnectWalletSelector({
                     })()}
                 {passkeyOption && (
                     <div role="separator" className="flex items-center gap-6">
-                        <span className="h-px flex-1 bg-general-border" />
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="h-px flex-1 bg-general-border dark:bg-[#262626]" />
+                        <span className="text-sm font-medium leading-6 text-muted-foreground">
                             {t("walletSelector.web3WalletsSeparator")}
                         </span>
-                        <span className="h-px flex-1 bg-general-border" />
+                        <span className="h-px flex-1 bg-general-border dark:bg-[#262626]" />
                     </div>
                 )}
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
