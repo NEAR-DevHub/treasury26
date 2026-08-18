@@ -65,7 +65,7 @@ export function PageComponentLayout({
         <div
             className={cn(
                 "flex h-full flex-col",
-                hideHeaderContent && "bg-[#FAFAFA] dark:bg-general-tertiary",
+                hideHeaderContent && "bg-general-tertiary",
             )}
         >
             <header

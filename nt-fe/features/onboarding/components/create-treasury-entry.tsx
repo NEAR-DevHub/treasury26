@@ -929,7 +929,7 @@ export function TreasuryOnboardingPage({
                     mainClassName={cn(
                         "pt-1",
                         isRootSignInScreen &&
-                            "min-h-[calc(100vh-4rem)] bg-[#FAFAFA] dark:bg-general-tertiary",
+                            "min-h-[calc(100vh-4rem)] bg-general-tertiary",
                     )}
                 >
                     {showLoginScreen
@@ -956,7 +956,7 @@ export function TreasuryOnboardingPage({
             mainClassName={cn(
                 "pt-1",
                 isRootSignInScreen &&
-                    "min-h-[calc(100vh-4rem)] bg-[#FAFAFA] dark:bg-general-tertiary",
+                    "min-h-[calc(100vh-4rem)] bg-general-tertiary",
             )}
         >
             <CreationProgressModal
