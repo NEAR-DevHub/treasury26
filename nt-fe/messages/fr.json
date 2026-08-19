@@ -1230,6 +1230,7 @@
         "confidentialTooltip": "Les informations du destinataire et le montant demande sont entierement confidentiels."
     },
     "bulkPayment": {
+        "title": "Paiement groupé",
         "comingSoonToast": "Les paiements groupés arrivent bientôt !",
         "submittingList": "Soumission de la liste de paiements groupés",
         "submittingProposal": "Soumission de la proposition",
@@ -1254,6 +1255,11 @@
             "provideData": "Fournir les données",
             "chooseFile": "Choisir un fichier",
             "orDragDrop": "ou glissez-déposez",
+            "token": "Jeton",
+            "destinationNetwork": "Réseau de destination",
+            "uploadFileFirst": "Importez d’abord un fichier",
+            "exchangeAddressWarning": "Je comprends qu’un envoi direct vers une adresse de plateforme d’échange peut entraîner une perte de fonds ou d’autres problèmes.",
+            "removeFile": "Supprimer le fichier",
             "maxFileSize": "max 1 fichier jusqu'à 1,5 Mo, fichier CSV uniquement",
             "noFilePrompt": "Vous n'avez pas de fichier à télécharger ?",
             "downloadTemplate": "Télécharger un modèle",

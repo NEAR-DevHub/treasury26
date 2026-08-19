@@ -1,28 +1,28 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, CircleDashed } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
+import { HighlightedText } from "@/components/highlighted-text";
 import { InputBlock } from "@/components/input-block";
-import { WarningMessage } from "@/components/warning-message";
 import { getNetworkDisplayName } from "@/components/token-display";
 import type { Token } from "@/components/token-input";
-import { NEAR_NETWORK_ID, NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import {
-    getNetworkDisplayCaseClass,
-    getLocalizedNetworkDisplayName,
-} from "@/lib/intents-network";
-import { NEAR_COM_ICON, NEAR_CHAIN_ICONS } from "@/constants/token";
+import { WarningMessage } from "@/components/warning-message";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_CHAIN_ICONS, NEAR_COM_ICON } from "@/constants/token";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { isValidAddress } from "@/lib/address-validation";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
+import {
+    getLocalizedNetworkDisplayName,
+    getNetworkDisplayCaseClass,
+} from "@/lib/intents-network";
 import { isValidNearAddressFormat } from "@/lib/near-validation";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
-import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
-import { HighlightedText } from "@/components/highlighted-text";
 import { cn } from "@/lib/utils";
 
 export interface RecipientNetworkOption {
@@ -63,6 +63,13 @@ interface RecipientNetworkSelectProps {
      * When false, every option is available immediately (no address gate).
      */
     requireRecipient?: boolean;
+    /** Card treatment used by the bulk-payment flow. */
+    appearance?: "default" | "card";
+    /** Optional copy overrides for flows with different picker semantics. */
+    label?: string;
+    placeholder?: string;
+    recipientRequiredPlaceholder?: string;
+    modalTitle?: string;
 }
 
 export type RecipientNetworkRuleOption = RecipientNetworkOption & {
@@ -144,6 +151,11 @@ export function RecipientNetworkSelect({
     invalid = false,
     errorMessage = null,
     requireRecipient = true,
+    appearance = "default",
+    label,
+    placeholder,
+    recipientRequiredPlaceholder,
+    modalTitle,
 }: RecipientNetworkSelectProps) {
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
@@ -289,16 +301,61 @@ export function RecipientNetworkSelect({
 
     const placeholderText = requireRecipient
         ? !recipient
-            ? t("enterAddressFirst")
+            ? (recipientRequiredPlaceholder ?? t("enterAddressFirst"))
             : !hasCompatibleNetwork
               ? t("noCompatibleNetwork")
-              : t("placeholder")
-        : t("placeholder");
+              : (placeholder ?? t("placeholder"))
+        : (placeholder ?? t("placeholder"));
 
-    return (
-        <>
+    const selectorButton =
+        appearance === "card" ? (
+            <div
+                className={cn(
+                    "flex h-[72px] items-center rounded-3xl border border-general-border bg-card px-4",
+                    invalid && "border-destructive bg-destructive/5",
+                )}
+            >
+                <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setOpen(true)}
+                    disabled={isDisabled}
+                    className="h-full w-full justify-start gap-3 px-0! hover:bg-transparent focus-visible:bg-transparent disabled:opacity-100 dark:hover:bg-transparent dark:focus-visible:bg-transparent"
+                >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
+                        {selectedOption && !isDisabled ? (
+                            <img
+                                src={selectedOption.icon}
+                                alt=""
+                                className="size-5 rounded-full object-cover"
+                            />
+                        ) : (
+                            <CircleDashed className="size-5 text-muted-foreground" />
+                        )}
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col items-start gap-px text-left">
+                        <span className="text-sm font-medium leading-5 text-muted-foreground">
+                            {label ?? t("label")}
+                        </span>
+                        <span
+                            className={cn(
+                                "max-w-full truncate text-base font-semibold leading-[1.2]",
+                                isDisabled || !selectedOption
+                                    ? "text-muted-foreground"
+                                    : "text-foreground",
+                            )}
+                        >
+                            {selectedOption && !isDisabled
+                                ? selectedOption.name
+                                : placeholderText}
+                        </span>
+                    </span>
+                    <ChevronDown className="ml-auto size-6 shrink-0 text-muted-foreground" />
+                </Button>
+            </div>
+        ) : (
             <InputBlock
-                title={t("label")}
+                title={label ?? t("label")}
                 interactive={!isDisabled}
                 disabled={isDisabled}
                 invalid={invalid}
@@ -327,6 +384,11 @@ export function RecipientNetworkSelect({
                     />
                 )}
             </InputBlock>
+        );
+
+    return (
+        <>
+            {selectorButton}
             {errorMessage && (
                 <p className="text-sm text-destructive mt-1">{errorMessage}</p>
             )}
@@ -334,7 +396,7 @@ export function RecipientNetworkSelect({
             <SelectModal
                 isOpen={open}
                 onClose={() => setOpen(false)}
-                title={t("title")}
+                title={modalTitle ?? t("title")}
                 options={[]}
                 sections={sections}
                 selectedId={value}

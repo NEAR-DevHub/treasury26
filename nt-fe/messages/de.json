@@ -1230,6 +1230,7 @@
         "confidentialTooltip": "Empfaengerdaten und der angeforderte Betrag sind vollstaendig vertraulich."
     },
     "bulkPayment": {
+        "title": "Sammelzahlung",
         "comingSoonToast": "Sammelzahlungen kommen demnächst!",
         "submittingList": "Sammelzahlungsliste wird übermittelt",
         "submittingProposal": "Vorschlag wird übermittelt",
@@ -1254,6 +1255,11 @@
             "provideData": "Daten bereitstellen",
             "chooseFile": "Datei auswählen",
             "orDragDrop": "oder per Drag & Drop",
+            "token": "Token",
+            "destinationNetwork": "Zielnetzwerk",
+            "uploadFileFirst": "Laden Sie zuerst eine Datei hoch",
+            "exchangeAddressWarning": "Ich verstehe, dass das Senden direkt an eine Börsenadresse zum Verlust von Geldern oder anderen Problemen führen kann.",
+            "removeFile": "Datei entfernen",
             "maxFileSize": "max. 1 Datei bis zu 1,5 MB, nur CSV-Datei",
             "noFilePrompt": "Keine Datei zum Hochladen?",
             "downloadTemplate": "Vorlage herunterladen",

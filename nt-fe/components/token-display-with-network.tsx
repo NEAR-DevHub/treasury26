@@ -1,11 +1,11 @@
-import { ChainIcons } from "@/lib/api";
+import type { ChainIcons } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 interface TokenDisplayProps {
     symbol: string;
     icon: string;
     chainIcons?: ChainIcons;
-    iconSize?: "sm" | "md" | "lg" | "xl";
+    iconSize?: "sm" | "md" | "lg" | "xl" | "2xl";
 }
 
 const iconSizeClasses = {
@@ -13,6 +13,7 @@ const iconSizeClasses = {
     md: "size-5",
     lg: "size-6",
     xl: "size-9",
+    "2xl": "size-10 border border-[rgba(23,23,23,0.1)]",
 };
 
 const networkIconSizeClasses = {
@@ -20,6 +21,7 @@ const networkIconSizeClasses = {
     md: "size-3",
     lg: "size-3",
     xl: "size-4",
+    "2xl": "size-4",
 };
 
 export const TokenDisplay = ({
@@ -54,7 +56,14 @@ export const TokenDisplay = ({
                 </div>
             )}
             {networkIcon && (
-                <div className="absolute -right-1 -bottom-1 flex items-center justify-center rounded-full bg-muted border border-border">
+                <div
+                    className={cn(
+                        "absolute -right-1 -bottom-1 flex items-center justify-center rounded-full border bg-muted",
+                        iconSize === "2xl"
+                            ? "border-general-border"
+                            : "border-border",
+                    )}
+                >
                     <img
                         src={networkIcon}
                         alt="network"

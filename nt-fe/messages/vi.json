@@ -1230,6 +1230,7 @@
         "confidentialTooltip": "Thong tin nguoi nhan va so tien yeu cau duoc bao mat hoan toan."
     },
     "bulkPayment": {
+        "title": "Thanh toán hàng loạt",
         "comingSoonToast": "Thanh toán hàng loạt sắp ra mắt!",
         "submittingList": "Đang gửi danh sách thanh toán hàng loạt",
         "submittingProposal": "Đang gửi đề xuất",
@@ -1254,6 +1255,11 @@
             "provideData": "Cung cấp dữ liệu",
             "chooseFile": "Chọn tệp",
             "orDragDrop": "hoặc kéo và thả",
+            "token": "Token",
+            "destinationNetwork": "Mạng đích",
+            "uploadFileFirst": "Hãy tải tệp lên trước",
+            "exchangeAddressWarning": "Tôi hiểu rằng gửi trực tiếp đến địa chỉ sàn giao dịch có thể dẫn đến mất tiền hoặc các vấn đề khác.",
+            "removeFile": "Xóa tệp",
             "maxFileSize": "tối đa 1 tệp lên đến 1.5 MB, chỉ chấp nhận tệp CSV",
             "noFilePrompt": "Không có tệp để tải lên?",
             "downloadTemplate": "Tải xuống mẫu",

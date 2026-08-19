@@ -1230,6 +1230,7 @@
         "confidentialTooltip": "收款人信息和请求金额完全保密。"
     },
     "bulkPayment": {
+        "title": "批量付款",
         "comingSoonToast": "批量付款功能即将推出!",
         "submittingList": "正在提交批量付款列表",
         "submittingProposal": "正在提交提案",
@@ -1254,6 +1255,11 @@
             "provideData": "提供数据",
             "chooseFile": "选择文件",
             "orDragDrop": "或拖放至此",
+            "token": "代币",
+            "destinationNetwork": "目标网络",
+            "uploadFileFirst": "请先上传文件",
+            "exchangeAddressWarning": "我了解，直接发送到交易所地址可能会导致资金损失或其他问题。",
+            "removeFile": "移除文件",
             "maxFileSize": "最多 1 个文件,最大 1.5 MB,仅限 CSV 文件",
             "noFilePrompt": "没有文件可上传?",
             "downloadTemplate": "下载模板",
