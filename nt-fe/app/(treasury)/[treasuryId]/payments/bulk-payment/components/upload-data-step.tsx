@@ -403,14 +403,14 @@ export function UploadDataStep({
                     <TabsList className="h-12 w-full justify-stretch gap-1 rounded-2xl border border-general-border bg-transparent">
                         <TabsTrigger
                             value="upload"
-                            className="h-10 flex-1 rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
+                            className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
                         >
                             <WalletCards className="size-4" />
                             {t("uploadFile")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="paste"
-                            className="h-10 flex-1 rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
+                            className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
                         >
                             <Users className="size-4" />
                             {t("provideData")}
