@@ -1230,6 +1230,7 @@
         "confidentialTooltip": "수취인 정보와 요청 금액은 완전히 기밀입니다."
     },
     "bulkPayment": {
+        "title": "일괄 결제",
         "comingSoonToast": "일괄 결제는 곧 출시됩니다!",
         "submittingList": "일괄 결제 목록 제출 중",
         "submittingProposal": "제안 제출 중",
@@ -1254,6 +1255,11 @@
             "provideData": "데이터 제공",
             "chooseFile": "파일 선택",
             "orDragDrop": "또는 드래그 앤 드롭",
+            "token": "토큰",
+            "destinationNetwork": "대상 네트워크",
+            "uploadFileFirst": "먼저 파일을 업로드하세요",
+            "exchangeAddressWarning": "거래소 주소로 직접 전송하면 자금 손실 또는 기타 문제가 발생할 수 있음을 이해합니다.",
+            "removeFile": "파일 삭제",
             "maxFileSize": "최대 1개 파일, 1.5 MB까지, CSV 파일만 가능",
             "noFilePrompt": "업로드할 파일이 없으신가요?",
             "downloadTemplate": "템플릿 다운로드",

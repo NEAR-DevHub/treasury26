@@ -4,9 +4,9 @@ import { ChevronDown, ChevronLeft, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    useMergedTokens,
     type MergedNetwork,
     type MergedToken,
+    useMergedTokens,
 } from "@/hooks/use-merged-tokens";
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import type { ChainIcons } from "@/lib/api";
@@ -20,6 +20,7 @@ import {
     formatSmartAmount,
 } from "@/lib/utils";
 import { Button } from "./button";
+import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
 import {
     Dialog,
@@ -34,7 +35,8 @@ import { TokenDisplay } from "./token-display-with-network";
 import { Tooltip } from "./tooltip";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
-import { HighlightedText } from "./highlighted-text";
+
+const TOKEN_SKELETON_IDS = ["one", "two", "three", "four"] as const;
 
 // Selected token (asset + specific network)
 export interface SelectedTokenData {
@@ -72,7 +74,9 @@ interface TokenSelectProps {
      * Options: "sm" | "md" | "lg"
      * Default: "md"
      */
-    iconSize?: "sm" | "md" | "lg";
+    iconSize?: "sm" | "md" | "lg" | "xl" | "2xl";
+    /** Optional field label used by card-style selector triggers. */
+    triggerLabel?: string;
     /**
      * Optional filter function to exclude specific tokens from the list.
      * Return true to include the token, false to exclude it.
@@ -110,6 +114,7 @@ export default function TokenSelect({
     classNames,
     showOnlyOwnedAssets = false,
     iconSize = "md",
+    triggerLabel,
     filterTokens,
     showPopularAssets = false,
     autoSelect = true,
@@ -373,7 +378,15 @@ export default function TokenSelect({
     // Payments/bulk wait for assets before seeding — show a skeleton. Exchange already has a seeded token.
     const showDefaultLoading = !selectedToken && !isAssetsReady;
     const iconSkeletonClass =
-        iconSize === "lg" ? "size-6" : iconSize === "sm" ? "size-4" : "size-5";
+        iconSize === "2xl"
+            ? "size-10"
+            : iconSize === "xl"
+              ? "size-9"
+              : iconSize === "lg"
+                ? "size-6"
+                : iconSize === "sm"
+                  ? "size-4"
+                  : "size-5";
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -408,13 +421,27 @@ export default function TokenSelect({
                                 chainIcons={selectedToken.chainIcons}
                                 iconSize={iconSize}
                             />
-                            <div className="flex flex-col items-start">
-                                <span className="font-semibold text-sm leading-none">
+                            <div className="flex flex-col items-start gap-px">
+                                {triggerLabel && (
+                                    <span className="text-sm font-medium leading-5 text-muted-foreground">
+                                        {triggerLabel}
+                                    </span>
+                                )}
+                                <span
+                                    className={cn(
+                                        "font-semibold",
+                                        triggerLabel
+                                            ? "text-base leading-[1.2]"
+                                            : "text-sm leading-none",
+                                    )}
+                                >
                                     {selectedToken.symbol}
                                 </span>
-                                <span className="text-[10px] font-normal text-muted-foreground uppercase">
-                                    {selectedToken.network}
-                                </span>
+                                {!triggerLabel && (
+                                    <span className="text-[10px] font-normal text-muted-foreground uppercase">
+                                        {selectedToken.network}
+                                    </span>
+                                )}
                             </div>
                         </>
                     ) : (
@@ -457,9 +484,9 @@ export default function TokenSelect({
                         />
                         {isLoading ? (
                             <div className="space-y-1 animate-pulse">
-                                {[...Array(4)].map((_, i) => (
+                                {TOKEN_SKELETON_IDS.map((skeletonId) => (
                                     <div
-                                        key={i}
+                                        key={skeletonId}
                                         className="w-full flex items-center gap-3 py-3 rounded-lg"
                                     >
                                         <div className="w-10 h-10 rounded-full bg-general-unofficial-accent-0 shrink-0" />

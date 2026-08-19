@@ -8,8 +8,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { default_near_token } from "@/constants/token";
+import { BulkActivationCard } from "@/features/confidential/components/bulk-activation-card";
+import { useBulkActivation } from "@/features/confidential/hooks/use-bulk-activation";
+import { buildConfidentialBulkProposal } from "@/features/confidential/utils/bulk-proposal-builder";
+import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
@@ -20,19 +25,14 @@ import {
     generateListId,
     submitPaymentList,
 } from "@/lib/bulk-payment-api";
+import type { SectionRule } from "@/lib/section-rules";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
-import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
-import {
-    RecipientNetworkSelect,
-    type RecipientNetworkRuleOption,
-} from "../components/recipient-network-select";
-import type { SectionRule } from "@/lib/section-rules";
-import { buildConfidentialBulkProposal } from "@/features/confidential/utils/bulk-proposal-builder";
-import { BulkActivationCard } from "@/features/confidential/components/bulk-activation-card";
-import { useBulkActivation } from "@/features/confidential/hooks/use-bulk-activation";
 import { BulkPaymentToast } from "../components/bulk-payment-toast";
+import {
+    type RecipientNetworkRuleOption,
+    RecipientNetworkSelect,
+} from "../components/recipient-network-select";
 import {
     EditPaymentStep,
     ReviewPaymentsStep,
@@ -52,10 +52,8 @@ import {
     needsFeeRepad,
 } from "./utils/confidential-prepare";
 import { useConfidentialPrepare } from "./utils/use-confidential-prepare";
-import { useSubscription } from "@/hooks/use-subscription";
 
 export default function BulkPaymentPage() {
-    const t = useTranslations("pages.payments");
     const tBulk = useTranslations("bulkPayment");
     const tReq = useTranslations("requests.actions");
     const tPaymentValidation = useTranslations("paymentForm.validation");
@@ -71,7 +69,7 @@ export default function BulkPaymentPage() {
     const queryClient = useQueryClient();
     const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
     const bulkActivation = useBulkActivation();
-    const pageTitle = isConfidential ? t("confidentialTitle") : t("title");
+    const pageTitle = tBulk("title");
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
     const { data: bridgeAssets = [], isLoading: isBridgeAssetsLoading } =
@@ -612,7 +610,8 @@ export default function BulkPaymentPage() {
         return (
             <PageComponentLayout
                 title={pageTitle}
-                description={t("description")}
+                backButton={`/${selectedTreasury}/payments`}
+                mainClassName="pt-4"
             >
                 <BulkActivationCard />
             </PageComponentLayout>
@@ -625,7 +624,8 @@ export default function BulkPaymentPage() {
         return (
             <PageComponentLayout
                 title={pageTitle}
-                description={t("description")}
+                backButton={`/${selectedTreasury}/payments`}
+                mainClassName="pt-4"
             >
                 <div className="w-full max-w-[600px] mx-auto min-w-0">
                     <EditPaymentStep
@@ -646,7 +646,11 @@ export default function BulkPaymentPage() {
     }
 
     return (
-        <PageComponentLayout title={pageTitle} description={t("description")}>
+        <PageComponentLayout
+            title={pageTitle}
+            backButton={`/${selectedTreasury}/payments`}
+            mainClassName="pt-4"
+        >
             <FormProvider {...form}>
                 <div
                     className={`w-full mx-auto min-w-0 ${step === 1 ? "max-w-[600px]" : "max-w-7xl"}`}
@@ -654,7 +658,6 @@ export default function BulkPaymentPage() {
                     {/* Step 0: Upload Data */}
                     {step === 0 && (
                         <UploadDataStep
-                            handleBack={() => router.back()}
                             treasuryId={selectedTreasury || ""}
                             onContinue={handleContinueFromUpload}
                             isConfidential={isConfidential}
@@ -701,6 +704,19 @@ export default function BulkPaymentPage() {
                                                 opt.networkName,
                                             );
                                         }}
+                                        appearance="card"
+                                        label={tBulk(
+                                            "upload.destinationNetwork",
+                                        )}
+                                        placeholder={tRecipientNetwork(
+                                            "selectPlaceholder",
+                                        )}
+                                        recipientRequiredPlaceholder={tBulk(
+                                            "upload.uploadFileFirst",
+                                        )}
+                                        modalTitle={tRecipientNetwork(
+                                            "selectPlaceholder",
+                                        )}
                                     />
                                 ) : null
                             }

@@ -1230,6 +1230,7 @@
         "confidentialTooltip": "פרטי הנמען והסכום המבוקש חסויים לחלוטין."
     },
     "bulkPayment": {
+        "title": "תשלום מרוכז",
         "comingSoonToast": "תשלומים בכמויות יגיעו בקרוב!",
         "submittingList": "שולח רשימת תשלומים בכמויות",
         "submittingProposal": "שולח הצעה",
@@ -1254,6 +1255,11 @@
             "provideData": "ספק נתונים",
             "chooseFile": "בחר קובץ",
             "orDragDrop": "או גרור ושחרר",
+            "token": "אסימון",
+            "destinationNetwork": "רשת יעד",
+            "uploadFileFirst": "תחילה יש להעלות קובץ",
+            "exchangeAddressWarning": "אני מבין/ה ששליחה ישירות לכתובת בורסה עלולה לגרום לאובדן כספים או לבעיות אחרות.",
+            "removeFile": "הסרת הקובץ",
             "maxFileSize": "מקסימום קובץ אחד עד 1.5 MB, קובץ CSV בלבד",
             "noFilePrompt": "אין לך קובץ להעלות?",
             "downloadTemplate": "הורד תבנית",
