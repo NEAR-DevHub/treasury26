@@ -571,7 +571,7 @@ export function UploadDataStep({
                     </TabsContent>
 
                     <TabsContent value="paste">
-                        <div className="space-y-2 bg-white border-[#e5e5e5]! border-1 rounded-3xl">
+                        <div className="space-y-2 rounded-3xl border border-general-border bg-card">
                             <Textarea
                                 value={pasteDataInput}
                                 onChange={(event) => {
@@ -587,7 +587,7 @@ export function UploadDataStep({
                                 placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
                                 rows={8}
                                 className={cn(
-                                    "min-h-[178px] w-full max-w-full resize-none overflow-x-hidden rounded-3xl border! border-[#e5e5e5]! bg-white! p-4 font-mono text-base whitespace-pre-wrap shadow-none hover:border-[#e5e5e5]! hover:bg-white! focus-visible:border-[#e5e5e5]! focus-within:border-[#e5e5e5]! focus-within:bg-white! focus:outline-none disabled:opacity-100 dark:bg-card! dark:hover:bg-card! dark:focus-within:bg-card! md:text-sm",
+                                    "min-h-[178px] w-full max-w-full resize-none overflow-x-hidden rounded-3xl bg-transparent! p-4 font-mono text-base whitespace-pre-wrap shadow-none hover:bg-transparent! focus-within:bg-transparent! focus:outline-none disabled:opacity-100 md:text-sm",
                                     dataErrors?.length &&
                                         "border-destructive! bg-destructive/5! focus:border-destructive! focus-visible:border-destructive! focus-within:border-destructive!",
                                 )}
