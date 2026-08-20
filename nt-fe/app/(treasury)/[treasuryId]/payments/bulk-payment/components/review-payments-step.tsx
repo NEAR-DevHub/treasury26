@@ -33,8 +33,13 @@ import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
 import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
-import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
+import {
+    formatRecipientForNearComDestination,
+    hasNearComAddressPrefix,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { cn } from "@/lib/utils";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import type { BulkPaymentData, BulkPaymentFormValues } from "../schemas";
 import { validateAccountsAndStorage } from "../utils";
 import type { QuoteFees } from "../utils/confidential-prepare";
@@ -445,7 +450,11 @@ export function ReviewPaymentsStep({
                                                                 addressBook.find(
                                                                     (e) =>
                                                                         e.address.toLowerCase() ===
-                                                                        payment.recipient.toLowerCase(),
+                                                                            payment.recipient.toLowerCase() ||
+                                                                        e.address.toLowerCase() ===
+                                                                            stripNearComAddressPrefix(
+                                                                                payment.recipient,
+                                                                            ).toLowerCase(),
                                                                 );
                                                             return (
                                                                 <>
@@ -460,7 +469,13 @@ export function ReviewPaymentsStep({
                                                                     <Address
                                                                         address={formatRecipientForNearComDestination(
                                                                             payment.recipient,
-                                                                            destinationNetworkId,
+                                                                            // Public bulk has no network picker —
+                                                                            // keep nearcom: when the user typed it.
+                                                                            hasNearComAddressPrefix(
+                                                                                payment.recipient,
+                                                                            )
+                                                                                ? NEAR_COM_NETWORK_ID
+                                                                                : destinationNetworkId,
                                                                         )}
                                                                         className={cn(
                                                                             "min-w-0",

@@ -233,8 +233,8 @@ export interface BatchPaymentRequestData {
     notes?: string;
     /**
      * Receive network from proposal description `destinationNetwork`, when
-     * present. Public bulk does not write this today (confidential uses
-     * quote metadata instead).
+     * present (e.g. public bulk with nearcom: recipients → `near.com`).
+     * Confidential bulk usually supplies this from quote metadata instead.
      */
     destinationAssetId?: string;
 }
