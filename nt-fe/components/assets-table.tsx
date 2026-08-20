@@ -983,7 +983,8 @@ export function AssetsTable({ aggregatedTokens }: Props) {
 
                                     <TableCell className="px-2 py-3 pr-3 sm:pr-4">
                                         {actions ? (
-                                            <ChevronDown
+                                            <Icon
+                                                icon={ArrowDown01Icon}
                                                 className="ml-auto size-4 text-gray-400 dark:text-gray-500"
                                                 aria-hidden
                                             />

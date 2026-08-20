@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowLeftRight, Send } from "lucide-react";
+import { SentIcon, SquareArrowLeftRightIcon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AuthButton } from "@/components/auth-button";
+import { Icon } from "@/components/icon";
 import { PopoverArrow, PopoverContent } from "@/components/ui/popover";
 import { useTreasury } from "@/hooks/use-treasury";
 import { trackEvent } from "@/lib/analytics";
@@ -47,7 +48,7 @@ export function AssetRowActionMenu({ sendHref, swapHref }: Props) {
                         router.push(swapHref);
                     }}
                 >
-                    <ArrowLeftRight className="size-4" />
+                    <Icon icon={SquareArrowLeftRightIcon} />
                     {t("swap")}
                 </AuthButton>
                 <AuthButton
@@ -65,7 +66,7 @@ export function AssetRowActionMenu({ sendHref, swapHref }: Props) {
                         router.push(sendHref);
                     }}
                 >
-                    <Send className="size-4" />
+                    <Icon icon={SentIcon} />
                     {t("send")}
                 </AuthButton>
             </div>
