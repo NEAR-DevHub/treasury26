@@ -3,7 +3,6 @@ import {
     ArrowDataTransferHorizontalIcon,
     ArrowDown01Icon,
     Bookmark01Icon,
-    ChartLineData01Icon,
     Home04Icon,
     InboxIcon,
     MessageQuestionIcon,
