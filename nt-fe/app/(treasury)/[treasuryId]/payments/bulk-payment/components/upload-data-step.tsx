@@ -1,15 +1,15 @@
 "use client";
-
+import { Icon } from "@/components/icon";
 import {
-    Bitcoin,
-    FileText,
-    FileUp,
-    Info,
-    ReceiptText,
-    Users,
-    WalletCards,
-    X,
-} from "lucide-react";
+    BitcoinIcon,
+    Cancel01Icon,
+    FileAttachmentIcon,
+    FileUploadIcon,
+    InformationCircleIcon,
+    Invoice01Icon,
+    UserGroupIcon,
+    Wallet03Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     cloneElement,
@@ -339,7 +339,10 @@ export function UploadDataStep({
             <div className="mx-auto flex w-full min-w-0 max-w-[464px] flex-col gap-2 lg:mx-0">
                 {availableCredits === 0 && subscription && (
                     <Alert variant="info" className="mb-1">
-                        <Info className="mt-[2px] size-4" />
+                        <Icon
+                            icon={InformationCircleIcon}
+                            className="mt-[2px]"
+                        />
                         <AlertTitle className="font-semibold">
                             {isTrialPlan(subscription.planConfig)
                                 ? t("creditsUsed")
@@ -405,14 +408,14 @@ export function UploadDataStep({
                             value="upload"
                             className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
                         >
-                            <WalletCards className="size-4" />
+                            <Icon icon={Wallet03Icon} />
                             {t("uploadFile")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="paste"
                             className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
                         >
-                            <Users className="size-4" />
+                            <Icon icon={UserGroupIcon} />
                             {t("provideData")}
                         </TabsTrigger>
                     </TabsList>
@@ -434,7 +437,10 @@ export function UploadDataStep({
                                     >
                                         <div className="flex flex-col items-center gap-2.5">
                                             <span className="flex size-10 items-center justify-center rounded-full border border-general-border bg-muted">
-                                                <FileUp className="size-[18px] text-muted-foreground" />
+                                                <Icon
+                                                    icon={FileUploadIcon}
+                                                    className="text-muted-foreground"
+                                                />
                                             </span>
                                             <div className="flex flex-col gap-1">
                                                 <p className="text-base leading-[1.2]">
@@ -504,9 +510,10 @@ export function UploadDataStep({
                                 >
                                     <div className="flex min-w-0 items-center gap-3">
                                         <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
-                                            <FileText
+                                            <Icon
+                                                icon={FileAttachmentIcon}
                                                 className={cn(
-                                                    "size-5 text-primary",
+                                                    "text-primary",
                                                     dataErrors?.length &&
                                                         "text-destructive",
                                                 )}
@@ -543,7 +550,7 @@ export function UploadDataStep({
                                                 "text-destructive hover:text-destructive/80",
                                         )}
                                     >
-                                        <X className="size-4" />
+                                        <Icon icon={Cancel01Icon} />
                                         <span className="sr-only">
                                             {t("removeFile")}
                                         </span>
@@ -623,7 +630,11 @@ export function UploadDataStep({
 
                 <div className="flex items-start gap-3 rounded-[12px] border border-[#dbeafe] bg-general-info-background-faded p-3 text-general-info-foreground dark:border-general-info-border">
                     <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-general-info-foreground">
-                        <Info className="size-3 text-white" strokeWidth={3} />
+                        <Icon
+                            icon={InformationCircleIcon}
+                            className="text-white"
+                            strokeWidth={3}
+                        />
                     </span>
                     <Checkbox
                         id="bulk-payment-exchange-risk"
@@ -682,7 +693,7 @@ export function UploadDataStep({
                 </div>
                 <div className="flex flex-col gap-3 px-4 pb-4 pt-2">
                     <div className="flex items-center gap-2">
-                        <ReceiptText className="size-4 shrink-0" />
+                        <Icon icon={Invoice01Icon} className="shrink-0" />
                         <p className="text-sm font-medium leading-5">
                             {t("maxTransactions", {
                                 max: MAX_RECIPIENTS_PER_BULK_PAYMENT,
@@ -690,7 +701,7 @@ export function UploadDataStep({
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Bitcoin className="size-4 shrink-0" />
+                        <Icon icon={BitcoinIcon} className="shrink-0" />
                         <p className="text-sm font-medium leading-5">
                             {t("singleTokenNetwork")}
                         </p>

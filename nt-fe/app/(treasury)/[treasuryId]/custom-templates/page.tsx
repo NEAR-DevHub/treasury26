@@ -1,21 +1,15 @@
 "use client";
-
-/**
- * Index for the Request Templates section: the empty state (no templates yet) or the Templates list.
- * Each row links to its fill page ("Create Request") and carries a ⋮ menu — Edit, Pin/Unpin (the
- * pin controls whether it shows in the sidebar), Delete (confirmed). Authoring/pin/delete are
- * ChangePolicy-gated server-side; a non-author gets the backend's 403 as a toast.
- */
+import { Icon } from "@/components/icon";
 import {
-    Bookmark,
-    CircleHelp,
-    EllipsisVertical,
-    Pencil,
-    Pin,
-    PinOff,
-    Plus,
-    Trash2,
-} from "lucide-react";
+    Add01Icon,
+    Bookmark01Icon,
+    Delete02Icon,
+    HelpCircleIcon,
+    MoreVerticalIcon,
+    PencilIcon,
+    PinIcon,
+    PinOffIcon,
+} from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -64,7 +58,7 @@ function HowItWorksLink() {
         // it sits beside (the empty-state "Create Template" and the list-header "Add New").
         <Button variant="outline" asChild>
             <a href={HOW_IT_WORKS_URL} target="_blank" rel="noreferrer">
-                <CircleHelp className="size-4" /> {t("howItWorks")}
+                <Icon icon={HelpCircleIcon} /> {t("howItWorks")}
             </a>
         </Button>
     );
@@ -111,7 +105,7 @@ function EmptyState({
     return (
         <PageCard className="items-center gap-3 py-16 text-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Bookmark className="size-5" />
+                <Icon icon={Bookmark01Icon} />
             </div>
             <div className="flex flex-col gap-1">
                 <h2 className="font-semibold text-base">
@@ -128,7 +122,7 @@ function EmptyState({
                     tooltip={tAuth("noPermission")}
                     onClick={onCreate}
                 >
-                    <Plus className="size-4" /> {t("index.createTemplate")}
+                    <Icon icon={Add01Icon} /> {t("index.createTemplate")}
                 </GatedButton>
             </div>
         </PageCard>
@@ -184,7 +178,7 @@ function TemplateRow({
                                 aria-label={t("index.actions")}
                                 className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
                             >
-                                <EllipsisVertical className="size-4" />
+                                <Icon icon={MoreVerticalIcon} />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -194,7 +188,7 @@ function TemplateRow({
                                         onClick={onEdit}
                                         className={MENU_ITEM_CLASS}
                                     >
-                                        <Pencil className="size-4" />{" "}
+                                        <Icon icon={PencilIcon} />{" "}
                                         {t("index.edit")}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
@@ -203,12 +197,12 @@ function TemplateRow({
                                     >
                                         {template.pinned ? (
                                             <>
-                                                <PinOff className="size-4" />{" "}
+                                                <Icon icon={PinOffIcon} />{" "}
                                                 {t("index.unpin")}
                                             </>
                                         ) : (
                                             <>
-                                                <Pin className="size-4" />{" "}
+                                                <Icon icon={PinIcon} />{" "}
                                                 {t("index.pin")}
                                             </>
                                         )}
@@ -220,7 +214,7 @@ function TemplateRow({
                                     onClick={onDelete}
                                     className={MENU_ITEM_CLASS}
                                 >
-                                    <Trash2 className="size-4" />{" "}
+                                    <Icon icon={Delete02Icon} />{" "}
                                     {t("index.delete")}
                                 </DropdownMenuItem>
                             ) : (
@@ -232,7 +226,7 @@ function TemplateRow({
                                             disabled
                                             className={MENU_ITEM_CLASS}
                                         >
-                                            <Trash2 className="size-4" />{" "}
+                                            <Icon icon={Delete02Icon} />{" "}
                                             {t("index.delete")}
                                         </DropdownMenuItem>
                                     </span>
@@ -330,7 +324,7 @@ export default function CustomTemplatesIndexPage() {
                                     variant="secondary"
                                     onClick={() => go("/create")}
                                 >
-                                    <Plus className="size-4" />{" "}
+                                    <Icon icon={Add01Icon} />{" "}
                                     {t("index.addNew")}
                                 </GatedButton>
                             </div>

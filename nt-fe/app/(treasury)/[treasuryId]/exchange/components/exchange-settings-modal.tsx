@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { SlidersHorizontalIcon } from "@hugeicons/core-free-icons";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
@@ -10,7 +12,6 @@ import {
     DialogTrigger,
 } from "@/components/modal";
 import { Button } from "@/components/button";
-import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -96,7 +97,7 @@ export function ExchangeSettingsModal({
                     type="button"
                     className="border-2"
                 >
-                    <SlidersHorizontal className="h-4 w-4" />
+                    <Icon icon={SlidersHorizontalIcon} />
                 </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md">

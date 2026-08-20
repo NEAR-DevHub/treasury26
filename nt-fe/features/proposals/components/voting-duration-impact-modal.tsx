@@ -1,3 +1,9 @@
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowRight01Icon,
+    ArrowUpRight01Icon,
+} from "@hugeicons/core-free-icons";
 import {
     Dialog,
     DialogContent,
@@ -6,7 +12,6 @@ import {
     DialogFooter,
 } from "@/components/modal";
 import { Button } from "@/components/button";
-import { ChevronDown, ChevronRight, ArrowUpRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
@@ -217,9 +222,9 @@ export function VotingDurationImpactModal({
                                     >
                                         <div className="flex items-center gap-2">
                                             {activeExpanded ? (
-                                                <ChevronDown className="h-4 w-4" />
+                                                <Icon icon={ArrowDown01Icon} />
                                             ) : (
-                                                <ChevronRight className="h-4 w-4" />
+                                                <Icon icon={ArrowRight01Icon} />
                                             )}
                                             <span className="text-sm text-left">
                                                 {t("remainActiveHeading")}
@@ -327,7 +332,12 @@ export function VotingDurationImpactModal({
                                                                         : t(
                                                                               "today",
                                                                           )}
-                                                                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                                                                    <Icon
+                                                                        icon={
+                                                                            ArrowUpRight01Icon
+                                                                        }
+                                                                        className="shrink-0"
+                                                                    />
                                                                 </Link>
                                                             </div>
                                                         );
@@ -351,9 +361,9 @@ export function VotingDurationImpactModal({
                                     >
                                         <div className="flex items-center gap-2">
                                             {expiringExpanded ? (
-                                                <ChevronDown className="h-4 w-4" />
+                                                <Icon icon={ArrowDown01Icon} />
                                             ) : (
-                                                <ChevronRight className="h-4 w-4" />
+                                                <Icon icon={ArrowRight01Icon} />
                                             )}
                                             <span className="text-sm text-left">
                                                 {t("willExpireHeading")}
@@ -431,7 +441,12 @@ export function VotingDurationImpactModal({
                                                             }
                                                         >
                                                             {t("uponApproval")}
-                                                            <ArrowUpRight className="h-3.5 w-3.5 shrink-0" />
+                                                            <Icon
+                                                                icon={
+                                                                    ArrowUpRight01Icon
+                                                                }
+                                                                className="shrink-0"
+                                                            />
                                                         </Link>
                                                     </div>
                                                 ))}

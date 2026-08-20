@@ -1,13 +1,13 @@
 "use client";
-
+import { Icon } from "@/components/icon";
 import {
-    ChevronDown,
-    FileText,
-    Loader2,
-    LogIn,
-    LogOut,
-    UserRound,
-} from "lucide-react";
+    ArrowDown01Icon,
+    FileAttachmentIcon,
+    Loading02Icon,
+    Login01Icon,
+    Logout01Icon,
+    UserCircleIcon,
+} from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import {
     useParams,
@@ -113,7 +113,7 @@ export function AccountMenuItems({
                     className={accountMenuItemClass}
                     onClick={onNavigate}
                 >
-                    <UserRound className="size-4" />
+                    <Icon icon={UserCircleIcon} />
                     {t("myAccount")}
                 </Link>
             )}
@@ -124,7 +124,7 @@ export function AccountMenuItems({
                 className={accountMenuItemClass}
                 onClick={onNavigate}
             >
-                <FileText className="size-4" />
+                <Icon icon={FileAttachmentIcon} />
                 {t("termsOfService")}
             </Link>
             <Link
@@ -134,7 +134,7 @@ export function AccountMenuItems({
                 className={accountMenuItemClass}
                 onClick={onNavigate}
             >
-                <FileText className="size-4" />
+                <Icon icon={FileAttachmentIcon} />
                 {t("privacyPolicy")}
             </Link>
             <div className="-mx-1.5 mt-1 border-t border-border px-1.5 pt-1 dark:border-general-border">
@@ -146,7 +146,7 @@ export function AccountMenuItems({
                         onNavigate?.();
                     }}
                 >
-                    <LogOut className="size-4" />
+                    <Icon icon={Logout01Icon} />
                     {t("disconnect")}
                 </button>
             </div>
@@ -177,9 +177,9 @@ export function ConnectWalletButton({
                 aria-label={label}
             >
                 {isConnecting ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Icon icon={Loading02Icon} className="animate-spin" />
                 ) : (
-                    <LogIn className="size-4" />
+                    <Icon icon={Login01Icon} />
                 )}
             </Button>
         );
@@ -193,12 +193,12 @@ export function ConnectWalletButton({
         >
             {isConnecting ? (
                 <>
-                    <Loader2 className="size-4 animate-spin" />
+                    <Icon icon={Loading02Icon} className="animate-spin" />
                     {tCommon("connecting")}
                 </>
             ) : (
                 <>
-                    <LogIn className="size-4" />
+                    <Icon icon={Login01Icon} />
                     {t("connect")}{" "}
                     <span className="hidden md:inline">{t("wallet")}</span>
                 </>
@@ -225,10 +225,10 @@ export function SignIn() {
                     className="md:hidden"
                     aria-label={tCommon("loading")}
                 >
-                    <Loader2 className="size-4 animate-spin" />
+                    <Icon icon={Loading02Icon} className="animate-spin" />
                 </Button>
                 <Button disabled className="hidden md:flex items-center gap-2">
-                    <Loader2 className="size-4 animate-spin" />
+                    <Icon icon={Loading02Icon} className="animate-spin" />
                     {tCommon("loading")}
                 </Button>
             </>
@@ -268,7 +268,10 @@ export function SignIn() {
                             variant="avatar"
                         />
                     </div>
-                    <ChevronDown className="hidden size-4 text-muted-foreground sm:inline" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="hidden text-muted-foreground sm:inline"
+                    />
                 </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-52 rounded-2xl p-1.5">

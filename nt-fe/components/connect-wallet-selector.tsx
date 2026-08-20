@@ -1,6 +1,10 @@
 "use client";
-
-import { ArrowLeft, Check, Wallet } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    ArrowLeft01Icon,
+    Tick01Icon,
+    Wallet01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SlotWarning } from "@/components/warning-message";
@@ -395,7 +399,7 @@ export function ConnectWalletSelector({
                         className="-mb-2 -ml-2 w-fit"
                         aria-label={t("walletSelector.back")}
                     >
-                        <ArrowLeft className="size-4" />
+                        <Icon icon={ArrowLeft01Icon} />
                     </Button>
                 )}
                 <div className="flex flex-col gap-[42px]">
@@ -422,7 +426,10 @@ export function ConnectWalletSelector({
                 {showOnboardingHints && (
                     <div className="flex items-start gap-2">
                         <div className="bg-general-success-background-faded rounded-full size-7 sm:size-6 flex items-center justify-center p-1 sm:p-0">
-                            <Check className="size-4 shrink-0 text-general-success-foreground" />
+                            <Icon
+                                icon={Tick01Icon}
+                                className="shrink-0 text-general-success-foreground"
+                            />
                         </div>
                         <p className="text-sm mt-px">
                             {t("walletSelector.noFundsNote")}
@@ -547,7 +554,7 @@ export function ConnectWalletSelector({
                             <div className="rounded-xl border border-general-border p-4">
                                 <div className="space-y-3">
                                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background">
-                                        <Wallet className="size-4" />
+                                        <Icon icon={Wallet01Icon} />
                                     </div>
                                     <div className="flex flex-col">
                                         <div className="text-lg font-semibold">
@@ -698,7 +705,10 @@ export function ConnectWalletSelector({
                                         size="xl"
                                     />
                                 ) : (
-                                    <Wallet className="size-7" />
+                                    <Icon
+                                        icon={Wallet01Icon}
+                                        className="size-7"
+                                    />
                                 )}
                             </div>
                             <div className="flex flex-col gap-1">

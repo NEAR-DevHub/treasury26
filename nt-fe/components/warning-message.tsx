@@ -1,6 +1,6 @@
 "use client";
-
-import { AlertTriangle, Info } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Alert01Icon, InformationCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useMemo } from "react";
 import { Alert, AlertDescription } from "@/components/alert";
@@ -266,7 +266,10 @@ export function WarningMessage(props: WarningMessageProps) {
                 <span className="truncate">{inlineText}</span>
                 {tooltipText && (
                     <Tooltip content={tooltipText}>
-                        <Info className="size-3 shrink-0" />
+                        <Icon
+                            icon={InformationCircleIcon}
+                            className="shrink-0"
+                        />
                     </Tooltip>
                 )}
             </p>
@@ -279,7 +282,6 @@ export function WarningMessage(props: WarningMessageProps) {
     }
 
     const alertVariant = getAlertVariant(severity);
-    const Icon = AlertTriangle;
 
     return (
         <Alert
@@ -289,7 +291,7 @@ export function WarningMessage(props: WarningMessageProps) {
                 className,
             )}
         >
-            <Icon className="h-4 w-4 shrink-0" />
+            <Icon icon={Alert01Icon} className="shrink-0" />
             <AlertDescription className="block">
                 {heading && (
                     <div

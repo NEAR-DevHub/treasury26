@@ -1,5 +1,14 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowLeft01Icon,
+    ArrowRight01Icon,
+    ArrowUp01Icon,
+    Calendar01Icon,
+    CancelCircleIcon,
+} from "@hugeicons/core-free-icons";
 import {
     addMonths,
     endOfDay,
@@ -16,14 +25,6 @@ import {
     subMonths,
     subDays,
 } from "date-fns";
-import {
-    Calendar,
-    ChevronDownIcon,
-    ChevronLeftIcon,
-    ChevronRightIcon,
-    ChevronUpIcon,
-    XCircle,
-} from "lucide-react";
 import * as React from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -457,9 +458,9 @@ export function DateTimePicker({
                             }
                         >
                             {monthYearPicker ? (
-                                <ChevronUpIcon />
+                                <Icon icon={ArrowUp01Icon} />
                             ) : (
-                                <ChevronDownIcon />
+                                <Icon icon={ArrowDown01Icon} />
                             )}
                         </Button>
                     </div>
@@ -474,14 +475,14 @@ export function DateTimePicker({
                             size="icon"
                             onClick={onPrevMonth}
                         >
-                            <ChevronLeftIcon />
+                            <Icon icon={ArrowLeft01Icon} />
                         </Button>
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={onNextMonth}
                         >
-                            <ChevronRightIcon />
+                            <Icon icon={ArrowRight01Icon} />
                         </Button>
                     </div>
                 </div>
@@ -825,11 +826,14 @@ export function DatePickerPopover({
                     )}
                     disabled={disabled}
                 >
-                    {showCalendarIcon && <Calendar className="mr-2 h-4 w-4" />}
+                    {showCalendarIcon && (
+                        <Icon icon={Calendar01Icon} className="mr-2" />
+                    )}
                     <span className="flex-1">{getDisplayValue()}</span>
                     {clearable && value && !disabled && (
-                        <XCircle
-                            className="h-4 w-4 opacity-50 hover:opacity-100"
+                        <Icon
+                            icon={CancelCircleIcon}
+                            className="opacity-50 hover:opacity-100"
                             onClick={handleClear}
                         />
                     )}

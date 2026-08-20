@@ -1,5 +1,17 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowLeftRightIcon,
+    ArrowRight01Icon,
+    ArrowUpRight01Icon,
+    Cancel01Icon,
+    InformationCircleIcon,
+    SearchMinusIcon,
+    SentIcon,
+    Tick01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Proposal } from "@/lib/proposals-api";
@@ -12,17 +24,6 @@ import {
     TableRow,
 } from "@/components/table";
 import { Button } from "@/components/button";
-import {
-    ChevronDown,
-    ChevronRight,
-    X,
-    Check,
-    SearchX,
-    Send,
-    ArrowUpRight,
-    ArrowRightLeft,
-    Info,
-} from "lucide-react";
 import { TransactionCell } from "./transaction-cell";
 import { ExpandedView } from "./expanded-view";
 import { ProposalTypeIcon } from "./proposal-type-icon";
@@ -357,7 +358,10 @@ export function ProposalsTable({
                             {tT("voting")}
                         </span>
                         <Tooltip content={tT("votingTooltip")}>
-                            <Info className="size-4 text-muted-foreground" />
+                            <Icon
+                                icon={InformationCircleIcon}
+                                className="text-muted-foreground"
+                            />
                         </Tooltip>
                     </div>
                 ),
@@ -396,9 +400,15 @@ export function ProposalsTable({
                         className="h-8 w-8 p-0"
                     >
                         {!isMobile && row.getIsExpanded() ? (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            <Icon
+                                icon={ArrowDown01Icon}
+                                className="text-muted-foreground"
+                            />
                         ) : (
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            <Icon
+                                icon={ArrowRight01Icon}
+                                className="text-muted-foreground"
+                            />
                         )}
                     </Button>
                 ),
@@ -480,7 +490,7 @@ export function ProposalsTable({
         return withFilters ? (
             <div className="flex flex-col items-center justify-center py-8 gap-4">
                 <EmptyState
-                    icon={SearchX}
+                    icon={SearchMinusIcon}
                     title=""
                     description={tT("noResults")}
                 />
@@ -488,7 +498,7 @@ export function ProposalsTable({
         ) : (
             <div className="flex flex-col items-center justify-center py-8 gap-4">
                 <EmptyState
-                    icon={Send}
+                    icon={SentIcon}
                     title={tT("allCaughtUp")}
                     description={tT("noPending")}
                     className="pb-0"
@@ -500,7 +510,7 @@ export function ProposalsTable({
                         permissionAction="AddProposal"
                         className="gap-1 w-full shrink"
                     >
-                        <ArrowUpRight className="size-3.5" /> {tT("send")}
+                        <Icon icon={ArrowUpRight01Icon} /> {tT("send")}
                     </AuthButton>
                     <AuthButton
                         permissionKind="call"
@@ -508,7 +518,7 @@ export function ProposalsTable({
                         permissionAction="AddProposal"
                         className="gap-1 w-full shrink"
                     >
-                        <ArrowRightLeft className="size-3.5" /> {tT("exchange")}
+                        <Icon icon={ArrowLeftRightIcon} /> {tT("exchange")}
                     </AuthButton>
                 </div>
             </div>
@@ -567,7 +577,7 @@ export function ProposalsTable({
                                 disabled={rejectSlot.blocked}
                                 tooltipContent={rejectSlot.blockedTooltip}
                             >
-                                <X className="h-4 w-4" />
+                                <Icon icon={Cancel01Icon} />
                                 {tCommon("reject")}
                             </Button>
 
@@ -585,7 +595,7 @@ export function ProposalsTable({
                                     approveSlot.blocked
                                 }
                             >
-                                <Check className="h-4 w-4" />
+                                <Icon icon={Tick01Icon} />
                                 {tCommon("approve")}
                             </Button>
                         </div>

@@ -1,5 +1,14 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    BarChartIcon,
+    File01Icon,
+    GlobeIcon,
+    HeadphonesIcon,
+    PlayIcon,
+    Shield01Icon,
+} from "@hugeicons/core-free-icons";
 import {
     Dialog,
     DialogContent,
@@ -15,14 +24,6 @@ import {
     APP_ACTIVE_CONFIDENTIAL_TREASURY,
 } from "@/constants/config";
 import Link from "next/link";
-import {
-    BarChart3,
-    CirclePlay,
-    File,
-    Globe,
-    Headphones,
-    Shield,
-} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
@@ -118,7 +119,7 @@ export function SupportCenterModal({
                 href: APP_TWITTER_URL,
             },
             {
-                icon: <BarChart3 className="size-5" />,
+                icon: <Icon icon={BarChartIcon} />,
                 title: t("statsTitle"),
                 description: t("statsDescription"),
                 href: "/stats",
@@ -130,19 +131,19 @@ export function SupportCenterModal({
     const demoSectionItems = useMemo<SupportItemProps[]>(
         () => [
             {
-                icon: <Globe className="size-5" />,
+                icon: <Icon icon={GlobeIcon} />,
                 title: t("demoTitle"),
                 description: t("demoDescription"),
                 href: APP_ACTIVE_TREASURY,
             },
             {
-                icon: <Shield className="size-5 fill-foreground" />,
+                icon: <Icon icon={Shield01Icon} className="fill-foreground" />,
                 title: t("confidentialDemoTitle"),
                 description: t("confidentialDemoDescription"),
                 href: APP_ACTIVE_CONFIDENTIAL_TREASURY,
             },
             {
-                icon: <CirclePlay className="size-5" />,
+                icon: <Icon icon={PlayIcon} />,
                 title: t("videoTitle"),
                 description: t("videoDescription"),
                 href: APP_DEMO_URL,
@@ -154,13 +155,13 @@ export function SupportCenterModal({
     const supportItems = useMemo<SupportItemProps[]>(
         () => [
             {
-                icon: <File className="size-5" />,
+                icon: <Icon icon={File01Icon} />,
                 title: t("docsTitle"),
                 description: t("docsDescription"),
                 href: APP_DOCS_URL,
             },
             {
-                icon: <Headphones className="size-5" />,
+                icon: <Icon icon={HeadphonesIcon} />,
                 title: t("productSupportTitle"),
                 description: t("productSupportDescription"),
                 onClick: () => {

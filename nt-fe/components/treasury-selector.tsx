@@ -1,6 +1,6 @@
 "use client";
-
-import { Plus, Settings } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Add01Icon, Settings01Icon } from "@hugeicons/core-free-icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import * as React from "react";
@@ -294,7 +294,7 @@ export function TreasurySelector({
                         className={actionRowClass}
                         onClick={() => router.push("/app/manage-treasuries")}
                     >
-                        <Settings className="size-5 shrink-0" />
+                        <Icon icon={Settings01Icon} className="shrink-0" />
                         <span className="truncate">
                             {t("manageTreasuries")}
                         </span>
@@ -306,7 +306,7 @@ export function TreasurySelector({
                         className={actionRowClass}
                         onClick={() => router.push(createTreasuryRoute)}
                     >
-                        <Plus className="size-5 shrink-0" />
+                        <Icon icon={Add01Icon} className="shrink-0" />
                         <span className="truncate">{t("createTreasury")}</span>
                     </Button>
                 </SelectContent>

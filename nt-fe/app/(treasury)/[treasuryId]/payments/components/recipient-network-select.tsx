@@ -1,6 +1,6 @@
 "use client";
-
-import { ChevronDown, CircleDashed } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon, CircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
@@ -330,7 +330,10 @@ export function RecipientNetworkSelect({
                                 className="size-5 rounded-full object-cover"
                             />
                         ) : (
-                            <CircleDashed className="size-5 text-muted-foreground" />
+                            <Icon
+                                icon={CircleIcon}
+                                className="text-muted-foreground"
+                            />
                         )}
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col items-start gap-px text-left">
@@ -350,7 +353,10 @@ export function RecipientNetworkSelect({
                                 : placeholderText}
                         </span>
                     </span>
-                    <ChevronDown className="ml-auto size-6 shrink-0 text-muted-foreground" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="ml-auto size-6 shrink-0 text-muted-foreground"
+                    />
                 </Button>
             </div>
         ) : (
@@ -374,7 +380,10 @@ export function RecipientNetworkSelect({
                             {placeholderText}
                         </span>
                     )}
-                    <ChevronDown className="size-5 text-muted-foreground ml-auto shrink-0" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="text-muted-foreground ml-auto shrink-0"
+                    />
                 </Button>
                 {warningMessage && (
                     <WarningMessage

@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { FilterIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { PageCard } from "@/components/card";
@@ -19,7 +21,6 @@ import {
     FilterOption,
 } from "@/features/proposals/components/proposal-filters";
 import { Button } from "@/components/button";
-import { ListFilter } from "lucide-react";
 import { ExportButton } from "@/components/export-button";
 import { useGetHistoryDescription } from "@/features/activity";
 import { subMonths } from "date-fns";
@@ -359,7 +360,7 @@ export default function ActivityPage() {
                         : tCommon("filter")
                 }
             >
-                <ListFilter className="size-4" />
+                <Icon icon={FilterIcon} />
                 <span className="hidden md:inline">{tCommon("filter")}</span>
                 {hasActiveFilters && (
                     <span

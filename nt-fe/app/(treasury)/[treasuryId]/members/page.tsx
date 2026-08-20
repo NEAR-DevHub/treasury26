@@ -1,5 +1,20 @@
 "use client";
 
+import { type IconSvgElement } from "@hugeicons/react";
+import { Icon } from "@/components/icon";
+import {
+    Add01Icon,
+    Cancel01Icon,
+    Delete02Icon,
+    InformationCircleIcon,
+    Key02Icon,
+    LockIcon,
+    PencilIcon,
+    SentIcon,
+    ShieldUserIcon,
+    UserAdd01Icon,
+    Wallet03Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import Link from "next/link";
@@ -20,20 +35,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-    Pencil,
-    Trash2,
-    Info,
-    Plus,
-    Lock,
-    KeyRound,
-    X,
-    type LucideIcon,
-    ShieldUser,
-    UserRoundPlus,
-    Send,
-    WalletCards,
-} from "lucide-react";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
 import { RoleBadge } from "@/components/role-badge";
@@ -75,7 +76,7 @@ interface Member {
 const MEMBERS_INFO_DISMISSED_STORAGE_KEY = "members-info-dismissed";
 
 type MembersInfoItem = {
-    icon: LucideIcon;
+    icon: IconSvgElement;
     title: string;
     description: string;
 };
@@ -118,7 +119,10 @@ function PermissionsHeader({ policyRoles }: { policyRoles: RolePermission[] }) {
                     }
                     contentProps={{ className: "max-w-[320px]" }}
                 >
-                    <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                    <Icon
+                        icon={InformationCircleIcon}
+                        className="text-muted-foreground cursor-help"
+                    />
                 </Tooltip>
             )}
         </div>
@@ -171,21 +175,21 @@ export default function MembersPage() {
     const membersInfoItems = useMemo<MembersInfoItem[]>(
         () => [
             {
-                icon: Lock,
+                icon: LockIcon,
                 title: tMembers("infoSection.strongerProtectionTitle"),
                 description: tMembers(
                     "infoSection.strongerProtectionDescription",
                 ),
             },
             {
-                icon: ShieldUser,
+                icon: ShieldUserIcon,
                 title: tMembers("infoSection.rolesForEveryoneTitle"),
                 description: tMembers(
                     "infoSection.rolesForEveryoneDescription",
                 ),
             },
             {
-                icon: KeyRound,
+                icon: Key02Icon,
                 title: tMembers("infoSection.neverLoseAccessTitle"),
                 description: tMembers("infoSection.neverLoseAccessDescription"),
             },
@@ -567,7 +571,7 @@ export default function MembersPage() {
                                                 },
                                             }}
                                         >
-                                            <Pencil className="w-4 h-4" />
+                                            <Icon icon={PencilIcon} />
                                         </AuthButton>
                                         <AuthButton
                                             permissionKind="policy"
@@ -606,7 +610,10 @@ export default function MembersPage() {
                                                 },
                                             }}
                                         >
-                                            <Trash2 className="size-4 text-destructive" />
+                                            <Icon
+                                                icon={Delete02Icon}
+                                                className="text-destructive"
+                                            />
                                         </AuthButton>
                                     </div>
                                 </TableCell>
@@ -647,14 +654,14 @@ export default function MembersPage() {
                                 aria-label={tMembers("infoSection.dismiss")}
                                 onClick={dismissMembersInfoSection}
                             >
-                                <X className="size-4" />
+                                <Icon icon={Cancel01Icon} />
                             </Button>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                         {membersInfoItems.map((item) => {
-                            const { icon: Icon, title, description } = item;
+                            const { icon, title, description } = item;
                             return (
                                 <div
                                     key={title}
@@ -662,7 +669,10 @@ export default function MembersPage() {
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-muted">
-                                            <Icon className="size-4 text-muted-foreground" />
+                                            <Icon
+                                                icon={icon}
+                                                className="text-muted-foreground"
+                                            />
                                         </div>
                                         <div className="space-y-1">
                                             <p className="text-sm font-medium">
@@ -722,7 +732,10 @@ export default function MembersPage() {
                                     <span className="hidden sm:inline">
                                         {tMembers("wantsToJoin")}
                                     </span>
-                                    <UserRoundPlus className="size-4 sm:hidden" />
+                                    <Icon
+                                        icon={UserAdd01Icon}
+                                        className="sm:hidden"
+                                    />
                                     <NumberBadge
                                         shape="pill"
                                         number={joinRequestCount}
@@ -739,7 +752,7 @@ export default function MembersPage() {
                                     size={isMobile ? "icon" : "default"}
                                     className="size-9 sm:w-auto"
                                 >
-                                    <Plus className="size-4" />
+                                    <Icon icon={Add01Icon} />
                                     <span className="hidden sm:inline">
                                         {tMembers("addNewMember")}
                                     </span>
@@ -762,7 +775,7 @@ export default function MembersPage() {
                                             size={isMobile ? "icon" : "default"}
                                             className="size-9 sm:w-auto"
                                         >
-                                            <Plus className="size-4" />
+                                            <Icon icon={Add01Icon} />
                                             <span className="hidden sm:inline">
                                                 {tMembers("addNewMember")}
                                             </span>
@@ -786,7 +799,9 @@ export default function MembersPage() {
                                                         disabled
                                                         className="w-full gap-2.5 px-3 py-2.5"
                                                     >
-                                                        <WalletCards className="size-4" />
+                                                        <Icon
+                                                            icon={Wallet03Icon}
+                                                        />
                                                         {tMembers(
                                                             "addManually",
                                                         )}
@@ -810,7 +825,7 @@ export default function MembersPage() {
                                                         )
                                                     }
                                                 >
-                                                    <WalletCards className="size-4" />
+                                                    <Icon icon={Wallet03Icon} />
                                                     {tMembers("addManually")}
                                                 </Link>
                                             </DropdownMenuItem>
@@ -822,7 +837,7 @@ export default function MembersPage() {
                                             <Link
                                                 href={`/${treasuryId}/members/invite`}
                                             >
-                                                <Send className="size-4" />
+                                                <Icon icon={SentIcon} />
                                                 {tMembers("inviteMember")}
                                             </Link>
                                         </DropdownMenuItem>
@@ -874,7 +889,10 @@ export default function MembersPage() {
                                         }
                                         className="size-9 sm:w-auto"
                                     >
-                                        <Trash2 className="w-4 h-4 mr-1" />
+                                        <Icon
+                                            icon={Delete02Icon}
+                                            className="mr-1"
+                                        />
                                         <span className="hidden sm:inline">
                                             {tMembers("remove")}
                                         </span>
@@ -893,7 +911,7 @@ export default function MembersPage() {
                                     tooltip={memberActionsDisabledReason}
                                     className="size-9 sm:w-auto"
                                 >
-                                    <Pencil className="w-4 h-4 mr-1" />
+                                    <Icon icon={PencilIcon} className="mr-1" />
                                     <span className="hidden sm:inline">
                                         {tMembers("edit")}
                                     </span>

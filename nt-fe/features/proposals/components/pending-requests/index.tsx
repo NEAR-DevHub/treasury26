@@ -1,36 +1,43 @@
+import {
+    ArrowRight01Icon,
+    Cancel01Icon,
+    CheckIcon,
+    Download01Icon,
+    SentIcon,
+} from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/icon";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Button } from "@/components/button";
+import { useMemo, useState } from "react";
 import {
     AuthButtonWithProposal,
     useNoVoteMessage,
 } from "@/components/auth-button";
+import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
-import { SlotWarning } from "@/components/warning-message";
-import { useProposalApproveBlock } from "@/hooks/use-warnings";
+import { ConfidentialState } from "@/components/confidential-state";
+import { EmptyState } from "@/components/empty-state";
+import { FormattedDate } from "@/components/formatted-date";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SlotWarning } from "@/components/warning-message";
 import { useProposals } from "@/hooks/use-proposals";
-import { Proposal } from "@/lib/proposals-api";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { ChevronRight, Check, X, Download, Send } from "lucide-react";
-import Link from "next/link";
-import { ProposalTypeIcon } from "../proposal-type-icon";
-import { TransactionCell } from "../transaction-cell";
-import { getProposalUIKind } from "../../utils/proposal-utils";
-import { useProposalKindLabel } from "../../hooks/use-proposal-kind-label";
-import { useProposalInsufficientBalance } from "../../hooks/use-proposal-insufficient-balance";
-import { useVoteActionSlots } from "../../hooks/use-vote-action-slots";
-import { VoteModal } from "../vote-modal";
-import { useMemo, useState } from "react";
+import { useProposalApproveBlock } from "@/hooks/use-warnings";
+import type { Proposal } from "@/lib/proposals-api";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
-import { EmptyState } from "@/components/empty-state";
-import { ConfidentialState } from "@/components/confidential-state";
-import { NotEnoughBalance } from "../not-enough-balance";
-import { FormattedDate } from "@/components/formatted-date";
-import { Policy } from "@/types/policy";
+import type { Policy } from "@/types/policy";
+import { useProposalInsufficientBalance } from "../../hooks/use-proposal-insufficient-balance";
+import { useProposalKindLabel } from "../../hooks/use-proposal-kind-label";
+import { useVoteActionSlots } from "../../hooks/use-vote-action-slots";
 import { extractConfidentialRequestData } from "../../utils/proposal-extractors";
-import { useRouter } from "next/navigation";
+import { getProposalUIKind } from "../../utils/proposal-utils";
+import { NotEnoughBalance } from "../not-enough-balance";
+import { ProposalTypeIcon } from "../proposal-type-icon";
+import { TransactionCell } from "../transaction-cell";
+import { VoteModal } from "../vote-modal";
 
 const MAX_DISPLAYED_REQUESTS = 3;
 
@@ -60,7 +67,7 @@ function PendingRequestsSkeleton() {
                 </div>
                 <Button variant="pill" size="sm" disabled>
                     {t("viewAll")}
-                    <ChevronRight className="size-4" />
+                    <Icon icon={ArrowRight01Icon} />
                 </Button>
             </div>
             <PendingRequestsGridSkeleton />
@@ -175,7 +182,7 @@ export function PendingRequestItem({
                                               : undefined
                                     }
                                 >
-                                    <X className="size-3.5" />
+                                    <Icon icon={Cancel01Icon} />
                                     {tActions("reject")}
                                 </AuthButtonWithProposal>
                                 {insufficientBalanceInfo.hasInsufficientBalance &&
@@ -194,7 +201,7 @@ export function PendingRequestItem({
                                                 );
                                             }}
                                         >
-                                            <Download className="size-3.5" />
+                                            <Icon icon={Download01Icon} />
                                             {tActions("deposit")}
                                         </Button>
                                     </span>
@@ -221,7 +228,7 @@ export function PendingRequestItem({
                                                   : undefined
                                         }
                                     >
-                                        <Check className="size-3.5" />
+                                        <Icon icon={CheckIcon} />
                                         {tActions("approve")}
                                     </AuthButtonWithProposal>
                                 )}
@@ -229,7 +236,10 @@ export function PendingRequestItem({
                         </div>
                     </div>
                 </div>
-                <ChevronRight className="size-4 shrink-0 text-card group-hover:text-card-foreground transition-colors absolute right-4 top-4" />
+                <Icon
+                    icon={ArrowRight01Icon}
+                    className="shrink-0 text-card group-hover:text-card-foreground transition-colors absolute right-4 top-4"
+                />
             </PageCard>
         </Link>
     );
@@ -306,7 +316,7 @@ export function PendingRequests() {
                         <Link href={`/${treasuryId}/requests`}>
                             <Button variant="pill" size="sm">
                                 {t("viewAll")}
-                                <ChevronRight className="size-4" />
+                                <Icon icon={ArrowRight01Icon} />
                             </Button>
                         </Link>
                     )}
@@ -349,7 +359,7 @@ export function PendingRequests() {
                     </div>
                 ) : (
                     <EmptyState
-                        icon={Send}
+                        icon={SentIcon}
                         title={t("emptyTitle")}
                         description={t("emptyDescription")}
                     />

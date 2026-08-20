@@ -1,5 +1,6 @@
+import { Icon } from "@/components/icon";
+import { Contact01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useState } from "react";
-import { ContactRound } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -313,7 +314,7 @@ export function TooltipUser({
                             !isGuestTreasury && (
                                 <Button asChild type="button" variant="ghost">
                                     <Link href={addToAddressBookUrl}>
-                                        <ContactRound className="size-4" />
+                                        <Icon icon={Contact01Icon} />
                                         {t("saveToAddressBook")}
                                     </Link>
                                 </Button>

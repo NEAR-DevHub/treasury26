@@ -1,6 +1,6 @@
 "use client";
-
-import { ArrowRight, ChevronRight } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
@@ -309,7 +309,10 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
 
                 <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
                     <div className="rounded-full bg-card border p-1.5 shadow-sm">
-                        <ChevronRight className="size-5 text-muted-foreground" />
+                        <Icon
+                            icon={ArrowRight01Icon}
+                            className="text-muted-foreground"
+                        />
                     </div>
                 </div>
 
@@ -517,7 +520,7 @@ function ViewLinkedRequestButton({
                     rel="noopener noreferrer"
                 >
                     {t("viewLinkedRequest")}
-                    <ArrowRight className="size-4" />
+                    <Icon icon={ArrowRight01Icon} />
                 </Link>
             </Button>
         </ModalSection>

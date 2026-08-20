@@ -1,6 +1,6 @@
 "use client";
-
-import { History } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { WorkHistoryIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 
 interface DepositTransferInactiveProps {
@@ -30,7 +30,10 @@ export function DepositTransferInactive({
                 data-testid="deposit-transfer-inactive"
             >
                 <div className="size-16 rounded-full bg-muted flex items-center justify-center mb-5">
-                    <History className="size-7 text-muted-foreground" />
+                    <Icon
+                        icon={WorkHistoryIcon}
+                        className="size-7 text-muted-foreground"
+                    />
                 </div>
                 <h2 className="font-semibold text-base text-foreground">
                     {t("transfer.linkInactiveTitle")}

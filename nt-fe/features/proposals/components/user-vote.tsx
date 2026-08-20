@@ -1,9 +1,13 @@
+import { Icon } from "@/components/icon";
+import {
+    Cancel01Icon,
+    Delete01Icon,
+    Tick01Icon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { TooltipUser, User } from "@/components/user";
 import { Vote } from "@/lib/proposals-api";
 import { cn } from "@/lib/utils";
-import { Check, Trash, X } from "lucide-react";
-
 const iconStyle = "size-3 text-white rounded-full p-0.5 stroke-3";
 
 export function UserVote({
@@ -22,7 +26,8 @@ export function UserVote({
     switch (vote) {
         case "Approve":
             icon = (
-                <Check
+                <Icon
+                    icon={Tick01Icon}
                     className={cn(
                         iconStyle,
                         "bg-general-success-foreground",
@@ -34,7 +39,8 @@ export function UserVote({
             break;
         case "Reject":
             icon = (
-                <X
+                <Icon
+                    icon={Cancel01Icon}
                     className={cn(
                         iconStyle,
                         "bg-general-destructive-foreground",
@@ -46,7 +52,8 @@ export function UserVote({
             break;
         case "Remove":
             icon = (
-                <Trash
+                <Icon
+                    icon={Delete01Icon}
                     className={cn(
                         iconStyle,
                         "bg-general-destructive-foreground",

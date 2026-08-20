@@ -1,11 +1,16 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    Cancel01Icon,
+    FileAttachmentIcon,
+    Upload01Icon,
+} from "@hugeicons/core-free-icons";
 import { useState, useEffect, useId } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { ScrollContainer } from "@/components/scroll-container";
 import { Textarea } from "@/components/textarea";
-import { Upload, FileText, X } from "lucide-react";
 import {
     Tabs,
     TabsList,
@@ -149,7 +154,10 @@ export function CsvUploadPanel({
                                 onDragLeave={handleDragLeave}
                             >
                                 <div className="flex flex-col items-center gap-4">
-                                    <Upload className="w-6 h-6 text-muted-foreground" />
+                                    <Icon
+                                        icon={Upload01Icon}
+                                        className="size-6 text-muted-foreground"
+                                    />
                                     <div>
                                         <p className="text-base mb-2">
                                             <Button
@@ -212,8 +220,9 @@ export function CsvUploadPanel({
                             }`}
                         >
                             <div className="flex items-center gap-3">
-                                <FileText
-                                    className={`w-5 h-5 ${
+                                <Icon
+                                    icon={FileAttachmentIcon}
+                                    className={`${
                                         hasErrors
                                             ? "text-destructive"
                                             : "text-primary"
@@ -240,7 +249,7 @@ export function CsvUploadPanel({
                                         : "text-muted-foreground hover:text-foreground"
                                 }`}
                             >
-                                <X className="w-4 h-4" />
+                                <Icon icon={Cancel01Icon} />
                             </Button>
                         </div>
                     )}

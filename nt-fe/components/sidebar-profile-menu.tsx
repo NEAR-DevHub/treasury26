@@ -1,12 +1,13 @@
 "use client";
 
+import { Icon } from "@/components/icon";
 import {
-    ChevronUp,
-    MessageCircleQuestion,
-    Moon,
-    Sun,
-    User,
-} from "lucide-react";
+    ArrowUp01Icon,
+    MessageQuestionIcon,
+    MoonIcon,
+    Sun01Icon,
+    UserIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
@@ -63,7 +64,7 @@ export function SidebarProfileMenu({
 
     const avatar = (
         <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-green-500">
-            <User className="size-4.5 text-gray-900" />
+            <Icon icon={UserIcon} className="text-gray-900" />
         </span>
     );
 
@@ -99,9 +100,10 @@ export function SidebarProfileMenu({
                     className="size-2 shrink-0 rounded-full bg-general-orange-foreground"
                 />
             )}
-            <ChevronUp
+            <Icon
+                icon={ArrowUp01Icon}
                 className={cn(
-                    "size-5 shrink-0 text-gray-500 transition-transform duration-150 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white",
+                    "shrink-0 text-gray-500 transition-transform duration-150 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white",
                     isOpen && "rotate-180",
                 )}
             />
@@ -141,9 +143,9 @@ export function SidebarProfileMenu({
                         onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
                     >
                         {isDarkTheme ? (
-                            <Sun className="size-4" />
+                            <Icon icon={Sun01Icon} />
                         ) : (
-                            <Moon className="size-4" />
+                            <Icon icon={MoonIcon} />
                         )}
                         {tHeader("toggleTheme")}
                     </button>
@@ -155,7 +157,7 @@ export function SidebarProfileMenu({
                             onOpenSupport();
                         }}
                     >
-                        <MessageCircleQuestion className="size-4" />
+                        <Icon icon={MessageQuestionIcon} />
                         {tNav("helpSupport")}
                     </button>
                     {isStaging && (

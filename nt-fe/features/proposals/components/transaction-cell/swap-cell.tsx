@@ -1,4 +1,5 @@
-import { ArrowRight } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { SwapRequestData } from "../../types/index";
 import { Amount } from "../amount";
 import { useSearchIntentsTokens } from "@/hooks/use-treasury-queries";
@@ -46,7 +47,10 @@ export function IntentsSwapCell({ data, textOnly = false }: SwapCellProps) {
                 iconSize="sm"
                 textOnly={textOnly}
             />
-            <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+            <Icon
+                icon={ArrowRight01Icon}
+                className="shrink-0 text-muted-foreground"
+            />
             <Amount
                 amountWithDecimals={data.amountOut}
                 tokenId={tokenOutId}
@@ -70,7 +74,10 @@ export function NearWrapSwapCell({ data, textOnly = false }: SwapCellProps) {
                 iconSize="sm"
                 textOnly={textOnly}
             />
-            <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+            <Icon
+                icon={ArrowRight01Icon}
+                className="shrink-0 text-muted-foreground"
+            />
             <Amount
                 amountWithDecimals={data.amountOut}
                 tokenId={data.tokenOut}

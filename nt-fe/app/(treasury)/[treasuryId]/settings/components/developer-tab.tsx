@@ -1,12 +1,6 @@
 "use client";
-
-import { CodeXml } from "lucide-react";
-/**
- * Settings → Developer tab. Hosts the opt-in for Custom Requests (the custom-proposal-templates
- * feature). Enabling it (ChangePolicy-gated server-side) reveals the Request Templates section in
- * the sidebar; the first time a treasury turns it on, we run the one-step onboarding tour pointing
- * at that freshly revealed item.
- */
+import { Icon } from "@/components/icon";
+import { CodeIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useNextStep } from "nextstepjs";
 import { useEffect, useRef, useState } from "react";
@@ -76,7 +70,7 @@ export function DeveloperTab() {
         <PageCard>
             <div className="flex items-start gap-4">
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                    <CodeXml className="size-5" />
+                    <Icon icon={CodeIcon} />
                 </div>
                 <div className="flex flex-1 flex-col gap-1">
                     <h3 className="font-semibold text-base">

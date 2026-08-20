@@ -1,6 +1,6 @@
 "use client";
-
-import { Copy } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Copy01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "./button";
@@ -31,7 +31,7 @@ export function CopyButton({
 
     return (
         <Button type="button" onClick={handleCopy} {...props}>
-            <Copy className={cn("h-4 w-4", iconClassName)} />
+            <Icon icon={Copy01Icon} className={iconClassName} />
             {children}
         </Button>
     );

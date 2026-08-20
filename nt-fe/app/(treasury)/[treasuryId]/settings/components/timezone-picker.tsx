@@ -1,8 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Check, ChevronDown } from "lucide-react";
 import { Button } from "@/components/button";
 import { HighlightedText } from "@/components/highlighted-text";
 import { Input } from "@/components/input";
@@ -83,7 +84,10 @@ export function TimezonePicker({
                               ? formatTimezoneLabel(value)
                               : t("selectTimezone")}
                     </span>
-                    <ChevronDown className="size-4 shrink-0 opacity-50" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="shrink-0 opacity-50"
+                    />
                 </Button>
             </PopoverTrigger>
             <PopoverContent
@@ -126,9 +130,10 @@ export function TimezonePicker({
                                             setSearch("");
                                         }}
                                     >
-                                        <Check
+                                        <Icon
+                                            icon={Tick01Icon}
                                             className={cn(
-                                                "mt-0.5 size-4 shrink-0",
+                                                "mt-0.5 shrink-0",
                                                 selected
                                                     ? "opacity-100"
                                                     : "opacity-0",

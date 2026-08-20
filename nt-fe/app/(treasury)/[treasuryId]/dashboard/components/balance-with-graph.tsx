@@ -1,17 +1,18 @@
 "use client";
-
 import {
-    ArrowDown,
-    Check,
-    ChevronDown,
-    ClockIcon,
-    Coins,
-    Eye,
-    EyeOff,
-    Info,
-    Navigation,
-    Shield,
-} from "lucide-react";
+    ArrowDataTransferHorizontalIcon,
+    ArrowDown01Icon,
+    ArrowDown02Icon,
+    Clock01Icon,
+    Coins02Icon,
+    InformationCircleIcon,
+    SentIcon,
+    Shield01Icon,
+    Tick01Icon,
+    ViewIcon,
+    ViewOffIcon,
+} from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/icon";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -20,7 +21,6 @@ import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
-import { SwapIcon } from "@/components/icons/swap";
 import { ScrollContainer } from "@/components/scroll-container";
 import { Tooltip } from "@/components/tooltip";
 import {
@@ -41,6 +41,7 @@ import { useIsHistoryRefreshing } from "@/features/activity";
 import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
+import { trackEvent } from "@/lib/analytics";
 import type { ChartInterval, TreasuryAsset } from "@/lib/api";
 import { availableBalance, totalBalance } from "@/lib/balance";
 import { getBalanceHistoryTokenIds } from "@/lib/balance-history-token-ids";
@@ -50,7 +51,6 @@ import {
     getDashboardBreakdownItems,
     getDashboardBucketVisibility,
 } from "@/lib/dashboard-balance-view";
-import { trackEvent } from "@/lib/analytics";
 import { cn, formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
 import BalanceChart from "./chart";
 
@@ -558,7 +558,10 @@ export default function BalanceWithGraph({
                                     content={tCommon("confidentialDataTooltip")}
                                 >
                                     <span className="inline-flex">
-                                        <Shield className="size-4 fill-foreground" />
+                                        <Icon
+                                            icon={Shield01Icon}
+                                            className="fill-foreground"
+                                        />
                                     </span>
                                 </Tooltip>
                             )}
@@ -580,7 +583,10 @@ export default function BalanceWithGraph({
                                             </div>
                                         }
                                     >
-                                        <Info className="size-3 cursor-help" />
+                                        <Icon
+                                            icon={InformationCircleIcon}
+                                            className="cursor-help"
+                                        />
                                     </Tooltip>
                                 )}
                             <button
@@ -595,9 +601,9 @@ export default function BalanceWithGraph({
                                 className="cursor-pointer text-gray-400 transition-colors hover:text-gray-700"
                             >
                                 {isBalanceMasked ? (
-                                    <EyeOff className="size-4" />
+                                    <Icon icon={ViewOffIcon} />
                                 ) : (
-                                    <Eye className="size-4" />
+                                    <Icon icon={ViewIcon} />
                                 )}
                             </button>
                         </p>
@@ -654,7 +660,7 @@ export default function BalanceWithGraph({
                                     >
                                         {selectedToken === "all" ? (
                                             <span className="flex items-center gap-2">
-                                                <Coins className="size-4" />
+                                                <Icon icon={Coins02Icon} />
                                                 <span>{t("allTokens")}</span>
                                             </span>
                                         ) : (
@@ -675,7 +681,10 @@ export default function BalanceWithGraph({
                                                 <span>{selectedToken}</span>
                                             </span>
                                         )}
-                                        <ChevronDown className="size-4 opacity-50" />
+                                        <Icon
+                                            icon={ArrowDown01Icon}
+                                            className="opacity-50"
+                                        />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
@@ -696,11 +705,14 @@ export default function BalanceWithGraph({
                                             )}
                                         >
                                             <span className="flex items-center gap-3">
-                                                <Coins className="size-5" />
+                                                <Icon icon={Coins02Icon} />
                                                 <span>{t("allTokens")}</span>
                                             </span>
                                             {selectedToken === "all" && (
-                                                <Check className="size-4 text-foreground" />
+                                                <Icon
+                                                    icon={Tick01Icon}
+                                                    className="text-foreground"
+                                                />
                                             )}
                                         </DropdownMenuItem>
                                         {groupedTokens.map((group) => (
@@ -730,7 +742,10 @@ export default function BalanceWithGraph({
                                                 </span>
                                                 {selectedToken ===
                                                     group.symbol && (
-                                                    <Check className="size-4 text-foreground" />
+                                                    <Icon
+                                                        icon={Tick01Icon}
+                                                        className="text-foreground"
+                                                    />
                                                 )}
                                             </DropdownMenuItem>
                                         ))}
@@ -752,7 +767,10 @@ export default function BalanceWithGraph({
                                         <span>
                                             {t(`period.${selectedPeriod}`)}
                                         </span>
-                                        <ChevronDown className="size-4 opacity-50" />
+                                        <Icon
+                                            icon={ArrowDown01Icon}
+                                            className="opacity-50"
+                                        />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
@@ -776,7 +794,10 @@ export default function BalanceWithGraph({
                                         >
                                             <span>{t(`period.${period}`)}</span>
                                             {selectedPeriod === period && (
-                                                <Check className="size-4 text-foreground" />
+                                                <Icon
+                                                    icon={Tick01Icon}
+                                                    className="text-foreground"
+                                                />
                                             )}
                                         </DropdownMenuItem>
                                     ))}
@@ -824,7 +845,7 @@ export default function BalanceWithGraph({
                     size="xl"
                     className="h-11 max-md:px-3 max-md:text-sm"
                 >
-                    <ArrowDown className="size-[18px]" /> {t("receive")}
+                    <Icon icon={ArrowDown02Icon} /> {t("receive")}
                 </Button>
                 <AuthButton
                     permissionKind="transfer"
@@ -841,7 +862,7 @@ export default function BalanceWithGraph({
                         router.push(`/${treasuryId}/payments`);
                     }}
                 >
-                    <Navigation className="size-[18px]" />
+                    <Icon icon={SentIcon} />
                     {t("send")}
                 </AuthButton>
                 <AuthButton
@@ -859,7 +880,7 @@ export default function BalanceWithGraph({
                         router.push(`/${treasuryId}/exchange`);
                     }}
                 >
-                    <SwapIcon className="size-[18px]" /> {t("swap")}
+                    <Icon icon={ArrowDataTransferHorizontalIcon} /> {t("swap")}
                 </AuthButton>
                 {/*<AuthButton permissionKind="call" permissionAction="AddProposal" className="w-full">
                     <Database className="size-4" /> Earn
@@ -882,7 +903,7 @@ export default function BalanceWithGraph({
                         <SelectValue>
                             {selectedToken === "all" ? (
                                 <div className="flex items-center gap-2">
-                                    <Coins className="size-4" />
+                                    <Icon icon={Coins02Icon} />
                                     <span>{t("allTokens")}</span>
                                 </div>
                             ) : (
@@ -907,7 +928,7 @@ export default function BalanceWithGraph({
                             className={FILTER_SELECT_ITEM_CLASS}
                         >
                             <div className="flex items-center gap-3">
-                                <Coins className="size-5" />
+                                <Icon icon={Coins02Icon} />
                                 <span>{t("allTokens")}</span>
                             </div>
                         </SelectItem>
@@ -973,7 +994,7 @@ export default function BalanceWithGraph({
                 ) : selectedToken !== "all" &&
                   displayChartData.data.length === 0 ? (
                     <EmptyState
-                        icon={ClockIcon}
+                        icon={Clock01Icon}
                         title={t("noTokenChartTitle")}
                         description={t("noTokenChartDescription", {
                             symbol: selectedTokenGroup?.symbol ?? selectedToken,

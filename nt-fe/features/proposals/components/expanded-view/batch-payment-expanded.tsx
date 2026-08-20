@@ -1,3 +1,10 @@
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowUpRight01Icon,
+    FileAttachmentIcon,
+    SearchMinusIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useBatchPayment, useToken } from "@/hooks/use-treasury-queries";
@@ -13,7 +20,6 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ArrowUpRight, ChevronDown, FileText, SearchX } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 import { Address } from "@/components/address";
@@ -127,7 +133,7 @@ function PaymentDisplay({
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    {t("viewTransaction")} <ArrowUpRight className="size-4" />
+                    {t("viewTransaction")} <Icon icon={ArrowUpRight01Icon} />
                 </Link>
             ),
         });
@@ -142,8 +148,9 @@ function PaymentDisplay({
                 )}
             >
                 <div className="flex gap-2 items-center">
-                    <ChevronDown
-                        className={cn("w-4 h-4", expanded && "rotate-180")}
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className={cn(expanded && "rotate-180")}
                     />
                     {t("recipientNumber", { number })}
                 </div>
@@ -171,7 +178,7 @@ function PaymentDisplay({
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <FileText className="size-4" />
+                                <Icon icon={FileAttachmentIcon} />
                             </Link>
                         </Button>
                     )}
@@ -455,7 +462,7 @@ export function BatchPaymentRequestExpanded({
     if (isError || !activeBatchData) {
         return (
             <EmptyState
-                icon={SearchX}
+                icon={SearchMinusIcon}
                 title={t("oopsTitle")}
                 description={t("oopsDescription")}
             />

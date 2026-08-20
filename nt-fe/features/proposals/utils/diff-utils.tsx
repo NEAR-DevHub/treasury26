@@ -1,4 +1,5 @@
-import { ArrowRight } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import type React from "react";
 
@@ -25,7 +26,10 @@ export const renderDiff = (
         >
             {oldNode}
         </span>
-        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+        <Icon
+            icon={ArrowRight01Icon}
+            className="text-muted-foreground shrink-0"
+        />
         <span className="font-medium text-foreground">{newNode}</span>
     </div>
 );

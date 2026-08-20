@@ -1,6 +1,6 @@
 "use client";
-
-import { FileText } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { FileAttachmentIcon } from "@hugeicons/core-free-icons";
 import { redirect, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { use, useEffect, useMemo, useRef } from "react";
@@ -215,7 +215,7 @@ function ReceiptPageShell({
                         </CopyButton>
                     )}
                     <Button variant="default" onClick={onPrint}>
-                        <FileText className="size-4" />
+                        <Icon icon={FileAttachmentIcon} />
                         {tReceipt("printOrSavePdf")}
                     </Button>
                 </div>

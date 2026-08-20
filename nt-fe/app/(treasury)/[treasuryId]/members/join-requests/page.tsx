@@ -1,8 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Delete02Icon } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -112,7 +113,10 @@ function JoinRequestsAssignStep({
                                     disabled={isRemoving}
                                     onClick={() => onRemove(member.requestId)}
                                 >
-                                    <Trash2 className="size-4 text-foreground group-hover:text-destructive" />
+                                    <Icon
+                                        icon={Delete02Icon}
+                                        className="text-foreground group-hover:text-destructive"
+                                    />
                                 </Button>
                             </div>
                             <div className="flex md:flex-row flex-col items-start justify-between md:items-center gap-3">

@@ -1,6 +1,6 @@
 "use client";
-
-import { ChevronRight } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useLocale, useTranslations } from "next-intl";
 import { useFormContext } from "react-hook-form";
 import { PageCard } from "@/components/card";
@@ -102,7 +102,10 @@ export function Step2({ handleBack }: StepProps) {
 
                             <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
                                 <div className="rounded-full bg-card border p-1.5 shadow-sm">
-                                    <ChevronRight className="size-6 text-muted-foreground" />
+                                    <Icon
+                                        icon={ArrowRight01Icon}
+                                        className="size-6 text-muted-foreground"
+                                    />
                                 </div>
                             </div>
 
@@ -139,7 +142,10 @@ export function Step2({ handleBack }: StepProps) {
 
                             <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
                                 <div className="rounded-full bg-card border p-1.5 shadow-sm">
-                                    <ChevronRight className="size-6 text-muted-foreground" />
+                                    <Icon
+                                        icon={ArrowRight01Icon}
+                                        className="size-6 text-muted-foreground"
+                                    />
                                 </div>
                             </div>
 

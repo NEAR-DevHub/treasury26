@@ -60,6 +60,114 @@
     --color-gray-950: oklch(0.145 0 0);
 }
 
+/* Icon hover choreography for the sidebar rail. Each nav row is a `group`, so
+   the icon replays its animation on hover-in (see `sidebar.tsx`). */
+@theme {
+    --animate-icon-pop: icon-pop 0.45s ease-in-out;
+    --animate-icon-fly: icon-fly 1s ease-in-out;
+    --animate-icon-swap: icon-swap 0.6s ease-in-out;
+    --animate-icon-rise: icon-rise 0.6s ease-in-out;
+    --animate-icon-spin: icon-spin 0.6s ease-in-out;
+    --animate-icon-wiggle: icon-wiggle 0.6s ease-in-out;
+    --animate-icon-drop: icon-drop 0.6s ease-in-out;
+
+    @keyframes icon-pop {
+        0%,
+        100% {
+            transform: scale(1);
+        }
+        40% {
+            transform: scale(1.18);
+        }
+        70% {
+            transform: scale(0.95);
+        }
+    }
+
+    /* Paper plane takes off up-right and re-enters from the bottom-left; the
+       opacity dip hides the wrap-around jump at the halfway point. */
+    @keyframes icon-fly {
+        0% {
+            transform: translate(0, 0) scale(1);
+            opacity: 1;
+        }
+        25% {
+            transform: translate(-10%, 10%) scale(0.85);
+            opacity: 1;
+        }
+        49% {
+            transform: translate(60%, -60%) scale(0.9);
+            opacity: 0;
+        }
+        51% {
+            transform: translate(-60%, 60%) scale(0.9);
+            opacity: 0;
+        }
+        100% {
+            transform: translate(0, 0) scale(1);
+            opacity: 1;
+        }
+    }
+
+    @keyframes icon-swap {
+        0%,
+        100% {
+            transform: translateX(0);
+        }
+        30% {
+            transform: translateX(-18%);
+        }
+        65% {
+            transform: translateX(18%);
+        }
+    }
+
+    @keyframes icon-rise {
+        0%,
+        100% {
+            transform: translateY(0) scale(1);
+        }
+        45% {
+            transform: translateY(-18%) scale(1.08);
+        }
+    }
+
+    @keyframes icon-spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(180deg);
+        }
+    }
+
+    @keyframes icon-wiggle {
+        0%,
+        100% {
+            transform: rotate(0deg);
+        }
+        25% {
+            transform: rotate(-12deg);
+        }
+        75% {
+            transform: rotate(12deg);
+        }
+    }
+
+    @keyframes icon-drop {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        35% {
+            transform: translateY(-22%);
+        }
+        70% {
+            transform: translateY(8%);
+        }
+    }
+}
+
 :root {
     --background: rgb(245, 245, 245);
     --page-bg: rgb(245, 245, 245);
@@ -479,5 +587,12 @@ body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
         bottom: 1.5rem !important;
         left: 60% !important;
         transform: translate(-50%, 0) !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Sidebar icon flourishes are decorative — drop them for reduced motion. */
+    [class*="animate-icon-"] {
+        animation: none !important;
     }
 }

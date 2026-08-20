@@ -1,9 +1,10 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { FileDownloadIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useRouter } from "next/navigation";
-import { FileDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { trackEvent } from "@/lib/analytics";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -29,7 +30,7 @@ export function ExportButton() {
             className="h-9 px-3"
             size={isMobile ? "icon" : "default"}
         >
-            <FileDown className="h-4 w-4" />
+            <Icon icon={FileDownloadIcon} />
             <span className="hidden sm:inline">{tCommon("export")}</span>
         </Button>
     );

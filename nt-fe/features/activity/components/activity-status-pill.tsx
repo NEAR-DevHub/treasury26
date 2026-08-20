@@ -1,6 +1,6 @@
 "use client";
-
-import { Loader2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Loading02Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { ActivityStatus } from "../utils/history-utils";
@@ -50,7 +50,7 @@ export function ActivityStatusPill({
             )}
         >
             {resolvedStatus === "pending" ? (
-                <Loader2 className="size-3 animate-spin" />
+                <Icon icon={Loading02Icon} className="animate-spin" />
             ) : null}
             {t(STATUS_LABEL_KEYS[resolvedStatus])}
         </span>

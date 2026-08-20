@@ -1,16 +1,6 @@
 "use client";
-
-/**
- * Authoring form shared by create and edit, with a Code | Visual toggle over the manifest. Code
- * mode is a JSON textarea; Visual mode is the sectioned `VisualBuilder`. Both feed the same
- * `parseManifest`, so errors and submit behave identically regardless of mode. The page supplies
- * `onSubmit` (create vs update) and the labels; this stays agnostic of which mutation runs.
- *
- * State: the name (the DB record name, separate from the manifest), the code textarea string, and
- * the visual draft. Switching Code → Visual parses the textarea into a draft (blocked on invalid
- * JSON); Visual → Code serializes the draft back to text. The active mode is the source of truth.
- */
-import { ArrowLeft } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -192,7 +182,7 @@ export function TemplateEditor({
                     aria-label={t("back")}
                     className="text-muted-foreground transition-colors hover:text-foreground"
                 >
-                    <ArrowLeft className="size-5" />
+                    <Icon icon={ArrowLeft01Icon} />
                 </button>
                 <h2 className="font-semibold text-base">{title}</h2>
             </div>

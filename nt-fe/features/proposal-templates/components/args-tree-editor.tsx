@@ -1,14 +1,6 @@
 "use client";
-
-/**
- * Args-first editor: each argument is the unit. A top-level argument is **Static** (a fixed value —
- * text/number/bool/null/object/array, `{{field}}` allowed in text) or **Dynamic** (a member input),
- * in which case its value is `{{key}}` and the row expands to that input's config inline (the field
- * named `key`). Renaming a dynamic key renames its field too, so args + fields update atomically via
- * one `onChange({ args, fields })`. Nested object/array values are static-only here; a member input
- * inside them is a composed `{{placeholder}}` configured under "Other inputs".
- */
-import { Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Fragment } from "react";
 import { Button } from "@/components/button";
@@ -93,7 +85,7 @@ export function ArgsTreeEditor({
                     onChange({ args: [...args, makeArgEntry()], fields })
                 }
             >
-                <Plus className="size-4" /> {t("args.addArgument")}
+                <Icon icon={Add01Icon} /> {t("args.addArgument")}
             </Button>
         </div>
     );
@@ -210,7 +202,7 @@ function TopEntryRow({
                     className="text-muted-foreground hover:text-foreground"
                     onClick={removeEntry}
                 >
-                    <Trash2 className="size-4" /> {t("args.remove")}
+                    <Icon icon={Delete02Icon} /> {t("args.remove")}
                 </Button>
             </div>
 
@@ -528,7 +520,7 @@ function StaticEntriesEditor({
                                 onChange(entries.filter((_, i) => i !== index))
                             }
                         >
-                            <Trash2 className="size-4" />
+                            <Icon icon={Delete02Icon} />
                         </Button>
                     </div>
                     {entry.value.kind === "object" ? (
@@ -582,7 +574,7 @@ function StaticEntriesEditor({
                 className="self-start"
                 onClick={() => onChange([...entries, makeArgEntry()])}
             >
-                <Plus className="size-4" /> {t("args.addKey")}
+                <Icon icon={Add01Icon} /> {t("args.addKey")}
             </Button>
         </div>
     );
@@ -654,7 +646,7 @@ function StaticItemsEditor({
                                 onChange(items.filter((_, i) => i !== index))
                             }
                         >
-                            <Trash2 className="size-4" />
+                            <Icon icon={Delete02Icon} />
                         </Button>
                     </div>
                 </div>
@@ -666,7 +658,7 @@ function StaticItemsEditor({
                 className="self-start"
                 onClick={addItem}
             >
-                <Plus className="size-4" /> {t("args.addItem")}
+                <Icon icon={Add01Icon} /> {t("args.addItem")}
             </Button>
         </div>
     );

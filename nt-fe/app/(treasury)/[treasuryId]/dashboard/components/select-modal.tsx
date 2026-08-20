@@ -1,7 +1,8 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Tick01Icon } from "@hugeicons/core-free-icons";
 import { useState, useMemo, useCallback, ReactNode } from "react";
-import { Check } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/input";
 import {
@@ -136,7 +137,7 @@ export function SelectModal({
             if (renderRight) return renderRight(item);
             if (!multiSelect) return null;
             return selectedIds?.includes(item.id) ? (
-                <Check className="size-4 text-primary shrink-0" />
+                <Icon icon={Tick01Icon} className="text-primary shrink-0" />
             ) : null;
         },
         [renderRight, multiSelect, selectedIds],
