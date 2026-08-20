@@ -174,7 +174,6 @@ type NavTranslationKey =
     | "requests"
     | "payments"
     | "exchange"
-    | "earn"
     | "addressBook"
     | "members"
     | "settings";
@@ -211,13 +210,6 @@ const navLinks: {
         roleRequired: true,
     },
     {
-        path: "earn",
-        labelKey: "earn",
-        icon: ChartLineData01Icon,
-        hoverAnimation: "rise",
-        id: "earn-new",
-    },
-    {
         path: "address-book",
         labelKey: "addressBook",
         icon: UserAccountIcon,
@@ -252,7 +244,6 @@ export function Sidebar({ onClose }: SidebarProps) {
     const [templatesExpanded, setTemplatesExpanded] = useState(true);
     const { accountId } = useNear();
     const tNav = useTranslations("nav");
-    const tPages = useTranslations("pages");
     const tCommon = useTranslations("common");
     const tCustom = useTranslations("customTemplates");
     const { currentTour } = useNextStep();
@@ -448,11 +439,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                     isActive={isActive}
                                     icon={link.icon}
                                     hoverAnimation={link.hoverAnimation}
-                                    label={
-                                        link.labelKey === "earn"
-                                            ? tPages("earn.title")
-                                            : tNav(link.labelKey)
-                                    }
+                                    label={tNav(link.labelKey)}
                                     showBadge={showBadge}
                                     badgeCount={proposals?.total ?? 0}
                                     showLabels={showLabels}
