@@ -83,11 +83,10 @@ interface NavLinkProps {
 
 /** Shared geometry/colour for every interactive row in the rail. */
 const railItemClass =
-    "group relative flex w-full items-center gap-4 rounded-2xl text-base/5.5 font-semibold transition-colors";
+    "group relative flex w-full items-center gap-4 rounded-2xl text-base/[1.2] font-semibold transition-colors";
 const railItemInactiveClass =
-    "text-gray-600 hover:bg-black/[0.05] hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.07] dark:hover:text-white";
-const railItemActiveClass =
-    "bg-black/[0.05] text-gray-900 dark:bg-white/[0.07] dark:text-white";
+    "text-gray-400 hover:bg-white/[0.07] hover:text-white";
+const railItemActiveClass = "bg-white/[0.07] text-white";
 
 /**
  * Surface of the gutter around the content panel. Confidential mode pins it to
@@ -487,7 +486,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                         // `justify-start` overrides the Button's base
                                         // `justify-center`, which would otherwise centre the icon
                                         // in the flex-1 width and shift it right when no chevron.
-                                        "flex h-auto min-w-0 flex-1 items-center justify-start gap-4 rounded-2xl p-3.5 font-semibold text-base/5.5 text-inherit hover:text-inherit",
+                                        "flex h-auto min-w-0 flex-1 items-center justify-start gap-4 rounded-2xl p-3.5 font-semibold text-base/[1.2] text-inherit hover:text-inherit",
                                         !showLabels &&
                                             "mx-auto size-11 justify-center p-0",
                                     )}
