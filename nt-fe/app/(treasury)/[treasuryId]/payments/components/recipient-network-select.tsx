@@ -285,9 +285,11 @@ export function RecipientNetworkSelect({
         : isBridgeAssetsLoading || availableOptions.length === 0;
 
     // Clear when the address is wiped, or when the selected network no longer
-    // matches the address format (e.g. Solana → EVM). Soft destination seed on
-    // the payments page only fills an empty field when the address is empty or
-    // nearcom:, so clearing here does not loop.
+    // matches the address format (e.g. Solana → EVM). Depend on `recipient` +
+    // `selectedOption` (not `availableOptions`) so token/list changes still
+    // clear a stale pick without coupling to memo array identity.
+    // Soft destination seed on the payments page only fills an empty field when
+    // the address is empty or nearcom:, so clearing here does not loop.
     const hadRecipientRef = useRef(false);
     const onChangeRef = useRef(onChange);
     onChangeRef.current = onChange;
@@ -305,18 +307,17 @@ export function RecipientNetworkSelect({
         hadRecipientRef.current = true;
         if (!value) return;
 
-        const selected = availableOptions.find((o) => o.id === value);
         if (
-            !selected ||
+            !selectedOption ||
             !isAddressCompatibleWithNetwork(
                 recipient,
-                selected.networkName,
-                selected.id,
+                selectedOption.networkName,
+                selectedOption.id,
             )
         ) {
             onChangeRef.current("");
         }
-    }, [recipient, value, requireRecipient, availableOptions]);
+    }, [recipient, value, requireRecipient, selectedOption]);
 
     const placeholderText = requireRecipient
         ? !recipient

@@ -40,6 +40,51 @@ function compactChainKey(chainName: string): string {
 }
 
 /**
+ * EVM explorer origin for keys + catalog display names (shared by tx + address
+ * links so they cannot diverge).
+ */
+function getEvmExplorerOrigin(chainName: string): string {
+    const compact = compactChainKey(chainName);
+    if (compact === "arbitrum" || compact === "arb") {
+        return "https://arbiscan.io";
+    }
+    if (compact === "polygon" || compact === "pol" || compact === "matic") {
+        return "https://polygonscan.com";
+    }
+    if (
+        compact === "bsc" ||
+        compact === "bnb" ||
+        compact === "binance" ||
+        compact === "bnbsmartchain" ||
+        compact === "binancesmartchain"
+    ) {
+        return "https://bscscan.com";
+    }
+    if (compact === "optimism" || compact === "op") {
+        return "https://optimistic.etherscan.io";
+    }
+    if (compact === "base") {
+        return "https://basescan.org";
+    }
+    if (compact === "avalanche" || compact === "avax") {
+        return "https://snowtrace.io";
+    }
+    if (compact === "gnosis") {
+        return "https://gnosisscan.io";
+    }
+    if (compact === "berachain" || compact === "bera") {
+        return "https://berascan.com";
+    }
+    if (compact === "scroll") {
+        return "https://scrollscan.com";
+    }
+    if (compact === "aurora" || compact === "auroradevnet") {
+        return "https://explorer.aurora.dev";
+    }
+    return "https://etherscan.io";
+}
+
+/**
  * Maps a chainName (from token data) to a blockchain type for validation
  */
 export function getBlockchainType(chainName: string): BlockchainType {
@@ -205,52 +250,8 @@ export function getExplorerTxUrl(
         case NEAR_NETWORK_ID:
             return `https://nearblocks.io/txns/${txHash}`;
 
-        case "ethereum": {
-            // Map specific EVM chains to their explorers (keys + display names).
-            const compact = compactChainKey(chainName);
-            if (compact === "arbitrum" || compact === "arb") {
-                return `https://arbiscan.io/tx/${txHash}`;
-            }
-            if (
-                compact === "polygon" ||
-                compact === "pol" ||
-                compact === "matic"
-            ) {
-                return `https://polygonscan.com/tx/${txHash}`;
-            }
-            if (
-                compact === "bsc" ||
-                compact === "bnb" ||
-                compact === "binance" ||
-                compact === "bnbsmartchain" ||
-                compact === "binancesmartchain"
-            ) {
-                return `https://bscscan.com/tx/${txHash}`;
-            }
-            if (compact === "optimism" || compact === "op") {
-                return `https://optimistic.etherscan.io/tx/${txHash}`;
-            }
-            if (compact === "base") {
-                return `https://basescan.org/tx/${txHash}`;
-            }
-            if (compact === "avalanche" || compact === "avax") {
-                return `https://snowtrace.io/tx/${txHash}`;
-            }
-            if (compact === "gnosis") {
-                return `https://gnosisscan.io/tx/${txHash}`;
-            }
-            if (compact === "berachain" || compact === "bera") {
-                return `https://berascan.com/tx/${txHash}`;
-            }
-            if (compact === "scroll") {
-                return `https://scrollscan.com/tx/${txHash}`;
-            }
-            if (compact === "aurora" || compact === "auroradevnet") {
-                return `https://explorer.aurora.dev/tx/${txHash}`;
-            }
-            // Default to Ethereum mainnet for unspecified EVM chains.
-            return `https://etherscan.io/tx/${txHash}`;
-        }
+        case "ethereum":
+            return `${getEvmExplorerOrigin(chainName)}/tx/${txHash}`;
 
         case "bitcoin":
             return `https://blockchair.com/bitcoin/transaction/${txHash}`;
@@ -327,47 +328,21 @@ export function requiresCrossChainValidation(
 }
 
 /**
- * Get the explorer URL for a given blockchain and address
+ * Get the explorer URL for a given blockchain and address.
+ * EVM sub-chains use the same compact-key mapping as {@link getExplorerTxUrl}.
  */
 export function getExplorerAddressUrl(
     chainName: string,
     address: string,
 ): string | null {
     const blockchainType = getBlockchainType(chainName);
-    const chainLower = chainName.toLowerCase();
 
     switch (blockchainType) {
         case NEAR_NETWORK_ID:
             return `https://nearblocks.io/address/${address}`;
 
         case "ethereum":
-            // Map specific EVM chains to their explorers
-            if (chainLower === "arbitrum" || chainLower === "arb") {
-                return `https://arbiscan.io/address/${address}`;
-            }
-            if (chainLower === "polygon" || chainLower === "pol") {
-                return `https://polygonscan.com/address/${address}`;
-            }
-            if (chainLower === "bsc" || chainLower === "binance") {
-                return `https://bscscan.com/address/${address}`;
-            }
-            if (chainLower === "optimism" || chainLower === "op") {
-                return `https://optimistic.etherscan.io/address/${address}`;
-            }
-            if (chainLower === "base") {
-                return `https://basescan.org/address/${address}`;
-            }
-            if (chainLower === "avalanche" || chainLower === "avax") {
-                return `https://snowtrace.io/address/${address}`;
-            }
-            if (chainLower === "gnosis") {
-                return `https://gnosisscan.io/address/${address}`;
-            }
-            if (chainLower === "aurora") {
-                return `https://explorer.aurora.dev/address/${address}`;
-            }
-            // Default to Ethereum mainnet for unspecified EVM chains
-            return `https://etherscan.io/address/${address}`;
+            return `${getEvmExplorerOrigin(chainName)}/address/${address}`;
 
         case "bitcoin":
             return `https://blockchair.com/bitcoin/address/${address}`;
