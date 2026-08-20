@@ -24,6 +24,7 @@ use crate::handlers::intents::confidential::prepare_auth::{
 };
 use crate::handlers::relay::confidential::{extract_mpc_signature, fetch_mpc_public_key};
 use crate::observability::sanitize_sensitive_json_value;
+use crate::services::{CredentialScope, TokenBundle};
 
 /// Run the full confidential setup for a newly created treasury.
 ///
@@ -111,7 +112,7 @@ pub async fn setup_confidential_treasury(
     }
 
     let already_authenticated = if resume {
-        has_valid_confidential_token(&state.db_pool, treasury_id).await
+        has_valid_confidential_token(state, treasury_id).await
     } else {
         false
     };
@@ -515,11 +516,12 @@ pub(crate) async fn authenticate_bulk_payment_with_1click(
     let resp_body: Value = response.json().await.unwrap_or_default();
 
     if !status.is_success() {
+        let sanitized_body = sanitize_sensitive_json_value(&resp_body);
         return Err((
             StatusCode::BAD_GATEWAY,
             format!(
                 "1Click bulk-payment auth failed ({}): {:?}",
-                status, resp_body
+                status, sanitized_body
             ),
         ));
     }
@@ -534,27 +536,25 @@ pub(crate) async fn authenticate_bulk_payment_with_1click(
             .unwrap_or(3600);
         let expires_at = chrono::Utc::now() + chrono::Duration::seconds(expires_in);
 
-        sqlx::query!(
-            r#"
-            UPDATE monitored_accounts
-            SET bulk_payment_access_token = $1,
-                bulk_payment_refresh_token = $2,
-                bulk_payment_token_expires_at = $3
-            WHERE account_id = $4
-            "#,
-            access_token,
-            refresh_token,
-            expires_at,
-            treasury_id.as_str(),
-        )
-        .execute(&state.db_pool)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to persist bulk-payment JWT: {}", e),
+        let bundle = TokenBundle {
+            access_token: access_token.to_string(),
+            refresh_token: refresh_token.to_string(),
+        };
+        state
+            .confidential_credentials()
+            .store_new(
+                treasury_id.as_str(),
+                CredentialScope::BulkPayment,
+                &bundle,
+                expires_at,
             )
-        })?;
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to persist bulk-payment JWT: {}", e),
+                )
+            })?;
 
         tracing::info!(
             "Stored bulk-payment JWT for DAO {} (expires in {}s)",
@@ -562,11 +562,12 @@ pub(crate) async fn authenticate_bulk_payment_with_1click(
             expires_in
         );
     } else {
+        let sanitized_body = sanitize_sensitive_json_value(&resp_body);
         return Err((
             StatusCode::BAD_GATEWAY,
             format!(
                 "1Click bulk-payment auth response missing tokens: {:?}",
-                resp_body
+                sanitized_body
             ),
         ));
     }
@@ -602,26 +603,14 @@ async fn intents_has_public_key(
         })
 }
 
-/// Whether a treasury already holds a non-expired 1Click access token. Used to
+/// Whether a treasury already holds non-expired 1Click credentials. Used to
 /// skip the auth proposal + 1Click authentication on resume.
-async fn has_valid_confidential_token(pool: &sqlx::PgPool, treasury_id: &AccountId) -> bool {
-    sqlx::query_scalar::<_, bool>(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM monitored_accounts
-            WHERE account_id = $1
-              AND confidential_access_token IS NOT NULL
-              AND (
-                confidential_token_expires_at IS NULL
-                OR confidential_token_expires_at > NOW()
-              )
-        )
-        "#,
-    )
-    .bind(treasury_id.as_str())
-    .fetch_one(pool)
-    .await
-    .unwrap_or(false)
+async fn has_valid_confidential_token(state: &AppState, treasury_id: &AccountId) -> bool {
+    state
+        .confidential_credentials()
+        .valid_unexpired(treasury_id.as_str(), CredentialScope::Dao)
+        .await
+        .unwrap_or(false)
 }
 
 /// Short label for logs, e.g. `ChangePolicy` or `FunctionCall:intents.near::add_public_key`.
@@ -887,28 +876,103 @@ async fn authenticate_with_1click(
             .unwrap_or(3600);
         let expires_at = chrono::Utc::now() + chrono::Duration::seconds(expires_in);
 
-        let _ = sqlx::query!(
-            r#"
-            UPDATE monitored_accounts
-            SET confidential_access_token = $1,
-                confidential_refresh_token = $2,
-                confidential_token_expires_at = $3
-            WHERE account_id = $4
-            "#,
-            access_token,
-            refresh_token,
-            expires_at,
-            treasury_id.as_str(),
-        )
-        .execute(&state.db_pool)
-        .await;
+        let bundle = TokenBundle {
+            access_token: access_token.to_string(),
+            refresh_token: refresh_token.to_string(),
+        };
+        // A failed save must fail the auth step: the setup flow is resumable
+        // and re-runs authentication, whereas reporting success here would
+        // silently discard the just-issued credentials.
+        state
+            .confidential_credentials()
+            .store_new(
+                treasury_id.as_str(),
+                CredentialScope::Dao,
+                &bundle,
+                expires_at,
+            )
+            .await
+            .map_err(|e| {
+                tracing::error!(
+                    "Failed to persist confidential JWT for DAO {}: {}",
+                    treasury_id,
+                    e
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to persist confidential JWT: {}", e),
+                )
+            })?;
 
         tracing::info!(
             "Stored confidential JWT for DAO {} (expires in {}s)",
             treasury_id,
             expires_in
         );
+    } else {
+        let sanitized_body = sanitize_sensitive_json_value(&resp_body);
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            format!("1Click auth response missing tokens: {:?}", sanitized_body),
+        ));
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use sqlx::PgPool;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    use super::*;
+    use crate::utils::test_utils::build_test_state;
+
+    #[sqlx::test]
+    async fn auth_response_without_tokens_is_an_error(pool: PgPool) {
+        let mock = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v0/auth/authenticate"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({})))
+            .expect(1)
+            .mount(&mock)
+            .await;
+
+        sqlx::query(
+            "INSERT INTO monitored_accounts (account_id, is_confidential_account) VALUES ($1, TRUE)",
+        )
+        .bind("no-tokens.sputnik-dao.near")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let mut state = build_test_state(pool.clone());
+        state.env_vars.confidential_api_url = mock.uri();
+        let state = Arc::new(state);
+        let treasury_id: AccountId = "no-tokens.sputnik-dao.near".parse().unwrap();
+
+        let err = authenticate_with_1click(
+            &state,
+            &treasury_id,
+            &"ed25519:test".to_string(),
+            &serde_json::json!({}),
+            "ed25519:sig",
+        )
+        .await
+        .expect_err("a 200 without tokens must not report success");
+        assert_eq!(err.0, StatusCode::BAD_GATEWAY);
+        assert!(err.1.contains("missing tokens"));
+
+        let stored: Option<(Option<String>,)> = sqlx::query_as(
+            "SELECT confidential_access_token FROM monitored_accounts WHERE account_id = $1",
+        )
+        .bind(treasury_id.as_str())
+        .fetch_optional(&pool)
+        .await
+        .unwrap();
+        assert_eq!(stored, Some((None,)));
+    }
 }
