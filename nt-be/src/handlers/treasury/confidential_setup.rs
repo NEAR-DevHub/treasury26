@@ -550,10 +550,14 @@ pub(crate) async fn authenticate_bulk_payment_with_1click(
             )
             .await
             .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to persist bulk-payment JWT: {}", e),
-                )
+                // Stale-generation fence rejection during a key rotation
+                // rollout is transient — retryable on an up-to-date pod.
+                let status = if e.is_retryable() {
+                    StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+                (status, format!("Failed to persist bulk-payment JWT: {}", e))
             })?;
 
         tracing::info!(
@@ -898,10 +902,14 @@ async fn authenticate_with_1click(
                     treasury_id,
                     e
                 );
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("Failed to persist confidential JWT: {}", e),
-                )
+                // Stale-generation fence rejection during a key rotation
+                // rollout is transient — retryable on an up-to-date pod.
+                let status = if e.is_retryable() {
+                    StatusCode::SERVICE_UNAVAILABLE
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+                (status, format!("Failed to persist confidential JWT: {}", e))
             })?;
 
         tracing::info!(

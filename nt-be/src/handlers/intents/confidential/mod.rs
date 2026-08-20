@@ -248,10 +248,15 @@ async fn refresh_scoped_jwt(
         .await
         .map_err(|e| {
             tracing::error!("Failed to update JWT for {}: {}", label, e);
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to update JWT tokens: {}", e),
-            )
+            // A stale-generation fence rejection is transient during a key
+            // rotation rollout: retryable, and a retry lands on a pod
+            // holding the promoted keyring.
+            let status = if e.is_retryable() {
+                StatusCode::SERVICE_UNAVAILABLE
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            (status, format!("Failed to update JWT tokens: {}", e))
         })?;
 
     tracing::info!("Refreshed confidential JWT for {}", label);

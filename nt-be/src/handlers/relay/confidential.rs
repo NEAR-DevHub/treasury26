@@ -530,11 +530,33 @@ pub async fn try_auto_submit_intent(
                     access_token: access_token.to_string(),
                     refresh_token: refresh_token.to_string(),
                 };
-                if let Err(e) = state
-                    .confidential_credentials()
+                let store = state.confidential_credentials();
+                let persisted = match store
                     .store_new(treasury_id, scope, &bundle, expires_at)
                     .await
                 {
+                    Ok(()) => Ok(()),
+                    // A stale-generation fence rejection mid-rotation would
+                    // otherwise be terminal here: this trigger fires exactly
+                    // once, retrying on this pod can never pass the fence,
+                    // and 1Click has already issued the pair. Persist it
+                    // plaintext-only instead — the load-time heal
+                    // re-encrypts it under the active key on the next touch
+                    // from an up-to-date pod.
+                    Err(e) if e.is_retryable() => {
+                        tracing::warn!(
+                            "Generation fence rejected {} JWT persistence for DAO {} ({}); storing via plaintext fallback for heal-on-load",
+                            intent_type,
+                            treasury_id,
+                            e
+                        );
+                        store
+                            .store_new_plaintext_fallback(treasury_id, scope, &bundle, expires_at)
+                            .await
+                    }
+                    Err(e) => Err(e),
+                };
+                if let Err(e) = persisted {
                     tracing::error!(
                         "Failed to persist {} JWT for DAO {}: {}",
                         intent_type,

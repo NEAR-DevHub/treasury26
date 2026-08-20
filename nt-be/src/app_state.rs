@@ -439,9 +439,19 @@ impl AppStateBuilder {
 
         let (event_tx, _) = broadcast::channel(EVENT_BUS_CAPACITY);
 
-        let confidential_keyring = self
-            .confidential_keyring
-            .or_else(|| TokenKeyring::from_env().map(Arc::new));
+        let confidential_keyring = match self.confidential_keyring {
+            Some(keyring) => Some(keyring),
+            // A set-but-invalid keyring fails boot with a clean error (never
+            // silently fall back to plaintext); the message names the env
+            // var and carries no key material.
+            None => match TokenKeyring::from_env() {
+                Ok(keyring) => keyring.map(Arc::new),
+                Err(e) => {
+                    tracing::error!("confidential keyring rejected: {}", e);
+                    return Err(e.into());
+                }
+            },
+        };
 
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
@@ -605,14 +615,37 @@ impl AppState {
             .build()
             .await?;
 
-        // Encrypt any legacy plaintext confidential JWTs and re-encrypt
-        // envelopes on non-active keys (idempotent; no-op without a keyring).
-        // Failure never blocks boot — the plaintext fallback keeps affected
-        // treasuries working and the next deploy retries — but anything short
-        // of a clean run alerts the ops channel, since a quiet log line is
-        // not an operational signal.
+        // Register the keyring against the persisted key-generation fence
+        // first: a pod whose keyring the fence rejects (stale generation
+        // after a rotation, or a conflicting keyring claiming this schema)
+        // must not serve — every encrypted write would fail anyway, and a
+        // stale-generation reconcile would try to rotate envelopes BACK to
+        // the old key.
         if state.confidential_keyring.is_some() {
-            match state.confidential_credentials().reconcile().await {
+            let store = state.confidential_credentials();
+            if let Err(e) = store.ensure_key_state().await {
+                tracing::error!("confidential keyring rejected by key-state fence: {}", e);
+                let _ = state
+                    .telegram_client
+                    .send_ops_alert_html(&format!(
+                        "🚨 <b>Confidential keyring rejected at boot</b>: {}",
+                        e
+                    ))
+                    .await;
+                return Err(
+                    format!("confidential keyring rejected by key-state fence: {e}").into(),
+                );
+            }
+
+            // Encrypt any legacy plaintext confidential JWTs and re-encrypt
+            // envelopes on non-active keys (idempotent). Failure never blocks
+            // boot — the plaintext fallback keeps affected treasuries working
+            // and the next deploy retries — but anything short of a clean run
+            // alerts the ops channel, since a quiet log line is not an
+            // operational signal. Old keys may be removed from the keyring
+            // only while the PERSISTED rotation status is complete — never on
+            // the strength of these log lines.
+            match store.reconcile().await {
                 Ok(report) => {
                     tracing::info!(
                         encrypted = report.encrypted,
@@ -620,15 +653,18 @@ impl AppState {
                         rotated = report.rotated,
                         failed = report.failed,
                         partial = report.partial.len(),
+                        stale_after_sweep = report.stale_after_sweep,
+                        rotation_complete = report.rotation_complete,
                         "confidential credential reconcile complete"
                     );
                     if !report.is_clean() {
                         let text = format!(
-                            "⚠️ <b>Confidential credential reconcile finished with issues</b>\nencrypted: {}\nrotated: {}\nfailed rows: {}\npartial pairs (need re-auth): {}",
+                            "⚠️ <b>Confidential credential reconcile finished with issues</b> (rotation stays pending)\nencrypted: {}\nrotated: {}\nfailed rows: {}\npartial pairs (need re-auth): {}\nrows without a verified active-key envelope: {}",
                             report.encrypted,
                             report.rotated,
                             report.failed,
-                            report.partial.len()
+                            report.partial.len(),
+                            report.stale_after_sweep
                         );
                         let _ = state.telegram_client.send_ops_alert_html(&text).await;
                     }
