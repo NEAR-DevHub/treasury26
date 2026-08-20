@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { CircleCheckIcon, Unlink01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
+import {
+    CircleCheckIcon,
+    Unlink01Icon,
+    Wallet01Icon,
+} from "@hugeicons/core-free-icons";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useState } from "react";

@@ -405,6 +405,7 @@
         "source": "来源",
         "send": "发送",
         "exchange": "兑换",
+        "swap": "兑换",
         "comingSoon": "即将推出",
         "vesting": "归属",
         "vestedPercent": "已归属 {percent}%",
@@ -443,8 +444,8 @@
             "description": "您的交易在发生后将显示在此处"
         },
         "emptyDashboard": {
-            "title": "暂无内容",
-            "description": "您的交易和操作在发生后将显示在此处"
+            "title": "暂无最近交易。",
+            "description": "您的交易将显示在此处。"
         },
         "recentTitle": "近期交易",
         "recentSubtitle": "过去一年的交易活动",
@@ -688,8 +689,8 @@
         "pending": {
             "title": "待处理请求",
             "viewAll": "查看全部",
-            "emptyTitle": "全部处理完毕!",
-            "emptyDescription": "没有待处理的请求。"
+            "emptyTitle": "暂无最近请求。",
+            "emptyDescription": "您的待处理请求将显示在此处"
         }
     },
     "proposals": {
@@ -1999,7 +2000,7 @@
     "assetsPage": {
         "title": "资产",
         "noAssetsTitle": "暂无资产",
-        "noAssetsDescription": "请通过存款向您的金库添加资产以开始使用。"
+        "noAssetsDescription": "您的资产将显示在此处"
     },
     "newBadge": {
         "label": "新"
@@ -2224,7 +2225,7 @@
         "unlockedToken": "已解锁代币",
         "lockedToken": "已锁定代币",
         "lockupStakingPool": "锁仓质押池",
-        "exchange": "兑换",
+        "swap": "兑换",
         "send": "发送",
         "details": "详情",
         "columnAsset": "资产",

@@ -405,6 +405,7 @@
         "source": "Source",
         "send": "Envoyer",
         "exchange": "Échanger",
+        "swap": "Échanger",
         "comingSoon": "Bientôt disponible",
         "vesting": "Vesting",
         "vestedPercent": "{percent}% acquis",
@@ -443,8 +444,8 @@
             "description": "Vos transactions apparaîtront ici dès qu'elles auront lieu"
         },
         "emptyDashboard": {
-            "title": "Rien à afficher pour l'instant",
-            "description": "Vos transactions et actions apparaîtront ici dès qu'elles auront lieu"
+            "title": "Aucune transaction récente pour l'instant.",
+            "description": "Vos transactions apparaîtront ici."
         },
         "recentTitle": "Transactions récentes",
         "recentSubtitle": "Activité des transactions au cours de l'année écoulée",
@@ -688,8 +689,8 @@
         "pending": {
             "title": "Demandes en attente",
             "viewAll": "Tout voir",
-            "emptyTitle": "Tout est à jour !",
-            "emptyDescription": "Il n'y a aucune demande en attente."
+            "emptyTitle": "Aucune demande récente pour l'instant.",
+            "emptyDescription": "Vos demandes en attente apparaîtront ici"
         }
     },
     "proposals": {
@@ -2016,7 +2017,7 @@
     "assetsPage": {
         "title": "Actifs",
         "noAssetsTitle": "Aucun actif pour l'instant",
-        "noAssetsDescription": "Pour commencer, ajoutez des actifs à votre trésorerie en effectuant un dépôt."
+        "noAssetsDescription": "Vos actifs apparaîtront ici"
     },
     "newBadge": {
         "label": "Nouveau"
@@ -2241,7 +2242,7 @@
         "unlockedToken": "Token déverrouillé",
         "lockedToken": "Token verrouillé",
         "lockupStakingPool": "Pool de staking de lockup",
-        "exchange": "Échanger",
+        "swap": "Échanger",
         "send": "Envoyer",
         "details": "Détails",
         "columnAsset": "Actif",

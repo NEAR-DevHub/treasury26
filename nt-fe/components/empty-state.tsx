@@ -3,8 +3,10 @@ import { isValidElement } from "react";
 import { type IconSvgElement } from "@hugeicons/react";
 import { Icon } from "@/components/icon";
 
+type EmptyStateIcon = IconSvgElement | React.ReactNode;
+
 interface EmptyStateProps {
-    icon: EmptyStateIcon;
+    icon?: EmptyStateIcon;
     title: string;
     description: string;
     className?: string;
@@ -12,11 +14,10 @@ interface EmptyStateProps {
     contentClassName?: string;
     titleClassName?: string;
     descriptionClassName?: string;
+    skeleton?: React.ReactNode;
 }
 
 const ICON_CLASS_NAME = "size-5 text-muted-foreground";
-
-type EmptyStateIcon = IconSvgElement | React.ReactNode;
 
 // Hugeicons ship icons as plain svg data arrays, not components
 const isHugeicon = (icon: EmptyStateIcon): icon is IconSvgElement =>
@@ -31,6 +32,7 @@ export function EmptyState({
     contentClassName,
     titleClassName,
     descriptionClassName,
+    skeleton,
 }: EmptyStateProps) {
     const renderIcon = () => {
         if (isValidElement(icon)) return icon;
@@ -39,21 +41,23 @@ export function EmptyState({
         return icon;
     };
 
-    return (
+    const content = (
         <div
             className={cn(
                 "flex flex-col gap-2 items-center justify-center py-12",
                 className,
             )}
         >
-            <div
-                className={cn(
-                    "size-9 rounded-full bg-secondary flex items-center justify-center",
-                    iconWrapperClassName,
-                )}
-            >
-                {renderIcon()}
-            </div>
+            {icon ? (
+                <div
+                    className={cn(
+                        "size-9 rounded-full bg-secondary flex items-center justify-center",
+                        iconWrapperClassName,
+                    )}
+                >
+                    {renderIcon()}
+                </div>
+            ) : null}
             <div
                 className={cn(
                     "flex flex-col gap-0.5 items-center text-center",
@@ -62,7 +66,7 @@ export function EmptyState({
             >
                 <p
                     className={cn(
-                        "text-base font-semibold text-foreground",
+                        "text-xl font-semibold leading-[1.2] tracking-[-0.025rem] text-foreground",
                         titleClassName,
                     )}
                 >
@@ -70,12 +74,25 @@ export function EmptyState({
                 </p>
                 <p
                     className={cn(
-                        "text-xs text-muted-foreground whitespace-pre-wrap",
+                        "text-sm font-medium leading-normal text-muted-foreground whitespace-pre-wrap",
                         descriptionClassName,
                     )}
                 >
                     {description}
                 </p>
+            </div>
+        </div>
+    );
+
+    if (!skeleton) return content;
+
+    return (
+        <div className="relative **:data-[slot=skeleton]:animate-none!">
+            <div aria-hidden className="pointer-events-none select-none">
+                {skeleton}
+            </div>
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6">
+                <div className="pointer-events-auto">{content}</div>
             </div>
         </div>
     );

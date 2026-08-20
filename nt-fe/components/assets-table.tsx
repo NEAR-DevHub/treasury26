@@ -8,6 +8,7 @@ import {
 import { Icon } from "@/components/icon";
 import { useTranslations } from "next-intl";
 import { Fragment, type ReactNode, useMemo, useState } from "react";
+import { AssetRowActionMenu } from "@/components/asset-row-action-menu";
 import { Button } from "@/components/button";
 import {
     Table,
@@ -17,6 +18,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import {
     Select,
     SelectContent,
@@ -26,7 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AggregatedAsset } from "@/hooks/use-assets";
+import { useTreasury } from "@/hooks/use-treasury";
 import type { TreasuryAsset } from "@/lib/api";
+import { buildAssetRowActionHrefs } from "@/lib/asset-row-actions";
 import { availableBalance, lockedBalance } from "@/lib/balance";
 import Big from "@/lib/big";
 import { getDashboardBucketVisibility } from "@/lib/dashboard-balance-view";
@@ -353,6 +357,7 @@ function EarningView({
 
 export function AssetsTable({ aggregatedTokens }: Props) {
     const t = useTranslations("assetsTable");
+    const { treasuryId } = useTreasury();
     const [sortState, setSortState] = useState<{
         key: SortKey;
         dir: SortDirection;
@@ -765,7 +770,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                     )}
                                 </>
                             )}
-                            <TableHead className="w-3 p-0 sm:w-5" />
+                            <TableHead className="w-8 p-0 sm:w-10" />
                         </TableRow>
                     </TableHeader>
                     <TableBody className={TABLE_CARD_CLASS}>
@@ -907,70 +912,102 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                 0,
                             );
 
+                            const actions = treasuryId
+                                ? buildAssetRowActionHrefs(treasuryId, asset)
+                                : null;
+
+                            const row = (
+                                <TableRow
+                                    className={cn(
+                                        "hover:bg-gray-50 dark:hover:bg-white/3",
+                                        actions && "cursor-pointer",
+                                    )}
+                                    data-testid={`asset-row-${asset.id}`}
+                                >
+                                    <TableCell className="overflow-hidden py-3 pr-3 pl-4 sm:pl-5">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <img
+                                                src={asset.icon}
+                                                alt={asset.name}
+                                                className="size-9 shrink-0 rounded-full"
+                                            />
+                                            <div className="min-w-0">
+                                                <p className="truncate font-semibold text-base/5 text-gray-900 dark:text-white">
+                                                    {asset.id}
+                                                </p>
+                                                <p className="truncate font-medium text-gray-500 text-sm/5 dark:text-gray-400">
+                                                    {asset.name}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+
+                                    {view === "available" && (
+                                        <AvailableView
+                                            asset={asset}
+                                            availableAmount={availableAmount}
+                                            availableUsd={availableUsd}
+                                            weight={weight}
+                                        />
+                                    )}
+
+                                    {view === "locked" && (
+                                        <LockedView
+                                            asset={asset}
+                                            lockedAmount={lockedAmount}
+                                            lockedUsd={lockedUsd}
+                                            unlockedAmount={unlockedAmount}
+                                            unlockedUsd={unlockedUsd}
+                                            totalAllocatedAmount={
+                                                totalAllocatedAmount
+                                            }
+                                            totalAllocatedUsd={
+                                                totalAllocatedUsd
+                                            }
+                                        />
+                                    )}
+
+                                    {view === "earning" && (
+                                        <EarningView
+                                            asset={asset}
+                                            earningAmount={earningAmount}
+                                            earningUsd={earningUsd}
+                                            earningWithdrawAmount={
+                                                earningWithdrawAmount
+                                            }
+                                            earningWithdrawUsd={
+                                                earningWithdrawUsd
+                                            }
+                                        />
+                                    )}
+
+                                    <TableCell className="px-2 py-3 pr-3 sm:pr-4">
+                                        {actions ? (
+                                            <Icon
+                                                icon={ArrowDown01Icon}
+                                                className="ml-auto size-4 text-gray-400 dark:text-gray-500"
+                                                aria-hidden
+                                            />
+                                        ) : null}
+                                    </TableCell>
+                                </TableRow>
+                            );
+
                             return (
                                 <Fragment key={asset.id}>
-                                    <TableRow className="hover:bg-gray-50 dark:hover:bg-white/3">
-                                        <TableCell className="overflow-hidden py-3 pr-3 pl-4 sm:pl-5">
-                                            <div className="flex items-center gap-3 min-w-0">
-                                                <img
-                                                    src={asset.icon}
-                                                    alt={asset.name}
-                                                    className="size-9 shrink-0 rounded-full"
-                                                />
-                                                <div className="min-w-0">
-                                                    <p className="truncate font-semibold text-base/5 text-gray-900 dark:text-white">
-                                                        {asset.id}
-                                                    </p>
-                                                    <p className="truncate font-medium text-gray-500 text-sm/5 dark:text-gray-400">
-                                                        {asset.name}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-
-                                        {view === "available" && (
-                                            <AvailableView
-                                                asset={asset}
-                                                availableAmount={
-                                                    availableAmount
-                                                }
-                                                availableUsd={availableUsd}
-                                                weight={weight}
+                                    {actions ? (
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                {row}
+                                            </PopoverTrigger>
+                                            <AssetRowActionMenu
+                                                sendHref={actions.sendHref}
+                                                swapHref={actions.swapHref}
                                             />
-                                        )}
-
-                                        {view === "locked" && (
-                                            <LockedView
-                                                asset={asset}
-                                                lockedAmount={lockedAmount}
-                                                lockedUsd={lockedUsd}
-                                                unlockedAmount={unlockedAmount}
-                                                unlockedUsd={unlockedUsd}
-                                                totalAllocatedAmount={
-                                                    totalAllocatedAmount
-                                                }
-                                                totalAllocatedUsd={
-                                                    totalAllocatedUsd
-                                                }
-                                            />
-                                        )}
-
-                                        {view === "earning" && (
-                                            <EarningView
-                                                asset={asset}
-                                                earningAmount={earningAmount}
-                                                earningUsd={earningUsd}
-                                                earningWithdrawAmount={
-                                                    earningWithdrawAmount
-                                                }
-                                                earningWithdrawUsd={
-                                                    earningWithdrawUsd
-                                                }
-                                            />
-                                        )}
-
-                                        <TableCell className="p-0" />
-                                    </TableRow>
+                                        </Popover>
+                                    ) : (
+                                        row
+                                    )}
 
                                     {hasLockedEarningNotice && (
                                         <TableRow className="hover:bg-transparent">
@@ -1038,46 +1075,104 @@ export function AssetsTable({ aggregatedTokens }: Props) {
     );
 }
 
-export function AssetsTableSkeleton() {
+const SKELETON_HEAD_CLASS =
+    "h-auto px-3 py-2.5 font-medium text-gray-500 text-sm/5 normal-case dark:text-gray-400";
+
+export function AssetsTableSkeleton({
+    overlay,
+}: {
+    overlay?: React.ReactNode;
+}) {
+    const t = useTranslations("assetsTable");
+
     return (
-        <Table>
-            <TableHeader className="bg-transparent border-t-0">
-                <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-muted-foreground py-4 pr-4 pl-0 sm:p-4 sm:pl-4">
-                        <Skeleton className="h-4 w-full" />
-                    </TableHead>
-                    <TableHead className="text-right text-muted-foreground p-4">
-                        <Skeleton className="h-4 w-full" />
-                    </TableHead>
-                    <TableHead className="text-right text-muted-foreground p-4">
-                        <Skeleton className="h-4 w-full" />
-                    </TableHead>
-                    <TableHead className="text-right text-muted-foreground p-4">
-                        <Skeleton className="h-4 w-full" />
-                    </TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {Array.from({ length: 3 }).map((_, idx) => (
-                    <TableRow
-                        key={`skeleton-row-${idx}`}
-                        className="hover:bg-transparent"
-                    >
-                        <TableCell className="py-4 pr-4 pl-0 sm:p-4 sm:pl-4">
-                            <Skeleton className="h-8 w-full" />
-                        </TableCell>
-                        <TableCell className="p-4">
-                            <Skeleton className="h-8 w-full" />
-                        </TableCell>
-                        <TableCell className="p-4">
-                            <Skeleton className="h-8 w-full" />
-                        </TableCell>
-                        <TableCell className="p-4">
-                            <Skeleton className="h-8 w-full" />
-                        </TableCell>
+        <div className="relative">
+            <Table className="min-w-full table-fixed border-separate border-spacing-0">
+                <TableHeader className="border-0 bg-transparent">
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead
+                            className={cn(
+                                SKELETON_HEAD_CLASS,
+                                "overflow-hidden pr-3 pl-4 sm:pl-5 w-[32%] sm:w-[26%]",
+                            )}
+                        >
+                            {t("columnAsset")}
+                        </TableHead>
+                        <TableHead
+                            className={cn(
+                                SKELETON_HEAD_CLASS,
+                                "text-right w-[22%] sm:w-[20%]",
+                            )}
+                        >
+                            {t("balance")}
+                        </TableHead>
+                        <TableHead
+                            className={cn(
+                                SKELETON_HEAD_CLASS,
+                                "text-right w-[14%] hidden sm:table-cell",
+                            )}
+                        >
+                            {t("columnPrice")}
+                        </TableHead>
+                        <TableHead
+                            className={cn(
+                                SKELETON_HEAD_CLASS,
+                                "text-right hidden sm:table-cell",
+                            )}
+                        >
+                            {t("weight")}
+                        </TableHead>
+                        <TableHead className="w-3 p-0 sm:w-5" />
                     </TableRow>
-                ))}
-            </TableBody>
-        </Table>
+                </TableHeader>
+                <TableBody className={TABLE_CARD_CLASS}>
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                        <TableRow
+                            key={`skeleton-row-${idx}`}
+                            className={cn(
+                                "hover:bg-transparent",
+                                overlay &&
+                                    "**:data-[slot=skeleton]:animate-none",
+                            )}
+                            style={
+                                overlay
+                                    ? {
+                                          opacity: Math.max(
+                                              0.15,
+                                              1 - idx * 0.55,
+                                          ),
+                                      }
+                                    : undefined
+                            }
+                        >
+                            <TableCell className="overflow-hidden py-3 pr-3 pl-4 sm:pl-5">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <Skeleton className="size-9 shrink-0 rounded-full" />
+                                    <div className="flex min-w-0 flex-col gap-1.5">
+                                        <Skeleton className="h-3.5 w-14" />
+                                        <Skeleton className="h-3 w-20" />
+                                    </div>
+                                </div>
+                            </TableCell>
+                            <TableCell className="px-3 py-3">
+                                <Skeleton className="ml-auto h-3.5 w-16" />
+                            </TableCell>
+                            <TableCell className="hidden px-3 py-3 sm:table-cell">
+                                <Skeleton className="ml-auto h-3.5 w-24" />
+                            </TableCell>
+                            <TableCell className="hidden px-3 py-3 sm:table-cell">
+                                <Skeleton className="ml-auto size-8 shrink-0 rounded-full" />
+                            </TableCell>
+                            <TableCell className="p-0" />
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+            {overlay ? (
+                <div className="pointer-events-none absolute inset-x-0 top-11 bottom-0 flex items-center justify-center px-6">
+                    {overlay}
+                </div>
+            ) : null}
+        </div>
     );
 }

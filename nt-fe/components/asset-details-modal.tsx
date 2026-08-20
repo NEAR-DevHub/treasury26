@@ -2,11 +2,11 @@
 
 import { Icon } from "@/components/icon";
 import {
-    ArrowLeftRightIcon,
     ArrowRight01Icon,
-    ArrowUpRight01Icon,
     InformationCircleIcon,
     LockIcon,
+    SentIcon,
+    SquareArrowLeftRightIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
@@ -187,9 +187,7 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                     }}
                                                 >
                                                     <Icon
-                                                        icon={
-                                                            ArrowUpRight01Icon
-                                                        }
+                                                        icon={SentIcon}
                                                         className="text-primary"
                                                     />
                                                 </AuthButton>
@@ -198,9 +196,7 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                     permissionAction="AddProposal"
                                                     variant="ghost"
                                                     size="icon"
-                                                    tooltipContent={t(
-                                                        "exchange",
-                                                    )}
+                                                    tooltipContent={t("swap")}
                                                     onClick={() => {
                                                         onClose();
                                                         router.push(
@@ -210,7 +206,7 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                 >
                                                     <Icon
                                                         icon={
-                                                            ArrowLeftRightIcon
+                                                            SquareArrowLeftRightIcon
                                                         }
                                                         className="text-primary"
                                                     />
@@ -380,9 +376,7 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                         }
                                                     >
                                                         <Icon
-                                                            icon={
-                                                                ArrowUpRight01Icon
-                                                            }
+                                                            icon={SentIcon}
                                                             className="text-primary"
                                                         />
                                                     </Button>

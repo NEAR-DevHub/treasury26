@@ -405,6 +405,7 @@
         "source": "ソース",
         "send": "送金",
         "exchange": "交換",
+        "swap": "スワップ",
         "comingSoon": "近日公開",
         "vesting": "ベスティング",
         "vestedPercent": "{percent}% ベスト済み",
@@ -443,8 +444,8 @@
             "description": "トランザクションが発生するとここに表示されます"
         },
         "emptyDashboard": {
-            "title": "まだ表示するものはありません",
-            "description": "トランザクションやアクションが発生するとここに表示されます"
+            "title": "最近の取引はまだありません。",
+            "description": "取引はここに表示されます。"
         },
         "recentTitle": "最近のトランザクション",
         "recentSubtitle": "過去1年間の取引アクティビティ",
@@ -688,8 +689,8 @@
         "pending": {
             "title": "保留中のリクエスト",
             "viewAll": "すべて表示",
-            "emptyTitle": "すべて対応済みです!",
-            "emptyDescription": "保留中のリクエストはありません。"
+            "emptyTitle": "最近のリクエストはまだありません。",
+            "emptyDescription": "保留中のリクエストはここに表示されます"
         }
     },
     "proposals": {
@@ -2016,7 +2017,7 @@
     "assetsPage": {
         "title": "資産",
         "noAssetsTitle": "資産はまだありません",
-        "noAssetsDescription": "始めるには、入金してトレジャリーに資産を追加してください。"
+        "noAssetsDescription": "資産はここに表示されます"
     },
     "newBadge": {
         "label": "新着"
@@ -2241,7 +2242,7 @@
         "unlockedToken": "アンロック済みトークン",
         "lockedToken": "ロック済みトークン",
         "lockupStakingPool": "ロックアップステーキングプール",
-        "exchange": "交換",
+        "swap": "交換",
         "send": "送金",
         "details": "詳細",
         "columnAsset": "資産",
