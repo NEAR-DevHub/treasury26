@@ -1,6 +1,7 @@
 "use client";
 
-import { Check, CheckCircle2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { CircleCheckIcon, Tick01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -105,7 +106,7 @@ export default function JoinInvitePage() {
         <PageCard className={`${formCardClassName} justify-center`}>
             <div className="flex w-full flex-col items-center text-center gap-4">
                 <div className="flex size-8 items-center justify-center rounded-full bg-emerald-500/15">
-                    <Check className="size-4 text-emerald-600" />
+                    <Icon icon={Tick01Icon} className="text-emerald-600" />
                 </div>
                 <div className="space-y-1">
                     <h2 className="text-xl font-semibold">
@@ -132,7 +133,10 @@ export default function JoinInvitePage() {
         <PageCard className={`${formCardClassName} justify-center`}>
             <div className="flex w-full flex-col items-center text-center gap-4">
                 <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/15">
-                    <CheckCircle2 className="size-6 text-emerald-600" />
+                    <Icon
+                        icon={CircleCheckIcon}
+                        className="size-6 text-emerald-600"
+                    />
                 </div>
                 <div className="space-y-1">
                     <h2 className="text-xl font-semibold">

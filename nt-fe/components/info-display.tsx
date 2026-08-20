@@ -1,9 +1,14 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowUp01Icon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { Tooltip } from "./tooltip";
 import { Button } from "./button";
 import { cva } from "class-variance-authority";
@@ -98,7 +103,10 @@ export function InfoDisplay({
                             </p>
                             {item.info && (
                                 <Tooltip content={item.info}>
-                                    <Info className="size-3 shrink-0 text-muted-foreground" />
+                                    <Icon
+                                        icon={InformationCircleIcon}
+                                        className="shrink-0 text-muted-foreground"
+                                    />
                                 </Tooltip>
                             )}
                         </div>
@@ -121,9 +129,9 @@ export function InfoDisplay({
                 >
                     {isExpanded ? t("viewLess") : t("viewAllDetails")}
                     {isExpanded ? (
-                        <ChevronUp className="w-4 h-4" />
+                        <Icon icon={ArrowUp01Icon} />
                     ) : (
-                        <ChevronDown className="w-4 h-4" />
+                        <Icon icon={ArrowDown01Icon} />
                     )}
                 </Button>
             )}

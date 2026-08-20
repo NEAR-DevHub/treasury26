@@ -1,5 +1,12 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    Add01Icon,
+    Delete02Icon,
+    FileUploadIcon,
+    PencilIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback, type ReactNode, useId } from "react";
 import {
@@ -9,7 +16,6 @@ import {
     type Control,
 } from "react-hook-form";
 import { z } from "zod";
-import { Plus, Pencil, Trash2, FileUp } from "lucide-react";
 import { InputBlock } from "@/components/input-block";
 import { LargeInput } from "@/components/large-input";
 import AccountInput from "@/components/account-input";
@@ -222,7 +228,7 @@ export function RecipientRow({
                             className="text-muted-foreground hover:text-foreground"
                             onClick={onEdit}
                         >
-                            <Pencil className="size-4" />
+                            <Icon icon={PencilIcon} />
                             {tForm("edit")}
                         </Button>
                     )}
@@ -233,7 +239,7 @@ export function RecipientRow({
                             className="text-muted-foreground hover:text-foreground"
                             onClick={onRemove}
                         >
-                            <Trash2 className="size-4" />
+                            <Icon icon={Delete02Icon} />
                             {tForm("remove")}
                         </Button>
                     )}
@@ -389,7 +395,7 @@ export function AddRecipientInput({
                 />
                 {!editOnly && onImport && (
                     <Button variant={"outline"} onClick={onImport}>
-                        <FileUp className="size-4" /> {tForm("import")}
+                        <Icon icon={FileUploadIcon} /> {tForm("import")}
                     </Button>
                 )}
             </div>
@@ -487,7 +493,7 @@ export function AddRecipientInput({
                         }
                         onClick={handleCommit}
                     >
-                        <Plus className="size-4 text-foreground" />
+                        <Icon icon={Add01Icon} className="text-foreground" />
                         <span className="text-foreground">
                             {tForm("addAnother")}
                         </span>

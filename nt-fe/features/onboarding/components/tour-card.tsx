@@ -1,9 +1,10 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import type { CardComponentProps } from "nextstepjs";
 import { useNextStep } from "nextstepjs";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -165,7 +166,7 @@ export function TourCard({
                         onClick={handleSkip}
                         className="rounded-sm opacity-70 transition-opacity hover:opacity-100 shrink-0"
                     >
-                        <X className="h-3.5 w-3.5" />
+                        <Icon icon={Cancel01Icon} />
                         <span className="sr-only">{t("close")}</span>
                     </button>
                 </div>

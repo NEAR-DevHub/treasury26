@@ -1,6 +1,6 @@
 "use client";
-
-import { ChevronDown } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import type { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/button";
@@ -114,7 +114,7 @@ export function DepositAssetNetworkForm({
                                                     {t("selectAsset")}
                                                 </span>
                                             )}
-                                            <ChevronDown className="w-5 h-5" />
+                                            <Icon icon={ArrowDown01Icon} />
                                         </div>
                                     </Button>
                                     <FormMessage />
@@ -181,7 +181,11 @@ export function DepositAssetNetworkForm({
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <ChevronDown className="w-5 h-5" />
+                                                        <Icon
+                                                            icon={
+                                                                ArrowDown01Icon
+                                                            }
+                                                        />
                                                     </div>
                                                     {selectedAsset?.id ===
                                                         "other" && (
@@ -197,7 +201,9 @@ export function DepositAssetNetworkForm({
                                                     <span className="text-muted-foreground text-lg font-normal">
                                                         {t("selectNetwork")}
                                                     </span>
-                                                    <ChevronDown className="w-5 h-5" />
+                                                    <Icon
+                                                        icon={ArrowDown01Icon}
+                                                    />
                                                 </div>
                                             )}
                                         </div>

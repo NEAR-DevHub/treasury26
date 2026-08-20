@@ -1,4 +1,5 @@
-import { ArrowUpRight } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { Button } from "@/components/button";
@@ -92,7 +93,9 @@ export default async function EarnPage() {
                                                 rel="noreferrer noopener"
                                             >
                                                 {t(`apps.${app.id}.goTo`)}
-                                                <ArrowUpRight className="size-4" />
+                                                <Icon
+                                                    icon={ArrowUpRight01Icon}
+                                                />
                                             </Link>
                                         </Button>
                                         {app.howItWorksHref ? (
@@ -103,7 +106,11 @@ export default async function EarnPage() {
                                                     rel="noreferrer noopener"
                                                 >
                                                     {t("howItWorks")}
-                                                    <ArrowUpRight className="size-4" />
+                                                    <Icon
+                                                        icon={
+                                                            ArrowUpRight01Icon
+                                                        }
+                                                    />
                                                 </Link>
                                             </Button>
                                         ) : null}

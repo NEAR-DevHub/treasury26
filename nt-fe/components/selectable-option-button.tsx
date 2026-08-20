@@ -1,4 +1,5 @@
-import { Check } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Tick01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { cn } from "@/lib/utils";
 
@@ -83,7 +84,7 @@ export function SelectableOptionButton({
                             : "bg-muted/30 border-input text-transparent",
                     )}
                 >
-                    <Check className="size-3.5" />
+                    <Icon icon={Tick01Icon} />
                 </div>
             )}
         </Button>

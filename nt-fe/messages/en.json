@@ -1231,6 +1231,7 @@
         "confidentialTooltip": "Recipient details and the requested amount are fully confidential."
     },
     "bulkPayment": {
+        "title": "Bulk payment",
         "comingSoonToast": "Bulk payments are coming soon!",
         "submittingList": "Submitting bulk payment list",
         "submittingProposal": "Submitting proposal",
@@ -1255,6 +1256,11 @@
             "provideData": "Provide Data",
             "chooseFile": "Choose File",
             "orDragDrop": "or drag and drop",
+            "token": "Token",
+            "destinationNetwork": "Destination network",
+            "uploadFileFirst": "Upload a file first",
+            "exchangeAddressWarning": "I understand that sending directly to an exchange address may result in loss of funds or other issues.",
+            "removeFile": "Remove file",
             "maxFileSize": "max 1 file up to 1.5 MB, CSV file only",
             "noFilePrompt": "Don't have a file to upload?",
             "downloadTemplate": "Download a template",
@@ -1263,7 +1269,7 @@
             "singleTokenNetwork": "Single token and network",
             "limitsUsed": "You've used all your limits",
             "selectAndProvide": "Select asset and provide payment data",
-            "continueToReview": "See Preview",
+            "continueToReview": "Review send",
             "selectTokenError": "Please select a token",
             "providePaymentDataError": "Please provide payment data",
             "selectRecipientNetwork": "Please select a recipient network"

@@ -1,5 +1,18 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowLeft01Icon,
+    Calendar01Icon,
+    Clock01Icon,
+    Coins01Icon,
+    Download01Icon,
+    FileRemoveIcon,
+    InformationCircleIcon,
+    Loading02Icon,
+    Mail01Icon,
+} from "@hugeicons/core-free-icons";
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -10,16 +23,6 @@ import * as z from "zod";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
-import {
-    ArrowLeft,
-    Calendar,
-    Coins,
-    Mail,
-    Clock,
-    FileX,
-    ChevronDown,
-    Info,
-} from "lucide-react";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -62,7 +65,6 @@ import { toast } from "sonner";
 import { useFormatHistoryDuration } from "@/features/activity";
 import { format } from "date-fns";
 import { ExportHistoryItem } from "@/lib/api";
-import { Download, Loader2 } from "lucide-react";
 import { User } from "@/components/user";
 import { FormattedDate } from "@/components/formatted-date";
 import { CreditsQuotaDisplay } from "@/components/credits-quota-display";
@@ -233,7 +235,10 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                         <div className="flex justify-end">
                             {item.status === "generating" ? (
                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 rounded-full text-sm">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Icon
+                                        icon={Loading02Icon}
+                                        className="animate-spin"
+                                    />
                                     {tExport("status.generating")}
                                 </div>
                             ) : item.status === "completed" ? (
@@ -251,7 +256,7 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                                             : undefined
                                     }
                                 >
-                                    <Download className="w-4 h-4" />
+                                    <Icon icon={Download01Icon} />
                                     {tExport("download")}
                                 </Button>
                             ) : item.status === "expired" ? (
@@ -708,7 +713,7 @@ export default function ExportActivityPage() {
                                             }
                                             className="p-0!"
                                         >
-                                            <ArrowLeft />
+                                            <Icon icon={ArrowLeft01Icon} />
                                         </Button>
 
                                         <div className="flex flex-col">
@@ -726,7 +731,10 @@ export default function ExportActivityPage() {
                                 {exportCreditsRemaining === 0 &&
                                     planDetails && (
                                         <Alert variant="info">
-                                            <Info className="h-4 w-4 mt-[2px]" />
+                                            <Icon
+                                                icon={InformationCircleIcon}
+                                                className="mt-[2px]"
+                                            />
                                             <AlertTitle className="font-semibold">
                                                 {isTrialPlan(
                                                     planDetails.planConfig,
@@ -899,12 +907,22 @@ export default function ExportActivityPage() {
                                                             className="w-full justify-between bg-muted! dark:bg-muted! hover:bg-general-tertiary! dark:hover:bg-general-tertiary! font-normal"
                                                         >
                                                             <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                                <Coins className="w-4 h-4 shrink-0" />
+                                                                <Icon
+                                                                    icon={
+                                                                        Coins01Icon
+                                                                    }
+                                                                    className="shrink-0"
+                                                                />
                                                                 <span className="truncate">
                                                                     {getSelectedAssetsLabel()}
                                                                 </span>
                                                             </div>
-                                                            <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
+                                                            <Icon
+                                                                icon={
+                                                                    ArrowDown01Icon
+                                                                }
+                                                                className="opacity-50 shrink-0"
+                                                            />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent
@@ -926,7 +944,12 @@ export default function ExportActivityPage() {
                                                                 }
                                                             >
                                                                 <div className="flex items-center">
-                                                                    <Coins className="w-4 h-4 mr-2" />
+                                                                    <Icon
+                                                                        icon={
+                                                                            Coins01Icon
+                                                                        }
+                                                                        className="mr-2"
+                                                                    />
                                                                     {tExport(
                                                                         "fields.allAssets",
                                                                     )}
@@ -996,7 +1019,12 @@ export default function ExportActivityPage() {
                                                             <span className="truncate flex-1 text-left">
                                                                 {getSelectedTypesLabel()}
                                                             </span>
-                                                            <ChevronDown className="w-4 h-4 opacity-50 shrink-0 ml-2" />
+                                                            <Icon
+                                                                icon={
+                                                                    ArrowDown01Icon
+                                                                }
+                                                                className="opacity-50 shrink-0 ml-2"
+                                                            />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent
@@ -1089,7 +1117,7 @@ export default function ExportActivityPage() {
                                         {!exportHistoryData ||
                                         exportHistoryData.data.length === 0 ? (
                                             <EmptyState
-                                                icon={FileX}
+                                                icon={FileRemoveIcon}
                                                 title={tEx("noExportsTitle")}
                                                 description={tEx(
                                                     "noExportsDescription",
@@ -1121,7 +1149,10 @@ export default function ExportActivityPage() {
                             </p>
                             <div className="space-y-3 text-sm">
                                 <div className="flex gap-2.5">
-                                    <Calendar className="w-5 h-5 shrink-0 mt-0.5" />
+                                    <Icon
+                                        icon={Calendar01Icon}
+                                        className="shrink-0 mt-0.5"
+                                    />
                                     <span>
                                         {tEx("exportFromPeriod", {
                                             period: historyText,
@@ -1129,7 +1160,10 @@ export default function ExportActivityPage() {
                                     </span>
                                 </div>
                                 <div className="flex gap-2.5">
-                                    <Clock className="w-5 h-5 shrink-0 mt-0.5" />
+                                    <Icon
+                                        icon={Clock01Icon}
+                                        className="shrink-0 mt-0.5"
+                                    />
                                     <span>{tEx("availableFor48Hours")}</span>
                                 </div>
                             </div>

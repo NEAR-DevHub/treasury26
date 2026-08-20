@@ -1231,6 +1231,7 @@
         "confidentialTooltip": "Los datos del destinatario y el importe solicitado son totalmente confidenciales."
     },
     "bulkPayment": {
+        "title": "Pago masivo",
         "comingSoonToast": "¡Los pagos masivos estarán disponibles pronto!",
         "submittingList": "Enviando la lista de pagos masivos",
         "submittingProposal": "Enviando la propuesta",
@@ -1255,6 +1256,11 @@
             "provideData": "Introducir datos",
             "chooseFile": "Seleccionar archivo",
             "orDragDrop": "o arrastrar y soltar",
+            "token": "Token",
+            "destinationNetwork": "Red de destino",
+            "uploadFileFirst": "Primero sube un archivo",
+            "exchangeAddressWarning": "Entiendo que enviar directamente a una dirección de exchange puede provocar la pérdida de fondos u otros problemas.",
+            "removeFile": "Eliminar archivo",
             "maxFileSize": "máximo 1 archivo de hasta 1,5 MB, solo CSV",
             "noFilePrompt": "¿No tienes un archivo que subir?",
             "downloadTemplate": "Descargar plantilla",

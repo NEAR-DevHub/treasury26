@@ -1,9 +1,12 @@
 import { cn } from "@/lib/utils";
 import { isValidElement } from "react";
-import { LucideIcon } from "lucide-react";
+import { type IconSvgElement } from "@hugeicons/react";
+import { Icon } from "@/components/icon";
+
+type EmptyStateIcon = IconSvgElement | React.ReactNode;
 
 interface EmptyStateProps {
-    icon?: LucideIcon | React.ReactNode;
+    icon?: EmptyStateIcon;
     title: string;
     description: string;
     className?: string;
@@ -13,6 +16,12 @@ interface EmptyStateProps {
     descriptionClassName?: string;
     skeleton?: React.ReactNode;
 }
+
+const ICON_CLASS_NAME = "size-5 text-muted-foreground";
+
+// Hugeicons ship icons as plain svg data arrays, not components
+const isHugeicon = (icon: EmptyStateIcon): icon is IconSvgElement =>
+    Array.isArray(icon);
 
 export function EmptyState({
     icon,
@@ -27,8 +36,9 @@ export function EmptyState({
 }: EmptyStateProps) {
     const renderIcon = () => {
         if (isValidElement(icon)) return icon;
-        const Icon = icon as LucideIcon;
-        return <Icon className="size-5 text-muted-foreground" />;
+        if (isHugeicon(icon))
+            return <Icon icon={icon} className={ICON_CLASS_NAME} />;
+        return icon;
     };
 
     const content = (

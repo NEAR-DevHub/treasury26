@@ -1,4 +1,5 @@
-import { Info } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "./tooltip";
 
@@ -38,7 +39,7 @@ export function Pill({
                 className,
             )}
         >
-            {info && <Info className="size-3 shrink-0" />}
+            {info && <Icon icon={InformationCircleIcon} className="shrink-0" />}
             {!info && icon}
             {title}
         </div>

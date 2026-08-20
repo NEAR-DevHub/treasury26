@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +34,6 @@ import { encodeToMarkdown } from "@/lib/utils";
 import { ThresholdSlider } from "@/components/threshold";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { useProposals } from "@/hooks/use-proposals";
-import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { RoleName } from "@/components/role-name";
@@ -431,7 +432,7 @@ export function VotingTab() {
                             className="w-full"
                         >
                             {t("viewRequest")}
-                            <ArrowUpRight className="h-4 w-4" />
+                            <Icon icon={ArrowUpRight01Icon} />
                         </Button>
                     </PageCard>
                 )}

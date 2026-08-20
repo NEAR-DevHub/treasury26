@@ -1,15 +1,11 @@
 "use client";
-
-/**
- * The Inputs section's row editor + the reusable `FieldConfigFields` block (label / type / required /
- * select options / advanced help+validation+default). `FieldConfigFields` is shared by the standalone
- * `FieldRow` here and by the args editor's inline "dynamic" config, so a member input is configured
- * the same way wherever it's edited. The optional extras (help / validation / default) sit behind a
- * per-row "Advanced options" disclosure that auto-opens when pre-filled or on a validation error,
- * and only the ones a field type allows are shown. Errors render under the input they belong to
- * (after it's touched); `draftToField` drops type-incompatible extras on serialize.
- */
-import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    Add01Icon,
+    ArrowDown01Icon,
+    ArrowUp01Icon,
+    Delete02Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Fragment, useId, useState } from "react";
 import { Button } from "@/components/button";
@@ -118,7 +114,7 @@ export function FieldsBuilder({
                 className="self-start px-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
                 onClick={() => onChange([...fields, makeFieldDraft()])}
             >
-                <Plus className="size-4" /> {t("fields.addField")}
+                <Icon icon={Add01Icon} /> {t("fields.addField")}
             </Button>
         </div>
     );
@@ -165,7 +161,7 @@ function FieldRow({
                         disabled={!canMoveUp}
                         onClick={() => onMove(-1)}
                     >
-                        <ChevronUp className="size-4" />
+                        <Icon icon={ArrowUp01Icon} />
                     </Button>
                     <Button
                         type="button"
@@ -174,7 +170,7 @@ function FieldRow({
                         disabled={!canMoveDown}
                         onClick={() => onMove(1)}
                     >
-                        <ChevronDown className="size-4" />
+                        <Icon icon={ArrowDown01Icon} />
                     </Button>
                     <Button
                         type="button"
@@ -183,7 +179,7 @@ function FieldRow({
                         className="text-muted-foreground hover:text-foreground"
                         onClick={onRemove}
                     >
-                        <Trash2 className="size-4" /> {t("fields.remove")}
+                        <Icon icon={Delete02Icon} /> {t("fields.remove")}
                     </Button>
                 </div>
             </div>
@@ -355,9 +351,9 @@ export function FieldConfigFields({
                 className="flex items-center gap-1 self-start text-muted-foreground text-xs transition-colors hover:text-foreground"
             >
                 {showAdvanced ? (
-                    <ChevronUp className="size-3.5" />
+                    <Icon icon={ArrowUp01Icon} />
                 ) : (
-                    <ChevronDown className="size-3.5" />
+                    <Icon icon={ArrowDown01Icon} />
                 )}
                 {t("fields.advancedOptions")}
             </button>

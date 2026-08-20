@@ -1,8 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Loading02Icon } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -267,7 +268,12 @@ export default function AccountPage() {
                                                     >
                                                         {uploadingImage ? (
                                                             <>
-                                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                                <Icon
+                                                                    icon={
+                                                                        Loading02Icon
+                                                                    }
+                                                                    className="mr-2 animate-spin"
+                                                                />
                                                                 {t("uploading")}
                                                             </>
                                                         ) : (
@@ -359,7 +365,10 @@ export default function AccountPage() {
                                 >
                                     {isSubmitting ? (
                                         <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            <Icon
+                                                icon={Loading02Icon}
+                                                className="mr-2 animate-spin"
+                                            />
                                             {t("saving")}
                                         </>
                                     ) : (

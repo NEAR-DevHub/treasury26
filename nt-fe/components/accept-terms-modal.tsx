@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Loading02Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import {
     Dialog,
@@ -14,7 +16,6 @@ import { ScrollContainer } from "@/components/scroll-container";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useNear } from "@/stores/near-store";
-import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
@@ -165,7 +166,10 @@ export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
                     >
                         {isSubmitting ? (
                             <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Icon
+                                    icon={Loading02Icon}
+                                    className="mr-2 animate-spin"
+                                />
                                 {t("accepting")}
                             </>
                         ) : isReturningUser ? (

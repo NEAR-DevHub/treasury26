@@ -1,6 +1,10 @@
 "use client";
-
-import { ChevronDown, ChevronUp, Shield } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowUp01Icon,
+    Shield01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
 import {
@@ -45,7 +49,10 @@ export function ConfidentialBanner({
                         className,
                     )}
                 >
-                    <Shield className="size-full fill-foreground" />
+                    <Icon
+                        icon={Shield01Icon}
+                        className="size-full fill-foreground"
+                    />
                 </span>
             </Tooltip>
         );
@@ -67,16 +74,19 @@ export function ConfidentialBanner({
         >
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Shield className="fill-foreground size-6" />
+                    <Icon
+                        icon={Shield01Icon}
+                        className="fill-foreground size-6"
+                    />
                     <span className="text-sm font-medium text-foreground">
                         {t("label")}
                     </span>
                 </div>
                 <CollapsibleTrigger className="text-muted-foreground hover:text-foreground transition-colors">
                     {isOpen ? (
-                        <ChevronUp className="size-3.5" />
+                        <Icon icon={ArrowUp01Icon} />
                     ) : (
-                        <ChevronDown className="size-3.5" />
+                        <Icon icon={ArrowDown01Icon} />
                     )}
                 </CollapsibleTrigger>
             </div>

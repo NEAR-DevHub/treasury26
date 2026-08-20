@@ -1,4 +1,5 @@
-import { Info } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Pill } from "@/components/pill";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -54,7 +55,7 @@ export function ApprovalInfo({
 
     return (
         <Alert>
-            <Info />
+            <Icon icon={InformationCircleIcon} />
             <AlertDescription className="inline-block">
                 {t.rich("alertBody", {
                     required: requiredVotes,

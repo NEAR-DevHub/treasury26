@@ -1,7 +1,8 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -121,7 +122,10 @@ export function RoleSelector({
                     className="flex gap-2 items-center bg-card rounded-full"
                 >
                     {getButtonText()}
-                    <ChevronDown className="size-4 shrink-0 opacity-50" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="shrink-0 opacity-50"
+                    />
                 </Button>
             </PopoverTrigger>
             {/*

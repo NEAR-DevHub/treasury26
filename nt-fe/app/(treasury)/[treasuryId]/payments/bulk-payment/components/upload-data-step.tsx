@@ -1,53 +1,53 @@
 "use client";
-
+import { Icon } from "@/components/icon";
 import {
-    useState,
-    useEffect,
-    useMemo,
+    BitcoinIcon,
+    Cancel01Icon,
+    FileAttachmentIcon,
+    FileUploadIcon,
+    InformationCircleIcon,
+    Invoice01Icon,
+    UserGroupIcon,
+    Wallet03Icon,
+} from "@hugeicons/core-free-icons";
+import { useTranslations } from "next-intl";
+import {
     cloneElement,
     isValidElement,
     type ReactElement,
+    useEffect,
+    useState,
 } from "react";
 import { useFormContext } from "react-hook-form";
-import { useTranslations } from "next-intl";
-import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
+import { CreateRequestButton } from "@/components/create-request-button";
 import { Textarea } from "@/components/textarea";
-import { Upload, FileText, ArrowLeft, DollarSign, Info, X } from "lucide-react";
-import TokenSelect, { SelectedTokenData } from "@/components/token-select";
+import TokenSelect, { type SelectedTokenData } from "@/components/token-select";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+    hasInlineWarning,
     SlotWarning,
     WarningMessage,
-    hasInlineWarning,
 } from "@/components/warning-message";
-import { NumberBadge } from "@/components/number-badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { CreateRequestButton } from "@/components/create-request-button";
+import { useSubscription } from "@/hooks/use-subscription";
 import {
     useBridgeAssetsForWarnings,
     useBridgeScopedWarning,
 } from "@/hooks/use-warnings";
-import { useSubscription } from "@/hooks/use-subscription";
-import { isTrialPlan } from "@/lib/subscription-api";
-import { BulkPaymentCreditsDisplay } from "./bulk-payment-credits-display";
 import { MAX_RECIPIENTS_PER_BULK_PAYMENT } from "@/lib/bulk-payment-api";
-import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
-import {
-    Tabs,
-    TabsList,
-    TabsTrigger,
-    TabsContent,
-} from "@/components/underline-tabs";
+import { isTrialPlan } from "@/lib/subscription-api";
+import { cn } from "@/lib/utils";
+import type { BulkPaymentData, BulkPaymentFormValues } from "../schemas";
 import {
     parseAndValidateCsv,
     parseAndValidatePasteData,
     validateIntentsFeeCoverage,
 } from "../utils";
 import { useBulkParsingLabels } from "../utils/use-parsing-labels";
-import { cn } from "@/lib/utils";
 
 interface UploadDataStepProps {
-    handleBack?: () => void;
     treasuryId: string;
     onContinue: (
         payments: BulkPaymentData[],
@@ -74,7 +74,6 @@ interface UploadDataStepProps {
 }
 
 export function UploadDataStep({
-    handleBack,
     treasuryId,
     onContinue,
     isConfidential = false,
@@ -98,14 +97,11 @@ export function UploadDataStep({
     // owns the "select recipient network" validation state.
     const [networkError, setNetworkError] = useState<string | null>(null);
     const [isReviewLoading, setIsReviewLoading] = useState(false);
+    const [hasAcknowledgedExchangeRisk, setHasAcknowledgedExchangeRisk] =
+        useState(false);
 
     const isLoading = isLoadingSubscription;
     const availableCredits = subscription?.batchPaymentCredits ?? 0;
-    const totalCredits =
-        subscription?.planConfig.limits.monthlyBatchPaymentCredits ??
-        subscription?.planConfig.limits.trialBatchPaymentCredits ??
-        0;
-    const creditsUsed = totalCredits - availableCredits;
 
     const selectedToken = form.watch("selectedToken");
     const csvData = form.watch("csvData");
@@ -286,12 +282,17 @@ export function UploadDataStep({
                 );
 
                 if (!isConfidential) {
-                    const feeErrors = feeValidationResult.payments
-                        .filter((payment) => !!payment.validationError)
-                        .map((payment) => ({
-                            row: payment.row || 0,
-                            message: payment.validationError!,
-                        }));
+                    const feeErrors = feeValidationResult.payments.flatMap(
+                        (payment) =>
+                            payment.validationError
+                                ? [
+                                      {
+                                          row: payment.row || 0,
+                                          message: payment.validationError,
+                                      },
+                                  ]
+                                : [],
+                    );
 
                     if (feeErrors.length > 0) {
                         setDataErrors(feeErrors);
@@ -318,594 +319,395 @@ export function UploadDataStep({
     // Show full page skeleton while loading
     if (isLoading) {
         return (
-            <div className="flex flex-col lg:flex-row lg:justify-center gap-4 w-full min-w-0">
-                {/* Main Content Skeleton */}
-                <div className="w-full min-w-0 max-w-[600px] mx-auto lg:mx-0">
-                    <PageCard className="gap-2">
-                        <div className="flex flex-col gap-3">
-                            <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                    {handleBack && (
-                                        <Button
-                                            variant="unstyled"
-                                            size="icon"
-                                            onClick={handleBack}
-                                            className="p-0! shrink-0"
-                                        >
-                                            <ArrowLeft className="size-5" />
-                                        </Button>
-                                    )}
-                                    <h4 className="text-base md:text-lg font-bold mb-1">
-                                        {t("headerTitle")}
-                                    </h4>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    {t("headerSubtitle")}
-                                </p>
-                            </div>
-
-                            {/* Step 1 Skeleton */}
-                            <div>
-                                <div className="flex gap-2 mb-4">
-                                    <div className="w-6 h-6 bg-general-unofficial-accent-0 rounded-full animate-pulse" />
-                                    <div className="flex-1 space-y-3 min-w-0">
-                                        <div className="h-5 bg-general-unofficial-accent-0 rounded w-32 animate-pulse" />
-                                        <div className="h-12 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Step 2 Skeleton */}
-                            <div>
-                                <div className="flex gap-2 mb-4">
-                                    <div className="w-6 h-6 bg-general-unofficial-accent-0 rounded-full animate-pulse" />
-                                    <div className="flex-1 space-y-3 min-w-0">
-                                        <div className="h-5 bg-general-unofficial-accent-0 rounded w-48 animate-pulse" />
-                                        <div className="h-10 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                                        <div className="h-48 md:h-64 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Button Skeleton */}
-                            <div className="h-11 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                        </div>
-                    </PageCard>
+            <div className="flex w-full min-w-0 flex-col items-start justify-center gap-5 lg:flex-row">
+                <div className="mx-auto flex w-full min-w-0 max-w-[464px] flex-col gap-2 lg:mx-0">
+                    <div className="h-[72px] animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
+                    <div className="h-12 animate-pulse rounded-2xl bg-general-unofficial-accent-0" />
+                    <div className="h-[178px] animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
+                    <div className="h-7 w-72 animate-pulse rounded-lg bg-general-unofficial-accent-0" />
+                    <div className="h-[72px] animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
+                    <div className="h-[66px] animate-pulse rounded-xl bg-general-unofficial-accent-0" />
+                    <div className="h-11 animate-pulse rounded-2xl bg-general-unofficial-accent-0" />
                 </div>
-
-                {/* Sidebar Skeleton */}
-                <div className="flex flex-col gap-4 w-full max-w-[600px] mx-auto lg:mx-0 lg:w-80 lg:max-w-none shrink-0">
-                    {/* Requirements Card Skeleton */}
-                    <PageCard
-                        style={{
-                            backgroundColor: "var(--color-general-tertiary)",
-                        }}
-                        className="gap-2 w-full"
-                    >
-                        <div className="h-6 bg-general-unofficial-accent-0 rounded w-48 animate-pulse mb-3" />
-                        <div className="space-y-3">
-                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                        </div>
-                    </PageCard>
-
-                    {/* Credits Card Skeleton */}
-                    <PageCard
-                        style={{
-                            backgroundColor: "var(--color-general-tertiary)",
-                        }}
-                        className="w-full"
-                    >
-                        <div className="space-y-3">
-                            <div className="h-6 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
-                        </div>
-                    </PageCard>
-                </div>
+                <div className="mx-auto h-[123px] w-full max-w-[300px] shrink-0 animate-pulse rounded-3xl bg-general-unofficial-accent-0 lg:mx-0" />
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col lg:flex-row lg:justify-center gap-4 w-full min-w-0">
-            {/* Main Content */}
-            <div className="w-full min-w-0 max-w-[600px] mx-auto lg:mx-0">
-                <PageCard className="gap-2">
-                    {/* Header */}
-                    <div className="flex flex-col gap-3">
-                        <div className="flex flex-col mb-3">
-                            <div className="flex items-center gap-2">
-                                {handleBack && (
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handleBack}
-                                        className="p-0! shrink-0"
-                                    >
-                                        <ArrowLeft className="size-5" />
-                                    </Button>
-                                )}
-                                <div className="flex flex-col min-w-0">
-                                    <p className="font-semibold mb-1">
-                                        {t("headerTitle")}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {t("headerSubtitle")}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Credit Exhaustion Banner */}
-                        {availableCredits === 0 && subscription && (
-                            <Alert variant="info" className="mb-3">
-                                <Info className="h-4 w-4 mt-[2px]" />
-                                <AlertTitle className="font-semibold">
-                                    {isTrialPlan(subscription.planConfig)
-                                        ? t("creditsUsed")
-                                        : t("bulkPaymentsUsed")}
-                                </AlertTitle>
-                                <AlertDescription className="text-general-info-foreground">
-                                    {isTrialPlan(subscription.planConfig)
-                                        ? t("upgradeTrial")
-                                        : t("upgradePaid")}
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {/* Step 1: Select Asset */}
-                        <div>
-                            <div className="flex gap-2 mb-4">
-                                <NumberBadge number={1} variant="secondary" />
-                                <div className="flex-1 flex flex-col gap-2">
-                                    <h3 className="text-sm font-semibold">
-                                        {t("selectAsset")}
-                                    </h3>
+        <div className="flex w-full min-w-0 flex-col items-start justify-center gap-5 lg:flex-row">
+            <div className="mx-auto flex w-full min-w-0 max-w-[464px] flex-col gap-2 lg:mx-0">
+                {availableCredits === 0 && subscription && (
+                    <Alert variant="info" className="mb-1">
+                        <Icon
+                            icon={InformationCircleIcon}
+                            className="mt-[2px]"
+                        />
+                        <AlertTitle className="font-semibold">
+                            {isTrialPlan(subscription.planConfig)
+                                ? t("creditsUsed")
+                                : t("bulkPaymentsUsed")}
+                        </AlertTitle>
+                        <AlertDescription className="text-general-info-foreground">
+                            {isTrialPlan(subscription.planConfig)
+                                ? t("upgradeTrial")
+                                : t("upgradePaid")}
+                        </AlertDescription>
+                    </Alert>
+                )}
 
-                                    <SlotWarning slot="payments" />
+                <SlotWarning slot="payments" />
 
+                <div
+                    className={cn(
+                        "w-full min-w-0",
+                        showTokenWarning &&
+                            "flex flex-col rounded-3xl border border-general-border bg-card px-1 pb-3",
+                    )}
+                >
+                    <TokenSelect
+                        selectedToken={
+                            selectedToken as SelectedTokenData | null
+                        }
+                        setSelectedToken={(token) =>
+                            form.setValue("selectedToken", token)
+                        }
+                        disableTokens={(token) =>
+                            isConfidential
+                                ? token.residency?.toLowerCase() !== "intents"
+                                : token.address.startsWith("nep245:")
+                        }
+                        disableTokenMessage={t("disableTokenMessage")}
+                        disabled={availableCredits === 0}
+                        iconSize="2xl"
+                        triggerLabel={t("token")}
+                        classNames={{
+                            trigger: showTokenWarning
+                                ? "h-[72px] w-full shrink-0 rounded-3xl border-0 bg-transparent px-4! shadow-none hover:bg-transparent"
+                                : "h-[72px] w-full rounded-3xl border border-general-border bg-card px-4! shadow-none hover:border-general-border hover:bg-card",
+                        }}
+                    />
+                    {showTokenWarning && (
+                        <WarningMessage
+                            variant="inline"
+                            message={sendWarningMessage}
+                            className="pl-3 text-xs"
+                        />
+                    )}
+                </div>
+
+                <Tabs
+                    value={activeTab}
+                    onValueChange={(value) => {
+                        form.setValue("activeTab", value as "upload" | "paste");
+                        setDataErrors(null);
+                    }}
+                >
+                    <TabsList className="h-12 w-full justify-stretch gap-1 rounded-2xl border border-general-border bg-transparent">
+                        <TabsTrigger
+                            value="upload"
+                            className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
+                        >
+                            <Icon icon={Wallet03Icon} />
+                            {t("uploadFile")}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="paste"
+                            className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
+                        >
+                            <Icon icon={UserGroupIcon} />
+                            {t("provideData")}
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="upload">
+                        <div className="flex flex-col gap-1">
+                            {!uploadedFile ? (
+                                <>
+                                    {/* biome-ignore lint/a11y/noStaticElementInteractions: Drag-and-drop supplements the accessible file button below. */}
                                     <div
                                         className={cn(
-                                            "w-full min-w-0",
-                                            showTokenWarning &&
-                                                "flex flex-col rounded-lg bg-muted px-1 pb-3",
+                                            "flex h-[178px] items-center justify-center rounded-3xl border border-general-border bg-card px-6 text-center transition-colors hover:bg-general-tertiary focus-within:bg-general-tertiary",
+                                            isDragging &&
+                                                "border-primary bg-primary/5",
                                         )}
+                                        onDrop={handleDrop}
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
                                     >
-                                        <TokenSelect
-                                            selectedToken={
-                                                selectedToken as SelectedTokenData | null
-                                            }
-                                            setSelectedToken={(token) =>
-                                                form.setValue(
-                                                    "selectedToken",
-                                                    token,
-                                                )
-                                            }
-                                            disableTokens={(token) =>
-                                                isConfidential
-                                                    ? token.residency?.toLowerCase() !==
-                                                      "intents"
-                                                    : token.address.startsWith(
-                                                          "nep245:",
-                                                      )
-                                            }
-                                            disableTokenMessage={t(
-                                                "disableTokenMessage",
-                                            )}
-                                            disabled={availableCredits === 0}
-                                            iconSize="md"
-                                            classNames={{
-                                                trigger: showTokenWarning
-                                                    ? "w-full h-11 md:h-12 shrink-0 border-0 bg-transparent shadow-none hover:bg-transparent hover:border-none rounded-none px-0"
-                                                    : "w-full h-11 md:h-12 rounded-lg px-3 md:px-4 bg-muted hover:bg-muted/80 hover:border-none",
-                                            }}
-                                        />
-                                        {showTokenWarning && (
-                                            <WarningMessage
-                                                variant="inline"
-                                                message={sendWarningMessage}
-                                                className="text-xs pl-3"
+                                        <div className="flex flex-col items-center gap-2.5">
+                                            <span className="flex size-10 items-center justify-center rounded-full border border-general-border bg-muted">
+                                                <Icon
+                                                    icon={FileUploadIcon}
+                                                    className="text-muted-foreground"
+                                                />
+                                            </span>
+                                            <div className="flex flex-col gap-1">
+                                                <p className="text-base leading-[1.2]">
+                                                    <Button
+                                                        type="button"
+                                                        variant="link"
+                                                        className="h-auto p-0! font-semibold text-foreground hover:underline disabled:text-muted-foreground"
+                                                        onClick={() =>
+                                                            document
+                                                                .getElementById(
+                                                                    "file-upload",
+                                                                )
+                                                                ?.click()
+                                                        }
+                                                        disabled={
+                                                            availableCredits ===
+                                                            0
+                                                        }
+                                                    >
+                                                        {t("chooseFile")}
+                                                    </Button>{" "}
+                                                    <span className="font-medium text-muted-foreground">
+                                                        {t("orDragDrop")}
+                                                    </span>
+                                                </p>
+                                                <p className="text-sm leading-5 text-muted-foreground">
+                                                    {t("maxFileSize")}
+                                                </p>
+                                            </div>
+                                            <input
+                                                id="file-upload"
+                                                type="file"
+                                                accept=".csv"
+                                                className="hidden"
+                                                disabled={
+                                                    availableCredits === 0
+                                                }
+                                                onChange={(event) => {
+                                                    const file =
+                                                        event.target.files?.[0];
+                                                    if (file)
+                                                        handleFileUpload(file);
+                                                }}
                                             />
-                                        )}
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                        {/* Step 2: Provide Payment Data */}
-                        <div className="md:mb-4">
-                            <div className="flex gap-2 md:mb-4">
-                                <NumberBadge number={2} variant="secondary" />
-                                <div className="flex-1 flex flex-col gap-2">
-                                    <h3 className="text-sm font-semibold">
-                                        {t("providePaymentData")}
-                                    </h3>
 
-                                    <Tabs
-                                        value={activeTab}
-                                        onValueChange={(value) => {
+                                    <div className="flex min-h-7 flex-wrap items-center gap-1 text-sm font-medium">
+                                        <span>{t("noFilePrompt")}</span>
+                                        <Button
+                                            type="button"
+                                            variant="link"
+                                            onClick={downloadTemplate}
+                                            className="h-7 px-2! py-[3px] text-xs font-bold text-general-unofficial-ghost-foreground hover:underline"
+                                        >
+                                            {t("downloadTemplate")}
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div
+                                    className={cn(
+                                        "flex h-[72px] items-center justify-between rounded-3xl border border-general-border bg-card px-4",
+                                        dataErrors?.length &&
+                                            "border-destructive bg-destructive/5",
+                                    )}
+                                >
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
+                                            <Icon
+                                                icon={FileAttachmentIcon}
+                                                className={cn(
+                                                    "text-primary",
+                                                    dataErrors?.length &&
+                                                        "text-destructive",
+                                                )}
+                                            />
+                                        </span>
+                                        <div className="min-w-0 text-left">
+                                            <p className="truncate text-sm font-semibold">
+                                                {uploadedFile.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {(
+                                                    uploadedFile.size / 1024
+                                                ).toFixed(0)}
+                                                KB
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        onClick={() => {
+                                            setUploadedFile(null);
+                                            form.setValue("csvData", null);
                                             form.setValue(
-                                                "activeTab",
-                                                value as "upload" | "paste",
+                                                "uploadedFileName",
+                                                null,
                                             );
                                             setDataErrors(null);
                                         }}
+                                        className={cn(
+                                            "text-muted-foreground hover:text-foreground",
+                                            dataErrors?.length &&
+                                                "text-destructive hover:text-destructive/80",
+                                        )}
                                     >
-                                        <TabsList>
-                                            <TabsTrigger value="upload">
-                                                {t("uploadFile")}
-                                            </TabsTrigger>
-                                            <TabsTrigger value="paste">
-                                                {t("provideData")}
-                                            </TabsTrigger>
-                                        </TabsList>
-
-                                        {/* Upload Tab Content */}
-                                        <TabsContent value="upload">
-                                            <div className="space-y-4">
-                                                {!uploadedFile ? (
-                                                    <>
-                                                        <div
-                                                            className={`border-2 border-dashed hover:bg-general-tertiary focus-within:bg-general-tertiary transition-colors rounded-lg p-4 text-center ${
-                                                                isDragging
-                                                                    ? "border-primary bg-primary/5"
-                                                                    : "border-border bg-muted"
-                                                            }`}
-                                                            onDrop={handleDrop}
-                                                            onDragOver={
-                                                                handleDragOver
-                                                            }
-                                                            onDragLeave={
-                                                                handleDragLeave
-                                                            }
-                                                        >
-                                                            <div className="flex flex-col items-center gap-4">
-                                                                <Upload className="w-6 h-6 text-muted-foreground" />
-                                                                <div>
-                                                                    <p className="text-base mb-2">
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="link"
-                                                                            className="font-semibold h-auto p-0! hover:underline disabled:text-muted-foreground"
-                                                                            onClick={() =>
-                                                                                document
-                                                                                    .getElementById(
-                                                                                        "file-upload",
-                                                                                    )
-                                                                                    ?.click()
-                                                                            }
-                                                                            disabled={
-                                                                                availableCredits ===
-                                                                                0
-                                                                            }
-                                                                        >
-                                                                            {t(
-                                                                                "chooseFile",
-                                                                            )}
-                                                                        </Button>{" "}
-                                                                        <span className="text-muted-foreground font-medium">
-                                                                            {t(
-                                                                                "orDragDrop",
-                                                                            )}
-                                                                        </span>
-                                                                    </p>
-                                                                    <p className="text-sm text-muted-foreground">
-                                                                        {t(
-                                                                            "maxFileSize",
-                                                                        )}
-                                                                    </p>
-                                                                </div>
-                                                                <input
-                                                                    id="file-upload"
-                                                                    type="file"
-                                                                    accept=".csv"
-                                                                    className="hidden"
-                                                                    disabled={
-                                                                        availableCredits ===
-                                                                        0
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) => {
-                                                                        const file =
-                                                                            e
-                                                                                .target
-                                                                                .files?.[0];
-                                                                        if (
-                                                                            file
-                                                                        )
-                                                                            handleFileUpload(
-                                                                                file,
-                                                                            );
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 text-sm">
-                                                            <span className="text-muted-foreground">
-                                                                {t(
-                                                                    "noFilePrompt",
-                                                                )}
-                                                            </span>
-                                                            <Button
-                                                                type="button"
-                                                                variant="link"
-                                                                onClick={
-                                                                    downloadTemplate
-                                                                }
-                                                                className="h-auto p-0! font-medium hover:underline text-general-unofficial-ghost-foreground"
-                                                            >
-                                                                {t(
-                                                                    "downloadTemplate",
-                                                                )}
-                                                            </Button>
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <div
-                                                        className={`rounded-lg p-4 flex items-center justify-between ${
-                                                            dataErrors &&
-                                                            dataErrors.length >
-                                                                0
-                                                                ? "bg-destructive/10 border border-destructive"
-                                                                : "bg-muted/50"
-                                                        }`}
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <FileText
-                                                                className={`w-5 h-5 ${
-                                                                    dataErrors &&
-                                                                    dataErrors.length >
-                                                                        0
-                                                                        ? "text-destructive"
-                                                                        : "text-primary"
-                                                                }`}
-                                                            />
-                                                            <div>
-                                                                <p className="text-sm font-medium">
-                                                                    {
-                                                                        uploadedFile.name
-                                                                    }
-                                                                </p>
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    {(
-                                                                        uploadedFile.size /
-                                                                        1024
-                                                                    ).toFixed(
-                                                                        0,
-                                                                    )}
-                                                                    KB
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => {
-                                                                setUploadedFile(
-                                                                    null,
-                                                                );
-                                                                form.setValue(
-                                                                    "csvData",
-                                                                    null,
-                                                                );
-                                                                form.setValue(
-                                                                    "uploadedFileName",
-                                                                    null,
-                                                                );
-                                                                setDataErrors(
-                                                                    null,
-                                                                );
-                                                            }}
-                                                            className={`h-8 w-8 ${
-                                                                dataErrors &&
-                                                                dataErrors.length >
-                                                                    0
-                                                                    ? "text-destructive hover:text-destructive/80"
-                                                                    : "text-muted-foreground hover:text-foreground"
-                                                            }`}
-                                                        >
-                                                            <X className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                )}
-
-                                                {/* Error Message Below File Upload */}
-                                                {activeTab === "upload" &&
-                                                    dataErrors &&
-                                                    dataErrors.length > 0 && (
-                                                        <div className="space-y-1 max-h-48 overflow-y-auto overflow-x-hidden">
-                                                            {dataErrors.map(
-                                                                (
-                                                                    error,
-                                                                    idx,
-                                                                ) => (
-                                                                    <div
-                                                                        key={
-                                                                            idx
-                                                                        }
-                                                                        className="text-sm text-destructive break-word wrap-anywhere"
-                                                                    >
-                                                                        {
-                                                                            error.message
-                                                                        }
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    )}
-                                            </div>
-                                        </TabsContent>
-
-                                        {/* Paste Tab Content */}
-                                        <TabsContent value="paste">
-                                            <div className="space-y-2">
-                                                <Textarea
-                                                    value={pasteDataInput}
-                                                    onChange={(e) => {
-                                                        form.setValue(
-                                                            "pasteDataInput",
-                                                            e.target.value,
-                                                        );
-                                                        if (
-                                                            dataErrors &&
-                                                            dataErrors.length >
-                                                                0
-                                                        ) {
-                                                            setDataErrors(null);
-                                                        }
-                                                    }}
-                                                    borderless
-                                                    placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
-                                                    rows={8}
-                                                    className={`w-full max-w-full resize-none font-mono text-base md:text-sm bg-muted focus:outline-none break-all whitespace-pre-wrap wrap-anywhere overflow-x-hidden min-h-32 md:min-h-41 ${
-                                                        dataErrors &&
-                                                        dataErrors.length > 0
-                                                            ? "border border-destructive bg-destructive/5! focus:border-destructive!"
-                                                            : "bg-muted"
-                                                    }`}
-                                                    disabled={
-                                                        availableCredits === 0
-                                                    }
-                                                />
-
-                                                {/* Error Message Below Textarea */}
-                                                {dataErrors &&
-                                                    dataErrors.length > 0 && (
-                                                        <div className="space-y-1 max-h-48 overflow-y-auto overflow-x-hidden">
-                                                            {dataErrors.map(
-                                                                (
-                                                                    error,
-                                                                    idx,
-                                                                ) => (
-                                                                    <div
-                                                                        key={
-                                                                            idx
-                                                                        }
-                                                                        className="text-sm text-destructive break-word wrap-anywhere"
-                                                                    >
-                                                                        {
-                                                                            error.message
-                                                                        }
-                                                                    </div>
-                                                                ),
-                                                            )}
-                                                        </div>
-                                                    )}
-                                            </div>
-                                        </TabsContent>
-                                        <div className="mt-2">
-                                            {networkSlot &&
-                                            isValidElement(networkSlot)
-                                                ? cloneElement(
-                                                      networkSlot as ReactElement<{
-                                                          invalid?: boolean;
-                                                          errorMessage?:
-                                                              | string
-                                                              | null;
-                                                      }>,
-                                                      {
-                                                          invalid:
-                                                              !!networkError,
-                                                          errorMessage:
-                                                              networkError,
-                                                      },
-                                                  )
-                                                : networkSlot}
-                                        </div>
-                                    </Tabs>
+                                        <Icon icon={Cancel01Icon} />
+                                        <span className="sr-only">
+                                            {t("removeFile")}
+                                        </span>
+                                    </Button>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+                            )}
 
-                    {/* Continue Button */}
-                    <CreateRequestButton
-                        type="button"
-                        disabled={
-                            !selectedToken ||
-                            (activeTab === "upload" && !csvData) ||
-                            (activeTab === "paste" && !pasteDataInput.trim()) ||
-                            availableCredits === 0 ||
-                            isReviewLoading ||
-                            paymentsSlotBlocked
-                        }
-                        onClick={handleContinue}
-                        isSubmitting={isReviewLoading}
-                        permissions={[
-                            { kind: "transfer", action: "AddProposal" },
-                            { kind: "call", action: "AddProposal" },
-                        ]}
-                        idleMessage={
-                            paymentsSlotBlocked
-                                ? tCreate("brieflyUnavailable")
-                                : availableCredits === 0
-                                  ? t("limitsUsed")
-                                  : !selectedToken ||
-                                      (activeTab === "upload" && !csvData) ||
-                                      (activeTab === "paste" &&
-                                          !pasteDataInput.trim())
-                                    ? t("selectAndProvide")
-                                    : t("continueToReview")
-                        }
-                    />
-                </PageCard>
-            </div>
-
-            {/* Right Sidebar */}
-            <div className="flex flex-col gap-4 w-full max-w-[600px] mx-auto lg:mx-0 lg:w-80 lg:max-w-none shrink-0">
-                {/* Requirements Card */}
-                <PageCard
-                    style={{
-                        backgroundColor: "var(--color-general-tertiary)",
-                    }}
-                    className="gap-3 w-full"
-                >
-                    <p className="font-semibold">{t("requirements")}</p>
-                    <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                            <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-sm">
-                                    {t("maxTransactions", {
-                                        max: MAX_RECIPIENTS_PER_BULK_PAYMENT,
-                                    })}
-                                </p>
-                            </div>
+                            {activeTab === "upload" &&
+                                dataErrors &&
+                                dataErrors.length > 0 && (
+                                    <div className="max-h-48 space-y-1 overflow-y-auto overflow-x-hidden">
+                                        {dataErrors.map((error) => (
+                                            <div
+                                                key={`${error.row}-${error.message}`}
+                                                className="wrap-anywhere break-word text-sm text-destructive"
+                                            >
+                                                {error.message}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                         </div>
-                        <div className="flex items-start gap-3">
-                            <DollarSign className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-sm">
-                                    {t("singleTokenNetwork")}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </PageCard>
+                    </TabsContent>
 
-                {/* Credits Display */}
-                <PageCard
-                    style={{
-                        backgroundColor:
-                            availableCredits === 0
-                                ? "var(--color-general-info-background-faded)"
-                                : "var(--color-general-tertiary)",
-                    }}
-                    className="w-full"
-                >
-                    {subscription && (
-                        <BulkPaymentCreditsDisplay
-                            credits={{
-                                creditsAvailable: availableCredits,
-                                creditsUsed: creditsUsed,
-                                totalCredits: totalCredits,
-                            }}
-                            subscription={subscription}
+                    <TabsContent value="paste">
+                        <div className="space-y-2 rounded-3xl border border-general-border bg-card">
+                            <Textarea
+                                value={pasteDataInput}
+                                onChange={(event) => {
+                                    form.setValue(
+                                        "pasteDataInput",
+                                        event.target.value,
+                                    );
+                                    if (dataErrors?.length) {
+                                        setDataErrors(null);
+                                    }
+                                }}
+                                borderless
+                                placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
+                                rows={8}
+                                className={cn(
+                                    "min-h-[178px] w-full max-w-full resize-none overflow-x-hidden rounded-3xl bg-transparent! p-4 font-mono text-base whitespace-pre-wrap shadow-none hover:bg-transparent! focus-within:bg-transparent! focus:outline-none disabled:opacity-100 md:text-sm",
+                                    dataErrors?.length &&
+                                        "border-destructive! bg-destructive/5! focus:border-destructive! focus-visible:border-destructive! focus-within:border-destructive!",
+                                )}
+                                disabled={availableCredits === 0}
+                            />
+
+                            {dataErrors && dataErrors.length > 0 && (
+                                <div className="max-h-48 space-y-1 overflow-y-auto overflow-x-hidden">
+                                    {dataErrors.map((error) => (
+                                        <div
+                                            key={`${error.row}-${error.message}`}
+                                            className="wrap-anywhere break-word text-sm text-destructive"
+                                        >
+                                            {error.message}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </TabsContent>
+                </Tabs>
+
+                {networkSlot && isValidElement(networkSlot)
+                    ? cloneElement(
+                          networkSlot as ReactElement<{
+                              invalid?: boolean;
+                              errorMessage?: string | null;
+                          }>,
+                          {
+                              invalid: !!networkError,
+                              errorMessage: networkError,
+                          },
+                      )
+                    : networkSlot}
+
+                <div className="flex items-start gap-3 rounded-[12px] border border-[#dbeafe] bg-general-info-background-faded p-3 text-general-info-foreground dark:border-general-info-border">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-general-info-foreground">
+                        <Icon
+                            icon={InformationCircleIcon}
+                            className="text-white"
+                            strokeWidth={3}
                         />
-                    )}
-                </PageCard>
+                    </span>
+                    <Checkbox
+                        id="bulk-payment-exchange-risk"
+                        checked={hasAcknowledgedExchangeRisk}
+                        onCheckedChange={(checked) =>
+                            setHasAcknowledgedExchangeRisk(checked === true)
+                        }
+                        className="mt-0.5 border-[#1447e6] data-[state=checked]:border-[#1447e6] data-[state=checked]:bg-[#1447e6] dark:border-general-info-foreground dark:data-[state=checked]:border-general-info-foreground dark:data-[state=checked]:bg-general-info-foreground"
+                    />
+                    <label
+                        htmlFor="bulk-payment-exchange-risk"
+                        className="cursor-pointer text-sm font-semibold leading-5"
+                    >
+                        {t("exchangeAddressWarning")}
+                    </label>
+                </div>
+
+                <CreateRequestButton
+                    type="button"
+                    className="h-11 w-full rounded-2xl"
+                    disabled={
+                        !selectedToken ||
+                        (activeTab === "upload" && !csvData) ||
+                        (activeTab === "paste" && !pasteDataInput.trim()) ||
+                        !hasAcknowledgedExchangeRisk ||
+                        availableCredits === 0 ||
+                        isReviewLoading ||
+                        paymentsSlotBlocked
+                    }
+                    onClick={handleContinue}
+                    isSubmitting={isReviewLoading}
+                    permissions={[
+                        { kind: "transfer", action: "AddProposal" },
+                        { kind: "call", action: "AddProposal" },
+                    ]}
+                    idleMessage={
+                        paymentsSlotBlocked
+                            ? tCreate("brieflyUnavailable")
+                            : availableCredits === 0
+                              ? t("limitsUsed")
+                              : !selectedToken ||
+                                  (activeTab === "upload" && !csvData) ||
+                                  (activeTab === "paste" &&
+                                      !pasteDataInput.trim())
+                                ? t("selectAndProvide")
+                                : t("continueToReview")
+                    }
+                />
             </div>
+
+            <aside className="mx-auto w-full max-w-[300px] shrink-0 rounded-3xl border border-general-border bg-general-tertiary lg:mx-0">
+                <div className="px-4 pb-2 pt-4">
+                    <p className="text-base font-semibold leading-[1.2]">
+                        {t("requirements")}
+                    </p>
+                </div>
+                <div className="flex flex-col gap-3 px-4 pb-4 pt-2">
+                    <div className="flex items-center gap-2">
+                        <Icon icon={Invoice01Icon} className="shrink-0" />
+                        <p className="text-sm font-medium leading-5">
+                            {t("maxTransactions", {
+                                max: MAX_RECIPIENTS_PER_BULK_PAYMENT,
+                            })}
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Icon icon={BitcoinIcon} className="shrink-0" />
+                        <p className="text-sm font-medium leading-5">
+                            {t("singleTokenNetwork")}
+                        </p>
+                    </div>
+                </div>
+            </aside>
         </div>
     );
 }

@@ -1,7 +1,7 @@
+import { Icon } from "@/components/icon";
+import { GlobeIcon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
-import { Globe, Shield } from "lucide-react";
-
 export type TreasuryType = "confidential" | "public";
 
 const treasuryTypeIconVariants = cva(
@@ -377,7 +377,10 @@ export function TreasuryTypeIcon({
     const globeSize = size === "sm" ? "size-2" : "size-3";
     return (
         <div className={cn(treasuryTypeIconVariants({ size }), className)}>
-            <Globe className={cn("text-foreground", globeSize)} />
+            <Icon
+                icon={GlobeIcon}
+                className={cn("text-foreground", globeSize)}
+            />
         </div>
     );
 }

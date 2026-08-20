@@ -1231,6 +1231,7 @@
         "confidentialTooltip": "Detail penerima dan jumlah yang diminta sepenuhnya rahasia."
     },
     "bulkPayment": {
+        "title": "Pembayaran Massal",
         "comingSoonToast": "Pembayaran massal akan segera hadir!",
         "submittingList": "Mengirim daftar pembayaran massal",
         "submittingProposal": "Mengirim usulan",
@@ -1255,6 +1256,11 @@
             "provideData": "Berikan Data",
             "chooseFile": "Pilih File",
             "orDragDrop": "atau seret dan lepas",
+            "token": "Token",
+            "destinationNetwork": "Jaringan tujuan",
+            "uploadFileFirst": "Unggah file terlebih dahulu",
+            "exchangeAddressWarning": "Saya memahami bahwa mengirim langsung ke alamat bursa dapat mengakibatkan kehilangan dana atau masalah lainnya.",
+            "removeFile": "Hapus file",
             "maxFileSize": "maks 1 file hingga 1.5 MB, hanya file CSV",
             "noFilePrompt": "Tidak punya file untuk diunggah?",
             "downloadTemplate": "Unduh templat",

@@ -1,5 +1,13 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowLeftRightIcon,
+    ArrowRight01Icon,
+    ArrowUpRight01Icon,
+    InformationCircleIcon,
+    LockIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     Dialog,
@@ -23,13 +31,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { buildPaymentsDeepLinkForAsset } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { buildTokenQueryParam } from "@/lib/token-query-param";
-import {
-    ArrowUpRight,
-    ArrowLeftRight,
-    ChevronRight,
-    Lock,
-    Info,
-} from "lucide-react";
 
 interface Props {
     isOpen: boolean;
@@ -185,7 +186,12 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                         );
                                                     }}
                                                 >
-                                                    <ArrowUpRight className="size-4 text-primary" />
+                                                    <Icon
+                                                        icon={
+                                                            ArrowUpRight01Icon
+                                                        }
+                                                        className="text-primary"
+                                                    />
                                                 </AuthButton>
                                                 <AuthButton
                                                     permissionKind="call"
@@ -200,7 +206,12 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                         );
                                                     }}
                                                 >
-                                                    <ArrowLeftRight className="size-4 text-primary" />
+                                                    <Icon
+                                                        icon={
+                                                            ArrowLeftRightIcon
+                                                        }
+                                                        className="text-primary"
+                                                    />
                                                 </AuthButton>
                                             </div>
                                         </div>
@@ -264,7 +275,10 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                         );
                                                     }}
                                                 >
-                                                    <ChevronRight className="size-4 text-primary" />
+                                                    <Icon
+                                                        icon={ArrowRight01Icon}
+                                                        className="text-primary"
+                                                    />
                                                 </Button>
                                             </div>
                                         </div>
@@ -282,7 +296,10 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                         <span className="text-xxs font-medium uppercase text-muted-foreground">
                                             {t("vesting")}
                                         </span>
-                                        <Lock className="size-3 text-muted-foreground shrink-0" />
+                                        <Icon
+                                            icon={LockIcon}
+                                            className="text-muted-foreground shrink-0"
+                                        />
                                     </div>
                                     {vestingNetwork?.balance.type ===
                                         "Vested" && (
@@ -360,7 +377,12 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                             e.stopPropagation()
                                                         }
                                                     >
-                                                        <ArrowUpRight className="size-4 text-primary" />
+                                                        <Icon
+                                                            icon={
+                                                                ArrowUpRight01Icon
+                                                            }
+                                                            className="text-primary"
+                                                        />
                                                     </Button>
                                                     <Button
                                                         variant="ghost"
@@ -375,7 +397,12 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                             );
                                                         }}
                                                     >
-                                                        <ChevronRight className="size-4 text-primary" />
+                                                        <Icon
+                                                            icon={
+                                                                ArrowRight01Icon
+                                                            }
+                                                            className="text-primary"
+                                                        />
                                                     </Button>
                                                 </div>
                                             </div>
@@ -390,7 +417,12 @@ export function AssetDetailsModal({ isOpen, onClose, asset }: Props) {
                                                                 "frozenTooltip",
                                                             )}
                                                         >
-                                                            <Info className="size-3 shrink-0" />
+                                                            <Icon
+                                                                icon={
+                                                                    InformationCircleIcon
+                                                                }
+                                                                className="shrink-0"
+                                                            />
                                                         </Tooltip>
                                                     </div>
                                                     <div className="text-right shrink-0">

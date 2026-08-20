@@ -1,9 +1,13 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowLeft01Icon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { InfoDisplay, type InfoItem } from "@/components/info-display";
-import { ChevronLeft, Info } from "lucide-react";
 import {
     Dialog,
     DialogContent,
@@ -139,7 +143,7 @@ export function EarningPoolDetailsModal({
                                 className="size-7 -ml-1"
                                 onClick={onBack}
                             >
-                                <ChevronLeft className="size-4" />
+                                <Icon icon={ArrowLeft01Icon} />
                             </Button>
                         ) : null}
                         <DialogTitle className="text-left">
@@ -165,7 +169,10 @@ export function EarningPoolDetailsModal({
 
                     {isLockupStaking ? (
                         <div className="rounded-xl bg-muted/60 px-4 py-3 text-sm flex items-start gap-2">
-                            <Info className="size-4 text-muted-foreground mt-0.5 shrink-0" />
+                            <Icon
+                                icon={InformationCircleIcon}
+                                className="text-muted-foreground mt-0.5 shrink-0"
+                            />
                             <p className="text-foreground">
                                 {t("lockupAssetsNote")}
                             </p>

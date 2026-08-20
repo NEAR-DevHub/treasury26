@@ -1,7 +1,8 @@
 "use client";
 
-import { Zap } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Icon } from "@/components/icon";
+import { FlashIcon } from "@hugeicons/core-free-icons";
 import { NEAR_COM_ICON } from "@/constants/token";
 import { cn } from "@/lib/utils";
 import type { ConfidentialOrigin } from "./deposit-types";
@@ -35,7 +36,7 @@ function TrezuIcon({ className }: { className?: string }) {
                 className,
             )}
         >
-            <Zap className="size-2.5 sm:size-3 fill-current" />
+            <Icon icon={FlashIcon} className="size-2.5 sm:size-3" />
         </span>
     );
 }

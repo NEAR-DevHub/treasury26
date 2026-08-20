@@ -1,6 +1,10 @@
 "use client";
-
-import { ArrowDown, Loader2, Shield } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    Loading02Icon,
+    Shield01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect } from "react";
@@ -193,7 +197,10 @@ export function Step1({
                                         content={tEx("confidentialTooltip")}
                                     >
                                         <span className="inline-flex">
-                                            <Shield className="size-4 fill-foreground" />
+                                            <Icon
+                                                icon={Shield01Icon}
+                                                className="fill-foreground"
+                                            />
                                         </span>
                                     </Tooltip>
                                 </span>
@@ -257,9 +264,12 @@ export function Step1({
                             disabled={isQuoteBusy}
                         >
                             {isQuoteBusy ? (
-                                <Loader2 className="size-5 animate-spin text-muted-foreground" />
+                                <Icon
+                                    icon={Loading02Icon}
+                                    className="animate-spin text-muted-foreground"
+                                />
                             ) : (
-                                <ArrowDown className="size-5" />
+                                <Icon icon={ArrowDown01Icon} />
                             )}
                         </Button>
                     </div>

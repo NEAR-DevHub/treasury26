@@ -1,9 +1,10 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Cancel01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
 import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
-import { X, Trash } from "lucide-react";
 import { OperationSelect } from "@/components/operation-select";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +58,7 @@ export function BaseFilterPopover({
                         onClick={onDelete}
                         className="text-muted-foreground hover:text-foreground h-7 w-7"
                     >
-                        <Trash className="size-3.5" />
+                        <Icon icon={Delete01Icon} />
                     </Button>
                 </div>
             </div>

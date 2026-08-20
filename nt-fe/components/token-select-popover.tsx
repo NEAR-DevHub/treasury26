@@ -1,8 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Search } from "lucide-react";
 import { Button } from "@/components/button";
 import {
     Popover,
@@ -131,7 +132,10 @@ export function TokenSelectPopover({
                             {t("selectToken")}
                         </span>
                     )}
-                    <ChevronDown className="h-3 w-3 text-muted-foreground ml-auto" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="text-muted-foreground ml-auto"
+                    />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 p-2" align="start">

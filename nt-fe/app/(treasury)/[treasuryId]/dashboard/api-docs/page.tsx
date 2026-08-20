@@ -1,6 +1,6 @@
 "use client";
-
-import { Loader2, Play } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Loading02Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/button";
@@ -410,9 +410,12 @@ export default function ApiDocsPage() {
                     <div className="flex flex-wrap items-center gap-3">
                         <Button onClick={handleRun} disabled={isRunning}>
                             {isRunning ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Icon
+                                    icon={Loading02Icon}
+                                    className="animate-spin"
+                                />
                             ) : (
-                                <Play className="w-4 h-4" />
+                                <Icon icon={PlayIcon} />
                             )}
                             {isRunning ? tDocs("running") : tDocs("run")}
                         </Button>

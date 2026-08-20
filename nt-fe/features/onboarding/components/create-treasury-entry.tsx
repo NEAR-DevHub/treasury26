@@ -1,8 +1,15 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    GiftIcon,
+    GlobeIcon,
+    Loading02Icon,
+    Shield01Icon,
+    Tick01Icon,
+} from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Gift, Globe, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -607,7 +614,10 @@ export function TreasuryOnboardingPage({
                                 <div className="grid gap-3 md:grid-cols-2">
                                     <TreasuryTypeOption
                                         icon={
-                                            <Globe className="size-4 text-foreground" />
+                                            <Icon
+                                                icon={GlobeIcon}
+                                                className="text-foreground"
+                                            />
                                         }
                                         title={t("public")}
                                         description={t("publicCardDescription")}
@@ -621,8 +631,9 @@ export function TreasuryOnboardingPage({
                                     />
                                     <TreasuryTypeOption
                                         icon={
-                                            <Shield
-                                                className="size-4 text-foreground"
+                                            <Icon
+                                                icon={Shield01Icon}
+                                                className="text-foreground"
                                                 fill="currentColor"
                                             />
                                         }
@@ -728,7 +739,10 @@ export function TreasuryOnboardingPage({
                             <Alert variant="info" className="block">
                                 <AlertDescription>
                                     <div className="flex items-center gap-2">
-                                        <Gift className="size-5 shrink-0" />
+                                        <Icon
+                                            icon={GiftIcon}
+                                            className="shrink-0"
+                                        />
                                         <p className="text-sm font-semibold">
                                             {t("setupOnUsTitle")}
                                         </p>
@@ -745,7 +759,10 @@ export function TreasuryOnboardingPage({
                                 disabled={isSubmitDisabled}
                             >
                                 {(isAuthenticating || isCheckingHandle) && (
-                                    <Loader2 className="size-4 animate-spin" />
+                                    <Icon
+                                        icon={Loading02Icon}
+                                        className="animate-spin"
+                                    />
                                 )}
                                 {accountId
                                     ? t("createButton")
@@ -762,7 +779,7 @@ export function TreasuryOnboardingPage({
     );
 
     const loginScreenBody = (
-        <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-8">
+        <div className="mx-auto w-full max-w-[448px] space-y-3 md:mt-3">
             <ConnectWalletSelector
                 source={isCreateRoute ? "/create" : "/"}
                 connectFlow={isCreateRoute ? "onboarding" : "within_treasury"}
@@ -850,7 +867,10 @@ export function TreasuryOnboardingPage({
                                     }
                                 >
                                     {isSubmittingWaitlist && (
-                                        <Loader2 className="size-4 animate-spin" />
+                                        <Icon
+                                            icon={Loading02Icon}
+                                            className="animate-spin"
+                                        />
                                     )}
                                     {tLanding("waitlistSubmit")}
                                 </WaitlistActionButton>
@@ -879,7 +899,10 @@ export function TreasuryOnboardingPage({
                     <WaitlistInner gapClassName="gap-6">
                         <div className="flex w-full flex-col items-center justify-center gap-2">
                             <div className="inline-flex size-9 items-center justify-center rounded-full bg-general-success-background-faded">
-                                <Check className="size-5 text-general-success-foreground" />
+                                <Icon
+                                    icon={Tick01Icon}
+                                    className="text-general-success-foreground"
+                                />
                             </div>
                             <h1 className="w-full text-center text-2xl leading-7 font-semibold text-foreground">
                                 {tLanding("waitlistSubmittedTitle")}
@@ -926,7 +949,11 @@ export function TreasuryOnboardingPage({
                     hideHeaderBottomBorder
                     hideHeaderContent={isRootSignInScreen}
                     logo={headerLogo}
-                    mainClassName="pt-1"
+                    mainClassName={cn(
+                        "pt-1",
+                        isRootSignInScreen &&
+                            "min-h-[calc(100vh-4rem)] bg-general-tertiary",
+                    )}
                 >
                     {showLoginScreen
                         ? loginScreenBody
@@ -949,7 +976,11 @@ export function TreasuryOnboardingPage({
             hideHeaderBottomBorder
             hideHeaderContent={isRootSignInScreen}
             logo={headerLogo}
-            mainClassName="pt-1"
+            mainClassName={cn(
+                "pt-1",
+                isRootSignInScreen &&
+                    "min-h-[calc(100vh-4rem)] bg-general-tertiary",
+            )}
         >
             <CreationProgressModal
                 open={progressOpen}

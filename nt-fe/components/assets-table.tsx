@@ -1,6 +1,11 @@
 "use client";
-
-import { ArrowUpDown, ChevronDown, ChevronUp, Info } from "lucide-react";
+import {
+    ArrowDataTransferVerticalIcon,
+    ArrowDown01Icon,
+    ArrowUp01Icon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/icon";
 import { useTranslations } from "next-intl";
 import { Fragment, type ReactNode, useMemo, useState } from "react";
 import { AssetRowActionMenu } from "@/components/asset-row-action-menu";
@@ -537,11 +542,12 @@ export function AssetsTable({ aggregatedTokens }: Props) {
         });
     };
     const renderSortIcon = (key: SortKey) => {
-        if (activeSort.key !== key) return <ArrowUpDown className="size-3.5" />;
+        if (activeSort.key !== key)
+            return <Icon icon={ArrowDataTransferVerticalIcon} />;
         return activeSort.dir === "desc" ? (
-            <ChevronDown className="size-3.5" />
+            <Icon icon={ArrowDown01Icon} />
         ) : (
-            <ChevronUp className="size-3.5" />
+            <Icon icon={ArrowUp01Icon} />
         );
     };
     const renderSortableHead = (
@@ -1009,7 +1015,12 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                                 colSpan={6}
                                             >
                                                 <div className="mb-3 mt-2 flex items-start sm:items-center gap-2 rounded-lg bg-muted/60 px-4 py-2 text-xs">
-                                                    <Info className="size-4 shrink-0" />
+                                                    <Icon
+                                                        icon={
+                                                            InformationCircleIcon
+                                                        }
+                                                        className="shrink-0"
+                                                    />
                                                     <p className="text-foreground leading-relaxed wrap-break-word">
                                                         {isFullLockedInEarning
                                                             ? t(

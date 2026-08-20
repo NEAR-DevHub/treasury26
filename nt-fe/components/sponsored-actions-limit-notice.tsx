@@ -1,9 +1,13 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    Cancel01Icon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Info, X } from "lucide-react";
 import { Button } from "@/components/button";
 import { cn } from "@/lib/utils";
 import type { SubscriptionStatus } from "@/lib/subscription-api";
@@ -109,7 +113,10 @@ export function SponsoredActionsLimitNotice({
         enableFloatingPopup && !dismissed ? (
             <div className="fixed bottom-4 right-4 z-60 w-sm max-w-[calc(100vw-2rem)] rounded-2xl bg-popover-foreground text-popover shadow-xl p-3 pb-2">
                 <div className="flex items-center gap-2">
-                    <Info className="mt-0.5 size-4 shrink-0 fill-destructive text-popover-foreground" />
+                    <Icon
+                        icon={InformationCircleIcon}
+                        className="mt-0.5 shrink-0 fill-destructive text-popover-foreground"
+                    />
                     <div className="min-w-0 flex-1">
                         <p className="text-sm leading-6 font-semibold tracking-tight">
                             {title}
@@ -120,7 +127,7 @@ export function SponsoredActionsLimitNotice({
                         onClick={dismissNotice}
                         className="rounded-sm opacity-70 transition-opacity hover:opacity-100"
                     >
-                        <X className="size-4" />
+                        <Icon icon={Cancel01Icon} />
                         <span className="sr-only">{t("closeNotice")}</span>
                     </button>
                 </div>

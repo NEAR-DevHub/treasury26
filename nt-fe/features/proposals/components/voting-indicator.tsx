@@ -1,7 +1,8 @@
+import { Icon } from "@/components/icon";
+import { Tick01Icon } from "@hugeicons/core-free-icons";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import { Proposal } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
-import { Check } from "lucide-react";
 import { UserVote } from "./user-vote";
 import { getProposalStatus } from "../utils/proposal-utils";
 
@@ -27,7 +28,10 @@ export function VotingIndicator({ proposal, policy }: VotingIndicatorProps) {
     return (
         <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 bg-secondary px-2 py-0.5 rounded-md w-14 justify-center">
-                <Check className="size-3 text-secondary-foreground stroke-2 shrink-0" />
+                <Icon
+                    icon={Tick01Icon}
+                    className="text-secondary-foreground stroke-2 shrink-0"
+                />
                 <span className="text-xs font-medium text-secondary-foreground">
                     {total}/{requiredVotes}
                 </span>

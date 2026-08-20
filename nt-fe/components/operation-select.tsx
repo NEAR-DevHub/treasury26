@@ -1,8 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/button";
 import {
     Popover,
@@ -62,7 +63,10 @@ export function OperationSelect({
                     <span className="font-medium">
                         {labelFor(selectedOperation)}
                     </span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="text-muted-foreground"
+                    />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-fit p-1 min-w-32" align="start">

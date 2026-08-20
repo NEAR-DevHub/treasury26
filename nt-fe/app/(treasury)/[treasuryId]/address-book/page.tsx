@@ -1,5 +1,13 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    Add01Icon,
+    Delete02Icon,
+    FileDownloadIcon,
+    FileUploadIcon,
+    Loading02Icon,
+} from "@hugeicons/core-free-icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,7 +18,6 @@ import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { AuthButton } from "@/components/auth-button";
 import { EmptyState } from "@/components/empty-state";
-import { FileDown, FileUp, Loader2, Plus, Trash2 } from "lucide-react";
 import {
     AddRecipientInput,
     buildFormSchema,
@@ -59,7 +66,7 @@ function AddressBookEmptyState({
     return (
         <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
             <EmptyState
-                icon={FileUp}
+                icon={FileUploadIcon}
                 title={tAb("emptyTitle")}
                 description={tAb("emptyDescription")}
                 className="py-0"
@@ -72,7 +79,7 @@ function AddressBookEmptyState({
                     className="gap-1 shrink w-full"
                     onClick={onImport}
                 >
-                    <FileUp className="size-3.5" /> {tAb("import")}
+                    <Icon icon={FileUploadIcon} /> {tAb("import")}
                 </AuthButton>
                 <AuthButton
                     permissionKind="any"
@@ -80,7 +87,7 @@ function AddressBookEmptyState({
                     className="gap-1 shrink w-full"
                     onClick={onAdd}
                 >
-                    <Plus className="size-3.5" /> {tAb("addRecipient")}
+                    <Icon icon={Add01Icon} /> {tAb("addRecipient")}
                 </AuthButton>
             </div>
         </PageCard>
@@ -394,9 +401,12 @@ function RecipientsView({
                                 onClick={handleExport}
                             >
                                 {exportEntries.isPending ? (
-                                    <Loader2 className="size-4 animate-spin" />
+                                    <Icon
+                                        icon={Loading02Icon}
+                                        className="animate-spin"
+                                    />
                                 ) : (
-                                    <FileDown className="size-4" />
+                                    <Icon icon={FileDownloadIcon} />
                                 )}
                                 <span className="hidden sm:inline">
                                     {exportEntries.isPending
@@ -412,7 +422,7 @@ function RecipientsView({
                                 disabled={deleteEntries.isPending}
                                 onClick={() => handleRemoveSelected()}
                             >
-                                <Trash2 className="size-4" />
+                                <Icon icon={Delete02Icon} />
                                 <span className="hidden sm:flex">
                                     {tCommon("remove")}
                                 </span>
@@ -465,9 +475,12 @@ function RecipientsView({
                                 onClick={handleExport}
                             >
                                 {exportEntries.isPending ? (
-                                    <Loader2 className="size-4 animate-spin" />
+                                    <Icon
+                                        icon={Loading02Icon}
+                                        className="animate-spin"
+                                    />
                                 ) : (
-                                    <FileDown className="size-4" />
+                                    <Icon icon={FileDownloadIcon} />
                                 )}
                                 <span className="hidden sm:inline">
                                     {exportEntries.isPending
@@ -486,7 +499,7 @@ function RecipientsView({
                                 size={isMobile ? "icon" : "default"}
                                 onClick={onImport}
                             >
-                                <FileUp className="size-4" />
+                                <Icon icon={FileUploadIcon} />
                                 <span className="hidden sm:inline">
                                     {tAb("import")}
                                 </span>
@@ -501,7 +514,7 @@ function RecipientsView({
                                 size={isMobile ? "icon" : "default"}
                                 onClick={onAdd}
                             >
-                                <Plus className="size-4" />
+                                <Icon icon={Add01Icon} />
                                 <span className="hidden sm:inline">
                                     {tAb("addRecipient")}
                                 </span>

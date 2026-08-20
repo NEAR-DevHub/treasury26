@@ -1,6 +1,7 @@
 "use client";
 
-import { Clock, Link2, Zap } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Clock01Icon, FlashIcon, Link02Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import {
     useParams,
@@ -452,7 +453,7 @@ export default function PaySharePage() {
                                     {pageTitle}
                                 </h1>
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-general-orange-background-faded text-general-orange-foreground px-2.5 py-1 text-xs font-medium shrink-0">
-                                    <Clock className="size-3.5" />
+                                    <Icon icon={Clock01Icon} />
                                     {t("transfer.waitingForPayment")}
                                 </span>
                             </div>
@@ -508,7 +509,7 @@ export default function PaySharePage() {
                                             className="size-4 rounded"
                                         />
                                     ) : (
-                                        <Zap className="size-4 fill-current" />
+                                        <Icon icon={FlashIcon} />
                                     )}
                                     {isConfidentialNearcomShare
                                         ? t("transfer.payWithNearcom")
@@ -521,7 +522,7 @@ export default function PaySharePage() {
                                     className="w-full gap-2"
                                     data-testid="deposit-copy-link"
                                 >
-                                    <Link2 className="size-4" />
+                                    <Icon icon={Link02Icon} />
                                     {t("transfer.copyLink")}
                                 </Button>
                             </div>

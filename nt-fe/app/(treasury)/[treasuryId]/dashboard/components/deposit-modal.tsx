@@ -1,7 +1,8 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -924,7 +925,7 @@ export function DepositModal({
                         className="h-8 w-8"
                         data-testid="deposit-back-button"
                     >
-                        <ArrowLeft className="size-4" />
+                        <Icon icon={ArrowLeft01Icon} />
                     </Button>
                     {step === "address" ? (
                         <p className="font-semibold text-sm">{t("back")}</p>

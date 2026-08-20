@@ -1,4 +1,8 @@
-import { CircleCheck, Loader2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    CheckmarkCircle01Icon,
+    Loading02Icon,
+} from "@hugeicons/core-free-icons";
 
 interface Step {
     label: string;
@@ -20,9 +24,15 @@ export function BulkPaymentToast({ steps }: BulkPaymentToastProps) {
                     }`}
                 >
                     {step.status === "completed" ? (
-                        <CircleCheck className="w-4 h-4 text-general-success-foreground shrink-0" />
+                        <Icon
+                            icon={CheckmarkCircle01Icon}
+                            className="text-general-success-foreground shrink-0"
+                        />
                     ) : step.status === "loading" ? (
-                        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                        <Icon
+                            icon={Loading02Icon}
+                            className="animate-spin shrink-0"
+                        />
                     ) : (
                         <div className="w-4 h-4 shrink-0" />
                     )}

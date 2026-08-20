@@ -1,6 +1,11 @@
 "use client";
-
-import { ArrowLeft, Moon, PanelLeft, Sun } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    ArrowLeft01Icon,
+    MoonIcon,
+    PanelLeftIcon,
+    Sun01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -62,7 +67,12 @@ export function PageComponentLayout({
     const router = useRouter();
 
     return (
-        <div className="flex flex-col h-full">
+        <div
+            className={cn(
+                "flex h-full flex-col",
+                hideHeaderContent && "bg-general-tertiary",
+            )}
+        >
             <header
                 className={cn(
                     "flex items-center min-h-16 justify-between px-2 md:px-6",
@@ -85,7 +95,7 @@ export function PageComponentLayout({
                             className="text-muted-foreground hover:bg-muted hover:text-foreground"
                             aria-label={tHeader("toggleSidebar")}
                         >
-                            <PanelLeft className="size-5" />
+                            <Icon icon={PanelLeftIcon} />
                         </Button>
                     )}
                     <div className="flex items-center gap-2 md:gap-3">
@@ -101,7 +111,10 @@ export function PageComponentLayout({
                                     }
                                 }}
                             >
-                                <ArrowLeft className="size-5 stroke-2" />
+                                <Icon
+                                    icon={ArrowLeft01Icon}
+                                    className="stroke-2"
+                                />
                             </Button>
                         )}
 
@@ -153,9 +166,9 @@ export function PageComponentLayout({
                                 className="text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
                                 {isDarkTheme ? (
-                                    <Sun className="size-5" />
+                                    <Icon icon={Sun01Icon} />
                                 ) : (
-                                    <Moon className="size-5" />
+                                    <Icon icon={MoonIcon} />
                                 )}
                             </Button>
 

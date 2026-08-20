@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Coins01Icon } from "@hugeicons/core-free-icons";
 import { formatCurrency } from "@/lib/utils";
 import { PageCard } from "@/components/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +15,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
-import { Coins } from "lucide-react";
 import Big from "@/lib/big";
 import type { PublicDashboardToken } from "../api";
 
@@ -65,7 +65,7 @@ export function TopTokensTable({ tokens }: TopTokensTableProps) {
             {tokens.length === 0 ? (
                 <div className="px-4 pb-4">
                     <EmptyState
-                        icon={Coins}
+                        icon={Coins01Icon}
                         title={t("noAssetsTitle")}
                         description={t("noAssetsDescription")}
                     />

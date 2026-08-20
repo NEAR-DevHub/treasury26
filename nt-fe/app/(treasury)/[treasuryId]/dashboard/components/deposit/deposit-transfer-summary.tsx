@@ -1,6 +1,6 @@
 "use client";
-
-import { Coins, Shield } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Coins01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { TreasuryLogo } from "@/components/treasury-info";
@@ -47,7 +47,10 @@ export function DepositTransferSummary({
                     ) : (
                         <span className="relative size-9 shrink-0">
                             <span className="absolute inset-0 rounded-full bg-muted border border-border flex items-center justify-center">
-                                <Coins className="size-4 text-foreground" />
+                                <Icon
+                                    icon={Coins01Icon}
+                                    className="text-foreground"
+                                />
                             </span>
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
@@ -97,7 +100,10 @@ export function DepositTransferSummary({
                             className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary"
                             aria-hidden
                         >
-                            <Shield className="size-3.5 fill-primary-foreground text-primary-foreground" />
+                            <Icon
+                                icon={Shield01Icon}
+                                className="fill-primary-foreground text-primary-foreground"
+                            />
                         </div>
                     ) : (
                         <TreasuryLogo

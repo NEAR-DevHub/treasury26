@@ -1,6 +1,10 @@
 "use client";
-
-import { ArrowLeft, Check, Wallet } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    ArrowLeft01Icon,
+    Tick01Icon,
+    Wallet01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { SlotWarning } from "@/components/warning-message";
@@ -125,8 +129,8 @@ function WalletCard({
             disabled={disabled}
             aria-disabled={disabled || dimmed}
             className={cn(
-                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-5 text-left",
-                "transition-colors hover:border-gray-400 dark:hover:border-gray-500",
+                "flex flex-col items-start gap-5 rounded-2xl border border-general-border bg-card p-[19px] text-left dark:border-general-unofficial-border-2 dark:bg-general-unofficial-accent-0",
+                "transition-colors hover:border-general-unofficial-border-4",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                 "disabled:pointer-events-none",
                 dimmed
@@ -140,7 +144,7 @@ function WalletCard({
                 {badge}
             </div>
             <div className="flex w-full flex-col gap-[3px]">
-                <span className="text-base font-semibold leading-tight">
+                <span className="text-base font-semibold leading-[1.2]">
                     {title}
                 </span>
                 {description && (
@@ -366,10 +370,10 @@ export function ConnectWalletSelector({
                 title={badge.label}
                 info={badge.tooltip}
                 className={cn(
-                    "shrink-0 rounded-lg px-2 py-[3px] text-xs font-semibold",
+                    "min-h-6 shrink-0 justify-center rounded-[8px] px-2 py-[3px] text-xs font-semibold leading-[14px]",
                     badge.isOffline
                         ? "bg-general-warning-background-faded text-general-warning-foreground"
-                        : "bg-general-success-background-faded text-general-success-foreground",
+                        : "border border-[#D5FFF0] bg-[#F0FFF9] text-[#009660] dark:border-[#076042] dark:bg-[#00C076]/15 dark:text-[#00EC97]",
                 )}
             />
         );
@@ -395,32 +399,37 @@ export function ConnectWalletSelector({
                         className="-mb-2 -ml-2 w-fit"
                         aria-label={t("walletSelector.back")}
                     >
-                        <ArrowLeft className="size-4" />
+                        <Icon icon={ArrowLeft01Icon} />
                     </Button>
                 )}
-                <div className="flex items-center justify-start">
-                    <NearBusinessLogo className="h-7" />
-                </div>
-                <div className="flex flex-col gap-[9px]">
-                    <h1 className="text-2xl font-bold leading-tight">
-                        {headerTitle}
-                    </h1>
-                    <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-muted-foreground">
-                        <p>{t("walletSelector.subtitle")}</p>
-                        <button
-                            type="button"
-                            className="w-fit cursor-pointer rounded-sm underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            onClick={() => setIsGuideOpen(true)}
-                        >
-                            {t("walletSelector.helpCta")}
-                        </button>
+                <div className="flex flex-col gap-[42px]">
+                    <div className="flex items-center justify-start">
+                        <NearBusinessLogo className="h-7" />
+                    </div>
+                    <div className="flex flex-col gap-[9px]">
+                        <h1 className="text-2xl font-bold leading-[1.2] text-general-foreground">
+                            {headerTitle}
+                        </h1>
+                        <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-general-muted-foreground">
+                            <p>{t("walletSelector.subtitle")}</p>
+                            <button
+                                type="button"
+                                className="w-fit cursor-pointer rounded-sm underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                onClick={() => setIsGuideOpen(true)}
+                            >
+                                {t("walletSelector.helpCta")}
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <SlotWarning slot="login" />
                 {showOnboardingHints && (
                     <div className="flex items-start gap-2">
                         <div className="bg-general-success-background-faded rounded-full size-7 sm:size-6 flex items-center justify-center p-1 sm:p-0">
-                            <Check className="size-4 shrink-0 text-general-success-foreground" />
+                            <Icon
+                                icon={Tick01Icon}
+                                className="shrink-0 text-general-success-foreground"
+                            />
                         </div>
                         <p className="text-sm mt-px">
                             {t("walletSelector.noFundsNote")}
@@ -454,11 +463,11 @@ export function ConnectWalletSelector({
                     })()}
                 {passkeyOption && (
                     <div role="separator" className="flex items-center gap-6">
-                        <span className="h-px flex-1 bg-general-border" />
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="h-px flex-1 bg-general-border dark:bg-[#262626]" />
+                        <span className="text-sm font-medium leading-6 text-muted-foreground">
                             {t("walletSelector.web3WalletsSeparator")}
                         </span>
-                        <span className="h-px flex-1 bg-general-border" />
+                        <span className="h-px flex-1 bg-general-border dark:bg-[#262626]" />
                     </div>
                 )}
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -492,8 +501,8 @@ export function ConnectWalletSelector({
                         setIsGuideOpen(false);
                     }}
                 >
-                    <DialogContent className="gap-4 p-5 sm:max-w-md!">
-                        <DialogHeader className="mx-0 border-b-0 px-0 pb-0">
+                    <DialogContent className="gap-4 bg-general-tertiary p-5 dark:bg-general-unofficial-accent sm:max-w-md!">
+                        <DialogHeader className="mx-0 border-b-0 bg-general-tertiary px-0 pb-0 dark:bg-general-unofficial-accent">
                             <DialogTitle className="text-left text-base font-semibold">
                                 {t("walletSelector.chooseNearWallet")}
                             </DialogTitle>
@@ -545,7 +554,7 @@ export function ConnectWalletSelector({
                             <div className="rounded-xl border border-general-border p-4">
                                 <div className="space-y-3">
                                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background">
-                                        <Wallet className="size-4" />
+                                        <Icon icon={Wallet01Icon} />
                                     </div>
                                     <div className="flex flex-col">
                                         <div className="text-lg font-semibold">
@@ -696,7 +705,10 @@ export function ConnectWalletSelector({
                                         size="xl"
                                     />
                                 ) : (
-                                    <Wallet className="size-7" />
+                                    <Icon
+                                        icon={Wallet01Icon}
+                                        className="size-7"
+                                    />
                                 )}
                             </div>
                             <div className="flex flex-col gap-1">

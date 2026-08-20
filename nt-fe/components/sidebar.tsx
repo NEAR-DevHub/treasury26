@@ -1,6 +1,19 @@
 "use client";
-
-import { ChevronDown } from "lucide-react";
+import {
+    ArrowDataTransferHorizontalIcon,
+    ArrowDown01Icon,
+    Bookmark01Icon,
+    Home04Icon,
+    InboxIcon,
+    MessageQuestionIcon,
+    SentIcon,
+    Setting07Icon,
+    SourceCodeIcon,
+    UserAccountIcon,
+    UserMultiple02Icon,
+} from "@hugeicons/core-free-icons";
+import { type IconSvgElement } from "@hugeicons/react";
+import { Icon } from "@/components/icon";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -26,17 +39,6 @@ import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
-import { ArrowUpDown } from "./animate-ui/icons/arrow-up-down";
-import { Bookmark } from "./animate-ui/icons/bookmark";
-import { ChartColumn } from "./animate-ui/icons/chart-column";
-import { ChartNoAxesCombined } from "./animate-ui/icons/chart-no-axes-combined";
-import { CodeXml } from "./animate-ui/icons/code-xml";
-import { ContactRound } from "./animate-ui/icons/contact-round";
-import { CreditCard } from "./animate-ui/icons/credit-card";
-import { AnimateIcon, type IconProps } from "./animate-ui/icons/icon";
-import { Send } from "./animate-ui/icons/send";
-import { Settings } from "./animate-ui/icons/settings";
-import { Users } from "./animate-ui/icons/users";
 import { ApprovalInfo } from "./approval-info";
 import { Button } from "./button";
 import { GuestBadge } from "./guest-badge";
@@ -45,11 +47,28 @@ import { SidebarProfileMenu } from "./sidebar-profile-menu";
 import { SponsoredActionsLimitNotice } from "./sponsored-actions-limit-notice";
 import { SupportCenterModal } from "./support-center-modal";
 import { TreasurySelector } from "./treasury-selector";
-import { MessageCircleQuestion } from "./animate-ui/icons/message-circle-question";
+
+/**
+ * Hover flourishes for rail icons, keyed by feel rather than by icon so a swapped
+ * glyph keeps its motion. Keyframes live in `globals.css`; each rail row carries
+ * `group`, so the icon replays its animation on hover-in.
+ */
+const iconHoverAnimations = {
+    pop: "group-hover:animate-icon-pop",
+    fly: "group-hover:animate-icon-fly",
+    swap: "group-hover:animate-icon-swap",
+    rise: "group-hover:animate-icon-rise",
+    spin: "group-hover:animate-icon-spin",
+    wiggle: "group-hover:animate-icon-wiggle",
+    drop: "group-hover:animate-icon-drop",
+} as const;
+
+type IconHoverAnimation = keyof typeof iconHoverAnimations;
 
 interface NavLinkProps {
     isActive: boolean;
-    icon: React.ComponentType<IconProps<"default">>;
+    icon: IconSvgElement;
+    hoverAnimation?: IconHoverAnimation;
     label: string;
     tooltipContent?: React.ReactNode;
     showBadge?: boolean;
@@ -64,11 +83,10 @@ interface NavLinkProps {
 
 /** Shared geometry/colour for every interactive row in the rail. */
 const railItemClass =
-    "group relative flex w-full items-center gap-4 rounded-2xl text-base/5.5 font-semibold transition-colors";
+    "group relative flex w-full items-center gap-4 rounded-2xl text-base/[1.2] font-semibold transition-colors";
 const railItemInactiveClass =
-    "text-gray-600 hover:bg-black/[0.05] hover:text-gray-900 dark:text-gray-400 dark:hover:bg-white/[0.07] dark:hover:text-white";
-const railItemActiveClass =
-    "bg-black/[0.05] text-gray-900 dark:bg-white/[0.07] dark:text-white";
+    "text-gray-400 hover:bg-white/[0.07] hover:text-white";
+const railItemActiveClass = "bg-white/[0.07] text-white";
 
 /**
  * Surface of the gutter around the content panel. Confidential mode pins it to
@@ -87,7 +105,8 @@ const railSurfaceClass = "bg-gray-800";
 
 function NavLink({
     isActive,
-    icon: Icon,
+    icon,
+    hoverAnimation = "pop",
     label,
     tooltipContent,
     showBadge = false,
@@ -106,7 +125,13 @@ function NavLink({
             )}
         >
             <span className="flex w-5.5 shrink-0 items-center justify-center">
-                <Icon className="size-5.5 shrink-0" />
+                <Icon
+                    icon={icon}
+                    className={cn(
+                        "shrink-0",
+                        iconHoverAnimations[hoverAnimation],
+                    )}
+                />
             </span>
             {showLabels && (
                 <span className="min-w-0 flex-1 truncate text-start">
@@ -122,27 +147,23 @@ function NavLink({
         </div>
     );
     return (
-        <AnimateIcon animateOnHover="default" asChild>
-            <Button
-                id={id}
-                variant="unstyled"
-                tooltipContent={
-                    !showLabels ? (tooltipContent ?? label) : undefined
-                }
-                side="right"
-                onClick={onClick}
-                asChild={!!href}
-                className={cn(
-                    railItemClass,
-                    showLabels
-                        ? "h-auto justify-start p-3.5"
-                        : "mx-auto size-11 justify-center p-0",
-                    isActive ? railItemActiveClass : railItemInactiveClass,
-                )}
-            >
-                {href ? <Link href={href}>{content}</Link> : content}
-            </Button>
-        </AnimateIcon>
+        <Button
+            id={id}
+            variant="unstyled"
+            tooltipContent={!showLabels ? (tooltipContent ?? label) : undefined}
+            side="right"
+            onClick={onClick}
+            asChild={!!href}
+            className={cn(
+                railItemClass,
+                showLabels
+                    ? "h-auto justify-start p-3.5"
+                    : "mx-auto size-11 justify-center p-0",
+                isActive ? railItemActiveClass : railItemInactiveClass,
+            )}
+        >
+            {href ? <Link href={href}>{content}</Link> : content}
+        </Button>
     );
 }
 
@@ -151,7 +172,6 @@ type NavTranslationKey =
     | "requests"
     | "payments"
     | "exchange"
-    | "earn"
     | "addressBook"
     | "members"
     | "settings";
@@ -160,47 +180,52 @@ type NavTranslationKey =
 const navLinks: {
     path: string;
     labelKey: NavTranslationKey;
-    icon: React.ComponentType<IconProps<"default">>;
+    icon: IconSvgElement;
+    hoverAnimation?: IconHoverAnimation;
     roleRequired?: boolean;
     memberRequired?: boolean;
     id?: string;
 }[] = [
-    { path: "", labelKey: "dashboard", icon: ChartColumn },
-    { path: "requests", labelKey: "requests", icon: Send },
+    { path: "", labelKey: "dashboard", icon: Home04Icon },
+    {
+        path: "requests",
+        labelKey: "requests",
+        icon: InboxIcon,
+        hoverAnimation: "drop",
+    },
     {
         path: "payments",
         labelKey: "payments",
-        icon: CreditCard,
+        icon: SentIcon,
+        hoverAnimation: "fly",
         roleRequired: true,
     },
     {
         path: "exchange",
         labelKey: "exchange",
-        icon: ({ className, ...props }) => (
-            <ArrowUpDown {...props} className={cn(className, "rotate-90")} />
-        ),
+        icon: ArrowDataTransferHorizontalIcon,
+        hoverAnimation: "swap",
         roleRequired: true,
-    },
-    {
-        path: "earn",
-        labelKey: "earn",
-        icon: ChartNoAxesCombined,
-        id: "earn-new",
     },
     {
         path: "address-book",
         labelKey: "addressBook",
-        icon: ContactRound,
+        icon: UserAccountIcon,
         id: "address-book-link",
         memberRequired: true,
     },
     {
         path: "members",
         labelKey: "members",
-        icon: Users,
+        icon: UserMultiple02Icon,
         id: "dashboard-step4",
     },
-    { path: "settings", labelKey: "settings", icon: Settings },
+    {
+        path: "settings",
+        labelKey: "settings",
+        icon: Setting07Icon,
+        hoverAnimation: "spin",
+    },
 ];
 
 interface SidebarProps {
@@ -217,7 +242,6 @@ export function Sidebar({ onClose }: SidebarProps) {
     const [templatesExpanded, setTemplatesExpanded] = useState(true);
     const { accountId } = useNear();
     const tNav = useTranslations("nav");
-    const tPages = useTranslations("pages");
     const tCommon = useTranslations("common");
     const tCustom = useTranslations("customTemplates");
     const { currentTour } = useNextStep();
@@ -345,32 +369,33 @@ export function Sidebar({ onClose }: SidebarProps) {
                                             side="right"
                                         />
                                         {accountId && !isSaved && (
-                                            <AnimateIcon
-                                                animateOnHover="default"
-                                                asChild
+                                            <Button
+                                                id={PAGE_TOUR_SELECTORS.GUEST_SAVE_BTN.slice(
+                                                    1,
+                                                )}
+                                                variant="outline"
+                                                size="sm"
+                                                className="group h-7 w-fit justify-center gap-1.5 text-xs"
+                                                tooltipContent={tNav(
+                                                    "saveGuestTreasury",
+                                                )}
+                                                side="right"
+                                                onClick={() =>
+                                                    saveTreasuryMutation.mutate()
+                                                }
+                                                disabled={
+                                                    saveTreasuryMutation.isPending
+                                                }
                                             >
-                                                <Button
-                                                    id={PAGE_TOUR_SELECTORS.GUEST_SAVE_BTN.slice(
-                                                        1,
+                                                <Icon
+                                                    icon={Bookmark01Icon}
+                                                    className={cn(
+                                                        "shrink-0",
+                                                        iconHoverAnimations.drop,
                                                     )}
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-7 w-fit justify-center gap-1.5 text-xs"
-                                                    tooltipContent={tNav(
-                                                        "saveGuestTreasury",
-                                                    )}
-                                                    side="right"
-                                                    onClick={() =>
-                                                        saveTreasuryMutation.mutate()
-                                                    }
-                                                    disabled={
-                                                        saveTreasuryMutation.isPending
-                                                    }
-                                                >
-                                                    <Bookmark className="size-3 shrink-0" />
-                                                    {tCommon("save")}
-                                                </Button>
-                                            </AnimateIcon>
+                                                />
+                                                {tCommon("save")}
+                                            </Button>
                                         )}
                                     </div>
                                 ) : (
@@ -411,11 +436,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                                     key={link.path}
                                     isActive={isActive}
                                     icon={link.icon}
-                                    label={
-                                        link.labelKey === "earn"
-                                            ? tPages("earn.title")
-                                            : tNav(link.labelKey)
-                                    }
+                                    hoverAnimation={link.hoverAnimation}
+                                    label={tNav(link.labelKey)}
                                     showBadge={showBadge}
                                     badgeCount={proposals?.total ?? 0}
                                     showLabels={showLabels}
@@ -448,45 +470,49 @@ export function Sidebar({ onClose }: SidebarProps) {
                                         : railItemInactiveClass,
                                 )}
                             >
-                                <AnimateIcon animateOnHover="default" asChild>
-                                    <Button
-                                        id="request-templates-nav"
-                                        variant="unstyled"
-                                        asChild
-                                        // Collapsed sidebar is icon-only, so restore the hover label
-                                        // there (and keep the tour selector id on this element).
-                                        tooltipContent={
-                                            showLabels
-                                                ? undefined
-                                                : tCustom("pageTitle")
-                                        }
-                                        side="right"
-                                        className={cn(
-                                            // `justify-start` overrides the Button's base
-                                            // `justify-center`, which would otherwise centre the icon
-                                            // in the flex-1 width and shift it right when no chevron.
-                                            "flex h-auto min-w-0 flex-1 items-center justify-start gap-4 rounded-2xl p-3.5 font-semibold text-base/5.5 text-inherit hover:text-inherit",
-                                            !showLabels &&
-                                                "mx-auto size-11 justify-center p-0",
-                                        )}
+                                <Button
+                                    id="request-templates-nav"
+                                    variant="unstyled"
+                                    asChild
+                                    // Collapsed sidebar is icon-only, so restore the hover label
+                                    // there (and keep the tour selector id on this element).
+                                    tooltipContent={
+                                        showLabels
+                                            ? undefined
+                                            : tCustom("pageTitle")
+                                    }
+                                    side="right"
+                                    className={cn(
+                                        // `justify-start` overrides the Button's base
+                                        // `justify-center`, which would otherwise centre the icon
+                                        // in the flex-1 width and shift it right when no chevron.
+                                        "flex h-auto min-w-0 flex-1 items-center justify-start gap-4 rounded-2xl p-3.5 font-semibold text-base/[1.2] text-inherit hover:text-inherit",
+                                        !showLabels &&
+                                            "mx-auto size-11 justify-center p-0",
+                                    )}
+                                >
+                                    <Link
+                                        href={`/${treasuryId}/custom-templates`}
+                                        onClick={() => {
+                                            if (isMobile) onClose();
+                                        }}
                                     >
-                                        <Link
-                                            href={`/${treasuryId}/custom-templates`}
-                                            onClick={() => {
-                                                if (isMobile) onClose();
-                                            }}
-                                        >
-                                            <span className="flex w-5.5 shrink-0 items-center justify-center">
-                                                <CodeXml className="size-5.5 shrink-0" />
+                                        <span className="flex w-5.5 shrink-0 items-center justify-center">
+                                            <Icon
+                                                icon={SourceCodeIcon}
+                                                className={cn(
+                                                    "shrink-0",
+                                                    iconHoverAnimations.pop,
+                                                )}
+                                            />
+                                        </span>
+                                        {showLabels && (
+                                            <span className="truncate">
+                                                {tCustom("pageTitle")}
                                             </span>
-                                            {showLabels && (
-                                                <span className="truncate">
-                                                    {tCustom("pageTitle")}
-                                                </span>
-                                            )}
-                                        </Link>
-                                    </Button>
-                                </AnimateIcon>
+                                        )}
+                                    </Link>
+                                </Button>
                                 {showLabels && pinnedTemplates.length > 0 && (
                                     <button
                                         type="button"
@@ -503,9 +529,10 @@ export function Sidebar({ onClose }: SidebarProps) {
                                         }
                                         className="shrink-0 cursor-pointer px-3 py-3.5"
                                     >
-                                        <ChevronDown
+                                        <Icon
+                                            icon={ArrowDown01Icon}
                                             className={cn(
-                                                "size-5 transition-transform duration-150",
+                                                "transition-transform duration-150",
                                                 !templatesExpanded &&
                                                     "-rotate-90",
                                             )}
@@ -539,7 +566,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                                                         isActive={
                                                             pathname === href
                                                         }
-                                                        icon={Bookmark}
+                                                        icon={Bookmark01Icon}
+                                                        hoverAnimation="drop"
                                                         label={template.name}
                                                         showLabels={showLabels}
                                                         href={href}
@@ -612,7 +640,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 <NavLink
                                     id="help-support-link"
                                     isActive={false}
-                                    icon={MessageCircleQuestion}
+                                    icon={MessageQuestionIcon}
+                                    hoverAnimation="wiggle"
                                     label={tNav("helpSupport")}
                                     showLabels={!isReduced}
                                     onClick={() => {

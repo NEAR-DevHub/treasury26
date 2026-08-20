@@ -1,3 +1,5 @@
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { User } from "@/components/user";
@@ -8,7 +10,6 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 interface FunctionCallExpandedProps {
@@ -72,8 +73,9 @@ function ActionDisplay({
                 )}
             >
                 <div className="flex gap-2 items-center">
-                    <ChevronDown
-                        className={cn("w-4 h-4", expanded && "rotate-180")}
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className={cn(expanded && "rotate-180")}
                     />
                     {t("actionNumber", { number })}
                 </div>

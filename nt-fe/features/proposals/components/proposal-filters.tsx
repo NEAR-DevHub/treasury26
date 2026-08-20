@@ -1,10 +1,11 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Add01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
-import { Plus, ChevronDown } from "lucide-react";
 import {
     Popover,
     PopoverContent,
@@ -177,7 +178,7 @@ export function ProposalFilters({
                                 size="sm"
                                 className="h-8 gap-1.5 text-muted-foreground hover:text-foreground font-medium shrink-0"
                             >
-                                <Plus className="h-4 w-4" />
+                                <Icon icon={Add01Icon} />
                                 {tF("addFilter")}
                             </Button>
                         </PopoverTrigger>
@@ -540,7 +541,10 @@ function FilterPill({
                             {getOperationSuffix()}:
                         </span>
                         {renderFilterDisplay()}
-                        <ChevronDown className="h-3 w-3 text-muted-foreground ml-1" />
+                        <Icon
+                            icon={ArrowDown01Icon}
+                            className="text-muted-foreground ml-1"
+                        />
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 max-w-96 w-fit" align="start">

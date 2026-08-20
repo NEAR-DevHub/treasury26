@@ -60,6 +60,114 @@
     --color-gray-950: oklch(0.145 0 0);
 }
 
+/* Icon hover choreography for the sidebar rail. Each nav row is a `group`, so
+   the icon replays its animation on hover-in (see `sidebar.tsx`). */
+@theme {
+    --animate-icon-pop: icon-pop 0.45s ease-in-out;
+    --animate-icon-fly: icon-fly 1s ease-in-out;
+    --animate-icon-swap: icon-swap 0.6s ease-in-out;
+    --animate-icon-rise: icon-rise 0.6s ease-in-out;
+    --animate-icon-spin: icon-spin 0.6s ease-in-out;
+    --animate-icon-wiggle: icon-wiggle 0.6s ease-in-out;
+    --animate-icon-drop: icon-drop 0.6s ease-in-out;
+
+    @keyframes icon-pop {
+        0%,
+        100% {
+            transform: scale(1);
+        }
+        40% {
+            transform: scale(1.18);
+        }
+        70% {
+            transform: scale(0.95);
+        }
+    }
+
+    /* Paper plane takes off up-right and re-enters from the bottom-left; the
+       opacity dip hides the wrap-around jump at the halfway point. */
+    @keyframes icon-fly {
+        0% {
+            transform: translate(0, 0) scale(1);
+            opacity: 1;
+        }
+        25% {
+            transform: translate(-10%, 10%) scale(0.85);
+            opacity: 1;
+        }
+        49% {
+            transform: translate(60%, -60%) scale(0.9);
+            opacity: 0;
+        }
+        51% {
+            transform: translate(-60%, 60%) scale(0.9);
+            opacity: 0;
+        }
+        100% {
+            transform: translate(0, 0) scale(1);
+            opacity: 1;
+        }
+    }
+
+    @keyframes icon-swap {
+        0%,
+        100% {
+            transform: translateX(0);
+        }
+        30% {
+            transform: translateX(-18%);
+        }
+        65% {
+            transform: translateX(18%);
+        }
+    }
+
+    @keyframes icon-rise {
+        0%,
+        100% {
+            transform: translateY(0) scale(1);
+        }
+        45% {
+            transform: translateY(-18%) scale(1.08);
+        }
+    }
+
+    @keyframes icon-spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(180deg);
+        }
+    }
+
+    @keyframes icon-wiggle {
+        0%,
+        100% {
+            transform: rotate(0deg);
+        }
+        25% {
+            transform: rotate(-12deg);
+        }
+        75% {
+            transform: rotate(12deg);
+        }
+    }
+
+    @keyframes icon-drop {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        35% {
+            transform: translateY(-22%);
+        }
+        70% {
+            transform: translateY(8%);
+        }
+    }
+}
+
 :root {
     --background: rgb(245, 245, 245);
     --page-bg: rgb(245, 245, 245);
@@ -79,6 +187,8 @@
     --destructive: rgb(207, 0, 28);
     --destructive-foreground: rgb(255, 255, 255);
     --border: rgb(245, 245, 245);
+    --general-foreground: rgb(23, 23, 23);
+    --general-muted-foreground: rgb(161, 161, 161);
     --general-border: rgba(229, 229, 229);
     --input: rgb(229, 229, 229);
     --ring: rgb(0, 192, 118);
@@ -99,9 +209,11 @@
     --general-warning-background-faded: rgb(254, 252, 232);
     --general-warning-border: rgb(254, 240, 138);
     --general-warning-foreground: rgb(161, 98, 7);
-    --general-tertiary: rgb(250, 250, 249);
+    --general-tertiary: rgb(250, 250, 250);
     --chart-area-fill: rgb(2, 7, 6);
+    --general-unofficial-border-2: rgb(229, 229, 229);
     --general-unofficial-border-3: rgb(212, 212, 212);
+    --general-unofficial-border-4: rgb(161, 161, 161);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgb(245, 245, 245);
     --general-unofficial-ghost-hover: rgba(0, 0, 0, 0.05);
@@ -172,6 +284,8 @@
     --destructive: rgb(255, 101, 104);
     --destructive-foreground: rgb(250, 250, 250);
     --border: rgb(40, 40, 40);
+    --general-foreground: rgb(255, 255, 255);
+    --general-muted-foreground: rgb(82, 82, 82);
     --general-border: rgba(64, 64, 64);
     --input: rgb(52, 52, 52);
     --ring: rgb(0, 236, 151);
@@ -207,7 +321,9 @@
     --general-unofficial-ghost-foreground: rgba(229, 229, 229);
     --general-unofficial-accent: rgba(38, 38, 38);
     --general-unofficial-accent-0: rgba(23, 23, 23);
+    --general-unofficial-border-2: rgb(38, 38, 38);
     --general-unofficial-border-3: rgb(64, 64, 64);
+    --general-unofficial-border-4: rgb(82, 82, 82);
     --general-unofficial-border-5: rgb(115, 115, 115);
     --general-secondary: rgba(38, 38, 38);
     --general-unofficial-ghost-hover: rgba(255, 255, 255, 0.1);
@@ -288,6 +404,8 @@
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
     --color-border: var(--border);
+    --color-general-foreground: var(--general-foreground);
+    --color-general-muted-foreground: var(--general-muted-foreground);
     --color-general-border: var(--general-border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -316,7 +434,9 @@
     );
     --color-general-unofficial-accent: var(--general-unofficial-accent);
     --color-general-unofficial-accent-0: var(--general-unofficial-accent-0);
+    --color-general-unofficial-border-2: var(--general-unofficial-border-2);
     --color-general-unofficial-border-3: var(--general-unofficial-border-3);
+    --color-general-unofficial-border-4: var(--general-unofficial-border-4);
     --color-general-unofficial-border-5: var(--general-unofficial-border-5);
     --color-general-secondary: var(--general-secondary);
     --color-general-unofficial-ghost-hover: var(
@@ -467,5 +587,12 @@ body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
         bottom: 1.5rem !important;
         left: 60% !important;
         transform: translate(-50%, 0) !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* Sidebar icon flourishes are decorative — drop them for reduced motion. */
+    [class*="animate-icon-"] {
+        animation: none !important;
     }
 }

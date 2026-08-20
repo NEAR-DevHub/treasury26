@@ -1,8 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Loading02Icon } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { trackEvent } from "@/lib/analytics";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -318,7 +319,10 @@ export function GeneralTab() {
                                         >
                                             {uploadingImage ? (
                                                 <>
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                    <Icon
+                                                        icon={Loading02Icon}
+                                                        className="mr-2 animate-spin"
+                                                    />
                                                     {t("uploading")}
                                                 </>
                                             ) : (
@@ -419,7 +423,10 @@ export function GeneralTab() {
                 >
                     {isSubmitting ? (
                         <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            <Icon
+                                icon={Loading02Icon}
+                                className="mr-2 animate-spin"
+                            />
                             {t("saving")}
                         </>
                     ) : (

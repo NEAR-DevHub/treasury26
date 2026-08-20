@@ -1,8 +1,10 @@
 "use client";
 
+import { type IconSvgElement } from "@hugeicons/react";
+import { Icon } from "@/components/icon";
+import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Input as ShadcnInput } from "./ui/input";
-import { Search, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "./button";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -36,7 +38,10 @@ export function Input({
     return (
         <div className={cn("relative w-full", className)}>
             {search && (
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Icon
+                    icon={Search01Icon}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
             )}
             <ShadcnInput
                 value={value}
@@ -59,7 +64,7 @@ export function Input({
                     onClick={handleClear}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                    <XIcon className="size-4" />
+                    <Icon icon={Cancel01Icon} />
                 </button>
             )}
         </div>
@@ -71,7 +76,7 @@ interface ResponsiveInputProps extends InputProps {
     debounceMs?: number;
     onDebouncedChange?: (value: string) => void;
     /** Icon shown on the collapsed mobile button and inside the desktop input. Defaults to Search. */
-    icon?: React.ElementType;
+    icon?: IconSvgElement;
     /** Placeholder text for the mobile expanded input. Falls back to `placeholder` if not provided. */
     mobilePlaceholder?: string;
     /** Called when the mobile search input expands/collapses. */
@@ -91,7 +96,7 @@ export function ResponsiveInput({
     placeholder,
     mobilePlaceholder,
     search: _search,
-    icon: Icon = Search,
+    icon = Search01Icon,
     onSearchActiveChange,
     ...props
 }: ResponsiveInputProps) {
@@ -133,7 +138,7 @@ export function ResponsiveInput({
         };
     }, []);
 
-    const isSearchIcon = Icon === Search;
+    const isSearchIcon = icon === Search01Icon;
 
     return (
         <>
@@ -159,7 +164,7 @@ export function ResponsiveInput({
                         onSearchActiveChange?.(true);
                     }}
                 >
-                    <Icon className="size-4" />
+                    <Icon icon={icon} />
                 </Button>
             )}
 

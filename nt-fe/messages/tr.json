@@ -1231,6 +1231,7 @@
         "confidentialTooltip": "Alici bilgileri ve talep edilen tutar tamamen gizlidir."
     },
     "bulkPayment": {
+        "title": "Toplu Ödeme",
         "comingSoonToast": "Toplu ödemeler yakında geliyor!",
         "submittingList": "Toplu ödeme listesi gönderiliyor",
         "submittingProposal": "Öneri gönderiliyor",
@@ -1255,6 +1256,11 @@
             "provideData": "Veri Sağla",
             "chooseFile": "Dosya Seç",
             "orDragDrop": "veya sürükleyip bırakın",
+            "token": "Token",
+            "destinationNetwork": "Hedef ağ",
+            "uploadFileFirst": "Önce bir dosya yükleyin",
+            "exchangeAddressWarning": "Doğrudan bir borsa adresine göndermenin fon kaybına veya başka sorunlara yol açabileceğini anlıyorum.",
+            "removeFile": "Dosyayı kaldır",
             "maxFileSize": "en fazla 1 dosya, 1.5 MB'a kadar, yalnızca CSV dosyası",
             "noFilePrompt": "Yüklenecek dosyanız yok mu?",
             "downloadTemplate": "Şablon indir",

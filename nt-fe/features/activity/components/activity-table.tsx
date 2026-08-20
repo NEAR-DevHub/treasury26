@@ -1,14 +1,15 @@
 "use client";
 
+import { Icon } from "@/components/icon";
 import {
-    ArrowDownToLine,
-    ArrowRightLeft,
-    ChevronRight,
-    Clock,
-    Info,
-    Loader2,
-    Minus,
-} from "lucide-react";
+    ArrowDown03Icon,
+    ArrowLeftRightIcon,
+    ArrowRight01Icon,
+    Clock01Icon,
+    InformationCircleIcon,
+    Loading02Icon,
+    MinusSignIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Address } from "@/components/address";
@@ -86,7 +87,7 @@ export function ActivityTable({
     if (activities.length === 0) {
         return (
             <EmptyState
-                icon={Clock}
+                icon={Clock01Icon}
                 title={t("empty.title")}
                 description={t("empty.description")}
             />
@@ -115,7 +116,10 @@ export function ActivityTable({
                                 <div className="flex items-center justify-end gap-1">
                                     {t("table.transactionHash")}
                                     <Tooltip content={t("table.hashTooltip")}>
-                                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <Icon
+                                            icon={InformationCircleIcon}
+                                            className="text-muted-foreground"
+                                        />
                                     </Tooltip>
                                 </div>
                             </TableHead>
@@ -149,11 +153,19 @@ export function ActivityTable({
                                         <div className="flex items-center gap-3">
                                             <div className="flex h-8 w-8 items-center justify-center rounded-full shrink-0 bg-muted">
                                                 {isSwap ? (
-                                                    <ArrowRightLeft className="h-4 w-4" />
+                                                    <Icon
+                                                        icon={
+                                                            ArrowLeftRightIcon
+                                                        }
+                                                    />
                                                 ) : isReceived ? (
-                                                    <ArrowDownToLine className="h-4 w-4" />
+                                                    <Icon
+                                                        icon={ArrowDown03Icon}
+                                                    />
                                                 ) : (
-                                                    <Minus className="h-4 w-4" />
+                                                    <Icon
+                                                        icon={MinusSignIcon}
+                                                    />
                                                 )}
                                             </div>
                                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -162,7 +174,10 @@ export function ActivityTable({
                                                 </span>
                                                 {status === "pending" ? (
                                                     <span className="inline-flex items-center gap-1 text-xs font-medium text-general-orange-foreground">
-                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        <Icon
+                                                            icon={Loading02Icon}
+                                                            className="animate-spin"
+                                                        />
                                                         {t("table.processing")}
                                                     </span>
                                                 ) : (
@@ -228,7 +243,10 @@ export function ActivityTable({
                                                     </span>
                                                 )}
                                                 {/* Arrow */}
-                                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                <Icon
+                                                    icon={ArrowRight01Icon}
+                                                    className="text-muted-foreground shrink-0"
+                                                />
                                                 {/* Received token icon */}
                                                 <TokenDisplay
                                                     symbol={
@@ -296,7 +314,10 @@ export function ActivityTable({
                                                     </span>
                                                 ) : null}
                                                 {/* Arrow */}
-                                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                <Icon
+                                                    icon={ArrowRight01Icon}
+                                                    className="text-muted-foreground shrink-0"
+                                                />
                                                 {/* Received token icon */}
                                                 <TokenDisplay
                                                     symbol={
@@ -427,7 +448,7 @@ export function ActivityTable({
                                                 openTransactionDetails(activity)
                                             }
                                         >
-                                            <ChevronRight className="size-4" />
+                                            <Icon icon={ArrowRight01Icon} />
                                         </Button>
                                     </TableCell>
                                 </TableRow>

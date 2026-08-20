@@ -1,8 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
@@ -73,7 +74,7 @@ function DialogContent({
                         data-slot="dialog-close"
                         className="ring-offset-background focus-visible:ring-ring absolute top-4 right-4 inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
                     >
-                        <XIcon />
+                        <Icon icon={Cancel01Icon} />
                         <span className="sr-only">{t("close")}</span>
                     </DialogPrimitive.Close>
                 )}
