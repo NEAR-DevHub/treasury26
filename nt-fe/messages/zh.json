@@ -689,8 +689,8 @@
         "pending": {
             "title": "待处理请求",
             "viewAll": "查看全部",
-            "emptyTitle": "暂无最近请求。",
-            "emptyDescription": "您的待处理请求将显示在此处"
+            "emptyTitle": "全部处理完毕!",
+            "emptyDescription": "没有待处理的请求。"
         }
     },
     "proposals": {
