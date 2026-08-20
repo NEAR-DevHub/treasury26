@@ -689,8 +689,8 @@
         "pending": {
             "title": "Bekleyen Talepler",
             "viewAll": "Tümünü Görüntüle",
-            "emptyTitle": "Henüz yakın zamanda talep yok.",
-            "emptyDescription": "Bekleyen talepleriniz burada görünecek"
+            "emptyTitle": "Hepsi tamam!",
+            "emptyDescription": "Bekleyen talep yok."
         }
     },
     "proposals": {
