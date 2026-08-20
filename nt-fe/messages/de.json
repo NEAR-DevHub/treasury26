@@ -84,11 +84,13 @@
         "indonesian": "Bahasa Indonesia",
         "portuguese": "Português",
         "japanese": "日本語",
-        "korean": "한국어"
+        "korean": "한국어",
+        "done": "Fertig"
     },
     "header": {
         "toggleSidebar": "Seitenleiste umschalten",
-        "toggleTheme": "Design umschalten"
+        "toggleTheme": "Design umschalten",
+        "darkMode": "Dunkelmodus"
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -99,7 +101,8 @@
         "members": "Mitglieder",
         "settings": "Einstellungen",
         "helpSupport": "Hilfe & Support",
-        "saveGuestTreasury": "Diese Gast-Treasury in Ihrer Treasury-Liste speichern."
+        "saveGuestTreasury": "Diese Gast-Treasury in Ihrer Treasury-Liste speichern.",
+        "menu": "Menü"
     },
     "signIn": {
         "copyAddress": "Adresse kopieren",
@@ -108,7 +111,8 @@
         "termsOfService": "Nutzungsbedingungen",
         "privacyPolicy": "Datenschutzerklärung",
         "disconnect": "Abmelden",
-        "myAccount": "Mein Konto"
+        "myAccount": "Mein Konto",
+        "signOut": "Abmelden"
     },
     "auth": {
         "noWallet": "Verbinden Sie Ihre Wallet",
@@ -476,7 +480,9 @@
             "failed": "Fehlgeschlagen",
             "exchangeTransaction": "Umtauschtransaktion",
             "transferTransaction": "Überweisungstransaktion",
-            "rate": "Kurs"
+            "rate": "Kurs",
+            "detailsTitle": "Details",
+            "linkedRequest": "Verknüpfte Anfrage"
         },
         "refresh": {
             "ariaLabel": "Vertraulichen Verlauf aktualisieren",
@@ -2040,6 +2046,11 @@
         "bucketEarning": "Erträge",
         "noTokenChartTitle": "Derzeit keine Daten verfügbar",
         "noTokenChartDescription": "Wir können den Verlauf dieses Tokens noch nicht laden. Schauen Sie bald wieder vorbei.",
+        "fundTitle": "Laden Sie Ihr Konto auf, um zu starten",
+        "fundDescription": "Empfangen Sie Krypto, um die App zu nutzen.",
+        "fundAssetsHint": "Empfangen Sie 85+ Assets\nüber 35+ Netzwerke",
+        "chartLoadingTitle": "Ihre Daten werden geladen",
+        "chartLoadingDescription": "Wir laden Ihre Vermögensdaten. Das dauert nur einen Moment.",
         "period": {
             "1W": "1W",
             "1M": "1M",

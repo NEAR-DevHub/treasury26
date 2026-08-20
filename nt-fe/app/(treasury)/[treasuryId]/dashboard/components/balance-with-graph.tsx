@@ -3,7 +3,6 @@ import {
     ArrowDataTransferHorizontalIcon,
     ArrowDown01Icon,
     ArrowDown02Icon,
-    Clock01Icon,
     Coins02Icon,
     InformationCircleIcon,
     SentIcon,
@@ -37,7 +36,6 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useIsHistoryRefreshing } from "@/features/activity";
 import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
@@ -53,6 +51,7 @@ import {
 } from "@/lib/dashboard-balance-view";
 import { cn, formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
 import BalanceChart from "./chart";
+import { FundAccountEmpty } from "./fund-account-empty";
 
 interface Props {
     tokens: TreasuryAsset[];
@@ -157,7 +156,6 @@ export default function BalanceWithGraph({
     const t = useTranslations("balanceWithGraph");
     const tCommon = useTranslations("common");
     const locale = useLocale();
-    const isHistoryRefreshing = useIsHistoryRefreshing();
     const {
         treasuryId,
         isConfidential: isConfidentialTreasury,
@@ -286,11 +284,9 @@ export default function BalanceWithGraph({
     }
 
     // Fetch balance chart data with USD values
-    const {
-        data: balanceChartData,
-        isLoading,
-        isFetching,
-    } = useBalanceChart(frozenChartParams.current);
+    const { data: balanceChartData, isLoading } = useBalanceChart(
+        frozenChartParams.current,
+    );
 
     // Transform chart data for display
     const chartData = useMemo(() => {
@@ -517,6 +513,11 @@ export default function BalanceWithGraph({
     }
     const displayChartData = frozenChartData.current;
 
+    const hasHeldAssets = useMemo(
+        () => tokens.some((token) => totalBalance(token.balance).gt(0)),
+        [tokens],
+    );
+
     if (isLoadingTokens) {
         return (
             <PageCard className="relative">
@@ -542,6 +543,14 @@ export default function BalanceWithGraph({
                 <div className="h-56 w-full space-y-3 p-4">
                     <Skeleton className="h-50 w-full" />
                 </div>
+            </PageCard>
+        );
+    }
+
+    if (!isHidden && !hasHeldAssets) {
+        return (
+            <PageCard id="balance-with-graph">
+                <FundAccountEmpty onReceiveClick={onDepositClick} />
             </PageCard>
         );
     }
@@ -617,7 +626,7 @@ export default function BalanceWithGraph({
                             )}
                         </h2>
                         {showBreakdown && (
-                            <div className="mt-2 hidden md:flex items-center gap-2 text-sm text-muted-foreground">
+                            <div className="mt-2 hidden lg:flex items-center gap-2 text-sm text-muted-foreground">
                                 {balanceBreakdownItems.map((item, idx) => (
                                     <div key={item.key} className="contents">
                                         {idx > 0 && (
@@ -645,7 +654,7 @@ export default function BalanceWithGraph({
                         )}
                     </div>
                     {!isConfidential && (
-                        <div className="hidden md:flex md:flex-row items-end flex-col gap-1 md:gap-2 md:items-center">
+                        <div className="hidden lg:flex lg:flex-row items-end flex-col gap-1 lg:gap-2 lg:items-center">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
@@ -808,7 +817,7 @@ export default function BalanceWithGraph({
                     <HistoryRefreshButton className="h-10 w-10 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20" />
                 </div>
                 {showBreakdown && (
-                    <div className="mt-4 border-t border-border/70 pt-3 space-y-3 md:hidden">
+                    <div className="mt-4 border-t border-border/70 pt-3 space-y-3 lg:hidden">
                         {balanceBreakdownItems.map((item) => (
                             <div
                                 key={item.key}
@@ -831,7 +840,7 @@ export default function BalanceWithGraph({
                 )}
             </div>
 
-            <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 lg:gap-4">
                 <Button
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -843,7 +852,7 @@ export default function BalanceWithGraph({
                     }}
                     id="dashboard-step1"
                     size="xl"
-                    className="h-11 max-md:px-3 max-md:text-sm"
+                    className="h-11 max-lg:rounded-2xl max-lg:px-3 max-lg:text-sm"
                 >
                     <Icon icon={ArrowDown02Icon} /> {t("receive")}
                 </Button>
@@ -851,7 +860,7 @@ export default function BalanceWithGraph({
                     permissionKind="transfer"
                     permissionAction="AddProposal"
                     size="xl"
-                    className="w-full h-11 max-md:px-3 max-md:text-sm"
+                    className="h-11 w-full max-lg:rounded-2xl max-lg:px-3 max-lg:text-sm"
                     id="dashboard-step2"
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -869,7 +878,7 @@ export default function BalanceWithGraph({
                     permissionKind="call"
                     permissionAction="AddProposal"
                     size="xl"
-                    className="w-full h-11 max-md:px-3 max-md:text-sm"
+                    className="hidden h-11 w-full max-lg:px-3 max-lg:text-sm lg:inline-flex"
                     id="dashboard-step3"
                     onClick={() => {
                         trackEvent("nav-click", {
@@ -888,7 +897,7 @@ export default function BalanceWithGraph({
             </div>
             <div
                 className={cn(
-                    "mt-3 flex gap-2 md:hidden",
+                    "mt-3 flex gap-2 lg:hidden",
                     isConfidential ? "hidden" : "",
                 )}
             >
@@ -985,21 +994,12 @@ export default function BalanceWithGraph({
                 )}
             </div>
             <div className={cn(isConfidential ? "hidden" : "")}>
-                {isLoading ||
-                isHistoryRefreshing ||
-                (isFetching && chartData.data.length === 0) ? (
-                    <div className="h-56 w-full space-y-3 p-4">
-                        <Skeleton className="h-50 w-full" />
-                    </div>
-                ) : selectedToken !== "all" &&
-                  displayChartData.data.length === 0 ? (
+                {displayChartData.data.length === 0 ? (
                     <EmptyState
-                        icon={Clock01Icon}
-                        title={t("noTokenChartTitle")}
-                        description={t("noTokenChartDescription", {
-                            symbol: selectedTokenGroup?.symbol ?? selectedToken,
-                        })}
+                        title={t("chartLoadingTitle")}
+                        description={t("chartLoadingDescription")}
                         className="h-56"
+                        descriptionClassName="max-w-[17rem]"
                     />
                 ) : (
                     <BalanceChart

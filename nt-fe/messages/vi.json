@@ -84,11 +84,13 @@
         "indonesian": "Bahasa Indonesia",
         "portuguese": "Português",
         "japanese": "日本語",
-        "korean": "한국어"
+        "korean": "한국어",
+        "done": "Xong"
     },
     "header": {
         "toggleSidebar": "Bật/tắt thanh bên",
-        "toggleTheme": "Chuyển đổi giao diện"
+        "toggleTheme": "Chuyển đổi giao diện",
+        "darkMode": "Chế độ tối"
     },
     "nav": {
         "dashboard": "Bảng điều khiển",
@@ -99,7 +101,8 @@
         "members": "Thành viên",
         "settings": "Cài đặt",
         "helpSupport": "Trợ giúp & Hỗ trợ",
-        "saveGuestTreasury": "Lưu ngân quỹ khách này vào danh sách ngân quỹ của bạn."
+        "saveGuestTreasury": "Lưu ngân quỹ khách này vào danh sách ngân quỹ của bạn.",
+        "menu": "Menu"
     },
     "signIn": {
         "copyAddress": "Sao chép địa chỉ",
@@ -108,7 +111,8 @@
         "termsOfService": "Điều khoản dịch vụ",
         "privacyPolicy": "Chính sách bảo mật",
         "disconnect": "Đăng xuất",
-        "myAccount": "Tài khoản của tôi"
+        "myAccount": "Tài khoản của tôi",
+        "signOut": "Đăng xuất"
     },
     "auth": {
         "noWallet": "Kết nối ví của bạn",
@@ -476,7 +480,9 @@
             "failed": "Thất bại",
             "exchangeTransaction": "Giao dịch trao đổi",
             "transferTransaction": "Giao dịch chuyển khoản",
-            "rate": "Tỷ giá"
+            "rate": "Tỷ giá",
+            "detailsTitle": "Chi tiết",
+            "linkedRequest": "Yêu cầu liên kết"
         },
         "refresh": {
             "ariaLabel": "Làm mới lịch sử bảo mật",
@@ -2023,6 +2029,11 @@
         "bucketEarning": "Thu nhập",
         "noTokenChartTitle": "Hiện chưa có dữ liệu để hiển thị",
         "noTokenChartDescription": "Chúng tôi chưa thể tải lịch sử của token này. Vui lòng quay lại sau.",
+        "fundTitle": "Nạp tiền vào tài khoản để bắt đầu",
+        "fundDescription": "Nhận crypto để bắt đầu sử dụng ứng dụng.",
+        "fundAssetsHint": "Nhận 85+ tài sản\ntrên 35+ mạng",
+        "chartLoadingTitle": "Đang tải dữ liệu của bạn",
+        "chartLoadingDescription": "Chúng tôi đang tải dữ liệu tài sản của bạn. Chỉ mất một chút thời gian.",
         "period": {
             "1W": "1T",
             "1M": "1Th",

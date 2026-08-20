@@ -13,6 +13,10 @@ import { type ReactNode, useEffect, useState } from "react";
 import { useHasSidebarRail } from "@/components/app-shell-context";
 import { Button } from "@/components/button";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import {
+    MobileTreasuryHeaderButton,
+    MobileUserHeaderButton,
+} from "@/components/mobile-shell/mobile-header-controls";
 import { Pill } from "@/components/pill";
 import { SignIn } from "@/components/sign-in";
 import { SlotWarning } from "@/components/warning-message";
@@ -92,11 +96,16 @@ export function PageComponentLayout({
                             variant="ghost"
                             size="icon-sm"
                             onClick={toggleSidebar}
-                            className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="hidden text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
                             aria-label={tHeader("toggleSidebar")}
                         >
                             <Icon icon={PanelLeftIcon} />
                         </Button>
+                    )}
+                    {hasSidebarRail && (
+                        <div className="min-w-0 lg:hidden">
+                            <MobileTreasuryHeaderButton />
+                        </div>
                     )}
                     <div className="flex items-center gap-2 md:gap-3">
                         {backButton && (
@@ -118,11 +127,17 @@ export function PageComponentLayout({
                             </Button>
                         )}
 
-                        <ConfidentialBanner type="mini" className="lg:hidden" />
+                        <ConfidentialBanner
+                            type="mini"
+                            className={cn(
+                                "lg:hidden",
+                                hasSidebarRail && "hidden",
+                            )}
+                        />
 
                         {!hideHeaderContent &&
                             (logo ?? (
-                                <div className="flex items-baseline gap-2">
+                                <div className="hidden items-baseline gap-2 lg:flex">
                                     <h1 className="text-xl font-semibold tracking-tight">
                                         {title}
                                     </h1>
@@ -137,6 +152,11 @@ export function PageComponentLayout({
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {hasSidebarRail && (
+                        <div className="lg:hidden">
+                            <MobileUserHeaderButton />
+                        </div>
+                    )}
                     {!hasSidebarRail && !hideHeaderContent && isStaging && (
                         <>
                             <span

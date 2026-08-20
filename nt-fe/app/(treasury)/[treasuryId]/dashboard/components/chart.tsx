@@ -1,7 +1,6 @@
 "use client";
 
 import { LineChart, Line, XAxis, YAxis, Area, AreaChart } from "recharts";
-import { ChartLineData01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     ChartContainer,
@@ -51,9 +50,9 @@ export default function BalanceChart({
         return (
             <div className="h-[180px]">
                 <EmptyState
-                    icon={ChartLineData01Icon}
                     title={t("emptyTitle")}
                     description={t("emptyDescription")}
+                    descriptionClassName="max-w-[17rem]"
                 />
             </div>
         );

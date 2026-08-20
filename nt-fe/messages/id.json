@@ -84,11 +84,13 @@
         "indonesian": "Bahasa Indonesia",
         "portuguese": "Português",
         "japanese": "日本語",
-        "korean": "한국어"
+        "korean": "한국어",
+        "done": "Selesai"
     },
     "header": {
         "toggleSidebar": "Alihkan bilah samping",
-        "toggleTheme": "Alihkan tema"
+        "toggleTheme": "Alihkan tema",
+        "darkMode": "Mode gelap"
     },
     "nav": {
         "dashboard": "Dasbor",
@@ -99,7 +101,8 @@
         "members": "Anggota",
         "settings": "Pengaturan",
         "helpSupport": "Bantuan & Dukungan",
-        "saveGuestTreasury": "Simpan treasury tamu ini ke daftar treasury Anda."
+        "saveGuestTreasury": "Simpan treasury tamu ini ke daftar treasury Anda.",
+        "menu": "Menu"
     },
     "signIn": {
         "copyAddress": "Salin alamat",
@@ -108,7 +111,8 @@
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
         "disconnect": "Keluar",
-        "myAccount": "Akun Saya"
+        "myAccount": "Akun Saya",
+        "signOut": "Keluar"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",
@@ -476,7 +480,9 @@
             "failed": "Gagal",
             "exchangeTransaction": "Transaksi Penukaran",
             "transferTransaction": "Transaksi Transfer",
-            "rate": "Kurs"
+            "rate": "Kurs",
+            "detailsTitle": "Detail",
+            "linkedRequest": "Permintaan tertaut"
         },
         "refresh": {
             "ariaLabel": "Segarkan riwayat rahasia",
@@ -2040,6 +2046,11 @@
         "bucketEarning": "Pendapatan",
         "noTokenChartTitle": "Belum ada data untuk ditampilkan",
         "noTokenChartDescription": "Kami belum dapat memuat riwayat token ini. Silakan cek kembali nanti.",
+        "fundTitle": "Danai akun Anda untuk memulai",
+        "fundDescription": "Terima kripto untuk mulai menggunakan aplikasi.",
+        "fundAssetsHint": "Terima 85+ aset\ndi 35+ jaringan",
+        "chartLoadingTitle": "Memuat data Anda",
+        "chartLoadingDescription": "Kami sedang memuat data aset Anda. Ini hanya butuh sebentar.",
         "period": {
             "1W": "1Mg",
             "1M": "1Bl",

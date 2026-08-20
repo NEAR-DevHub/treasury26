@@ -1,6 +1,9 @@
 "use client";
 
-import { SentIcon, SquareArrowLeftRightIcon } from "@hugeicons/core-free-icons";
+import {
+    ArrowDataTransferHorizontalIcon,
+    SentIcon,
+} from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { AuthButton } from "@/components/auth-button";
@@ -48,7 +51,7 @@ export function AssetRowActionMenu({ sendHref, swapHref }: Props) {
                         router.push(swapHref);
                     }}
                 >
-                    <Icon icon={SquareArrowLeftRightIcon} />
+                    <Icon icon={ArrowDataTransferHorizontalIcon} />
                     {t("swap")}
                 </AuthButton>
                 <AuthButton

@@ -84,11 +84,13 @@
         "indonesian": "Bahasa Indonesia",
         "portuguese": "Português",
         "japanese": "日本語",
-        "korean": "한국어"
+        "korean": "한국어",
+        "done": "Tamam"
     },
     "header": {
         "toggleSidebar": "Kenar çubuğunu aç/kapat",
-        "toggleTheme": "Temayı değiştir"
+        "toggleTheme": "Temayı değiştir",
+        "darkMode": "Karanlık mod"
     },
     "nav": {
         "dashboard": "Panel",
@@ -99,7 +101,8 @@
         "members": "Üyeler",
         "settings": "Ayarlar",
         "helpSupport": "Yardım ve Destek",
-        "saveGuestTreasury": "Bu misafir hazinesini hazinelerinize kaydedin."
+        "saveGuestTreasury": "Bu misafir hazinesini hazinelerinize kaydedin.",
+        "menu": "Menü"
     },
     "signIn": {
         "copyAddress": "Adresi kopyala",
@@ -108,7 +111,8 @@
         "termsOfService": "Hizmet Şartları",
         "privacyPolicy": "Gizlilik Politikası",
         "disconnect": "Çıkış yap",
-        "myAccount": "Hesabım"
+        "myAccount": "Hesabım",
+        "signOut": "Çıkış yap"
     },
     "auth": {
         "noWallet": "Cüzdanınızı bağlayın",
@@ -476,7 +480,9 @@
             "failed": "Başarısız",
             "exchangeTransaction": "Takas İşlemi",
             "transferTransaction": "Transfer İşlemi",
-            "rate": "Kur"
+            "rate": "Kur",
+            "detailsTitle": "Detaylar",
+            "linkedRequest": "Bağlantılı talep"
         },
         "refresh": {
             "ariaLabel": "Gizli geçmişi yenile",
@@ -2040,6 +2046,11 @@
         "bucketEarning": "Kazanç",
         "noTokenChartTitle": "Şu anda gösterilecek veri yok",
         "noTokenChartDescription": "Bu token'ın geçmişini henüz yükleyemiyoruz. Kısa süre sonra tekrar kontrol edin.",
+        "fundTitle": "Başlamak için hesabınıza bakiye ekleyin",
+        "fundDescription": "Uygulamayı kullanmaya başlamak için kripto alın.",
+        "fundAssetsHint": "35+ ağda\n85+ varlık alın",
+        "chartLoadingTitle": "Verileriniz yükleniyor",
+        "chartLoadingDescription": "Varlık verileriniz yükleniyor. Bu sadece bir an sürecek.",
         "period": {
             "1W": "1H",
             "1M": "1A",

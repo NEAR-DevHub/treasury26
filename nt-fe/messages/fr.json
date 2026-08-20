@@ -84,11 +84,13 @@
         "indonesian": "Bahasa Indonesia",
         "portuguese": "Português",
         "japanese": "日本語",
-        "korean": "한국어"
+        "korean": "한국어",
+        "done": "Terminé"
     },
     "header": {
         "toggleSidebar": "Basculer la barre latérale",
-        "toggleTheme": "Basculer le thème"
+        "toggleTheme": "Basculer le thème",
+        "darkMode": "Mode sombre"
     },
     "nav": {
         "dashboard": "Tableau de bord",
@@ -99,7 +101,8 @@
         "members": "Membres",
         "settings": "Paramètres",
         "helpSupport": "Aide et support",
-        "saveGuestTreasury": "Enregistrez cette trésorerie invitée dans votre liste de trésoreries."
+        "saveGuestTreasury": "Enregistrez cette trésorerie invitée dans votre liste de trésoreries.",
+        "menu": "Menu"
     },
     "signIn": {
         "copyAddress": "Copier l'adresse",
@@ -108,7 +111,8 @@
         "termsOfService": "Conditions d'utilisation",
         "privacyPolicy": "Politique de confidentialité",
         "disconnect": "Se déconnecter",
-        "myAccount": "Mon compte"
+        "myAccount": "Mon compte",
+        "signOut": "Se déconnecter"
     },
     "auth": {
         "noWallet": "Connectez votre portefeuille",
@@ -476,7 +480,9 @@
             "failed": "Échoué",
             "exchangeTransaction": "Transaction d'échange",
             "transferTransaction": "Transaction de transfert",
-            "rate": "Taux"
+            "rate": "Taux",
+            "detailsTitle": "Détails",
+            "linkedRequest": "Demande liée"
         },
         "refresh": {
             "ariaLabel": "Actualiser l'historique confidentiel",
@@ -2040,6 +2046,11 @@
         "bucketEarning": "En gain",
         "noTokenChartTitle": "Aucune donnée à afficher pour le moment",
         "noTokenChartDescription": "Nous ne pouvons pas encore charger l'historique de ce token. Revenez bientôt.",
+        "fundTitle": "Alimentez votre compte pour commencer",
+        "fundDescription": "Recevez des cryptos pour commencer à utiliser l'application.",
+        "fundAssetsHint": "Recevez 85+ actifs\nsur 35+ réseaux",
+        "chartLoadingTitle": "Chargement de vos données",
+        "chartLoadingDescription": "Nous chargeons les données de vos actifs. Cela ne prendra qu'un instant.",
         "period": {
             "1W": "1S",
             "1M": "1M",

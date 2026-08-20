@@ -1,18 +1,18 @@
-import { Icon } from "@/components/icon";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
-import {
-    Dialog as BaseDialog,
-    DialogContent as BaseDialogContent,
-    DialogHeader as BaseDialogHeader,
-    DialogTitle as BaseDialogTitle,
-    DialogTrigger,
-    DialogClose as BaseDialogClose,
-    DialogDescription,
-    DialogFooter as BaseDialogFooter,
-} from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Icon } from "@/components/icon";
+import {
+    Dialog as BaseDialog,
+    DialogClose as BaseDialogClose,
+    DialogContent as BaseDialogContent,
+    DialogFooter as BaseDialogFooter,
+    DialogHeader as BaseDialogHeader,
+    DialogTitle as BaseDialogTitle,
+    DialogDescription,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { useUiStore } from "@/stores/ui-store";
 
 // @hot-labs/near-connect mounts its wallet popup on document.body with class
@@ -116,7 +116,7 @@ function DialogHeader({
         <BaseDialogHeader
             {...props}
             className={cn(
-                "border-b border-border px-3 pb-3.5 -mx-3 flex flex-row items-center justify-between text-center gap-4 sticky top-0 z-10 bg-card sm:static",
+                "border-b border-border -mx-4 px-4 pb-3.5 flex flex-row items-center justify-between text-center gap-4 sticky top-0 z-10 bg-card sm:static",
                 className,
             )}
         >
@@ -150,7 +150,7 @@ function DialogFooter({
     return (
         <BaseDialogFooter
             {...props}
-            className={cn("px-3 -mx-3 pt-3 shrink-0", className)}
+            className={cn("px-4 -mx-4 pt-3 shrink-0", className)}
         />
     );
 }
@@ -189,9 +189,10 @@ function DialogContent({
                 props.onCloseAutoFocus?.(e);
             }}
             className={cn(
-                "bg-card p-3.5 flex flex-col",
-                // Mobile: bottom drawer (full width, no margins)
+                "bg-card flex flex-col",
+                // Mobile: bottom drawer with a consistent inset
                 "max-w-none! w-full inset-x-0 left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 max-h-[80vh] rounded-t-3xl rounded-b-none",
+                "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:gap-0",
                 "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
                 "data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100",
                 // Desktop: centered modal

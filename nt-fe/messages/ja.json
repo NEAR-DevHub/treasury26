@@ -84,11 +84,13 @@
         "indonesian": "Bahasa Indonesia",
         "portuguese": "Português",
         "japanese": "日本語",
-        "korean": "한국어"
+        "korean": "한국어",
+        "done": "完了"
     },
     "header": {
         "toggleSidebar": "サイドバーを切り替え",
-        "toggleTheme": "テーマを切り替え"
+        "toggleTheme": "テーマを切り替え",
+        "darkMode": "ダークモード"
     },
     "nav": {
         "dashboard": "ダッシュボード",
@@ -99,7 +101,8 @@
         "members": "メンバー",
         "settings": "設定",
         "helpSupport": "ヘルプとサポート",
-        "saveGuestTreasury": "このゲストトレジャリーをトレジャリー一覧に保存します。"
+        "saveGuestTreasury": "このゲストトレジャリーをトレジャリー一覧に保存します。",
+        "menu": "メニュー"
     },
     "signIn": {
         "copyAddress": "アドレスをコピー",
@@ -108,7 +111,8 @@
         "termsOfService": "利用規約",
         "privacyPolicy": "プライバシーポリシー",
         "disconnect": "ログアウト",
-        "myAccount": "マイアカウント"
+        "myAccount": "マイアカウント",
+        "signOut": "サインアウト"
     },
     "auth": {
         "noWallet": "ウォレットを接続してください",
@@ -476,7 +480,9 @@
             "failed": "失敗",
             "exchangeTransaction": "交換トランザクション",
             "transferTransaction": "送金トランザクション",
-            "rate": "レート"
+            "rate": "レート",
+            "detailsTitle": "詳細",
+            "linkedRequest": "リンクされたリクエスト"
         },
         "refresh": {
             "ariaLabel": "機密履歴を更新",
@@ -2040,6 +2046,11 @@
         "bucketEarning": "収益中",
         "noTokenChartTitle": "現在表示できるデータはありません",
         "noTokenChartDescription": "このトークンの履歴をまだ読み込めません。しばらくしてからもう一度ご確認ください。",
+        "fundTitle": "アカウントに資金を入れて始めましょう",
+        "fundDescription": "暗号資産を受け取ってアプリの利用を開始できます。",
+        "fundAssetsHint": "85以上の資産を\n35以上のネットワークで受け取れます",
+        "chartLoadingTitle": "データを読み込んでいます",
+        "chartLoadingDescription": "資産データを読み込んでいます。少々お待ちください。",
         "period": {
             "1W": "1週",
             "1M": "1ヶ月",
