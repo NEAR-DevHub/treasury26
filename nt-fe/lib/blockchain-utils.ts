@@ -30,37 +30,52 @@ export type BlockchainType =
     | "unknown";
 
 /**
+ * Compact form of a chain label: lowercased, spaces/underscores/hyphens removed.
+ * Backend `network_name_for_base` lowercases catalog *display* names
+ * (e.g. "XRP Ledger" → "xrp ledger", "BNB Smart Chain" → "bnb smart chain"),
+ * so matching must accept both keys and display variants.
+ */
+function compactChainKey(chainName: string): string {
+    return chainName.toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+/**
  * Maps a chainName (from token data) to a blockchain type for validation
  */
 export function getBlockchainType(chainName: string): BlockchainType {
-    const chainLower = chainName.toLowerCase();
+    const chainLower = chainName.toLowerCase().trim();
+    const compact = compactChainKey(chainName);
 
     // NEAR chains
-    if (chainLower === NEAR_NETWORK_ID) {
+    if (
+        chainLower === NEAR_NETWORK_ID ||
+        compact === "nearprotocol" ||
+        compact === "near"
+    ) {
         return NEAR_NETWORK_ID;
     }
 
     // Bitcoin
-    if (chainLower === "bitcoin" || chainLower === "btc") {
+    if (compact === "bitcoin" || compact === "btc") {
         return "bitcoin";
     }
 
-    // Bitcoin Cash
-    if (chainLower === "bitcoincash" || chainLower === "bch") {
+    // Bitcoin Cash — catalog display "Bitcoin Cash" → "bitcoin cash"
+    if (compact === "bitcoincash" || compact === "bch") {
         return "bitcoincash";
     }
 
     // Litecoin
-    if (chainLower === "litecoin" || chainLower === "ltc") {
+    if (compact === "litecoin" || compact === "ltc") {
         return "litecoin";
     }
 
     // Dash
-    if (chainLower === "dash") {
+    if (compact === "dash") {
         return "dash";
     }
 
-    // Ethereum and EVM chains
+    // Ethereum and EVM chains (keys + display-name compact forms)
     const evmChains = new Set([
         "eth",
         "ethereum",
@@ -72,98 +87,97 @@ export function getBlockchainType(chainName: string): BlockchainType {
         "base",
         "polygon",
         "pol",
+        "matic",
         "bsc",
+        "bnb",
         "binance",
+        "bnbsmartchain",
+        "binancesmartchain",
         "optimism",
         "op",
         "avalanche",
         "avax",
         "aurora",
+        "auroradevnet",
         "turbochain",
         "vertex",
         "easychain",
         "hako",
         "optima",
+        // key is tuxappchain; catalog display "TuxaChain" → "tuxachain"
         "tuxappchain",
-        "aurora_devnet",
+        "tuxachain",
         "layerx",
         "xlayer",
         "monad",
         "scroll",
         "plasma",
         "adi",
+        "hyperliquid",
+        "hypercore",
     ]);
-    if (evmChains.has(chainLower)) {
+    if (evmChains.has(compact)) {
         return "ethereum";
     }
 
     // Solana
-    if (chainLower === "solana" || chainLower === "sol") {
+    if (compact === "solana" || compact === "sol") {
         return "solana";
     }
 
     // Tron
-    if (chainLower === "tron" || chainLower === "trx") {
+    if (compact === "tron" || compact === "trx") {
         return "tron";
     }
 
     // Zcash
-    if (chainLower === "zcash" || chainLower === "zec") {
+    if (compact === "zcash" || compact === "zec") {
         return "zcash";
     }
 
     // Dogecoin
-    if (chainLower === "dogecoin" || chainLower === "doge") {
+    if (compact === "dogecoin" || compact === "doge") {
         return "dogecoin";
     }
 
-    // XRP/Ripple
-    if (
-        chainLower === "xrp" ||
-        chainLower === "ripple" ||
-        chainLower === "xrpledger"
-    ) {
+    // XRP/Ripple — catalog display "XRP Ledger" → "xrp ledger"
+    if (compact === "xrp" || compact === "ripple" || compact === "xrpledger") {
         return "xrp";
     }
 
     // Stellar
-    if (chainLower === "stellar" || chainLower === "xlm") {
+    if (compact === "stellar" || compact === "xlm") {
         return "stellar";
     }
 
     // Sui
-    if (chainLower === "sui") {
+    if (compact === "sui") {
         return "sui";
     }
 
     // Aptos
-    if (chainLower === "aptos" || chainLower === "apt") {
+    if (compact === "aptos" || compact === "apt") {
         return "aptos";
     }
 
     // Cardano
-    if (chainLower === "cardano" || chainLower === "ada") {
+    if (compact === "cardano" || compact === "ada") {
         return "cardano";
     }
 
     // TON
-    if (chainLower === "ton") {
+    if (compact === "ton") {
         return "ton";
     }
 
     // Starknet
-    if (chainLower === "starknet") {
+    if (compact === "starknet") {
         return "starknet";
     }
 
     // Aleo
-    if (chainLower === "aleo") {
+    if (compact === "aleo") {
         return "aleo";
-    }
-
-    // Hyperliquid (treat as EVM-compatible for now, though it may need special handling)
-    if (chainLower === "hyperliquid") {
-        return "ethereum";
     }
 
     console.log(
@@ -186,46 +200,57 @@ export function getExplorerTxUrl(
     if (!chainName) return null;
 
     const blockchainType = getBlockchainType(chainName);
-    const chainLower = chainName.toLowerCase();
 
     switch (blockchainType) {
         case NEAR_NETWORK_ID:
             return `https://nearblocks.io/txns/${txHash}`;
 
-        case "ethereum":
-            // Map specific EVM chains to their explorers.
-            if (chainLower === "arbitrum" || chainLower === "arb") {
+        case "ethereum": {
+            // Map specific EVM chains to their explorers (keys + display names).
+            const compact = compactChainKey(chainName);
+            if (compact === "arbitrum" || compact === "arb") {
                 return `https://arbiscan.io/tx/${txHash}`;
             }
-            if (chainLower === "polygon" || chainLower === "pol") {
+            if (
+                compact === "polygon" ||
+                compact === "pol" ||
+                compact === "matic"
+            ) {
                 return `https://polygonscan.com/tx/${txHash}`;
             }
-            if (chainLower === "bsc" || chainLower === "binance") {
+            if (
+                compact === "bsc" ||
+                compact === "bnb" ||
+                compact === "binance" ||
+                compact === "bnbsmartchain" ||
+                compact === "binancesmartchain"
+            ) {
                 return `https://bscscan.com/tx/${txHash}`;
             }
-            if (chainLower === "optimism" || chainLower === "op") {
+            if (compact === "optimism" || compact === "op") {
                 return `https://optimistic.etherscan.io/tx/${txHash}`;
             }
-            if (chainLower === "base") {
+            if (compact === "base") {
                 return `https://basescan.org/tx/${txHash}`;
             }
-            if (chainLower === "avalanche" || chainLower === "avax") {
+            if (compact === "avalanche" || compact === "avax") {
                 return `https://snowtrace.io/tx/${txHash}`;
             }
-            if (chainLower === "gnosis") {
+            if (compact === "gnosis") {
                 return `https://gnosisscan.io/tx/${txHash}`;
             }
-            if (chainLower === "berachain" || chainLower === "bera") {
+            if (compact === "berachain" || compact === "bera") {
                 return `https://berascan.com/tx/${txHash}`;
             }
-            if (chainLower === "scroll") {
+            if (compact === "scroll") {
                 return `https://scrollscan.com/tx/${txHash}`;
             }
-            if (chainLower === "aurora") {
+            if (compact === "aurora" || compact === "auroradevnet") {
                 return `https://explorer.aurora.dev/tx/${txHash}`;
             }
             // Default to Ethereum mainnet for unspecified EVM chains.
             return `https://etherscan.io/tx/${txHash}`;
+        }
 
         case "bitcoin":
             return `https://blockchair.com/bitcoin/transaction/${txHash}`;

@@ -67,6 +67,7 @@ import {
     isNearChainNativeToken,
 } from "@/lib/intents-fee";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import {
     buildIntentsTransferProposal,
     buildNativeNearIntentsKind,
@@ -945,17 +946,9 @@ export default function PaymentsPage() {
             if (!networkId || isNearComNetwork(networkId)) {
                 return networkId;
             }
-            for (const asset of bridgeAssets) {
-                const network = asset.networks.find((n) => n.id === networkId);
-                if (network) {
-                    return (
-                        network.quoteAssetId ||
-                        network.balanceAssetId ||
-                        network.id
-                    );
-                }
-            }
-            return networkId;
+            // Receiver network decides the 1Click destination id (balance vs
+            // 1cs routing alias, e.g. nBTC → native BTC on Bitcoin).
+            return findQuoteAssetIdForDestination(bridgeAssets, networkId);
         },
         [bridgeAssets],
     );
