@@ -1,6 +1,7 @@
+import { Icon } from "@/components/icon";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { cn } from "@/lib/utils";
-import { ArrowRight } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
@@ -96,7 +97,7 @@ export default function NotFound() {
                 <Link href="/">
                     <Button>
                         {t("backToDashboard")}
-                        <ArrowRight className="size-3" />
+                        <Icon icon={ArrowRight01Icon} />
                     </Button>
                 </Link>
             </div>

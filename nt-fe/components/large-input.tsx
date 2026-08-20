@@ -1,6 +1,6 @@
 "use client";
-
-import { Search } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Search01Icon } from "@hugeicons/core-free-icons";
 import { Input } from "./ui/input";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
@@ -101,7 +101,10 @@ export function LargeInput({
         <div ref={containerRef} className="relative">
             {search && (
                 <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                    <Search className="size-4 text-muted-foreground" />
+                    <Icon
+                        icon={Search01Icon}
+                        className="text-muted-foreground"
+                    />
                 </div>
             )}
             <Input

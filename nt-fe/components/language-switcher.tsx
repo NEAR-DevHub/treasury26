@@ -1,6 +1,6 @@
 "use client";
-
-import { Check, Globe } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { GlobeIcon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -94,7 +94,7 @@ export function LanguageSwitcher({
                             className,
                         )}
                     >
-                        <Globe className="size-4" />
+                        <Icon icon={GlobeIcon} />
                         <span className="flex-1 text-start">{t("select")}</span>
                         <span aria-hidden="true">{flagByLocale[locale]}</span>
                     </Button>
@@ -109,7 +109,7 @@ export function LanguageSwitcher({
                             className,
                         )}
                     >
-                        <Globe className="size-5" />
+                        <Icon icon={GlobeIcon} />
                     </Button>
                 )}
             </DropdownMenuTrigger>
@@ -136,7 +136,7 @@ export function LanguageSwitcher({
                             </span>
                             <span>{t(labelKeyByLocale[code])}</span>
                         </span>
-                        {code === locale && <Check className="h-4 w-4" />}
+                        {code === locale && <Icon icon={Tick01Icon} />}
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>

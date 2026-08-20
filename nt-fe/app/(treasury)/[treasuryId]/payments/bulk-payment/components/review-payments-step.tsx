@@ -1,12 +1,17 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    Delete02Icon,
+    Edit02Icon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useState, useEffect, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
 import { Textarea } from "@/components/textarea";
-import { Edit2, Info, Trash2 } from "lucide-react";
 import { StepProps, ReviewStep } from "@/components/step-wizard";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import Big from "@/lib/big";
@@ -507,8 +512,11 @@ export function ReviewPaymentsStep({
                                                                         }
                                                                         side="right"
                                                                     >
-                                                                        <Info
-                                                                            className="size-3.5 shrink-0 text-muted-foreground"
+                                                                        <Icon
+                                                                            icon={
+                                                                                InformationCircleIcon
+                                                                            }
+                                                                            className="shrink-0 text-muted-foreground"
                                                                             aria-label={tPay(
                                                                                 "networkFeeInfo",
                                                                             )}
@@ -546,7 +554,9 @@ export function ReviewPaymentsStep({
                                                         }
                                                         disabled={isSubmitting}
                                                     >
-                                                        <Edit2 className="w-4 h-4" />{" "}
+                                                        <Icon
+                                                            icon={Edit02Icon}
+                                                        />{" "}
                                                         {tBulk("edit")}
                                                     </Button>
                                                     <Button
@@ -561,7 +571,9 @@ export function ReviewPaymentsStep({
                                                         }
                                                         disabled={isSubmitting}
                                                     >
-                                                        <Trash2 className="w-4 h-4" />{" "}
+                                                        <Icon
+                                                            icon={Delete02Icon}
+                                                        />{" "}
                                                         {tBulk("remove")}
                                                     </Button>
                                                 </div>
@@ -584,8 +596,9 @@ export function ReviewPaymentsStep({
                                     content={tIntents("networkFeeTooltip")}
                                     side="top"
                                 >
-                                    <Info
-                                        className="size-3 shrink-0"
+                                    <Icon
+                                        icon={InformationCircleIcon}
+                                        className="shrink-0"
                                         aria-label={tPay("networkFeeInfo")}
                                     />
                                 </Tooltip>
@@ -632,8 +645,9 @@ export function ReviewPaymentsStep({
                                 content={tIntents("networkFeeTooltip")}
                                 side="top"
                             >
-                                <Info
-                                    className="size-3 shrink-0"
+                                <Icon
+                                    icon={InformationCircleIcon}
+                                    className="shrink-0"
                                     aria-label={tPay("networkFeeInfo")}
                                 />
                             </Tooltip>

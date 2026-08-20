@@ -1,3 +1,5 @@
+import { Icon } from "@/components/icon";
+import { Delete01Icon, LinkSquare01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Proposal } from "@/lib/proposals-api";
 import { TransferExpanded } from "./transfer-expanded";
@@ -8,7 +10,6 @@ import { ProposalSidebar } from "./common/proposal-sidebar";
 import { PageCard } from "@/components/card";
 import { Button } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
-import { ExternalLink, Trash } from "lucide-react";
 import { Policy } from "@/types/policy";
 import { StakingExpanded } from "./staking-expanded";
 import { ChangeConfigExpanded } from "./change-config-expanded";
@@ -230,7 +231,7 @@ export function ExpandedView({
                                     tooltipContent={t("openRequestPage")}
                                     className="h-8 w-8"
                                 >
-                                    <ExternalLink className="h-4 w-4" />
+                                    <Icon icon={LinkSquare01Icon} />
                                 </Button>
                             </Link>
                         )}
@@ -242,7 +243,7 @@ export function ExpandedView({
                                 className="h-8 w-8"
                                 onClick={() => onVote("Remove")}
                             >
-                                <Trash className="h-4 w-4" />
+                                <Icon icon={Delete01Icon} />
                             </Button>
                         )}
                     </div>

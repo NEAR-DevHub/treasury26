@@ -1,14 +1,15 @@
 "use client";
 
+import { Icon } from "@/components/icon";
 import {
-    Check,
-    Info,
-    Link,
-    Loader2,
-    RefreshCw,
-    UserPlus,
-    Vote,
-} from "lucide-react";
+    CheckmarkSquare01Icon,
+    InformationCircleIcon,
+    Link01Icon,
+    Loading02Icon,
+    Refresh01Icon,
+    Tick01Icon,
+    UserAdd01Icon,
+} from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
@@ -60,17 +61,17 @@ export default function InviteMemberPage() {
 
     const howItWorks = [
         {
-            icon: Link,
+            icon: <Icon icon={Link01Icon} className="text-base" />,
             title: tInvite("howItWorks.generateTitle"),
             description: tInvite("howItWorks.generateDescription"),
         },
         {
-            icon: UserPlus,
+            icon: <Icon icon={UserAdd01Icon} className="text-base" />,
             title: tInvite("howItWorks.joinTitle"),
             description: tInvite("howItWorks.joinDescription"),
         },
         {
-            icon: Vote,
+            icon: <Icon icon={CheckmarkSquare01Icon} className="text-base" />,
             title: tInvite("howItWorks.voteTitle"),
             description: tInvite("howItWorks.voteDescription"),
         },
@@ -96,14 +97,13 @@ export default function InviteMemberPage() {
                                 </p>
                                 <div className="space-y-6">
                                     {howItWorks.map((item) => {
-                                        const Icon = item.icon;
                                         return (
                                             <div
                                                 key={item.title}
                                                 className="flex items-start gap-4"
                                             >
                                                 <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                                                    <Icon className="size-4 text-base" />
+                                                    {item.icon}
                                                 </div>
                                                 <div className="space-y-0.5">
                                                     <p className="text-sm font-medium">
@@ -134,7 +134,10 @@ export default function InviteMemberPage() {
                             <div className="space-y-6">
                                 <div className="flex items-start gap-3">
                                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
-                                        <Check className="size-4 text-emerald-600" />
+                                        <Icon
+                                            icon={Tick01Icon}
+                                            className="text-emerald-600"
+                                        />
                                     </div>
                                     <div className="space-y-0.5">
                                         <p className="text-sm font-medium">
@@ -147,7 +150,10 @@ export default function InviteMemberPage() {
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-sky-500/15">
-                                        <Info className="size-4 text-sky-600" />
+                                        <Icon
+                                            icon={InformationCircleIcon}
+                                            className="text-sky-600"
+                                        />
                                     </div>
                                     <div className="space-y-0.5">
                                         <p className="text-sm font-medium">
@@ -168,7 +174,10 @@ export default function InviteMemberPage() {
                                     <Skeleton className="h-11 w-full rounded-lg" />
                                 ) : (
                                     <div className="flex min-w-0 items-center gap-2 overflow-hidden rounded-lg bg-secondary p-2 pl-3">
-                                        <Link className="size-4 shrink-0 text-base" />
+                                        <Icon
+                                            icon={Link01Icon}
+                                            className="shrink-0 text-base"
+                                        />
                                         <input
                                             type="text"
                                             readOnly
@@ -196,9 +205,12 @@ export default function InviteMemberPage() {
                                 disabled={isGenerating}
                             >
                                 {isGenerating ? (
-                                    <Loader2 className="size-4 animate-spin" />
+                                    <Icon
+                                        icon={Loading02Icon}
+                                        className="animate-spin"
+                                    />
                                 ) : (
-                                    <RefreshCw className="size-4" />
+                                    <Icon icon={Refresh01Icon} />
                                 )}
                                 {isGenerating
                                     ? tInvite("generatingNewLink")

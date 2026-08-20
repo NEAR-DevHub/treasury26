@@ -1,6 +1,6 @@
 "use client";
-
-import { X } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, useEffect } from "react";
@@ -50,7 +50,7 @@ export function CreateBanner({ disabled = false }: { disabled?: boolean }) {
                     className="text-muted-foreground hover:text-foreground transition-colors"
                     aria-label={t("close")}
                 >
-                    <X className="size-3.5" />
+                    <Icon icon={Cancel01Icon} />
                 </button>
             </div>
             <div className="flex flex-col gap-1 text-foreground">

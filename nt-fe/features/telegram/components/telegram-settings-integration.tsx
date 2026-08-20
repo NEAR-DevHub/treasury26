@@ -1,6 +1,6 @@
 "use client";
-
-import { Loader2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Loading02Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -104,7 +104,10 @@ export function TelegramSettingsIntegration() {
                             onClick={() => setDisconnectModalOpen(true)}
                         >
                             {disconnectMutation.isPending && (
-                                <Loader2 className="size-4 animate-spin" />
+                                <Icon
+                                    icon={Loading02Icon}
+                                    className="animate-spin"
+                                />
                             )}
                             {t("disconnect")}
                         </Button>
@@ -181,7 +184,10 @@ export function TelegramSettingsIntegration() {
                                 className="w-full rounded-[10px] bg-[#1A1617] text-white hover:bg-[#1A1617]/90"
                             >
                                 {disconnectMutation.isPending && (
-                                    <Loader2 className="size-4 animate-spin" />
+                                    <Icon
+                                        icon={Loading02Icon}
+                                        className="animate-spin"
+                                    />
                                 )}
                                 {t("telegramDisconnect.action")}
                             </Button>

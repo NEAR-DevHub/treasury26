@@ -1,3 +1,5 @@
+import { Icon } from "@/components/icon";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import {
     Dialog as BaseDialog,
     DialogContent as BaseDialogContent,
@@ -9,7 +11,6 @@ import {
     DialogFooter as BaseDialogFooter,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useUiStore } from "@/stores/ui-store";
@@ -122,7 +123,7 @@ function DialogHeader({
             <div className={cn(centerTitle && "flex-1")}>{children}</div>
             {closeButton && (
                 <BaseDialogClose className="ring-offset-background focus-visible:ring-ring inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:pointer-events-none">
-                    <XIcon className="size-4" />
+                    <Icon icon={Cancel01Icon} />
                     <span className="sr-only">{t("close")}</span>
                 </BaseDialogClose>
             )}

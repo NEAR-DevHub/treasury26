@@ -1,4 +1,5 @@
-import { Check, X } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Cancel01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 interface StepIconProps {
@@ -26,7 +27,8 @@ export function StepIcon({ status, size = "md" }: StepIconProps) {
                         sizeClass[size],
                     )}
                 >
-                    <Check
+                    <Icon
+                        icon={Tick01Icon}
                         className={cn(iconClass[size], "text-white shrink-0")}
                     />
                 </div>
@@ -48,7 +50,8 @@ export function StepIcon({ status, size = "md" }: StepIconProps) {
                         sizeClass[size],
                     )}
                 >
-                    <X
+                    <Icon
+                        icon={Cancel01Icon}
                         className={cn(
                             iconClass[size],
                             "text-muted-foreground shrink-0",
@@ -64,7 +67,10 @@ export function StepIcon({ status, size = "md" }: StepIconProps) {
                         sizeClass[size],
                     )}
                 >
-                    <X className={cn(iconClass[size], "text-white shrink-0")} />
+                    <Icon
+                        icon={Cancel01Icon}
+                        className={cn(iconClass[size], "text-white shrink-0")}
+                    />
                 </div>
             );
     }

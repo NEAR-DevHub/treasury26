@@ -1,12 +1,18 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    Cancel01Icon,
+    File01Icon,
+    PlayIcon,
+    ViewIcon,
+} from "@hugeicons/core-free-icons";
 import {
     APP_DEMO_URL,
     APP_DOCS_URL,
     APP_ACTIVE_TREASURY,
 } from "@/constants/config";
 import Link from "next/link";
-import { CirclePlay, Eye, File, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useEffect } from "react";
 import { useNextStep } from "nextstepjs";
@@ -58,19 +64,19 @@ export function InfoBox() {
     const infoItems = useMemo<InfoItemProps[]>(
         () => [
             {
-                icon: <CirclePlay className="size-4.5" />,
+                icon: <Icon icon={PlayIcon} />,
                 title: t("videoTitle"),
                 description: t("videoDescription"),
                 href: APP_DEMO_URL,
             },
             {
-                icon: <Eye className="size-4.5" />,
+                icon: <Icon icon={ViewIcon} />,
                 title: t("demoTitle"),
                 description: t("demoDescription"),
                 href: APP_ACTIVE_TREASURY,
             },
             {
-                icon: <File className="size-4.5" />,
+                icon: <Icon icon={File01Icon} />,
                 title: t("docsTitle"),
                 description: t("docsDescription"),
                 href: APP_DOCS_URL,
@@ -106,7 +112,7 @@ export function InfoBox() {
                         className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         aria-label={t("close")}
                     >
-                        <X className="size-4" />
+                        <Icon icon={Cancel01Icon} />
                     </button>
                 </div>
             </div>

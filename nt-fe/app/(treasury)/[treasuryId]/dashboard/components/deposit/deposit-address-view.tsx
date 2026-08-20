@@ -1,6 +1,6 @@
 "use client";
-
-import { TriangleAlert } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Alert01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -139,7 +139,7 @@ export function DepositAddressView({
 
             {memo && (
                 <div className="flex gap-2 items-start text-sm bg-destructive/10 text-destructive rounded-lg p-3">
-                    <TriangleAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                    <Icon icon={Alert01Icon} className="shrink-0 mt-0.5" />
                     <span>
                         {t.rich("memoWarning", {
                             bold: (chunks) => (

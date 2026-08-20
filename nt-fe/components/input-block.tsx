@@ -1,6 +1,7 @@
+import { Icon } from "@/components/icon";
+import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 import { Tooltip } from "./tooltip";
-import { Info } from "lucide-react";
 
 interface InputBlockProps {
     title?: string;
@@ -43,7 +44,10 @@ export function InputBlock({
                     )}
                     {info && (
                         <Tooltip content={info}>
-                            <Info className="size-3 text-muted-foreground" />
+                            <Icon
+                                icon={InformationCircleIcon}
+                                className="text-muted-foreground"
+                            />
                         </Tooltip>
                     )}
                 </div>

@@ -1,5 +1,6 @@
+import { Icon } from "@/components/icon";
+import { Shield01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { Shield } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
     PaymentRequestData,
@@ -62,7 +63,7 @@ export function TokenCell({
             {showConfidentialAddressShield && (
                 <Tooltip content={tCommon("confidentialAddressTooltip")}>
                     <span className="inline-flex align-middle ml-1">
-                        <Shield className="size-3.5 fill-foreground" />
+                        <Icon icon={Shield01Icon} className="fill-foreground" />
                     </span>
                 </Tooltip>
             )}

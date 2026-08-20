@@ -1,6 +1,6 @@
 "use client";
-
-import { Info } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,7 +44,7 @@ export function DepositNoticeList({
 export function DepositNoticeInfoRow({ children }: { children: ReactNode }) {
     return (
         <div className="flex gap-2 items-start text-sm text-muted-foreground">
-            <Info className="size-4 shrink-0 mt-0.5" />
+            <Icon icon={InformationCircleIcon} className="shrink-0 mt-0.5" />
             <span>{children}</span>
         </div>
     );

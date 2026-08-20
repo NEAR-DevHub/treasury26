@@ -1,10 +1,15 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    Add01Icon,
+    ArrowDown03Icon,
+    ArrowUpRight01Icon,
+} from "@hugeicons/core-free-icons";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
-import { ArrowDownToLine, ArrowUpRight, Plus } from "lucide-react";
 import { Button } from "@/components/button";
 import { StepIcon } from "@/components/step-icon";
 import { useAssets } from "@/hooks/use-assets";
@@ -163,7 +168,7 @@ function StepCard({ step }: { step: OnboardingStep }) {
                                 size="sm"
                                 onClick={primaryAction!.onClick}
                             >
-                                <Plus className="size-4" />
+                                <Icon icon={Add01Icon} />
                                 {primaryAction!.label}
                             </Button>
                             <Button
@@ -185,9 +190,9 @@ function StepCard({ step }: { step: OnboardingStep }) {
                     className="self-start ml-4 w-auto p-0 h-auto xl:ml-0 xl:self-center xl:mx-auto"
                 >
                     {step.action.icon === "deposit" ? (
-                        <ArrowDownToLine className="size-3.5" />
+                        <Icon icon={ArrowDown03Icon} />
                     ) : (
-                        <ArrowUpRight className="size-3.5" />
+                        <Icon icon={ArrowUpRight01Icon} />
                     )}
                     {step.action.label}
                 </Button>

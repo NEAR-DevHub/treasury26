@@ -1,7 +1,12 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowLeft01Icon,
+    ArrowRight01Icon,
+    MoreHorizontalIcon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
-import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 
@@ -64,7 +69,7 @@ export function Pagination({
                 disabled={pageIndex === 0}
                 className="text-muted-foreground hover:text-foreground text-xs gap-1"
             >
-                <ChevronLeft className="h-4 w-4" />
+                <Icon icon={ArrowLeft01Icon} />
                 <span className="hidden sm:inline">{t("previous")}</span>
             </Button>
 
@@ -79,7 +84,7 @@ export function Pagination({
                             key={`ellipsis-${i}`}
                             className="px-2 text-muted-foreground"
                         >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <Icon icon={MoreHorizontalIcon} />
                         </span>
                     ) : (
                         <Button
@@ -107,7 +112,7 @@ export function Pagination({
                 className="text-muted-foreground hover:text-foreground text-xs gap-1"
             >
                 <span className="hidden sm:inline">{t("next")}</span>
-                <ChevronRight className="h-4 w-4" />
+                <Icon icon={ArrowRight01Icon} />
             </Button>
         </div>
     );

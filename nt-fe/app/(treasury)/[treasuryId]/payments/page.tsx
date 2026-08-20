@@ -1,7 +1,12 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown03Icon,
+    InformationCircleIcon,
+    Shield01Icon,
+} from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowDownToLine, Info, Shield } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -226,7 +231,10 @@ function Step1({
                                         content={tPay("confidentialTooltip")}
                                     >
                                         <span className="inline-flex">
-                                            <Shield className="size-4 fill-foreground" />
+                                            <Icon
+                                                icon={Shield01Icon}
+                                                className="fill-foreground"
+                                            />
                                         </span>
                                     </Tooltip>
                                 </span>
@@ -253,7 +261,7 @@ function Step1({
                                     });
                                 }}
                             >
-                                <ArrowDownToLine className="w-4 h-4" />
+                                <Icon icon={ArrowDown03Icon} />
                                 <span className="hidden md:block">
                                     {tPay("bulkPayments")}
                                 </span>
@@ -476,8 +484,9 @@ function Step2({
                                         content={tIntents("networkFeeTooltip")}
                                         side="top"
                                     >
-                                        <Info
-                                            className="size-3 shrink-0"
+                                        <Icon
+                                            icon={InformationCircleIcon}
+                                            className="shrink-0"
                                             aria-label={tPay("networkFeeInfo")}
                                         />
                                     </Tooltip>

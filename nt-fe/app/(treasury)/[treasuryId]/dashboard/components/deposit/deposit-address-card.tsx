@@ -1,6 +1,6 @@
 "use client";
-
-import { Send } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { SentIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import QRCode from "react-qr-code";
@@ -118,7 +118,7 @@ export function DepositAddressCard({
                             className="rounded-lg gap-2 bg-card hover:bg-card/90"
                             data-testid="deposit-share-button"
                         >
-                            <Send className="size-4" />
+                            <Icon icon={SentIcon} />
                             {t("share")}
                         </Button>
                     )}

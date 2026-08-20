@@ -1,6 +1,11 @@
 "use client";
-
-import { ArrowUpRight, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    ArrowUpRight01Icon,
+    Delete02Icon,
+    ViewIcon,
+    ViewOffIcon,
+} from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -91,7 +96,7 @@ function TreasuryRow({
                     onClick={onRemove}
                     disabled={isRemovePending || disableAvailabilityActions}
                 >
-                    <Trash2 className="size-4" />
+                    <Icon icon={Delete02Icon} />
                 </Button>
             )}
             <Button
@@ -102,7 +107,7 @@ function TreasuryRow({
                 asChild
             >
                 <Link href={`/${treasury.daoId}`}>
-                    <ArrowUpRight className="size-4" />
+                    <Icon icon={ArrowUpRight01Icon} />
                 </Link>
             </Button>
             {variant === "active" && onHide && (
@@ -118,7 +123,7 @@ function TreasuryRow({
                     onClick={onHide}
                     disabled={isHidePending || disableAvailabilityActions}
                 >
-                    <Eye className="size-4" />
+                    <Icon icon={ViewIcon} />
                 </Button>
             )}
             {variant === "hidden" && onUnhide && (
@@ -130,7 +135,7 @@ function TreasuryRow({
                     onClick={onUnhide}
                     disabled={isUnhidePending}
                 >
-                    <EyeOff className="size-4" />
+                    <Icon icon={ViewOffIcon} />
                 </Button>
             )}
         </div>

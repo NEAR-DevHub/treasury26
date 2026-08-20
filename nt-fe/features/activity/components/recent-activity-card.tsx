@@ -1,14 +1,15 @@
 "use client";
-
 import {
-    AlertTriangle,
-    ArrowDown,
-    ChevronRight,
-    Clock,
-    Loader2,
-    Navigation,
-    Shield,
-} from "lucide-react";
+    Alert01Icon,
+    ArrowDataTransferHorizontalIcon,
+    ArrowDown02Icon,
+    ArrowRight01Icon,
+    Clock01Icon,
+    Loading02Icon,
+    SentIcon,
+    Shield01Icon,
+} from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/icon";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
@@ -17,7 +18,6 @@ import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
-import { SwapIcon } from "@/components/icons/swap";
 import { Tooltip } from "@/components/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseWarningCopy } from "@/components/warning-message";
@@ -148,11 +148,11 @@ function RowIcon({ children }: { children: ReactNode }) {
 }
 
 function activityIcon(activity: RecentActivityType) {
-    if (activity.swap) return <SwapIcon className="size-4" />;
+    if (activity.swap) return <Icon icon={ArrowDataTransferHorizontalIcon} />;
     return parseFloat(activity.amount) > 0 ? (
-        <ArrowDown className="size-4" />
+        <Icon icon={ArrowDown02Icon} />
     ) : (
-        <Navigation className="size-4" />
+        <Icon icon={SentIcon} />
     );
 }
 
@@ -250,7 +250,7 @@ function RowStatus({ status }: { status: NonNullable<ActivityStatus> }) {
             )}
         >
             {status === "pending" ? (
-                <Loader2 className="size-3 animate-spin" />
+                <Icon icon={Loading02Icon} className="animate-spin" />
             ) : null}
             {status === "pending" ? t("processing") : t("failed")}
         </span>
@@ -320,7 +320,10 @@ function RecentActivityUnavailableOverlay({
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 py-8">
                 <div className="pointer-events-auto flex max-w-lg flex-col items-center gap-3 text-center">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-general-orange-background">
-                        <AlertTriangle className="size-5 text-general-orange-foreground" />
+                        <Icon
+                            icon={Alert01Icon}
+                            className="text-general-orange-foreground"
+                        />
                     </div>
                     <div>
                         {heading && (
@@ -430,7 +433,7 @@ export function RecentActivity() {
             key={`sub-${activity.id}`}
             icon={
                 <RowIcon>
-                    <ArrowDown className="size-4" />
+                    <Icon icon={ArrowDown02Icon} />
                 </RowIcon>
             }
             label={t("tabs.stakingRewards")}
@@ -457,7 +460,7 @@ export function RecentActivity() {
                     <ActivityRow
                         icon={
                             <RowIcon>
-                                <ArrowDown className="size-4" />
+                                <Icon icon={ArrowDown02Icon} />
                             </RowIcon>
                         }
                         label={t("tabs.stakingRewards")}
@@ -471,9 +474,10 @@ export function RecentActivity() {
                         }
                         meta={<RowDate date={grouped.blockTime} />}
                         trailing={
-                            <ChevronRight
+                            <Icon
+                                icon={ArrowRight01Icon}
                                 className={cn(
-                                    "size-5 text-muted-foreground transition-transform",
+                                    "text-muted-foreground transition-transform",
                                     isExpanded && "rotate-90",
                                 )}
                             />
@@ -548,7 +552,7 @@ export function RecentActivity() {
         if (activities.length === 0) {
             return (
                 <EmptyState
-                    icon={Clock}
+                    icon={Clock01Icon}
                     title={t("emptyDashboard.title")}
                     description={t("emptyDashboard.description")}
                 />
@@ -573,7 +577,10 @@ export function RecentActivity() {
                                     content={tCommon("confidentialDataTooltip")}
                                 >
                                     <span className="inline-flex">
-                                        <Shield className="size-4 fill-foreground" />
+                                        <Icon
+                                            icon={Shield01Icon}
+                                            className="fill-foreground"
+                                        />
                                     </span>
                                 </Tooltip>
                             )}
@@ -592,7 +599,7 @@ export function RecentActivity() {
                                 <span className="hidden sm:inline">
                                     {tCommon("seeMore")}
                                 </span>
-                                <ChevronRight className="size-4" />
+                                <Icon icon={ArrowRight01Icon} />
                             </Button>
                         </Link>
                     )}

@@ -1,10 +1,11 @@
+import { Icon } from "@/components/icon";
+import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Amount } from "../amount";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { User } from "@/components/user";
 import { PaymentRequestData } from "../../types/index";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { useToken } from "@/hooks/use-treasury-queries";
 import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
 import { Address } from "@/components/address";
@@ -124,7 +125,8 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
                     target="_blank"
                     className="flex items-center gap-5"
                 >
-                    {notes} <ArrowUpRight className="size-4 shrink-0" />{" "}
+                    {notes}{" "}
+                    <Icon icon={ArrowUpRight01Icon} className="shrink-0" />{" "}
                 </Link>
             ) : (
                 notes

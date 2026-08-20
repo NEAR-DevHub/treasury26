@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { ArrowDown01Icon, Loading02Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     ChangePolicyData,
@@ -18,7 +20,6 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Pill } from "@/components/pill";
 import { Button } from "@/components/button";
@@ -258,7 +259,10 @@ export function ChangePolicyExpanded({
     if (isLoadingTimestamped) {
         return (
             <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Icon
+                    icon={Loading02Icon}
+                    className="size-6 animate-spin text-muted-foreground"
+                />
                 <span className="ml-2 text-muted-foreground text-sm">
                     {t("loadingHistorical")}
                 </span>
@@ -404,9 +408,9 @@ export function ChangePolicyExpanded({
                                     )}
                                 >
                                     <div className="flex gap-2 items-center">
-                                        <ChevronDown
+                                        <Icon
+                                            icon={ArrowDown01Icon}
                                             className={cn(
-                                                "w-4 h-4",
                                                 expanded.includes(index) &&
                                                     "rotate-180",
                                             )}

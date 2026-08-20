@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Cancel01Icon, Contact01Icon } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import Gleap from "gleap";
@@ -11,7 +13,6 @@ import {
     useFormContext,
     useWatch,
 } from "react-hook-form";
-import { ContactRound, X } from "lucide-react";
 import { InputBlock } from "@/components/input-block";
 import { TokenInput, Token } from "@/components/token-input";
 import AccountInput from "@/components/account-input";
@@ -418,7 +419,7 @@ export function PaymentFormSection<
                             !selectedContact && "invisible pointer-events-none",
                         )}
                     >
-                        <X className="size-3.5" />
+                        <Icon icon={Cancel01Icon} />
                     </Button>
                     {showContactButton && (
                         <Button
@@ -427,7 +428,7 @@ export function PaymentFormSection<
                             onClick={() => setIsContactModalOpen(true)}
                             type="button"
                         >
-                            <ContactRound className="size-4" />
+                            <Icon icon={Contact01Icon} />
                         </Button>
                     )}
                 </div>

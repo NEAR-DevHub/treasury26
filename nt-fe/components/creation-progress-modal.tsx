@@ -1,6 +1,10 @@
 "use client";
-
-import { Check, Loader2, X } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    Cancel01Icon,
+    Loading02Icon,
+    Tick01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import {
@@ -29,19 +33,22 @@ function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
         case "completed":
             return (
                 <div className="flex shrink-0 items-center justify-center rounded-full bg-general-success-foreground size-6">
-                    <Check className="size-4 text-white" />
+                    <Icon icon={Tick01Icon} className="text-white" />
                 </div>
             );
         case "in_progress":
             return (
                 <div className="flex shrink-0 items-center justify-center size-6">
-                    <Loader2 className="size-5 text-foreground animate-spin" />
+                    <Icon
+                        icon={Loading02Icon}
+                        className="text-foreground animate-spin"
+                    />
                 </div>
             );
         case "error":
             return (
                 <div className="flex shrink-0 items-center justify-center rounded-full bg-general-destructive-foreground size-6">
-                    <X className="size-4 text-white" />
+                    <Icon icon={Cancel01Icon} className="text-white" />
                 </div>
             );
         default:

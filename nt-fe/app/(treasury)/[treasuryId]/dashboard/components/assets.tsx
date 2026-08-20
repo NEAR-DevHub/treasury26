@@ -1,7 +1,7 @@
 "use client";
 
-import { Coins } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Coins01Icon } from "@hugeicons/core-free-icons";
 import { AssetsTable, AssetsTableSkeleton } from "@/components/assets-table";
 import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
@@ -41,7 +41,7 @@ export default function Assets({ tokens, state }: Props) {
             return (
                 <div className="px-4 pb-4">
                     <EmptyState
-                        icon={Coins}
+                        icon={Coins01Icon}
                         title={t("noAssetsTitle")}
                         description={t("noAssetsDescription")}
                     />

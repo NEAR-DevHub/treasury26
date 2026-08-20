@@ -1,4 +1,5 @@
-import { Loader2 } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Loading02Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/button";
@@ -181,7 +182,10 @@ export function VoteModal({
                                       ? t("remove")
                                       : t("confirm")}
                                 {isSubmitting && (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Icon
+                                        icon={Loading02Icon}
+                                        className="animate-spin"
+                                    />
                                 )}
                             </Button>
                         </span>

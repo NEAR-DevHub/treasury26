@@ -1,7 +1,8 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { DatabaseIcon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useState } from "react";
-import { Database, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useAssets } from "@/hooks/use-assets";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -74,9 +75,10 @@ export function TreasuryLogo({
                         fallbackClassName,
                     )}
                 >
-                    <Database
+                    <Icon
+                        icon={DatabaseIcon}
                         className={cn(
-                            "size-5 text-muted-foreground",
+                            "text-muted-foreground",
                             fallbackIconClassName,
                         )}
                     />
@@ -84,7 +86,10 @@ export function TreasuryLogo({
             )}
             {isConfidential && (
                 <div className="absolute right-0 bottom-0">
-                    <Shield className="size-4 fill-foreground text-background" />
+                    <Icon
+                        icon={Shield01Icon}
+                        className="fill-foreground text-background"
+                    />
                 </div>
             )}
         </div>

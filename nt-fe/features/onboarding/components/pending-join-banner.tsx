@@ -1,6 +1,6 @@
 "use client";
-
-import { Clock } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { Clock01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useMyMemberJoinStatus } from "@/hooks/use-member-invites";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -28,7 +28,10 @@ export function PendingJoinBanner() {
     return (
         <div className="flex items-start gap-3 rounded-xl border border-general-border bg-general-tertiary p-4">
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-general-orange-background-faded">
-                <Clock className="size-4 text-general-orange-foreground" />
+                <Icon
+                    icon={Clock01Icon}
+                    className="text-general-orange-foreground"
+                />
             </div>
             <div className="space-y-0.5 min-w-0">
                 <p className="text-sm font-semibold text-foreground">

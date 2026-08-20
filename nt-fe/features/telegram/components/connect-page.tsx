@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { CircleCheckIcon, Unlink01Icon, Wallet01Icon } from "@hugeicons/core-free-icons";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Link2Off, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -227,7 +227,7 @@ function ConnectPageInner() {
                 <PageCard className="min-h-[320px] flex items-center justify-center">
                     <div className="w-full max-w-md flex flex-col gap-5">
                         <EmptyState
-                            icon={CheckCircle2}
+                            icon={CircleCheckIcon}
                             title={tTg("successTitle")}
                             description={tTg("successDescription")}
                             className="py-0"
@@ -257,7 +257,7 @@ function ConnectPageInner() {
                     <PageCard className="min-h-[320px] flex items-center justify-center">
                         <div className="w-full max-w-md flex flex-col gap-5">
                             <EmptyState
-                                icon={Link2Off}
+                                icon={Unlink01Icon}
                                 title={tTg("linkExpiredTitle")}
                                 description={tTg("linkExpiredDescription")}
                                 className="py-0"
@@ -296,7 +296,7 @@ function ConnectPageInner() {
                 <PageCard className="min-h-[320px] flex items-center justify-center">
                     <div className="w-full max-w-md flex flex-col gap-5">
                         <EmptyState
-                            icon={Wallet}
+                            icon={Wallet01Icon}
                             title={tTg("signInTitle")}
                             description={tTg("signInDescription")}
                             className="py-0"

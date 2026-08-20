@@ -1,4 +1,5 @@
-import { Info } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 import { Alert, AlertDescription } from "@/components/alert";
 
 interface InfoAlertProps {
@@ -9,7 +10,7 @@ interface InfoAlertProps {
 export function InfoAlert({ message, className }: InfoAlertProps) {
     return (
         <Alert variant="info" className={className}>
-            <Info className="h-4 w-4 shrink-0" />
+            <Icon icon={InformationCircleIcon} className="shrink-0" />
             <AlertDescription>{message}</AlertDescription>
         </Alert>
     );

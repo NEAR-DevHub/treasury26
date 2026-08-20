@@ -1,12 +1,6 @@
 "use client";
-
-/**
- * Per-template page: `/<dao>/custom-templates/<slug>` where `<slug>` is the manifest id. Resolves
- * the template, renders its manifest as a form (`<ManifestForm>`), and on submit builds the
- * FunctionCall (`buildTemplateProposal`) and files it via the house `createProposal` helper — the
- * same gasless-relayer route the core proposals use, so a custom request behaves like a built-in one.
- */
-import { ArrowLeft } from "lucide-react";
+import { Icon } from "@/components/icon";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -130,7 +124,7 @@ export default function CustomTemplatePage() {
                                 aria-label={t("back")}
                                 className="text-muted-foreground transition-colors hover:text-foreground"
                             >
-                                <ArrowLeft className="size-5" />
+                                <Icon icon={ArrowLeft01Icon} />
                             </button>
                             <h2 className="font-semibold text-base">
                                 {parsed.data.title}

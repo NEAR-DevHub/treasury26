@@ -1,6 +1,10 @@
 "use client";
-
-import { ChevronDown, ChevronLeft, Info } from "lucide-react";
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowLeft01Icon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -449,7 +453,10 @@ export default function TokenSelect({
                             {t("selectToken")}
                         </span>
                     )}
-                    <ChevronDown className="size-4 text-muted-foreground ml-auto" />
+                    <Icon
+                        icon={ArrowDown01Icon}
+                        className="text-muted-foreground ml-auto"
+                    />
                 </Button>
             </DialogTrigger>
             <DialogContent className="flex flex-col sm:max-w-md">
@@ -462,7 +469,7 @@ export default function TokenSelect({
                                 onClick={handleBack}
                                 type="button"
                             >
-                                <ChevronLeft className="size-5" />
+                                <Icon icon={ArrowLeft01Icon} />
                             </Button>
                         )}
                         <DialogTitle className="w-full text-center">
@@ -724,7 +731,12 @@ export default function TokenSelect({
                                                         side="top"
                                                     >
                                                         <span className="inline-flex items-center justify-center">
-                                                            <Info className="size-3.5 text-muted-foreground normal-case" />
+                                                            <Icon
+                                                                icon={
+                                                                    InformationCircleIcon
+                                                                }
+                                                                className="text-muted-foreground normal-case"
+                                                            />
                                                         </span>
                                                     </Tooltip>
                                                 )}

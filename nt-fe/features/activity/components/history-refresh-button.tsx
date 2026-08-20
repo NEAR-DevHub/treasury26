@@ -1,6 +1,6 @@
 "use client";
-
-import { RefreshCw } from "lucide-react";
+import { ArrowReloadHorizontalIcon } from "@hugeicons/core-free-icons";
+import { Icon } from "@/components/icon";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo } from "react";
 import { Button } from "@/components/button";
@@ -182,9 +182,9 @@ export function HistoryRefreshButton({ className }: { className?: string }) {
             disabled={isRefreshDisabled}
             onClick={handleRefreshHistory}
         >
-            <RefreshCw
+            <Icon
+                icon={ArrowReloadHorizontalIcon}
                 className={cn(
-                    "h-4 w-4",
                     isRefreshing && "animate-spin motion-reduce:animate-none",
                 )}
             />

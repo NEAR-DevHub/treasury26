@@ -1,11 +1,12 @@
+import { Icon } from "@/components/icon";
 import {
-    Check,
-    Download,
-    FileText,
-    Loader2,
-    SquareArrowOutUpRight,
-    X,
-} from "lucide-react";
+    Cancel01Icon,
+    Download01Icon,
+    FileAttachmentIcon,
+    LinkSquare02Icon,
+    Loading02Icon,
+    Tick01Icon,
+} from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -550,7 +551,7 @@ export function ProposalSidebar({
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
-                                <FileText className="size-4" />
+                                <Icon icon={FileAttachmentIcon} />
                                 {tReceipt("generateReceipt")}
                             </Link>
                         </Button>
@@ -568,7 +569,7 @@ export function ProposalSidebar({
                                 rel="noopener noreferrer"
                                 className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
                             >
-                                <SquareArrowOutUpRight className="size-4" />
+                                <Icon icon={LinkSquare02Icon} />
                                 {t("viewTransaction")}
                             </Link>
                         )
@@ -584,7 +585,7 @@ export function ProposalSidebar({
                             rel="noopener noreferrer"
                             className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
                         >
-                            <SquareArrowOutUpRight className="size-4" />
+                            <Icon icon={LinkSquare02Icon} />
                             {t("viewTransaction")}
                         </Link>
                     )}
@@ -688,7 +689,7 @@ export function ProposalSidebar({
                                   : undefined
                         }
                     >
-                        <X className="h-4 w-4 mr-2" />
+                        <Icon icon={Cancel01Icon} className="mr-2" />
                         {t("reject")}
                     </AuthButtonWithProposal>
                     {insufficientBalanceInfo.hasInsufficientBalance &&
@@ -705,7 +706,7 @@ export function ProposalSidebar({
                                     )
                                 }
                             >
-                                <Download className="h-4 w-4 mr-2" />
+                                <Icon icon={Download01Icon} className="mr-2" />
                                 {t("deposit")}
                             </Button>
                         </span>
@@ -731,9 +732,12 @@ export function ProposalSidebar({
                             }
                         >
                             {isCheckingVotingDurationImpact ? (
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                <Icon
+                                    icon={Loading02Icon}
+                                    className="mr-2 animate-spin"
+                                />
                             ) : (
-                                <Check className="h-4 w-4 mr-2" />
+                                <Icon icon={Tick01Icon} className="mr-2" />
                             )}
                             {t("approve")}
                         </AuthButtonWithProposal>

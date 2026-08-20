@@ -1,14 +1,15 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowLeft01Icon,
+    ArrowUp01Icon,
+    DollarCircleIcon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import {
-    BadgeDollarSign,
-    Info,
-    ChevronDown,
-    ChevronUp,
-    ChevronLeft,
-} from "lucide-react";
 import { Button } from "@/components/button";
 import {
     Dialog,
@@ -319,7 +320,7 @@ export function LockupDetailsModal({
                                 className="size-7 -ml-1"
                                 onClick={onBack}
                             >
-                                <ChevronLeft className="size-4" />
+                                <Icon icon={ArrowLeft01Icon} />
                             </Button>
                         ) : null}
                         <DialogTitle className="text-left">
@@ -345,7 +346,9 @@ export function LockupDetailsModal({
                                                     "reservedForStorageInfo",
                                                 )}
                                             >
-                                                <Info className="size-3.5" />
+                                                <Icon
+                                                    icon={InformationCircleIcon}
+                                                />
                                             </Tooltip>
                                         </div>
                                         <span className="text-foreground">
@@ -360,7 +363,10 @@ export function LockupDetailsModal({
                         )}
                         {hasLockupStakingNotice ? (
                             <div className="rounded-xl bg-muted/60 px-4 py-3 text-sm flex items-start gap-2">
-                                <Info className="size-4 mt-0.5 shrink-0" />
+                                <Icon
+                                    icon={InformationCircleIcon}
+                                    className="mt-0.5 shrink-0"
+                                />
                                 <p className="text-foreground">
                                     {isFullLockupStaked
                                         ? t("allEarning", {
@@ -509,13 +515,22 @@ export function LockupDetailsModal({
                                     className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium cursor-pointer"
                                 >
                                     <span className="flex items-center gap-2">
-                                        <BadgeDollarSign className="size-4 text-muted-foreground" />
+                                        <Icon
+                                            icon={DollarCircleIcon}
+                                            className="text-muted-foreground"
+                                        />
                                         {t("howGrantWorks")}
                                     </span>
                                     {guideOpen ? (
-                                        <ChevronUp className="size-4 text-muted-foreground" />
+                                        <Icon
+                                            icon={ArrowUp01Icon}
+                                            className="text-muted-foreground"
+                                        />
                                     ) : (
-                                        <ChevronDown className="size-4 text-muted-foreground" />
+                                        <Icon
+                                            icon={ArrowDown01Icon}
+                                            className="text-muted-foreground"
+                                        />
                                     )}
                                 </button>
                             </CollapsibleTrigger>

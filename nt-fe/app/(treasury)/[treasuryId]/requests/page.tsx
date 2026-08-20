@@ -1,5 +1,12 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowLeftRightIcon,
+    ArrowUpRight01Icon,
+    FilterIcon,
+    SentIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -16,7 +23,6 @@ import {
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { ProposalsTable } from "@/features/proposals";
 import { Button } from "@/components/button";
-import { ArrowRightLeft, ArrowUpRight, ListFilter, Send } from "lucide-react";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -179,7 +185,7 @@ function NoRequestsFound() {
     return (
         <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
             <EmptyState
-                icon={Send}
+                icon={SentIcon}
                 title={tEmpty("title")}
                 description={tEmpty("description")}
                 className="py-0"
@@ -191,7 +197,7 @@ function NoRequestsFound() {
                     permissionAction="AddProposal"
                     className="gap-1 w-full shrink"
                 >
-                    <ArrowUpRight className="size-3.5" /> {tEmpty("send")}
+                    <Icon icon={ArrowUpRight01Icon} /> {tEmpty("send")}
                 </AuthButton>
                 <AuthButton
                     permissionKind="call"
@@ -199,7 +205,7 @@ function NoRequestsFound() {
                     permissionAction="AddProposal"
                     className="gap-1 w-full shrink"
                 >
-                    <ArrowRightLeft className="size-3.5" /> {tEmpty("exchange")}
+                    <Icon icon={ArrowLeftRightIcon} /> {tEmpty("exchange")}
                 </AuthButton>
             </div>
         </PageCard>
@@ -363,7 +369,7 @@ export default function RequestsPage() {
                         : tCommon("filter")
                 }
             >
-                <ListFilter className="size-4" />
+                <Icon icon={FilterIcon} />
                 <span className="hidden md:inline">{tCommon("filter")}</span>
                 {hasActiveFilters && (
                     <span

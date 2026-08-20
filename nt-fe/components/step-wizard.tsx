@@ -1,7 +1,8 @@
+import { Icon } from "@/components/icon";
+import { ArrowLeft01Icon, Loading02Icon } from "@hugeicons/core-free-icons";
 import { useRef } from "react";
 import type { ReactNode } from "react";
 import { Button } from "./button";
-import { ArrowLeftIcon, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 
@@ -175,7 +176,7 @@ export function StepperHeader({
                     onClick={handleBack}
                     disabled={backDisabled}
                 >
-                    {<ArrowLeftIcon className="size-4" />}
+                    {<Icon icon={ArrowLeft01Icon} />}
                 </Button>
             )}
             <div className="flex flex-col gap-0">
@@ -223,7 +224,9 @@ export function InlineNextButton({
                 onClick={onClickHandler}
                 disabled={loading}
             >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loading && (
+                    <Icon icon={Loading02Icon} className="mr-2 animate-spin" />
+                )}
                 {text}
             </Button>
         </div>

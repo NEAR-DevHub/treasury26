@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
 import { Button } from "./button";
 import { InputBlock } from "./input-block";
 import { FormField, FormMessage } from "./ui/form";
@@ -16,7 +18,6 @@ import z from "zod";
 import { useTranslations } from "next-intl";
 import { AccountIdInput, buildAccountIdSchema } from "./account-id-input";
 import { ROLES, RoleSelector } from "./role-selector";
-import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { RoleBadge } from "./role-badge";
 
@@ -151,7 +152,10 @@ export function MemberInput<
                                     className="size-6 p-0! group hover:text-destructive"
                                     onClick={() => remove(index)}
                                 >
-                                    <Trash2 className="size-4 text-foreground group-hover:text-destructive" />
+                                    <Icon
+                                        icon={Delete02Icon}
+                                        className="text-foreground group-hover:text-destructive"
+                                    />
                                 </Button>
                             )}
                         </div>
@@ -286,7 +290,7 @@ export function MemberInput<
                                 : never)
                         }
                     >
-                        <Plus className="size-4 text-foreground" />
+                        <Icon icon={Add01Icon} className="text-foreground" />
                         <span className="text-foreground">
                             {t("addNewMember")}
                         </span>

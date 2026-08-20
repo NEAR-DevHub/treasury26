@@ -1,7 +1,7 @@
 "use client";
 
-import { ChartSpline } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { ChartLineData01Icon } from "@hugeicons/core-free-icons";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { PageCard } from "@/components/card";
 import Logo from "@/components/icons/logo";
@@ -29,7 +29,7 @@ function DashboardContent() {
             <PageCard>
                 <div className="flex flex-col items-center justify-center gap-2 py-12">
                     <EmptyState
-                        icon={ChartSpline}
+                        icon={ChartLineData01Icon}
                         title={t("noDataTitle")}
                         description={t("noDataDescription")}
                     />

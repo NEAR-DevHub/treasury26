@@ -1,3 +1,5 @@
+import { Icon } from "@/components/icon";
+import { Loading02Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { ChangeConfigData } from "../../types/index";
@@ -7,7 +9,6 @@ import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { computeConfigDiff } from "../../utils/config-diff-utils";
 import { useMemo } from "react";
-import { Loader2 } from "lucide-react";
 import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ChangeConfigExpandedProps {
@@ -49,7 +50,10 @@ export function ChangeConfigExpanded({
     if (!isPending && isLoadingTimestamped) {
         return (
             <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <Icon
+                    icon={Loading02Icon}
+                    className="size-6 animate-spin text-muted-foreground"
+                />
                 <span className="ml-2 text-muted-foreground text-sm">
                     {t("loadingHistorical")}
                 </span>

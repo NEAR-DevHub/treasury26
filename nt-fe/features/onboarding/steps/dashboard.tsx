@@ -1,10 +1,11 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useNextStep } from "nextstepjs";
 import type { Tour } from "nextstepjs";
@@ -257,8 +258,9 @@ export function WelcomeTooltip() {
                             : tW("heading")
                         : tW("subheading")}
                 </h1>
-                <XIcon
-                    className="size-4 cursor-pointer"
+                <Icon
+                    icon={Cancel01Icon}
+                    className="cursor-pointer"
                     onClick={handleDismiss}
                 />
             </div>
@@ -409,8 +411,9 @@ export function CongratsTooltip() {
         <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3.5 bg-popover-foreground text-popover rounded-2xl">
             <div className="flex items-center justify-between pt-0.5 pb-2.5">
                 <h1 className="text-sm font-semibold">{tC("heading")}</h1>
-                <XIcon
-                    className="size-4 cursor-pointer"
+                <Icon
+                    icon={Cancel01Icon}
+                    className="cursor-pointer"
                     onClick={handleDismiss}
                 />
             </div>
@@ -515,8 +518,9 @@ export function NotificationsTooltip() {
         <div className="fixed max-w-72 flex flex-col gap-0 bottom-8 right-8 z-50 p-3.5 bg-popover-foreground text-popover rounded-2xl">
             <div className="flex items-center justify-between pt-0.5 pb-2.5">
                 <h1 className="text-sm font-semibold">🎉 {tN("title")}</h1>
-                <XIcon
-                    className="size-4 cursor-pointer"
+                <Icon
+                    icon={Cancel01Icon}
+                    className="cursor-pointer"
                     onClick={handleDismiss}
                 />
             </div>

@@ -1,5 +1,11 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowUpRight01Icon,
+    Delete02Icon,
+    SearchMinusIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     Table,
@@ -16,7 +22,6 @@ import { FormattedDate } from "@/components/formatted-date";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
-import { SearchX, Trash2, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
 import { useChains } from "../chains";
 import type { AddressBookEntry } from "../types";
@@ -87,7 +92,7 @@ export function AddressBookTable({
     if (entries.length === 0) {
         return (
             <EmptyState
-                icon={SearchX}
+                icon={SearchMinusIcon}
                 title={t("emptyTitle")}
                 description={t("emptyDescription")}
                 className="py-16"
@@ -222,7 +227,10 @@ export function AddressBookTable({
                                                         onDelete(entry)
                                                     }
                                                 >
-                                                    <Trash2 className="size-4 text-destructive" />
+                                                    <Icon
+                                                        icon={Delete02Icon}
+                                                        className="text-destructive"
+                                                    />
                                                 </Button>
                                             )}
                                             {onSend && (
@@ -235,7 +243,12 @@ export function AddressBookTable({
                                                         onSend(entry)
                                                     }
                                                 >
-                                                    <ArrowUpRight className="size-4 text-primary" />
+                                                    <Icon
+                                                        icon={
+                                                            ArrowUpRight01Icon
+                                                        }
+                                                        className="text-primary"
+                                                    />
                                                 </Button>
                                             )}
                                         </div>

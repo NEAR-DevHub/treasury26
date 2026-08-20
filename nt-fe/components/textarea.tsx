@@ -1,4 +1,3 @@
-import { Search } from "lucide-react";
 import { Textarea as TextareaComponent } from "./ui/textarea";
 import { cn } from "@/lib/utils";
 

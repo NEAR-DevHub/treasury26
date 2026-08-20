@@ -1,5 +1,11 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import {
+    ArrowDown01Icon,
+    ArrowUp01Icon,
+    Clock01Icon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     Dialog,
@@ -22,7 +28,6 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { AmountSummary } from "./amount-summary";
 
 interface EarningDetailsModalProps {
@@ -114,8 +119,14 @@ export function EarningDetailsModal({
                             <h3 className="text-sm font-semibold">
                                 {t("earningOverview")}
                             </h3>
-                            <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:hidden" />
-                            <ChevronUp className="size-4 text-muted-foreground transition-transform group-data-[state=closed]:hidden" />
+                            <Icon
+                                icon={ArrowDown01Icon}
+                                className="text-muted-foreground transition-transform group-data-[state=open]:hidden"
+                            />
+                            <Icon
+                                icon={ArrowUp01Icon}
+                                className="text-muted-foreground transition-transform group-data-[state=closed]:hidden"
+                            />
                         </CollapsibleTrigger>
                         <CollapsibleContent className="flex flex-col">
                             <InfoDisplay
@@ -135,8 +146,14 @@ export function EarningDetailsModal({
                                         count: staking.pools.length,
                                     })}
                                 </h3>
-                                <ChevronDown className="size-4 text-muted-foreground transition-transform group-data-[state=open]:hidden" />
-                                <ChevronUp className="size-4 text-muted-foreground transition-transform group-data-[state=closed]:hidden" />
+                                <Icon
+                                    icon={ArrowDown01Icon}
+                                    className="text-muted-foreground transition-transform group-data-[state=open]:hidden"
+                                />
+                                <Icon
+                                    icon={ArrowUp01Icon}
+                                    className="text-muted-foreground transition-transform group-data-[state=closed]:hidden"
+                                />
                             </CollapsibleTrigger>
                             <CollapsibleContent className="flex flex-col">
                                 <InfoDisplay
@@ -152,7 +169,10 @@ export function EarningDetailsModal({
                     {!hasStake && (
                         <div className="py-1.5 text-center flex flex-col items-center gap-2">
                             <div className="bg-muted rounded-full p-2 text-center">
-                                <Clock className="size-5 text-muted-foreground" />
+                                <Icon
+                                    icon={Clock01Icon}
+                                    className="text-muted-foreground"
+                                />
                             </div>
                             <div>
                                 <p className="text-sm font-medium">

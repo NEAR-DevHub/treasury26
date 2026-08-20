@@ -1,9 +1,9 @@
 "use client";
 
+import { Icon } from "@/components/icon";
+import { Tick01Icon } from "@hugeicons/core-free-icons";
 import { Toaster as SonnerToaster, toast } from "sonner";
 import { useTheme } from "next-themes";
-import { Check } from "lucide-react";
-
 const ErrorIcon = () => (
     <svg
         width="16"
@@ -54,7 +54,10 @@ export function Toaster() {
             }}
             icons={{
                 success: (
-                    <Check className="size-3.5 p-0.5 bg-general-success-foreground rounded-full stroke-3 text-white shrink-0" />
+                    <Icon
+                        icon={Tick01Icon}
+                        className="p-0.5 bg-general-success-foreground rounded-full stroke-3 text-white shrink-0"
+                    />
                 ),
                 error: <ErrorIcon />,
             }}
