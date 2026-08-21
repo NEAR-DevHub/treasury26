@@ -23,7 +23,8 @@ import {
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
+import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import {
     RecipientNetworkSelect,
     type RecipientNetworkRuleOption,
@@ -75,7 +76,7 @@ export default function BulkPaymentPage() {
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
     const { data: bridgeAssets = [], isLoading: isBridgeAssetsLoading } =
-        useBridgeTokens(true);
+        useTokenCatalog({ kind: "swap" });
 
     const [step, setStep] = useState(0);
     // Empty until the user adds a recipient address and picks a network —
@@ -700,10 +701,16 @@ export default function BulkPaymentPage() {
                                             isBridgeAssetsLoading
                                         }
                                         onNetworkChange={(opt) => {
+                                            // near.com → INTENTS (no destination
+                                            // asset). Other networks → 1Click
+                                            // quote id for that receiver chain.
                                             setDestinationAssetId(
                                                 opt.id === NEAR_COM_NETWORK_ID
                                                     ? null
-                                                    : opt.id,
+                                                    : (findQuoteAssetIdForDestination(
+                                                          bridgeAssets,
+                                                          opt.id,
+                                                      ) ?? opt.id),
                                             );
                                             setDestinationNetworkName(
                                                 opt.networkName,

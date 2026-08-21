@@ -15,7 +15,7 @@ import {
     getProposalRequiredFunds,
     getProposalUIKind,
 } from "@/features/proposals/utils/proposal-utils";
-import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { type BridgeAsset, useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import {
     type BridgeScope,
     resolveBridgeScope,
@@ -560,7 +560,7 @@ export function useBridgeScopedWarning(
 /** Fetch bridge assets only when a token/network-scoped warning is live on `slot`. */
 export function useBridgeAssetsForWarnings(slot: string) {
     const enabled = useHasTokenOrNetworkWarning(slot);
-    return useBridgeTokens(enabled);
+    return useTokenCatalog({ enabled });
 }
 
 /**
@@ -619,9 +619,9 @@ export function useProposalApproveBlock(
         useHasTokenOrNetworkWarning("exchange");
     const hasTokenOrNetworkFeatureWarning =
         hasPaymentsTokenOrNetworkWarning || hasExchangeTokenOrNetworkWarning;
-    const { data: bridgeAssets = [] } = useBridgeTokens(
-        hasTokenOrNetworkFeatureWarning,
-    );
+    const { data: bridgeAssets = [] } = useTokenCatalog({
+        enabled: hasTokenOrNetworkFeatureWarning,
+    });
 
     return useMemo(() => {
         let blockedCount = 0;

@@ -135,11 +135,6 @@ export function useExchangeQuote({
                 const originAsset = formatAssetForIntentsAPI(
                     sellToken.balanceAssetId || sellToken.address,
                 );
-                const destinationAsset = formatAssetForIntentsAPI(
-                    receiveToken.quoteAssetId ||
-                        receiveToken.balanceAssetId ||
-                        receiveToken.address,
-                );
                 const depositAndRefundType = getDepositAndRefundType(
                     sellToken.residency || "",
                     isConfidential,
@@ -147,6 +142,17 @@ export function useExchangeQuote({
                 const recipientType = getRecipientType(
                     receiveToken.residency || "",
                     isConfidential,
+                );
+                // INTENTS / CONFIDENTIAL_INTENTS: credit the holdable balance id.
+                // Never send a chain-specific 1cs_v1 destination — 1Click collapses
+                // it to the underlying nep141 and history matching breaks.
+                // DESTINATION_CHAIN (wrap/unwrap edge cases): may use quoteAssetId.
+                const destinationAsset = formatAssetForIntentsAPI(
+                    recipientType === "DESTINATION_CHAIN"
+                        ? receiveToken.quoteAssetId ||
+                              receiveToken.balanceAssetId ||
+                              receiveToken.address
+                        : receiveToken.balanceAssetId || receiveToken.address,
                 );
 
                 return await getIntentsQuote(
