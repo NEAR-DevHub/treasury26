@@ -32,7 +32,7 @@ import { validateAccountsAndStorage } from "../utils";
 import { useBulkParsingLabels } from "../utils/use-parsing-labels";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useAddressBook } from "@/features/address-book";
 import { AmountSummary } from "@/components/amount-summary";
 import { CreateRequestButton } from "@/components/create-request-button";
@@ -122,7 +122,7 @@ export function ReviewPaymentsStep({
 
     const { treasuryId } = useTreasury();
     const { data: addressBook = [] } = useAddressBook();
-    const { data: bridgeAssets = [] } = useBridgeTokens(true);
+    const { data: bridgeAssets = [] } = useTokenCatalog({ kind: "swap" });
     const { data: selectedTokenData } = useToken(selectedToken?.address || "");
     const { data: balance } = useTokenBalance(
         treasuryId,

@@ -238,7 +238,7 @@ impl PaymentDetails {
             resolve_origin_asset(token),
         ) {
             let api = ApiClient::new(&context.trezu_config);
-            match api.get_bridge_tokens() {
+            match api.get_swap_tokens() {
                 Ok(bridge) => {
                     if let Some(asset) = find_bridge_asset(&bridge.assets, &origin_asset) {
                         tracing::info!(
@@ -405,7 +405,7 @@ impl PaymentSendContext {
                 // Cross-chain: the destination network id doubles as the
                 // destination asset; amounts are scaled with the
                 // destination-side decimals (they can differ, e.g. 18 vs 24).
-                let bridge = api.get_bridge_tokens()?;
+                let bridge = api.get_swap_tokens()?;
                 let network = find_bridge_asset(&bridge.assets, &origin_asset)
                     .and_then(|asset| asset.networks.iter().find(|n| n.id == destination_network))
                     .ok_or_else(|| {

@@ -43,7 +43,7 @@ import {
     useManualPageTour,
     usePageTour,
 } from "@/features/onboarding/steps/page-tours";
-import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { type BridgeAsset, useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import {
     buildIntentsQuoteRequest,
     type IntentsAmountMode,
@@ -711,7 +711,7 @@ export default function PaymentsPage() {
         data: bridgeAssets = [],
         isLoading: isBridgeAssetsLoading,
         isFetching: isBridgeAssetsFetching,
-    } = useBridgeTokens(true);
+    } = useTokenCatalog({ kind: "swap" });
     // Generic default (highest-USD → USDC) lives in TokenSelect.autoSelect.
     // Page only seeds from URL overrides so the two don't fight.
     const namePreferredNetworks = useMemo(

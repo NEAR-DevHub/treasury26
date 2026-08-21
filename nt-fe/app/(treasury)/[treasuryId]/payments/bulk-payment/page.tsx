@@ -13,7 +13,7 @@ import { default_near_token } from "@/constants/token";
 import { BulkActivationCard } from "@/features/confidential/components/bulk-activation-card";
 import { useBulkActivation } from "@/features/confidential/hooks/use-bulk-activation";
 import { buildConfidentialBulkProposal } from "@/features/confidential/utils/bulk-proposal-builder";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
@@ -73,7 +73,7 @@ export default function BulkPaymentPage() {
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
     const { data: bridgeAssets = [], isLoading: isBridgeAssetsLoading } =
-        useBridgeTokens(true);
+        useTokenCatalog({ kind: "swap" });
 
     const [step, setStep] = useState(0);
     // Empty until the user adds a recipient address and picks a network —

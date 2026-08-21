@@ -9,7 +9,7 @@
  * 5. Acknowledge + Generate Address → one-time intents address
  * 6. Switch to confidential user path and show treasury address
  *
- * Bridge RPC (bridge-tokens, deposit-address) is mocked at the Playwright
+ * Bridge/catalog RPC (deposit-tokens, swap-tokens, deposit-address) is mocked at the Playwright
  * route level since the sandbox doesn't include a bridge RPC mock.
  * All other backend calls go to the real sandbox.
  */
@@ -147,7 +147,11 @@ test("Confidential deposit — dashboard deposit page flow", async ({
             });
         }
 
-        if (url.includes("/api/intents/bridge-tokens")) {
+        if (
+            url.includes("/api/intents/deposit-tokens") ||
+            url.includes("/api/intents/swap-tokens") ||
+            url.includes("/api/intents/bridge-tokens")
+        ) {
             return route.fulfill({
                 status: 200,
                 contentType: "application/json",

@@ -2,22 +2,28 @@ import axios from "axios";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
-/**
- * Fetch bridge tokens (assets available for cross-chain transfers)
- * Returns a list of assets with their available networks for bridging
- * Used for both deposit and exchange functionality
- */
-export async function fetchBridgeTokens() {
-    try {
-        const response = await axios.get(
-            `${BACKEND_API_BASE}/intents/bridge-tokens`,
-        );
+export type TokenCatalogKind = "deposit" | "swap";
 
+/**
+ * Fetch deposit or swap token catalogs.
+ * - deposit: near.com catalog + Bridge (no 1Click ∩)
+ * - swap: catalog ∩ 1Click `/v0/tokens`
+ */
+export async function fetchTokenCatalog(kind: TokenCatalogKind = "deposit") {
+    const path =
+        kind === "swap" ? "/intents/swap-tokens" : "/intents/deposit-tokens";
+    try {
+        const response = await axios.get(`${BACKEND_API_BASE}${path}`);
         return response.data.assets || [];
     } catch (error) {
-        console.error("Error fetching bridge tokens:", error);
+        console.error(`Error fetching ${kind} tokens:`, error);
         throw error;
     }
+}
+
+/** @deprecated Prefer {@link fetchTokenCatalog}("deposit"). */
+export async function fetchBridgeTokens() {
+    return fetchTokenCatalog("deposit");
 }
 
 /**

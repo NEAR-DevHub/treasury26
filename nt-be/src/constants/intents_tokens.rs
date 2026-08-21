@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
-/// Represents the root of the tokens.json file
+/// Represents the root of the vendored token catalog JSON.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TokensJson {
     #[serde(rename = "$schema")]
@@ -67,7 +67,7 @@ pub enum TokenDeployment {
     },
 }
 
-/// Static map of unified tokens loaded from data/tokens.json for fast lookup
+/// Static map of unified tokens loaded from `nearcom-tokens.json` for fast lookup
 static TOKENS_MAP_CELL: OnceLock<HashMap<String, UnifiedTokenInfo>> = OnceLock::new();
 
 /// Static map of base tokens by defuseAssetId for fast lookup
@@ -231,18 +231,10 @@ pub fn find_unified_asset_id(defuse_asset_id: &str) -> Option<&'static str> {
 }
 
 /// Load tokens from the vendored near.com catalog (`nearcom-tokens.json`).
-/// Falls back to legacy `tokens.json` if the near.com file is empty/unreadable.
 /// Unified tokens are processed first so they take priority over standalone base tokens
 /// that share the same defuse_asset_id.
 fn load_tokens_from_json() -> Result<Vec<UnifiedTokenInfo>, Box<dyn std::error::Error>> {
-    let json_str = {
-        let nearcom = include_str!("../../data/nearcom-tokens.json");
-        if nearcom.trim().is_empty() {
-            include_str!("../../data/tokens.json")
-        } else {
-            nearcom
-        }
-    };
+    let json_str = include_str!("../../data/nearcom-tokens.json");
     let tokens_json: TokensJson = serde_json::from_str(json_str)?;
 
     let mut unified_tokens = Vec::new();

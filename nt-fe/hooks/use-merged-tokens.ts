@@ -6,7 +6,7 @@ import {
     type AggregatedAsset,
 } from "@/hooks/use-assets";
 import {
-    useBridgeTokens,
+    useTokenCatalog,
     type BridgeAsset,
     type BridgeNetwork,
 } from "@/hooks/use-bridge-tokens";
@@ -318,9 +318,10 @@ export function useMergedTokens({
 
     const aggregatedTokens = useAggregatedTokens(rawTokens);
 
-    const { data: bridgeAssets = [], isLoading } = useBridgeTokens(
-        enabled && !showOnlyOwned,
-    );
+    const { data: bridgeAssets = [], isLoading } = useTokenCatalog({
+        enabled: enabled && !showOnlyOwned,
+        kind: "swap",
+    });
 
     const tokens = useMemo((): MergedToken[] => {
         const bridgeAssetsMap = new Map(
