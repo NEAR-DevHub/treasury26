@@ -404,11 +404,13 @@ pub async fn update_profile(
     .await
     .map_err(|e| internal_error("Failed to upsert user profile", e))?;
 
-    // Return the merged profile the same way GET does (Social + local overrides).
+    // Return the merged profile the same way GET does (Social + local overrides +
+    // treasury branding fallback).
     let mut profile = fetch_profile(&state, account_id)
         .await
         .unwrap_or_else(|_| empty_profile());
     apply_local_profile_overrides(&mut profile, Some(display_name), Some(avatar_url));
+    apply_treasury_branding(&state, &mut profile, account_id).await;
 
     Ok(Json(profile))
 }
@@ -544,50 +546,6 @@ mod tests {
             Some(serde_json::json!({
                 "url": "https://ipfs.near.social/ipfs/bafytestcid"
             }))
-        );
-    }
-
-    #[test]
-    fn on_chain_logo_does_not_overwrite_local_flag_logo() {
-        let mut profile = ProfileData {
-            name: None,
-            address_book_name: None,
-            image: None,
-            background_image: None,
-            description: None,
-            linktree: None,
-            tags: None,
-            is_in_address_book: false,
-        };
-
-        // Local settings: logo only (empty display_name) — the mixed case that
-        // used to fall through to on-chain branding and clobber the image.
-        apply_treasury_settings_to_profile(&mut profile, None, Some("bafylocal".into()));
-        assert_eq!(
-            profile.image,
-            Some(serde_json::json!({
-                "url": "https://ipfs.near.social/ipfs/bafylocal"
-            }))
-        );
-
-        // Mirror apply_treasury_branding's on-chain fallback gate.
-        if profile.image.is_none() {
-            apply_treasury_settings_to_profile(
-                &mut profile,
-                Some("On-Chain Name".into()),
-                Some("bafyonchain".into()),
-            );
-        } else if profile.name.as_ref().is_none_or(|n| n.trim().is_empty()) {
-            apply_treasury_settings_to_profile(&mut profile, Some("On-Chain Name".into()), None);
-        }
-
-        assert_eq!(profile.name.as_deref(), Some("On-Chain Name"));
-        assert_eq!(
-            profile.image,
-            Some(serde_json::json!({
-                "url": "https://ipfs.near.social/ipfs/bafylocal"
-            })),
-            "Local flag_logo must survive on-chain name fallback"
         );
     }
 }
@@ -733,6 +691,87 @@ mod integration_tests {
             body["name"].as_str(),
             Some(ON_CHAIN_NAME),
             "Without treasury_settings, profile must fall back to on-chain config.name"
+        );
+    }
+
+    /// Local `flag_logo` with empty `display_name` must survive on-chain name
+    /// fallback — on-chain logo must not clobber the settings image.
+    #[sqlx::test]
+    async fn get_profile_keeps_local_flag_logo_when_falling_back_to_on_chain_name(pool: PgPool) {
+        use crate::handlers::treasury::config::{
+            TreasuryConfigFromContract, TreasuryMetadata, treasury_config_cache_key,
+        };
+        use near_account_id::AccountId;
+
+        const LOCAL_LOGO: &str = "bafylocal";
+        const ON_CHAIN_NAME: &str = "On-Chain Name";
+        const ON_CHAIN_LOGO: &str = "bafyonchain";
+
+        let state = test_state(pool.clone());
+        sqlx::query(
+            "INSERT INTO monitored_accounts (account_id) VALUES ($1) ON CONFLICT (account_id) DO NOTHING",
+        )
+        .bind(TREASURY_ID)
+        .execute(&pool)
+        .await
+        .expect("Should insert monitored account");
+
+        sqlx::query(
+            r#"
+            INSERT INTO treasury_settings (account_id, display_name, flag_logo)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (account_id) DO UPDATE
+            SET display_name = EXCLUDED.display_name,
+                flag_logo = EXCLUDED.flag_logo
+            "#,
+        )
+        .bind(TREASURY_ID)
+        .bind("   ") // whitespace-only — treated as empty by branding merge
+        .bind(LOCAL_LOGO)
+        .execute(&pool)
+        .await
+        .expect("Should insert treasury_settings with logo only");
+
+        let treasury_id: AccountId = TREASURY_ID.parse().expect("Valid treasury id");
+        let cache_key = treasury_config_cache_key(&treasury_id, 0);
+        let cached = serde_json::to_value(TreasuryConfigFromContract {
+            metadata: Some(TreasuryMetadata {
+                primary_color: None,
+                flag_logo: Some(ON_CHAIN_LOGO.to_string()),
+            }),
+            name: Some(ON_CHAIN_NAME.to_string()),
+            purpose: None,
+        })
+        .expect("Should serialize on-chain config for cache");
+        state.cache.short_term.insert(cache_key, cached).await;
+
+        let app = create_routes(state);
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/api/user/profile?accountId={TREASURY_ID}"))
+                    .body(Body::empty())
+                    .expect("Should build profile request"),
+            )
+            .await
+            .expect("Profile request should complete");
+
+        let (status, body) = response_json(response).await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "Profile should succeed. Body: {body}"
+        );
+        assert_eq!(
+            body["name"].as_str(),
+            Some(ON_CHAIN_NAME),
+            "Empty local display_name should fall back to on-chain name"
+        );
+        assert_eq!(
+            body["image"]["url"].as_str(),
+            Some("https://ipfs.near.social/ipfs/bafylocal"),
+            "Local flag_logo must not be overwritten by on-chain logo. Body: {body}"
         );
     }
 }

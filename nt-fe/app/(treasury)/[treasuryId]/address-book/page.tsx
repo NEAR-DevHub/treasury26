@@ -202,6 +202,9 @@ function RecipientFlow({
                             mode === "import" ? importNotes : undefined
                         }
                         onSubmit={async (notes, includedIndexes) => {
+                            // Empty indexes is unreachable while ReviewRecipients
+                            // disables submit when canSubmit is false (all duplicates
+                            // + skip). Keep the guard; toast lives on mutateAsync [].
                             if (!treasuryId || includedIndexes.length === 0) {
                                 onDone();
                                 return;
