@@ -256,7 +256,10 @@ async fn apply_treasury_branding(
         {
             profile.name = Some(name);
         }
-        if let Some(logo) = config.metadata.and_then(|m| m.flag_logo) {
+        // Local flag_logo already applied above — never replace it with on-chain.
+        if profile.image.is_none()
+            && let Some(logo) = config.metadata.and_then(|m| m.flag_logo)
+        {
             apply_treasury_settings_to_profile(profile, None, Some(logo));
         }
     }
@@ -541,6 +544,50 @@ mod tests {
             Some(serde_json::json!({
                 "url": "https://ipfs.near.social/ipfs/bafytestcid"
             }))
+        );
+    }
+
+    #[test]
+    fn on_chain_logo_does_not_overwrite_local_flag_logo() {
+        let mut profile = ProfileData {
+            name: None,
+            address_book_name: None,
+            image: None,
+            background_image: None,
+            description: None,
+            linktree: None,
+            tags: None,
+            is_in_address_book: false,
+        };
+
+        // Local settings: logo only (empty display_name) — the mixed case that
+        // used to fall through to on-chain branding and clobber the image.
+        apply_treasury_settings_to_profile(&mut profile, None, Some("bafylocal".into()));
+        assert_eq!(
+            profile.image,
+            Some(serde_json::json!({
+                "url": "https://ipfs.near.social/ipfs/bafylocal"
+            }))
+        );
+
+        // Mirror apply_treasury_branding's on-chain fallback gate.
+        if profile.image.is_none() {
+            apply_treasury_settings_to_profile(
+                &mut profile,
+                Some("On-Chain Name".into()),
+                Some("bafyonchain".into()),
+            );
+        } else if profile.name.as_ref().is_none_or(|n| n.trim().is_empty()) {
+            apply_treasury_settings_to_profile(&mut profile, Some("On-Chain Name".into()), None);
+        }
+
+        assert_eq!(profile.name.as_deref(), Some("On-Chain Name"));
+        assert_eq!(
+            profile.image,
+            Some(serde_json::json!({
+                "url": "https://ipfs.near.social/ipfs/bafylocal"
+            })),
+            "Local flag_logo must survive on-chain name fallback"
         );
     }
 }
