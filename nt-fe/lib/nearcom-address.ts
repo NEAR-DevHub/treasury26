@@ -1,6 +1,6 @@
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 
-/** Prefix for confidential near.com deposit / payment recipients. */
+/** Prefix for near.com payment / deposit recipients (public + confidential). */
 export const NEAR_COM_ADDRESS_PREFIX = "nearcom:";
 
 export function hasNearComAddressPrefix(
