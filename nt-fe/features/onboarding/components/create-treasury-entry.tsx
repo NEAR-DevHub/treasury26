@@ -86,6 +86,8 @@ function TreasuryTypeOption({
     return (
         <button
             type="button"
+            aria-label={title}
+            aria-pressed={selected}
             className={cn(
                 "h-full rounded-xl border border-general-border p-3 md:p-4 text-left transition hover:bg-muted/70",
                 selected ? "bg-general-tertiary " : "",
