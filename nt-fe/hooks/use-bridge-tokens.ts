@@ -52,8 +52,8 @@ interface CatalogNetworkDto {
 /** Raw asset row from deposit/swap token catalog APIs. */
 export interface CatalogAssetDto {
     id: string;
-    assetName?: string;
-    name?: string;
+    assetName?: string | null;
+    name?: string | null;
     icon?: string | null;
     networks: CatalogNetworkDto[];
 }
