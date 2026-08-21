@@ -688,8 +688,8 @@
         "pending": {
             "title": "Pending Requests",
             "viewAll": "View All",
-            "emptyTitle": "No recent requests yet.",
-            "emptyDescription": "Your pending requests will show up here"
+            "emptyTitle": "All caught up!",
+            "emptyDescription": "There are no pending requests."
         }
     },
     "proposals": {

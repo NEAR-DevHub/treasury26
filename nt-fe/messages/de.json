@@ -688,8 +688,8 @@
         "pending": {
             "title": "Ausstehende Anfragen",
             "viewAll": "Alle anzeigen",
-            "emptyTitle": "Noch keine kürzlichen Anfragen.",
-            "emptyDescription": "Ihre ausstehenden Anfragen erscheinen hier"
+            "emptyTitle": "Alles erledigt!",
+            "emptyDescription": "Es gibt keine ausstehenden Anfragen."
         }
     },
     "proposals": {

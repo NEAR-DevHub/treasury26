@@ -688,8 +688,8 @@
         "pending": {
             "title": "Solicitações pendentes",
             "viewAll": "Ver tudo",
-            "emptyTitle": "Nenhuma solicitação recente ainda.",
-            "emptyDescription": "Suas solicitações pendentes aparecerão aqui"
+            "emptyTitle": "Tudo em dia!",
+            "emptyDescription": "Não há solicitações pendentes."
         }
     },
     "proposals": {

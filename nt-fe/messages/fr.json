@@ -688,8 +688,8 @@
         "pending": {
             "title": "Demandes en attente",
             "viewAll": "Tout voir",
-            "emptyTitle": "Aucune demande récente pour l'instant.",
-            "emptyDescription": "Vos demandes en attente apparaîtront ici"
+            "emptyTitle": "Tout est à jour !",
+            "emptyDescription": "Il n'y a aucune demande en attente."
         }
     },
     "proposals": {
