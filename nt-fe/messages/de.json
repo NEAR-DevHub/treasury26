@@ -1140,7 +1140,7 @@
         "review": {
             "header": "Details prüfen",
             "youAreAdding": "Sie fügen hinzu",
-            "newRecipients": "{count, plural, one {# neuen Empfänger} other {# neue Empfänger}}",
+            "newRecipients": "{count, plural, =0 {Keine neuen Empfänger} one {# neuen Empfänger} other {# neue Empfänger}}",
             "onNetworks": "auf {count, plural, one {# Netzwerk} other {# Netzwerken}}",
             "recipients": "Empfänger",
             "allDuplicates": "Alle importierten Empfänger existieren bereits in Ihrem Adressbuch. Gehen Sie zurück, um eine andere Liste hochzuladen, oder entfernen Sie Duplikate aus dieser Prüfung.",
@@ -1927,7 +1927,7 @@
         "forMembersOnly": "Nur für Mitglieder",
         "nearComDescription": "Netzwerk für vertrauliches Trezu",
         "nearComDescriptionPublic": "Netzwerk für near.com",
-        "nearDescription": "Netzwerk für öffentliche Auszahlungen und near.com-Wallet"
+        "nearDescription": "Netzwerk für öffentliche Auszahlungen"
     },
     "addressBookTable": {
         "emptyTitle": "Noch keine Empfänger",
@@ -2209,6 +2209,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Empfänger hinzugefügt} other {# Empfänger hinzugefügt}}",
+        "alreadyExistsToast": "Empfänger ist bereits im Adressbuch",
         "addedSingleToast": "Empfänger hinzugefügt",
         "addFailedToast": "Hinzufügen der Empfänger fehlgeschlagen",
         "addSingleFailedToast": "Hinzufügen des Empfängers fehlgeschlagen",

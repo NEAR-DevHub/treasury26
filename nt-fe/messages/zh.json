@@ -1140,7 +1140,7 @@
         "review": {
             "header": "审核详情",
             "youAreAdding": "您正在添加",
-            "newRecipients": "{count, plural, other {# 个新收款人}}",
+            "newRecipients": "{count, plural, =0 {没有新收款人} other {# 个新收款人}}",
             "onNetworks": "在 {count, plural, other {# 个网络}}上",
             "recipients": "收款人",
             "allDuplicates": "所有导入的收款人在您的地址簿中已存在。请返回上传其他列表,或在此审核中移除重复项。",
@@ -1910,7 +1910,7 @@
         "forMembersOnly": "仅限成员",
         "nearComDescription": "机密 trezu 网络",
         "nearComDescriptionPublic": "near.com 网络",
-        "nearDescription": "公开提现和 near.com 钱包网络"
+        "nearDescription": "公开提现网络"
     },
     "addressBookTable": {
         "emptyTitle": "暂无收款人",
@@ -2192,6 +2192,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {已添加 # 个收款人}}",
+        "alreadyExistsToast": "收款人已在地址簿中",
         "addedSingleToast": "已添加收款人",
         "addFailedToast": "添加收款人失败",
         "addSingleFailedToast": "添加收款人失败",
