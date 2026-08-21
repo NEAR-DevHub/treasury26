@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "Crear tesorería",
-            "description": "Configura una nueva tesorería multifirma para tu equipo"
+            "title": "Crear tesorería"
         },
         "manageTreasuries": {
             "title": "Gestionar tesorerías",
@@ -1417,10 +1416,8 @@
         "validation": {
             "nameMin": "El nombre de la tesorería debe tener al menos 2 caracteres",
             "nameMax": "El nombre de la tesorería debe tener menos de 64 caracteres",
-            "accountMin": "El nombre de cuenta debe tener al menos 2 caracteres",
-            "accountMax": "El nombre de cuenta debe tener menos de 64 caracteres",
-            "accountChars": "El nombre de cuenta solo puede contener letras latinas, números y guiones",
-            "accountTaken": "Este nombre de cuenta ya está en uso"
+            "nameTaken": "Este nombre de tesorería ya está en uso",
+            "nameInvalid": "El nombre de la tesorería debe contener letras latinas o números"
         },
         "votingNote": "Necesitas más miembros para modificar los ajustes de votación. Añade otro miembro para configurar la votación.",
         "minimumVoteNote": "Se requiere al menos un voto de aprobación.",
@@ -1428,9 +1425,6 @@
         "addMembers": "Añadir miembros",
         "addMembersInfo": "Puedes añadir o actualizar miembros ahora y editarlos después en cualquier momento.",
         "treasuryName": "Nombre de la tesorería",
-        "treasuryNamePlaceholder": "Mi tesorería",
-        "accountName": "Nombre de cuenta",
-        "accountNameInfo": "La direccion permanente de tu tesoreria. Se usa en la URL de tu tesoreria y se muestra en los pagos. Elige algo corto y reconocible - no se puede cambiar despues.",
         "accountPlaceholder": "mi-tesoreria",
         "continue": "Continuar",
         "votingThreshold": "Umbral de votación",
@@ -1439,8 +1433,6 @@
         "financialDescription": "Aprobación de solicitudes de pago e intercambio.",
         "governance": "Gobernanza",
         "governanceDescription": "Aprobación de ajustes, miembros y configuración de votación.",
-        "confidential": "Confidencial",
-        "public": "Pública",
         "anyone": "Cualquiera",
         "teamOnly": "Solo equipo",
         "soon": "Pronto",
@@ -1463,20 +1455,12 @@
         "governanceThreshold": "Umbral de gobernanza",
         "noDeploymentFee": "🎉 Sin comisión de despliegue",
         "noDeploymentFeeDescription": "Para apoyar nuevos proyectos, TREZU cubre todas las comisiones únicas de despliegue y almacenamiento de red.",
-        "createButton": "Crear tesorería",
         "connectWalletCreate": "Conecta la cartera para crear tesorería",
         "walletNotSupportedTitle": "{wallet} aún no es compatible",
         "walletNotSupportedDescription": "Lo añadiremos más adelante. Mientras tanto, inicia sesión con NEAR, Ledger o wallets EVM, la que ya tengas.",
         "connectNear": "Conectar NEAR",
         "connectLedger": "Conectar Ledger",
         "headerDescription": "Configura una tesorería multifirma para tu equipo o para ti",
-        "selectTreasuryTypeLabel": "Selecciona el tipo de tesorería",
-        "selectTreasuryTypeError": "Selecciona un tipo de tesorería",
-        "publicCardDescription": "Ideal para DAOs, bienes públicos y organizaciones abiertas.",
-        "confidentialCardDescription": "Ideal para empresas privadas y equipos que necesitan privacidad financiera.",
-        "accountPlaceholderUnderscore": "mi_tesoreria",
-        "setupOnUsTitle": "La configuración corre por nuestra cuenta",
-        "setupOnUsDescription": "Trezu cubre las comisiones de red para lanzar tu tesorería.",
         "continueToWallet": "Continuar al monedero",
         "alreadyHaveTreasuryLabel": "¿Ya tienes una tesorería?",
         "signInLabel": "Iniciar sesión",
@@ -1530,7 +1514,11 @@
             "configuringMembers": "Configurando miembros de la tesorería",
             "provisioningBulkPayment": "Configurando pagos masivos",
             "finalizingSetup": "Finalizando configuración"
-        }
+        },
+        "subtitle": "Crearla es gratis. Un clic y tu tesorería estará activa.",
+        "namePlaceholder": "Nombre de la tesorería",
+        "clearName": "Borrar el nombre de la tesorería",
+        "createCta": "Crear una tesorería"
     },
     "manageTreasuries": {
         "warningOne": "Debe quedar al menos una tesorería disponible",
@@ -1729,7 +1717,7 @@
         "productSupportDescription": "Contacta a nuestro equipo para recibir ayuda."
     },
     "progressModal": {
-        "titleCreating": "Creando tesorería...",
+        "titleCreating": "Creando tesorería",
         "titleDone": "Tesorería creada",
         "titleFailed": "Error al crear tesorería"
     },

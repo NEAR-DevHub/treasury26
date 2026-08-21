@@ -2,11 +2,12 @@
 
 import { Icon } from "@/components/icon";
 import {
-    GiftIcon,
-    GlobeIcon,
+    Cancel01Icon,
+    Coins01Icon,
     Loading02Icon,
-    Shield01Icon,
+    LogoutSquare01Icon,
     Tick01Icon,
+    User03Icon,
 } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,20 +19,20 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
 import { APP_ACTIVE_TREASURY, LANDING_PAGE } from "@/constants/config";
-import { Alert, AlertDescription } from "@/components/alert";
 import { Button } from "@/components/button";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
 import {
     CreationProgressModal,
     type CreationStep,
 } from "@/components/creation-progress-modal";
-import { InputBlock } from "@/components/input-block";
 import { LargeInput } from "@/components/large-input";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import Logo from "@/components/icons/logo";
+import { NearBusinessLogo } from "@/components/icons/near-business-logo";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
+import { useProfile } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useWarnings } from "@/hooks/use-warnings";
 import {
@@ -67,8 +68,6 @@ type InitialScreen = "create" | "login";
 type LoginScreenSource = "sign-in" | "connect-wallet";
 type FormValues = {
     treasuryName: string;
-    accountName: string;
-    isConfidential: boolean | null;
 };
 
 function sanitizeReturnTo(raw: string | null): string | null {
@@ -77,45 +76,58 @@ function sanitizeReturnTo(raw: string | null): string | null {
     return raw;
 }
 
-function TreasuryTypeOption({
-    icon,
-    title,
-    description,
-    selected,
-    onClick,
-}: {
-    icon: ReactNode;
-    title: string;
-    description: string;
-    selected: boolean;
-    onClick: () => void;
-}) {
+/**
+ * The treasury handle is no longer entered by hand — it's derived from the
+ * display name, so "Space X!" becomes `space-x.sputnik-dao.near`.
+ */
+function toAccountHandle(treasuryName: string): string {
+    return treasuryName
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 64);
+}
+
+/** The connected wallet, pinned to the bottom of the onboarding column. */
+function ConnectedAccountCard({ accountId }: { accountId: string }) {
+    const t = useTranslations("signIn");
+    const { data: profile } = useProfile(accountId);
+    const { disconnect } = useNear();
+    const displayName = profile?.name;
+
     return (
-        <button
-            type="button"
-            className={cn(
-                "h-full rounded-xl border border-general-border p-3 md:p-4 text-left transition hover:bg-muted/70",
-                selected ? "bg-general-tertiary " : "",
-            )}
-            onClick={onClick}
-        >
-            <div className="flex h-full items-start justify-between gap-3">
-                <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                        {icon}
-                        <p className="text-sm font-semibold">{title}</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                        {description}
-                    </p>
-                </div>
-                <div className="self-start size-5 min-h-5 min-w-5 shrink-0 rounded-full border-2 border-general-unofficial-border-3 flex items-center justify-center">
-                    {selected && (
-                        <div className="size-2.5 rounded-full bg-foreground" />
+        <div className="flex items-center gap-2 rounded-2xl border border-general-border bg-card px-4 py-3">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-green-700">
+                    <Icon
+                        icon={User03Icon}
+                        className="size-4.5 text-white"
+                        fill="currentColor"
+                    />
+                </span>
+                <div className="flex min-w-0 flex-col text-sm leading-normal">
+                    <span className="truncate font-semibold text-general-foreground">
+                        {displayName ?? accountId}
+                    </span>
+                    {displayName && (
+                        <span className="truncate text-general-muted-foreground">
+                            {accountId}
+                        </span>
                     )}
                 </div>
             </div>
-        </button>
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-md text-general-unofficial-ghost-foreground"
+                aria-label={t("disconnect")}
+                onClick={() => disconnect()}
+            >
+                <Icon icon={LogoutSquare01Icon} />
+            </Button>
+        </div>
     );
 }
 
@@ -198,7 +210,6 @@ export function TreasuryOnboardingPage({
         clearError,
     } = useNear();
     const { treasuries, isLoading, lastTreasuryId } = useTreasury();
-    const [accountNameEdited, setAccountNameEdited] = useState(false);
     const [isCheckingHandle, setIsCheckingHandle] = useState(false);
     const [progressOpen, setProgressOpen] = useState(false);
     const [progressSteps, setProgressSteps] = useState<CreationStep[]>([]);
@@ -282,21 +293,6 @@ export function TreasuryOnboardingPage({
         shouldKeepUserOnCreatePage,
     ]);
 
-    const NON_CONFIDENTIAL_STEPS: CreationStep[] = useMemo(
-        () => [
-            {
-                id: "creating_dao",
-                label: tSteps("creatingNear"),
-                status: "pending",
-            },
-            {
-                id: "finalizing",
-                label: tSteps("finalizingSetup"),
-                status: "pending",
-            },
-        ],
-        [tSteps],
-    );
     const CONFIDENTIAL_STEPS: CreationStep[] = useMemo(
         () => [
             {
@@ -338,13 +334,13 @@ export function TreasuryOnboardingPage({
                 treasuryName: z
                     .string()
                     .min(2, tValidation("nameMin"))
-                    .max(64, tValidation("nameMax")),
-                accountName: z
-                    .string()
-                    .min(2, tValidation("accountMin"))
-                    .max(64, tValidation("accountMax"))
-                    .regex(/^[a-z0-9-]+$/, tValidation("accountChars")),
-                isConfidential: z.boolean().nullable(),
+                    .max(64, tValidation("nameMax"))
+                    // The handle is derived, so a name made only of symbols
+                    // ("!!!") would leave nothing to build an account id from.
+                    .refine(
+                        (name) => toAccountHandle(name).length >= 2,
+                        tValidation("nameInvalid"),
+                    ),
             }),
         [tValidation],
     );
@@ -353,17 +349,11 @@ export function TreasuryOnboardingPage({
         resolver: zodResolver(formSchema),
         defaultValues: {
             treasuryName: "",
-            accountName: "",
-            isConfidential: null,
         },
     });
-    const isConfidential = form.watch("isConfidential");
     const treasuryName = form.watch("treasuryName");
     const isSubmitDisabled =
-        isAuthenticating ||
-        isCheckingHandle ||
-        isConfidential === null ||
-        !treasuryName.trim();
+        isAuthenticating || isCheckingHandle || !treasuryName.trim();
 
     useEffect(() => {
         if (!accountId) return;
@@ -375,18 +365,20 @@ export function TreasuryOnboardingPage({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accountId]);
 
-    const validateAccountName = async (accountName: string) => {
-        const fullAccountId = `${accountName}${ACCOUNT_SUFFIX}`;
+    // Both failure modes land on the name field — it's the only input left.
+    const isHandleAvailable = async (accountHandle: string) => {
         setIsCheckingHandle(true);
         try {
-            const result = await checkHandleUnused(fullAccountId);
+            const result = await checkHandleUnused(
+                `${accountHandle}${ACCOUNT_SUFFIX}`,
+            );
             if (result === null) {
                 toast.error(t("creationFailed"));
                 return false;
             }
             if (!result.unused) {
-                form.setError("accountName", {
-                    message: tValidation("accountTaken"),
+                form.setError("treasuryName", {
+                    message: tValidation("nameTaken"),
                 });
                 return false;
             }
@@ -402,13 +394,8 @@ export function TreasuryOnboardingPage({
             return;
         }
 
-        const isAvailable = await validateAccountName(values.accountName);
-        if (!isAvailable) return;
-
-        if (values.isConfidential === null) {
-            toast.error(t("selectTreasuryTypeError"));
-            return;
-        }
+        const accountHandle = toAccountHandle(values.treasuryName);
+        if (!(await isHandleAvailable(accountHandle))) return;
 
         if (!accountId) {
             pendingAutoCreateRef.current = true;
@@ -425,19 +412,17 @@ export function TreasuryOnboardingPage({
 
         const request: CreateTreasuryRequest = {
             name: values.treasuryName,
-            accountId: `${values.accountName}${ACCOUNT_SUFFIX}`,
+            accountId: `${accountHandle}${ACCOUNT_SUFFIX}`,
             paymentThreshold: 1,
             governanceThreshold: 1,
             governors: [accountId],
-            isConfidential: values.isConfidential,
+            // This entry point only creates confidential treasuries.
+            isConfidential: true,
             financiers: [accountId],
             requestors: [accountId],
         };
 
-        const initialSteps = request.isConfidential
-            ? CONFIDENTIAL_STEPS
-            : NON_CONFIDENTIAL_STEPS;
-        setProgressSteps(initialSteps.map((step) => ({ ...step })));
+        setProgressSteps(CONFIDENTIAL_STEPS.map((step) => ({ ...step })));
         setProgressError(null);
         setCreatedTreasuryId(null);
         setShowWaitlist(false);
@@ -593,189 +578,112 @@ export function TreasuryOnboardingPage({
     };
 
     const createFormBody = (
-        <>
-            <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-10">
-                <PageCard className="">
-                    <Form {...form}>
-                        <form
-                            onSubmit={form.handleSubmit(onSubmit)}
-                            className="space-y-4"
-                        >
-                            {!accountId && (
-                                <h1 className="text-base font-semibold mb-1 md:mb-3">
-                                    {tPages("title")}
-                                </h1>
-                            )}
-                            <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">
-                                    {t("selectTreasuryTypeLabel")}
-                                </p>
+        <div className="mx-auto flex w-full max-w-[448px] flex-1 flex-col gap-5 pt-3">
+            <div className="flex flex-col gap-[42px]">
+                <NearBusinessLogo className="h-7 w-auto self-start" />
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-2xl leading-[1.2] font-bold text-general-foreground">
+                        {tPages("title")}
+                    </h1>
+                    <p className="text-sm leading-normal font-medium text-general-muted-foreground">
+                        {t("subtitle")}
+                    </p>
+                </div>
+            </div>
 
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <TreasuryTypeOption
-                                        icon={
-                                            <Icon
-                                                icon={GlobeIcon}
-                                                className="text-foreground"
-                                            />
-                                        }
-                                        title={t("public")}
-                                        description={t("publicCardDescription")}
-                                        selected={isConfidential === false}
-                                        onClick={() =>
-                                            form.setValue(
-                                                "isConfidential",
-                                                false,
-                                            )
-                                        }
+            <Form {...form}>
+                <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="flex flex-col gap-4"
+                >
+                    <FormField
+                        control={form.control}
+                        name="treasuryName"
+                        render={({ field, fieldState }) => (
+                            <div className="flex flex-col gap-1">
+                                <label
+                                    className={cn(
+                                        "group flex h-16 items-center gap-3 rounded-3xl border bg-card py-2 pr-4 pl-3 transition-colors",
+                                        fieldState.error
+                                            ? "border-destructive"
+                                            : "border-general-border focus-within:border-general-unofficial-border-4",
+                                    )}
+                                >
+                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-700">
+                                        <Icon
+                                            icon={Coins01Icon}
+                                            className="size-4.5 text-white"
+                                        />
+                                    </span>
+                                    <input
+                                        {...field}
+                                        // The design has no visible label, so
+                                        // the placeholder doubles as one.
+                                        aria-label={t("namePlaceholder")}
+                                        autoComplete="off"
+                                        maxLength={64}
+                                        placeholder={t("namePlaceholder")}
+                                        className="min-w-0 flex-1 bg-transparent text-xl leading-[1.2] font-semibold tracking-[-0.02em] text-general-foreground outline-none placeholder:text-general-muted-foreground"
+                                        onChange={(e) => {
+                                            field.onChange(e);
+                                            form.clearErrors("treasuryName");
+                                        }}
                                     />
-                                    <TreasuryTypeOption
-                                        icon={
-                                            <Icon
-                                                icon={Shield01Icon}
-                                                className="text-foreground"
-                                                fill="currentColor"
-                                            />
-                                        }
-                                        title={t("confidential")}
-                                        description={t(
-                                            "confidentialCardDescription",
-                                        )}
-                                        selected={isConfidential === true}
-                                        onClick={() =>
-                                            form.setValue(
-                                                "isConfidential",
-                                                true,
-                                            )
-                                        }
-                                    />
-                                </div>
-                            </div>
-                            <FormField
-                                control={form.control}
-                                name="treasuryName"
-                                render={({ field, fieldState }) => (
-                                    <InputBlock
-                                        title={t("treasuryName")}
-                                        invalid={!!fieldState.error}
-                                        interactive
-                                    >
-                                        <LargeInput
-                                            borderless
-                                            className="text-lg!"
-                                            placeholder={t(
-                                                "treasuryNamePlaceholder",
-                                            )}
-                                            value={field.value}
-                                            onChange={(e) => {
-                                                field.onChange(e);
+                                    {field.value && (
+                                        <button
+                                            type="button"
+                                            aria-label={t("clearName")}
+                                            // Only offered while typing, and
+                                            // mousedown is swallowed so the
+                                            // blur doesn't hide us mid-click.
+                                            className="hidden size-5 shrink-0 items-center justify-center text-general-muted-foreground group-focus-within:flex"
+                                            onMouseDown={(e) =>
+                                                e.preventDefault()
+                                            }
+                                            onClick={() => {
+                                                field.onChange("");
                                                 form.clearErrors(
                                                     "treasuryName",
                                                 );
-
-                                                if (!accountNameEdited) {
-                                                    const generated =
-                                                        e.target.value
-                                                            .toLowerCase()
-                                                            .replace(
-                                                                /[^a-z0-9-]/g,
-                                                                "-",
-                                                            )
-                                                            .replace(/-+/g, "-")
-                                                            .replace(
-                                                                /^-|-$/g,
-                                                                "",
-                                                            )
-                                                            .slice(0, 64);
-                                                    form.setValue(
-                                                        "accountName",
-                                                        generated,
-                                                    );
-                                                    form.clearErrors(
-                                                        "accountName",
-                                                    );
-                                                }
                                             }}
-                                        />
-                                        <FormMessage />
-                                    </InputBlock>
-                                )}
+                                        >
+                                            <Icon
+                                                icon={Cancel01Icon}
+                                                className="size-5"
+                                            />
+                                        </button>
+                                    )}
+                                </label>
+                                <FormMessage />
+                            </div>
+                        )}
+                    />
+
+                    <Button
+                        type="submit"
+                        size="xl"
+                        className="w-full rounded-2xl disabled:bg-general-unofficial-border-3 disabled:text-general-muted-foreground disabled:opacity-100"
+                        disabled={isSubmitDisabled}
+                    >
+                        {(isAuthenticating || isCheckingHandle) && (
+                            <Icon
+                                icon={Loading02Icon}
+                                className="animate-spin"
                             />
+                        )}
+                        {accountId ? t("createCta") : t("continueToWallet")}
+                    </Button>
+                </form>
+            </Form>
 
-                            <FormField
-                                control={form.control}
-                                name="accountName"
-                                render={({ field, fieldState }) => (
-                                    <InputBlock
-                                        title={t("accountName")}
-                                        info={t("accountNameInfo")}
-                                        invalid={!!fieldState.error}
-                                        interactive
-                                    >
-                                        <LargeInput
-                                            borderless
-                                            textSizeClassName="text-lg!"
-                                            suffixClassName="text-muted-foreground/60 text-sm!"
-                                            placeholder={t(
-                                                "accountPlaceholderUnderscore",
-                                            )}
-                                            suffix={ACCOUNT_SUFFIX}
-                                            value={field.value}
-                                            onChange={(e) => {
-                                                setAccountNameEdited(true);
-                                                const input = e.target.value
-                                                    .toLowerCase()
-                                                    .replace(/[^a-z0-9-]/g, "")
-                                                    .slice(0, 64);
-                                                field.onChange(input);
-                                                form.clearErrors("accountName");
-                                            }}
-                                        />
-                                        <FormMessage />
-                                    </InputBlock>
-                                )}
-                            />
-
-                            <Alert variant="info" className="block">
-                                <AlertDescription>
-                                    <div className="flex items-center gap-2">
-                                        <Icon
-                                            icon={GiftIcon}
-                                            className="shrink-0"
-                                        />
-                                        <p className="text-sm font-semibold">
-                                            {t("setupOnUsTitle")}
-                                        </p>
-                                    </div>
-                                    <p className="text-xs md:pl-7">
-                                        {t("setupOnUsDescription")}
-                                    </p>
-                                </AlertDescription>
-                            </Alert>
-
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                disabled={isSubmitDisabled}
-                            >
-                                {(isAuthenticating || isCheckingHandle) && (
-                                    <Icon
-                                        icon={Loading02Icon}
-                                        className="animate-spin"
-                                    />
-                                )}
-                                {accountId
-                                    ? t("createButton")
-                                    : t("continueToWallet")}
-                            </Button>
-                        </form>
-                    </Form>
-                </PageCard>
-                {!accountId && (
+            <div className="flex flex-1 flex-col justify-end">
+                {accountId ? (
+                    <ConnectedAccountCard accountId={accountId} />
+                ) : (
                     <AlreadyHaveTreasurySignIn onSignIn={openSignIn} />
                 )}
             </div>
-        </>
+        </div>
     );
 
     const loginScreenBody = (
@@ -929,59 +837,18 @@ export function TreasuryOnboardingPage({
         </div>
     );
 
-    if (accountId) {
-        return (
-            <>
-                <CreationProgressModal
-                    open={progressOpen}
-                    steps={progressSteps}
-                    error={progressError}
-                    treasuryId={createdTreasuryId}
-                    onClose={() => setProgressOpen(false)}
-                />
-                <PageComponentLayout
-                    title={tPages("title")}
-                    description={t("headerDescription")}
-                    backButton={returnTo || false}
-                    hideCollapseButton
-                    hideAppWarningBanner
-                    transparentHeader
-                    hideHeaderBottomBorder
-                    hideHeaderContent={isRootSignInScreen}
-                    logo={headerLogo}
-                    mainClassName={cn(
-                        "pt-1",
-                        isRootSignInScreen &&
-                            "min-h-screen bg-general-tertiary pt-4 md:min-h-[calc(100vh-4rem)] md:pt-1",
-                    )}
-                >
-                    {showLoginScreen
-                        ? loginScreenBody
-                        : showWaitlist || isTreasuryCreationBlocked
-                          ? waitlistBody
-                          : createFormBody}
-                </PageComponentLayout>
-            </>
-        );
-    }
+    const screenBody = showLoginScreen
+        ? loginScreenBody
+        : showWaitlist || isTreasuryCreationBlocked
+          ? waitlistBody
+          : createFormBody;
+    // The create form and the root sign-in screen bring their own logo and
+    // heading, so the app header collapses to an empty bar above them.
+    const isCreateScreen = screenBody === createFormBody;
+    const isMinimalChrome = isRootSignInScreen || isCreateScreen;
 
     return (
-        <PageComponentLayout
-            title={tPages("title")}
-            backButton={returnTo || false}
-            hideCollapseButton
-            hideLogin
-            hideAppWarningBanner
-            transparentHeader
-            hideHeaderBottomBorder
-            hideHeaderContent={isRootSignInScreen}
-            logo={headerLogo}
-            mainClassName={cn(
-                "pt-1",
-                isRootSignInScreen &&
-                    "min-h-screen bg-general-tertiary pt-4 md:min-h-[calc(100vh-4rem)] md:pt-1",
-            )}
-        >
+        <>
             <CreationProgressModal
                 open={progressOpen}
                 steps={progressSteps}
@@ -989,11 +856,30 @@ export function TreasuryOnboardingPage({
                 treasuryId={createdTreasuryId}
                 onClose={() => setProgressOpen(false)}
             />
-            {showLoginScreen
-                ? loginScreenBody
-                : showWaitlist || isTreasuryCreationBlocked
-                  ? waitlistBody
-                  : createFormBody}
-        </PageComponentLayout>
+            <PageComponentLayout
+                title={tPages("title")}
+                description={accountId ? t("headerDescription") : undefined}
+                backButton={returnTo || false}
+                hideCollapseButton
+                hideLogin={!accountId}
+                hideAppWarningBanner
+                transparentHeader
+                hideHeaderBottomBorder
+                hideHeaderContent={isMinimalChrome}
+                logo={headerLogo}
+                mainClassName={cn(
+                    "pt-1",
+                    isMinimalChrome &&
+                        "flex min-h-dvh md:min-h-[calc(100vh-2rem)] flex-col bg-general-tertiary",
+                    // On a phone the screen fills the viewport, so the account
+                    // card sits 32px off the bottom edge; on desktop it keeps
+                    // 24px instead of the 32px the shell uses for scrolling
+                    // pages.
+                    isCreateScreen && "max-md:pb-8 md:pb-6",
+                )}
+            >
+                {screenBody}
+            </PageComponentLayout>
+        </>
     );
 }

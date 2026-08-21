@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "Criar tesouraria",
-            "description": "Configure uma nova tesouraria multisig para sua equipe"
+            "title": "Criar tesouraria"
         },
         "manageTreasuries": {
             "title": "Gerenciar tesourarias",
@@ -1417,10 +1416,8 @@
         "validation": {
             "nameMin": "O nome da tesouraria deve ter pelo menos 2 caracteres",
             "nameMax": "O nome da tesouraria deve ter menos de 64 caracteres",
-            "accountMin": "O nome da conta deve ter pelo menos 2 caracteres",
-            "accountMax": "O nome da conta deve ter menos de 64 caracteres",
-            "accountChars": "O nome da conta pode conter apenas letras latinas, números e hifens",
-            "accountTaken": "Este nome de conta já está em uso"
+            "nameTaken": "Este nome de tesouraria já está em uso",
+            "nameInvalid": "O nome da tesouraria deve conter letras latinas ou números"
         },
         "votingNote": "Você precisa de mais membros para modificar as configurações de votação. Adicione outro membro para configurar a votação.",
         "minimumVoteNote": "É necessário no mínimo um voto de aprovação.",
@@ -1428,9 +1425,6 @@
         "addMembers": "Adicionar membros",
         "addMembersInfo": "Você pode adicionar ou atualizar membros agora e editar isso depois a qualquer momento.",
         "treasuryName": "Nome da tesouraria",
-        "treasuryNamePlaceholder": "Minha tesouraria",
-        "accountName": "Nome da conta",
-        "accountNameInfo": "O endereco permanente da sua tesouraria. E usado na URL da sua tesouraria e exibido nos pagamentos. Escolha algo curto e reconhecivel - nao pode ser alterado depois.",
         "accountPlaceholder": "minha-tesouraria",
         "continue": "Continuar",
         "votingThreshold": "Limite de votação",
@@ -1439,8 +1433,6 @@
         "financialDescription": "Aprovação de solicitações de pagamento e troca.",
         "governance": "Governança",
         "governanceDescription": "Aprovação de configurações, membros e configuração de votação.",
-        "confidential": "Confidencial",
-        "public": "Público",
         "anyone": "Qualquer pessoa",
         "teamOnly": "Apenas a equipe",
         "soon": "Em breve",
@@ -1463,20 +1455,12 @@
         "governanceThreshold": "Limite de governança",
         "noDeploymentFee": "🎉 Sem taxa de implantação",
         "noDeploymentFeeDescription": "Para apoiar novos projetos, a TREZU cobre todas as taxas únicas de implantação e armazenamento de rede.",
-        "createButton": "Criar tesouraria",
         "connectWalletCreate": "Conecte a carteira para criar a tesouraria",
         "walletNotSupportedTitle": "{wallet} ainda não é suportada",
         "walletNotSupportedDescription": "Vamos adicionar isso depois. Enquanto isso, faça login com NEAR, Ledger ou carteiras EVM, a que você já tiver.",
         "connectNear": "Conectar NEAR",
         "connectLedger": "Conectar Ledger",
         "headerDescription": "Configure uma tesouraria multisig para sua equipe ou para você",
-        "selectTreasuryTypeLabel": "Selecione o tipo de tesouraria",
-        "selectTreasuryTypeError": "Selecione um tipo de tesouraria",
-        "publicCardDescription": "Ideal para DAOs, bens públicos e organizações abertas.",
-        "confidentialCardDescription": "Ideal para empresas privadas e equipes que precisam de privacidade financeira.",
-        "accountPlaceholderUnderscore": "minha_tesouraria",
-        "setupOnUsTitle": "A configuração é por nossa conta",
-        "setupOnUsDescription": "A Trezu cobre as taxas de rede para lançar sua tesouraria.",
         "continueToWallet": "Continuar para a carteira",
         "alreadyHaveTreasuryLabel": "Já tem uma tesouraria?",
         "signInLabel": "Entrar",
@@ -1530,7 +1514,11 @@
             "configuringMembers": "Configurando membros da tesouraria",
             "provisioningBulkPayment": "Configurando pagamentos em massa",
             "finalizingSetup": "Finalizando configuração"
-        }
+        },
+        "subtitle": "Criar é grátis. Um clique e a sua tesouraria fica ativa.",
+        "namePlaceholder": "Nome da tesouraria",
+        "clearName": "Limpar o nome da tesouraria",
+        "createCta": "Criar uma tesouraria"
     },
     "manageTreasuries": {
         "warningOne": "Pelo menos uma tesouraria deve permanecer disponível",
@@ -1729,7 +1717,7 @@
         "productSupportDescription": "Fale com nossa equipe para obter ajuda."
     },
     "progressModal": {
-        "titleCreating": "Criando tesouraria...",
+        "titleCreating": "Criando tesouraria",
         "titleDone": "Tesouraria criada",
         "titleFailed": "Falha na criação da tesouraria"
     },
