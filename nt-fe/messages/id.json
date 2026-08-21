@@ -695,8 +695,8 @@
         "pending": {
             "title": "Permintaan Tertunda",
             "viewAll": "Lihat Semua",
-            "emptyTitle": "Belum ada permintaan terbaru.",
-            "emptyDescription": "Permintaan tertunda Anda akan muncul di sini"
+            "emptyTitle": "Semua sudah selesai!",
+            "emptyDescription": "Tidak ada permintaan yang tertunda."
         }
     },
     "proposals": {

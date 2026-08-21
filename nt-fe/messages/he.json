@@ -695,8 +695,8 @@
         "pending": {
             "title": "בקשות ממתינות",
             "viewAll": "הצג הכל",
-            "emptyTitle": "אין בקשות אחרונות עדיין.",
-            "emptyDescription": "הבקשות הממתינות שלך יופיעו כאן"
+            "emptyTitle": "הכל מעודכן!",
+            "emptyDescription": "אין בקשות ממתינות."
         }
     },
     "proposals": {

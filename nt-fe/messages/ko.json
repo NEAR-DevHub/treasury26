@@ -695,8 +695,8 @@
         "pending": {
             "title": "대기 중인 요청",
             "viewAll": "전체 보기",
-            "emptyTitle": "아직 최근 요청이 없습니다.",
-            "emptyDescription": "대기 중인 요청이 여기에 표시됩니다"
+            "emptyTitle": "모두 처리되었습니다!",
+            "emptyDescription": "대기 중인 요청이 없습니다."
         }
     },
     "proposals": {

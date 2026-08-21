@@ -695,8 +695,8 @@
         "pending": {
             "title": "Yêu cầu đang chờ",
             "viewAll": "Xem tất cả",
-            "emptyTitle": "Chưa có yêu cầu gần đây.",
-            "emptyDescription": "Yêu cầu đang chờ của bạn sẽ xuất hiện ở đây"
+            "emptyTitle": "Đã xử lý hết!",
+            "emptyDescription": "Không có yêu cầu đang chờ nào."
         }
     },
     "proposals": {

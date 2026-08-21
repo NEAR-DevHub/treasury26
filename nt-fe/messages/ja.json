@@ -695,8 +695,8 @@
         "pending": {
             "title": "保留中のリクエスト",
             "viewAll": "すべて表示",
-            "emptyTitle": "最近のリクエストはまだありません。",
-            "emptyDescription": "保留中のリクエストはここに表示されます"
+            "emptyTitle": "すべて対応済みです!",
+            "emptyDescription": "保留中のリクエストはありません。"
         }
     },
     "proposals": {
