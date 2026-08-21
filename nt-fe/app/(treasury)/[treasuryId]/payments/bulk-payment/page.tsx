@@ -28,6 +28,7 @@ import {
 import type { SectionRule } from "@/lib/section-rules";
 import { encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
+import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import { BulkPaymentToast } from "../components/bulk-payment-toast";
 import {
     type RecipientNetworkRuleOption,
@@ -703,10 +704,16 @@ export default function BulkPaymentPage() {
                                             isBridgeAssetsLoading
                                         }
                                         onNetworkChange={(opt) => {
+                                            // near.com → INTENTS (no destination
+                                            // asset). Other networks → 1Click
+                                            // quote id for that receiver chain.
                                             setDestinationAssetId(
                                                 opt.id === NEAR_COM_NETWORK_ID
                                                     ? null
-                                                    : opt.id,
+                                                    : (findQuoteAssetIdForDestination(
+                                                          bridgeAssets,
+                                                          opt.id,
+                                                      ) ?? opt.id),
                                             );
                                             setDestinationNetworkName(
                                                 opt.networkName,

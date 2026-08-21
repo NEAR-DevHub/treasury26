@@ -246,14 +246,15 @@ pub async fn get_deposit_tokens(
     Ok(Json(load_deposit_catalog(state).await?))
 }
 
-/// Swap / quote catalog: deposit catalog filtered to 1Click `/v0/tokens`.
+/// Swap / quote catalog: deposit catalog filtered to 1Click `/v0/tokens`,
+/// excluding chain-only `1cs_v1:` networks (INTENTS holds nep141/nep245 only).
 pub async fn get_swap_tokens(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<DepositAssetsResponse>, (StatusCode, String)> {
     let deposit = load_deposit_catalog(state.clone()).await?;
     let oneclick_tokens = fetch_oneclick_tokens(&state).await.unwrap_or_default();
     let oneclick_ids: HashSet<String> = oneclick_tokens.into_iter().map(|t| t.asset_id).collect();
-    Ok(Json(filter_catalog_for_oneclick(deposit, &oneclick_ids)))
+    Ok(Json(filter_catalog_for_swap(deposit, &oneclick_ids)))
 }
 
 /// Backward-compatible alias of [`get_deposit_tokens`].
@@ -293,6 +294,25 @@ fn filter_catalog_for_oneclick(
         }
     }
     DepositAssetsResponse { assets }
+}
+
+/// Swap catalog = 1Click ∩ plus only INTENTS-holdable balance ids.
+///
+/// `1cs_v1:` rows are deposit/withdraw routing (e.g. CFI on Base, ZEC on
+/// Solana). Exchange sell/receive must use `nep141`/`nep245` (nBTC stays:
+/// balance id is `nep141:nbtc…`, only `quote_asset_id` is native BTC `1cs`).
+fn filter_catalog_for_swap(
+    deposit: DepositAssetsResponse,
+    oneclick_ids: &HashSet<String>,
+) -> DepositAssetsResponse {
+    let mut filtered = filter_catalog_for_oneclick(deposit, oneclick_ids);
+    for asset in &mut filtered.assets {
+        asset
+            .networks
+            .retain(|network| !is_one_click_routing_asset(&network.balance_asset_id));
+    }
+    filtered.assets.retain(|asset| !asset.networks.is_empty());
+    filtered
 }
 
 async fn build_deposit_catalog(
@@ -698,5 +718,94 @@ mod tests {
             quote_asset_id(NBTC_BALANCE_ASSET_ID),
             crate::services::oneclick_asset_routing::ONE_CLICK_BTC_NATIVE_ASSET_ID
         );
+    }
+
+    #[test]
+    fn swap_catalog_drops_1cs_balance_networks_keeps_nbtc() {
+        let cfi_near = "nep141:cfi.consumer-fi.near";
+        let cfi_base = "1cs_v1:base:erc20:0x0382e3fee4a420bd446367d468a6f00225853420";
+        let btc_quote = crate::services::oneclick_asset_routing::ONE_CLICK_BTC_NATIVE_ASSET_ID;
+        let oneclick_ids: HashSet<String> = [cfi_near, cfi_base, NBTC_BALANCE_ASSET_ID, btc_quote]
+            .into_iter()
+            .map(str::to_string)
+            .collect();
+
+        let deposit = DepositAssetsResponse {
+            assets: vec![
+                AssetOption {
+                    id: "cfi".into(),
+                    asset_name: "CFI".into(),
+                    name: "ConsumerFi".into(),
+                    icon: None,
+                    networks: vec![
+                        NetworkOption {
+                            id: cfi_near.into(),
+                            name: "near".into(),
+                            symbol: "CFI".into(),
+                            chain_icons: None,
+                            chain_id: "near:mainnet".into(),
+                            decimals: 18,
+                            min_deposit_amount: None,
+                            min_withdrawal_amount: None,
+                            balance_asset_id: cfi_near.into(),
+                            quote_asset_id: cfi_near.into(),
+                            public_deposit_supported: true,
+                        },
+                        NetworkOption {
+                            id: cfi_base.into(),
+                            name: "base".into(),
+                            symbol: "CFI".into(),
+                            chain_icons: None,
+                            chain_id: "eth:8453".into(),
+                            decimals: 18,
+                            min_deposit_amount: None,
+                            min_withdrawal_amount: None,
+                            balance_asset_id: cfi_base.into(),
+                            quote_asset_id: cfi_base.into(),
+                            public_deposit_supported: true,
+                        },
+                    ],
+                },
+                AssetOption {
+                    id: "btc".into(),
+                    asset_name: "BTC".into(),
+                    name: "Bitcoin".into(),
+                    icon: None,
+                    networks: vec![NetworkOption {
+                        id: NBTC_BALANCE_ASSET_ID.into(),
+                        name: "bitcoin".into(),
+                        symbol: "BTC".into(),
+                        chain_icons: None,
+                        chain_id: "btc:mainnet".into(),
+                        decimals: 8,
+                        min_deposit_amount: None,
+                        min_withdrawal_amount: None,
+                        balance_asset_id: NBTC_BALANCE_ASSET_ID.into(),
+                        quote_asset_id: btc_quote.into(),
+                        public_deposit_supported: true,
+                    }],
+                },
+            ],
+        };
+
+        let swap = filter_catalog_for_swap(deposit, &oneclick_ids);
+        assert_eq!(swap.assets.len(), 2, "cfi + btc should remain");
+
+        let cfi = swap
+            .assets
+            .iter()
+            .find(|a| a.id == "cfi")
+            .expect("cfi asset");
+        assert_eq!(cfi.networks.len(), 1);
+        assert_eq!(cfi.networks[0].balance_asset_id, cfi_near);
+
+        let btc = swap
+            .assets
+            .iter()
+            .find(|a| a.id == "btc")
+            .expect("btc asset");
+        assert_eq!(btc.networks.len(), 1);
+        assert_eq!(btc.networks[0].balance_asset_id, NBTC_BALANCE_ASSET_ID);
+        assert_eq!(btc.networks[0].quote_asset_id, btc_quote);
     }
 }
