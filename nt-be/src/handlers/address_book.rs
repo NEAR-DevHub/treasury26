@@ -170,7 +170,7 @@ pub async fn create_address_book_entries(
                 serde_json::json!({
                     "name": e.name,
                     "networks": e.networks,
-                    "address": e.address,
+                    "address": e.address.trim(),
                     "note": e.note,
                 })
             })

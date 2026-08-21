@@ -77,6 +77,11 @@ export function useCreateAddressBookEntry(daoId: string | null | undefined) {
             entry: AddressBookEntryInput;
         }) => createAddressBookEntry(inputDaoId, entry),
         onSuccess: async (created) => {
+            if (!created) {
+                toast.info(t("alreadyExistsToast"));
+                return;
+            }
+
             toast.success(t("addedSingleToast"));
             await Promise.all([
                 queryClient.invalidateQueries({

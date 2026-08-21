@@ -10,7 +10,7 @@ use std::sync::Arc;
 use crate::{
     AppState,
     auth::{AuthUser, OptionalAuthUser},
-    handlers::treasury::config::fetch_treasury_config,
+    handlers::treasury::config::fetch_contract_treasury_config,
     utils::cache::{CacheKey, CacheTier},
 };
 
@@ -205,21 +205,30 @@ async fn apply_treasury_branding(
     profile: &mut ProfileData,
     account_id: &str,
 ) {
-    match sqlx::query!(
-        "SELECT display_name, flag_logo FROM treasury_settings WHERE account_id = $1",
+    // One round-trip: local settings (if any) + whether this is a monitored treasury.
+    let row = match sqlx::query!(
+        r#"
+        SELECT
+            ts.display_name,
+            ts.flag_logo,
+            (ma.account_id IS NOT NULL) AS "is_treasury!"
+        FROM (SELECT $1::text AS account_id) AS q
+        LEFT JOIN treasury_settings ts ON ts.account_id = q.account_id
+        LEFT JOIN monitored_accounts ma ON ma.account_id = q.account_id
+        "#,
         account_id
     )
-    .fetch_optional(&state.db_pool)
+    .fetch_one(&state.db_pool)
     .await
     {
-        Ok(Some(row)) => {
-            apply_treasury_settings_to_profile(profile, row.display_name, row.flag_logo);
-        }
-        Ok(None) => {}
+        Ok(row) => row,
         Err(e) => {
-            tracing::error!("Failed to load treasury_settings for {account_id}: {e}");
+            tracing::error!("Failed to load treasury branding for {account_id}: {e}");
+            return;
         }
-    }
+    };
+
+    apply_treasury_settings_to_profile(profile, row.display_name, row.flag_logo);
 
     if profile
         .name
@@ -229,14 +238,7 @@ async fn apply_treasury_branding(
         return;
     }
 
-    let is_treasury: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM monitored_accounts WHERE account_id = $1)")
-            .bind(account_id)
-            .fetch_one(&state.db_pool)
-            .await
-            .unwrap_or(false);
-
-    if !is_treasury {
+    if !row.is_treasury {
         return;
     }
 
@@ -244,13 +246,16 @@ async fn apply_treasury_branding(
         return;
     };
 
-    if let Ok(config) = fetch_treasury_config(state, &treasury_id, None).await
-        && let Some(name) = config
+    // Settings already checked — only need on-chain config (cached RPC), not another
+    // pass through fetch_treasury_config which would re-query the same tables.
+    if let Ok(config) = fetch_contract_treasury_config(state, &treasury_id, None).await {
+        if let Some(name) = config
             .name
             .map(|n| n.trim().to_string())
             .filter(|n| !n.is_empty())
-    {
-        profile.name = Some(name);
+        {
+            profile.name = Some(name);
+        }
         if let Some(logo) = config.metadata.and_then(|m| m.flag_logo) {
             apply_treasury_settings_to_profile(profile, None, Some(logo));
         }
@@ -626,6 +631,61 @@ mod integration_tests {
             body["name"].as_str(),
             Some(TREASURY_NAME),
             "GET /api/user/profile must return treasury_settings.display_name"
+        );
+    }
+
+    /// Monitored treasury with no `treasury_settings` row falls back to on-chain
+    /// `get_config` name (via the short-term cache in tests).
+    #[sqlx::test]
+    async fn get_profile_falls_back_to_on_chain_treasury_name(pool: PgPool) {
+        use crate::handlers::treasury::config::{
+            TreasuryConfigFromContract, treasury_config_cache_key,
+        };
+        use near_account_id::AccountId;
+
+        const ON_CHAIN_NAME: &str = "On-Chain Branded DAO";
+
+        let state = test_state(pool.clone());
+        sqlx::query(
+            "INSERT INTO monitored_accounts (account_id) VALUES ($1) ON CONFLICT (account_id) DO NOTHING",
+        )
+        .bind(TREASURY_ID)
+        .execute(&pool)
+        .await
+        .expect("Should insert monitored account without treasury_settings");
+
+        let treasury_id: AccountId = TREASURY_ID.parse().expect("Valid treasury id");
+        let cache_key = treasury_config_cache_key(&treasury_id, 0);
+        let cached = serde_json::to_value(TreasuryConfigFromContract {
+            metadata: None,
+            name: Some(ON_CHAIN_NAME.to_string()),
+            purpose: None,
+        })
+        .expect("Should serialize on-chain config for cache");
+        state.cache.short_term.insert(cache_key, cached).await;
+
+        let app = create_routes(state);
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("GET")
+                    .uri(format!("/api/user/profile?accountId={TREASURY_ID}"))
+                    .body(Body::empty())
+                    .expect("Should build profile request"),
+            )
+            .await
+            .expect("Profile request should complete");
+
+        let (status, body) = response_json(response).await;
+        assert_eq!(
+            status,
+            StatusCode::OK,
+            "Profile should succeed. Body: {body}"
+        );
+        assert_eq!(
+            body["name"].as_str(),
+            Some(ON_CHAIN_NAME),
+            "Without treasury_settings, profile must fall back to on-chain config.name"
         );
     }
 }
