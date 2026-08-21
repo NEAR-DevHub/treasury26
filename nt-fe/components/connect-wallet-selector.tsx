@@ -148,7 +148,7 @@ function WalletCard({
                     {title}
                 </span>
                 {description && (
-                    <span className="text-sm font-medium leading-5 text-muted-foreground whitespace-normal">
+                    <span className="text-sm font-medium leading-5 text-general-muted-foreground whitespace-normal dark:text-muted-foreground">
                         {description}
                     </span>
                 )}
@@ -381,7 +381,7 @@ export function ConnectWalletSelector({
 
     return (
         <>
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5 md:gap-6">
                 {(introTitle || introDescription) && (
                     <StepperHeader
                         title={introTitle ?? ""}
@@ -402,7 +402,7 @@ export function ConnectWalletSelector({
                         <Icon icon={ArrowLeft01Icon} />
                     </Button>
                 )}
-                <div className="flex flex-col gap-[42px]">
+                <div className="flex flex-col gap-6 md:gap-[42px]">
                     <div className="flex items-center justify-start">
                         <NearBusinessLogo className="h-7" />
                     </div>
@@ -410,16 +410,18 @@ export function ConnectWalletSelector({
                         <h1 className="text-2xl font-bold leading-[1.2] text-general-foreground">
                             {headerTitle}
                         </h1>
-                        <div className="flex flex-col gap-0.5 text-sm font-medium leading-normal text-general-muted-foreground">
-                            <p>{t("walletSelector.subtitle")}</p>
+                        {/* The help CTA flows inline with the subtitle so the
+                            two read as one sentence, as in the design. */}
+                        <p className="text-sm font-medium leading-normal text-general-muted-foreground">
+                            {t("walletSelector.subtitle")}{" "}
                             <button
                                 type="button"
-                                className="w-fit cursor-pointer rounded-sm underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                className="cursor-pointer rounded-sm underline underline-offset-2 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 onClick={() => setIsGuideOpen(true)}
                             >
                                 {t("walletSelector.helpCta")}
                             </button>
-                        </div>
+                        </p>
                     </div>
                 </div>
                 <SlotWarning slot="login" />
@@ -470,7 +472,7 @@ export function ConnectWalletSelector({
                         <span className="h-px flex-1 bg-general-border dark:bg-[#262626]" />
                     </div>
                 )}
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-2 gap-2">
                     {otherOptions.map((wallet) => {
                         // `dimmed` (aria-disabled) rather than `disabled` when
                         // offline, so the Offline badge tooltip still gets hover.
@@ -501,36 +503,41 @@ export function ConnectWalletSelector({
                         setIsGuideOpen(false);
                     }}
                 >
-                    <DialogContent className="gap-4 bg-general-tertiary p-5 dark:bg-general-unofficial-accent sm:max-w-md!">
-                        <DialogHeader className="mx-0 border-b-0 bg-general-tertiary px-0 pb-0 dark:bg-general-unofficial-accent">
+                    {/* On mobile this is a sheet that floats 8px off every
+                        edge rather than sitting flush against the bottom. */}
+                    <DialogContent className="gap-0 rounded-3xl bg-general-tertiary p-0 dark:bg-general-unofficial-accent bottom-2 left-2 right-2 w-auto sm:max-w-md!">
+                        <DialogHeader className="mx-0 border-b-0 bg-general-tertiary px-5 py-4 dark:bg-general-unofficial-accent">
                             <DialogTitle className="text-left text-base font-semibold">
                                 {t("walletSelector.chooseNearWallet")}
                             </DialogTitle>
                         </DialogHeader>
-                        <SlotWarning slot="login" />
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            {walletPickerChoices.map((wallet) => {
-                                const isOfflineBlocked = isWalletChoiceBlocked(
-                                    wallet.id,
-                                );
-                                return (
-                                    <WalletCard
-                                        key={wallet.id}
-                                        icon={
-                                            <WalletOptionIcon wallet={wallet} />
-                                        }
-                                        badge={renderBadge(
-                                            getModalBadge(wallet),
-                                        )}
-                                        title={wallet.label}
-                                        disabled={isConnectingWallet}
-                                        dimmed={isOfflineBlocked}
-                                        onClick={() =>
-                                            handleWalletChoice(wallet)
-                                        }
-                                    />
-                                );
-                            })}
+                        <div className="flex flex-col gap-2 px-5 pt-2 pb-5">
+                            <SlotWarning slot="login" />
+                            <div className="grid grid-cols-2 gap-2">
+                                {walletPickerChoices.map((wallet) => {
+                                    const isOfflineBlocked =
+                                        isWalletChoiceBlocked(wallet.id);
+                                    return (
+                                        <WalletCard
+                                            key={wallet.id}
+                                            icon={
+                                                <WalletOptionIcon
+                                                    wallet={wallet}
+                                                />
+                                            }
+                                            badge={renderBadge(
+                                                getModalBadge(wallet),
+                                            )}
+                                            title={wallet.label}
+                                            disabled={isConnectingWallet}
+                                            dimmed={isOfflineBlocked}
+                                            onClick={() =>
+                                                handleWalletChoice(wallet)
+                                            }
+                                        />
+                                    );
+                                })}
+                            </div>
                         </div>
                     </DialogContent>
                 </Dialog>
