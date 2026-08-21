@@ -1925,8 +1925,9 @@
         "incompatible": "Tidak Kompatibel",
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
-        "nearComDescription": "Jaringan untuk near.com dan Trezu rahasia",
-        "nearDescription": "Jaringan untuk penarikan publik"
+        "nearComDescription": "Jaringan untuk trezu rahasia",
+        "nearComDescriptionPublic": "Jaringan untuk near.com",
+        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",

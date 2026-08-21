@@ -1925,8 +1925,9 @@
         "incompatible": "לא תואם",
         "comingSoon": "בקרוב",
         "forMembersOnly": "לחברים בלבד",
-        "nearComDescription": "רשת עבור near.com ו-Trezu חסוי",
-        "nearDescription": "רשת למשיכה ציבורית"
+        "nearComDescription": "רשת עבור trezu חסוי",
+        "nearComDescriptionPublic": "רשת עבור near.com",
+        "nearDescription": "רשת למשיכה ציבורית וארנק near.com"
     },
     "addressBookTable": {
         "emptyTitle": "אין נמענים עדיין",

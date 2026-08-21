@@ -1925,8 +1925,9 @@
         "incompatible": "Uyumsuz",
         "comingSoon": "Yakında",
         "forMembersOnly": "Yalnızca Üyelere Özel",
-        "nearComDescription": "near.com ve gizli Trezu için ağ",
-        "nearDescription": "Açık çekim için ağ"
+        "nearComDescription": "Gizli trezu için ağ",
+        "nearComDescriptionPublic": "near.com için ağ",
+        "nearDescription": "Açık çekim ve near.com cüzdanı için ağ"
     },
     "addressBookTable": {
         "emptyTitle": "Henüz alıcı yok",

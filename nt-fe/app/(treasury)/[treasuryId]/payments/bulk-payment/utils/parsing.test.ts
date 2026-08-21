@@ -123,7 +123,7 @@ describe("parseAndValidateCsv destination network", () => {
         expect(prefixed.payments[0]?.recipient).toBe("nearcom:alice.near");
     });
 
-    it("rejects nearcom: when destination is not near.com", () => {
+    it("keeps nearcom: on NEAR when destination is not near.com (public)", () => {
         const result = parseAndValidateCsv(
             `recipient,amount\nnearcom:alice.near,10`,
             parsingLabels,
@@ -131,7 +131,19 @@ describe("parseAndValidateCsv destination network", () => {
             "near",
             "near",
         );
-        expect(result.payments).toHaveLength(0);
-        expect(result.errors.length).toBeGreaterThan(0);
+        expect(result.errors).toEqual([]);
+        expect(result.payments).toHaveLength(1);
+        expect(result.payments[0]?.recipient).toBe("nearcom:alice.near");
+    });
+
+    it("accepts nearcom: on public bulk with no destination network id", () => {
+        const result = parseAndValidateCsv(
+            `recipient,amount\nnearcom:megha19.near,10`,
+            parsingLabels,
+            { symbol: "NEAR", network: "near", residency: "Near" },
+            "near",
+        );
+        expect(result.errors).toEqual([]);
+        expect(result.payments[0]?.recipient).toBe("nearcom:megha19.near");
     });
 });

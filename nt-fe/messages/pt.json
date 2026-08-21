@@ -1925,8 +1925,9 @@
         "incompatible": "Incompatível",
         "comingSoon": "Em breve",
         "forMembersOnly": "Apenas para membros",
-        "nearComDescription": "Rede para near.com e Trezu confidencial",
-        "nearDescription": "Rede para saque público"
+        "nearComDescription": "Rede para trezu confidencial",
+        "nearComDescriptionPublic": "Rede para near.com",
+        "nearDescription": "Rede para saque público e carteira near.com"
     },
     "addressBookTable": {
         "emptyTitle": "Nenhum destinatário ainda",

@@ -294,7 +294,7 @@ function validateRecipientAddress(
     const toNearCom =
         destinationNetworkId?.trim().toLowerCase() === NEAR_COM_NETWORK_ID;
 
-    // near.com: only nearcom:<validNear> (same rule as single payment).
+    // Confidential near.com destination: require nearcom:<validNear>.
     if (toNearCom) {
         if (!hasPrefix || !isValidNearAddressFormat(accountId)) {
             return labels.invalidNearAddress(address);
@@ -302,8 +302,15 @@ function validateRecipientAddress(
         return null;
     }
 
-    // nearcom: is not valid for any other destination.
+    // Public (and other destinations): nearcom: is display/routing only.
+    // Strip for format checks — same as single public payment.
     if (hasPrefix) {
+        if (
+            blockchainType === NEAR_NETWORK_ID &&
+            isValidNearAddressFormat(accountId)
+        ) {
+            return null;
+        }
         return labels.invalidChainAddress(
             address,
             getBlockchainDisplayName(blockchainType as BlockchainType),
@@ -492,9 +499,12 @@ export function parsePaymentData(
             continue;
         }
 
-        // near.com rows already validated as nearcom:<account>; normalize only.
+        // near.com destination (confidential) or a typed nearcom: recipient
+        // (public): keep the prefix for FE display; strip for quote/backend.
+        const { hasPrefix } = parseNearComAddress(recipient);
         const storedRecipient =
-            destinationNetworkId?.trim().toLowerCase() === NEAR_COM_NETWORK_ID
+            destinationNetworkId?.trim().toLowerCase() ===
+                NEAR_COM_NETWORK_ID || hasPrefix
                 ? formatRecipientForNearComDestination(
                       recipient,
                       NEAR_COM_NETWORK_ID,

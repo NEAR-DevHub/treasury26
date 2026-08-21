@@ -1908,8 +1908,9 @@
         "incompatible": "不兼容",
         "comingSoon": "即将推出",
         "forMembersOnly": "仅限成员",
-        "nearComDescription": "near.com 与机密 Trezu 网络",
-        "nearDescription": "公开提现网络"
+        "nearComDescription": "机密 trezu 网络",
+        "nearComDescriptionPublic": "near.com 网络",
+        "nearDescription": "公开提现和 near.com 钱包网络"
     },
     "addressBookTable": {
         "emptyTitle": "暂无收款人",

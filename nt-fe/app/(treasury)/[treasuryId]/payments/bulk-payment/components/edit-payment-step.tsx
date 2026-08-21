@@ -13,9 +13,12 @@ import { buildEditPaymentSchema } from "../schemas";
 import type { SelectedTokenData } from "@/components/token-select";
 import { needsStorageDepositCheck } from "../utils";
 import { getBatchStorageDepositIsRegistered } from "@/lib/api";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import {
     formatRecipientForNearComDestination,
+    hasNearComAddressPrefix,
     stripNearComAddressPrefix,
+    withNearComAddressPrefix,
 } from "@/lib/nearcom-address";
 
 interface EditPaymentStepProps extends StepProps {
@@ -64,10 +67,12 @@ export function EditPaymentStep({
     const form = useForm<EditPaymentFormValues>({
         resolver: zodResolver(editPaymentSchema),
         defaultValues: {
-            recipient: formatRecipientForNearComDestination(
-                payment.recipient,
-                destinationNetworkId,
-            ),
+            recipient: hasNearComAddressPrefix(payment.recipient)
+                ? withNearComAddressPrefix(payment.recipient)
+                : formatRecipientForNearComDestination(
+                      payment.recipient,
+                      destinationNetworkId,
+                  ),
             amount: payment.amount,
             token: selectedToken,
         },
@@ -79,10 +84,13 @@ export function EditPaymentStep({
         setIsSaving(true);
         try {
             const data = form.getValues();
-            const normalizedRecipient = formatRecipientForNearComDestination(
-                data.recipient,
-                destinationNetworkId,
-            );
+            // Keep nearcom: for FE display when the user typed it (public has
+            // no network picker). Confidential near.com destination also keeps it.
+            const normalizedRecipient =
+                hasNearComAddressPrefix(data.recipient) ||
+                destinationNetworkId === NEAR_COM_NETWORK_ID
+                    ? withNearComAddressPrefix(data.recipient)
+                    : stripNearComAddressPrefix(data.recipient);
 
             let isRegistered = true;
             if (needsStorageDepositCheck(selectedToken)) {

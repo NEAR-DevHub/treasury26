@@ -1908,8 +1908,9 @@
         "incompatible": "Không tương thích",
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
-        "nearComDescription": "Mạng cho near.com và Trezu bí mật",
-        "nearDescription": "Mạng cho rút tiền công khai"
+        "nearComDescription": "Mạng cho trezu bí mật",
+        "nearComDescriptionPublic": "Mạng cho near.com",
+        "nearDescription": "Mạng cho rút tiền công khai và ví near.com"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",
