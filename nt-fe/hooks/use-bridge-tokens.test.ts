@@ -60,9 +60,7 @@ describe("formatCatalogAssets", () => {
     });
 
     it("normalizes missing or null chainIcons to null", () => {
-        const [omitted] = formatCatalogAssets([
-            catalogAsset(catalogNetwork()),
-        ]);
+        const [omitted] = formatCatalogAssets([catalogAsset(catalogNetwork())]);
         const [explicitNull] = formatCatalogAssets([
             catalogAsset(catalogNetwork({ chainIcons: null })),
         ]);
