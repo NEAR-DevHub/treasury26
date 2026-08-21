@@ -19,7 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { NEAR_COM_ICON } from "@/constants/token";
 import { withNearComAddressPrefix } from "@/lib/nearcom-address";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useConfidentialBridgeAddress } from "@/hooks/use-confidential-bridge-address";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
 import { useDepositExpiryClock } from "@/hooks/use-deposit-expiry-clock";
@@ -124,7 +124,10 @@ export default function PaySharePage() {
     const recipientDaoId = treasuryId || "";
     const treasuryDisplayName = config?.name || recipientDaoId;
 
-    const { data: bridgeAssets = [] } = useBridgeTokens(kind === "public");
+    const { data: bridgeAssets = [] } = useTokenCatalog({
+        enabled: kind === "public",
+        kind: "deposit",
+    });
 
     const bridgeChainId = useMemo(() => {
         if (!networkId) return null;

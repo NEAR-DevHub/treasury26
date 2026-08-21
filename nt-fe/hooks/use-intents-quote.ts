@@ -80,12 +80,12 @@ export function buildIntentsQuoteRequest(
             : ("INTENTS" as const)
         : ("DESTINATION_CHAIN" as const);
 
-    // Held balance id for INTENTS origin; quoteAssetId only for routing aliases
-    // when the token itself is selected as a 1cs deployment network.
+    // Held balance id for INTENTS origin.
     const originAsset = token.balanceAssetId || token.address;
 
-    // near.com → keep origin balance id (stays on Intents).
-    // Other networks → prefer 1Click quoteAssetId when provided (e.g. BTC native).
+    // near.com / INTENTS receive → same holdable balance id (never a chain 1cs).
+    // External receiver network → 1Click routing id for that network
+    // (caller passes destinationQuoteAssetId from the selected network).
     const destinationAsset = isNearComRoute
         ? originAsset
         : (options?.destinationQuoteAssetId ?? destinationNetwork!);

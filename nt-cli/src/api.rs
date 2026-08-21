@@ -327,24 +327,48 @@ impl ApiClient {
         Ok(wrapper.data)
     }
 
-    #[tracing::instrument(name = "Fetching bridge networks ...", skip_all)]
-    pub fn get_bridge_tokens(&self) -> Result<BridgeAssetsResponse> {
+    pub fn get_deposit_tokens(&self) -> Result<BridgeAssetsResponse> {
         tracing::info!(
             target: "near_teach_me",
             parent: &tracing::Span::none(),
-            "I am making HTTP GET {} to discover which assets/networks the 1Click bridge supports",
-            self.url("/intents/bridge-tokens")
+            "I am making HTTP GET {} for the deposit token catalog (near.com + Bridge)",
+            self.url("/intents/deposit-tokens")
         );
         let resp = self
-            .get("/intents/bridge-tokens")
+            .get("/intents/deposit-tokens")
             .send()
-            .wrap_err("Failed to get bridge tokens")?;
+            .wrap_err("Failed to get deposit tokens")?;
         if !resp.status().is_success() {
             let status = resp.status();
             let body = resp.text().unwrap_or_default();
-            return Err(eyre!("Get bridge tokens failed ({}): {}", status, body));
+            return Err(eyre!("Get deposit tokens failed ({}): {}", status, body));
         }
-        resp.json().wrap_err("Failed to parse bridge tokens")
+        resp.json().wrap_err("Failed to parse deposit tokens")
+    }
+
+    pub fn get_swap_tokens(&self) -> Result<BridgeAssetsResponse> {
+        tracing::info!(
+            target: "near_teach_me",
+            parent: &tracing::Span::none(),
+            "I am making HTTP GET {} for the swap token catalog (near.com ∩ 1Click)",
+            self.url("/intents/swap-tokens")
+        );
+        let resp = self
+            .get("/intents/swap-tokens")
+            .send()
+            .wrap_err("Failed to get swap tokens")?;
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().unwrap_or_default();
+            return Err(eyre!("Get swap tokens failed ({}): {}", status, body));
+        }
+        resp.json().wrap_err("Failed to parse swap tokens")
+    }
+
+    #[tracing::instrument(name = "Fetching bridge networks ...", skip_all)]
+    pub fn get_bridge_tokens(&self) -> Result<BridgeAssetsResponse> {
+        // Alias of deposit catalog for backward compatibility.
+        self.get_deposit_tokens()
     }
 
     #[tracing::instrument(name = "Getting intents quote ...", skip_all)]

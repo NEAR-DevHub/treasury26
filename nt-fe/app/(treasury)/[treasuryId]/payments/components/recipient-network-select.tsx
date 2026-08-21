@@ -287,24 +287,40 @@ export function RecipientNetworkSelect({
         ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
         : isBridgeAssetsLoading || availableOptions.length === 0;
 
-    // Only clear when the user wipes the address. Do not clear on
-    // incompatible network during typing — the payments page reseeds
-    // destination from address shape, and clear↔seed loops hard.
-    // Keep onChange in a ref so an inline parent callback can't re-fire this.
+    // Clear when the address is wiped, or when the selected network no longer
+    // matches the address format (e.g. Solana → EVM). Depend on `recipient` +
+    // `selectedOption` (not `availableOptions`) so token/list changes still
+    // clear a stale pick without coupling to memo array identity.
+    // Soft destination seed on the payments page only fills an empty field when
+    // the address is empty or nearcom:, so clearing here does not loop.
     const hadRecipientRef = useRef(false);
     const onChangeRef = useRef(onChange);
     onChangeRef.current = onChange;
     useEffect(() => {
         if (!requireRecipient) return;
-        if (recipient) {
-            hadRecipientRef.current = true;
+
+        if (!recipient) {
+            if (hadRecipientRef.current && value) {
+                hadRecipientRef.current = false;
+                onChangeRef.current("");
+            }
             return;
         }
-        if (hadRecipientRef.current && value) {
-            hadRecipientRef.current = false;
+
+        hadRecipientRef.current = true;
+        if (!value) return;
+
+        if (
+            !selectedOption ||
+            !isAddressCompatibleWithNetwork(
+                recipient,
+                selectedOption.networkName,
+                selectedOption.id,
+            )
+        ) {
             onChangeRef.current("");
         }
-    }, [recipient, value, requireRecipient]);
+    }, [recipient, value, requireRecipient, selectedOption]);
 
     const placeholderText = requireRecipient
         ? !recipient

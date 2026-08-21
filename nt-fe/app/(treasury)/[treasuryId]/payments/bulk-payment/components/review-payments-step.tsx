@@ -25,7 +25,7 @@ import { Textarea } from "@/components/textarea";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
 import { useAddressBook } from "@/features/address-book";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { decimalFromBaseUnits } from "@/lib/amount-format";
@@ -125,7 +125,7 @@ export function ReviewPaymentsStep({
 
     const { treasuryId } = useTreasury();
     const { data: addressBook = [] } = useAddressBook();
-    const { data: bridgeAssets = [] } = useBridgeTokens(true);
+    const { data: bridgeAssets = [] } = useTokenCatalog({ kind: "swap" });
     const { data: selectedTokenData } = useToken(selectedToken?.address || "");
     const { data: balance } = useTokenBalance(
         treasuryId,

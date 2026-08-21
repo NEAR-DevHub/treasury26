@@ -38,7 +38,7 @@ import {
     useManualPageTour,
     usePageTour,
 } from "@/features/onboarding/steps/page-tours";
-import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { type BridgeAsset, useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import {
     buildIntentsQuoteRequest,
     type IntentsAmountMode,
@@ -67,6 +67,7 @@ import {
     isNearChainNativeToken,
 } from "@/lib/intents-fee";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import {
     buildIntentsTransferProposal,
     buildNativeNearIntentsKind,
@@ -702,7 +703,7 @@ export default function PaymentsPage() {
         data: bridgeAssets = [],
         isLoading: isBridgeAssetsLoading,
         isFetching: isBridgeAssetsFetching,
-    } = useBridgeTokens(true);
+    } = useTokenCatalog({ kind: "swap" });
     // Generic default (highest-USD → USDC) lives in TokenSelect.autoSelect.
     // Page only seeds from URL overrides so the two don't fight.
     const namePreferredNetworks = useMemo(
@@ -945,17 +946,9 @@ export default function PaymentsPage() {
             if (!networkId || isNearComNetwork(networkId)) {
                 return networkId;
             }
-            for (const asset of bridgeAssets) {
-                const network = asset.networks.find((n) => n.id === networkId);
-                if (network) {
-                    return (
-                        network.quoteAssetId ||
-                        network.balanceAssetId ||
-                        network.id
-                    );
-                }
-            }
-            return networkId;
+            // Receiver network decides the 1Click destination id (balance vs
+            // 1cs routing alias, e.g. nBTC → native BTC on Bitcoin).
+            return findQuoteAssetIdForDestination(bridgeAssets, networkId);
         },
         [bridgeAssets],
     );
