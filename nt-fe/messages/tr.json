@@ -1927,7 +1927,7 @@
         "forMembersOnly": "Yalnızca Üyelere Özel",
         "nearComDescription": "Gizli trezu için ağ",
         "nearComDescriptionPublic": "near.com için ağ",
-        "nearDescription": "Açık çekim ve near.com cüzdanı için ağ"
+        "nearDescription": "Açık çekim için ağ"
     },
     "addressBookTable": {
         "emptyTitle": "Henüz alıcı yok",

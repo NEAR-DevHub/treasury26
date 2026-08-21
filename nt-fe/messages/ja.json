@@ -1927,7 +1927,7 @@
         "forMembersOnly": "メンバー限定",
         "nearComDescription": "機密trezu用ネットワーク",
         "nearComDescriptionPublic": "near.com用ネットワーク",
-        "nearDescription": "公開出金およびnear.comウォレット用ネットワーク"
+        "nearDescription": "公開出金用ネットワーク"
     },
     "addressBookTable": {
         "emptyTitle": "受取人はまだいません",

@@ -1927,7 +1927,7 @@
         "forMembersOnly": "회원 전용",
         "nearComDescription": "기밀 trezu용 네트워크",
         "nearComDescriptionPublic": "near.com용 네트워크",
-        "nearDescription": "공개 출금 및 near.com 지갑용 네트워크"
+        "nearDescription": "공개 출금용 네트워크"
     },
     "addressBookTable": {
         "emptyTitle": "아직 수신자가 없습니다",

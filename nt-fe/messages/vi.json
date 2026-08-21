@@ -1910,7 +1910,7 @@
         "forMembersOnly": "Chỉ dành cho thành viên",
         "nearComDescription": "Mạng cho trezu bí mật",
         "nearComDescriptionPublic": "Mạng cho near.com",
-        "nearDescription": "Mạng cho rút tiền công khai và ví near.com"
+        "nearDescription": "Mạng cho rút tiền công khai"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",

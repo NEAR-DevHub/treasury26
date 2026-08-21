@@ -1927,7 +1927,7 @@
         "forMembersOnly": "Hanya untuk anggota",
         "nearComDescription": "Jaringan untuk trezu rahasia",
         "nearComDescriptionPublic": "Jaringan untuk near.com",
-        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com"
+        "nearDescription": "Jaringan untuk penarikan publik"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",

@@ -1927,7 +1927,7 @@
         "forMembersOnly": "Nur für Mitglieder",
         "nearComDescription": "Netzwerk für vertrauliches Trezu",
         "nearComDescriptionPublic": "Netzwerk für near.com",
-        "nearDescription": "Netzwerk für öffentliche Auszahlungen und near.com-Wallet"
+        "nearDescription": "Netzwerk für öffentliche Auszahlungen"
     },
     "addressBookTable": {
         "emptyTitle": "Noch keine Empfänger",

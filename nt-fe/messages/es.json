@@ -1927,7 +1927,7 @@
         "forMembersOnly": "Solo para miembros",
         "nearComDescription": "Red para trezu confidencial",
         "nearComDescriptionPublic": "Red para near.com",
-        "nearDescription": "Red para retiro público y billetera near.com"
+        "nearDescription": "Red para retiro público"
     },
     "addressBookTable": {
         "emptyTitle": "Aún no hay destinatarios",
