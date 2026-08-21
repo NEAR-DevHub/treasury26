@@ -30,7 +30,11 @@ export interface BridgeAsset {
     networks: BridgeNetwork[];
 }
 
-/** Raw network row from deposit/swap token catalog APIs. */
+/**
+ * Raw network row from deposit/swap token catalog APIs.
+ * Backend `Option<T>` fields serialize as JSON `null`, so every optional value
+ * is typed `| null` here to force normalization in {@link formatCatalogAssets}.
+ */
 interface CatalogNetworkDto {
     id: string;
     name: string;
@@ -38,15 +42,15 @@ interface CatalogNetworkDto {
     chainIcons?: ChainIcons | null;
     chainId: string;
     decimals: number;
-    minDepositAmount?: string;
-    minWithdrawalAmount?: string;
-    balanceAssetId?: string;
-    quoteAssetId?: string;
-    publicDepositSupported?: boolean;
+    minDepositAmount?: string | null;
+    minWithdrawalAmount?: string | null;
+    balanceAssetId?: string | null;
+    quoteAssetId?: string | null;
+    publicDepositSupported?: boolean | null;
 }
 
 /** Raw asset row from deposit/swap token catalog APIs. */
-interface CatalogAssetDto {
+export interface CatalogAssetDto {
     id: string;
     assetName?: string;
     name?: string;
@@ -54,7 +58,9 @@ interface CatalogAssetDto {
     networks: CatalogNetworkDto[];
 }
 
-function formatCatalogAssets(fetchedAssets: CatalogAssetDto[]): BridgeAsset[] {
+export function formatCatalogAssets(
+    fetchedAssets: CatalogAssetDto[],
+): BridgeAsset[] {
     return fetchedAssets.map((asset) => {
         // near.com tokenlist: `symbol` = ticker, `name` = full name.
         const symbol = asset.assetName || asset.name || asset.id;
@@ -71,15 +77,17 @@ function formatCatalogAssets(fetchedAssets: CatalogAssetDto[]): BridgeAsset[] {
             symbol,
             name,
             icon,
+            // Sole boundary where catalog JSON enters the app: strip `null` here
+            // so downstream token shapes are honestly `T | undefined`.
             networks: asset.networks.map((network) => ({
                 id: network.id,
                 name: network.name,
                 symbol: network.symbol === "wNEAR" ? "NEAR" : network.symbol,
-                chainIcons: network.chainIcons || null,
+                chainIcons: network.chainIcons ?? null,
                 chainId: network.chainId,
                 decimals: network.decimals,
-                minDepositAmount: network.minDepositAmount,
-                minWithdrawalAmount: network.minWithdrawalAmount,
+                minDepositAmount: network.minDepositAmount ?? undefined,
+                minWithdrawalAmount: network.minWithdrawalAmount ?? undefined,
                 balanceAssetId: network.balanceAssetId || network.id,
                 quoteAssetId:
                     network.quoteAssetId ||
