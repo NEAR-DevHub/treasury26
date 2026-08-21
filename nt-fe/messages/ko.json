@@ -1144,7 +1144,7 @@
         "review": {
             "header": "세부정보 검토",
             "youAreAdding": "추가 중",
-            "newRecipients": "{count, plural, other {신규 수신자 #명}}",
+            "newRecipients": "{count, plural, =0 {새 수신자 없음} other {신규 수신자 #명}}",
             "onNetworks": "{count, plural, other {#개의 네트워크}}",
             "recipients": "수신자",
             "allDuplicates": "가져온 모든 수신자가 이미 주소록에 있습니다. 다른 목록을 업로드하려면 뒤로 가거나 이 검토에서 중복을 제거하세요.",
@@ -1913,7 +1913,7 @@
         "forMembersOnly": "회원 전용",
         "nearComDescription": "기밀 trezu용 네트워크",
         "nearComDescriptionPublic": "near.com용 네트워크",
-        "nearDescription": "공개 출금 및 near.com 지갑용 네트워크"
+        "nearDescription": "공개 출금용 네트워크"
     },
     "addressBookTable": {
         "emptyTitle": "아직 수신자가 없습니다",
@@ -2202,6 +2202,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {수신자 #명 추가됨}}",
+        "alreadyExistsToast": "수신자가 이미 주소록에 있습니다",
         "addedSingleToast": "수신자가 추가되었습니다",
         "addFailedToast": "수신자 추가에 실패했습니다",
         "addSingleFailedToast": "수신자 추가에 실패했습니다",

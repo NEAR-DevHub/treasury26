@@ -17,10 +17,6 @@ import {
     RecipientRow,
 } from "./add-recipient-form";
 
-function normalizeAddress(address: string) {
-    return address.trim();
-}
-
 interface ReviewRecipientsProps extends StepProps {
     control: Control<FormValues>;
     existingEntries?: AddressBookEntry[];
@@ -50,23 +46,19 @@ export function ReviewRecipients({
     const recipients = useWatch({ control, name: "recipients" }) ?? [];
     const count = recipients.length;
     const existingAddresses = useMemo(
-        () =>
-            new Set(
-                existingEntries.map((entry) => normalizeAddress(entry.address)),
-            ),
+        () => new Set(existingEntries.map((entry) => entry.address.trim())),
         [existingEntries],
     );
     const duplicateIndexes = useMemo(() => {
         const seen = new Set<string>();
         const duplicates: number[] = [];
         for (let index = 0; index < recipients.length; index++) {
-            const address = recipients[index]?.address;
+            const address = recipients[index]?.address?.trim();
             if (!address) continue;
-            const normalized = normalizeAddress(address);
-            if (existingAddresses.has(normalized) || seen.has(normalized)) {
+            if (existingAddresses.has(address) || seen.has(address)) {
                 duplicates.push(index);
             } else {
-                seen.add(normalized);
+                seen.add(address);
             }
         }
         return duplicates;

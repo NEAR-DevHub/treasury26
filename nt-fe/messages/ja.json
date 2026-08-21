@@ -1144,7 +1144,7 @@
         "review": {
             "header": "詳細を確認",
             "youAreAdding": "追加対象:",
-            "newRecipients": "{count, plural, other {# 人の新しい受取人}}",
+            "newRecipients": "{count, plural, =0 {新しい受取人はいません} other {# 人の新しい受取人}}",
             "onNetworks": "{count, plural, other {# 件のネットワーク}}上",
             "recipients": "受取人",
             "allDuplicates": "インポートされたすべての受取人はすでにアドレス帳に存在します。戻って別のリストをアップロードするか、このレビューから重複を削除してください。",
@@ -1913,7 +1913,7 @@
         "forMembersOnly": "メンバー限定",
         "nearComDescription": "機密trezu用ネットワーク",
         "nearComDescriptionPublic": "near.com用ネットワーク",
-        "nearDescription": "公開出金およびnear.comウォレット用ネットワーク"
+        "nearDescription": "公開出金用ネットワーク"
     },
     "addressBookTable": {
         "emptyTitle": "受取人はまだいません",
@@ -2202,6 +2202,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# 名の受取人を追加しました}}",
+        "alreadyExistsToast": "この受取人はすでにアドレス帳にあります",
         "addedSingleToast": "受取人を追加しました",
         "addFailedToast": "受取人の追加に失敗しました",
         "addSingleFailedToast": "受取人の追加に失敗しました",

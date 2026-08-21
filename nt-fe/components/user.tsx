@@ -103,6 +103,17 @@ export function resolveUserDisplayName({
     );
 }
 
+/** Settings name when this account is the open treasury (Activity self-counterparty). */
+function resolveSelfTreasuryName(
+    accountId: string | undefined,
+    treasuryId: string | undefined,
+    configName: string | null | undefined,
+): string | undefined {
+    return accountId && treasuryId && accountId === treasuryId
+        ? normalizeDisplayName(configName)
+        : undefined;
+}
+
 function isSameAccountLabel(name: string, address: string): boolean {
     return name.trim().toLowerCase() === address.trim().toLowerCase();
 }
@@ -401,10 +412,15 @@ export function TooltipUser({
     triggerProps,
 }: TooltipUserProps) {
     const t = useTranslations("user");
-    const { treasuryId, isGuestTreasury } = useTreasury();
+    const { treasuryId, isGuestTreasury, config } = useTreasury();
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading: isProfileLoading } =
         useProfile(bareAccountId);
+    const treasuryName = resolveSelfTreasuryName(
+        bareAccountId,
+        treasuryId,
+        config?.name,
+    );
     const isSavedInAddressBook = profile?.isInAddressBook ?? false;
     const resolvedName = resolveUserDisplayName({
         accountId,
@@ -417,7 +433,7 @@ export function TooltipUser({
         name: resolveUserDisplayName({
             accountId: bareAccountId,
             name,
-            profileName: profile?.name,
+            profileName: profile?.name ?? treasuryName,
             addressBookName: profile?.addressBookName,
             preferAddressBook,
         }),
@@ -553,15 +569,25 @@ export function User({
 }: UserProps) {
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading } = useProfile(bareAccountId);
+    const { treasuryId, config } = useTreasury();
+    const treasuryName = resolveSelfTreasuryName(
+        bareAccountId,
+        treasuryId,
+        config?.name,
+    );
 
-    if (isLoading && !normalizeDisplayName(nameProp)) {
+    if (
+        isLoading &&
+        !normalizeDisplayName(nameProp) &&
+        !normalizeDisplayName(treasuryName)
+    ) {
         return <UserSkeleton variant={variant} size={size} />;
     }
 
     const resolvedName = resolveUserDisplayName({
         accountId: bareAccountId,
         name: nameProp,
-        profileName: profile?.name,
+        profileName: profile?.name ?? treasuryName,
         addressBookName: profile?.addressBookName,
         preferAddressBook,
     });

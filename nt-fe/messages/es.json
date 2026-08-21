@@ -1144,7 +1144,7 @@
         "review": {
             "header": "Revisar detalles",
             "youAreAdding": "Vas a añadir",
-            "newRecipients": "{count, plural, one {# destinatario nuevo} other {# destinatarios nuevos}}",
+            "newRecipients": "{count, plural, =0 {Ningún destinatario nuevo} one {# destinatario nuevo} other {# destinatarios nuevos}}",
             "onNetworks": "en {count, plural, one {# red} other {# redes}}",
             "recipients": "Destinatarios",
             "allDuplicates": "Todos los destinatarios importados ya existen en tu libreta de direcciones. Vuelve atrás para subir otra lista o elimina duplicados desde esta revisión.",
@@ -1913,7 +1913,7 @@
         "forMembersOnly": "Solo para miembros",
         "nearComDescription": "Red para trezu confidencial",
         "nearComDescriptionPublic": "Red para near.com",
-        "nearDescription": "Red para retiro público y billetera near.com"
+        "nearDescription": "Red para retiro público"
     },
     "addressBookTable": {
         "emptyTitle": "Aún no hay destinatarios",
@@ -2202,6 +2202,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Destinatario añadido} other {# destinatarios añadidos}}",
+        "alreadyExistsToast": "El destinatario ya está en tu libreta de direcciones",
         "addedSingleToast": "Destinatario añadido",
         "addFailedToast": "No se pudieron añadir los destinatarios",
         "addSingleFailedToast": "No se pudo añadir el destinatario",
