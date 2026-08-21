@@ -1,12 +1,12 @@
 "use client";
 
 import {
-    FileAttachmentIcon,
-    GlobeIcon,
-    Logout01Icon,
-    MessageQuestionIcon,
-    MoonIcon,
-    UserCircleIcon,
+    CircleQuestionMarkIcon,
+    File01Icon,
+    Globe02Icon,
+    LogoutSquare01Icon,
+    Moon02Icon,
+    User03Icon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
@@ -21,6 +21,7 @@ import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { isEnabledLocale, type Locale } from "@/i18n/config";
+import { cn } from "@/lib/utils";
 import { useMobileShellStore } from "@/stores/mobile-shell-store";
 import { useNear } from "@/stores/near-store";
 
@@ -41,7 +42,8 @@ const flagByLocale: Record<Locale, string> = {
 };
 
 const rowClass =
-    "flex w-full items-center gap-3 py-3 text-left text-[15px] font-medium text-foreground";
+    "flex w-full items-center gap-3 py-3 text-left text-[15px] font-medium text-muted-foreground";
+const dividerClass = "-mx-4 border-general-border px-4 dark:border-[#262626]";
 
 export function MobileUserSheet() {
     const t = useTranslations("signIn");
@@ -83,7 +85,12 @@ export function MobileUserSheet() {
                     <DialogTitle className="sr-only">
                         {t("myAccount")}
                     </DialogTitle>
-                    <div className="flex items-center justify-between gap-3 pb-2">
+                    <div
+                        className={cn(
+                            "flex items-center justify-between gap-3 border-b pb-3",
+                            dividerClass,
+                        )}
+                    >
                         <div className="min-w-0">
                             <p className="truncate font-semibold text-foreground">
                                 {displayName}
@@ -98,6 +105,7 @@ export function MobileUserSheet() {
                             variant="ghost"
                             size="icon-sm"
                             className="shrink-0 text-muted-foreground"
+                            iconClassName="size-5"
                         />
                     </div>
                     <div className="flex flex-col">
@@ -107,10 +115,7 @@ export function MobileUserSheet() {
                                 className={rowClass}
                                 onClick={closeSheet}
                             >
-                                <Icon
-                                    icon={UserCircleIcon}
-                                    className="size-5"
-                                />
+                                <Icon icon={User03Icon} className="size-5" />
                                 {t("myAccount")}
                             </Link>
                         ) : null}
@@ -121,7 +126,7 @@ export function MobileUserSheet() {
                                 setTheme(isDarkTheme ? "light" : "dark")
                             }
                         >
-                            <Icon icon={MoonIcon} className="size-5" />
+                            <Icon icon={Moon02Icon} className="size-5" />
                             {tHeader("darkMode")}
                         </button>
                         <button
@@ -129,7 +134,7 @@ export function MobileUserSheet() {
                             className={rowClass}
                             onClick={() => openSheet("language")}
                         >
-                            <Icon icon={GlobeIcon} className="size-5" />
+                            <Icon icon={Globe02Icon} className="size-5" />
                             <span className="flex-1">{tLang("label")}</span>
                             <span aria-hidden="true">
                                 {
@@ -140,7 +145,7 @@ export function MobileUserSheet() {
                             </span>
                         </button>
                     </div>
-                    <div className="mt-1 flex flex-col border-t border-border pt-1">
+                    <div className={cn("flex flex-col border-t", dividerClass)}>
                         <button
                             type="button"
                             className={rowClass}
@@ -150,7 +155,7 @@ export function MobileUserSheet() {
                             }}
                         >
                             <Icon
-                                icon={MessageQuestionIcon}
+                                icon={CircleQuestionMarkIcon}
                                 className="size-5"
                             />
                             {tNav("helpSupport")}
@@ -162,10 +167,7 @@ export function MobileUserSheet() {
                             className={rowClass}
                             onClick={closeSheet}
                         >
-                            <Icon
-                                icon={FileAttachmentIcon}
-                                className="size-5"
-                            />
+                            <Icon icon={File01Icon} className="size-5" />
                             {t("termsOfService")}
                         </Link>
                         <Link
@@ -175,14 +177,11 @@ export function MobileUserSheet() {
                             className={rowClass}
                             onClick={closeSheet}
                         >
-                            <Icon
-                                icon={FileAttachmentIcon}
-                                className="size-5"
-                            />
+                            <Icon icon={File01Icon} className="size-5" />
                             {t("privacyPolicy")}
                         </Link>
                     </div>
-                    <div className="mt-1 border-t border-border pt-1">
+                    <div className={cn("border-t", dividerClass)}>
                         <button
                             type="button"
                             className={rowClass}
@@ -191,7 +190,10 @@ export function MobileUserSheet() {
                                 closeSheet();
                             }}
                         >
-                            <Icon icon={Logout01Icon} className="size-5" />
+                            <Icon
+                                icon={LogoutSquare01Icon}
+                                className="size-5"
+                            />
                             {t("signOut")}
                         </button>
                     </div>

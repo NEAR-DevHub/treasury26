@@ -48,7 +48,7 @@ export function MobileAssetActionSheet({
             >
                 <SheetHandle />
                 <DialogTitle className="sr-only">{asset.name}</DialogTitle>
-                <div className="flex items-center gap-3">
+                <div className="mb-4 flex items-center gap-3">
                     <img
                         src={asset.icon}
                         alt={asset.name}

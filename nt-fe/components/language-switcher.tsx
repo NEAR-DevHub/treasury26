@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { GlobeIcon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { Globe02Icon, GlobeIcon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -81,7 +81,7 @@ export function LanguageSwitcher({
     };
 
     return (
-        <DropdownMenu>
+        <DropdownMenu modal={!asMenuRow}>
             <DropdownMenuTrigger asChild>
                 {asMenuRow ? (
                     <Button
@@ -94,8 +94,8 @@ export function LanguageSwitcher({
                             className,
                         )}
                     >
-                        <Icon icon={GlobeIcon} />
-                        <span className="flex-1 text-start">{t("select")}</span>
+                        <Icon icon={Globe02Icon} />
+                        <span className="flex-1 text-start">{t("label")}</span>
                         <span aria-hidden="true">{flagByLocale[locale]}</span>
                     </Button>
                 ) : (
@@ -115,6 +115,8 @@ export function LanguageSwitcher({
             </DropdownMenuTrigger>
             <DropdownMenuContent
                 align={align}
+                side={asMenuRow ? "right" : "bottom"}
+                sideOffset={asMenuRow ? 8 : 4}
                 className={cn(
                     "min-w-[160px]",
                     asMenuRow &&

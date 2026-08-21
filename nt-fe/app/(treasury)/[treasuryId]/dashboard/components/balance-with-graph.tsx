@@ -520,7 +520,7 @@ export default function BalanceWithGraph({
 
     if (isLoadingTokens) {
         return (
-            <PageCard className="relative">
+            <PageCard flushOnMobile className="relative">
                 <div className="flex justify-around gap-4 mb-6">
                     <div className="flex-1">
                         <p className="font-medium text-base/[1.2] text-gray-500">
@@ -549,14 +549,14 @@ export default function BalanceWithGraph({
 
     if (!isHidden && !hasHeldAssets) {
         return (
-            <PageCard id="balance-with-graph">
+            <PageCard flushOnMobile id="balance-with-graph">
                 <FundAccountEmpty onReceiveClick={onDepositClick} />
             </PageCard>
         );
     }
 
     return (
-        <PageCard id="balance-with-graph">
+        <PageCard flushOnMobile id="balance-with-graph">
             <div className="mb-6">
                 <div className="flex justify-between gap-4 items-start">
                     <div className="flex-1">

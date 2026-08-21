@@ -55,10 +55,15 @@ const TABLE_CARD_CLASS = [
     "bg-white dark:bg-gray-850",
     "[&>tr>td]:border-gray-200 dark:[&>tr>td]:border-white/5",
     "[&>tr+tr>td]:border-t",
-    "[&>tr>td:first-child]:border-l [&>tr>td:last-child]:border-r",
+    "[&>tr>td:first-child]:border-l",
+    // Price/weight/chevron cells are `hidden` below `sm`, so they stay
+    // :last-child in the DOM. On mobile the visible last column is Balance.
+    "max-sm:[&>tr>td:nth-child(2)]:border-r sm:[&>tr>td:last-child]:border-r",
     "[&>tr:first-child>td]:border-t [&>tr:last-child>td]:border-b",
-    "[&>tr:first-child>td:first-child]:rounded-tl-lg [&>tr:first-child>td:last-child]:rounded-tr-lg",
-    "[&>tr:last-child>td:first-child]:rounded-bl-lg [&>tr:last-child>td:last-child]:rounded-br-lg",
+    "[&>tr:first-child>td:first-child]:rounded-tl-lg",
+    "max-sm:[&>tr:first-child>td:nth-child(2)]:rounded-tr-lg sm:[&>tr:first-child>td:last-child]:rounded-tr-lg",
+    "[&>tr:last-child>td:first-child]:rounded-bl-lg",
+    "max-sm:[&>tr:last-child>td:nth-child(2)]:rounded-br-lg sm:[&>tr:last-child>td:last-child]:rounded-br-lg",
 ].join(" ");
 
 function toUsd(rawAmount: Big.Big, decimals: number, price: number): number {
@@ -294,11 +299,11 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                         <TableRow className="hover:bg-transparent">
                             {renderSortableHead("token", t("columnAsset"), {
                                 headClassName:
-                                    "overflow-hidden pr-3 pl-4 sm:pl-5 w-[32%] sm:w-[26%]",
+                                    "overflow-hidden pr-3 pl-4 sm:pl-5 w-[62%] sm:w-[26%]",
                                 buttonClassName: "justify-start",
                             })}
                             {renderSortableHead("balance", t("balance"), {
-                                headClassName: "text-right w-[22%] sm:w-[20%]",
+                                headClassName: "text-right w-[38%] sm:w-[20%]",
                                 buttonClassName: "ml-auto",
                             })}
                             {renderSortableHead("price", t("columnPrice"), {
@@ -453,7 +458,7 @@ export function AssetsTableSkeleton({
                         <TableHead
                             className={cn(
                                 SKELETON_HEAD_CLASS,
-                                "overflow-hidden pr-3 pl-4 sm:pl-5 w-[32%] sm:w-[26%]",
+                                "overflow-hidden pr-3 pl-4 sm:pl-5 w-[62%] sm:w-[26%]",
                             )}
                         >
                             {t("columnAsset")}
@@ -461,7 +466,7 @@ export function AssetsTableSkeleton({
                         <TableHead
                             className={cn(
                                 SKELETON_HEAD_CLASS,
-                                "text-right w-[22%] sm:w-[20%]",
+                                "text-right w-[38%] sm:w-[20%]",
                             )}
                         >
                             {t("balance")}
@@ -482,7 +487,7 @@ export function AssetsTableSkeleton({
                         >
                             {t("weight")}
                         </TableHead>
-                        <TableHead className="w-3 p-0 sm:w-5" />
+                        <TableHead className="hidden w-3 p-0 sm:table-cell sm:w-5" />
                     </TableRow>
                 </TableHeader>
                 <TableBody className={TABLE_CARD_CLASS}>
@@ -514,7 +519,7 @@ export function AssetsTableSkeleton({
                                     </div>
                                 </div>
                             </TableCell>
-                            <TableCell className="px-3 py-3">
+                            <TableCell className="px-3 py-3 text-right">
                                 <Skeleton className="ml-auto h-3.5 w-16" />
                             </TableCell>
                             <TableCell className="hidden px-3 py-3 sm:table-cell">
@@ -523,7 +528,7 @@ export function AssetsTableSkeleton({
                             <TableCell className="hidden px-3 py-3 sm:table-cell">
                                 <Skeleton className="ml-auto size-8 shrink-0 rounded-full" />
                             </TableCell>
-                            <TableCell className="p-0" />
+                            <TableCell className="hidden p-0 sm:table-cell" />
                         </TableRow>
                     ))}
                 </TableBody>

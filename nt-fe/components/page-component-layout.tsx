@@ -73,13 +73,13 @@ export function PageComponentLayout({
     return (
         <div
             className={cn(
-                "flex h-full flex-col",
+                "flex h-full flex-col gap-2 sm:gap-0",
                 hideHeaderContent && "bg-general-tertiary",
             )}
         >
             <header
                 className={cn(
-                    "flex items-center min-h-16 justify-between px-2 md:px-6",
+                    "flex items-center min-h-16 justify-between px-3 md:px-6",
                     // Inside the shell the header is part of the floating panel:
                     // transparent and borderless.
                     !hasSidebarRail &&

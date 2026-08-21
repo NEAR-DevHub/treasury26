@@ -618,7 +618,7 @@ export function RecentActivity() {
                         </Link>
                     )}
                 </header>
-                <PageCard className="gap-0 overflow-hidden px-3 py-4">
+                <PageCard className="gap-0 overflow-hidden p-2 sm:px-3 sm:py-4">
                     {renderContent()}
                 </PageCard>
             </section>
