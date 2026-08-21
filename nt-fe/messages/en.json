@@ -1912,6 +1912,7 @@
         "comingSoon": "Coming Soon",
         "forMembersOnly": "For Members Only",
         "nearComDescription": "Network for confidential trezu",
+        "nearComDescriptionPublic": "Network for near.com",
         "nearDescription": "Network for public withdrawal and near.com wallet"
     },
     "addressBookTable": {

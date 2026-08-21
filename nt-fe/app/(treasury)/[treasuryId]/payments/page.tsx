@@ -1057,12 +1057,11 @@ export default function PaymentsPage() {
         const bareRecipient = stripNearComAddressPrefix(rawAddress);
         // nearcom: + any valid NEAR format (incl. eth-implicit 0x…).
         const isNearComRecipient =
-            isConfidential &&
             hasNearComAddressPrefix(rawAddress) &&
             !!bareRecipient &&
             isValidNearAddressFormat(bareRecipient);
 
-        // Only auto-destination: confidential nearcom:<near> → near.com.
+        // Only auto-destination: nearcom:<near> → near.com (public + confidential).
         // Plain NEAR / eth / etc. keep the original picker compatibility path
         // (no force-to-near).
         if (isNearComRecipient) {
@@ -1114,7 +1113,6 @@ export default function PaymentsPage() {
         hasAmbiguousSoftNetworks,
         isFtNetworkPrefill,
         isNativeNearPrefill,
-        isConfidential,
     ]);
 
     // Stable id/name so destination seed effect doesn't re-run every render.
@@ -1202,7 +1200,6 @@ export default function PaymentsPage() {
         const rawAddress = (watchedAddress ?? "").trim();
         const bareRecipient = stripNearComAddressPrefix(rawAddress);
         const isNearComRecipient =
-            isConfidential &&
             hasNearComAddressPrefix(rawAddress) &&
             !!bareRecipient &&
             isValidNearAddressFormat(bareRecipient);
@@ -1237,7 +1234,6 @@ export default function PaymentsPage() {
         form,
         watchedDestinationNetwork,
         watchedAddress,
-        isConfidential,
     ]);
 
     // Prefill from ?address= once. Re-applying on every empty value fought the
