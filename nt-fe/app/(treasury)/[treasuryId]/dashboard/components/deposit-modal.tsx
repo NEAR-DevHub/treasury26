@@ -33,7 +33,7 @@ import {
     useAggregatedTokens,
     useAssets,
 } from "@/hooks/use-assets";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
 import { useDepositExpiryClock } from "@/hooks/use-deposit-expiry-clock";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -332,7 +332,7 @@ export function DepositModal({
     const {
         data: bridgeAssets = STABLE_EMPTY_ARRAY,
         isLoading: isLoadingAssets,
-    } = useBridgeTokens(true);
+    } = useTokenCatalog({ kind: isConfidential ? "swap" : "deposit" });
     const depositSelectorsDisabled =
         isLoadingAssets || isDepositSlotWideBlocked;
 

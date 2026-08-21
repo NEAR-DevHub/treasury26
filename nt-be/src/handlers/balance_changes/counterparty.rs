@@ -102,7 +102,7 @@ fn extract_ft_contract(token_id: &str) -> &str {
 /// If not found, queries the contract and stores it
 ///
 /// Handles both regular FT tokens and intents tokens (e.g., "intents.near:nep141:wrap.near").
-/// For intents tokens, uses the token registry from data/tokens.json instead of RPC queries.
+/// For intents tokens, uses the token registry from `nearcom-tokens.json` instead of RPC queries.
 /// For regular FT tokens, extracts the actual contract ID and queries it.
 pub async fn ensure_ft_metadata(
     pool: &PgPool,
@@ -119,7 +119,7 @@ pub async fn ensure_ft_metadata(
         // Strip "intents.near:" prefix to get defuseAssetId format
         let asset_id = token_contract.strip_prefix("intents.near:").unwrap();
 
-        // Look up in token registry (loaded from data/tokens.json)
+        // Look up in token registry (loaded from nearcom-tokens.json)
         if let Some(token_data) = intents_tokens::find_token_by_defuse_asset_id(asset_id) {
             // Cache it in database
             let metadata = FungibleTokenMetadata {

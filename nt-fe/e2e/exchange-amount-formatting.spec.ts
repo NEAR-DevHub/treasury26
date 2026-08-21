@@ -114,7 +114,11 @@ async function setupExchangeMocks(page: Page) {
         }
         if (url.includes("/treasury/policy")) return json(POLICY);
         if (url.includes("/user/assets")) return json(ASSETS);
-        if (url.includes("/intents/bridge-tokens")) {
+        if (
+            url.includes("/intents/deposit-tokens") ||
+            url.includes("/intents/swap-tokens") ||
+            url.includes("/intents/bridge-tokens")
+        ) {
             return json({ assets: BRIDGE_ASSETS });
         }
         if (url.includes("/warnings")) return json({ warnings: [] });
