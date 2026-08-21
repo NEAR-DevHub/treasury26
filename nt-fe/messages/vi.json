@@ -1140,7 +1140,7 @@
         "review": {
             "header": "Xem lại chi tiết",
             "youAreAdding": "Bạn đang thêm",
-            "newRecipients": "{count, plural, other {# người nhận mới}}",
+            "newRecipients": "{count, plural, =0 {Không có người nhận mới} other {# người nhận mới}}",
             "onNetworks": "trên {count, plural, other {# mạng}}",
             "recipients": "Người nhận",
             "allDuplicates": "Tất cả người nhận đã nhập đều đã có trong sổ địa chỉ của bạn. Quay lại để tải lên một danh sách khác hoặc xóa các bản trùng lặp khỏi đợt xem lại này.",
@@ -1909,7 +1909,8 @@
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
         "nearComDescription": "Mạng cho trezu bí mật",
-        "nearDescription": "Mạng cho rút tiền công khai và ví near.com"
+        "nearComDescriptionPublic": "Mạng cho near.com",
+        "nearDescription": "Mạng cho rút tiền công khai"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",
@@ -2191,6 +2192,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Đã thêm người nhận} other {Đã thêm # người nhận}}",
+        "alreadyExistsToast": "Người nhận đã có trong sổ địa chỉ",
         "addedSingleToast": "Đã thêm người nhận",
         "addFailedToast": "Không thể thêm người nhận",
         "addSingleFailedToast": "Không thể thêm người nhận",

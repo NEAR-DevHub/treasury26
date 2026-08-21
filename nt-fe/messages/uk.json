@@ -1140,7 +1140,7 @@
         "review": {
             "header": "Переглянути деталі",
             "youAreAdding": "Ви додаєте",
-            "newRecipients": "{count, plural, one {# нового отримувача} few {# нових отримувачі} many {# нових отримувачів} other {# нових отримувачів}}",
+            "newRecipients": "{count, plural, =0 {Немає нових отримувачів} one {# нового отримувача} few {# нових отримувачі} many {# нових отримувачів} other {# нових отримувачів}}",
             "onNetworks": "у {count, plural, one {# мережі} few {# мережах} many {# мережах} other {# мережах}}",
             "recipients": "Отримувачі",
             "allDuplicates": "Усі імпортовані отримувачі вже є у вашій адресній книзі. Поверніться, щоб завантажити інший список, або видаліть дублікати тут.",
@@ -1909,7 +1909,8 @@
         "comingSoon": "Скоро",
         "forMembersOnly": "Лише для учасників",
         "nearComDescription": "Мережа для конфіденційного trezu",
-        "nearDescription": "Мережа для публічного виведення та гаманця near.com"
+        "nearComDescriptionPublic": "Мережа для near.com",
+        "nearDescription": "Мережа для публічного виведення"
     },
     "addressBookTable": {
         "emptyTitle": "Ще немає одержувачів",
@@ -2191,6 +2192,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Одержувача додано} few {# одержувачів додано} many {# одержувачів додано} other {# одержувачів додано}}",
+        "alreadyExistsToast": "Одержувач уже є в адресній книзі",
         "addedSingleToast": "Одержувача додано",
         "addFailedToast": "Не вдалось додати одержувачів",
         "addSingleFailedToast": "Не вдалось додати одержувача",

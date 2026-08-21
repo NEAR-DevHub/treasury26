@@ -223,9 +223,6 @@ export function useIntentsQuote({
         !!debouncedAddress &&
         isAddressValidForToken(debouncedAddress, token);
     const hasDestinationNetwork = !!destinationNetwork?.trim();
-    // nearcom: is confidential near.com routing only — never quote it on public.
-    const isNearComOnPublicTreasury =
-        !isConfidential && hasNearComAddressPrefix(debouncedAddress);
     // Payments: never quote without a destination (empty used to default to
     // near.com inside buildIntentsQuoteRequest and surface recipient errors).
     const requiresDestinationSelectionForPayment = isPayment && isIntents;
@@ -235,7 +232,6 @@ export function useIntentsQuote({
         isIntents &&
         !!treasuryId &&
         isRecipientReady &&
-        !isNearComOnPublicTreasury &&
         !!debouncedAmount &&
         Number(debouncedAmount) > 0 &&
         !!proposalPeriod &&
@@ -367,13 +363,6 @@ export function useIntentsQuote({
             }
 
             if (feeErrorMessage) return { ok: false };
-            // Public + nearcom: is already blocked by isQuoteReady / no network.
-            if (
-                !isConfidential &&
-                hasNearComAddressPrefix(formValues.address)
-            ) {
-                return { ok: false };
-            }
             if (
                 requiresDestinationSelectionForPayment &&
                 !destinationNetwork?.trim()

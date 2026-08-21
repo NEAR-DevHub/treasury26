@@ -21,6 +21,10 @@ import {
     submitPaymentList,
 } from "@/lib/bulk-payment-api";
 import { encodeToMarkdown } from "@/lib/utils";
+import {
+    hasNearComAddressPrefix,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { useNear } from "@/stores/near-store";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
@@ -447,9 +451,15 @@ export default function BulkPaymentPage() {
             const tokenIdForHash = isNEAR ? "native" : selectedToken.address;
             const tokenIdForProposal = selectedToken.address;
 
-            // Convert amounts to smallest units
+            // Convert amounts to smallest units. nearcom: is FE display only —
+            // list / backend get the bare NEAR account (same as single payment).
+            // Persist near.com in the proposal description so request details /
+            // receipts can rehydrate the nearcom: display prefix.
+            const isNearComBulk = paymentData.some((payment) =>
+                hasNearComAddressPrefix(payment.recipient),
+            );
             const payments = paymentData.map((payment) => ({
-                recipient: payment.recipient,
+                recipient: stripNearComAddressPrefix(payment.recipient),
                 amount: Big(payment.amount || "0")
                     .times(Big(10).pow(selectedToken.decimals))
                     .toFixed(0),
@@ -474,6 +484,9 @@ export default function BulkPaymentPage() {
                 contract: selectedToken.symbol,
                 amount: totalAmount.toFixed(),
                 list_id: listId,
+                ...(isNearComBulk
+                    ? { destinationNetwork: NEAR_COM_NETWORK_ID }
+                    : {}),
             });
 
             // Build proposal
