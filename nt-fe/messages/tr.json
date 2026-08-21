@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "Hazine Oluştur",
-            "description": "Ekibiniz için yeni bir multisig hazine kurun"
+            "title": "Hazine Oluştur"
         },
         "manageTreasuries": {
             "title": "Hazineleri Yönet",
@@ -1420,7 +1419,9 @@
             "accountMin": "Hesap adı en az 2 karakter olmalıdır",
             "accountMax": "Hesap adı 64 karakterden az olmalıdır",
             "accountChars": "Hesap adı yalnızca Latin harfleri, sayılar ve tireler içerebilir",
-            "accountTaken": "Bu hesap adı zaten alınmış"
+            "accountTaken": "Bu hesap adı zaten alınmış",
+            "nameTaken": "Bu hazine adı zaten alınmış",
+            "nameInvalid": "Hazine adı Latin harfleri veya rakamlar içermelidir"
         },
         "votingNote": "Oylama ayarlarını değiştirmek için daha fazla üyeye ihtiyacınız var. Oylamayı yapılandırmak için başka bir üye ekleyin.",
         "minimumVoteNote": "En az bir onay oyu gereklidir.",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "Hazine üyeleri yapılandırılıyor",
             "provisioningBulkPayment": "Toplu ödemeler ayarlanıyor",
             "finalizingSetup": "Kurulum tamamlanıyor"
-        }
+        },
+        "subtitle": "Oluşturmak ücretsiz. Tek tıkla hazineniz yayında.",
+        "namePlaceholder": "Hazine adı",
+        "clearName": "Hazine adını temizle",
+        "createCta": "Hazine oluştur"
     },
     "manageTreasuries": {
         "warningOne": "En az bir hazine kullanılabilir kalmalıdır",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "Yardım için ekibimize ulaşın."
     },
     "progressModal": {
-        "titleCreating": "Hazine Oluşturuluyor...",
+        "titleCreating": "Hazine oluşturuluyor",
         "titleDone": "Hazine Oluşturuldu",
         "titleFailed": "Hazine Oluşturulamadı"
     },

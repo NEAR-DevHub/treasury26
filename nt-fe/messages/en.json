@@ -238,8 +238,7 @@
             }
         },
         "createTreasury": {
-            "title": "Create Treasury",
-            "description": "Set up a new multisig treasury for your team"
+            "title": "Create Treasury"
         },
         "manageTreasuries": {
             "title": "Manage Treasuries",
@@ -1420,7 +1419,9 @@
             "accountMin": "Account name should be at least 2 characters",
             "accountMax": "Account name must be less than 64 characters",
             "accountChars": "Account name can contain only Latin letters, numbers, and hyphens",
-            "accountTaken": "This account name is already taken"
+            "accountTaken": "This account name is already taken",
+            "nameTaken": "This treasury name is already taken",
+            "nameInvalid": "Treasury name must contain Latin letters or numbers"
         },
         "votingNote": "You need more members to modify voting settings. Add another member to configure voting.",
         "minimumVoteNote": "Minimum one approval vote required.",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "Configuring treasury members",
             "provisioningBulkPayment": "Setting up bulk payments",
             "finalizingSetup": "Finalizing setup"
-        }
+        },
+        "subtitle": "Free to create. One click and your treasury is live.",
+        "namePlaceholder": "Treasury name",
+        "clearName": "Clear treasury name",
+        "createCta": "Create a treasury"
     },
     "manageTreasuries": {
         "warningOne": "At least one treasury should remain available",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "Reach our team for help."
     },
     "progressModal": {
-        "titleCreating": "Creating Treasury...",
+        "titleCreating": "Creating treasury",
         "titleDone": "Treasury Created",
         "titleFailed": "Treasury Creation Failed"
     },

@@ -93,7 +93,7 @@ test("Signed in + no treasuries => stays on create treasury form", async ({
 
     await expect(page).toHaveURL(/\/$/, { timeout: 15000 });
     await expect(
-        page.getByRole("button", { name: /create treasury/i }),
+        page.getByRole("button", { name: /create a treasury/i }),
     ).toBeVisible();
 });
 
@@ -149,11 +149,10 @@ test("Signed in + no treasuries + creation disabled => waitlist is shown", async
 
     await gotoStartPageAndWaitForBootstrapRequests(page);
 
-    await page.getByRole("button", { name: /public best for daos/i }).click();
     await page
-        .getByRole("textbox", { name: "My Treasury" })
+        .getByRole("textbox", { name: "Treasury name" })
         .fill("testing-by-playwright");
-    await page.getByRole("button", { name: /create treasury/i }).click();
+    await page.getByRole("button", { name: /create a treasury/i }).click();
 
     await expect(page).toHaveURL(/create/);
     await expect(

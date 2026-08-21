@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "Treasury erstellen",
-            "description": "Richten Sie eine neue Multisig-Treasury für Ihr Team ein"
+            "title": "Treasury erstellen"
         },
         "manageTreasuries": {
             "title": "Treasuries verwalten",
@@ -1420,7 +1419,9 @@
             "accountMin": "Kontoname sollte mindestens 2 Zeichen umfassen",
             "accountMax": "Kontoname muss weniger als 64 Zeichen umfassen",
             "accountChars": "Kontoname darf nur lateinische Buchstaben, Zahlen und Bindestriche enthalten",
-            "accountTaken": "Dieser Kontoname ist bereits vergeben"
+            "accountTaken": "Dieser Kontoname ist bereits vergeben",
+            "nameTaken": "Dieser Treasury-Name ist bereits vergeben",
+            "nameInvalid": "Der Treasury-Name muss lateinische Buchstaben oder Zahlen enthalten"
         },
         "votingNote": "Sie benötigen mehr Mitglieder, um die Abstimmungseinstellungen zu ändern. Fügen Sie ein weiteres Mitglied hinzu, um die Abstimmung zu konfigurieren.",
         "minimumVoteNote": "Mindestens eine Genehmigungsstimme erforderlich.",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "Treasury-Mitglieder werden konfiguriert",
             "provisioningBulkPayment": "Massenzahlungen werden eingerichtet",
             "finalizingSetup": "Einrichtung wird abgeschlossen"
-        }
+        },
+        "subtitle": "Kostenlos. Ein Klick und deine Treasury ist live.",
+        "namePlaceholder": "Treasury-Name",
+        "clearName": "Treasury-Namen löschen",
+        "createCta": "Treasury erstellen"
     },
     "manageTreasuries": {
         "warningOne": "Mindestens eine Treasury sollte verfügbar bleiben",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "Erreiche unser Team für Hilfe."
     },
     "progressModal": {
-        "titleCreating": "Treasury wird erstellt...",
+        "titleCreating": "Treasury wird erstellt",
         "titleDone": "Treasury erstellt",
         "titleFailed": "Treasury-Erstellung fehlgeschlagen"
     },

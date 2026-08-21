@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "トレジャリーを作成",
-            "description": "チーム用の新しいマルチシグトレジャリーをセットアップ"
+            "title": "トレジャリーを作成"
         },
         "manageTreasuries": {
             "title": "トレジャリーの管理",
@@ -1420,7 +1419,9 @@
             "accountMin": "アカウント名は少なくとも2文字必要です",
             "accountMax": "アカウント名は64文字未満である必要があります",
             "accountChars": "アカウント名にはラテン文字、数字、ハイフンのみ使用できます",
-            "accountTaken": "このアカウント名はすでに使用されています"
+            "accountTaken": "このアカウント名はすでに使用されています",
+            "nameTaken": "このトレジャリー名はすでに使用されています",
+            "nameInvalid": "トレジャリー名にはラテン文字または数字を含めてください"
         },
         "votingNote": "投票設定を変更するにはより多くのメンバーが必要です。投票を設定するには別のメンバーを追加してください。",
         "minimumVoteNote": "最低1票の承認が必要です。",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "トレジャリーのメンバーを設定中",
             "provisioningBulkPayment": "一括支払いを設定中",
             "finalizingSetup": "セットアップを完了中"
-        }
+        },
+        "subtitle": "作成は無料。ワンクリックでトレジャリーが稼働します。",
+        "namePlaceholder": "トレジャリー名",
+        "clearName": "トレジャリー名をクリア",
+        "createCta": "トレジャリーを作成"
     },
     "manageTreasuries": {
         "warningOne": "少なくとも1つのトレジャリーは利用可能なままにする必要があります",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "サポートが必要な場合はチームへご連絡ください。"
     },
     "progressModal": {
-        "titleCreating": "トレジャリーを作成中...",
+        "titleCreating": "トレジャリーを作成中",
         "titleDone": "トレジャリーが作成されました",
         "titleFailed": "トレジャリーの作成に失敗しました"
     },

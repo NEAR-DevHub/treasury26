@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "Créer une trésorerie",
-            "description": "Configurez une nouvelle trésorerie multisig pour votre équipe"
+            "title": "Créer une trésorerie"
         },
         "manageTreasuries": {
             "title": "Gérer les trésoreries",
@@ -1420,7 +1419,9 @@
             "accountMin": "Le nom du compte doit comporter au moins 2 caractères",
             "accountMax": "Le nom du compte doit comporter moins de 64 caractères",
             "accountChars": "Le nom du compte ne peut contenir que des lettres latines, des chiffres et des tirets",
-            "accountTaken": "Ce nom de compte est déjà pris"
+            "accountTaken": "Ce nom de compte est déjà pris",
+            "nameTaken": "Ce nom de trésorerie est déjà pris",
+            "nameInvalid": "Le nom de la trésorerie doit contenir des lettres latines ou des chiffres"
         },
         "votingNote": "Vous avez besoin de plus de membres pour modifier les paramètres de vote. Ajoutez un autre membre pour configurer le vote.",
         "minimumVoteNote": "Au moins un vote d'approbation requis.",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "Configuration des membres de la trésorerie",
             "provisioningBulkPayment": "Configuration des paiements groupés",
             "finalizingSetup": "Finalisation de la configuration"
-        }
+        },
+        "subtitle": "Création gratuite. Un clic et votre trésorerie est en ligne.",
+        "namePlaceholder": "Nom de la trésorerie",
+        "clearName": "Effacer le nom de la trésorerie",
+        "createCta": "Créer une trésorerie"
     },
     "manageTreasuries": {
         "warningOne": "Au moins une trésorerie doit rester disponible",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "Contactez notre équipe pour obtenir de l'aide."
     },
     "progressModal": {
-        "titleCreating": "Création de la trésorerie...",
+        "titleCreating": "Création de la trésorerie",
         "titleDone": "Trésorerie créée",
         "titleFailed": "Échec de la création de la trésorerie"
     },

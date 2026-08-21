@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "יצירת אוצר",
-            "description": "הקם אוצר מולטיסיג חדש עבור הצוות שלך"
+            "title": "יצירת אוצר"
         },
         "manageTreasuries": {
             "title": "ניהול אוצרות",
@@ -1420,7 +1419,9 @@
             "accountMin": "שם החשבון צריך להיות לפחות 2 תווים",
             "accountMax": "שם החשבון חייב להיות פחות מ-64 תווים",
             "accountChars": "שם החשבון יכול להכיל רק אותיות לטיניות, מספרים ומקפים",
-            "accountTaken": "שם חשבון זה כבר תפוס"
+            "accountTaken": "שם חשבון זה כבר תפוס",
+            "nameTaken": "שם האוצר הזה כבר תפוס",
+            "nameInvalid": "שם האוצר חייב להכיל אותיות לטיניות או ספרות"
         },
         "votingNote": "אתה צריך יותר חברים כדי לשנות הגדרות הצבעה. הוסף חבר נוסף כדי להגדיר הצבעה.",
         "minimumVoteNote": "נדרש לפחות אישור הצבעה אחד.",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "מגדיר את חברי האוצר",
             "provisioningBulkPayment": "מגדיר תשלומים מרובים",
             "finalizingSetup": "משלים הגדרה"
-        }
+        },
+        "subtitle": "היצירה חינם. לחיצה אחת והאוצר שלך פעיל.",
+        "namePlaceholder": "שם האוצר",
+        "clearName": "נקה את שם האוצר",
+        "createCta": "צור אוצר"
     },
     "manageTreasuries": {
         "warningOne": "לפחות אוצר אחד צריך להישאר זמין",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "פנו לצוות שלנו לקבלת עזרה."
     },
     "progressModal": {
-        "titleCreating": "יוצר אוצר...",
+        "titleCreating": "יוצר אוצר",
         "titleDone": "האוצר נוצר",
         "titleFailed": "יצירת האוצר נכשלה"
     },

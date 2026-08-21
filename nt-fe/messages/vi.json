@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "Tạo Ngân quỹ",
-            "description": "Thiết lập một ngân quỹ multisig mới cho đội của bạn"
+            "title": "Tạo Ngân quỹ"
         },
         "manageTreasuries": {
             "title": "Quản lý Ngân quỹ",
@@ -1403,7 +1402,9 @@
             "accountMin": "Tên tài khoản phải có ít nhất 2 ký tự",
             "accountMax": "Tên tài khoản phải ít hơn 64 ký tự",
             "accountChars": "Tên tài khoản chỉ có thể chứa chữ cái Latin, số và dấu gạch nối",
-            "accountTaken": "Tên tài khoản này đã được dùng"
+            "accountTaken": "Tên tài khoản này đã được dùng",
+            "nameTaken": "Tên ngân quỹ này đã được dùng",
+            "nameInvalid": "Tên ngân quỹ phải chứa chữ cái Latinh hoặc chữ số"
         },
         "votingNote": "Bạn cần thêm thành viên để chỉnh sửa cài đặt bỏ phiếu. Hãy thêm thành viên khác để cấu hình bỏ phiếu.",
         "minimumVoteNote": "Cần ít nhất một phiếu phê duyệt.",
@@ -1513,7 +1514,11 @@
             "configuringMembers": "Đang cấu hình thành viên ngân quỹ",
             "provisioningBulkPayment": "Đang thiết lập thanh toán hàng loạt",
             "finalizingSetup": "Đang hoàn tất thiết lập"
-        }
+        },
+        "subtitle": "Tạo miễn phí. Một cú nhấp và ngân quỹ của bạn hoạt động.",
+        "namePlaceholder": "Tên ngân quỹ",
+        "clearName": "Xoá tên ngân quỹ",
+        "createCta": "Tạo ngân quỹ"
     },
     "manageTreasuries": {
         "warningOne": "Phải còn ít nhất một ngân quỹ khả dụng",
@@ -1712,7 +1717,7 @@
         "productSupportDescription": "Liên hệ đội ngũ của chúng tôi để được hỗ trợ."
     },
     "progressModal": {
-        "titleCreating": "Đang tạo Ngân quỹ...",
+        "titleCreating": "Đang tạo ngân quỹ",
         "titleDone": "Đã tạo Ngân quỹ",
         "titleFailed": "Tạo Ngân quỹ thất bại"
     },

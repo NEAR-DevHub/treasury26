@@ -3,7 +3,7 @@ import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
     Loading02Icon,
-    Tick01Icon,
+    Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -28,32 +28,59 @@ interface CreationProgressModalProps {
     onClose: () => void;
 }
 
+/** All four states share the same 20px ring so the rows never shift. */
+const stepBadgeClassName =
+    "flex size-5 shrink-0 items-center justify-center rounded-full border";
+
 function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
     switch (status) {
         case "completed":
             return (
-                <div className="flex shrink-0 items-center justify-center rounded-full bg-general-success-foreground size-6">
-                    <Icon icon={Tick01Icon} className="text-white" />
+                <div
+                    className={cn(
+                        stepBadgeClassName,
+                        "border-green-100 bg-general-success-background-faded",
+                    )}
+                >
+                    <Icon
+                        icon={Tick02Icon}
+                        className="size-2.5 text-green-700"
+                    />
                 </div>
             );
         case "in_progress":
             return (
-                <div className="flex shrink-0 items-center justify-center size-6">
+                <div
+                    className={cn(
+                        stepBadgeClassName,
+                        "border-general-orange-background bg-general-orange-background-faded",
+                    )}
+                >
                     <Icon
                         icon={Loading02Icon}
-                        className="text-foreground animate-spin"
+                        className="size-2.5 animate-spin text-general-orange-foreground"
                     />
                 </div>
             );
         case "error":
             return (
-                <div className="flex shrink-0 items-center justify-center rounded-full bg-general-destructive-foreground size-6">
-                    <Icon icon={Cancel01Icon} className="text-white" />
+                <div
+                    className={cn(
+                        stepBadgeClassName,
+                        "border-general-destructive-foreground/20 bg-general-destructive-background-faded",
+                    )}
+                >
+                    <Icon
+                        icon={Cancel01Icon}
+                        className="size-2.5 text-general-destructive-foreground"
+                    />
                 </div>
             );
         default:
             return (
-                <div className="flex shrink-0 items-center justify-center rounded-full border border-muted-foreground/20 bg-card size-6" />
+                <div
+                    className={cn(stepBadgeClassName, "border-general-border")}
+                />
             );
     }
 }
@@ -78,9 +105,16 @@ export function CreationProgressModal({
                 }
             }}
         >
-            <DialogContent className="max-w-md!">
-                <DialogHeader closeButton={hasError || isDone}>
-                    <DialogTitle>
+            <DialogContent
+                // On a phone the sheet floats 8px off every edge with all four
+                // corners rounded, rather than sitting flush to the bottom.
+                className="gap-0 bg-general-tertiary p-0 right-2 bottom-2 left-2 w-auto rounded-3xl sm:right-auto sm:bottom-auto sm:left-1/2 sm:w-full sm:max-w-md! dark:bg-general-unofficial-accent"
+            >
+                <DialogHeader
+                    closeButton={hasError || isDone}
+                    className="mx-0 border-b-0 bg-transparent px-5 py-4 dark:bg-transparent"
+                >
+                    <DialogTitle className="text-left text-base leading-[1.2] font-semibold">
                         {hasError
                             ? t("titleFailed")
                             : isDone
@@ -89,21 +123,26 @@ export function CreationProgressModal({
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="flex flex-col gap-3 py-2">
-                    {steps.map((step, index) => (
-                        <div key={step.id} className="flex items-center gap-3">
+                <div className="flex flex-col px-5 pt-2 pb-5">
+                    {steps.map((step) => (
+                        <div
+                            key={step.id}
+                            className="flex items-center gap-3 py-2"
+                        >
                             <StepStatusIcon status={step.status} />
                             <span
                                 className={cn(
-                                    "text-sm",
+                                    "text-base leading-[1.2] font-semibold",
                                     step.status === "pending" &&
-                                        "text-muted-foreground",
+                                        "text-general-muted-foreground",
+                                    // The active row fades out to the right,
+                                    // reading as "still working on this".
                                     step.status === "in_progress" &&
-                                        "text-foreground font-medium",
+                                        "bg-gradient-to-r from-general-foreground to-general-muted-foreground bg-clip-text text-transparent",
                                     step.status === "completed" &&
-                                        "text-muted-foreground",
+                                        "text-general-foreground",
                                     step.status === "error" &&
-                                        "text-general-destructive-foreground font-medium",
+                                        "text-general-destructive-foreground",
                                 )}
                             >
                                 {step.label}
@@ -113,7 +152,7 @@ export function CreationProgressModal({
                 </div>
 
                 {hasError && (
-                    <p className="text-sm text-general-destructive-foreground">
+                    <p className="px-5 pb-5 text-sm text-general-destructive-foreground">
                         {error}
                     </p>
                 )}

@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "创建金库",
-            "description": "为您的团队创建新的多签金库"
+            "title": "创建金库"
         },
         "manageTreasuries": {
             "title": "管理金库",
@@ -1403,7 +1402,9 @@
             "accountMin": "账户名称至少需 2 个字符",
             "accountMax": "账户名称必须少于 64 个字符",
             "accountChars": "账户名称只能包含拉丁字母、数字和连字符",
-            "accountTaken": "此账户名称已被占用"
+            "accountTaken": "此账户名称已被占用",
+            "nameTaken": "此金库名称已被占用",
+            "nameInvalid": "金库名称必须包含拉丁字母或数字"
         },
         "votingNote": "您需要更多成员才能修改投票设置。请添加另一名成员以配置投票。",
         "minimumVoteNote": "至少需要一个批准投票。",
@@ -1513,7 +1514,11 @@
             "configuringMembers": "正在配置金库成员",
             "provisioningBulkPayment": "正在设置批量支付",
             "finalizingSetup": "正在完成设置"
-        }
+        },
+        "subtitle": "创建免费。一键即可启用你的金库。",
+        "namePlaceholder": "金库名称",
+        "clearName": "清除金库名称",
+        "createCta": "创建金库"
     },
     "manageTreasuries": {
         "warningOne": "至少需保留一个金库可见",
@@ -1712,7 +1717,7 @@
         "productSupportDescription": "联系我们的团队获取帮助。"
     },
     "progressModal": {
-        "titleCreating": "正在创建金库...",
+        "titleCreating": "正在创建金库",
         "titleDone": "金库已创建",
         "titleFailed": "金库创建失败"
     },

@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "Crear tesorería",
-            "description": "Configura una nueva tesorería multifirma para tu equipo"
+            "title": "Crear tesorería"
         },
         "manageTreasuries": {
             "title": "Gestionar tesorerías",
@@ -1420,7 +1419,9 @@
             "accountMin": "El nombre de cuenta debe tener al menos 2 caracteres",
             "accountMax": "El nombre de cuenta debe tener menos de 64 caracteres",
             "accountChars": "El nombre de cuenta solo puede contener letras latinas, números y guiones",
-            "accountTaken": "Este nombre de cuenta ya está en uso"
+            "accountTaken": "Este nombre de cuenta ya está en uso",
+            "nameTaken": "Este nombre de tesorería ya está en uso",
+            "nameInvalid": "El nombre de la tesorería debe contener letras latinas o números"
         },
         "votingNote": "Necesitas más miembros para modificar los ajustes de votación. Añade otro miembro para configurar la votación.",
         "minimumVoteNote": "Se requiere al menos un voto de aprobación.",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "Configurando miembros de la tesorería",
             "provisioningBulkPayment": "Configurando pagos masivos",
             "finalizingSetup": "Finalizando configuración"
-        }
+        },
+        "subtitle": "Crearla es gratis. Un clic y tu tesorería estará activa.",
+        "namePlaceholder": "Nombre de la tesorería",
+        "clearName": "Borrar el nombre de la tesorería",
+        "createCta": "Crear una tesorería"
     },
     "manageTreasuries": {
         "warningOne": "Debe quedar al menos una tesorería disponible",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "Contacta a nuestro equipo para recibir ayuda."
     },
     "progressModal": {
-        "titleCreating": "Creando tesorería...",
+        "titleCreating": "Creando tesorería",
         "titleDone": "Tesorería creada",
         "titleFailed": "Error al crear tesorería"
     },

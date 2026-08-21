@@ -234,8 +234,7 @@
             }
         },
         "createTreasury": {
-            "title": "트레저리 생성",
-            "description": "팀을 위한 새 멀티시그 트레저리를 설정하세요"
+            "title": "트레저리 생성"
         },
         "manageTreasuries": {
             "title": "트레저리 관리",
@@ -1420,7 +1419,9 @@
             "accountMin": "계정 이름은 최소 2자여야 합니다",
             "accountMax": "계정 이름은 64자 미만이어야 합니다",
             "accountChars": "계정 이름은 라틴 문자, 숫자, 하이픈만 포함할 수 있습니다",
-            "accountTaken": "이 계정 이름은 이미 사용 중입니다"
+            "accountTaken": "이 계정 이름은 이미 사용 중입니다",
+            "nameTaken": "이 트레저리 이름은 이미 사용 중입니다",
+            "nameInvalid": "트레저리 이름에는 라틴 문자 또는 숫자가 포함되어야 합니다"
         },
         "votingNote": "투표 설정을 수정하려면 더 많은 멤버가 필요합니다. 투표를 구성하려면 다른 멤버를 추가하세요.",
         "minimumVoteNote": "최소 한 번의 승인 투표가 필요합니다.",
@@ -1530,7 +1531,11 @@
             "configuringMembers": "트레저리 멤버 구성 중",
             "provisioningBulkPayment": "대량 결제 설정 중",
             "finalizingSetup": "설정 완료 중"
-        }
+        },
+        "subtitle": "생성은 무료입니다. 클릭 한 번으로 트레저리가 시작됩니다.",
+        "namePlaceholder": "트레저리 이름",
+        "clearName": "트레저리 이름 지우기",
+        "createCta": "트레저리 생성"
     },
     "manageTreasuries": {
         "warningOne": "최소 하나의 트레저리는 사용 가능하게 유지되어야 합니다",
@@ -1729,7 +1734,7 @@
         "productSupportDescription": "도움이 필요하면 팀에 문의하세요."
     },
     "progressModal": {
-        "titleCreating": "트레저리 생성 중...",
+        "titleCreating": "트레저리 생성 중",
         "titleDone": "트레저리 생성됨",
         "titleFailed": "트레저리 생성 실패"
     },
