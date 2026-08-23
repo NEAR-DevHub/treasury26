@@ -346,6 +346,17 @@ pub async fn set_head_check_result(
 /// the observed on-chain balance at the watermark block. The next silver
 /// recompute seeds from it; a full recompute drops it and the verifier simply
 /// re-derives the (bounded) drift.
+///
+/// `block_time` is stamped `NOW()`, not the watermark block's own on-chain
+/// timestamp — pre-existing on this function, shared by both callers
+/// (`rebase_within_tolerance`'s regular drift-absorption pass and
+/// `verify_account_gate`'s history-only bootstrap). `load_asset_ledger_heads`
+/// orders `DISTINCT ON` by `block_time DESC` first, so this is only safe
+/// because `NOW()` is called after live RPC confirms `block_height` is the
+/// account's current head — nothing at a higher block_height can exist yet
+/// to be mis-ordered against. A future caller that reconciles at a block
+/// height that ISN'T the confirmed current head would not have that
+/// guarantee and should not reuse this function as-is.
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_rebase_entry(
     tx: &mut Transaction<'_, Postgres>,

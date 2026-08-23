@@ -350,6 +350,15 @@ impl<'a> BalanceVerifier<'a> {
         // rebase_within_tolerance below, this runs even when drift is
         // exactly zero: the point isn't correcting drift, it's establishing
         // the anchor Fix 5 needs to scope the running-minimum check from.
+        //
+        // head.user_balance_after is carried forward as-is (not reset to
+        // chain_balance) deliberately: it's the ledger's own current
+        // user-owned figure, which may legitimately differ from the chain
+        // total (sponsor money is part of chain_balance but never user_balance).
+        // Whether THAT figure is itself still negative right now (not just
+        // historically) is exactly what the fresh re-query below checks —
+        // this insert doesn't assume success, it only makes success
+        // checkable.
         let mut bootstrapped = 0u64;
         for outcome in outcomes.iter() {
             if !outcome.blocked_by_history_only {

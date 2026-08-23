@@ -1641,6 +1641,47 @@ mod tests {
     }
 
     #[test]
+    fn native_receipt_stamp_prefers_higher_intra_block_seq_regardless_of_row_order() {
+        // A clamp-split (or 1-yocto-attachment split) native receipt writes
+        // two silver_balance_history rows sharing one receipt_id: the
+        // user-owned piece, then the sponsor/attachment piece at a higher
+        // intra_block_seq. The leg represents the receipt's whole effect,
+        // so its stamp must be the later piece — deterministically, not
+        // whichever row load_balance_stamps happened to scan first (that
+        // query has no ORDER BY).
+        let mut outgoing = leg("native", Some("bob.near"), "10");
+        outgoing.receipt_id = Some("r1".to_string());
+
+        let first_piece = BalanceStampRow {
+            entry_key: "native:dao.near:r1".to_string(),
+            token_standard: "native".to_string(),
+            receipt_id: Some("r1".to_string()),
+            user_balance_after: decimal("3"),
+            intra_block_seq: 0,
+        };
+        let second_piece = BalanceStampRow {
+            entry_key: "native:dao.near:r1:sponsor-clamp".to_string(),
+            token_standard: "native".to_string(),
+            receipt_id: Some("r1".to_string()),
+            user_balance_after: decimal("0"),
+            intra_block_seq: 1,
+        };
+
+        // Scan order shouldn't matter: try both orderings.
+        let forward = BalanceStamps::from_rows(vec![first_piece.clone(), second_piece.clone()]);
+        let backward = BalanceStamps::from_rows(vec![second_piece, first_piece]);
+
+        assert_eq!(
+            forward.for_leg(&outgoing).unwrap().user_balance_after,
+            decimal("0")
+        );
+        assert_eq!(
+            backward.for_leg(&outgoing).unwrap().user_balance_after,
+            decimal("0")
+        );
+    }
+
+    #[test]
     fn missing_stamp_on_real_leg_is_projection_error() {
         let incoming = leg("nep141", Some("alice.near"), "5");
         let stamps = BalanceStamps::default();
