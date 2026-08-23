@@ -72,6 +72,10 @@ pub struct LedgerProjectionError {
 pub struct LedgerBuildResult {
     pub entries: Vec<BalanceLedgerEntry>,
     pub errors: Vec<LedgerProjectionError>,
+    /// Movements where a user-tagged outflow exceeded the available user
+    /// balance and got split into a user portion (down to zero) plus a
+    /// sponsor-absorbed remainder. Zero in the common case.
+    pub sponsor_clamped_entries: u64,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
