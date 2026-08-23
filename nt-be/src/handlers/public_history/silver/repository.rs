@@ -51,11 +51,18 @@ pub async fn earliest_bronze_time(
 }
 
 /// When an account's public history was clamped rather than backfilled to
-/// genesis, every source shares the same `capped_at_time` (all 3 cursors are
-/// pinned together by the same clamp). Bronze from before it is unreconciled
-/// — a clamp anchor stands in for it in `silver_balance_history`, not a
-/// verified prior silver projection — so `has_silver_before`'s "no prior
-/// coverage, expand to a full recompute" fallback must never override it.
+/// genesis, every source shares the same `capped_at_time` (`clamp_account_to_head`
+/// writes all 3 cursors atomically, in one transaction, with the identical
+/// bound value — the only writer of these columns). MAX regardless: nothing
+/// in the schema forbids the 3 sources from disagreeing, only application
+/// convention keeps them equal, and this recompute floor covers bronze from
+/// ALL 3 sources at once — MAX is the only direction guaranteed to floor at
+/// or after every source's own cap, so it can never admit a source's
+/// pre-cap data (MIN would, whenever that source isn't the minimum of the
+/// three). Bronze from before it is unreconciled — a clamp anchor stands in
+/// for it in `silver_balance_history`, not a verified prior silver
+/// projection — so `has_silver_before`'s "no prior coverage, expand to a
+/// full recompute" fallback must never override it.
 pub async fn load_capped_at_time(
     tx: &mut Transaction<'_, Postgres>,
     account_id: &str,

@@ -118,6 +118,14 @@ pub async fn load_watermark(
 /// invariant, in a single scan.
 const LOAD_ASSET_LEDGER_HEADS_SQL: &str = r#"
         WITH cap AS (
+            -- MAX, not MIN: clamp_account_to_head writes all 3 source
+            -- cursors atomically with the identical value, but nothing in
+            -- the schema enforces that. This asset is native, sourced
+            -- exclusively from nearblocks_receipt — MAX(all 3 sources'
+            -- caps) is guaranteed >= the receipt source's own cap, so it
+            -- can never admit receipt data that's still pre-cap. MIN would
+            -- do exactly that whenever receipt isn't the lowest of the
+            -- three — the unsafe direction, not the safe one.
             SELECT MAX(capped_at_block_height) AS capped_at_block_height
             FROM bronze_public_history_cursors
             WHERE account_id = $1 AND backfill_capped = true

@@ -24,6 +24,13 @@ pub async fn load_gold_balance_points(
     sqlx::query_as::<_, GoldBalancePoint>(
         r#"
         WITH cap AS (
+            -- MAX, not MIN: chart points span every asset (native/FT/MT,
+            -- i.e. all 3 sources), so — like silver's recompute floor —
+            -- this needs a bound that's safe regardless of which source's
+            -- data a given point comes from. MAX(all 3 caps) is guaranteed
+            -- >= each individual source's own cap, so it can never admit a
+            -- source's pre-cap point; MIN would, for whichever source isn't
+            -- the minimum of the three.
             SELECT MAX(capped_at_time) AS capped_at_time
             FROM bronze_public_history_cursors
             WHERE account_id = $1 AND backfill_capped = true

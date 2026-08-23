@@ -476,7 +476,9 @@ fn clamp_user_outflow(
             false,
         )
     };
-    if token_standard != PublicTokenStandard::Native || !affects_user_balance || !amount.is_negative()
+    if token_standard != PublicTokenStandard::Native
+        || !affects_user_balance
+        || !amount.is_negative()
     {
         return unclamped();
     }

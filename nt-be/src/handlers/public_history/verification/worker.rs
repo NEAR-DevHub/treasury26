@@ -18,8 +18,8 @@ use super::models::{
 };
 use super::repository::{
     insert_rebase_entry, load_asset_ledger_heads, load_asset_ledger_heads_tx, load_gate_candidates,
-    load_head_check_candidates, load_native_ledger_head, load_native_ledger_head_tx, load_watermark,
-    record_check_results, set_gate_status, set_head_check_result,
+    load_head_check_candidates, load_native_ledger_head, load_native_ledger_head_tx,
+    load_watermark, record_check_results, set_gate_status, set_head_check_result,
 };
 use crate::handlers::public_history::gold::unified::sync_hidden_ledger_rows;
 use crate::services::public_balance_reader::{
