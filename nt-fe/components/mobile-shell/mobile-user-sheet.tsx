@@ -20,25 +20,9 @@ import { SupportCenterModal } from "@/components/support-center-modal";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
-import { isEnabledLocale, type Locale } from "@/i18n/config";
+import { isEnabledLocale, localeFlags, type Locale } from "@/i18n/config";
 import { useMobileShellStore } from "@/stores/mobile-shell-store";
 import { useNear } from "@/stores/near-store";
-
-const flagByLocale: Record<Locale, string> = {
-    en: "🇬🇧",
-    es: "🇪🇸",
-    uk: "🇺🇦",
-    he: "🇮🇱",
-    de: "🇩🇪",
-    fr: "🇫🇷",
-    vi: "🇻🇳",
-    zh: "🇨🇳",
-    tr: "🇹🇷",
-    id: "🇮🇩",
-    pt: "🇧🇷",
-    ja: "🇯🇵",
-    ko: "🇰🇷",
-};
 
 const rowClass =
     "flex w-full items-center gap-3 py-3 text-left text-[15px] font-medium text-muted-foreground";
@@ -140,7 +124,7 @@ export function MobileUserSheet() {
                             <span className="flex-1">{tLang("label")}</span>
                             <span aria-hidden="true">
                                 {
-                                    flagByLocale[
+                                    localeFlags[
                                         isEnabledLocale(locale) ? locale : "en"
                                     ]
                                 }

@@ -13,40 +13,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
-import { enabledLocales, LOCALE_COOKIE, type Locale } from "@/i18n/config";
+import {
+    enabledLocales,
+    localeFlags,
+    localeNames,
+    LOCALE_COOKIE,
+    type Locale,
+} from "@/i18n/config";
 import { useMobileShellStore } from "@/stores/mobile-shell-store";
-
-const labelKeyByLocale: Record<Locale, string> = {
-    en: "english",
-    es: "spanish",
-    uk: "ukrainian",
-    he: "hebrew",
-    de: "german",
-    fr: "french",
-    vi: "vietnamese",
-    zh: "chinese",
-    tr: "turkish",
-    id: "indonesian",
-    pt: "portuguese",
-    ja: "japanese",
-    ko: "korean",
-};
-
-const flagByLocale: Record<Locale, string> = {
-    en: "🇬🇧",
-    es: "🇪🇸",
-    uk: "🇺🇦",
-    he: "🇮🇱",
-    de: "🇩🇪",
-    fr: "🇫🇷",
-    vi: "🇻🇳",
-    zh: "🇨🇳",
-    tr: "🇹🇷",
-    id: "🇮🇩",
-    pt: "🇧🇷",
-    ja: "🇯🇵",
-    ko: "🇰🇷",
-};
 
 export function MobileLanguageSheet() {
     const t = useTranslations("languageSwitcher");
@@ -94,11 +68,9 @@ export function MobileLanguageSheet() {
                             className="flex w-full items-center gap-3 rounded-xl py-3 text-left text-[15px] font-medium"
                         >
                             <span aria-hidden="true" className="text-base">
-                                {flagByLocale[code]}
+                                {localeFlags[code]}
                             </span>
-                            <span className="flex-1">
-                                {t(labelKeyByLocale[code])}
-                            </span>
+                            <span className="flex-1">{localeNames[code]}</span>
                             {code === locale ? (
                                 <Icon
                                     icon={Tick01Icon}

@@ -55,6 +55,22 @@ export const localeNames: Record<Locale, string> = {
     ko: "한국어",
 };
 
+export const localeFlags: Record<Locale, string> = {
+    en: "🇬🇧",
+    es: "🇪🇸",
+    uk: "🇺🇦",
+    he: "🇮🇱",
+    de: "🇩🇪",
+    fr: "🇫🇷",
+    vi: "🇻🇳",
+    zh: "🇨🇳",
+    tr: "🇹🇷",
+    id: "🇮🇩",
+    pt: "🇧🇷",
+    ja: "🇯🇵",
+    ko: "🇰🇷",
+};
+
 /** Right-to-left locales. */
 export const rtlLocales: readonly Locale[] = ["he"];
 

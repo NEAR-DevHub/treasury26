@@ -12,40 +12,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { enabledLocales, LOCALE_COOKIE, type Locale } from "@/i18n/config";
+import {
+    enabledLocales,
+    localeFlags,
+    localeNames,
+    LOCALE_COOKIE,
+    type Locale,
+} from "@/i18n/config";
 import { cn } from "@/lib/utils";
-
-const labelKeyByLocale: Record<Locale, string> = {
-    en: "english",
-    es: "spanish",
-    uk: "ukrainian",
-    he: "hebrew",
-    de: "german",
-    fr: "french",
-    vi: "vietnamese",
-    zh: "chinese",
-    tr: "turkish",
-    id: "indonesian",
-    pt: "portuguese",
-    ja: "japanese",
-    ko: "korean",
-};
-
-const flagByLocale: Record<Locale, string> = {
-    en: "🇬🇧",
-    es: "🇪🇸",
-    uk: "🇺🇦",
-    he: "🇮🇱",
-    de: "🇩🇪",
-    fr: "🇫🇷",
-    vi: "🇻🇳",
-    zh: "🇨🇳",
-    tr: "🇹🇷",
-    id: "🇮🇩",
-    pt: "🇧🇷",
-    ja: "🇯🇵",
-    ko: "🇰🇷",
-};
 
 interface LanguageSwitcherProps {
     align?: "start" | "end" | "center";
@@ -96,7 +70,7 @@ export function LanguageSwitcher({
                     >
                         <Icon icon={Globe02Icon} />
                         <span className="flex-1 text-start">{t("label")}</span>
-                        <span aria-hidden="true">{flagByLocale[locale]}</span>
+                        <span aria-hidden="true">{localeFlags[locale]}</span>
                     </Button>
                 ) : (
                     <Button
@@ -134,9 +108,9 @@ export function LanguageSwitcher({
                     >
                         <span className="flex items-center gap-2">
                             <span aria-hidden="true" className="text-base">
-                                {flagByLocale[code]}
+                                {localeFlags[code]}
                             </span>
-                            <span>{t(labelKeyByLocale[code])}</span>
+                            <span>{localeNames[code]}</span>
                         </span>
                         {code === locale && <Icon icon={Tick01Icon} />}
                     </DropdownMenuItem>
