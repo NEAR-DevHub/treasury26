@@ -366,12 +366,14 @@ impl<'a> BalanceLedgerBuilder<'a> {
                     user: BigDecimal::zero(),
                 });
 
+            let token_standard = movement.asset.token_standard();
+            let affects_user_balance = movement.affects_user_balance;
             let (pieces, clamped) = clamp_user_outflow(
-                &movement.entry_key,
-                &amount.amount,
-                movement.affects_user_balance,
+                movement.entry_key,
+                amount.amount,
+                affects_user_balance,
                 &running.user,
-                movement.asset.token_standard(),
+                token_standard,
             );
             if clamped {
                 sponsor_clamped_entries += 1;
@@ -380,7 +382,7 @@ impl<'a> BalanceLedgerBuilder<'a> {
             let mut chain_running = running.chain.clone();
             let mut user_running = running.user.clone();
 
-            for piece in pieces {
+            for piece in pieces.into_iter().flatten() {
                 if current_block != Some(movement.block_height) {
                     current_block = Some(movement.block_height);
                     intra_block_seq = 0;
@@ -417,6 +419,7 @@ impl<'a> BalanceLedgerBuilder<'a> {
                     balance_after,
                     affects_user_balance: piece.affects_user_balance,
                     user_balance_after,
+                    is_sponsor_clamp: piece.is_sponsor_clamp,
                 });
             }
 
@@ -443,11 +446,20 @@ struct ClampedMovement {
     entry_key: String,
     delta: BigDecimal,
     affects_user_balance: bool,
+    /// Persisted as `silver_balance_history.is_sponsor_clamp` — the
+    /// authoritative way to find these rows again (verification's
+    /// `sponsor_absorbed` aggregate). Never inferred from `entry_key`'s
+    /// `:sponsor-clamp` suffix, which exists only to keep the key unique
+    /// against its sibling piece and is not a queryable field.
+    is_sponsor_clamp: bool,
 }
 
-/// Returns the decomposed pieces plus whether any reclassification happened
-/// (the caller uses this to count clamped movements — a movement can end up
-/// as a single, fully-reclassified non-user entry, not just a 2-way split).
+/// Returns the decomposed pieces (as a fixed 2-slot array — a movement never
+/// produces more than one extra piece, so this avoids a heap allocation on
+/// the hot path for the overwhelming majority of movements that need no
+/// reclassification at all) plus whether any reclassification happened (the
+/// caller uses this to count clamped movements — a movement can end up as a
+/// single, fully-reclassified non-user entry, not just a 2-way split).
 ///
 /// Native only. FT/MT movements are always user-owned by design (see
 /// `token_movement`'s "FT/MT legs are user-owned even when the sponsor
@@ -460,61 +472,68 @@ struct ClampedMovement {
 /// ...", a hard projection error, not a bug native movements share (their
 /// gold lookup keys on receipt_id instead).
 fn clamp_user_outflow(
-    entry_key: &str,
-    amount: &BigDecimal,
+    entry_key: String,
+    amount: BigDecimal,
     affects_user_balance: bool,
     available_user: &BigDecimal,
     token_standard: PublicTokenStandard,
-) -> (Vec<ClampedMovement>, bool) {
-    let unclamped = || {
-        (
-            vec![ClampedMovement {
-                entry_key: entry_key.to_string(),
-                delta: amount.clone(),
+) -> ([Option<ClampedMovement>; 2], bool) {
+    let single = |entry_key, delta, affects_user_balance, is_sponsor_clamp| {
+        [
+            Some(ClampedMovement {
+                entry_key,
+                delta,
                 affects_user_balance,
-            }],
-            false,
-        )
+                is_sponsor_clamp,
+            }),
+            None,
+        ]
     };
     if token_standard != PublicTokenStandard::Native
         || !affects_user_balance
         || !amount.is_negative()
     {
-        return unclamped();
+        return (
+            single(entry_key, amount, affects_user_balance, false),
+            false,
+        );
     }
 
     if !available_user.is_positive() {
         // No user-owned NEAR to debit at all — the whole outflow is
         // sponsor-funded spend.
         return (
-            vec![ClampedMovement {
-                entry_key: format!("{entry_key}:sponsor-clamp"),
-                delta: amount.clone(),
-                affects_user_balance: false,
-            }],
+            single(format!("{entry_key}:sponsor-clamp"), amount, false, true),
             true,
         );
     }
 
-    let magnitude = -amount;
+    let magnitude = -&amount;
     if magnitude <= *available_user {
-        return unclamped();
+        return (
+            single(entry_key, amount, affects_user_balance, false),
+            false,
+        );
     }
 
     // Partial: debit the user series down to exactly zero, book the rest as
     // sponsor-funded spend. The two deltas sum back to `amount` exactly.
+    let sponsor_key = format!("{entry_key}:sponsor-clamp");
+    let sponsor_delta = &amount + available_user;
     (
-        vec![
-            ClampedMovement {
-                entry_key: entry_key.to_string(),
+        [
+            Some(ClampedMovement {
+                entry_key,
                 delta: -available_user.clone(),
                 affects_user_balance: true,
-            },
-            ClampedMovement {
-                entry_key: format!("{entry_key}:sponsor-clamp"),
-                delta: amount + available_user,
+                is_sponsor_clamp: false,
+            }),
+            Some(ClampedMovement {
+                entry_key: sponsor_key,
+                delta: sponsor_delta,
                 affects_user_balance: false,
-            },
+                is_sponsor_clamp: true,
+            }),
         ],
         true,
     )
@@ -1205,6 +1224,7 @@ mod tests {
         let sent = &result.entries[1];
         assert_eq!(sent.entry_key, "native:dao.near:r2:sponsor-clamp");
         assert!(!sent.affects_user_balance);
+        assert!(sent.is_sponsor_clamp);
         assert_eq!(sent.delta_raw, BigDecimal::from(-700));
         assert_eq!(sent.user_balance_after, BigDecimal::zero());
         assert_eq!(
@@ -1234,11 +1254,13 @@ mod tests {
 
         assert_eq!(user_piece.entry_key, "native:dao.near:r3");
         assert!(user_piece.affects_user_balance);
+        assert!(!user_piece.is_sponsor_clamp);
         assert_eq!(user_piece.delta_raw, BigDecimal::from(-400));
         assert_eq!(user_piece.user_balance_after, BigDecimal::zero());
 
         assert_eq!(sponsor_piece.entry_key, "native:dao.near:r3:sponsor-clamp");
         assert!(!sponsor_piece.affects_user_balance);
+        assert!(sponsor_piece.is_sponsor_clamp);
         assert_eq!(sponsor_piece.delta_raw, BigDecimal::from(-500));
         assert_eq!(sponsor_piece.user_balance_after, BigDecimal::zero());
 
@@ -1268,6 +1290,7 @@ mod tests {
         let sent = &result.entries[1];
         assert_eq!(sent.entry_key, "native:dao.near:r2");
         assert!(sent.affects_user_balance);
+        assert!(!sent.is_sponsor_clamp);
         assert_eq!(
             sent.user_balance_after,
             BigDecimal::from(700) / decimal_denominator(NATIVE_DECIMALS)
@@ -1292,6 +1315,7 @@ mod tests {
         assert_eq!(outflow.entry_key, "nearblocks_ft:ft-2");
         assert!(!outflow.entry_key.contains("sponsor-clamp"));
         assert!(outflow.affects_user_balance);
+        assert!(!outflow.is_sponsor_clamp);
         assert!(outflow.user_balance_after.is_negative());
     }
 }

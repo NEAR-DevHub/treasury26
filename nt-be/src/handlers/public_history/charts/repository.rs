@@ -52,8 +52,13 @@ pub async fn load_gold_balance_points(
               AND gold.event_time <= $3
               -- Pre-cap points are unreconciled history, never a reliable
               -- chart value or baseline — exclude them outright rather than
-              -- only steering readers away via coverage metadata.
-              AND gold.event_time >= COALESCE(cap.capped_at_time, gold.event_time)
+              -- only steering readers away via coverage metadata. Written
+              -- as an explicit NULL check (not a self-referential
+              -- COALESCE(cap.capped_at_time, gold.event_time) no-op trick)
+              -- so an uncapped account's rows are kept for a reason visible
+              -- in the SQL itself, not because event_time happens to be
+              -- NOT NULL elsewhere in the schema.
+              AND (cap.capped_at_time IS NULL OR gold.event_time >= cap.capped_at_time)
               AND (
                   cardinality($4::text[]) = 0
                   OR gold.token_out = ANY($4::text[])
@@ -75,7 +80,8 @@ pub async fn load_gold_balance_points(
               AND gold.token_in IS NOT NULL
               AND gold.token_in_user_balance_after IS NOT NULL
               AND gold.event_time <= $3
-              AND gold.event_time >= COALESCE(cap.capped_at_time, gold.event_time)
+              -- Same pre-cap exclusion as the token_out leg above.
+              AND (cap.capped_at_time IS NULL OR gold.event_time >= cap.capped_at_time)
               AND (
                   cardinality($4::text[]) = 0
                   OR gold.token_in = ANY($4::text[])

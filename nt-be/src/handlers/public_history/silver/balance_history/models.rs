@@ -50,6 +50,10 @@ pub struct BalanceLedgerEntry {
     /// deposits move the chain balance but not the user's.
     pub affects_user_balance: bool,
     pub user_balance_after: BigDecimal,
+    /// True for the sponsor-absorbed piece of a clamped user outflow (see
+    /// `clamp_user_outflow` in `builder.rs`). Observability only — never
+    /// gates verification pass/fail.
+    pub is_sponsor_clamp: bool,
 }
 
 /// Latest balance per asset strictly before a recompute window, used to seed

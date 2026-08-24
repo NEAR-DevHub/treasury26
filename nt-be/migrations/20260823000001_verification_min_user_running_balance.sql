@@ -13,3 +13,13 @@
 ALTER TABLE public_balance_verification_results
     ADD COLUMN min_user_running_balance NUMERIC,
     ADD COLUMN sponsor_absorbed NUMERIC;
+
+-- Marks the sponsor-absorbed piece a clamped user outflow decomposes into
+-- (see `clamp_user_outflow` in silver/balance_history/builder.rs). The
+-- entry_key on that piece also carries a ':sponsor-clamp' suffix, but that
+-- exists only to keep entry_key unique against its sibling piece — it is
+-- not meant to be queried. This column is the actual, non-fragile way to
+-- find these rows again; verification's sponsor_absorbed aggregate reads it
+-- directly instead of pattern-matching entry_key.
+ALTER TABLE silver_balance_history
+    ADD COLUMN is_sponsor_clamp BOOLEAN NOT NULL DEFAULT false;

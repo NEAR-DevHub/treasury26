@@ -101,6 +101,7 @@ async fn insert_ledger_entries(
         .iter()
         .map(|e| e.user_balance_after.clone())
         .collect();
+    let is_sponsor_clamps: Vec<bool> = entries.iter().map(|e| e.is_sponsor_clamp).collect();
 
     let result = sqlx::query(
         r#"
@@ -124,13 +125,14 @@ async fn insert_ledger_entries(
             balance_before,
             balance_after,
             affects_user_balance,
-            user_balance_after
+            user_balance_after,
+            is_sponsor_clamp
         )
         SELECT
             account_id,
             asset,
             token_standard::public_token_standard,
-            $20::public_balance_entry_kind,
+            $21::public_balance_entry_kind,
             entry_key,
             source::public_history_source,
             source_event_id,
@@ -146,7 +148,8 @@ async fn insert_ledger_entries(
             balance_before,
             balance_after,
             affects_user_balance,
-            user_balance_after
+            user_balance_after,
+            is_sponsor_clamp
         FROM UNNEST(
             $1::text[],
             $2::text[],
@@ -166,7 +169,8 @@ async fn insert_ledger_entries(
             $16::numeric[],
             $17::numeric[],
             $18::boolean[],
-            $19::numeric[]
+            $19::numeric[],
+            $20::boolean[]
         ) AS t(
             account_id,
             asset,
@@ -186,7 +190,8 @@ async fn insert_ledger_entries(
             balance_before,
             balance_after,
             affects_user_balance,
-            user_balance_after
+            user_balance_after,
+            is_sponsor_clamp
         )
         "#,
     )
@@ -209,6 +214,7 @@ async fn insert_ledger_entries(
     .bind(&balances_after)
     .bind(&affects_user_balances)
     .bind(&user_balances_after)
+    .bind(&is_sponsor_clamps)
     .bind(BalanceEntryKind::Movement.as_str())
     .execute(&mut **tx)
     .await?;

@@ -151,6 +151,16 @@ const LOAD_ASSET_LEDGER_HEADS_SQL: &str = r#"
             WHERE entry_kind = 'reconciliation'
             GROUP BY asset
         ),
+        -- Single scalar derived from `anchors` (already computed) instead of
+        -- each of the two CTEs below re-deriving the same
+        -- MAX(block_height WHERE entry_kind = 'reconciliation') via its own
+        -- correlated subquery over `ledger` — same value, one scan instead
+        -- of three. Native-only verification means at most one asset here,
+        -- so collapsing per-asset anchors to a single scalar loses nothing.
+        recon_anchor AS (
+            SELECT COALESCE(MAX(anchor_block), -1) AS anchor_block
+            FROM anchors
+        ),
         -- Gas rebates accrue per successful inbound receipt regardless of
         -- whether it moves value — most don't, so counting ledger entries
         -- (movements only) systematically under-budgets busy accounts. The
@@ -159,7 +169,7 @@ const LOAD_ASSET_LEDGER_HEADS_SQL: &str = r#"
         -- to this account, so the anchor window comes from it directly.
         receipt_counts AS (
             SELECT COUNT(DISTINCT bronze.receipt_id) AS inbound_receipt_count
-            FROM bronze_public_history_events bronze, cap
+            FROM bronze_public_history_events bronze, cap, recon_anchor
             WHERE bronze.account_id = $1
               AND bronze.source = 'nearblocks_receipt'::public_history_source
               AND bronze.affected_account_id = $1
@@ -170,23 +180,20 @@ const LOAD_ASSET_LEDGER_HEADS_SQL: &str = r#"
               -- into a gas-dust budget large enough to hide real post-cap
               -- drift.
               AND bronze.block_height >= COALESCE(cap.capped_at_block_height, bronze.block_height)
-              AND bronze.block_height > COALESCE(
-                  (SELECT MAX(block_height) FROM ledger WHERE entry_kind = 'reconciliation'),
-                  -1
-              )
+              AND bronze.block_height > recon_anchor.anchor_block
         ),
         -- How much user-tagged spend the builder's clamp (assign_running_
         -- balances) has redirected to sponsor-funded since the anchor —
         -- the observable trace of a would-be negative user balance, not a
-        -- failure signal in itself.
+        -- failure signal in itself. `is_sponsor_clamp` is the persisted
+        -- flag the builder stamps on that exact piece — not a pattern match
+        -- against entry_key, whose ':sponsor-clamp' suffix exists only to
+        -- keep it unique against its sibling piece.
         sponsor_absorbed AS (
             SELECT COALESCE(-SUM(delta), 0) AS sponsor_absorbed
-            FROM ledger
-            WHERE entry_key LIKE '%:sponsor-clamp'
-              AND block_height > COALESCE(
-                  (SELECT MAX(block_height) FROM ledger WHERE entry_kind = 'reconciliation'),
-                  -1
-              )
+            FROM ledger, recon_anchor
+            WHERE ledger.is_sponsor_clamp
+              AND ledger.block_height > recon_anchor.anchor_block
         )
         SELECT DISTINCT ON (ledger.asset)
             ledger.asset,
