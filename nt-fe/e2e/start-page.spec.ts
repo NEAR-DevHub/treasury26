@@ -153,9 +153,9 @@ test("Signed in + no treasuries + creation disabled => waitlist is shown", async
     // Selecting a type on `/` is lost when that remounts the form.
     await expect(page).toHaveURL(/\/create/, { timeout: 15000 });
 
-    const publicType = page.getByRole("button", { name: "Public" });
+    const publicType = page.getByRole("radio", { name: "Public" });
     await publicType.click();
-    await expect(publicType).toHaveAttribute("aria-pressed", "true");
+    await expect(publicType).toBeChecked();
 
     await page
         .getByRole("textbox", { name: "My Treasury" })

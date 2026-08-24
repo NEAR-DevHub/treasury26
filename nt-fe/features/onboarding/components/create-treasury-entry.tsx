@@ -6,7 +6,14 @@ import { Check, Gift, Globe, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import {
+    type KeyboardEvent,
+    type ReactNode,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -75,19 +82,23 @@ function TreasuryTypeOption({
     title,
     description,
     selected,
+    tabIndex,
     onClick,
 }: {
     icon: ReactNode;
     title: string;
     description: string;
     selected: boolean;
+    tabIndex: number;
     onClick: () => void;
 }) {
     return (
         <button
             type="button"
+            role="radio"
             aria-label={title}
-            aria-pressed={selected}
+            aria-checked={selected}
+            tabIndex={tabIndex}
             className={cn(
                 "h-full rounded-xl border border-general-border p-3 md:p-4 text-left transition hover:bg-muted/70",
                 selected ? "bg-general-tertiary " : "",
@@ -586,6 +597,29 @@ export function TreasuryOnboardingPage({
         setShowLoginScreen(true);
     };
 
+    const selectTreasuryType = (nextConfidential: boolean) => {
+        form.setValue("isConfidential", nextConfidential);
+    };
+
+    const onTreasuryTypeKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+        if (
+            event.key !== "ArrowRight" &&
+            event.key !== "ArrowLeft" &&
+            event.key !== "ArrowDown" &&
+            event.key !== "ArrowUp"
+        ) {
+            return;
+        }
+        event.preventDefault();
+        const goNext = event.key === "ArrowRight" || event.key === "ArrowDown";
+        const currentIndex = isConfidential === true ? 1 : 0;
+        const nextIndex = (currentIndex + (goNext ? 1 : -1) + 2) % 2;
+        selectTreasuryType(nextIndex === 1);
+        const radios =
+            event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]');
+        radios[nextIndex]?.focus();
+    };
+
     const createFormBody = (
         <>
             <div className="mx-auto w-full max-w-[600px] space-y-3 md:mt-10">
@@ -601,11 +635,19 @@ export function TreasuryOnboardingPage({
                                 </h1>
                             )}
                             <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">
+                                <p
+                                    id="select-treasury-type-label"
+                                    className="text-sm text-muted-foreground"
+                                >
                                     {t("selectTreasuryTypeLabel")}
                                 </p>
 
-                                <div className="grid gap-3 md:grid-cols-2">
+                                <div
+                                    role="radiogroup"
+                                    aria-labelledby="select-treasury-type-label"
+                                    className="grid gap-3 md:grid-cols-2"
+                                    onKeyDown={onTreasuryTypeKeyDown}
+                                >
                                     <TreasuryTypeOption
                                         icon={
                                             <Globe className="size-4 text-foreground" />
@@ -613,11 +655,11 @@ export function TreasuryOnboardingPage({
                                         title={t("public")}
                                         description={t("publicCardDescription")}
                                         selected={isConfidential === false}
+                                        tabIndex={
+                                            isConfidential !== true ? 0 : -1
+                                        }
                                         onClick={() =>
-                                            form.setValue(
-                                                "isConfidential",
-                                                false,
-                                            )
+                                            selectTreasuryType(false)
                                         }
                                     />
                                     <TreasuryTypeOption
@@ -632,12 +674,10 @@ export function TreasuryOnboardingPage({
                                             "confidentialCardDescription",
                                         )}
                                         selected={isConfidential === true}
-                                        onClick={() =>
-                                            form.setValue(
-                                                "isConfidential",
-                                                true,
-                                            )
+                                        tabIndex={
+                                            isConfidential === true ? 0 : -1
                                         }
+                                        onClick={() => selectTreasuryType(true)}
                                     />
                                 </div>
                             </div>
