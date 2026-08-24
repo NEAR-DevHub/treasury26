@@ -35,6 +35,8 @@ interface PageComponentLayoutProps {
     hideHeaderBottomBorder?: boolean;
     /** Renders an empty header: no logo/title, staging pill, language or theme controls. */
     hideHeaderContent?: boolean;
+    /** Page-specific controls pinned to the right edge of the header. */
+    headerActions?: ReactNode;
     /** Drops the header entirely, so the page owns the full viewport height. */
     hideHeader?: boolean;
     /** Pins the page to the viewport so it never scrolls, on any breakpoint. */
@@ -54,6 +56,7 @@ export function PageComponentLayout({
     transparentHeader = false,
     hideHeaderBottomBorder = false,
     hideHeaderContent = false,
+    headerActions,
     hideHeader = false,
     fitViewport = false,
     logo,
@@ -156,6 +159,7 @@ export function PageComponentLayout({
                     </div>
 
                     <div className="flex items-center gap-3">
+                        {headerActions}
                         {hasSidebarRail && (
                             <div className="lg:hidden">
                                 <MobileUserHeaderButton />

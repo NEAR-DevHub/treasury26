@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "All",
-            "sent": "Sent",
-            "received": "Received",
-            "stakingRewards": "Staking Rewards",
-            "exchange": "Exchange"
+            "send": "Send",
+            "receive": "Receive",
+            "swap": "Swap",
+            "stakingRewards": "Staking Rewards"
         },
         "searchPlaceholder": "Search by transaction hash",
         "searchPlaceholderShort": "Transaction hash",

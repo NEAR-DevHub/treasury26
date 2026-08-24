@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/button";
-import { ExportButton } from "@/components/export-button";
 import { Icon } from "@/components/icon";
 import { ResponsiveInput } from "@/components/input";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -16,6 +15,7 @@ import {
     TabsContent,
 } from "@/components/responsive-tabs";
 import { ActivityTable } from "@/features/activity";
+import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
 import {
     type FilterOption,
     ProposalFilters as GenericFilters,
@@ -32,6 +32,10 @@ import {
 const PAGE_SIZE = 15;
 const FILTER_PANEL_MAX_HEIGHT = "500px";
 
+/** Backend activity statuses the tabs can filter by ("all" filters by nothing). */
+type ActivityStatus = "outgoing" | "incoming" | "exchange";
+type ActivityTab = TabItem & { value: "all" | ActivityStatus };
+
 function getSelectedAccountsFromFilter(filterValue: string | null): string[] {
     if (!filterValue) return [];
     try {
@@ -43,11 +47,7 @@ function getSelectedAccountsFromFilter(filterValue: string | null): string[] {
     }
 }
 
-function ActivityList({
-    status,
-}: {
-    status?: "incoming" | "outgoing" | "staking_rewards" | "exchange";
-}) {
+function ActivityList({ status }: { status?: ActivityStatus }) {
     const { treasuryId } = useTreasury();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -329,12 +329,11 @@ export default function ActivityPage() {
         [searchParams, router, pathname],
     );
 
-    const tabs: TabItem[] = [
+    const tabs: ActivityTab[] = [
         { value: "all", label: tActivity("tabs.all") },
-        { value: "outgoing", label: tActivity("tabs.sent") },
-        { value: "incoming", label: tActivity("tabs.received") },
-        { value: "staking_rewards", label: tActivity("tabs.stakingRewards") },
-        { value: "exchange", label: tActivity("tabs.exchange") },
+        { value: "outgoing", label: tActivity("tabs.send") },
+        { value: "incoming", label: tActivity("tabs.receive") },
+        { value: "exchange", label: tActivity("tabs.swap") },
     ];
 
     const actions = (
@@ -346,7 +345,9 @@ export default function ActivityPage() {
                 debounceMs={350}
                 placeholder={tActivity("searchPlaceholder")}
                 mobilePlaceholder={tActivity("searchPlaceholderShort")}
-                className="md:h-10 md:w-[290px] md:rounded-xl md:border md:border-general-border md:bg-card!"
+                className="md:h-10 md:w-[290px] md:shrink-0"
+                inputClassName="md:rounded-lg md:border md:border-general-border md:bg-card! md:hover:bg-card! md:pl-9 md:placeholder:font-medium md:placeholder:text-general-muted-foreground dark:md:placeholder:text-muted-foreground focus-visible:border-general-border focus-visible:ring-0"
+                searchIconClassName="md:left-2 md:size-5 md:text-general-muted-foreground dark:md:text-muted-foreground"
                 search
             />
             <Button
@@ -369,7 +370,6 @@ export default function ActivityPage() {
                     />
                 )}
             </Button>
-            <ExportButton />
         </div>
     );
 
@@ -389,24 +389,14 @@ export default function ActivityPage() {
 
     const tabContents = tabs.map(({ value }) => (
         <TabsContent key={value} value={value}>
-            <ActivityList
-                status={
-                    value === "all"
-                        ? undefined
-                        : (value as
-                              | "incoming"
-                              | "outgoing"
-                              | "staking_rewards"
-                              | "exchange")
-                }
-            />
+            <ActivityList status={value === "all" ? undefined : value} />
         </TabsContent>
     ));
 
     return (
         <PageComponentLayout
             title={t("title")}
-            backButton={`/${treasuryId}/dashboard`}
+            headerActions={<HistoryRefreshButton className="size-10" />}
         >
             <ResponsiveTabs
                 tabs={tabs}

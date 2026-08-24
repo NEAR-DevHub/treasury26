@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "すべて",
-            "sent": "送信済み",
-            "received": "受信済み",
-            "stakingRewards": "ステーキング報酬",
-            "exchange": "交換"
+            "send": "送金",
+            "receive": "受取",
+            "swap": "交換",
+            "stakingRewards": "ステーキング報酬"
         },
         "searchPlaceholder": "トランザクションハッシュで検索",
         "searchPlaceholderShort": "トランザクションハッシュ",

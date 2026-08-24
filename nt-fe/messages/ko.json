@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "전체",
-            "sent": "송금",
-            "received": "수신",
-            "stakingRewards": "스테이킹 보상",
-            "exchange": "교환"
+            "send": "보내기",
+            "receive": "받기",
+            "swap": "교환",
+            "stakingRewards": "스테이킹 보상"
         },
         "searchPlaceholder": "트랜잭션 해시로 검색",
         "searchPlaceholderShort": "트랜잭션 해시",

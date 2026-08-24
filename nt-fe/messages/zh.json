@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "全部",
-            "sent": "已发送",
-            "received": "已接收",
-            "stakingRewards": "质押奖励",
-            "exchange": "兑换"
+            "send": "发送",
+            "receive": "接收",
+            "swap": "兑换",
+            "stakingRewards": "质押奖励"
         },
         "searchPlaceholder": "按交易哈希搜索",
         "searchPlaceholderShort": "交易哈希",

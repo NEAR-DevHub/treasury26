@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "Todas",
-            "sent": "Enviadas",
-            "received": "Recebidas",
-            "stakingRewards": "Recompensas de staking",
-            "exchange": "Troca"
+            "send": "Enviar",
+            "receive": "Receber",
+            "swap": "Trocar",
+            "stakingRewards": "Recompensas de staking"
         },
         "searchPlaceholder": "Buscar por hash da transação",
         "searchPlaceholderShort": "Hash da transação",
