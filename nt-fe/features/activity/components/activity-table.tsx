@@ -1,21 +1,17 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
-    ArrowDown02Icon,
-    ArrowLeftRightIcon,
     ArrowRight01Icon,
     Clock01Icon,
-    InformationCircleIcon,
     LoaderCircleIcon,
-    MinusSignIcon,
+    HelpCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
-import { Address } from "@/components/address";
+import { type ReactNode, useState } from "react";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
+import { Icon } from "@/components/icon";
 import { Pagination } from "@/components/pagination";
 import {
     Table,
@@ -26,12 +22,11 @@ import {
     TableRow,
 } from "@/components/table";
 import { TableSkeleton } from "@/components/table-skeleton";
-import { TokenAmountDisplay } from "@/components/token-display";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
 import { TooltipUser } from "@/components/user";
 import { useTreasury } from "@/hooks/use-treasury";
-import type { RecentActivity } from "@/lib/api";
+import type { RecentActivity, TokenMetadataInfo } from "@/lib/api";
 import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import {
     getActivityStatus,
@@ -41,6 +36,7 @@ import {
     useGetActivityLabel,
     useGetFromAccount,
 } from "../utils/history-utils";
+import { ActivityGlyph, ActivityRowIcon } from "./activity-row-icon";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 import { TransactionHashCell } from "./transaction-hash-cell";
 
@@ -51,6 +47,144 @@ interface ActivityTableProps {
     pageSize: number;
     total: number;
     onPageChange: (page: number) => void;
+}
+
+/** Shared geometry for the five columns, applied to header and body alike. */
+const CELL_PADDING = [
+    "px-6",
+    "px-4",
+    "px-3",
+    "px-3",
+    "px-3 text-right",
+] as const;
+
+/**
+ * The table paints a white sheet floating on the card's tertiary surface: the
+ * header sits on the surface itself while the rows form a rounded, bordered
+ * block. `border-separate` keeps that block's corners round — with collapsed
+ * borders the radius on the outer cells would be dropped.
+ */
+function bodyCellClassName(
+    columnIndex: number,
+    isFirstRow: boolean,
+    isLastRow: boolean,
+) {
+    return cn(
+        "h-[66px] bg-card border-b border-general-border align-middle transition-colors group-hover:bg-general-tertiary",
+        CELL_PADDING[columnIndex],
+        isFirstRow && "border-t",
+        columnIndex === 0 && "border-l",
+        columnIndex === CELL_PADDING.length - 1 && "border-r",
+        isFirstRow && columnIndex === 0 && "rounded-tl-xl",
+        isFirstRow &&
+            columnIndex === CELL_PADDING.length - 1 &&
+            "rounded-tr-xl",
+        isLastRow && columnIndex === 0 && "rounded-bl-xl",
+        isLastRow && columnIndex === CELL_PADDING.length - 1 && "rounded-br-xl",
+    );
+}
+
+/** The tertiary frame the white row sheet floats inside. */
+function TableSheet({ children }: { children: ReactNode }) {
+    return (
+        <div className="rounded-2xl border border-general-border bg-general-tertiary p-1">
+            {children}
+        </div>
+    );
+}
+
+/** Token glyph sized for the overlapping swap pair, which needs 20/28px. */
+function TokenGlyph({
+    token,
+    className,
+}: {
+    token: TokenMetadataInfo;
+    className?: string;
+}) {
+    const icon = token.icon;
+    const isImageIcon =
+        !!icon && (icon.startsWith("data:image") || icon.startsWith("http"));
+
+    return isImageIcon ? (
+        <img
+            src={icon}
+            alt={token.symbol}
+            className={cn("shrink-0 rounded-full", className)}
+        />
+    ) : (
+        <div
+            className={cn(
+                "flex shrink-0 items-center justify-center rounded-full bg-brand-blue text-white text-xs font-normal",
+                className,
+            )}
+        >
+            {token.symbol.charAt(0).toUpperCase()}
+        </div>
+    );
+}
+
+/** Sent token tucked behind the received one, matching the 36px row badge. */
+function SwapTokenPair({
+    sent,
+    received,
+}: {
+    sent?: TokenMetadataInfo;
+    received: TokenMetadataInfo;
+}) {
+    return (
+        <div className="relative size-9 shrink-0">
+            {sent && (
+                <TokenGlyph
+                    token={sent}
+                    className="absolute left-0 top-0 size-5"
+                />
+            )}
+            <TokenGlyph
+                token={received}
+                className="absolute bottom-0 right-0 size-7 border border-card bg-card"
+            />
+        </div>
+    );
+}
+
+function SwapTransactionCell({
+    swap,
+}: {
+    swap: NonNullable<RecentActivity["swap"]>;
+}) {
+    const sentSymbol = swap.sentTokenMetadata?.symbol;
+    const receivedSymbol = swap.receivedTokenMetadata.symbol;
+    // A fulfillment credits the treasury, so it keeps the incoming colour and
+    // sign; a deposit is the leg the treasury pays for and stays neutral.
+    const isIncoming = swap.swapRole === "fulfillment";
+
+    return (
+        <div className="flex items-center gap-2">
+            <SwapTokenPair
+                sent={swap.sentTokenMetadata}
+                received={swap.receivedTokenMetadata}
+            />
+            <div className="flex min-w-0 flex-col">
+                <span className="truncate text-xs font-medium tracking-[0.18px] text-muted-foreground">
+                    {swap.sentAmount && sentSymbol
+                        ? `${formatSmartAmount(swap.sentAmount)} ${sentSymbol}`
+                        : (sentSymbol ?? "?")}
+                </span>
+                <span
+                    className={cn(
+                        "truncate text-sm font-semibold",
+                        isIncoming
+                            ? "text-general-success-foreground"
+                            : "text-general-foreground",
+                    )}
+                >
+                    {swap.receivedAmount
+                        ? `${isIncoming ? "+" : ""}${formatSmartAmount(swap.receivedAmount)} ${receivedSymbol}`
+                        : receivedSymbol}
+                </span>
+            </div>
+        </div>
+    );
 }
 
 export function ActivityTable({
@@ -71,70 +205,96 @@ export function ActivityTable({
 
     const totalPages = Math.ceil(total / pageSize);
 
-    const getTypeLabel = (activity: RecentActivity) => {
-        return getActivityLabel(activity);
-    };
-
     const openTransactionDetails = (activity: RecentActivity) => {
         setSelectedActivity(activity);
         setIsModalOpen(true);
     };
 
     if (isLoading) {
-        return <TableSkeleton rows={pageSize} columns={6} />;
-    }
-
-    if (activities.length === 0) {
         return (
-            <EmptyState
-                icon={Clock01Icon}
-                title={t("empty.title")}
-                description={t("empty.description")}
+            <TableSkeleton
+                rows={pageSize}
+                columns={5}
+                className="rounded-2xl border-general-border"
             />
         );
     }
 
+    if (activities.length === 0) {
+        return (
+            <TableSheet>
+                <div className="rounded-xl border border-general-border bg-card">
+                    <EmptyState
+                        icon={Clock01Icon}
+                        title={t("empty.title")}
+                        description={t("empty.description")}
+                    />
+                </div>
+            </TableSheet>
+        );
+    }
+
     return (
-        <div className="space-y-4">
-            <div className="rounded-md border">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[120px] pl-6 text-xs font-medium uppercase text-muted-foreground">
+        <div className="space-y-2">
+            <TableSheet>
+                <Table className="table-fixed border-separate border-spacing-0">
+                    <TableHeader className="border-0 bg-transparent">
+                        <TableRow className="border-0 hover:bg-transparent">
+                            <TableHead
+                                className={cn(
+                                    "h-10 text-sm font-semibold normal-case",
+                                    CELL_PADDING[0],
+                                )}
+                            >
                                 {t("table.type")}
                             </TableHead>
-                            <TableHead className="min-w-[180px] text-xs font-medium uppercase text-muted-foreground">
+                            <TableHead
+                                className={cn(
+                                    "h-10 text-sm font-semibold normal-case",
+                                    CELL_PADDING[1],
+                                )}
+                            >
                                 {t("table.transaction")}
                             </TableHead>
-                            <TableHead className="min-w-[150px] text-xs font-medium uppercase text-muted-foreground">
+                            <TableHead
+                                className={cn(
+                                    "h-10 text-sm font-semibold normal-case",
+                                    CELL_PADDING[2],
+                                )}
+                            >
                                 {t("table.from")}
                             </TableHead>
-                            <TableHead className="min-w-[150px] text-xs font-medium uppercase text-muted-foreground">
+                            <TableHead
+                                className={cn(
+                                    "h-10 text-sm font-semibold normal-case",
+                                    CELL_PADDING[3],
+                                )}
+                            >
                                 {t("table.to")}
                             </TableHead>
-                            <TableHead className="text-right pr-2 min-w-[120px] text-xs font-medium uppercase text-muted-foreground">
-                                <div className="flex items-center justify-end gap-1">
+                            <TableHead
+                                className={cn(
+                                    "h-10 w-[278px] text-sm font-semibold normal-case",
+                                    CELL_PADDING[4],
+                                )}
+                            >
+                                <span className="flex items-center justify-end gap-2">
                                     {t("table.transactionHash")}
                                     <Tooltip content={t("table.hashTooltip")}>
                                         <Icon
-                                            icon={InformationCircleIcon}
-                                            className="text-muted-foreground"
+                                            icon={HelpCircleIcon}
+                                            className="size-4"
                                         />
                                     </Tooltip>
-                                </div>
-                            </TableHead>
-                            <TableHead className="w-10 pr-4">
-                                <span className="sr-only">
-                                    {t("details.title")}
                                 </span>
                             </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {activities.map((activity) => {
-                            const isSwap = !!activity.swap;
+                        {activities.map((activity, index) => {
+                            const isFirstRow = index === 0;
+                            const isLastRow = index === activities.length - 1;
                             const isReceived = parseFloat(activity.amount) > 0;
-                            const typeLabel = getTypeLabel(activity);
                             const status = getActivityStatus(activity);
                             const fromId = getFromAccountId(
                                 activity,
@@ -148,40 +308,37 @@ export function ActivityTable({
                             );
 
                             return (
-                                <TableRow key={activity.id}>
-                                    <TableCell className="pl-6">
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full shrink-0 bg-muted">
-                                                {isSwap ? (
-                                                    <Icon
-                                                        icon={
-                                                            ArrowLeftRightIcon
-                                                        }
-                                                    />
-                                                ) : isReceived ? (
-                                                    <Icon
-                                                        icon={ArrowDown02Icon}
-                                                    />
-                                                ) : (
-                                                    <Icon
-                                                        icon={MinusSignIcon}
-                                                    />
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col gap-0.5 min-w-0">
-                                                <span className="text-sm font-medium truncate">
-                                                    {typeLabel}
+                                <TableRow
+                                    key={activity.id}
+                                    className="group border-0 hover:bg-transparent"
+                                >
+                                    <TableCell
+                                        className={bodyCellClassName(
+                                            0,
+                                            isFirstRow,
+                                            isLastRow,
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ActivityRowIcon>
+                                                <ActivityGlyph
+                                                    activity={activity}
+                                                />
+                                            </ActivityRowIcon>
+                                            <div className="flex min-w-0 flex-1 flex-col">
+                                                <span className="truncate text-sm font-semibold text-general-foreground">
+                                                    {getActivityLabel(activity)}
                                                 </span>
                                                 {status === "pending" ? (
-                                                    <span className="inline-flex items-center gap-1 text-xs font-medium text-general-orange-foreground">
+                                                    <span className="flex items-center gap-1 text-sm font-medium text-general-orange-foreground">
                                                         <Icon
                                                             icon={LoaderCircleIcon}
-                                                            className="animate-spin"
+                                                            className="size-3 animate-spin"
                                                         />
                                                         {t("table.processing")}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-xs text-muted-foreground whitespace-normal wrap-break-word md:whitespace-nowrap">
+                                                    <span className="truncate text-sm font-medium text-muted-foreground">
                                                         <FormattedDate
                                                             date={
                                                                 new Date(
@@ -195,187 +352,60 @@ export function ActivityTable({
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="min-w-[180px]">
-                                        {isSwap &&
-                                        activity.swap &&
-                                        activity.swap.swapRole === "deposit" ? (
-                                            <div className="flex items-center gap-1.5">
-                                                {/* Sent token icon */}
-                                                {activity.swap
-                                                    .sentTokenMetadata && (
-                                                    <TokenDisplay
-                                                        symbol={
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .symbol
-                                                        }
-                                                        icon={
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .icon || ""
-                                                        }
-                                                        chainIcons={
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .chainIcons
-                                                        }
-                                                        iconSize="sm"
-                                                    />
-                                                )}
-                                                {/* Sent amount */}
-                                                {activity.swap.sentAmount &&
-                                                activity.swap
-                                                    .sentTokenMetadata ? (
-                                                    <span className="font-normal text-foreground whitespace-nowrap">
-                                                        {formatSmartAmount(
-                                                            activity.swap
-                                                                .sentAmount,
-                                                        )}{" "}
-                                                        {
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .symbol
-                                                        }
-                                                    </span>
-                                                ) : (
-                                                    <span className="font-normal text-muted-foreground">
-                                                        ?
-                                                    </span>
-                                                )}
-                                                {/* Arrow */}
-                                                <Icon
-                                                    icon={ArrowRight01Icon}
-                                                    className="text-muted-foreground shrink-0"
-                                                />
-                                                {/* Received token icon */}
-                                                <TokenDisplay
-                                                    symbol={
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .symbol
-                                                    }
-                                                    icon={
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .icon || ""
-                                                    }
-                                                    chainIcons={
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .chainIcons
-                                                    }
-                                                    iconSize="sm"
-                                                />
-                                                {/* Received amount with + sign */}
-                                                <span className="font-normal text-general-success-foreground whitespace-nowrap">
-                                                    {
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .symbol
-                                                    }
-                                                </span>
-                                            </div>
-                                        ) : isSwap &&
-                                          activity.swap &&
-                                          activity.swap.swapRole ===
-                                              "fulfillment" ? (
-                                            <div className="flex items-center gap-1.5">
-                                                {/* Sent token icon */}
-                                                {activity.swap
-                                                    .sentTokenMetadata && (
-                                                    <TokenDisplay
-                                                        symbol={
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .symbol
-                                                        }
-                                                        icon={
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .icon || ""
-                                                        }
-                                                        chainIcons={
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .chainIcons
-                                                        }
-                                                        iconSize="sm"
-                                                    />
-                                                )}
-                                                {/* Sent amount */}
-                                                {activity.swap
-                                                    .sentTokenMetadata ? (
-                                                    <span className="font-normal text-foreground whitespace-nowrap">
-                                                        {
-                                                            activity.swap
-                                                                .sentTokenMetadata
-                                                                .symbol
-                                                        }
-                                                    </span>
-                                                ) : null}
-                                                {/* Arrow */}
-                                                <Icon
-                                                    icon={ArrowRight01Icon}
-                                                    className="text-muted-foreground shrink-0"
-                                                />
-                                                {/* Received token icon */}
-                                                <TokenDisplay
-                                                    symbol={
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .symbol
-                                                    }
-                                                    icon={
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .icon || ""
-                                                    }
-                                                    chainIcons={
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .chainIcons
-                                                    }
-                                                    iconSize="sm"
-                                                />
-                                                {/* Received amount with + sign */}
-                                                <span className="font-normal text-general-success-foreground whitespace-nowrap">
-                                                    {activity.swap
-                                                        .receivedAmount
-                                                        ? `+${formatSmartAmount(activity.swap.receivedAmount)} `
-                                                        : ""}
-                                                    {
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .symbol
-                                                    }
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <TokenAmountDisplay
-                                                icon={
-                                                    activity.tokenMetadata.icon
-                                                }
-                                                chainIcons={
-                                                    activity.tokenMetadata
-                                                        .chainIcons
-                                                }
-                                                symbol={
-                                                    activity.tokenMetadata
-                                                        .symbol
-                                                }
-                                                amount={formatActivityAmount(
-                                                    activity.amount,
-                                                )}
-                                                className={cn(
-                                                    "font-normal",
-                                                    isReceived
-                                                        ? "text-general-success-foreground"
-                                                        : "text-foreground",
-                                                )}
+                                    <TableCell
+                                        className={bodyCellClassName(
+                                            1,
+                                            isFirstRow,
+                                            isLastRow,
+                                        )}
+                                    >
+                                        {activity.swap ? (
+                                            <SwapTransactionCell
+                                                swap={activity.swap}
                                             />
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <TokenDisplay
+                                                    symbol={
+                                                        activity.tokenMetadata
+                                                            .symbol
+                                                    }
+                                                    icon={
+                                                        activity.tokenMetadata
+                                                            .icon || ""
+                                                    }
+                                                    chainIcons={
+                                                        activity.tokenMetadata
+                                                            .chainIcons
+                                                    }
+                                                    iconSize="xl"
+                                                />
+                                                <span
+                                                    className={cn(
+                                                        "truncate text-sm font-semibold",
+                                                        isReceived
+                                                            ? "text-general-success-foreground"
+                                                            : "text-general-foreground",
+                                                    )}
+                                                >
+                                                    {formatActivityAmount(
+                                                        activity.amount,
+                                                    )}{" "}
+                                                    {
+                                                        activity.tokenMetadata
+                                                            .symbol
+                                                    }
+                                                </span>
+                                            </div>
                                         )}
                                     </TableCell>
-                                    <TableCell className="min-w-[150px] max-w-[200px]">
+                                    <TableCell
+                                        className={bodyCellClassName(
+                                            2,
+                                            isFirstRow,
+                                            isLastRow,
+                                        )}
+                                    >
                                         {fromId ? (
                                             <TooltipUser
                                                 accountId={fromId}
@@ -384,13 +414,12 @@ export function ActivityTable({
                                                         ?.chainName
                                                 }
                                             >
-                                                <Address
-                                                    address={fromId}
-                                                    className="text-sm"
-                                                />
+                                                <span className="block truncate text-sm font-semibold text-general-foreground">
+                                                    {fromId}
+                                                </span>
                                             </TooltipUser>
                                         ) : (
-                                            <span className="text-sm truncate block">
+                                            <span className="block truncate text-sm font-semibold text-general-foreground">
                                                 {getFromAccount(
                                                     activity,
                                                     isReceived,
@@ -400,7 +429,13 @@ export function ActivityTable({
                                             </span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="min-w-[150px] max-w-[200px]">
+                                    <TableCell
+                                        className={bodyCellClassName(
+                                            3,
+                                            isFirstRow,
+                                            isLastRow,
+                                        )}
+                                    >
                                         {toId ? (
                                             <TooltipUser
                                                 accountId={toId}
@@ -409,13 +444,12 @@ export function ActivityTable({
                                                         ?.chainName
                                                 }
                                             >
-                                                <Address
-                                                    address={toId}
-                                                    className="text-sm"
-                                                />
+                                                <span className="block truncate text-sm font-semibold text-general-foreground">
+                                                    {toId}
+                                                </span>
                                             </TooltipUser>
                                         ) : (
-                                            <span className="text-sm truncate block">
+                                            <span className="block truncate text-sm font-semibold text-general-foreground">
                                                 {getToAccount(
                                                     activity,
                                                     isReceived,
@@ -425,48 +459,53 @@ export function ActivityTable({
                                             </span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right pr-2">
-                                        <TransactionHashCell
-                                            transactionHashes={
-                                                activity.transactionHashes
-                                            }
-                                            receiptIds={activity.receiptIds}
-                                            chainName={
-                                                activity.tokenMetadata
-                                                    ?.chainName
-                                            }
-                                        />
-                                    </TableCell>
-                                    <TableCell className="w-10 px-0 pr-4 text-right">
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon-sm"
-                                            aria-label={t("details.title")}
-                                            className="size-8 p-0 text-muted-foreground hover:text-foreground"
-                                            onClick={() =>
-                                                openTransactionDetails(activity)
-                                            }
-                                        >
-                                            <Icon icon={ArrowRight01Icon} />
-                                        </Button>
+                                    <TableCell
+                                        className={bodyCellClassName(
+                                            4,
+                                            isFirstRow,
+                                            isLastRow,
+                                        )}
+                                    >
+                                        <div className="flex items-center justify-end gap-1">
+                                            <TransactionHashCell
+                                                transactionHashes={
+                                                    activity.transactionHashes
+                                                }
+                                                receiptIds={activity.receiptIds}
+                                                chainName={
+                                                    activity.tokenMetadata
+                                                        ?.chainName
+                                                }
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                aria-label={t("details.title")}
+                                                className="size-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
+                                                onClick={() =>
+                                                    openTransactionDetails(
+                                                        activity,
+                                                    )
+                                                }
+                                            >
+                                                <Icon icon={ArrowRight01Icon} />
+                                            </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             );
                         })}
                     </TableBody>
                 </Table>
-            </div>
+            </TableSheet>
 
-            {/* Pagination */}
             {totalPages > 1 && (
-                <div className="pb-4 pr-4">
-                    <Pagination
-                        pageIndex={pageIndex}
-                        totalPages={totalPages}
-                        onPageChange={onPageChange}
-                    />
-                </div>
+                <Pagination
+                    pageIndex={pageIndex}
+                    totalPages={totalPages}
+                    onPageChange={onPageChange}
+                />
             )}
 
             <TransactionDetailsModal

@@ -1,14 +1,11 @@
 "use client";
 import {
     Alert01Icon,
-    ArrowDataTransferHorizontalIcon,
     ArrowDown02Icon,
     ArrowRight01Icon,
     LoaderCircleIcon,
-    SentIcon,
     Shield01Icon,
 } from "@hugeicons/core-free-icons";
-import { Icon } from "@/components/icon";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
@@ -17,6 +14,7 @@ import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
+import { Icon } from "@/components/icon";
 import { Tooltip } from "@/components/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseWarningCopy } from "@/components/warning-message";
@@ -33,6 +31,7 @@ import {
     useGetActivityLabel,
     useGetActivitySubLabel,
 } from "../utils/history-utils";
+import { ActivityGlyph, ActivityRowIcon } from "./activity-row-icon";
 import { useIsHistoryRefreshing } from "./history-refresh-indicator";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 
@@ -132,28 +131,6 @@ const groupStakingActivities = (
 
     return grouped;
 };
-
-/**
- * Neutral 36px badge that fronts every row. The design deliberately keeps the
- * badge monochrome — direction is carried by the glyph and the amount colour,
- * not by a tinted circle.
- */
-function RowIcon({ children }: { children: ReactNode }) {
-    return (
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-general-border bg-general-secondary text-muted-foreground">
-            {children}
-        </div>
-    );
-}
-
-function activityIcon(activity: RecentActivityType) {
-    if (activity.swap) return <Icon icon={ArrowDataTransferHorizontalIcon} />;
-    return parseFloat(activity.amount) > 0 ? (
-        <Icon icon={ArrowDown02Icon} />
-    ) : (
-        <Icon icon={SentIcon} />
-    );
-}
 
 interface ActivityRowProps {
     icon: ReactNode;
@@ -444,9 +421,9 @@ export function RecentActivity() {
         <ActivityRow
             key={`sub-${activity.id}`}
             icon={
-                <RowIcon>
+                <ActivityRowIcon>
                     <Icon icon={ArrowDown02Icon} />
-                </RowIcon>
+                </ActivityRowIcon>
             }
             label={t("tabs.stakingRewards")}
             subLabel={t("fromPool", { pool })}
@@ -471,9 +448,9 @@ export function RecentActivity() {
                 <div key={`group-${groupId}`} className="flex flex-col">
                     <ActivityRow
                         icon={
-                            <RowIcon>
+                            <ActivityRowIcon>
                                 <Icon icon={ArrowDown02Icon} />
-                            </RowIcon>
+                            </ActivityRowIcon>
                         }
                         label={t("tabs.stakingRewards")}
                         subLabel={t("fromPool", { pool: grouped.pool })}
@@ -515,7 +492,11 @@ export function RecentActivity() {
         return (
             <ActivityRow
                 key={`single-${activity.id}`}
-                icon={<RowIcon>{activityIcon(activity)}</RowIcon>}
+                icon={
+                    <ActivityRowIcon>
+                        <ActivityGlyph activity={activity} />
+                    </ActivityRowIcon>
+                }
                 label={getActivityType(activity)}
                 subLabel={getActivityFrom(activity)}
                 amount={

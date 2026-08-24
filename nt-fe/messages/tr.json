@@ -421,11 +421,11 @@
         "searchPlaceholderShort": "İşlem hash'i",
         "fromPool": "{pool} havuzundan",
         "table": {
-            "type": "TÜR",
-            "transaction": "İŞLEM",
-            "from": "KİMDEN",
-            "to": "KİME",
-            "transactionHash": "İŞLEM HASH'İ",
+            "type": "Tür",
+            "transaction": "İşlem",
+            "from": "Kimden",
+            "to": "Kime",
+            "transactionHash": "İşlem hash'i",
             "hashTooltip": "Bu işlemin benzersiz tanımlayıcısı (hash)",
             "processing": "İşleniyor"
         },

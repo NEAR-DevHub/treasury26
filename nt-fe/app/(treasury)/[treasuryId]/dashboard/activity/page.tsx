@@ -1,31 +1,32 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { FilterIcon } from "@hugeicons/core-free-icons";
+import { subMonths } from "date-fns";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/button";
+import { ExportButton } from "@/components/export-button";
+import { Icon } from "@/components/icon";
+import { ResponsiveInput } from "@/components/input";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { PageCard } from "@/components/card";
-import { TabsContent } from "@/components/responsive-tabs";
+import {
+    ResponsiveTabs,
+    type TabItem,
+    TabsContent,
+} from "@/components/responsive-tabs";
+import { ActivityTable } from "@/features/activity";
+import {
+    type FilterOption,
+    ProposalFilters as GenericFilters,
+} from "@/features/proposals/components/proposal-filters";
+import { useSubscription } from "@/hooks/use-subscription";
+import { useTreasury } from "@/hooks/use-treasury";
 import {
     useRecentActivity,
     useRecentActivityRecipients,
     useRecentActivitySenders,
 } from "@/hooks/use-treasury-queries";
-import { useSubscription } from "@/hooks/use-subscription";
-import { useTreasury } from "@/hooks/use-treasury";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityTable } from "@/features/activity";
-import {
-    ProposalFilters as GenericFilters,
-    FilterOption,
-} from "@/features/proposals/components/proposal-filters";
-import { Button } from "@/components/button";
-import { ExportButton } from "@/components/export-button";
-import { useGetHistoryDescription } from "@/features/activity";
-import { subMonths } from "date-fns";
-import { ResponsiveTabs, TabItem } from "@/components/responsive-tabs";
-import { ResponsiveInput } from "@/components/input";
 
 // Constants
 const PAGE_SIZE = 15;
@@ -193,7 +194,6 @@ export default function ActivityPage() {
     const t = useTranslations("pages.activity");
     const tActivity = useTranslations("activity");
     const tCommon = useTranslations("common");
-    const getHistoryDescription = useGetHistoryDescription();
     const { treasuryId } = useTreasury();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -346,13 +346,13 @@ export default function ActivityPage() {
                 debounceMs={350}
                 placeholder={tActivity("searchPlaceholder")}
                 mobilePlaceholder={tActivity("searchPlaceholderShort")}
-                className="md:w-56"
+                className="md:h-10 md:w-[290px] md:rounded-xl md:border md:border-general-border md:bg-card!"
                 search
             />
             <Button
                 variant="secondary"
                 size="icon"
-                className="relative md:w-auto md:px-3 md:gap-1.5"
+                className="relative md:h-10 md:w-auto md:gap-2 md:rounded-xl md:px-4"
                 onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                 aria-label={
                     hasActiveFilters
@@ -381,7 +381,7 @@ export default function ActivityPage() {
                 opacity: isFiltersOpen ? 1 : 0,
             }}
         >
-            <div className="py-3 px-4">
+            <div className="px-4 py-3 md:px-0">
                 <GenericFilters filterOptions={activityFilterOptions} />
             </div>
         </div>
@@ -406,22 +406,19 @@ export default function ActivityPage() {
     return (
         <PageComponentLayout
             title={t("title")}
-            description={getHistoryDescription(
-                subscriptionData?.planConfig?.limits?.historyLookupMonths,
-            )}
             backButton={`/${treasuryId}/dashboard`}
         >
-            <PageCard className="p-0">
-                <ResponsiveTabs
-                    tabs={tabs}
-                    value={currentTab}
-                    onValueChange={handleTabChange}
-                    actions={actions}
-                >
-                    {filterPanel}
-                    {tabContents}
-                </ResponsiveTabs>
-            </PageCard>
+            <ResponsiveTabs
+                tabs={tabs}
+                value={currentTab}
+                onValueChange={handleTabChange}
+                actions={actions}
+                variant="plain"
+                className="md:gap-4"
+            >
+                {filterPanel}
+                {tabContents}
+            </ResponsiveTabs>
         </PageComponentLayout>
     );
 }

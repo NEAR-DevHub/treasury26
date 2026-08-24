@@ -421,11 +421,11 @@
         "searchPlaceholderShort": "Хеш транзакції",
         "fromPool": "з {pool}",
         "table": {
-            "type": "ТИП",
-            "transaction": "ТРАНЗАКЦІЯ",
-            "from": "ВІД",
-            "to": "ДО",
-            "transactionHash": "ХЕШ ТРАНЗАКЦІЇ",
+            "type": "Тип",
+            "transaction": "Транзакція",
+            "from": "Від",
+            "to": "До",
+            "transactionHash": "Хеш транзакції",
             "hashTooltip": "Унікальний ідентифікатор (хеш) цієї транзакції",
             "processing": "Обробка"
         },

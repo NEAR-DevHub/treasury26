@@ -1,17 +1,17 @@
 "use client";
 
 import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/underline-tabs";
-import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
 } from "@/components/ui/select";
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/underline-tabs";
 import { cn } from "@/lib/utils";
 
 export interface TabItem {
@@ -32,6 +32,12 @@ interface ResponsiveTabsProps {
     actions?: React.ReactNode;
     /** When true, hides the tabs/actions header row */
     hideHeader?: boolean;
+    /**
+     * `card` sits the header row inside a bordered panel; `plain` drops that
+     * chrome on desktop so the tabs underline themselves and the actions align
+     * to the tab baseline.
+     */
+    variant?: "card" | "plain";
     className?: string;
 
     alignSelect?: "start" | "end";
@@ -49,8 +55,10 @@ export function ResponsiveTabs({
     children,
     actions,
     hideHeader,
+    variant = "card",
     className,
 }: ResponsiveTabsProps) {
+    const isPlain = variant === "plain";
     const currentTab = tabs.find((t) => t.value === value);
     const currentLabel = currentTab?.label ?? value;
     const currentTrigger = currentTab?.trigger;
@@ -64,6 +72,8 @@ export function ResponsiveTabs({
             <div
                 className={cn(
                     "relative flex flex-row items-center justify-between border-b px-5 py-3.5 gap-2",
+                    isPlain &&
+                        "md:items-end md:gap-6 md:border-b-0 md:px-0 md:py-0",
                     hideHeader && "hidden",
                 )}
             >
@@ -89,13 +99,22 @@ export function ResponsiveTabs({
                 </div>
 
                 {/* Desktop: Underline tab list */}
-                <div className="hidden md:flex w-full">
-                    <TabsList className="border-none">
+                <div
+                    className={cn(
+                        "hidden md:flex",
+                        isPlain ? "min-w-0 flex-1" : "w-full",
+                    )}
+                >
+                    <TabsList className={cn(isPlain ? "gap-2" : "border-none")}>
                         {tabs.map((tab) => (
                             <TabsTrigger
                                 key={tab.value}
                                 value={tab.value}
-                                className="flex gap-2.5"
+                                className={cn(
+                                    "flex gap-2.5",
+                                    isPlain &&
+                                        "px-1 pt-0.5 pb-3 md:text-lg font-semibold text-general-muted-foreground data-[state=active]:after:h-px data-[state=active]:after:bg-general-foreground",
+                                )}
                             >
                                 {tab.label}
                                 {tab.trigger}
@@ -105,7 +124,12 @@ export function ResponsiveTabs({
                 </div>
 
                 {actions && (
-                    <div className="flex justify-end w-full gap-2 min-w-0">
+                    <div
+                        className={cn(
+                            "flex justify-end gap-2 min-w-0",
+                            isPlain ? "w-full md:w-auto md:shrink-0" : "w-full",
+                        )}
+                    >
                         {actions}
                     </div>
                 )}

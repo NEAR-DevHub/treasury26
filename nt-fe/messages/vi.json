@@ -421,11 +421,11 @@
         "searchPlaceholderShort": "Hash giao dịch",
         "fromPool": "từ {pool}",
         "table": {
-            "type": "LOẠI",
-            "transaction": "GIAO DỊCH",
-            "from": "TỪ",
-            "to": "ĐẾN",
-            "transactionHash": "HASH GIAO DỊCH",
+            "type": "Loại",
+            "transaction": "Giao dịch",
+            "from": "Từ",
+            "to": "Đến",
+            "transactionHash": "Hash giao dịch",
             "hashTooltip": "Định danh duy nhất (hash) của giao dịch này",
             "processing": "Đang xử lý"
         },
