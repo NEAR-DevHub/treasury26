@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { Loading02Icon } from "@hugeicons/core-free-icons";
+import { LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -270,7 +270,7 @@ export default function AccountPage() {
                                                             <>
                                                                 <Icon
                                                                     icon={
-                                                                        Loading02Icon
+                                                                        LoaderCircleIcon
                                                                     }
                                                                     className="mr-2 animate-spin"
                                                                 />
@@ -366,7 +366,7 @@ export default function AccountPage() {
                                     {isSubmitting ? (
                                         <>
                                             <Icon
-                                                icon={Loading02Icon}
+                                                icon={LoaderCircleIcon}
                                                 className="mr-2 animate-spin"
                                             />
                                             {t("saving")}

@@ -1,5 +1,5 @@
 import { Icon } from "@/components/icon";
-import { ArrowLeft01Icon, Loading02Icon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useRef } from "react";
 import type { ReactNode } from "react";
 import { Button } from "./button";
@@ -225,7 +225,7 @@ export function InlineNextButton({
                 disabled={loading}
             >
                 {loading && (
-                    <Icon icon={Loading02Icon} className="mr-2 animate-spin" />
+                    <Icon icon={LoaderCircleIcon} className="mr-2 animate-spin" />
                 )}
                 {text}
             </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { Loading02Icon } from "@hugeicons/core-free-icons";
+import { LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import {
     Dialog,
@@ -167,7 +167,7 @@ export function AcceptTermsModal({ open, variant }: AcceptTermsModalProps) {
                         {isSubmitting ? (
                             <>
                                 <Icon
-                                    icon={Loading02Icon}
+                                    icon={LoaderCircleIcon}
                                     className="mr-2 animate-spin"
                                 />
                                 {t("accepting")}

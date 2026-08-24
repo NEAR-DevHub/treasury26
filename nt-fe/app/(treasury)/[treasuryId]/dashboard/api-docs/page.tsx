@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { Loading02Icon, PlayIcon } from "@hugeicons/core-free-icons";
+import { LoaderCircleIcon, PlayIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/button";
@@ -411,7 +411,7 @@ export default function ApiDocsPage() {
                         <Button onClick={handleRun} disabled={isRunning}>
                             {isRunning ? (
                                 <Icon
-                                    icon={Loading02Icon}
+                                    icon={LoaderCircleIcon}
                                     className="animate-spin"
                                 />
                             ) : (

@@ -2,7 +2,7 @@ import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
     ArrowUpRight01Icon,
-    FileAttachmentIcon,
+    File01Icon,
     SearchMinusIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
@@ -178,7 +178,7 @@ function PaymentDisplay({
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <Icon icon={FileAttachmentIcon} />
+                                <Icon icon={File01Icon} />
                             </Link>
                         </Button>
                     )}

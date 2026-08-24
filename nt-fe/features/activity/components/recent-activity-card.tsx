@@ -4,7 +4,7 @@ import {
     ArrowDataTransferHorizontalIcon,
     ArrowDown02Icon,
     ArrowRight01Icon,
-    Loading02Icon,
+    LoaderCircleIcon,
     SentIcon,
     Shield01Icon,
 } from "@hugeicons/core-free-icons";
@@ -249,7 +249,7 @@ function RowStatus({ status }: { status: NonNullable<ActivityStatus> }) {
             )}
         >
             {status === "pending" ? (
-                <Icon icon={Loading02Icon} className="animate-spin" />
+                <Icon icon={LoaderCircleIcon} className="animate-spin" />
             ) : null}
             {status === "pending" ? t("processing") : t("failed")}
         </span>

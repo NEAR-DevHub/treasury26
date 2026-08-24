@@ -1,7 +1,7 @@
 import { Icon } from "@/components/icon";
 import {
     CheckmarkCircle01Icon,
-    Loading02Icon,
+    LoaderCircleIcon,
 } from "@hugeicons/core-free-icons";
 
 interface Step {
@@ -30,7 +30,7 @@ export function BulkPaymentToast({ steps }: BulkPaymentToastProps) {
                         />
                     ) : step.status === "loading" ? (
                         <Icon
-                            icon={Loading02Icon}
+                            icon={LoaderCircleIcon}
                             className="animate-spin shrink-0"
                         />
                     ) : (

@@ -7,7 +7,7 @@ import {
     ArrowRight01Icon,
     Clock01Icon,
     InformationCircleIcon,
-    Loading02Icon,
+    LoaderCircleIcon,
     MinusSignIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
@@ -175,7 +175,7 @@ export function ActivityTable({
                                                 {status === "pending" ? (
                                                     <span className="inline-flex items-center gap-1 text-xs font-medium text-general-orange-foreground">
                                                         <Icon
-                                                            icon={Loading02Icon}
+                                                            icon={LoaderCircleIcon}
                                                             className="animate-spin"
                                                         />
                                                         {t("table.processing")}

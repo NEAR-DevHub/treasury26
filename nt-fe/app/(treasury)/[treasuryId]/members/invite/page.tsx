@@ -5,7 +5,7 @@ import {
     CheckmarkSquare01Icon,
     InformationCircleIcon,
     Link01Icon,
-    Loading02Icon,
+    LoaderCircleIcon,
     Refresh01Icon,
     Tick01Icon,
     UserAdd01Icon,
@@ -206,7 +206,7 @@ export default function InviteMemberPage() {
                             >
                                 {isGenerating ? (
                                     <Icon
-                                        icon={Loading02Icon}
+                                        icon={LoaderCircleIcon}
                                         className="animate-spin"
                                     />
                                 ) : (

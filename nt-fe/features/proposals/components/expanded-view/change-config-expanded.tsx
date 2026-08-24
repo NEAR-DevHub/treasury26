@@ -1,5 +1,5 @@
 import { Icon } from "@/components/icon";
-import { Loading02Icon } from "@hugeicons/core-free-icons";
+import { LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { ChangeConfigData } from "../../types/index";
@@ -51,7 +51,7 @@ export function ChangeConfigExpanded({
         return (
             <div className="flex items-center justify-center p-8">
                 <Icon
-                    icon={Loading02Icon}
+                    icon={LoaderCircleIcon}
                     className="size-6 animate-spin text-muted-foreground"
                 />
                 <span className="ml-2 text-muted-foreground text-sm">

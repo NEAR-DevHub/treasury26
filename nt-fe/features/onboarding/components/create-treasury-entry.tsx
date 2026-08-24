@@ -4,7 +4,7 @@ import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
     Coins01Icon,
-    Loading02Icon,
+    LoaderCircleIcon,
     LogoutSquare01Icon,
     Tick01Icon,
     User03Icon,
@@ -667,7 +667,7 @@ export function TreasuryOnboardingPage({
                     >
                         {(isAuthenticating || isCheckingHandle) && (
                             <Icon
-                                icon={Loading02Icon}
+                                icon={LoaderCircleIcon}
                                 className="animate-spin"
                             />
                         )}
@@ -776,7 +776,7 @@ export function TreasuryOnboardingPage({
                                 >
                                     {isSubmittingWaitlist && (
                                         <Icon
-                                            icon={Loading02Icon}
+                                            icon={LoaderCircleIcon}
                                             className="animate-spin"
                                         />
                                     )}

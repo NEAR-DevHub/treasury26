@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { Loading02Icon } from "@hugeicons/core-free-icons";
+import { LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { useTranslations } from "next-intl";
 import { useNear } from "@/stores/near-store";
@@ -88,7 +88,7 @@ export function CreateRequestButton({
         >
             {isSubmitting ? (
                 <>
-                    <Icon icon={Loading02Icon} className="mr-2 animate-spin" />
+                    <Icon icon={LoaderCircleIcon} className="mr-2 animate-spin" />
                     {loadingMessage ?? idleMessage ?? tCreate("idle")}
                 </>
             ) : proposalBlocked ? (

@@ -3,7 +3,7 @@ import { Icon } from "@/components/icon";
 import {
     BitcoinIcon,
     Cancel01Icon,
-    FileAttachmentIcon,
+    File01Icon,
     FileUploadIcon,
     InformationCircleIcon,
     Invoice01Icon,
@@ -511,7 +511,7 @@ export function UploadDataStep({
                                     <div className="flex min-w-0 items-center gap-3">
                                         <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
                                             <Icon
-                                                icon={FileAttachmentIcon}
+                                                icon={File01Icon}
                                                 className={cn(
                                                     "text-primary",
                                                     dataErrors?.length &&

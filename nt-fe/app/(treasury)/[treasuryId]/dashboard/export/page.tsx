@@ -10,7 +10,7 @@ import {
     Download01Icon,
     FileRemoveIcon,
     InformationCircleIcon,
-    Loading02Icon,
+    LoaderCircleIcon,
     Mail01Icon,
 } from "@hugeicons/core-free-icons";
 import { useState, useMemo, useCallback } from "react";
@@ -236,7 +236,7 @@ function ExportHistoryTable({ items }: { items: ExportHistoryItem[] }) {
                             {item.status === "generating" ? (
                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-400 rounded-full text-sm">
                                     <Icon
-                                        icon={Loading02Icon}
+                                        icon={LoaderCircleIcon}
                                         className="animate-spin"
                                     />
                                     {tExport("status.generating")}

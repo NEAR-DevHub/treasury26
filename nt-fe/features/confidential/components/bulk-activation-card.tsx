@@ -4,7 +4,7 @@ import { Icon } from "@/components/icon";
 import {
     Alert01Icon,
     CircleCheckIcon,
-    Loading02Icon,
+    LoaderCircleIcon,
     Shield01Icon,
     UserGroupIcon,
 } from "@hugeicons/core-free-icons";
@@ -71,7 +71,7 @@ export function BulkActivationCard() {
             <Card className="mx-auto w-full max-w-[600px] min-w-0">
                 <CardContent className="text-muted-foreground flex items-center justify-center p-4 sm:p-8">
                     <Icon
-                        icon={Loading02Icon}
+                        icon={LoaderCircleIcon}
                         className="size-6 animate-spin"
                     />
                 </CardContent>

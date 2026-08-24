@@ -5,7 +5,7 @@ import {
     Bookmark01Icon,
     Home04Icon,
     InboxIcon,
-    MessageQuestionIcon,
+    CircleQuestionMarkIcon,
     SentIcon,
     Setting07Icon,
     SourceCodeIcon,
@@ -634,7 +634,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 <NavLink
                                     id="help-support-link"
                                     isActive={false}
-                                    icon={MessageQuestionIcon}
+                                    icon={CircleQuestionMarkIcon}
                                     hoverAnimation="wiggle"
                                     label={tNav("helpSupport")}
                                     showLabels={!isReduced}
