@@ -6,7 +6,7 @@ import {
     Delete02Icon,
     FileDownloadIcon,
     FileUploadIcon,
-    Loading02Icon,
+    LoaderCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -402,7 +402,7 @@ function RecipientsView({
                             >
                                 {exportEntries.isPending ? (
                                     <Icon
-                                        icon={Loading02Icon}
+                                        icon={LoaderCircleIcon}
                                         className="animate-spin"
                                     />
                                 ) : (
@@ -476,7 +476,7 @@ function RecipientsView({
                             >
                                 {exportEntries.isPending ? (
                                     <Icon
-                                        icon={Loading02Icon}
+                                        icon={LoaderCircleIcon}
                                         className="animate-spin"
                                     />
                                 ) : (

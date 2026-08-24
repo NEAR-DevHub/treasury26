@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { ArrowDown01Icon, Loading02Icon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     ChangePolicyData,
@@ -260,7 +260,7 @@ export function ChangePolicyExpanded({
         return (
             <div className="flex items-center justify-center p-8">
                 <Icon
-                    icon={Loading02Icon}
+                    icon={LoaderCircleIcon}
                     className="size-6 animate-spin text-muted-foreground"
                 />
                 <span className="ml-2 text-muted-foreground text-sm">

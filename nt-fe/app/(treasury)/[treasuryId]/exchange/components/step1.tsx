@@ -2,7 +2,7 @@
 import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
-    Loading02Icon,
+    LoaderCircleIcon,
     Shield01Icon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
@@ -265,7 +265,7 @@ export function Step1({
                         >
                             {isQuoteBusy ? (
                                 <Icon
-                                    icon={Loading02Icon}
+                                    icon={LoaderCircleIcon}
                                     className="animate-spin text-muted-foreground"
                                 />
                             ) : (

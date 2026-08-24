@@ -1,5 +1,5 @@
 import { Icon } from "@/components/icon";
-import { Loading02Icon } from "@hugeicons/core-free-icons";
+import { LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Button } from "@/components/button";
@@ -183,7 +183,7 @@ export function VoteModal({
                                       : t("confirm")}
                                 {isSubmitting && (
                                     <Icon
-                                        icon={Loading02Icon}
+                                        icon={LoaderCircleIcon}
                                         className="animate-spin"
                                     />
                                 )}

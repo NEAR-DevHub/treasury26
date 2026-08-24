@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { Globe02Icon, GlobeIcon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { Globe02Icon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -83,7 +83,7 @@ export function LanguageSwitcher({
                             className,
                         )}
                     >
-                        <Icon icon={GlobeIcon} />
+                        <Icon icon={Globe02Icon} />
                     </Button>
                 )}
             </DropdownMenuTrigger>

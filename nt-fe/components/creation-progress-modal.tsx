@@ -2,7 +2,7 @@
 import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
-    Loading02Icon,
+    LoaderCircleIcon,
     Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
@@ -57,7 +57,7 @@ function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
                     )}
                 >
                     <Icon
-                        icon={Loading02Icon}
+                        icon={LoaderCircleIcon}
                         className="size-2.5 animate-spin text-general-orange-foreground"
                     />
                 </div>

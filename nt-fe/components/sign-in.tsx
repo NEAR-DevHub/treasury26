@@ -2,11 +2,11 @@
 import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
-    FileAttachmentIcon,
-    Loading02Icon,
+    File01Icon,
+    LoaderCircleIcon,
     Login01Icon,
-    Logout01Icon,
-    UserCircleIcon,
+    LogoutSquare01Icon,
+    UserIcon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import {
@@ -44,7 +44,7 @@ import { User } from "./user";
  * highlighted row sits concentrically inside the menu.
  */
 export const accountMenuItemClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 has-[>svg]:px-3 text-sm font-medium transition-colors hover:bg-general-unofficial-ghost-hover";
+    "flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 has-[>svg]:px-3 text-sm font-semibold leading-[1.5] transition-colors hover:bg-general-unofficial-ghost-hover";
 
 /** Routes to `/login`, preserving where the user came from. */
 export function useConnectWallet() {
@@ -113,7 +113,7 @@ export function AccountMenuItems({
                     className={accountMenuItemClass}
                     onClick={onNavigate}
                 >
-                    <Icon icon={UserCircleIcon} />
+                    <Icon icon={UserIcon} />
                     {t("myAccount")}
                 </Link>
             )}
@@ -124,7 +124,7 @@ export function AccountMenuItems({
                 className={accountMenuItemClass}
                 onClick={onNavigate}
             >
-                <Icon icon={FileAttachmentIcon} />
+                <Icon icon={File01Icon} />
                 {t("termsOfService")}
             </Link>
             <Link
@@ -134,7 +134,7 @@ export function AccountMenuItems({
                 className={accountMenuItemClass}
                 onClick={onNavigate}
             >
-                <Icon icon={FileAttachmentIcon} />
+                <Icon icon={File01Icon} />
                 {t("privacyPolicy")}
             </Link>
             <div className="-mx-1.5 mt-1 border-t border-border px-1.5 pt-1 dark:border-general-border">
@@ -146,7 +146,7 @@ export function AccountMenuItems({
                         onNavigate?.();
                     }}
                 >
-                    <Icon icon={Logout01Icon} />
+                    <Icon icon={LogoutSquare01Icon} />
                     {t("disconnect")}
                 </button>
             </div>
@@ -177,7 +177,7 @@ export function ConnectWalletButton({
                 aria-label={label}
             >
                 {isConnecting ? (
-                    <Icon icon={Loading02Icon} className="animate-spin" />
+                    <Icon icon={LoaderCircleIcon} className="animate-spin" />
                 ) : (
                     <Icon icon={Login01Icon} />
                 )}
@@ -193,7 +193,7 @@ export function ConnectWalletButton({
         >
             {isConnecting ? (
                 <>
-                    <Icon icon={Loading02Icon} className="animate-spin" />
+                    <Icon icon={LoaderCircleIcon} className="animate-spin" />
                     {tCommon("connecting")}
                 </>
             ) : (
@@ -225,10 +225,10 @@ export function SignIn() {
                     className="md:hidden"
                     aria-label={tCommon("loading")}
                 >
-                    <Icon icon={Loading02Icon} className="animate-spin" />
+                    <Icon icon={LoaderCircleIcon} className="animate-spin" />
                 </Button>
                 <Button disabled className="hidden md:flex items-center gap-2">
-                    <Icon icon={Loading02Icon} className="animate-spin" />
+                    <Icon icon={LoaderCircleIcon} className="animate-spin" />
                     {tCommon("loading")}
                 </Button>
             </>

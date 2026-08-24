@@ -150,14 +150,16 @@ export function SidebarProfileMenu({
                 side="top"
                 align="start"
                 sideOffset={8}
-                className="dark w-66 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
+                className={cn(
+                    "dark w-66 rounded-2xl border-white/10 bg-gray-950 p-1.5 shadow-xl text-gray-400",
+                )}
             >
                 <div className="flex items-center justify-between gap-3 px-3 py-1">
                     <div className="min-w-0 px-3">
-                        <p className="truncate font-semibold text-sm">
+                        <p className="truncate font-semibold text-sm leading-[1.5]">
                             {displayName}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate font-semibold text-xs leading-[1.5] text-muted-foreground">
                             {accountId}
                         </p>
                     </div>

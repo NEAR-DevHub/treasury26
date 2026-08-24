@@ -4,7 +4,7 @@ import {
     Download01Icon,
     FileAttachmentIcon,
     LinkSquare02Icon,
-    Loading02Icon,
+    LoaderCircleIcon,
     Tick01Icon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
@@ -733,7 +733,7 @@ export function ProposalSidebar({
                         >
                             {isCheckingVotingDurationImpact ? (
                                 <Icon
-                                    icon={Loading02Icon}
+                                    icon={LoaderCircleIcon}
                                     className="mr-2 animate-spin"
                                 />
                             ) : (

@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { Loading02Icon } from "@hugeicons/core-free-icons";
+import { LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -105,7 +105,7 @@ export function TelegramSettingsIntegration() {
                         >
                             {disconnectMutation.isPending && (
                                 <Icon
-                                    icon={Loading02Icon}
+                                    icon={LoaderCircleIcon}
                                     className="animate-spin"
                                 />
                             )}
@@ -185,7 +185,7 @@ export function TelegramSettingsIntegration() {
                             >
                                 {disconnectMutation.isPending && (
                                     <Icon
-                                        icon={Loading02Icon}
+                                        icon={LoaderCircleIcon}
                                         className="animate-spin"
                                     />
                                 )}
