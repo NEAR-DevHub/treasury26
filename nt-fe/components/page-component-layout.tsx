@@ -35,6 +35,8 @@ interface PageComponentLayoutProps {
     hideHeaderBottomBorder?: boolean;
     /** Renders an empty header: no logo/title, staging pill, language or theme controls. */
     hideHeaderContent?: boolean;
+    /** Pins the page to the viewport so it never scrolls, on any breakpoint. */
+    fitViewport?: boolean;
     logo?: ReactNode;
     mainClassName?: string;
     children: ReactNode;
@@ -50,6 +52,7 @@ export function PageComponentLayout({
     transparentHeader = false,
     hideHeaderBottomBorder = false,
     hideHeaderContent = false,
+    fitViewport = false,
     logo,
     mainClassName,
     children,
@@ -73,12 +76,13 @@ export function PageComponentLayout({
         <div
             className={cn(
                 "flex h-full flex-col gap-2 sm:gap-0",
+                fitViewport && "h-dvh overflow-hidden",
                 hideHeaderContent && "bg-general-tertiary",
             )}
         >
             <header
                 className={cn(
-                    "flex items-center min-h-16 justify-between px-3 md:px-6",
+                    "flex shrink-0 items-center min-h-16 justify-between px-3 md:px-6",
                     // Onboarding owns its own heading, so on a phone the empty
                     // bar collapses instead of eating 64px above the fold.
                     hideHeaderContent && !backButton && "min-h-0 md:min-h-16",
@@ -194,7 +198,8 @@ export function PageComponentLayout({
 
             <main
                 className={cn(
-                    "flex-1 overflow-y-auto px-4 pb-6 md:px-6 md:pb-8",
+                    "flex-1 px-4 pb-6 md:px-6 md:pb-8",
+                    fitViewport ? "min-h-0 overflow-hidden" : "overflow-y-auto",
                     // Inside the shell the floating panel owns the surface, so
                     // the content area must not paint over it.
                     hasSidebarRail ? "bg-transparent" : "bg-page-bg",

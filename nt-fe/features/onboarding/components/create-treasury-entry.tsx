@@ -866,15 +866,16 @@ export function TreasuryOnboardingPage({
                 transparentHeader
                 hideHeaderBottomBorder
                 hideHeaderContent={isMinimalChrome}
+                // Both onboarding screens are short enough to fit any
+                // viewport, so they are pinned to it rather than scrolling.
+                fitViewport={isMinimalChrome}
                 logo={headerLogo}
                 mainClassName={cn(
                     "pt-1",
-                    isMinimalChrome &&
-                        "flex min-h-dvh md:min-h-[calc(100vh-2rem)] flex-col bg-general-tertiary",
-                    // On a phone the screen fills the viewport, so the account
-                    // card sits 32px off the bottom edge; on desktop it keeps
-                    // 24px instead of the 32px the shell uses for scrolling
-                    // pages.
+                    isMinimalChrome && "flex flex-col bg-general-tertiary",
+                    // The screen fills the viewport, so the account card sits
+                    // 32px off a phone's bottom edge; on desktop it keeps 24px
+                    // instead of the 32px the shell uses for scrolling pages.
                     isCreateScreen && "max-md:pb-8 md:pb-6",
                 )}
             >
