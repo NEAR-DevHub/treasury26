@@ -4,7 +4,7 @@ import {
     Add01Icon,
     ArrowDown01Icon,
     ArrowUp01Icon,
-    Delete02Icon,
+    Delete01Icon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Fragment, useId, useState } from "react";
@@ -179,7 +179,7 @@ function FieldRow({
                         className="text-muted-foreground hover:text-foreground"
                         onClick={onRemove}
                     >
-                        <Icon icon={Delete02Icon} /> {t("fields.remove")}
+                        <Icon icon={Delete01Icon} /> {t("fields.remove")}
                     </Button>
                 </div>
             </div>

@@ -3,10 +3,10 @@ import { Icon } from "@/components/icon";
 import {
     Add01Icon,
     Bookmark01Icon,
-    Delete02Icon,
+    Delete01Icon,
+    Edit03Icon,
     HelpCircleIcon,
     MoreVerticalIcon,
-    PencilIcon,
     PinIcon,
     PinOffIcon,
 } from "@hugeicons/core-free-icons";
@@ -188,7 +188,7 @@ function TemplateRow({
                                         onClick={onEdit}
                                         className={MENU_ITEM_CLASS}
                                     >
-                                        <Icon icon={PencilIcon} />{" "}
+                                        <Icon icon={Edit03Icon} />{" "}
                                         {t("index.edit")}
                                     </DropdownMenuItem>
                                     <DropdownMenuItem
@@ -214,7 +214,7 @@ function TemplateRow({
                                     onClick={onDelete}
                                     className={MENU_ITEM_CLASS}
                                 >
-                                    <Icon icon={Delete02Icon} />{" "}
+                                    <Icon icon={Delete01Icon} />{" "}
                                     {t("index.delete")}
                                 </DropdownMenuItem>
                             ) : (
@@ -226,7 +226,7 @@ function TemplateRow({
                                             disabled
                                             className={MENU_ITEM_CLASS}
                                         >
-                                            <Icon icon={Delete02Icon} />{" "}
+                                            <Icon icon={Delete01Icon} />{" "}
                                             {t("index.delete")}
                                         </DropdownMenuItem>
                                     </span>

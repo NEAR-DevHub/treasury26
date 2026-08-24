@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { Delete02Icon } from "@hugeicons/core-free-icons";
+import { Delete01Icon } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -114,7 +114,7 @@ function JoinRequestsAssignStep({
                                     onClick={() => onRemove(member.requestId)}
                                 >
                                     <Icon
-                                        icon={Delete02Icon}
+                                        icon={Delete01Icon}
                                         className="text-foreground group-hover:text-destructive"
                                     />
                                 </Button>

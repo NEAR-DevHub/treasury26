@@ -2,7 +2,7 @@
 import { Icon } from "@/components/icon";
 import {
     ArrowUpRight01Icon,
-    Delete02Icon,
+    Delete01Icon,
     ViewIcon,
     ViewOffIcon,
 } from "@hugeicons/core-free-icons";
@@ -96,7 +96,7 @@ function TreasuryRow({
                     onClick={onRemove}
                     disabled={isRemovePending || disableAvailabilityActions}
                 >
-                    <Icon icon={Delete02Icon} />
+                    <Icon icon={Delete01Icon} />
                 </Button>
             )}
             <Button

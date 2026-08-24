@@ -5,7 +5,6 @@ import {
     ArrowDown01Icon,
     ArrowLeftRightIcon,
     ArrowRight01Icon,
-    ArrowUpRight01Icon,
     Cancel01Icon,
     InformationCircleIcon,
     SearchMinusIcon,
@@ -510,7 +509,7 @@ export function ProposalsTable({
                         permissionAction="AddProposal"
                         className="gap-1 w-full shrink"
                     >
-                        <Icon icon={ArrowUpRight01Icon} /> {tT("send")}
+                        <Icon icon={SentIcon} /> {tT("send")}
                     </AuthButton>
                     <AuthButton
                         permissionKind="call"

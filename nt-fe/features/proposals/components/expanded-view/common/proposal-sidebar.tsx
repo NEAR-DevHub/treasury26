@@ -1,7 +1,7 @@
 import { Icon } from "@/components/icon";
 import {
+    ArrowDown02Icon,
     Cancel01Icon,
-    Download01Icon,
     File01Icon,
     LinkSquare02Icon,
     LoaderCircleIcon,
@@ -706,7 +706,7 @@ export function ProposalSidebar({
                                     )
                                 }
                             >
-                                <Icon icon={Download01Icon} className="mr-2" />
+                                <Icon icon={ArrowDown02Icon} className="mr-2" />
                                 {t("deposit")}
                             </Button>
                         </span>

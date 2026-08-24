@@ -2,9 +2,9 @@
 
 import { Icon } from "@/components/icon";
 import {
-    ArrowUpRight01Icon,
-    Delete02Icon,
+    Delete01Icon,
     SearchMinusIcon,
+    SentIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
@@ -228,7 +228,7 @@ export function AddressBookTable({
                                                     }
                                                 >
                                                     <Icon
-                                                        icon={Delete02Icon}
+                                                        icon={Delete01Icon}
                                                         className="text-destructive"
                                                     />
                                                 </Button>
@@ -244,9 +244,7 @@ export function AddressBookTable({
                                                     }
                                                 >
                                                     <Icon
-                                                        icon={
-                                                            ArrowUpRight01Icon
-                                                        }
+                                                        icon={SentIcon}
                                                         className="text-primary"
                                                     />
                                                 </Button>

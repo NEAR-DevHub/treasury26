@@ -1,8 +1,8 @@
 import {
+    ArrowDown02Icon,
     ArrowRight01Icon,
     Cancel01Icon,
     CheckIcon,
-    Download01Icon,
 } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
 import Link from "next/link";
@@ -228,7 +228,7 @@ export function PendingRequestItem({
                                                 );
                                             }}
                                         >
-                                            <Icon icon={Download01Icon} />
+                                            <Icon icon={ArrowDown02Icon} />
                                             {tActions("deposit")}
                                         </Button>
                                     </span>

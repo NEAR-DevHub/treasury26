@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Fragment } from "react";
 import { Button } from "@/components/button";
@@ -202,7 +202,7 @@ function TopEntryRow({
                     className="text-muted-foreground hover:text-foreground"
                     onClick={removeEntry}
                 >
-                    <Icon icon={Delete02Icon} /> {t("args.remove")}
+                    <Icon icon={Delete01Icon} /> {t("args.remove")}
                 </Button>
             </div>
 
@@ -520,7 +520,7 @@ function StaticEntriesEditor({
                                 onChange(entries.filter((_, i) => i !== index))
                             }
                         >
-                            <Icon icon={Delete02Icon} />
+                            <Icon icon={Delete01Icon} />
                         </Button>
                     </div>
                     {entry.value.kind === "object" ? (
@@ -646,7 +646,7 @@ function StaticItemsEditor({
                                 onChange(items.filter((_, i) => i !== index))
                             }
                         >
-                            <Icon icon={Delete02Icon} />
+                            <Icon icon={Delete01Icon} />
                         </Button>
                     </div>
                 </div>

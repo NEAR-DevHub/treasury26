@@ -1,5 +1,5 @@
 "use client";
-import { ArrowReloadHorizontalIcon } from "@hugeicons/core-free-icons";
+import { RefreshCwIcon } from "@hugeicons/core-free-icons";
 import { Icon } from "@/components/icon";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo } from "react";
@@ -183,7 +183,7 @@ export function HistoryRefreshButton({ className }: { className?: string }) {
             onClick={handleRefreshHistory}
         >
             <Icon
-                icon={ArrowReloadHorizontalIcon}
+                icon={RefreshCwIcon}
                 className={cn(
                     isRefreshing && "animate-spin motion-reduce:animate-none",
                 )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { FileDownloadIcon } from "@hugeicons/core-free-icons";
+import { FileDownIcon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useRouter } from "next/navigation";
@@ -30,7 +30,7 @@ export function ExportButton() {
             className="h-9 px-3"
             size={isMobile ? "icon" : "default"}
         >
-            <Icon icon={FileDownloadIcon} />
+            <Icon icon={FileDownIcon} />
             <span className="hidden sm:inline">{tCommon("export")}</span>
         </Button>
     );

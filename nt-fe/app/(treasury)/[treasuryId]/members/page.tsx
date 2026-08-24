@@ -5,11 +5,11 @@ import { Icon } from "@/components/icon";
 import {
     Add01Icon,
     Cancel01Icon,
-    Delete02Icon,
+    Delete01Icon,
+    Edit03Icon,
     InformationCircleIcon,
     Key02Icon,
     LockIcon,
-    PencilIcon,
     SentIcon,
     ShieldUserIcon,
     UserAdd01Icon,
@@ -571,7 +571,7 @@ export default function MembersPage() {
                                                 },
                                             }}
                                         >
-                                            <Icon icon={PencilIcon} />
+                                            <Icon icon={Edit03Icon} />
                                         </AuthButton>
                                         <AuthButton
                                             permissionKind="policy"
@@ -611,7 +611,7 @@ export default function MembersPage() {
                                             }}
                                         >
                                             <Icon
-                                                icon={Delete02Icon}
+                                                icon={Delete01Icon}
                                                 className="text-destructive"
                                             />
                                         </AuthButton>
@@ -890,7 +890,7 @@ export default function MembersPage() {
                                         className="size-9 sm:w-auto"
                                     >
                                         <Icon
-                                            icon={Delete02Icon}
+                                            icon={Delete01Icon}
                                             className="mr-1"
                                         />
                                         <span className="hidden sm:inline">
@@ -911,7 +911,7 @@ export default function MembersPage() {
                                     tooltip={memberActionsDisabledReason}
                                     className="size-9 sm:w-auto"
                                 >
-                                    <Icon icon={PencilIcon} className="mr-1" />
+                                    <Icon icon={Edit03Icon} className="mr-1" />
                                     <span className="hidden sm:inline">
                                         {tMembers("edit")}
                                     </span>

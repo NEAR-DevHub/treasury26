@@ -3,8 +3,8 @@
 import { Icon } from "@/components/icon";
 import {
     Add01Icon,
-    Delete02Icon,
-    FileDownloadIcon,
+    Delete01Icon,
+    FileDownIcon,
     FileUploadIcon,
     LoaderCircleIcon,
 } from "@hugeicons/core-free-icons";
@@ -406,7 +406,7 @@ function RecipientsView({
                                         className="animate-spin"
                                     />
                                 ) : (
-                                    <Icon icon={FileDownloadIcon} />
+                                    <Icon icon={FileDownIcon} />
                                 )}
                                 <span className="hidden sm:inline">
                                     {exportEntries.isPending
@@ -422,7 +422,7 @@ function RecipientsView({
                                 disabled={deleteEntries.isPending}
                                 onClick={() => handleRemoveSelected()}
                             >
-                                <Icon icon={Delete02Icon} />
+                                <Icon icon={Delete01Icon} />
                                 <span className="hidden sm:flex">
                                     {tCommon("remove")}
                                 </span>
@@ -480,7 +480,7 @@ function RecipientsView({
                                         className="animate-spin"
                                     />
                                 ) : (
-                                    <Icon icon={FileDownloadIcon} />
+                                    <Icon icon={FileDownIcon} />
                                 )}
                                 <span className="hidden sm:inline">
                                     {exportEntries.isPending

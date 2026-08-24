@@ -2,7 +2,7 @@
 
 import { Icon } from "@/components/icon";
 import {
-    Delete02Icon,
+    Delete01Icon,
     Edit02Icon,
     InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
@@ -572,7 +572,7 @@ export function ReviewPaymentsStep({
                                                         disabled={isSubmitting}
                                                     >
                                                         <Icon
-                                                            icon={Delete02Icon}
+                                                            icon={Delete01Icon}
                                                         />{" "}
                                                         {tBulk("remove")}
                                                     </Button>
