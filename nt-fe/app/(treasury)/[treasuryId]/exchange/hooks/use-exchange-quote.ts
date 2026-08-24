@@ -8,10 +8,10 @@ import {
     type IntentsQuoteResponse,
 } from "@/lib/api";
 import Big from "@/lib/big";
+import { formatAssetForIntentsAPI } from "@/lib/oneclick-asset-routing";
 import { nanosToMs } from "@/lib/utils";
 import { formatQuoteErrorMessage, isAbortError } from "../quote-errors";
 import {
-    formatAssetForIntentsAPI,
     getDepositAndRefundType,
     getRecipientType,
     isNEARDeposit,

@@ -21,6 +21,7 @@ import {
     hasNearComAddressPrefix,
     stripNearComAddressPrefix,
 } from "@/lib/nearcom-address";
+import { formatAssetForIntentsAPI } from "@/lib/oneclick-asset-routing";
 import { nanosToMs } from "@/lib/utils";
 
 export type IntentsAmountMode = "recipient" | "total";
@@ -80,15 +81,20 @@ export function buildIntentsQuoteRequest(
             : ("INTENTS" as const)
         : ("DESTINATION_CHAIN" as const);
 
-    // Held balance id for INTENTS origin.
-    const originAsset = token.balanceAssetId || token.address;
+    // Held balance id for INTENTS origin. Ft picker rows store the bare
+    // contract on `balanceAssetId`; 1Click rejects that as tokenIn.
+    const originAsset = formatAssetForIntentsAPI(
+        token.balanceAssetId || token.address,
+    );
 
     // near.com / INTENTS receive → same holdable balance id (never a chain 1cs).
     // External receiver network → 1Click routing id for that network
     // (caller passes destinationQuoteAssetId from the selected network).
-    const destinationAsset = isNearComRoute
-        ? originAsset
-        : (options?.destinationQuoteAssetId ?? destinationNetwork!);
+    const destinationAsset = formatAssetForIntentsAPI(
+        isNearComRoute
+            ? originAsset
+            : (options?.destinationQuoteAssetId ?? destinationNetwork!),
+    );
     // 1Click wants the bare account — nearcom: is FE routing/display only.
     const bareRecipient = stripNearComAddressPrefix(address.trim());
     const normalizedRecipient = isEthImplicitNearAddress(bareRecipient)
