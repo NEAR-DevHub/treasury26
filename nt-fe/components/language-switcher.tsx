@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { GlobeIcon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { Globe02Icon, GlobeIcon, Tick01Icon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -12,40 +12,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { enabledLocales, LOCALE_COOKIE, type Locale } from "@/i18n/config";
+import {
+    enabledLocales,
+    localeFlags,
+    localeNames,
+    LOCALE_COOKIE,
+    type Locale,
+} from "@/i18n/config";
 import { cn } from "@/lib/utils";
-
-const labelKeyByLocale: Record<Locale, string> = {
-    en: "english",
-    es: "spanish",
-    uk: "ukrainian",
-    he: "hebrew",
-    de: "german",
-    fr: "french",
-    vi: "vietnamese",
-    zh: "chinese",
-    tr: "turkish",
-    id: "indonesian",
-    pt: "portuguese",
-    ja: "japanese",
-    ko: "korean",
-};
-
-const flagByLocale: Record<Locale, string> = {
-    en: "🇬🇧",
-    es: "🇪🇸",
-    uk: "🇺🇦",
-    he: "🇮🇱",
-    de: "🇩🇪",
-    fr: "🇫🇷",
-    vi: "🇻🇳",
-    zh: "🇨🇳",
-    tr: "🇹🇷",
-    id: "🇮🇩",
-    pt: "🇧🇷",
-    ja: "🇯🇵",
-    ko: "🇰🇷",
-};
 
 interface LanguageSwitcherProps {
     align?: "start" | "end" | "center";
@@ -81,7 +55,7 @@ export function LanguageSwitcher({
     };
 
     return (
-        <DropdownMenu>
+        <DropdownMenu modal={!asMenuRow}>
             <DropdownMenuTrigger asChild>
                 {asMenuRow ? (
                     <Button
@@ -94,9 +68,9 @@ export function LanguageSwitcher({
                             className,
                         )}
                     >
-                        <Icon icon={GlobeIcon} />
-                        <span className="flex-1 text-start">{t("select")}</span>
-                        <span aria-hidden="true">{flagByLocale[locale]}</span>
+                        <Icon icon={Globe02Icon} />
+                        <span className="flex-1 text-start">{t("label")}</span>
+                        <span aria-hidden="true">{localeFlags[locale]}</span>
                     </Button>
                 ) : (
                     <Button
@@ -115,6 +89,8 @@ export function LanguageSwitcher({
             </DropdownMenuTrigger>
             <DropdownMenuContent
                 align={align}
+                side={asMenuRow ? "right" : "bottom"}
+                sideOffset={asMenuRow ? 8 : 4}
                 className={cn(
                     "min-w-[160px]",
                     asMenuRow &&
@@ -132,9 +108,9 @@ export function LanguageSwitcher({
                     >
                         <span className="flex items-center gap-2">
                             <span aria-hidden="true" className="text-base">
-                                {flagByLocale[code]}
+                                {localeFlags[code]}
                             </span>
-                            <span>{t(labelKeyByLocale[code])}</span>
+                            <span>{localeNames[code]}</span>
                         </span>
                         {code === locale && <Icon icon={Tick01Icon} />}
                     </DropdownMenuItem>

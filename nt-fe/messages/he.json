@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "שפה",
         "select": "בחר שפה",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "סיום"
     },
     "header": {
         "toggleSidebar": "הצג/הסתר סרגל צד",
-        "toggleTheme": "החלף ערכת נושא"
+        "toggleTheme": "החלף ערכת נושא",
+        "darkMode": "מצב כהה"
     },
     "nav": {
         "dashboard": "לוח בקרה",
@@ -99,7 +88,8 @@
         "members": "חברים",
         "settings": "הגדרות",
         "helpSupport": "עזרה ותמיכה",
-        "saveGuestTreasury": "שמור את האוצר האורח הזה לרשימת האוצרות שלך."
+        "saveGuestTreasury": "שמור את האוצר האורח הזה לרשימת האוצרות שלך.",
+        "menu": "תפריט"
     },
     "signIn": {
         "copyAddress": "העתק כתובת",
@@ -108,7 +98,8 @@
         "termsOfService": "תנאי שימוש",
         "privacyPolicy": "מדיניות פרטיות",
         "disconnect": "התנתקות",
-        "myAccount": "החשבון שלי"
+        "myAccount": "החשבון שלי",
+        "signOut": "התנתקות"
     },
     "auth": {
         "noWallet": "חבר את הארנק שלך",
@@ -475,7 +466,9 @@
             "failed": "נכשל",
             "exchangeTransaction": "עסקת המרה",
             "transferTransaction": "עסקת העברה",
-            "rate": "שער"
+            "rate": "שער",
+            "detailsTitle": "פרטים",
+            "linkedRequest": "בקשה מקושרת"
         },
         "refresh": {
             "ariaLabel": "רענון היסטוריה חסויה",
@@ -1690,10 +1683,6 @@
         "accepting": "מקבל...",
         "continue": "המשך"
     },
-    "confidentialBanner": {
-        "label": "חסוי",
-        "description": "יתרות, פעילות והעברות גלויות רק לצוות שלך — לא לבלוקצ'יין הציבורי."
-    },
     "supportCenter": {
         "title": "מרכז תמיכה",
         "resources": "משאבים",
@@ -2028,6 +2017,11 @@
         "bucketEarning": "מרוויח",
         "noTokenChartTitle": "אין נתונים להצגה כרגע",
         "noTokenChartDescription": "אנחנו עדיין לא יכולים לטעון את היסטוריית הטוקן הזה. בדוק שוב בקרוב.",
+        "fundTitle": "הפקידו כספים בחשבון כדי להתחיל",
+        "fundDescription": "קבלו קריפטו כדי להתחיל להשתמש באפליקציה.",
+        "fundAssetsHint": "קבלו 85+ נכסים\nב-35+ רשתות",
+        "chartLoadingTitle": "טוענים את הנתונים שלך",
+        "chartLoadingDescription": "אנחנו טוענים את נתוני הנכסים שלך. זה ייקח רק רגע.",
         "period": {
             "1W": "שבוע",
             "1M": "חודש",
@@ -2361,7 +2355,11 @@
             "send": "שליחה",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "הגדרת את החשבון שלך בהצלחה. התחלה מצוינת!",
-            "addTeamMemberTitle": "צור חשבון אוצר"
+            "addTeamMemberTitle": "צור חשבון אוצר",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 האוצר שלך מוכן",

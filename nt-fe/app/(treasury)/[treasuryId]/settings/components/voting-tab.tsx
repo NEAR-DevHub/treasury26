@@ -39,6 +39,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { RoleName } from "@/components/role-name";
 import { WarningAlert } from "@/components/warning-alert";
 import { NumberBadge } from "@/components/number-badge";
+import {
+    thresholdSetupKey,
+    writeOnboardingFlag,
+} from "@/features/onboarding/onboarding-steps";
 
 type VotingFormValues = {
     voteDuration: string;
@@ -330,6 +334,7 @@ export function VotingTab() {
             queryClient.invalidateQueries({
                 queryKey: ["proposals", treasuryId],
             });
+            writeOnboardingFlag(thresholdSetupKey(treasuryId));
 
             // Update original thresholds
             setOriginalThresholds((prev) => ({
@@ -394,6 +399,7 @@ export function VotingTab() {
             queryClient.invalidateQueries({
                 queryKey: ["proposals", treasuryId],
             });
+            writeOnboardingFlag(thresholdSetupKey(treasuryId));
 
             // Mark as not dirty
             form.reset(form.getValues());

@@ -3,17 +3,20 @@
 import { Icon } from "@/components/icon";
 import {
     ArrowUp01Icon,
-    MessageQuestionIcon,
-    MoonIcon,
-    Sun01Icon,
+    CircleQuestionMarkIcon,
+    File01Icon,
+    LogoutSquare01Icon,
+    Moon02Icon,
+    User03Icon,
     UserIcon,
 } from "@hugeicons/core-free-icons";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { CopyButton } from "@/components/copy-button";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import {
-    AccountMenuItems,
     accountMenuItemClass,
     ConnectWalletButton,
 } from "@/components/sign-in";
@@ -23,8 +26,11 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
 import { isStaging } from "@/constants/features";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useProfile } from "@/hooks/use-treasury-queries";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
@@ -34,13 +40,23 @@ interface SidebarProfileMenuProps {
     onOpenSupport: () => void;
 }
 
+function MenuDivider() {
+    return (
+        <div aria-hidden="true" className="-mx-1.5 my-2 h-px bg-[#262626]" />
+    );
+}
+
 export function SidebarProfileMenu({
     isReduced,
     onOpenSupport,
 }: SidebarProfileMenuProps) {
+    const t = useTranslations("signIn");
     const tNav = useTranslations("nav");
     const tHeader = useTranslations("header");
-    const { accountId, isAuthenticated } = useNear();
+    const tAddress = useTranslations("address");
+    const { accountId, isAuthenticated, disconnect } = useNear();
+    const { treasuryId } = useTreasury();
+    const { data: profile } = useProfile(accountId);
     const { resolvedTheme, setTheme } = useTheme();
     const [mounted, setMounted] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
@@ -53,6 +69,11 @@ export function SidebarProfileMenu({
     }, []);
 
     const isDarkTheme = mounted ? resolvedTheme === "dark" : true;
+    const displayName =
+        profile?.name && profile.name !== accountId ? profile.name : accountId;
+    const accountHref = treasuryId ? `/${treasuryId}/account` : null;
+
+    const close = () => setIsOpen(false);
 
     if (!accountId || !isAuthenticated) {
         return (
@@ -131,34 +152,92 @@ export function SidebarProfileMenu({
                 sideOffset={8}
                 className="dark w-66 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
             >
-                <AccountMenuItems
-                    accountId={accountId}
-                    onNavigate={() => setIsOpen(false)}
-                />
-                <div className="-mx-1.5 mt-1 flex flex-col border-t border-border px-1.5 pt-1 dark:border-general-border">
-                    <LanguageSwitcher asMenuRow align="start" />
+                <div className="flex items-center justify-between gap-3 px-3 py-1">
+                    <div className="min-w-0 px-3">
+                        <p className="truncate font-semibold text-sm">
+                            {displayName}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                            {accountId}
+                        </p>
+                    </div>
+                    <CopyButton
+                        text={accountId}
+                        toastMessage={tAddress("copied")}
+                        variant="ghost"
+                        size="icon-sm"
+                        className="shrink-0 text-muted-foreground"
+                        iconClassName="size-4"
+                    />
+                </div>
+                <MenuDivider />
+                <div className="flex flex-col">
+                    {accountHref ? (
+                        <Link
+                            href={accountHref}
+                            className={accountMenuItemClass}
+                            onClick={close}
+                        >
+                            <Icon icon={User03Icon} />
+                            {t("myAccount")}
+                        </Link>
+                    ) : null}
                     <button
                         type="button"
                         className={accountMenuItemClass}
                         onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
                     >
-                        {isDarkTheme ? (
-                            <Icon icon={Sun01Icon} />
-                        ) : (
-                            <Icon icon={MoonIcon} />
-                        )}
-                        {tHeader("toggleTheme")}
+                        <Icon icon={Moon02Icon} />
+                        {tHeader("darkMode")}
                     </button>
+                    <LanguageSwitcher asMenuRow align="start" />
+                </div>
+                <MenuDivider />
+                <div className="flex flex-col">
                     <button
                         type="button"
                         className={accountMenuItemClass}
                         onClick={() => {
-                            setIsOpen(false);
+                            close();
                             onOpenSupport();
                         }}
                     >
-                        <Icon icon={MessageQuestionIcon} />
+                        <Icon icon={CircleQuestionMarkIcon} />
                         {tNav("helpSupport")}
+                    </button>
+                    <Link
+                        href={TERMS_OF_SERVICE_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={accountMenuItemClass}
+                        onClick={close}
+                    >
+                        <Icon icon={File01Icon} />
+                        {t("termsOfService")}
+                    </Link>
+                    <Link
+                        href={PRIVACY_POLICY_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={accountMenuItemClass}
+                        onClick={close}
+                    >
+                        <Icon icon={File01Icon} />
+                        {t("privacyPolicy")}
+                    </Link>
+                </div>
+                <MenuDivider />
+                <div>
+                    <button
+                        type="button"
+                        className={accountMenuItemClass}
+                        onClick={() => {
+                            disconnect();
+                            close();
+                        }}
+                    >
+                        <Icon icon={LogoutSquare01Icon} />
+                        {t("signOut")}
                     </button>
                     {isStaging && (
                         <span className="flex items-center gap-2 px-3 py-2 text-general-orange-foreground text-xs font-medium">

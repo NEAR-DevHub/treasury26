@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "Мова",
         "select": "Обрати мову",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "Готово"
     },
     "header": {
         "toggleSidebar": "Перемкнути бічну панель",
-        "toggleTheme": "Перемкнути тему"
+        "toggleTheme": "Перемкнути тему",
+        "darkMode": "Темний режим"
     },
     "nav": {
         "dashboard": "Огляд",
@@ -99,7 +88,8 @@
         "members": "Учасники",
         "settings": "Налаштування",
         "helpSupport": "Довідка та підтримка",
-        "saveGuestTreasury": "Зберегти цю гостьову скарбницю до списку ваших скарбниць."
+        "saveGuestTreasury": "Зберегти цю гостьову скарбницю до списку ваших скарбниць.",
+        "menu": "Меню"
     },
     "signIn": {
         "copyAddress": "Скопіювати адресу",
@@ -108,7 +98,8 @@
         "termsOfService": "Умови використання",
         "privacyPolicy": "Політика конфіденційності",
         "disconnect": "Вийти",
-        "myAccount": "Мій обліковий запис"
+        "myAccount": "Мій обліковий запис",
+        "signOut": "Вийти"
     },
     "auth": {
         "noWallet": "Підключіть свій гаманець",
@@ -475,7 +466,9 @@
             "failed": "Невдало",
             "exchangeTransaction": "Транзакція обміну",
             "transferTransaction": "Транзакція переказу",
-            "rate": "Курс"
+            "rate": "Курс",
+            "detailsTitle": "Деталі",
+            "linkedRequest": "Пов'язаний запит"
         },
         "refresh": {
             "ariaLabel": "Оновити конфіденційну історію",
@@ -1673,10 +1666,6 @@
         "accepting": "Прийняття...",
         "continue": "Продовжити"
     },
-    "confidentialBanner": {
-        "label": "Конфіденційно",
-        "description": "Баланси, активність і перекази видимі лише вашій команді — не публічному блокчейну."
-    },
     "supportCenter": {
         "title": "Центр підтримки",
         "resources": "Ресурси",
@@ -2011,6 +2000,11 @@
         "bucketEarning": "Заробіток",
         "noTokenChartTitle": "Зараз немає даних для показу",
         "noTokenChartDescription": "Ми поки що не можемо завантажити історію цього токена. Завітайте пізніше.",
+        "fundTitle": "Поповніть рахунок, щоб почати",
+        "fundDescription": "Отримайте криптовалюту, щоб почати користуватися додатком.",
+        "fundAssetsHint": "Отримуйте 85+ активів\nу 35+ мережах",
+        "chartLoadingTitle": "Завантажуємо ваші дані",
+        "chartLoadingDescription": "Ми завантажуємо дані про ваші активи. Це займе лише мить.",
         "period": {
             "1W": "1т",
             "1M": "1м",
@@ -2344,7 +2338,11 @@
             "send": "Надіслати",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Ви успішно налаштували обліковий запис. Гарний початок!",
-            "addTeamMemberTitle": "Створити обліковий запис скарбниці"
+            "addTeamMemberTitle": "Створити обліковий запис скарбниці",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Ваша скарбниця готова",

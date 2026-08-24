@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "Language",
         "select": "Select language",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "Done"
     },
     "header": {
         "toggleSidebar": "Toggle sidebar",
-        "toggleTheme": "Toggle theme"
+        "toggleTheme": "Toggle theme",
+        "darkMode": "Dark mode"
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -99,6 +88,7 @@
         "members": "Members",
         "settings": "Settings",
         "helpSupport": "Help & Support",
+        "menu": "Menu",
         "saveGuestTreasury": "Save this guest treasury to your treasuries list."
     },
     "signIn": {
@@ -108,7 +98,8 @@
         "wallet": "Wallet",
         "termsOfService": "Terms of Service",
         "privacyPolicy": "Privacy Policy",
-        "disconnect": "Log Out"
+        "disconnect": "Log Out",
+        "signOut": "Sign out"
     },
     "auth": {
         "noWallet": "Connect your wallet",
@@ -459,6 +450,7 @@
             "date": "Date",
             "request": "Request",
             "viewLinkedRequest": "View Linked Request",
+            "linkedRequest": "Linked Request",
             "from": "From",
             "to": "To",
             "method": "Method",
@@ -467,6 +459,7 @@
             "depositTransaction": "Deposit Transaction",
             "depositTitle": "Deposit Details",
             "exchangeTitle": "Exchange Details",
+            "detailsTitle": "Details",
             "transferTitle": "Transfer Details",
             "via": "Via",
             "status": "Status",
@@ -1690,10 +1683,6 @@
         "accepting": "Accepting...",
         "continue": "Continue"
     },
-    "confidentialBanner": {
-        "label": "Confidential",
-        "description": "Balances, activity, and transfers are visible only to your team — not the public blockchain."
-    },
     "supportCenter": {
         "title": "Support Center",
         "resources": "Resources",
@@ -2028,6 +2017,11 @@
         "bucketEarning": "Earning",
         "noTokenChartTitle": "No data to show right now",
         "noTokenChartDescription": "We can't load this token's history yet. Check back soon.",
+        "fundTitle": "Fund your account to get started",
+        "fundDescription": "Receive crypto to start using the app.",
+        "fundAssetsHint": "Receive 85+ assets\nacross 35+ networks",
+        "chartLoadingTitle": "Loading your data",
+        "chartLoadingDescription": "We're loading your asset data. This will only take a moment.",
         "period": {
             "1W": "1W",
             "1M": "1M",
@@ -2071,8 +2065,8 @@
     "balanceChart": {
         "usdValue": "USD Value",
         "tokenBalance": "Token Balance",
-        "emptyTitle": "Nothing to show yet",
-        "emptyDescription": "No balance history available"
+        "emptyTitle": "Loading your data",
+        "emptyDescription": "We're loading your asset data. This will only take a moment."
     },
     "user": {
         "saveToAddressBook": "Save to Address book",
@@ -2361,7 +2355,11 @@
             "send": "Send",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Protect your funds if your wallet is lost or compromised - add a teammate or your own second wallet so transactions need more than one approval.",
-            "addTeamMemberTitle": "Add a team member"
+            "addTeamMemberTitle": "Add a team member",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Your treasury is ready",

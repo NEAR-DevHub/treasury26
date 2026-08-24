@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "언어",
         "select": "언어 선택",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "완료"
     },
     "header": {
         "toggleSidebar": "사이드바 토글",
-        "toggleTheme": "테마 토글"
+        "toggleTheme": "테마 토글",
+        "darkMode": "다크 모드"
     },
     "nav": {
         "dashboard": "대시보드",
@@ -99,7 +88,8 @@
         "members": "멤버",
         "settings": "설정",
         "helpSupport": "도움말 및 지원",
-        "saveGuestTreasury": "이 게스트 트레저리를 트레저리 목록에 저장합니다."
+        "saveGuestTreasury": "이 게스트 트레저리를 트레저리 목록에 저장합니다.",
+        "menu": "메뉴"
     },
     "signIn": {
         "copyAddress": "주소 복사",
@@ -108,7 +98,8 @@
         "termsOfService": "이용약관",
         "privacyPolicy": "개인정보 처리방침",
         "disconnect": "로그아웃",
-        "myAccount": "내 계정"
+        "myAccount": "내 계정",
+        "signOut": "로그아웃"
     },
     "auth": {
         "noWallet": "지갑을 연결하세요",
@@ -475,7 +466,9 @@
             "failed": "실패",
             "exchangeTransaction": "교환 트랜잭션",
             "transferTransaction": "이체 트랜잭션",
-            "rate": "환율"
+            "rate": "환율",
+            "detailsTitle": "상세",
+            "linkedRequest": "연결된 요청"
         },
         "refresh": {
             "ariaLabel": "기밀 기록 새로 고침",
@@ -1690,10 +1683,6 @@
         "accepting": "동의 중...",
         "continue": "계속"
     },
-    "confidentialBanner": {
-        "label": "비공개",
-        "description": "잔액, 활동 및 전송은 팀에게만 표시되며, 공개 블록체인에는 표시되지 않습니다."
-    },
     "supportCenter": {
         "title": "지원 센터",
         "resources": "리소스",
@@ -2028,6 +2017,11 @@
         "bucketEarning": "수익 중",
         "noTokenChartTitle": "지금 표시할 데이터가 없습니다",
         "noTokenChartDescription": "이 토큰의 기록을 아직 불러올 수 없습니다. 잠시 후 다시 확인해 주세요.",
+        "fundTitle": "계좌에 자금을 넣어 시작하세요",
+        "fundDescription": "암호화폐를 받아 앱 사용을 시작하세요.",
+        "fundAssetsHint": "85개 이상의 자산을\n35개 이상의 네트워크에서 받으세요",
+        "chartLoadingTitle": "데이터를 불러오는 중",
+        "chartLoadingDescription": "자산 데이터를 불러오는 중입니다. 잠시만 기다려 주세요.",
         "period": {
             "1W": "1주",
             "1M": "1개월",
@@ -2361,7 +2355,11 @@
             "send": "보내기",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "계정 설정을 성공적으로 완료했습니다. 좋은 시작입니다!",
-            "addTeamMemberTitle": "트레저리 계정 생성"
+            "addTeamMemberTitle": "트레저리 계정 생성",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 트레저리가 준비되었습니다",

@@ -1,10 +1,10 @@
 "use client";
-import { Icon } from "@/components/icon";
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import { ArrowDown02Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { FormattedDate } from "@/components/formatted-date";
+import { Icon } from "@/components/icon";
 import { NearIntentsLogo } from "@/components/icons/near-intents-logo";
 import { InfoDisplay, type InfoItem } from "@/components/info-display";
 import {
@@ -18,6 +18,7 @@ import type { Token } from "@/components/token-input";
 import { Tooltip } from "@/components/tooltip";
 import { User } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity, SwapInfo, TokenMetadataInfo } from "@/lib/api";
 import Big from "@/lib/big";
@@ -223,7 +224,7 @@ function ModalSection({
     return (
         <div
             className={cn(
-                "flex w-full flex-col items-start gap-2.5 self-stretch bg-card px-4 py-3",
+                "flex w-full flex-col items-start gap-2.5 self-stretch bg-card px-0 py-3 sm:px-4",
                 className,
             )}
         >
@@ -294,14 +295,45 @@ function TokenAmountHeader({ activity }: { activity: RecentActivity }) {
  */
 function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
     const t = useTranslations("activity.details");
+    const isMobile = useMediaQuery("(max-width: 639px)");
+    const sentToken = swap.sentTokenMetadata
+        ? activityToken(swap.sentTokenMetadata)
+        : null;
+    const receivedToken = activityToken(swap.receivedTokenMetadata);
+    const receivedAmount = swap.receivedAmount
+        ? formatSmartAmount(swap.receivedAmount)
+        : t("pending");
+
+    if (isMobile) {
+        return (
+            <div className="flex flex-col gap-3 bg-card py-3">
+                {sentToken && swap.sentAmount ? (
+                    <MobileSwapTokenRow
+                        token={sentToken}
+                        amount={formatSmartAmount(swap.sentAmount)}
+                        usdValue={swap.sentAmountUsd}
+                    />
+                ) : null}
+                <Icon
+                    icon={ArrowDown02Icon}
+                    className="mx-auto size-4 text-muted-foreground"
+                />
+                <MobileSwapTokenRow
+                    token={receivedToken}
+                    amount={receivedAmount}
+                    usdValue={swap.receivedAmountUsd}
+                />
+            </div>
+        );
+    }
 
     return (
-        <ModalSection className="py-6 rounded-b-[12px]">
+        <ModalSection className="flex py-6 rounded-b-[12px]">
             <div className="relative flex w-full items-center justify-center gap-4">
-                {swap.sentAmount && swap.sentTokenMetadata ? (
+                {swap.sentAmount && sentToken ? (
                     <TokenAmountColumn
                         title={t("sell")}
-                        token={activityToken(swap.sentTokenMetadata)}
+                        token={sentToken}
                         amount={formatSmartAmount(swap.sentAmount)}
                         usdValue={swap.sentAmountUsd}
                     />
@@ -318,12 +350,8 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
 
                 <TokenAmountColumn
                     title={t("receive")}
-                    token={activityToken(swap.receivedTokenMetadata)}
-                    amount={
-                        swap.receivedAmount
-                            ? formatSmartAmount(swap.receivedAmount)
-                            : t("pending")
-                    }
+                    token={receivedToken}
+                    amount={receivedAmount}
                     usdValue={swap.receivedAmountUsd}
                 />
             </div>
@@ -331,11 +359,44 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
     );
 }
 
+function MobileSwapTokenRow({
+    token,
+    amount,
+    usdValue,
+}: {
+    token: Token;
+    amount: string;
+    usdValue?: number;
+}) {
+    return (
+        <div className="flex items-center gap-3">
+            <TokenDisplay
+                symbol={token.symbol}
+                icon={token.icon}
+                chainIcons={token.chainIcons}
+                iconSize="xl"
+            />
+            <div className="min-w-0">
+                <p className="font-semibold text-xl leading-tight text-foreground">
+                    {amount} {token.symbol}
+                </p>
+                {usdValue ? (
+                    <p className="text-sm text-muted-foreground">
+                        {formatCurrency(usdValue)}
+                    </p>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
 function ViaIntentsSection() {
     const t = useTranslations("activity.details");
+    const isMobile = useMediaQuery("(max-width: 639px)");
+    if (isMobile) return null;
 
     return (
-        <ModalSection className="rounded-[12px]">
+        <ModalSection className="flex rounded-[12px]">
             <p className="text-sm text-muted-foreground">{t("via")}</p>
             <NearIntentsLogo className="h-3" />
         </ModalSection>
@@ -512,14 +573,14 @@ function ViewLinkedRequestButton({
             <Button
                 asChild
                 variant="secondary"
-                className="h-9 w-full rounded-[8px] font-medium"
+                className="h-9 w-full rounded-[8px] font-medium sm:rounded-[8px] max-sm:rounded-xl max-sm:bg-muted max-sm:text-foreground"
             >
                 <Link
                     href={`/${treasuryId}/requests/${proposalId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                 >
-                    {t("viewLinkedRequest")}
+                    {t("linkedRequest")}
                     <Icon icon={ArrowRight01Icon} />
                 </Link>
             </Button>
@@ -534,6 +595,7 @@ export function TransactionDetailsModal({
     onClose,
 }: TransactionDetailsModalProps) {
     const t = useTranslations("activity.details");
+    const isMobile = useMediaQuery("(max-width: 639px)");
     if (!activity) return null;
 
     const variant = getActivityDetailsVariant(activity);
@@ -541,9 +603,11 @@ export function TransactionDetailsModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[448px]! gap-0.5 bg-muted p-0">
-                <DialogHeader className="mx-0 border-b-0 bg-card px-4 py-3.5">
-                    <DialogTitle>{t(TITLE_KEYS[variant])}</DialogTitle>
+            <DialogContent className="gap-0 bg-card sm:max-w-[448px]! sm:gap-0.5 sm:bg-muted sm:p-0">
+                <DialogHeader className="mx-0 border-b-0 bg-card px-0 py-3 sm:px-4 sm:py-3.5">
+                    <DialogTitle>
+                        {isMobile ? t("detailsTitle") : t(TITLE_KEYS[variant])}
+                    </DialogTitle>
                 </DialogHeader>
 
                 {variant === "exchange" && activity.swap ? (

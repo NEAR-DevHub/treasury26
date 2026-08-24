@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "Idioma",
         "select": "Selecionar idioma",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "Concluído"
     },
     "header": {
         "toggleSidebar": "Alternar barra lateral",
-        "toggleTheme": "Alternar tema"
+        "toggleTheme": "Alternar tema",
+        "darkMode": "Modo escuro"
     },
     "nav": {
         "dashboard": "Painel",
@@ -99,7 +88,8 @@
         "members": "Membros",
         "settings": "Configurações",
         "helpSupport": "Ajuda e suporte",
-        "saveGuestTreasury": "Salve esta tesouraria de convidado na sua lista de tesourarias."
+        "saveGuestTreasury": "Salve esta tesouraria de convidado na sua lista de tesourarias.",
+        "menu": "Menu"
     },
     "signIn": {
         "copyAddress": "Copiar endereço",
@@ -108,7 +98,8 @@
         "termsOfService": "Termos de Serviço",
         "privacyPolicy": "Política de Privacidade",
         "disconnect": "Sair",
-        "myAccount": "Minha conta"
+        "myAccount": "Minha conta",
+        "signOut": "Sair"
     },
     "auth": {
         "noWallet": "Conecte sua carteira",
@@ -475,7 +466,9 @@
             "failed": "Falhou",
             "exchangeTransaction": "Transação de troca",
             "transferTransaction": "Transação de transferência",
-            "rate": "Taxa"
+            "rate": "Taxa",
+            "detailsTitle": "Detalhes",
+            "linkedRequest": "Solicitação vinculada"
         },
         "refresh": {
             "ariaLabel": "Atualizar histórico confidencial",
@@ -1690,10 +1683,6 @@
         "accepting": "Aceitando...",
         "continue": "Continuar"
     },
-    "confidentialBanner": {
-        "label": "Confidencial",
-        "description": "Saldos, atividades e transferências são visíveis apenas para sua equipe — não para a blockchain pública."
-    },
     "supportCenter": {
         "title": "Central de suporte",
         "resources": "Recursos",
@@ -2028,6 +2017,11 @@
         "bucketEarning": "Rendendo",
         "noTokenChartTitle": "Nenhum dado para mostrar agora",
         "noTokenChartDescription": "Ainda não conseguimos carregar o histórico deste token. Volte em breve.",
+        "fundTitle": "Adicione fundos à sua conta para começar",
+        "fundDescription": "Receba cripto para começar a usar o app.",
+        "fundAssetsHint": "Receba 85+ ativos\nem mais de 35 redes",
+        "chartLoadingTitle": "Carregando seus dados",
+        "chartLoadingDescription": "Estamos carregando os dados dos seus ativos. Isso leva só um momento.",
         "period": {
             "1W": "1S",
             "1M": "1M",
@@ -2361,7 +2355,11 @@
             "send": "Enviar",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Você configurou sua conta com sucesso. Ótimo começo!",
-            "addTeamMemberTitle": "Criar conta da tesouraria"
+            "addTeamMemberTitle": "Criar conta da tesouraria",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Sua tesouraria está pronta",

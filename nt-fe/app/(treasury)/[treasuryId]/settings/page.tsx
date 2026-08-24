@@ -30,6 +30,9 @@ function SettingsPageContent() {
         if (tabFromUrl === "developer" && showDeveloper) {
             return "developer";
         }
+        if (tabFromUrl === "voting") {
+            return "voting";
+        }
         return "general";
     });
 
@@ -39,6 +42,8 @@ function SettingsPageContent() {
             setActiveTab("integrations");
         } else if (tab === "developer" && showDeveloper) {
             setActiveTab("developer");
+        } else if (tab === "voting") {
+            setActiveTab("voting");
         }
     }, [searchParams, showDeveloper]);
 

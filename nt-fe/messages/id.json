@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "Bahasa",
         "select": "Pilih bahasa",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "Selesai"
     },
     "header": {
         "toggleSidebar": "Alihkan bilah samping",
-        "toggleTheme": "Alihkan tema"
+        "toggleTheme": "Alihkan tema",
+        "darkMode": "Mode gelap"
     },
     "nav": {
         "dashboard": "Dasbor",
@@ -99,7 +88,8 @@
         "members": "Anggota",
         "settings": "Pengaturan",
         "helpSupport": "Bantuan & Dukungan",
-        "saveGuestTreasury": "Simpan treasury tamu ini ke daftar treasury Anda."
+        "saveGuestTreasury": "Simpan treasury tamu ini ke daftar treasury Anda.",
+        "menu": "Menu"
     },
     "signIn": {
         "copyAddress": "Salin alamat",
@@ -108,7 +98,8 @@
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
         "disconnect": "Keluar",
-        "myAccount": "Akun Saya"
+        "myAccount": "Akun Saya",
+        "signOut": "Keluar"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",
@@ -475,7 +466,9 @@
             "failed": "Gagal",
             "exchangeTransaction": "Transaksi Penukaran",
             "transferTransaction": "Transaksi Transfer",
-            "rate": "Kurs"
+            "rate": "Kurs",
+            "detailsTitle": "Detail",
+            "linkedRequest": "Permintaan tertaut"
         },
         "refresh": {
             "ariaLabel": "Segarkan riwayat rahasia",
@@ -1690,10 +1683,6 @@
         "accepting": "Menerima...",
         "continue": "Lanjutkan"
     },
-    "confidentialBanner": {
-        "label": "Rahasia",
-        "description": "Saldo, aktivitas, dan transfer hanya terlihat oleh tim Anda — bukan blockchain publik."
-    },
     "supportCenter": {
         "title": "Pusat Dukungan",
         "resources": "Sumber Daya",
@@ -2028,6 +2017,11 @@
         "bucketEarning": "Pendapatan",
         "noTokenChartTitle": "Belum ada data untuk ditampilkan",
         "noTokenChartDescription": "Kami belum dapat memuat riwayat token ini. Silakan cek kembali nanti.",
+        "fundTitle": "Danai akun Anda untuk memulai",
+        "fundDescription": "Terima kripto untuk mulai menggunakan aplikasi.",
+        "fundAssetsHint": "Terima 85+ aset\ndi 35+ jaringan",
+        "chartLoadingTitle": "Memuat data Anda",
+        "chartLoadingDescription": "Kami sedang memuat data aset Anda. Ini hanya butuh sebentar.",
         "period": {
             "1W": "1Mg",
             "1M": "1Bl",
@@ -2361,7 +2355,11 @@
             "send": "Kirim",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Anda telah berhasil menyiapkan akun Anda. Awal yang bagus!",
-            "addTeamMemberTitle": "Buat akun Treasury"
+            "addTeamMemberTitle": "Buat akun Treasury",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Perbendaharaan Anda siap",

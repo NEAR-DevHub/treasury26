@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "Idioma",
         "select": "Seleccionar idioma",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "Listo"
     },
     "header": {
         "toggleSidebar": "Alternar barra lateral",
-        "toggleTheme": "Alternar tema"
+        "toggleTheme": "Alternar tema",
+        "darkMode": "Modo oscuro"
     },
     "nav": {
         "dashboard": "Panel",
@@ -99,7 +88,8 @@
         "members": "Miembros",
         "settings": "Configuración",
         "helpSupport": "Ayuda y soporte",
-        "saveGuestTreasury": "Guarda esta tesorería de invitado en tu lista de tesorerías."
+        "saveGuestTreasury": "Guarda esta tesorería de invitado en tu lista de tesorerías.",
+        "menu": "Menú"
     },
     "signIn": {
         "copyAddress": "Copiar dirección",
@@ -108,7 +98,8 @@
         "termsOfService": "Términos del servicio",
         "privacyPolicy": "Política de privacidad",
         "disconnect": "Cerrar sesión",
-        "myAccount": "Mi cuenta"
+        "myAccount": "Mi cuenta",
+        "signOut": "Cerrar sesión"
     },
     "auth": {
         "noWallet": "Conecta tu cartera",
@@ -475,7 +466,9 @@
             "failed": "Fallido",
             "exchangeTransaction": "Transacción de intercambio",
             "transferTransaction": "Transacción de transferencia",
-            "rate": "Tasa"
+            "rate": "Tasa",
+            "detailsTitle": "Detalles",
+            "linkedRequest": "Solicitud vinculada"
         },
         "refresh": {
             "ariaLabel": "Actualizar historial confidencial",
@@ -1690,10 +1683,6 @@
         "accepting": "Aceptando...",
         "continue": "Continuar"
     },
-    "confidentialBanner": {
-        "label": "Confidencial",
-        "description": "Los saldos, la actividad y las transferencias son visibles solo para tu equipo — no para la blockchain pública."
-    },
     "supportCenter": {
         "title": "Centro de soporte",
         "resources": "Recursos",
@@ -2028,6 +2017,11 @@
         "bucketEarning": "Rendimiento",
         "noTokenChartTitle": "No hay datos para mostrar ahora",
         "noTokenChartDescription": "Aún no podemos cargar el historial de este token. Vuelve pronto.",
+        "fundTitle": "Fondea tu cuenta para comenzar",
+        "fundDescription": "Recibe cripto para empezar a usar la app.",
+        "fundAssetsHint": "Recibe 85+ activos\nen más de 35 redes",
+        "chartLoadingTitle": "Cargando tus datos",
+        "chartLoadingDescription": "Estamos cargando los datos de tus activos. Solo tomará un momento.",
         "period": {
             "1W": "1S",
             "1M": "1m",
@@ -2361,7 +2355,11 @@
             "send": "Enviar",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Has configurado tu cuenta con éxito. ¡Buen comienzo!",
-            "addTeamMemberTitle": "Crear cuenta de tesorería"
+            "addTeamMemberTitle": "Crear cuenta de tesorería",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Tu tesorería está lista",

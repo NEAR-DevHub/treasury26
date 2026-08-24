@@ -72,23 +72,12 @@
     "languageSwitcher": {
         "label": "语言",
         "select": "选择语言",
-        "english": "English",
-        "spanish": "Español",
-        "ukrainian": "Українська",
-        "hebrew": "עברית",
-        "german": "Deutsch",
-        "french": "Français",
-        "vietnamese": "Tiếng Việt",
-        "chinese": "中文",
-        "turkish": "Türkçe",
-        "indonesian": "Bahasa Indonesia",
-        "portuguese": "Português",
-        "japanese": "日本語",
-        "korean": "한국어"
+        "done": "完成"
     },
     "header": {
         "toggleSidebar": "切换侧边栏",
-        "toggleTheme": "切换主题"
+        "toggleTheme": "切换主题",
+        "darkMode": "深色模式"
     },
     "nav": {
         "dashboard": "仪表板",
@@ -99,7 +88,8 @@
         "members": "成员",
         "settings": "设置",
         "helpSupport": "帮助与支持",
-        "saveGuestTreasury": "将此访客金库保存到您的金库列表。"
+        "saveGuestTreasury": "将此访客金库保存到您的金库列表。",
+        "menu": "菜单"
     },
     "signIn": {
         "copyAddress": "复制地址",
@@ -108,7 +98,8 @@
         "termsOfService": "服务条款",
         "privacyPolicy": "隐私政策",
         "disconnect": "退出登录",
-        "myAccount": "我的账户"
+        "myAccount": "我的账户",
+        "signOut": "退出登录"
     },
     "auth": {
         "noWallet": "请连接您的钱包",
@@ -475,7 +466,9 @@
             "failed": "失败",
             "exchangeTransaction": "兑换交易",
             "transferTransaction": "转账交易",
-            "rate": "汇率"
+            "rate": "汇率",
+            "detailsTitle": "详情",
+            "linkedRequest": "关联请求"
         },
         "refresh": {
             "ariaLabel": "刷新机密历史记录",
@@ -1673,10 +1666,6 @@
         "accepting": "正在接受...",
         "continue": "继续"
     },
-    "confidentialBanner": {
-        "label": "机密",
-        "description": "余额、活动和转账仅对您的团队可见 — 公共区块链上不可见。"
-    },
     "supportCenter": {
         "title": "支持中心",
         "resources": "资源",
@@ -2011,6 +2000,11 @@
         "bucketEarning": "收益中",
         "noTokenChartTitle": "暂无可显示的数据",
         "noTokenChartDescription": "我们暂时无法加载该代币的历史记录，请稍后再试。",
+        "fundTitle": "为账户充值以开始使用",
+        "fundDescription": "接收加密资产即可开始使用应用。",
+        "fundAssetsHint": "支持 85+ 种资产\n覆盖 35+ 条网络",
+        "chartLoadingTitle": "正在加载你的数据",
+        "chartLoadingDescription": "正在加载资产数据，只需片刻。",
         "period": {
             "1W": "1周",
             "1M": "1月",
@@ -2344,7 +2338,11 @@
             "send": "发送",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "您已成功设置账户。开端不错!",
-            "addTeamMemberTitle": "创建金库账户"
+            "addTeamMemberTitle": "创建金库账户",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 您的金库已就绪",

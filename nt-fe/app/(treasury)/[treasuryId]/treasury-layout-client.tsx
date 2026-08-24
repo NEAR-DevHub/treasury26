@@ -3,6 +3,11 @@
 import { usePathname } from "next/navigation";
 import { AppShellProvider } from "@/components/app-shell-context";
 import { LoadingScreen } from "@/components/loading-screen";
+import { MobileBottomNav } from "@/components/mobile-shell/mobile-bottom-nav";
+import { MobileLanguageSheet } from "@/components/mobile-shell/mobile-language-sheet";
+import { MobileMenuSheet } from "@/components/mobile-shell/mobile-menu-sheet";
+import { MobileTreasurySheet } from "@/components/mobile-shell/mobile-treasury-sheet";
+import { MobileUserSheet } from "@/components/mobile-shell/mobile-user-sheet";
 import { PrimaryColorProvider } from "@/components/primary-color-provider";
 import { Sidebar, shellSurfaceClass } from "@/components/sidebar";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -48,14 +53,21 @@ export function TreasuryLayoutClient({
             >
                 <AppEventsProvider scope={{ treasuryId }} />
                 <PrimaryColorProvider treasuryId={treasuryId} />
-                <Sidebar
-                    isOpen={isSidebarOpen}
-                    onClose={() => setSidebarOpen(false)}
-                />
-                <main className="flex-1 overflow-hidden py-2 pr-2">
-                    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-850 lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
+                <div className="hidden lg:block">
+                    <Sidebar
+                        isOpen={isSidebarOpen}
+                        onClose={() => setSidebarOpen(false)}
+                    />
+                </div>
+                <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:py-2 lg:pr-2">
+                    <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-850 lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
                         {children}
                     </div>
+                    <MobileBottomNav />
+                    <MobileMenuSheet />
+                    <MobileUserSheet />
+                    <MobileLanguageSheet />
+                    <MobileTreasurySheet />
                 </main>
             </div>
         </AppShellProvider>
