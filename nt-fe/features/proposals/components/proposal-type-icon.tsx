@@ -7,7 +7,7 @@ import {
     Clock01Icon,
     DatabaseIcon,
     FactoryIcon,
-    FileAttachmentIcon,
+    File01Icon,
     SentIcon,
     Settings01Icon,
     Shield01Icon,
@@ -196,7 +196,7 @@ export function ProposalTypeIcon({
             return (
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full dark:bg-gray-500/10 bg-gray-100">
                     <Icon
-                        icon={FileAttachmentIcon}
+                        icon={File01Icon}
                         className="shrink-0 dark:text-gray-400 text-gray-800"
                     />
                 </div>

@@ -3,7 +3,7 @@
 import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
-    FileAttachmentIcon,
+    File01Icon,
     Upload01Icon,
 } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useId } from "react";
@@ -221,7 +221,7 @@ export function CsvUploadPanel({
                         >
                             <div className="flex items-center gap-3">
                                 <Icon
-                                    icon={FileAttachmentIcon}
+                                    icon={File01Icon}
                                     className={`${
                                         hasErrors
                                             ? "text-destructive"

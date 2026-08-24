@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { FileAttachmentIcon } from "@hugeicons/core-free-icons";
+import { File01Icon } from "@hugeicons/core-free-icons";
 import { redirect, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { use, useEffect, useMemo, useRef } from "react";
@@ -215,7 +215,7 @@ function ReceiptPageShell({
                         </CopyButton>
                     )}
                     <Button variant="default" onClick={onPrint}>
-                        <Icon icon={FileAttachmentIcon} />
+                        <Icon icon={File01Icon} />
                         {tReceipt("printOrSavePdf")}
                     </Button>
                 </div>

@@ -1,5 +1,5 @@
 import { Icon } from "@/components/icon";
-import { GlobeIcon, Shield01Icon } from "@hugeicons/core-free-icons";
+import { Globe02Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 export type TreasuryType = "confidential" | "public";
@@ -378,7 +378,7 @@ export function TreasuryTypeIcon({
     return (
         <div className={cn(treasuryTypeIconVariants({ size }), className)}>
             <Icon
-                icon={GlobeIcon}
+                icon={Globe02Icon}
                 className={cn("text-foreground", globeSize)}
             />
         </div>

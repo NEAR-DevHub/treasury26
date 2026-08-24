@@ -4,7 +4,7 @@ import { Icon } from "@/components/icon";
 import {
     BarChartIcon,
     File01Icon,
-    GlobeIcon,
+    Globe02Icon,
     HeadphonesIcon,
     PlayIcon,
     Shield01Icon,
@@ -131,7 +131,7 @@ export function SupportCenterModal({
     const demoSectionItems = useMemo<SupportItemProps[]>(
         () => [
             {
-                icon: <Icon icon={GlobeIcon} />,
+                icon: <Icon icon={Globe02Icon} />,
                 title: t("demoTitle"),
                 description: t("demoDescription"),
                 href: APP_ACTIVE_TREASURY,

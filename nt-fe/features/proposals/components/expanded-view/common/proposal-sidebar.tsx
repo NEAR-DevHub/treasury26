@@ -2,7 +2,7 @@ import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
     Download01Icon,
-    FileAttachmentIcon,
+    File01Icon,
     LinkSquare02Icon,
     LoaderCircleIcon,
     Tick01Icon,
@@ -551,7 +551,7 @@ export function ProposalSidebar({
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
-                                <Icon icon={FileAttachmentIcon} />
+                                <Icon icon={File01Icon} />
                                 {tReceipt("generateReceipt")}
                             </Link>
                         </Button>
