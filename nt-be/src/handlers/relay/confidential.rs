@@ -358,7 +358,7 @@ pub async fn try_auto_submit_intent(
             if result_debug.contains(MPC_SIGNATURE_MARKER) {
                 tracing::error!(
                     tags.error_code = "CONF_INTENT_SIG_PARSE_FAILED",
-                    tags.priority = "p0",
+                    tags.alert_priority = "p0",
                     treasury_id,
                     payload_hash,
                     proposal_id,
@@ -603,7 +603,7 @@ pub async fn try_auto_submit_intent(
         Err(err) => {
             tracing::error!(
                 tags.error_code = "CONF_INTENT_SUBMIT_FAILED",
-                tags.priority = "p0",
+                tags.alert_priority = "p0",
                 treasury_id,
                 payload_hash,
                 proposal_id,
@@ -624,7 +624,7 @@ pub async fn try_auto_submit_intent(
                 // again — the one state no inline alert can catch later.
                 tracing::error!(
                     tags.error_code = "CONF_INTENT_MARK_FAILED_LOST",
-                    tags.priority = "p0",
+                    tags.alert_priority = "p0",
                     treasury_id,
                     payload_hash,
                     error = %db_err,

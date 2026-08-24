@@ -8,7 +8,7 @@ import { isReportedError, markReportedError } from "@/lib/http";
  *
  * Pass `options.code` (a stable error code, e.g. "FE_WALLET_SIGN_FAILED") to
  * tag and fingerprint the event so Sentry groups by code and alert rules can
- * route on `priority`. Errors already reported by the shared http
+ * route on `alert_priority`. Errors already reported by the shared http
  * interceptor are skipped, never double-captured.
  */
 export function reportError(
@@ -29,7 +29,7 @@ export function reportError(
 
     Sentry.withScope((scope) => {
         scope.setTag("error_code", options.code);
-        scope.setTag("priority", options.priority ?? "p2");
+        scope.setTag("alert_priority", options.priority ?? "p2");
         scope.setFingerprint([options.code]);
         scope.setExtra("context", context);
         Sentry.captureException(error);

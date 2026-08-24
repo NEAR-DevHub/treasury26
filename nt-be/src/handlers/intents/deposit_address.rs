@@ -280,7 +280,7 @@ pub async fn get_deposit_address(
             if status.is_server_error() {
                 tracing::error!(
                     tags.error_code = "DEPOSIT_ADDRESS_FAILED",
-                    tags.priority = "p2",
+                    tags.alert_priority = "p2",
                     account_id = %account_id,
                     chain,
                     status = %status,

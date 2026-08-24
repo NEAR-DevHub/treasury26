@@ -3,6 +3,7 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubSentryEvent } from "./lib/sentry-scrub";
 
 Sentry.init({
     dsn:
@@ -20,4 +21,6 @@ Sentry.init({
     // Never attach request headers/cookies/IPs — matches the backend's
     // redaction stance.
     sendDefaultPii: false,
+
+    beforeSend: scrubSentryEvent,
 });

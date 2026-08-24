@@ -11,7 +11,7 @@ use url::Url;
 fn report_ops_send_failure(method: &str, error: &teloxide::RequestError) {
     tracing::error!(
         tags.error_code = "ALERT_TELEGRAM_SEND_FAILED",
-        tags.priority = "p1",
+        tags.alert_priority = "p1",
         method,
         error = %error,
         "ops Telegram send failed"

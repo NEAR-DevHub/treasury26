@@ -53,7 +53,7 @@ function reportHttpError(error: AxiosError): void {
 
     Sentry.withScope((scope) => {
         scope.setTag("error_code", "FE_API_FAILED");
-        scope.setTag("priority", "p2");
+        scope.setTag("alert_priority", "p2");
         scope.setTag("endpoint", `${method} ${path}`);
         scope.setTag(
             "http_status",

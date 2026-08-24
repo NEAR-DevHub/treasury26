@@ -398,7 +398,7 @@ pub async fn job_watchdog(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
                 // ERROR-level events, so this is the Sentry alert.
                 tracing::error!(
                     tags.error_code = "JOB_STALE",
-                    tags.priority = "p2",
+                    tags.alert_priority = "p2",
                     queue = %job.queue,
                     failure_mode = job.failure_mode.unwrap_or("unknown"),
                     reason = job.reason.as_deref().unwrap_or(""),
@@ -587,7 +587,7 @@ pub async fn run_liveness_monitor(pool: PgPool) {
                     // not, so unlike the in-process watchdog this alert fires).
                     tracing::error!(
                         tags.error_code = "FLEET_STALLED",
-                        tags.priority = "p0",
+                        tags.alert_priority = "p0",
                         reason = %reason,
                         consecutive,
                         "job fleet stalled; restarting process to recover"

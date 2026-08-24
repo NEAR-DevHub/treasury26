@@ -99,7 +99,7 @@ async fn resume_one(state: &Arc<AppState>, candidate: SweepCandidate) {
             if attempts >= MAX_SWEEP_ATTEMPTS {
                 tracing::error!(
                     tags.error_code = "TREASURY_CREATE_GAVE_UP",
-                    tags.priority = "p1",
+                    tags.alert_priority = "p1",
                     account,
                     attempts,
                     error = %message,

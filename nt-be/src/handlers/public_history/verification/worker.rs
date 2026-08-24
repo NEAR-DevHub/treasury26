@@ -314,7 +314,7 @@ impl<'a> BalanceVerifier<'a> {
             set_head_check_result(&mut tx, account_id, head_block, false).await?;
             tracing::error!(
                 tags.error_code = "VERIFICATION_HEAD_DRIFT",
-                tags.priority = "p2",
+                tags.alert_priority = "p2",
                 tags.dao = account_id,
                 head_block,
                 ledger_balance = %ledger_balance,
@@ -379,7 +379,7 @@ impl<'a> BalanceVerifier<'a> {
             for outcome in outcomes.iter().filter(|outcome| !outcome.passed) {
                 tracing::error!(
                     tags.error_code = "VERIFICATION_GATE_FAILED",
-                    tags.priority = "p1",
+                    tags.alert_priority = "p1",
                     tags.dao = account_id,
                     asset = outcome.asset,
                     ledger_balance = %outcome.ledger_balance,

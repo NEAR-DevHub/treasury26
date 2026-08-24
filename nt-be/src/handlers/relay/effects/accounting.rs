@@ -84,7 +84,7 @@ fn apply_spend(
             Ok(None) => tracing::warn!("Treasury {} not found for relay spend", treasury_id),
             Err(e) => tracing::error!(
                 tags.error_code = "RELAY_SPEND_RECORD_FAILED",
-                tags.priority = "p2",
+                tags.alert_priority = "p2",
                 treasury_id = %treasury_id,
                 consume_credit,
                 error = %e,

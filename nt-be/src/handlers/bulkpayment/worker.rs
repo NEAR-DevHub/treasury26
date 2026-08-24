@@ -105,7 +105,7 @@ async fn complete_pending_list(pool: &PgPool, list_id: &str) {
     {
         tracing::error!(
             tags.error_code = "BULK_PAYOUT_STATE_WRITE_FAILED",
-            tags.priority = "p2",
+            tags.alert_priority = "p2",
             list_id,
             error = %e,
             "failed to mark list as completed in pending_payment_lists"
@@ -226,7 +226,7 @@ pub async fn query_and_process_pending_lists(
                 // via a Sentry frequency rule on this code.
                 tracing::error!(
                     tags.error_code = "BULK_PAYOUT_FAILED",
-                    tags.priority = "p2",
+                    tags.alert_priority = "p2",
                     list_id,
                     error = %err_str,
                     "failed to process payout batch"

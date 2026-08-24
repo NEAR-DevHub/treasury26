@@ -143,7 +143,7 @@ async fn apply_quote_status(
 /// exchange or cross-chain payment permanently failing. Edge-triggered:
 /// `apply_quote_status` never rewrites a terminal status, so this fires
 /// exactly once per proposal. Routed to Telegram by a Sentry alert rule on
-/// `priority:p1`.
+/// `alert_priority:p1`.
 fn report_terminal_failure(proposal: &StaleQuoteProposal, merged: &Value) {
     if !quote_status_is_failed(Some(merged)) {
         return;
@@ -159,7 +159,7 @@ fn report_terminal_failure(proposal: &StaleQuoteProposal, merged: &Value) {
 
     tracing::error!(
         tags.error_code = error_code,
-        tags.priority = "p1",
+        tags.alert_priority = "p1",
         dao_id = proposal.dao_id,
         proposal_id = proposal.proposal_id,
         deposit_address = proposal.quote_deposit_address,

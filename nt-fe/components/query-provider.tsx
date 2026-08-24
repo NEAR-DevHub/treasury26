@@ -30,7 +30,7 @@ function reportUnhandled(
     markReportedError(error);
     Sentry.withScope((scope) => {
         scope.setTag("error_code", errorCode);
-        scope.setTag("priority", "p2");
+        scope.setTag("alert_priority", "p2");
         scope.setTag("operation", key);
         scope.setFingerprint([errorCode, key]);
         Sentry.captureException(error);

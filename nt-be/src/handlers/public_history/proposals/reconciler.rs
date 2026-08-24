@@ -107,7 +107,7 @@ async fn apply_status(
             // rule, not per event.
             tracing::error!(
                 tags.error_code = "PROPOSAL_EXECUTION_FAILED",
-                tags.priority = "p2",
+                tags.alert_priority = "p2",
                 dao_id = proposal.dao_id,
                 proposal_id = proposal.proposal_id,
                 "proposal execution failed on-chain"
