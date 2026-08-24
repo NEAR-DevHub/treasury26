@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
-import Logo from "@/components/icons/logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { useNear } from "@/stores/near-store";
 
@@ -49,7 +48,6 @@ export default function LoginPage() {
             returnTo ? appendUtmParamsToReturnTo(returnTo, searchParams) : null,
         [returnTo, searchParams],
     );
-    const loginHeaderLogo = <Logo size="sm" />;
 
     useEffect(() => {
         if (!accountId) return;
@@ -64,10 +62,13 @@ export default function LoginPage() {
             title="Trezu"
             hideLogin
             hideCollapseButton
+            hideAppWarningBanner
             transparentHeader
-            logo={loginHeaderLogo}
+            hideHeaderBottomBorder
+            hideHeaderContent
+            mainClassName="flex min-h-dvh flex-col bg-general-tertiary pt-1 md:min-h-[calc(100vh-2rem)]"
         >
-            <div className="mx-auto w-full max-w-[448px] pt-8 md:pt-20">
+            <div className="mx-auto w-full max-w-[448px] space-y-3 md:mt-3">
                 <ConnectWalletSelector
                     source="/login"
                     connectFlow="within_treasury"
