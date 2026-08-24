@@ -82,7 +82,14 @@ fn apply_spend(
                 new_credits
             ),
             Ok(None) => tracing::warn!("Treasury {} not found for relay spend", treasury_id),
-            Err(e) => tracing::error!("Failed to record relay spend for {}: {}", treasury_id, e),
+            Err(e) => tracing::error!(
+                tags.error_code = "RELAY_SPEND_RECORD_FAILED",
+                tags.priority = "p2",
+                treasury_id = %treasury_id,
+                consume_credit,
+                error = %e,
+                "failed to record relay spend"
+            ),
         }
     });
 }

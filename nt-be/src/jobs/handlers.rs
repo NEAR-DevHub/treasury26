@@ -430,7 +430,8 @@ pub async fn confidential_snapshots(
     crate::handlers::intents::confidential::gold::snapshots::tick_confidential_balance_snapshot_cron(
         &state,
     )
-    .await;
+    .await
+    .map_err(erase)?;
     Ok("snapshot tick done".to_string())
 }
 
@@ -443,7 +444,8 @@ pub async fn confidential_gold_reconciliation(
         &state,
         "scheduled",
     )
-    .await;
+    .await
+    .map_err(erase)?;
     Ok("reconciliation pass done".to_string())
 }
 
@@ -520,7 +522,9 @@ pub async fn treasury_creation_sweeper(
 
 /// Oh Dear health checks + fallback warnings.
 pub async fn status_monitor(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
-    crate::handlers::status::monitor::run_monitor_cycle(&state).await;
+    crate::handlers::status::monitor::run_monitor_cycle(&state)
+        .await
+        .map_err(erase)?;
     Ok("status cycle done".to_string())
 }
 

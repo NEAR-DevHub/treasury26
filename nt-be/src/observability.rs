@@ -153,6 +153,7 @@ fn init_sentry() -> Option<sentry::ClientInitGuard> {
         send_default_pii: false,
         before_send: Some(Arc::new(|mut event| {
             redact_sentry_request_headers(&mut event);
+            apply_stable_fingerprint(&mut event);
             Some(event)
         })),
         ..Default::default()
@@ -175,6 +176,20 @@ fn parse_sample_rate(raw: Option<&str>, default: f32) -> f32 {
     raw.and_then(|value| value.parse::<f32>().ok())
         .filter(|value| (0.0..=1.0).contains(value))
         .unwrap_or(default)
+}
+
+/// Stable issue grouping: events carrying an `error_code` tag (our coded
+/// business failures, emitted as `tags.error_code` tracing fields) group by
+/// that code alone; apalis task failures (tagged `queue` by its SentryLayer)
+/// group per queue. Without this, stringified errors carrying dynamic values
+/// (DAO ids, counts) explode into one Sentry issue per unique message.
+fn apply_stable_fingerprint(event: &mut sentry::protocol::Event<'static>) {
+    if let Some(code) = event.tags.get("error_code") {
+        event.fingerprint = std::borrow::Cow::Owned(vec![code.clone().into()]);
+    } else if let Some(queue) = event.tags.get("queue") {
+        event.fingerprint =
+            std::borrow::Cow::Owned(vec!["job-failure".into(), queue.clone().into()]);
+    }
 }
 
 fn redact_sentry_request_headers(event: &mut sentry::protocol::Event<'static>) {
@@ -419,6 +434,33 @@ mod tests {
         assert_eq!(log_format_from_env_value(Some("pretty")), LogFormat::Pretty);
         assert_eq!(log_format_from_env_value(Some("json")), LogFormat::Json);
         assert_eq!(log_format_from_env_value(Some(" JSON ")), LogFormat::Json);
+    }
+
+    #[test]
+    fn fingerprint_groups_by_error_code_then_queue() {
+        let mut event = sentry::protocol::Event {
+            tags: [("error_code".to_string(), "CONF_INTENT_SUBMIT_FAILED".to_string())]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        apply_stable_fingerprint(&mut event);
+        assert_eq!(event.fingerprint.as_ref(), ["CONF_INTENT_SUBMIT_FAILED"]);
+
+        let mut event = sentry::protocol::Event {
+            tags: [("queue".to_string(), "price-sync".to_string())]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        apply_stable_fingerprint(&mut event);
+        assert_eq!(event.fingerprint.as_ref(), ["job-failure", "price-sync"]);
+
+        // Untagged events keep Sentry's default grouping.
+        let mut event = sentry::protocol::Event::default();
+        let default_fingerprint = event.fingerprint.clone();
+        apply_stable_fingerprint(&mut event);
+        assert_eq!(event.fingerprint, default_fingerprint);
     }
 
     #[test]

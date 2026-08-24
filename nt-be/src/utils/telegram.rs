@@ -6,6 +6,18 @@ use teloxide::{
 };
 use url::Url;
 
+/// A failed send on an ops/alert channel means the alerting path itself is
+/// broken — captured as a coded Sentry event so it pages via the connector.
+fn report_ops_send_failure(method: &str, error: &teloxide::RequestError) {
+    tracing::error!(
+        tags.error_code = "ALERT_TELEGRAM_SEND_FAILED",
+        tags.priority = "p1",
+        method,
+        error = %error,
+        "ops Telegram send failed"
+    );
+}
+
 /// Telegram bot client wrapping teloxide's Bot.
 ///
 /// Provides helper methods for common messaging patterns used across the app:
@@ -68,7 +80,8 @@ impl TelegramClient {
 
         bot.send_message(ChatId(chat_id), text)
             .parse_mode(ParseMode::Html)
-            .await?;
+            .await
+            .inspect_err(|e| report_ops_send_failure("send_ops_alert_html", e))?;
         Ok(())
     }
 
@@ -95,7 +108,9 @@ impl TelegramClient {
             .parse()
             .map_err(|_| format!("Invalid TELEGRAM_CHAT_ID: {}", chat_id_str))?;
 
-        bot.send_message(ChatId(chat_id), message).await?;
+        bot.send_message(ChatId(chat_id), message)
+            .await
+            .inspect_err(|e| report_ops_send_failure("send_message", e))?;
         Ok(())
     }
 
@@ -208,7 +223,8 @@ impl TelegramClient {
             .send_message(ChatId(chat_id), text)
             .parse_mode(ParseMode::Html)
             .reply_markup(keyboard)
-            .await?;
+            .await
+            .inspect_err(|e| report_ops_send_failure("send_ops_alert_with_buttons", e))?;
         Ok(sent.id.0)
     }
 

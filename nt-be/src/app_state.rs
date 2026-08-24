@@ -567,6 +567,15 @@ impl AppState {
             env_vars.telegram_chat_id.clone(),
             env_vars.telegram_ops_chat_id.clone(),
         );
+        tracing::info!(
+            bot_configured = env_vars
+                .telegram_bot_token
+                .as_deref()
+                .is_some_and(|t| !t.is_empty()),
+            notifications_chat = env_vars.telegram_chat_id.is_some(),
+            ops_chat = env_vars.telegram_ops_chat_id.is_some(),
+            "telegram channel configuration"
+        );
 
         // Use the builder pattern internally for consistency
         AppStateBuilder::new()

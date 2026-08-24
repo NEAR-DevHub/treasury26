@@ -55,7 +55,20 @@ async fn async_main() {
         .env_vars
         .cors_allowed_origins
         .iter()
-        .filter_map(|s| s.parse().ok())
+        .filter_map(|s| match s.parse() {
+            Ok(origin) => Some(origin),
+            Err(e) => {
+                // A dropped origin silently blocks the whole frontend via CORS.
+                tracing::error!(
+                    tags.error_code = "CONFIG_INVALID_CORS_ORIGIN",
+                    tags.priority = "p1",
+                    origin = s,
+                    error = %e,
+                    "invalid CORS origin in config; it will not be allowed"
+                );
+                None
+            }
+        })
         .collect();
 
     let cors = CorsLayer::new()

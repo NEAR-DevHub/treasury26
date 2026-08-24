@@ -313,7 +313,9 @@ impl<'a> BalanceVerifier<'a> {
         } else {
             set_head_check_result(&mut tx, account_id, head_block, false).await?;
             tracing::error!(
-                account_id,
+                tags.error_code = "VERIFICATION_HEAD_DRIFT",
+                tags.priority = "p2",
+                tags.dao = account_id,
                 head_block,
                 ledger_balance = %ledger_balance,
                 chain_balance = %chain_balance,
