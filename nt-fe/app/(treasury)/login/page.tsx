@@ -42,20 +42,18 @@ export default function LoginPage() {
     const searchParams = useSearchParams();
     const { accountId, connect, isAuthenticating } = useNear();
 
-    const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
-    const returnToWithUtms = useMemo(
-        () =>
-            returnTo ? appendUtmParamsToReturnTo(returnTo, searchParams) : null,
+    // A bare /login has nowhere specific to go back to, so a signed-in user
+    // lands on the root, which forwards them to their treasury or to /create.
+    const returnTo = sanitizeReturnTo(searchParams.get("returnTo")) ?? "/";
+    const redirectTarget = useMemo(
+        () => appendUtmParamsToReturnTo(returnTo, searchParams),
         [returnTo, searchParams],
     );
 
     useEffect(() => {
         if (!accountId) return;
-
-        if (returnToWithUtms) {
-            router.replace(returnToWithUtms);
-        }
-    }, [accountId, returnToWithUtms, router]);
+        router.replace(redirectTarget);
+    }, [accountId, redirectTarget, router]);
 
     return (
         <PageComponentLayout
@@ -66,7 +64,8 @@ export default function LoginPage() {
             transparentHeader
             hideHeaderBottomBorder
             hideHeaderContent
-            mainClassName="flex min-h-dvh flex-col bg-general-tertiary pt-1 md:min-h-[calc(100vh-2rem)]"
+            fitViewport
+            mainClassName="flex flex-col bg-general-tertiary pt-1"
         >
             <div className="mx-auto w-full max-w-[448px] space-y-3 md:mt-3">
                 <ConnectWalletSelector
