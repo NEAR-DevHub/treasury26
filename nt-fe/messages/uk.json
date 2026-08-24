@@ -1679,10 +1679,6 @@
         "accepting": "Прийняття...",
         "continue": "Продовжити"
     },
-    "confidentialBanner": {
-        "label": "Конфіденційно",
-        "description": "Баланси, активність і перекази видимі лише вашій команді — не публічному блокчейну."
-    },
     "supportCenter": {
         "title": "Центр підтримки",
         "resources": "Ресурси",
@@ -2355,7 +2351,11 @@
             "send": "Надіслати",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Ви успішно налаштували обліковий запис. Гарний початок!",
-            "addTeamMemberTitle": "Створити обліковий запис скарбниці"
+            "addTeamMemberTitle": "Створити обліковий запис скарбниці",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Ваша скарбниця готова",

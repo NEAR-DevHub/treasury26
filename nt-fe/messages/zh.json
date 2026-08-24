@@ -1679,10 +1679,6 @@
         "accepting": "正在接受...",
         "continue": "继续"
     },
-    "confidentialBanner": {
-        "label": "机密",
-        "description": "余额、活动和转账仅对您的团队可见 — 公共区块链上不可见。"
-    },
     "supportCenter": {
         "title": "支持中心",
         "resources": "资源",
@@ -2355,7 +2351,11 @@
             "send": "发送",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "您已成功设置账户。开端不错!",
-            "addTeamMemberTitle": "创建金库账户"
+            "addTeamMemberTitle": "创建金库账户",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 您的金库已就绪",

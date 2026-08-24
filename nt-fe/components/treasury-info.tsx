@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { DatabaseIcon, Shield01Icon } from "@hugeicons/core-free-icons";
+import { DatabaseIcon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAssets } from "@/hooks/use-assets";
@@ -32,7 +32,7 @@ function normalizeFlagLogoUrl(
 
 export function TreasuryLogo({
     logo,
-    isConfidential,
+    isConfidential: _isConfidential,
     alt,
     imageClassName,
     fallbackClassName,
@@ -81,14 +81,6 @@ export function TreasuryLogo({
                             "text-muted-foreground",
                             fallbackIconClassName,
                         )}
-                    />
-                </div>
-            )}
-            {isConfidential && (
-                <div className="absolute right-0 bottom-0">
-                    <Icon
-                        icon={Shield01Icon}
-                        className="fill-foreground text-background"
                     />
                 </div>
             )}

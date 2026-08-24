@@ -1696,10 +1696,6 @@
         "accepting": "Aceitando...",
         "continue": "Continuar"
     },
-    "confidentialBanner": {
-        "label": "Confidencial",
-        "description": "Saldos, atividades e transferências são visíveis apenas para sua equipe — não para a blockchain pública."
-    },
     "supportCenter": {
         "title": "Central de suporte",
         "resources": "Recursos",
@@ -2372,7 +2368,11 @@
             "send": "Enviar",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Você configurou sua conta com sucesso. Ótimo começo!",
-            "addTeamMemberTitle": "Criar conta da tesouraria"
+            "addTeamMemberTitle": "Criar conta da tesouraria",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Sua tesouraria está pronta",

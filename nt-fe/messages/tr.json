@@ -1696,10 +1696,6 @@
         "accepting": "Kabul ediliyor...",
         "continue": "Devam Et"
     },
-    "confidentialBanner": {
-        "label": "Gizli",
-        "description": "Bakiyeler, etkinlik ve transferler yalnızca ekibinize görünür — genel blok zincirine değil."
-    },
     "supportCenter": {
         "title": "Destek Merkezi",
         "resources": "Kaynaklar",
@@ -2372,7 +2368,11 @@
             "send": "Gönder",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Hesabınızı başarıyla kurdunuz. Harika bir başlangıç!",
-            "addTeamMemberTitle": "Hazine hesabı oluştur"
+            "addTeamMemberTitle": "Hazine hesabı oluştur",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Hazineniz hazır",

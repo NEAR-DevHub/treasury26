@@ -1696,10 +1696,6 @@
         "accepting": "Menerima...",
         "continue": "Lanjutkan"
     },
-    "confidentialBanner": {
-        "label": "Rahasia",
-        "description": "Saldo, aktivitas, dan transfer hanya terlihat oleh tim Anda — bukan blockchain publik."
-    },
     "supportCenter": {
         "title": "Pusat Dukungan",
         "resources": "Sumber Daya",
@@ -2372,7 +2368,11 @@
             "send": "Kirim",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Anda telah berhasil menyiapkan akun Anda. Awal yang bagus!",
-            "addTeamMemberTitle": "Buat akun Treasury"
+            "addTeamMemberTitle": "Buat akun Treasury",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Perbendaharaan Anda siap",

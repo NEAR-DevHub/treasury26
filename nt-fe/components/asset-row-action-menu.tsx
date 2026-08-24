@@ -35,7 +35,7 @@ export function AssetRowActionMenu({ sendHref, swapHref }: Props) {
             onOpenAutoFocus={(event) => event.preventDefault()}
         >
             <PopoverArrow width={12} height={6} />
-            <div className="flex items-center">
+            <div className="flex items-center overflow-hidden rounded-2xl">
                 <AuthButton
                     permissionKind="call"
                     permissionAction="AddProposal"

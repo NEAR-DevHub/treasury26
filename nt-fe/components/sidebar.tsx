@@ -21,8 +21,8 @@ import { useTranslations } from "next-intl";
 import { useNextStep } from "nextstepjs";
 import { useEffect, useState } from "react";
 import { SlotWarning } from "@/components/warning-message";
-import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
+import { SidebarOnboarding } from "@/features/onboarding/components/sidebar-onboarding";
 import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
 import {
     PAGE_TOUR_SELECTORS,
@@ -358,7 +358,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 isOpen={dropdownOpen}
                                 onOpenChange={setDropdownOpen}
                             />
-                            <div className="border-gray-300 dark:border-white/10 border-t px-3 py-2.5">
+                            <div className="px-3 py-2.5">
                                 {isGuestTreasury && !isLoadingGuestTreasury ? (
                                     <div className="flex gap-2">
                                         <GuestBadge
@@ -412,8 +412,6 @@ export function Sidebar({ onClose }: SidebarProps) {
                 <nav
                     className={cn(
                         "flex flex-1 flex-col gap-1 overflow-y-auto scrollbar-hide py-2",
-                        !isReduced &&
-                            "border-y border-gray-300 dark:border-white/10",
                         isReduced ? "px-2" : "px-3",
                     )}
                 >
@@ -607,12 +605,6 @@ export function Sidebar({ onClose }: SidebarProps) {
                         />
                     </div>
                     <CreateBanner disabled={isReduced} />
-                    <div className={cn(!isReduced && "px-3 w-full flex")}>
-                        <ConfidentialBanner
-                            type={isReduced ? "mini" : "default"}
-                            className={cn(isReduced && "size-5")}
-                        />
-                    </div>
                 </div>
 
                 <div
@@ -630,6 +622,8 @@ export function Sidebar({ onClose }: SidebarProps) {
                             onContactClick={() => setSupportModalOpen(true)}
                         />
                     )}
+
+                    <SidebarOnboarding isReduced={isReduced} />
 
                     {/* Help & Support, language, theme and wallet controls all
                         live in here now — see `sidebar-profile-menu.tsx`. */}

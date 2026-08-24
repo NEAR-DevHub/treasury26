@@ -21,7 +21,6 @@ import { Pill } from "@/components/pill";
 import { SignIn } from "@/components/sign-in";
 import { SlotWarning } from "@/components/warning-message";
 import { isStaging } from "@/constants/features";
-import { ConfidentialBanner } from "@/features/confidential/components/confidential-banner";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebar-store";
 
@@ -129,14 +128,6 @@ export function PageComponentLayout({
                                 />
                             </Button>
                         )}
-
-                        <ConfidentialBanner
-                            type="mini"
-                            className={cn(
-                                "lg:hidden",
-                                hasSidebarRail && "hidden",
-                            )}
-                        />
 
                         {!hideHeaderContent &&
                             (logo ?? (

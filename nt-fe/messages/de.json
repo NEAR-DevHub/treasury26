@@ -1696,10 +1696,6 @@
         "accepting": "Wird akzeptiert...",
         "continue": "Weiter"
     },
-    "confidentialBanner": {
-        "label": "Vertraulich",
-        "description": "Guthaben, Aktivitäten und Überweisungen sind nur für Ihr Team sichtbar — nicht für die öffentliche Blockchain."
-    },
     "supportCenter": {
         "title": "Support-Center",
         "resources": "Ressourcen",
@@ -2372,7 +2368,11 @@
             "send": "Senden",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Sie haben Ihr Konto erfolgreich eingerichtet. Großartiger Start!",
-            "addTeamMemberTitle": "Treasury-Konto erstellen"
+            "addTeamMemberTitle": "Treasury-Konto erstellen",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Ihre Treasury ist bereit",

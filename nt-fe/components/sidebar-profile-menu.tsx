@@ -40,7 +40,11 @@ interface SidebarProfileMenuProps {
     onOpenSupport: () => void;
 }
 
-const dividerClass = "-mx-1.5 border-[#262626] px-1.5";
+function MenuDivider() {
+    return (
+        <div aria-hidden="true" className="-mx-1.5 my-2 h-px bg-[#262626]" />
+    );
+}
 
 export function SidebarProfileMenu({
     isReduced,
@@ -148,12 +152,7 @@ export function SidebarProfileMenu({
                 sideOffset={8}
                 className="dark w-66 rounded-2xl border-white/10 bg-gray-950 p-1.5 text-white shadow-xl"
             >
-                <div
-                    className={cn(
-                        "flex items-center justify-between gap-3 border-b px-3 pb-2 pt-1",
-                        dividerClass,
-                    )}
-                >
+                <div className="flex items-center justify-between gap-3 px-3 py-1">
                     <div className="min-w-0 px-3">
                         <p className="truncate font-semibold text-sm">
                             {displayName}
@@ -171,6 +170,7 @@ export function SidebarProfileMenu({
                         iconClassName="size-4"
                     />
                 </div>
+                <MenuDivider />
                 <div className="flex flex-col">
                     {accountHref ? (
                         <Link
@@ -192,7 +192,8 @@ export function SidebarProfileMenu({
                     </button>
                     <LanguageSwitcher asMenuRow align="start" />
                 </div>
-                <div className={cn("flex flex-col border-t", dividerClass)}>
+                <MenuDivider />
+                <div className="flex flex-col">
                     <button
                         type="button"
                         className={accountMenuItemClass}
@@ -225,7 +226,8 @@ export function SidebarProfileMenu({
                         {t("privacyPolicy")}
                     </Link>
                 </div>
-                <div className={cn("border-t", dividerClass)}>
+                <MenuDivider />
+                <div>
                     <button
                         type="button"
                         className={accountMenuItemClass}

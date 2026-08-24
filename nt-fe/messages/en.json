@@ -1696,10 +1696,6 @@
         "accepting": "Accepting...",
         "continue": "Continue"
     },
-    "confidentialBanner": {
-        "label": "Confidential",
-        "description": "Balances, activity, and transfers are visible only to your team — not the public blockchain."
-    },
     "supportCenter": {
         "title": "Support Center",
         "resources": "Resources",
@@ -2372,7 +2368,11 @@
             "send": "Send",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Protect your funds if your wallet is lost or compromised - add a teammate or your own second wallet so transactions need more than one approval.",
-            "addTeamMemberTitle": "Add a team member"
+            "addTeamMemberTitle": "Add a team member",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Your treasury is ready",

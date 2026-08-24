@@ -1696,10 +1696,6 @@
         "accepting": "מקבל...",
         "continue": "המשך"
     },
-    "confidentialBanner": {
-        "label": "חסוי",
-        "description": "יתרות, פעילות והעברות גלויות רק לצוות שלך — לא לבלוקצ'יין הציבורי."
-    },
     "supportCenter": {
         "title": "מרכז תמיכה",
         "resources": "משאבים",
@@ -2372,7 +2368,11 @@
             "send": "שליחה",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "הגדרת את החשבון שלך בהצלחה. התחלה מצוינת!",
-            "addTeamMemberTitle": "צור חשבון אוצר"
+            "addTeamMemberTitle": "צור חשבון אוצר",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 האוצר שלך מוכן",

@@ -15,7 +15,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { trackEvent } from "@/lib/analytics";
 
 const ACTION_CLASS =
-    "h-14 w-full justify-start gap-3 rounded-2xl bg-gray-100 px-5 text-base font-semibold text-foreground shadow-none hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/15";
+    "h-14 w-full justify-start gap-3 rounded-2xl bg-gray-100 px-5 text-base font-semibold text-foreground shadow-none hover:bg-general-unofficial-ghost-hover dark:bg-white/10";
 
 interface Props {
     asset: AggregatedAsset | null;

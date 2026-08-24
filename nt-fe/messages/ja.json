@@ -1696,10 +1696,6 @@
         "accepting": "同意中...",
         "continue": "続ける"
     },
-    "confidentialBanner": {
-        "label": "機密",
-        "description": "残高、アクティビティ、送金はチームのみが閲覧でき、公開ブロックチェーンには表示されません。"
-    },
     "supportCenter": {
         "title": "サポートセンター",
         "resources": "リソース",
@@ -2372,7 +2368,11 @@
             "send": "送金",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "アカウントが正常にセットアップされました。素晴らしいスタートです!",
-            "addTeamMemberTitle": "トレジャリーアカウントを作成"
+            "addTeamMemberTitle": "トレジャリーアカウントを作成",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 お金庫の準備ができました",

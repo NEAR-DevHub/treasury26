@@ -14,7 +14,7 @@ const FEATURED_TOKEN_ICONS = [
         alt: "NEAR",
     },
     {
-        src: "https://s2.coinmarketcap.com/static/img/coins/128x128/825.png",
+        src: "https://near.com/static/icons/network/usdt.png",
         alt: "USDT",
     },
     {
@@ -37,16 +37,16 @@ export function FundAccountEmpty({ onReceiveClick }: Props) {
             data-testid="fund-account-empty"
         >
             <div className="flex flex-col items-center gap-0.5">
-                <p className="text-xl font-semibold leading-[1.2] tracking-[-0.025rem] text-foreground">
+                <p className="text-center text-xl font-semibold leading-[1.2] tracking-[-0.025rem] text-general-foreground">
                     {t("fundTitle")}
                 </p>
-                <p className="text-sm font-medium leading-normal text-muted-foreground">
+                <p className="text-center text-base font-medium leading-[1.5] text-muted-foreground">
                     {t("fundDescription")}
                 </p>
             </div>
             <Button
                 id="dashboard-step1"
-                className="rounded-full"
+                className="h-11 gap-2 rounded-2xl px-6"
                 onClick={() => {
                     trackEvent("nav-click", {
                         destination: "deposit",
@@ -66,16 +66,17 @@ export function FundAccountEmpty({ onReceiveClick }: Props) {
                             key={token.alt}
                             src={token.src}
                             alt={token.alt}
-                            width={32}
-                            height={32}
+                            width={28}
+                            height={28}
+                            referrerPolicy="no-referrer"
                             className={cn(
-                                "size-8 rounded-full border-2 border-card object-cover",
+                                "size-9 rounded-full border-2 border-card object-cover",
                                 index > 0 && "-ml-2",
                             )}
                         />
                     ))}
                 </div>
-                <p className="text-left text-sm font-medium leading-snug text-muted-foreground whitespace-pre-wrap">
+                <p className="whitespace-pre-wrap text-left text-xs font-normal leading-4 tracking-[0.01125rem] text-muted-foreground">
                     {t("fundAssetsHint")}
                 </p>
             </div>

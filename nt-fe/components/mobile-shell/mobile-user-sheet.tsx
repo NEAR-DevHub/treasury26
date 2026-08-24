@@ -21,7 +21,6 @@ import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { isEnabledLocale, type Locale } from "@/i18n/config";
-import { cn } from "@/lib/utils";
 import { useMobileShellStore } from "@/stores/mobile-shell-store";
 import { useNear } from "@/stores/near-store";
 
@@ -43,7 +42,14 @@ const flagByLocale: Record<Locale, string> = {
 
 const rowClass =
     "flex w-full items-center gap-3 py-3 text-left text-[15px] font-medium text-muted-foreground";
-const dividerClass = "-mx-4 border-general-border px-4 dark:border-[#262626]";
+function MenuDivider() {
+    return (
+        <div
+            aria-hidden="true"
+            className="-mx-4 my-2 h-px bg-general-border dark:bg-[#262626]"
+        />
+    );
+}
 
 export function MobileUserSheet() {
     const t = useTranslations("signIn");
@@ -85,12 +91,7 @@ export function MobileUserSheet() {
                     <DialogTitle className="sr-only">
                         {t("myAccount")}
                     </DialogTitle>
-                    <div
-                        className={cn(
-                            "flex items-center justify-between gap-3 border-b pb-3",
-                            dividerClass,
-                        )}
-                    >
+                    <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                             <p className="truncate font-semibold text-foreground">
                                 {displayName}
@@ -108,6 +109,7 @@ export function MobileUserSheet() {
                             iconClassName="size-5"
                         />
                     </div>
+                    <MenuDivider />
                     <div className="flex flex-col">
                         {treasuryId ? (
                             <Link
@@ -145,7 +147,8 @@ export function MobileUserSheet() {
                             </span>
                         </button>
                     </div>
-                    <div className={cn("flex flex-col border-t", dividerClass)}>
+                    <MenuDivider />
+                    <div className="flex flex-col">
                         <button
                             type="button"
                             className={rowClass}
@@ -181,7 +184,8 @@ export function MobileUserSheet() {
                             {t("privacyPolicy")}
                         </Link>
                     </div>
-                    <div className={cn("border-t", dividerClass)}>
+                    <MenuDivider />
+                    <div>
                         <button
                             type="button"
                             className={rowClass}

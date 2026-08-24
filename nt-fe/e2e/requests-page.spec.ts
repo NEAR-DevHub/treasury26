@@ -345,24 +345,18 @@ test.describe("Requests page – new treasury with onboarding", () => {
         await authResp;
         await assetsResp;
 
-        // Scope to main content to avoid matching sidebar nav buttons
+        await expect(page.getByText("Get started")).toBeVisible({
+            timeout: 15000,
+        });
+        await expect(page.getByText(/set up your treasury/i)).not.toBeVisible();
+
         const main = page.locator("main");
+        await expect(main.locator("#dashboard-step2")).toBeVisible();
 
-        // Onboarding progress should be visible (step 3 is active since we have assets but no proposals)
-        const onboardingHeading = main.getByText(/set up your treasury/i);
-        await expect(onboardingHeading).toBeVisible({ timeout: 15000 });
-
-        // Screenshot: dashboard with onboarding
         await page.screenshot({
             path: "test-results/dashboard-onboarding-cta.png",
             fullPage: true,
         });
-
-        // The "Send" button in onboarding step 3 should be visible (not the dashboard #dashboard-step2 one)
-        const sendStepButton = main.locator("button:not(#dashboard-step2)", {
-            hasText: /send/i,
-        });
-        await expect(sendStepButton).toBeVisible();
     });
 
     test("Requests page shows 'All caught up' with CTA buttons when all requests are executed", async ({

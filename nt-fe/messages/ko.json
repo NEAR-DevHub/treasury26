@@ -1696,10 +1696,6 @@
         "accepting": "동의 중...",
         "continue": "계속"
     },
-    "confidentialBanner": {
-        "label": "비공개",
-        "description": "잔액, 활동 및 전송은 팀에게만 표시되며, 공개 블록체인에는 표시되지 않습니다."
-    },
     "supportCenter": {
         "title": "지원 센터",
         "resources": "리소스",
@@ -2372,7 +2368,11 @@
             "send": "보내기",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "계정 설정을 성공적으로 완료했습니다. 좋은 시작입니다!",
-            "addTeamMemberTitle": "트레저리 계정 생성"
+            "addTeamMemberTitle": "트레저리 계정 생성",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 트레저리가 준비되었습니다",

@@ -1679,10 +1679,6 @@
         "accepting": "Đang chấp nhận...",
         "continue": "Tiếp tục"
     },
-    "confidentialBanner": {
-        "label": "Bảo mật",
-        "description": "Số dư, hoạt động và chuyển khoản chỉ hiển thị với đội của bạn — không phải blockchain công khai."
-    },
     "supportCenter": {
         "title": "Trung tâm hỗ trợ",
         "resources": "Tài nguyên",
@@ -2355,7 +2351,11 @@
             "send": "Gửi",
             "useSolo": "Use Solo",
             "addTeamMemberDescription": "Bạn đã thiết lập tài khoản thành công. Khởi đầu tuyệt vời!",
-            "addTeamMemberTitle": "Tạo tài khoản Ngân quỹ"
+            "addTeamMemberTitle": "Tạo tài khoản Ngân quỹ",
+            "getStarted": "Get started",
+            "setupThresholdTitle": "Setup threshold",
+            "useSoloLink": "I will use solo",
+            "createPaymentShort": "Create a first payment"
         },
         "welcome": {
             "heading": "🎉 Ngân quỹ của bạn đã sẵn sàng",

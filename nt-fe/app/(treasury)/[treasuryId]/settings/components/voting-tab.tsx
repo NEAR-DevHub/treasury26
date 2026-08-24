@@ -39,6 +39,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { RoleName } from "@/components/role-name";
 import { WarningAlert } from "@/components/warning-alert";
 import { NumberBadge } from "@/components/number-badge";
+import {
+    thresholdSetupKey,
+    writeOnboardingFlag,
+} from "@/features/onboarding/onboarding-steps";
 
 type VotingFormValues = {
     voteDuration: string;
@@ -111,6 +115,10 @@ export function VotingTab() {
         [t],
     );
     const { treasuryId } = useTreasury();
+    useEffect(() => {
+        if (!treasuryId) return;
+        writeOnboardingFlag(thresholdSetupKey(treasuryId));
+    }, [treasuryId]);
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const { accountId, createProposal } = useNear();
     const queryClient = useQueryClient();

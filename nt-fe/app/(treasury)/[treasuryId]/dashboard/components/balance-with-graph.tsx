@@ -549,7 +549,10 @@ export default function BalanceWithGraph({
 
     if (!isHidden && !hasHeldAssets) {
         return (
-            <PageCard flushOnMobile id="balance-with-graph">
+            <PageCard
+                id="balance-with-graph"
+                className="max-lg:-mx-4 max-lg:rounded-none max-lg:border-x-0 max-lg:border-y max-lg:border-gray-200 max-lg:bg-card dark:max-lg:border-general-border"
+            >
                 <FundAccountEmpty onReceiveClick={onDepositClick} />
             </PageCard>
         );

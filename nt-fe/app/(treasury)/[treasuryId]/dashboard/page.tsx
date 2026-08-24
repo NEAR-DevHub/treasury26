@@ -7,15 +7,10 @@ import {
     HistoryRefreshIndicatorProvider,
     RecentActivity,
 } from "@/features/activity";
-import { OnboardingProgress } from "@/features/onboarding";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
+import { GetStartedCard } from "@/features/onboarding/components/sidebar-onboarding";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import { PendingJoinBanner } from "@/features/onboarding/components/pending-join-banner";
-import {
-    CongratsTooltip,
-    NotificationsTooltip,
-    WelcomeTooltip,
-} from "@/features/onboarding/steps/dashboard";
 import { PendingRequests } from "@/features/proposals/components/pending-requests";
 import { useAssets } from "@/hooks/use-assets";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -49,9 +44,9 @@ export default function AppPage() {
                             <CreateBanner />
                         </div>
                         <PendingJoinBanner />
-                        <OnboardingProgress
-                            onDepositClick={handleDepositOpen}
-                        />
+                        <div className="lg:hidden">
+                            <GetStartedCard />
+                        </div>
                         <BalanceWithGraph
                             tokens={tokens}
                             isHidden={isHidden}
@@ -77,10 +72,6 @@ export default function AppPage() {
                 </div>
             </HistoryRefreshIndicatorProvider>
             <BalanceWarningModal />
-            <WelcomeTooltip />
-            <CongratsTooltip />
-            {/* NOTE: comment when notifications feature is released */}
-            {/* <NotificationsTooltip /> */}
         </PageComponentLayout>
     );
 }
