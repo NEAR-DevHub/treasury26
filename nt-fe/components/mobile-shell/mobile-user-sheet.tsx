@@ -174,8 +174,10 @@ export function MobileUserSheet() {
                             type="button"
                             className={rowClass}
                             onClick={() => {
-                                disconnect();
+                                // Close first so Radix can animate out; disconnect
+                                // then clears auth and unmounts this sheet.
                                 closeSheet();
+                                void disconnect();
                             }}
                         >
                             <Icon

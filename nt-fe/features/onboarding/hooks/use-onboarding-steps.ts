@@ -52,7 +52,7 @@ export function useOnboardingSteps() {
     }, [paymentProposals, treasuryId]);
 
     // `pathname` is intentional: the sidebar stays mounted across routes, so we
-    // re-read flags after visiting Voting / completing a step elsewhere.
+    // re-read flags after marking solo or submitting a voting-policy change.
     useEffect(() => {
         if (!treasuryId) {
             setSoloSelected(false);
@@ -67,7 +67,9 @@ export function useOnboardingSteps() {
     const markSolo = useCallback(() => {
         if (!treasuryId) return;
         writeOnboardingFlag(soloSelectedKey(treasuryId));
+        writeOnboardingFlag(thresholdSetupKey(treasuryId));
         setSoloSelected(true);
+        setThresholdSetup(true);
     }, [treasuryId]);
 
     const isLoading =
@@ -83,6 +85,7 @@ export function useOnboardingSteps() {
     const hasTeam = members.length > 1 || soloSelected;
     const hasPayment = (paymentProposals?.proposals?.length ?? 0) > 0;
     const hasThreshold =
+        soloSelected ||
         thresholdSetup ||
         (policyProposals?.proposals?.some((proposal) =>
             isChangePolicyProposalKind(proposal.kind),

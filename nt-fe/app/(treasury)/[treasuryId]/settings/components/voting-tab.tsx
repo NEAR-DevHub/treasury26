@@ -115,10 +115,6 @@ export function VotingTab() {
         [t],
     );
     const { treasuryId } = useTreasury();
-    useEffect(() => {
-        if (!treasuryId) return;
-        writeOnboardingFlag(thresholdSetupKey(treasuryId));
-    }, [treasuryId]);
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const { accountId, createProposal } = useNear();
     const queryClient = useQueryClient();
@@ -338,6 +334,7 @@ export function VotingTab() {
             queryClient.invalidateQueries({
                 queryKey: ["proposals", treasuryId],
             });
+            writeOnboardingFlag(thresholdSetupKey(treasuryId));
 
             // Update original thresholds
             setOriginalThresholds((prev) => ({
@@ -402,6 +399,7 @@ export function VotingTab() {
             queryClient.invalidateQueries({
                 queryKey: ["proposals", treasuryId],
             });
+            writeOnboardingFlag(thresholdSetupKey(treasuryId));
 
             // Mark as not dirty
             form.reset(form.getValues());

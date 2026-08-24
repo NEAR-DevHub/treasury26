@@ -905,7 +905,7 @@ test.describe("Onboarding – Progress widget", () => {
             timeout: 15000,
         });
         await page.getByRole("button", { name: "I will use solo" }).click();
-        await expect(page.getByText("1/4")).toBeVisible();
+        await expect(page.getByText("2/4")).toBeVisible();
         await expect(page.getByText("I will use solo")).not.toBeVisible();
 
         await page.screenshot({

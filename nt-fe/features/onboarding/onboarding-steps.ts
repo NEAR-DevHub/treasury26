@@ -7,10 +7,12 @@ export const ONBOARDING_STEP_IDS = [
 
 export type OnboardingStepId = (typeof ONBOARDING_STEP_IDS)[number];
 
+/** Also completes setup-threshold — a solo treasury has no voting setup. */
 export function soloSelectedKey(treasuryId: string) {
     return `onboarding:solo-selected:${treasuryId}`;
 }
 
+/** Written after a successful ChangePolicy / duration proposal, not on visit. */
 export function thresholdSetupKey(treasuryId: string) {
     return `onboarding:threshold-setup:${treasuryId}`;
 }
