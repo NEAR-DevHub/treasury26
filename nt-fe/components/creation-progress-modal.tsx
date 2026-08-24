@@ -32,6 +32,22 @@ interface CreationProgressModalProps {
 const stepBadgeClassName =
     "flex size-5 shrink-0 items-center justify-center rounded-full border";
 
+/**
+ * `step-label` paints the label with a gradient clipped to the text, so each
+ * status is just a pair of stops and moving between them crossfades. The
+ * active row additionally loops that crossfade, sweeping the dark stop from
+ * one end of the label to the other and back.
+ */
+const stepLabelClassName: Record<CreationStep["status"], string> = {
+    pending:
+        "[--step-label-from:var(--general-muted-foreground)] [--step-label-to:var(--general-muted-foreground)]",
+    in_progress:
+        "animate-step-shimmer [--step-label-from:var(--general-foreground)] [--step-label-to:var(--general-muted-foreground)]",
+    completed:
+        "[--step-label-from:var(--general-foreground)] [--step-label-to:var(--general-foreground)]",
+    error: "[--step-label-from:var(--general-destructive-foreground)] [--step-label-to:var(--general-destructive-foreground)]",
+};
+
 function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
     switch (status) {
         case "completed":
@@ -132,17 +148,8 @@ export function CreationProgressModal({
                             <StepStatusIcon status={step.status} />
                             <span
                                 className={cn(
-                                    "text-base leading-[1.2] font-semibold",
-                                    step.status === "pending" &&
-                                        "text-general-muted-foreground",
-                                    // The active row fades out to the right,
-                                    // reading as "still working on this".
-                                    step.status === "in_progress" &&
-                                        "bg-gradient-to-r from-general-foreground to-general-muted-foreground bg-clip-text text-transparent",
-                                    step.status === "completed" &&
-                                        "text-general-foreground",
-                                    step.status === "error" &&
-                                        "text-general-destructive-foreground",
+                                    "step-label text-base leading-[1.2] font-semibold",
+                                    stepLabelClassName[step.status],
                                 )}
                             >
                                 {step.label}

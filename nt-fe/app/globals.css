@@ -168,6 +168,55 @@
     }
 }
 
+/* "Creating treasury" progress rows. Every label is painted with the same
+   two-stop gradient clipped to the text, so both the status change and the
+   in-progress shimmer are just a crossfade of the two stops — the stops have
+   to be registered custom properties for that crossfade to interpolate. */
+@property --step-label-from {
+    syntax: "<color>";
+    inherits: false;
+    initial-value: transparent;
+}
+
+@property --step-label-to {
+    syntax: "<color>";
+    inherits: false;
+    initial-value: transparent;
+}
+
+@theme {
+    /* The delay lets the 300ms crossfade into the in-progress colours land
+       before the loop takes over, and `alternate` sweeps the dark stop back
+       and forth rather than snapping at the end of each pass. */
+    --animate-step-shimmer: step-shimmer 0.85s 0.3s ease-in-out infinite
+        alternate;
+
+    @keyframes step-shimmer {
+        from {
+            --step-label-from: var(--general-foreground);
+            --step-label-to: var(--general-muted-foreground);
+        }
+        to {
+            --step-label-from: var(--general-muted-foreground);
+            --step-label-to: var(--general-foreground);
+        }
+    }
+}
+
+@utility step-label {
+    background-image: linear-gradient(
+        to right,
+        var(--step-label-from),
+        var(--step-label-to)
+    );
+    background-clip: text;
+    color: transparent;
+    transition:
+        --step-label-from 300ms ease-out,
+        --step-label-to 300ms ease-out;
+}
+
+
 :root {
     --background: rgb(245, 245, 245);
     --page-bg: rgb(245, 245, 245);
@@ -593,6 +642,11 @@ body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
 @media (prefers-reduced-motion: reduce) {
     /* Sidebar icon flourishes are decorative — drop them for reduced motion. */
     [class*="animate-icon-"] {
+        animation: none !important;
+    }
+
+    /* The shimmer only decorates the spinner, which already signals progress. */
+    .animate-step-shimmer {
         animation: none !important;
     }
 }
