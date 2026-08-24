@@ -6,6 +6,7 @@ import {
     Globe02Icon,
     LogoutSquare01Icon,
     Moon02Icon,
+    SunMediumIcon,
     User03Icon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
@@ -46,17 +47,27 @@ export function MobileUserSheet() {
     const { treasuryId } = useTreasury();
     const { data: profile } = useProfile(accountId);
     const { resolvedTheme, setTheme } = useTheme();
-    const [mounted, setMounted] = useState(false);
+    const [isDarkTheme, setIsDarkTheme] = useState(false);
     const [supportOpen, setSupportOpen] = useState(false);
     const sheet = useMobileShellStore((state) => state.sheet);
     const openSheet = useMobileShellStore((state) => state.openSheet);
     const closeSheet = useMobileShellStore((state) => state.closeSheet);
 
     useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    const isDarkTheme = mounted ? resolvedTheme === "dark" : true;
+        const root = document.documentElement;
+        const sync = () => {
+            setIsDarkTheme(
+                root.classList.contains("dark") || resolvedTheme === "dark",
+            );
+        };
+        sync();
+        const observer = new MutationObserver(sync);
+        observer.observe(root, {
+            attributes: true,
+            attributeFilter: ["class"],
+        });
+        return () => observer.disconnect();
+    }, [resolvedTheme]);
     const displayName =
         profile?.name && profile.name !== accountId ? profile.name : accountId;
 
@@ -108,12 +119,21 @@ export function MobileUserSheet() {
                         <button
                             type="button"
                             className={rowClass}
-                            onClick={() =>
-                                setTheme(isDarkTheme ? "light" : "dark")
-                            }
+                            onClick={() => {
+                                const nextDark = !isDarkTheme;
+                                setIsDarkTheme(nextDark);
+                                setTheme(nextDark ? "dark" : "light");
+                            }}
                         >
-                            <Icon icon={Moon02Icon} className="size-5" />
-                            {tHeader("darkMode")}
+                            <Icon
+                                icon={isDarkTheme ? SunMediumIcon : Moon02Icon}
+                                className="size-5"
+                            />
+                            <span>
+                                {isDarkTheme
+                                    ? tHeader("lightMode")
+                                    : tHeader("darkMode")}
+                            </span>
                         </button>
                         <button
                             type="button"

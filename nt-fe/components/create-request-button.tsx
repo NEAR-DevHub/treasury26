@@ -88,7 +88,10 @@ export function CreateRequestButton({
         >
             {isSubmitting ? (
                 <>
-                    <Icon icon={LoaderCircleIcon} className="mr-2 animate-spin" />
+                    <Icon
+                        icon={LoaderCircleIcon}
+                        className="mr-2 animate-spin"
+                    />
                     {loadingMessage ?? idleMessage ?? tCreate("idle")}
                 </>
             ) : proposalBlocked ? (

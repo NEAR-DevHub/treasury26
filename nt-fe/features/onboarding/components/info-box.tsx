@@ -1,18 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import {
-    Cancel01Icon,
-    File01Icon,
-    PlayIcon,
-    ViewIcon,
-} from "@hugeicons/core-free-icons";
-import {
-    APP_DEMO_URL,
-    APP_DOCS_URL,
-    APP_ACTIVE_TREASURY,
-} from "@/constants/config";
-import Link from "next/link";
+import { Cancel01Icon, File01Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useMemo, useState, useEffect } from "react";
 import { useNextStep } from "nextstepjs";
@@ -29,30 +18,23 @@ interface InfoItemProps {
     icon: React.ReactNode;
     title: string;
     description: string;
-    href: string;
 }
 
-function InfoItem({ icon, title, description, href }: InfoItemProps) {
+function InfoItem({ icon, title, description }: InfoItemProps) {
     return (
-        <Link
-            href={href}
-            target="_blank"
-            className="block rounded-2xl outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-            <PageCard className="w-full gap-1.5 p-3 transition-colors hover:border-gray-300 hover:bg-gray-50 dark:hover:border-gray-700 dark:hover:bg-white/5">
-                <div className="flex items-center gap-4">
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300">
-                        {icon}
-                    </span>
-                    <div className="flex flex-col">
-                        <h3 className="font-semibold">{title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                            {description}
-                        </p>
-                    </div>
+        <PageCard className="w-full gap-1.5 p-3">
+            <div className="flex items-center gap-4">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300">
+                    {icon}
+                </span>
+                <div className="flex flex-col">
+                    <h3 className="font-semibold">{title}</h3>
+                    <p className="text-sm text-muted-foreground">
+                        {description}
+                    </p>
                 </div>
-            </PageCard>
-        </Link>
+            </div>
+        </PageCard>
     );
 }
 
@@ -67,19 +49,11 @@ export function InfoBox() {
                 icon: <Icon icon={PlayIcon} />,
                 title: t("videoTitle"),
                 description: t("videoDescription"),
-                href: APP_DEMO_URL,
-            },
-            {
-                icon: <Icon icon={ViewIcon} />,
-                title: t("demoTitle"),
-                description: t("demoDescription"),
-                href: APP_ACTIVE_TREASURY,
             },
             {
                 icon: <Icon icon={File01Icon} />,
                 title: t("docsTitle"),
                 description: t("docsDescription"),
-                href: APP_DOCS_URL,
             },
         ],
         [t],
@@ -100,10 +74,10 @@ export function InfoBox() {
     }
 
     return (
-        <div className="flex h-fit w-full cursor-pointer flex-col gap-5">
+        <div className="flex h-fit w-full flex-col gap-5">
             <div className="flex flex-col gap-0.5">
                 <div className="flex items-center justify-between">
-                    <h2 className="font-bold text-2xl tracking-tight">
+                    <h2 className="font-semibold text-xl tracking-tight">
                         {t("title")}
                     </h2>
                     <button

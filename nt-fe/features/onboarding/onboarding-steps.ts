@@ -12,9 +12,17 @@ export function soloSelectedKey(treasuryId: string) {
     return `onboarding:solo-selected:${treasuryId}`;
 }
 
-/** Written after a successful ChangePolicy / duration proposal, not on visit. */
+/** Written after a successful ChangePolicy / duration proposal, or when deferred. */
 export function thresholdSetupKey(treasuryId: string) {
     return `onboarding:threshold-setup:${treasuryId}`;
+}
+
+/** Later is only offered after a teammate is added, not on the solo path. */
+export function canDeferThresholdSetup(flags: {
+    addedMember: boolean;
+    thresholdComplete: boolean;
+}): boolean {
+    return flags.addedMember && !flags.thresholdComplete;
 }
 
 export function readOnboardingFlag(key: string): boolean {

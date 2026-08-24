@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "Bật/tắt thanh bên",
         "toggleTheme": "Chuyển đổi giao diện",
-        "darkMode": "Chế độ tối"
+        "darkMode": "Chế độ tối",
+        "lightMode": "Chế độ sáng"
     },
     "nav": {
         "dashboard": "Bảng điều khiển",
@@ -682,7 +683,9 @@
             "title": "Yêu cầu đang chờ",
             "viewAll": "Xem tất cả",
             "emptyTitle": "Đã xử lý hết!",
-            "emptyDescription": "Không có yêu cầu đang chờ nào."
+            "emptyDescription": "Không có yêu cầu đang chờ nào.",
+            "emptyNeverTitle": "Chưa có yêu cầu gần đây.",
+            "emptyNeverDescription": "Các yêu cầu đang chờ sẽ hiện ở đây"
         }
     },
     "proposals": {
@@ -2342,6 +2345,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "Để sau",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2380,15 +2384,12 @@
             "description": "Bạn có thể xem ngân quỹ này ngay bây giờ. Khi một thành viên phê duyệt bạn, bạn sẽ có thể tạo yêu cầu, bỏ phiếu hoặc quản lý quỹ theo vai trò của mình."
         },
         "infoBox": {
-            "title": "Tận dụng Trezu nhiều hơn",
+            "title": "Tận dụng hơn nữa near.com for business",
             "close": "Đóng",
-            "description": "Khám phá cách người khác sử dụng Ngân quỹ, thử demo và xem tài liệu để tìm hiểu các tính năng.",
-            "demoTitle": "Khám phá Trezu Demo",
-            "demoDescription": "Xem một tài khoản demo trực tiếp đang hoạt động.",
             "docsTitle": "Tài liệu",
             "docsDescription": "Tìm hiểu về tất cả tính năng trong tài liệu.",
-            "videoTitle": "Xem demo",
-            "videoDescription": "Xem video ngắn cho thấy cách Trezu hoạt động."
+            "videoTitle": "Xem hướng dẫn",
+            "videoDescription": "Xem cách hoạt động trong một video ngắn"
         }
     },
     "warnings": {

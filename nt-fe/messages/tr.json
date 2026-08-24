@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "Kenar çubuğunu aç/kapat",
         "toggleTheme": "Temayı değiştir",
-        "darkMode": "Karanlık mod"
+        "darkMode": "Karanlık mod",
+        "lightMode": "Aydınlık mod"
     },
     "nav": {
         "dashboard": "Panel",
@@ -682,7 +683,9 @@
             "title": "Bekleyen Talepler",
             "viewAll": "Tümünü Görüntüle",
             "emptyTitle": "Hepsi tamam!",
-            "emptyDescription": "Bekleyen talep yok."
+            "emptyDescription": "Bekleyen talep yok.",
+            "emptyNeverTitle": "Henüz yakın zamanda talep yok.",
+            "emptyNeverDescription": "Bekleyen talepleriniz burada görünecek"
         }
     },
     "proposals": {
@@ -2359,6 +2362,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "Daha sonra",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2397,15 +2401,12 @@
             "description": "Bu hazineyi şimdi görüntüleyebilirsiniz. Bir üye sizi onayladığında, rolünüze göre istek oluşturabilir, oy verebilir veya fonları yönetebilirsiniz."
         },
         "infoBox": {
-            "title": "Trezu'dan daha fazlasını alın",
+            "title": "near.com for business'tan daha fazlasını alın",
             "close": "Kapat",
-            "description": "Diğerlerinin Hazineyi nasıl kullandığını keşfedin, demoyu deneyin ve özellikleri öğrenmek için belgeleri kontrol edin.",
-            "demoTitle": "Trezu Demosunu Keşfet",
-            "demoDescription": "Canlı bir demo hesabını işlerken görün.",
             "docsTitle": "Belgeler",
             "docsDescription": "Tüm özellikler hakkında belgelerden bilgi edinin.",
-            "videoTitle": "Demoyu İzleyin",
-            "videoDescription": "Trezu'nun nasıl çalıştığını gösteren kısa bir video izleyin."
+            "videoTitle": "Tanıtımı izleyin",
+            "videoDescription": "Kısa bir videoda nasıl çalıştığını görün"
         }
     },
     "warnings": {

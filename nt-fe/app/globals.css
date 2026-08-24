@@ -216,7 +216,6 @@
         --step-label-to 300ms ease-out;
 }
 
-
 :root {
     --background: rgb(245, 245, 245);
     --page-bg: rgb(245, 245, 245);
@@ -636,6 +635,14 @@ body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
         bottom: 1.5rem !important;
         left: 60% !important;
         transform: translate(-50%, 0) !important;
+    }
+
+    /* Gleap's launcher and AI chatbar sit at the viewport bottom by default
+       and cover the mobile Menu tab. Lift them above the bottom nav. */
+    .bb-feedback-button,
+    .bb-feedback-button--bottomleft,
+    .gleap-chatbar {
+        bottom: calc(5rem + env(safe-area-inset-bottom, 0px)) !important;
     }
 }
 

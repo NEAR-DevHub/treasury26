@@ -51,6 +51,13 @@ export function MobileBottomNav() {
         },
     ] as const;
 
+    const isMenuRoute =
+        pathname?.startsWith(`/${treasuryId}/payments`) === true ||
+        pathname?.startsWith(`/${treasuryId}/exchange`) === true ||
+        pathname?.startsWith(`/${treasuryId}/members`) === true ||
+        pathname?.startsWith(`/${treasuryId}/settings`) === true;
+    const isMenuActive = sheet === "menu" || isMenuRoute;
+
     return (
         <nav
             className="lg:hidden sticky bottom-0 z-30 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] dark:border-white/10 dark:bg-gray-900"
@@ -86,7 +93,7 @@ export function MobileBottomNav() {
                     onClick={() => openSheet("menu")}
                     className={cn(
                         "flex flex-col items-center gap-1 px-2 py-2.5 text-[11px] font-medium",
-                        sheet === "menu"
+                        isMenuActive
                             ? "text-foreground"
                             : "text-muted-foreground",
                     )}

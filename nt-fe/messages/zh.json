@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "切换侧边栏",
         "toggleTheme": "切换主题",
-        "darkMode": "深色模式"
+        "darkMode": "深色模式",
+        "lightMode": "浅色模式"
     },
     "nav": {
         "dashboard": "仪表板",
@@ -682,7 +683,9 @@
             "title": "待处理请求",
             "viewAll": "查看全部",
             "emptyTitle": "全部处理完毕!",
-            "emptyDescription": "没有待处理的请求。"
+            "emptyDescription": "没有待处理的请求。",
+            "emptyNeverTitle": "暂无最近请求。",
+            "emptyNeverDescription": "待处理请求将显示在这里"
         }
     },
     "proposals": {
@@ -2342,6 +2345,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "稍后",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2380,15 +2384,12 @@
             "description": "您现在可以查看此金库。成员批准后，您将可以根据角色创建请求、投票或管理资金。"
         },
         "infoBox": {
-            "title": "更好地利用 Trezu",
+            "title": "从 near.com for business 获得更多",
             "close": "关闭",
-            "description": "了解他人如何使用金库,试用演示,并查看文档以了解各项功能。",
-            "demoTitle": "探索 Trezu 演示",
-            "demoDescription": "查看一个实时的演示账户。",
             "docsTitle": "文档",
             "docsDescription": "在文档中了解所有功能。",
-            "videoTitle": "观看演示",
-            "videoDescription": "观看一段简短视频,了解 Trezu 的工作方式。"
+            "videoTitle": "观看导览",
+            "videoDescription": "通过短视频了解使用方法"
         }
     },
     "warnings": {

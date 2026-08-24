@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "Alihkan bilah samping",
         "toggleTheme": "Alihkan tema",
-        "darkMode": "Mode gelap"
+        "darkMode": "Mode gelap",
+        "lightMode": "Mode terang"
     },
     "nav": {
         "dashboard": "Dasbor",
@@ -682,7 +683,9 @@
             "title": "Permintaan Tertunda",
             "viewAll": "Lihat Semua",
             "emptyTitle": "Semua sudah selesai!",
-            "emptyDescription": "Tidak ada permintaan yang tertunda."
+            "emptyDescription": "Tidak ada permintaan yang tertunda.",
+            "emptyNeverTitle": "Belum ada permintaan terbaru.",
+            "emptyNeverDescription": "Permintaan tertunda Anda akan muncul di sini"
         }
     },
     "proposals": {
@@ -2359,6 +2362,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "Nanti",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2397,15 +2401,12 @@
             "description": "Anda sudah dapat melihat treasury ini. Setelah anggota menyetujui Anda, Anda dapat membuat permintaan, memberikan suara, atau mengelola dana sesuai peran Anda."
         },
         "infoBox": {
-            "title": "Dapatkan lebih banyak dari Trezu",
+            "title": "Dapatkan lebih banyak dari near.com for business",
             "close": "Tutup",
-            "description": "Temukan bagaimana orang lain menggunakan Treasury, coba demo, dan periksa dokumen untuk mempelajari fiturnya.",
-            "demoTitle": "Jelajahi Demo Trezu",
-            "demoDescription": "Lihat akun demo langsung beraksi.",
             "docsTitle": "Dokumentasi",
             "docsDescription": "Pelajari semua fitur di dokumen.",
-            "videoTitle": "Tonton Demo",
-            "videoDescription": "Tonton video singkat yang menunjukkan cara kerja Trezu."
+            "videoTitle": "Tonton panduan",
+            "videoDescription": "Lihat cara kerjanya dalam video singkat"
         }
     },
     "warnings": {

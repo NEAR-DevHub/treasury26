@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+    canDeferThresholdSetup,
     getOnboardingStepStatus,
     ONBOARDING_STEP_IDS,
 } from "./onboarding-steps";
@@ -44,6 +45,27 @@ describe("getOnboardingStepStatus", () => {
 
         expect(status.completedCount).toBe(2);
         expect(status.activeId).toBe("add-team-member");
+    });
+
+    it("offers Later only after a teammate is added and threshold is open", () => {
+        expect(
+            canDeferThresholdSetup({
+                addedMember: true,
+                thresholdComplete: false,
+            }),
+        ).toBe(true);
+        expect(
+            canDeferThresholdSetup({
+                addedMember: false,
+                thresholdComplete: false,
+            }),
+        ).toBe(false);
+        expect(
+            canDeferThresholdSetup({
+                addedMember: true,
+                thresholdComplete: true,
+            }),
+        ).toBe(false);
     });
 
     it("marks all four steps complete", () => {

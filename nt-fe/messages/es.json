@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "Alternar barra lateral",
         "toggleTheme": "Alternar tema",
-        "darkMode": "Modo oscuro"
+        "darkMode": "Modo oscuro",
+        "lightMode": "Modo claro"
     },
     "nav": {
         "dashboard": "Panel",
@@ -682,7 +683,9 @@
             "title": "Solicitudes pendientes",
             "viewAll": "Ver todas",
             "emptyTitle": "¡Todo al día!",
-            "emptyDescription": "No hay solicitudes pendientes."
+            "emptyDescription": "No hay solicitudes pendientes.",
+            "emptyNeverTitle": "Aún no hay solicitudes recientes.",
+            "emptyNeverDescription": "Tus solicitudes pendientes aparecerán aquí"
         }
     },
     "proposals": {
@@ -2359,6 +2362,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "Más tarde",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2397,15 +2401,12 @@
             "description": "Ya puedes ver esta tesorería. Cuando un miembro te apruebe, podrás crear solicitudes, votar o gestionar fondos según tu rol."
         },
         "infoBox": {
-            "title": "Saca más partido a Trezu",
+            "title": "Saca más partido a near.com for business",
             "close": "Cerrar",
-            "description": "Descubre cómo otros usan Treasury, prueba la demo y consulta los documentos para conocer las funciones.",
-            "demoTitle": "Explora la demo de Trezu",
-            "demoDescription": "Ve una cuenta de demostración en acción.",
             "docsTitle": "Documentación",
             "docsDescription": "Aprende sobre todas las funciones en la documentación.",
-            "videoTitle": "Mira la demo",
-            "videoDescription": "Mira un vídeo corto que muestra cómo funciona Trezu."
+            "videoTitle": "Ver el tutorial",
+            "videoDescription": "Mira cómo funciona en un vídeo corto"
         }
     },
     "warnings": {

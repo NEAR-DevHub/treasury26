@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "Toggle sidebar",
         "toggleTheme": "Toggle theme",
-        "darkMode": "Dark mode"
+        "darkMode": "Dark mode",
+        "lightMode": "Light mode"
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -682,7 +683,9 @@
             "title": "Pending Requests",
             "viewAll": "View All",
             "emptyTitle": "All caught up!",
-            "emptyDescription": "There are no pending requests."
+            "emptyDescription": "There are no pending requests.",
+            "emptyNeverTitle": "No recent requests yet.",
+            "emptyNeverDescription": "Your pending requests will show up here"
         }
     },
     "proposals": {
@@ -2359,6 +2362,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "Later",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2397,15 +2401,12 @@
             "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         },
         "infoBox": {
-            "title": "Get more from Trezu",
+            "title": "Get more from near.com for business",
             "close": "Close",
-            "description": "Discover how others use Treasury, try the demo, and check the docs to learn the features.",
-            "demoTitle": "Try a demo treasury",
-            "demoDescription": "Explore a working treasury with real data.",
             "docsTitle": "Read the docs",
             "docsDescription": "Find detailed guides for every feature.",
             "videoTitle": "Watch the walkthrough",
-            "videoDescription": "See how Trezu works in a short video."
+            "videoDescription": "See how it works in a short video"
         }
     },
     "warnings": {
