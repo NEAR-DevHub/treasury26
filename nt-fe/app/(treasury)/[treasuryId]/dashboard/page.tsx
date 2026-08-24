@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { BalanceMaskProvider } from "@/components/balance-mask";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import {
     HistoryRefreshIndicatorProvider,
@@ -38,38 +39,40 @@ export default function AppPage() {
     return (
         <PageComponentLayout title={t("title")}>
             <HistoryRefreshIndicatorProvider>
-                <div className="flex flex-col lg:flex-row gap-5">
-                    <div className="flex flex-col gap-5 lg:w-2/3 w-full">
-                        <div className="lg:hidden empty:hidden">
-                            <CreateBanner />
+                <BalanceMaskProvider>
+                    <div className="flex flex-col lg:flex-row gap-5">
+                        <div className="flex flex-col gap-5 lg:w-2/3 w-full">
+                            <div className="lg:hidden empty:hidden">
+                                <CreateBanner />
+                            </div>
+                            <PendingJoinBanner />
+                            <div className="lg:hidden">
+                                <GetStartedCard />
+                            </div>
+                            <BalanceWithGraph
+                                tokens={tokens}
+                                isHidden={isHidden}
+                                onDepositClick={handleDepositOpen}
+                                isLoading={isAssetsLoading}
+                            />
+                            <Assets
+                                tokens={tokens}
+                                state={
+                                    isHidden
+                                        ? "hidden"
+                                        : isAssetsLoading
+                                          ? "loading"
+                                          : "ready"
+                                }
+                            />
+                            <RecentActivity />
                         </div>
-                        <PendingJoinBanner />
-                        <div className="lg:hidden">
-                            <GetStartedCard />
+                        <div className="flex flex-col gap-5 w-full lg:w-1/3">
+                            <InfoBox />
+                            <PendingRequests />
                         </div>
-                        <BalanceWithGraph
-                            tokens={tokens}
-                            isHidden={isHidden}
-                            onDepositClick={handleDepositOpen}
-                            isLoading={isAssetsLoading}
-                        />
-                        <Assets
-                            tokens={tokens}
-                            state={
-                                isHidden
-                                    ? "hidden"
-                                    : isAssetsLoading
-                                      ? "loading"
-                                      : "ready"
-                            }
-                        />
-                        <RecentActivity />
                     </div>
-                    <div className="flex flex-col gap-5 w-full lg:w-1/3">
-                        <InfoBox />
-                        <PendingRequests />
-                    </div>
-                </div>
+                </BalanceMaskProvider>
             </HistoryRefreshIndicatorProvider>
             <BalanceWarningModal />
         </PageComponentLayout>

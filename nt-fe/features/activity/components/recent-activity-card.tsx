@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
@@ -197,7 +198,7 @@ function RowAmount({
                 className,
             )}
         >
-            {children}
+            <MaskedBalance>{children}</MaskedBalance>
         </span>
     );
 }

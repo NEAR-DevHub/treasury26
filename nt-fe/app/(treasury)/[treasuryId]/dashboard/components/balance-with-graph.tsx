@@ -16,6 +16,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AnimatedCurrency } from "@/components/animated-currency";
 import { AuthButton } from "@/components/auth-button";
+import { MaskedBalance, useBalanceMask } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
@@ -164,7 +165,8 @@ export default function BalanceWithGraph({
     const [selectedToken, setSelectedToken] = useState<string>("all");
     const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>("1W");
     const [isChartHovered, setIsChartHovered] = useState(false);
-    const [isBalanceMasked, setIsBalanceMasked] = useState(false);
+    const { isMasked: isBalanceMasked, toggle: toggleBalanceMask } =
+        useBalanceMask();
     const router = useRouter();
     const isNarrow = useMediaQuery("(max-width: 1023px)");
     const handleChartMouseEnter = useCallback(
@@ -591,7 +593,7 @@ export default function BalanceWithGraph({
                                 )}
                             <button
                                 type="button"
-                                onClick={() => setIsBalanceMasked((v) => !v)}
+                                onClick={toggleBalanceMask}
                                 aria-label={
                                     isBalanceMasked
                                         ? t("showBalance")
@@ -634,9 +636,11 @@ export default function BalanceWithGraph({
                                                     | "bucketEarning",
                                             )}{" "}
                                             <span className="font-semibold text-foreground">
-                                                {formatCurrencyWithSubCent(
-                                                    item.value,
-                                                )}
+                                                <MaskedBalance>
+                                                    {formatCurrencyWithSubCent(
+                                                        item.value,
+                                                    )}
+                                                </MaskedBalance>
                                             </span>
                                         </span>
                                     </div>

@@ -7,6 +7,7 @@ import {
     getLocalizedNetworkDisplayName,
 } from "@/lib/intents-network";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { MaskedBalance } from "./balance-mask";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
 
 interface NetworkIconDisplayProps {
@@ -219,10 +220,10 @@ export const BalanceCell = ({
     return (
         <div className="min-w-0 max-w-full overflow-hidden text-right">
             <div className={cn("truncate", primaryClass)}>
-                {amountFirst ? amount : usd}
+                <MaskedBalance>{amountFirst ? amount : usd}</MaskedBalance>
             </div>
             <div className={cn("truncate", secondaryClass)}>
-                {amountFirst ? usd : amount}
+                <MaskedBalance>{amountFirst ? usd : amount}</MaskedBalance>
             </div>
         </div>
     );
