@@ -16,7 +16,14 @@ import { VisualBuilder } from "./visual-builder";
 // the real (treasury) layout's provider). Real en messages keep the rendered labels honest.
 function renderWithIntl(node: React.ReactNode): string {
     return renderToStaticMarkup(
-        <NextIntlClientProvider locale="en" messages={messages}>
+        <NextIntlClientProvider
+            locale="en"
+            messages={messages}
+            onError={(error) => {
+                if (error.code === "ENVIRONMENT_FALLBACK") return;
+                throw error;
+            }}
+        >
             {node}
         </NextIntlClientProvider>,
     );
