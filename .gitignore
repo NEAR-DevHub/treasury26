@@ -17,5 +17,6 @@ nt-be/src/bin/confidential_deposit_verifier.rs
 # local-only confidential deposit verification script
 nt-be/scripts/verify_confidential_deposits.sh
 nt-be/scripts/import_staging_balance_changes.sh
+nt-be/examples/sentry_drill.rs
 .gstack/
 ERROR_OBSERVABILITY_AUDIT.md
