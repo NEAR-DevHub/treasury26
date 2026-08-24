@@ -3,7 +3,6 @@
 import { Icon } from "@/components/icon";
 import {
     ArrowLeftRightIcon,
-    ArrowUpRight01Icon,
     FilterIcon,
     SentIcon,
 } from "@hugeicons/core-free-icons";
@@ -197,7 +196,7 @@ function NoRequestsFound() {
                     permissionAction="AddProposal"
                     className="gap-1 w-full shrink"
                 >
-                    <Icon icon={ArrowUpRight01Icon} /> {tEmpty("send")}
+                    <Icon icon={SentIcon} /> {tEmpty("send")}
                 </AuthButton>
                 <AuthButton
                     permissionKind="call"

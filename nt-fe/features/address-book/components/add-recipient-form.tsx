@@ -3,9 +3,9 @@
 import { Icon } from "@/components/icon";
 import {
     Add01Icon,
-    Delete02Icon,
+    Delete01Icon,
+    Edit03Icon,
     FileUploadIcon,
-    PencilIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useState, useEffect, useCallback, type ReactNode, useId } from "react";
@@ -228,7 +228,7 @@ export function RecipientRow({
                             className="text-muted-foreground hover:text-foreground"
                             onClick={onEdit}
                         >
-                            <Icon icon={PencilIcon} />
+                            <Icon icon={Edit03Icon} />
                             {tForm("edit")}
                         </Button>
                     )}
@@ -239,7 +239,7 @@ export function RecipientRow({
                             className="text-muted-foreground hover:text-foreground"
                             onClick={onRemove}
                         >
-                            <Icon icon={Delete02Icon} />
+                            <Icon icon={Delete01Icon} />
                             {tForm("remove")}
                         </Button>
                     )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { Add01Icon, Delete02Icon } from "@hugeicons/core-free-icons";
+import { Add01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "./button";
 import { InputBlock } from "./input-block";
 import { FormField, FormMessage } from "./ui/form";
@@ -153,7 +153,7 @@ export function MemberInput<
                                     onClick={() => remove(index)}
                                 >
                                     <Icon
-                                        icon={Delete02Icon}
+                                        icon={Delete01Icon}
                                         className="text-foreground group-hover:text-destructive"
                                     />
                                 </Button>

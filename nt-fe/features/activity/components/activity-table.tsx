@@ -2,7 +2,7 @@
 
 import { Icon } from "@/components/icon";
 import {
-    ArrowDown03Icon,
+    ArrowDown02Icon,
     ArrowLeftRightIcon,
     ArrowRight01Icon,
     Clock01Icon,
@@ -160,7 +160,7 @@ export function ActivityTable({
                                                     />
                                                 ) : isReceived ? (
                                                     <Icon
-                                                        icon={ArrowDown03Icon}
+                                                        icon={ArrowDown02Icon}
                                                     />
                                                 ) : (
                                                     <Icon
