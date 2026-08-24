@@ -1,7 +1,7 @@
-import axios from "axios";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { http as axios } from "@/lib/http";
 import { base64ToJson, nanosToMs } from "@/lib/utils";
 import { useNearStore } from "@/stores/near-store";
 import { sendResultToOpener } from "../utils/opener";

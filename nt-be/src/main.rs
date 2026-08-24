@@ -87,6 +87,9 @@ async fn async_main() {
             header::ACCEPT,
             header::ORIGIN,
             header::COOKIE,
+            // Sentry's distributed-trace headers from the frontend SDK.
+            header::HeaderName::from_static("sentry-trace"),
+            header::HeaderName::from_static("baggage"),
         ])
         .allow_credentials(true);
 

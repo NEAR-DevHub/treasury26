@@ -1,8 +1,8 @@
-import { Policy } from "@/types/policy";
-import axios from "axios";
-import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { Balance, BalanceRaw, transformBalance } from "./balance";
+import Big from "@/lib/big";
+import { http as axios } from "@/lib/http";
+import type { Policy } from "@/types/policy";
+import { type Balance, type BalanceRaw, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
