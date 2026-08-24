@@ -274,7 +274,21 @@ pub async fn get_deposit_address(
         return Ok(Json(result));
     }
 
-    let result = fetch_bridge_deposit_address(&state, account_id.as_str(), &chain).await?;
+    let result = fetch_bridge_deposit_address(&state, account_id.as_str(), &chain)
+        .await
+        .inspect_err(|(status, msg)| {
+            if status.is_server_error() {
+                tracing::error!(
+                    tags.error_code = "DEPOSIT_ADDRESS_FAILED",
+                    tags.priority = "p2",
+                    account_id = %account_id,
+                    chain,
+                    status = %status,
+                    error = %msg,
+                    "deposit address generation failed"
+                );
+            }
+        })?;
     Ok(Json(result))
 }
 

@@ -376,7 +376,9 @@ impl<'a> BalanceVerifier<'a> {
             .await?;
             for outcome in outcomes.iter().filter(|outcome| !outcome.passed) {
                 tracing::error!(
-                    account_id,
+                    tags.error_code = "VERIFICATION_GATE_FAILED",
+                    tags.priority = "p1",
+                    tags.dao = account_id,
                     asset = outcome.asset,
                     ledger_balance = %outcome.ledger_balance,
                     chain_balance = %outcome.chain_balance,

@@ -543,7 +543,14 @@ impl AppState {
 
         tracing::info!("Database connection established successfully");
 
-        let http_client = reqwest::Client::new();
+        // Bounded so no handler or job can hang forever on an external HTTP
+        // call (1Click, NearBlocks, DeFiLlama, …); a hung call now fails and
+        // hits the normal retry/alert paths instead of holding a slot.
+        let http_client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(5))
+            .build()
+            .expect("failed to build shared HTTP client");
 
         // Initialize price service with DeFiLlama provider (free, no API key required)
         let base_url = &env_vars.defillama_api_base_url;

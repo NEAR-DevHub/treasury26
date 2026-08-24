@@ -10,6 +10,7 @@ nt-be/examples/playwright/test-results/
 nt-be/examples/playwright/fixtures/*.png
 nt-be/examples/fixtures/auth_response.json
 nt-be/examples/fixtures/mpc_auth_result.txt
+nt-be/examples/dao_history_control.rs
 test-results/
 nt-be/src/bin/confidential_deposit_verifier.rs
 
@@ -17,3 +18,4 @@ nt-be/src/bin/confidential_deposit_verifier.rs
 nt-be/scripts/verify_confidential_deposits.sh
 nt-be/scripts/import_staging_balance_changes.sh
 .gstack/
+ERROR_OBSERVABILITY_AUDIT.md

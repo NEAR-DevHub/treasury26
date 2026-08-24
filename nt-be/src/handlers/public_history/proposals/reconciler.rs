@@ -100,6 +100,19 @@ async fn apply_status(
     .rows_affected();
 
     if updated > 0 {
+        if status == "failed" {
+            // An approved proposal whose execution failed on-chain. Cause is
+            // not distinguishable here (insufficient DAO balance vs infra),
+            // so p2: Telegram paging comes from a Sentry frequency alert
+            // rule, not per event.
+            tracing::error!(
+                tags.error_code = "PROPOSAL_EXECUTION_FAILED",
+                tags.priority = "p2",
+                dao_id = proposal.dao_id,
+                proposal_id = proposal.proposal_id,
+                "proposal execution failed on-chain"
+            );
+        }
         // Silver legs already carry proposal_ref; status is joined fresh from
         // dao_proposals at gold projection time, so a status-only change needs
         // only a gold re-projection.
