@@ -3,6 +3,7 @@
 import {
     ArrowRight01Icon,
     Clock01Icon,
+    HelpCircleIcon,
     LoaderCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
@@ -11,7 +12,6 @@ import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
 import { Icon } from "@/components/icon";
-import { HelpCircleFilledIcon } from "@/components/icons/help-circle-filled";
 import { Pagination } from "@/components/pagination";
 import {
     Table,
@@ -272,7 +272,10 @@ export function ActivityTable({
                                 <span className="flex items-center justify-end gap-2">
                                     {t("table.transactionHash")}
                                     <Tooltip content={t("table.hashTooltip")}>
-                                        <HelpCircleFilledIcon className="text-general-muted-foreground" />
+                                        <Icon
+                                            icon={HelpCircleIcon}
+                                            className="size-4 text-general-muted-foreground"
+                                        />
                                     </Tooltip>
                                 </span>
                             </TableHead>
