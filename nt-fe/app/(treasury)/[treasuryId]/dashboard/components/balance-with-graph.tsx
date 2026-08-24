@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
@@ -166,6 +167,7 @@ export default function BalanceWithGraph({
     const [isChartHovered, setIsChartHovered] = useState(false);
     const [isBalanceMasked, setIsBalanceMasked] = useState(false);
     const router = useRouter();
+    const isNarrow = useMediaQuery("(max-width: 1023px)");
     const handleChartMouseEnter = useCallback(
         () => setIsChartHovered(true),
         [],
@@ -628,8 +630,8 @@ export default function BalanceWithGraph({
                                 />
                             )}
                         </h2>
-                        {showBreakdown && (
-                            <div className="mt-2 hidden lg:flex items-center gap-2 text-sm text-muted-foreground">
+                        {showBreakdown && !isNarrow && (
+                            <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                                 {balanceBreakdownItems.map((item, idx) => (
                                     <div key={item.key} className="contents">
                                         {idx > 0 && (
@@ -656,8 +658,8 @@ export default function BalanceWithGraph({
                             </div>
                         )}
                     </div>
-                    {!isConfidential && (
-                        <div className="hidden lg:flex lg:flex-row items-end flex-col gap-1 lg:gap-2 lg:items-center">
+                    {!isConfidential && !isNarrow && (
+                        <div className="flex flex-col items-end gap-1 lg:flex-row lg:items-center lg:gap-2">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button
@@ -819,8 +821,8 @@ export default function BalanceWithGraph({
                     )}
                     <HistoryRefreshButton className="h-10 w-10 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20" />
                 </div>
-                {showBreakdown && (
-                    <div className="mt-4 border-t border-border/70 pt-3 space-y-3 lg:hidden">
+                {showBreakdown && isNarrow && (
+                    <div className="mt-4 space-y-3 border-t border-border/70 pt-3">
                         {balanceBreakdownItems.map((item) => (
                             <div
                                 key={item.key}
@@ -898,75 +900,75 @@ export default function BalanceWithGraph({
                     <Database className="size-4" /> Earn
                 </AuthButton> */}
             </div>
-            <div
-                className={cn(
-                    "mt-3 flex gap-2 lg:hidden",
-                    isConfidential ? "hidden" : "",
-                )}
-            >
-                <Select value={selectedToken} onValueChange={setSelectedToken}>
-                    <SelectTrigger
-                        size="sm"
-                        className={cn(FILTER_MOBILE_TRIGGER_CLASS, "w-[150px]")}
-                        disabled={
-                            isLoadingTokens || (!isConfidential && isLoading)
-                        }
+            {!isConfidential && isNarrow && (
+                <div className="mt-3 flex gap-2">
+                    <Select
+                        value={selectedToken}
+                        onValueChange={setSelectedToken}
                     >
-                        <SelectValue>
-                            {selectedToken === "all" ? (
-                                <div className="flex items-center gap-2">
-                                    <Icon icon={Coins02Icon} />
-                                    <span>{t("allTokens")}</span>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    {selectedTokenGroup?.icon && (
-                                        <img
-                                            src={selectedTokenGroup.icon}
-                                            alt={selectedTokenGroup.symbol}
-                                            width={20}
-                                            height={20}
-                                            className="size-5 rounded-full"
-                                        />
-                                    )}
-                                    <span>{selectedToken}</span>
-                                </div>
+                        <SelectTrigger
+                            size="sm"
+                            className={cn(
+                                FILTER_MOBILE_TRIGGER_CLASS,
+                                "w-[150px]",
                             )}
-                        </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className={cn(FILTER_MENU_CLASS, "p-0")}>
-                        <SelectItem
-                            value="all"
-                            className={FILTER_SELECT_ITEM_CLASS}
+                            disabled={isLoadingTokens || isLoading}
+                            data-testid="chart-token-trigger"
                         >
-                            <div className="flex items-center gap-3">
-                                <Icon icon={Coins02Icon} />
-                                <span>{t("allTokens")}</span>
-                            </div>
-                        </SelectItem>
-                        {groupedTokens.map((group) => (
+                            <SelectValue>
+                                {selectedToken === "all" ? (
+                                    <div className="flex items-center gap-2">
+                                        <Icon icon={Coins02Icon} />
+                                        <span>{t("allTokens")}</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        {selectedTokenGroup?.icon && (
+                                            <img
+                                                src={selectedTokenGroup.icon}
+                                                alt={selectedTokenGroup.symbol}
+                                                width={20}
+                                                height={20}
+                                                className="size-5 rounded-full"
+                                            />
+                                        )}
+                                        <span>{selectedToken}</span>
+                                    </div>
+                                )}
+                            </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className={cn(FILTER_MENU_CLASS, "p-0")}>
                             <SelectItem
-                                key={group.symbol}
-                                value={group.symbol}
+                                value="all"
                                 className={FILTER_SELECT_ITEM_CLASS}
                             >
                                 <div className="flex items-center gap-3">
-                                    {group.icon && (
-                                        <img
-                                            src={group.icon}
-                                            alt={group.symbol}
-                                            width={20}
-                                            height={20}
-                                            className="size-5 rounded-full"
-                                        />
-                                    )}
-                                    <span>{group.symbol}</span>
+                                    <Icon icon={Coins02Icon} />
+                                    <span>{t("allTokens")}</span>
                                 </div>
                             </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                {!isConfidential && (
+                            {groupedTokens.map((group) => (
+                                <SelectItem
+                                    key={group.symbol}
+                                    value={group.symbol}
+                                    className={FILTER_SELECT_ITEM_CLASS}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {group.icon && (
+                                            <img
+                                                src={group.icon}
+                                                alt={group.symbol}
+                                                width={20}
+                                                height={20}
+                                                className="size-5 rounded-full"
+                                            />
+                                        )}
+                                        <span>{group.symbol}</span>
+                                    </div>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <Select
                         value={selectedPeriod}
                         onValueChange={(value) =>
@@ -979,6 +981,7 @@ export default function BalanceWithGraph({
                                 FILTER_MOBILE_TRIGGER_CLASS,
                                 "w-[100px]",
                             )}
+                            data-testid="chart-period-trigger"
                         >
                             <SelectValue />
                         </SelectTrigger>
@@ -988,14 +991,15 @@ export default function BalanceWithGraph({
                                     key={period}
                                     value={period}
                                     className={FILTER_SELECT_ITEM_CLASS}
+                                    data-testid={`chart-period-option-${period}`}
                                 >
                                     {t(`period.${period}`)}
                                 </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                )}
-            </div>
+                </div>
+            )}
             <div className={cn(isConfidential ? "hidden" : "")}>
                 {displayChartData.data.length === 0 ? (
                     <EmptyState

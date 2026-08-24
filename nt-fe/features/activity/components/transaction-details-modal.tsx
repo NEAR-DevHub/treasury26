@@ -18,6 +18,7 @@ import type { Token } from "@/components/token-input";
 import { Tooltip } from "@/components/tooltip";
 import { User } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity, SwapInfo, TokenMetadataInfo } from "@/lib/api";
 import Big from "@/lib/big";
@@ -294,14 +295,18 @@ function TokenAmountHeader({ activity }: { activity: RecentActivity }) {
  */
 function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
     const t = useTranslations("activity.details");
+    const isMobile = useMediaQuery("(max-width: 639px)");
     const sentToken = swap.sentTokenMetadata
         ? activityToken(swap.sentTokenMetadata)
         : null;
     const receivedToken = activityToken(swap.receivedTokenMetadata);
+    const receivedAmount = swap.receivedAmount
+        ? formatSmartAmount(swap.receivedAmount)
+        : t("pending");
 
-    return (
-        <>
-            <div className="flex flex-col gap-3 bg-card py-3 sm:hidden">
+    if (isMobile) {
+        return (
+            <div className="flex flex-col gap-3 bg-card py-3">
                 {sentToken && swap.sentAmount ? (
                     <MobileSwapTokenRow
                         token={sentToken}
@@ -315,47 +320,42 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
                 />
                 <MobileSwapTokenRow
                     token={receivedToken}
-                    amount={
-                        swap.receivedAmount
-                            ? formatSmartAmount(swap.receivedAmount)
-                            : t("pending")
-                    }
+                    amount={receivedAmount}
                     usdValue={swap.receivedAmountUsd}
                 />
             </div>
-            <ModalSection className="hidden py-6 rounded-b-[12px] sm:flex">
-                <div className="relative flex w-full items-center justify-center gap-4">
-                    {swap.sentAmount && swap.sentTokenMetadata ? (
-                        <TokenAmountColumn
-                            title={t("sell")}
-                            token={activityToken(swap.sentTokenMetadata)}
-                            amount={formatSmartAmount(swap.sentAmount)}
-                            usdValue={swap.sentAmountUsd}
-                        />
-                    ) : null}
+        );
+    }
 
-                    <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
-                        <div className="rounded-full bg-card border p-1.5 shadow-sm">
-                            <Icon
-                                icon={ArrowRight01Icon}
-                                className="text-muted-foreground"
-                            />
-                        </div>
-                    </div>
-
+    return (
+        <ModalSection className="flex py-6 rounded-b-[12px]">
+            <div className="relative flex w-full items-center justify-center gap-4">
+                {swap.sentAmount && sentToken ? (
                     <TokenAmountColumn
-                        title={t("receive")}
-                        token={activityToken(swap.receivedTokenMetadata)}
-                        amount={
-                            swap.receivedAmount
-                                ? formatSmartAmount(swap.receivedAmount)
-                                : t("pending")
-                        }
-                        usdValue={swap.receivedAmountUsd}
+                        title={t("sell")}
+                        token={sentToken}
+                        amount={formatSmartAmount(swap.sentAmount)}
+                        usdValue={swap.sentAmountUsd}
                     />
+                ) : null}
+
+                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
+                    <div className="rounded-full bg-card border p-1.5 shadow-sm">
+                        <Icon
+                            icon={ArrowRight01Icon}
+                            className="text-muted-foreground"
+                        />
+                    </div>
                 </div>
-            </ModalSection>
-        </>
+
+                <TokenAmountColumn
+                    title={t("receive")}
+                    token={receivedToken}
+                    amount={receivedAmount}
+                    usdValue={swap.receivedAmountUsd}
+                />
+            </div>
+        </ModalSection>
     );
 }
 
@@ -392,9 +392,11 @@ function MobileSwapTokenRow({
 
 function ViaIntentsSection() {
     const t = useTranslations("activity.details");
+    const isMobile = useMediaQuery("(max-width: 639px)");
+    if (isMobile) return null;
 
     return (
-        <ModalSection className="hidden rounded-[12px] sm:flex">
+        <ModalSection className="flex rounded-[12px]">
             <p className="text-sm text-muted-foreground">{t("via")}</p>
             <NearIntentsLogo className="h-3" />
         </ModalSection>
@@ -593,6 +595,7 @@ export function TransactionDetailsModal({
     onClose,
 }: TransactionDetailsModalProps) {
     const t = useTranslations("activity.details");
+    const isMobile = useMediaQuery("(max-width: 639px)");
     if (!activity) return null;
 
     const variant = getActivityDetailsVariant(activity);
@@ -603,10 +606,7 @@ export function TransactionDetailsModal({
             <DialogContent className="gap-0 bg-card sm:max-w-[448px]! sm:gap-0.5 sm:bg-muted sm:p-0">
                 <DialogHeader className="mx-0 border-b-0 bg-card px-0 py-3 sm:px-4 sm:py-3.5">
                     <DialogTitle>
-                        <span className="sm:hidden">{t("detailsTitle")}</span>
-                        <span className="hidden sm:inline">
-                            {t(TITLE_KEYS[variant])}
-                        </span>
+                        {isMobile ? t("detailsTitle") : t(TITLE_KEYS[variant])}
                     </DialogTitle>
                 </DialogHeader>
 

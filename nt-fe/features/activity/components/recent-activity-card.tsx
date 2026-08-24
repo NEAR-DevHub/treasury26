@@ -258,8 +258,10 @@ function RowStatus({ status }: { status: NonNullable<ActivityStatus> }) {
 
 function SwapAmount({
     swap,
+    compact,
 }: {
     swap: NonNullable<RecentActivityType["swap"]>;
+    compact?: boolean;
 }) {
     const sentSymbol = swap.sentTokenMetadata?.symbol ?? null;
     const receivedSymbol =
@@ -274,12 +276,9 @@ function SwapAmount({
 
     return (
         <RowAmount>
-            {/* Narrow screens can't fit both amounts, so they fall back to symbols. */}
-            <span className="hidden sm:inline">{sent}</span>
-            <span className="sm:hidden">{sentSymbol ?? "?"}</span>
+            {compact ? (sentSymbol ?? "?") : sent}
             {" → "}
-            <span className="hidden sm:inline">{received}</span>
-            <span className="sm:hidden">{receivedSymbol}</span>
+            {compact ? receivedSymbol : received}
         </RowAmount>
     );
 }
@@ -521,7 +520,7 @@ export function RecentActivity() {
                 subLabel={getActivityFrom(activity)}
                 amount={
                     activity.swap ? (
-                        <SwapAmount swap={activity.swap} />
+                        <SwapAmount swap={activity.swap} compact={isMobile} />
                     ) : (
                         <RowAmount
                             className={
@@ -610,9 +609,7 @@ export function RecentActivity() {
                                 className="bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20"
                                 size={isMobile ? "icon-sm" : "sm"}
                             >
-                                <span className="hidden sm:inline">
-                                    {tCommon("seeMore")}
-                                </span>
+                                {!isMobile && <span>{tCommon("seeMore")}</span>}
                                 <Icon icon={ArrowRight01Icon} />
                             </Button>
                         </Link>
