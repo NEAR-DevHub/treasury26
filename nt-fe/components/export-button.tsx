@@ -1,13 +1,13 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { FileDownIcon } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/button";
-import { useTreasury } from "@/hooks/use-treasury";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { trackEvent } from "@/lib/analytics";
+import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useTreasury } from "@/hooks/use-treasury";
+import { trackEvent } from "@/lib/analytics";
 
 export function ExportButton() {
     const tCommon = useTranslations("common");
@@ -27,7 +27,7 @@ export function ExportButton() {
         <Button
             variant="secondary"
             onClick={handleClick}
-            className="h-9 px-3"
+            className="md:h-10 md:gap-2 md:rounded-xl md:px-4"
             size={isMobile ? "icon" : "default"}
         >
             <Icon icon={FileDownIcon} />

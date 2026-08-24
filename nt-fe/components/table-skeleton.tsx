@@ -1,4 +1,3 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import {
     Table,
     TableBody,
@@ -7,15 +6,22 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface TableSkeletonProps {
     rows?: number;
     columns?: number;
+    className?: string;
 }
 
-export function TableSkeleton({ rows = 5, columns = 7 }: TableSkeletonProps) {
+export function TableSkeleton({
+    rows = 5,
+    columns = 7,
+    className,
+}: TableSkeletonProps) {
     return (
-        <div className="rounded-md border">
+        <div className={cn("rounded-md border", className)}>
             <Table>
                 <TableHeader>
                     <TableRow>

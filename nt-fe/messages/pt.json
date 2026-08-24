@@ -421,11 +421,11 @@
         "searchPlaceholderShort": "Hash da transação",
         "fromPool": "do {pool}",
         "table": {
-            "type": "TIPO",
-            "transaction": "TRANSAÇÃO",
-            "from": "DE",
-            "to": "PARA",
-            "transactionHash": "HASH DA TRANSAÇÃO",
+            "type": "Tipo",
+            "transaction": "Transação",
+            "from": "De",
+            "to": "Para",
+            "transactionHash": "Hash da transação",
             "hashTooltip": "Identificador único (hash) desta transação",
             "processing": "Processando"
         },

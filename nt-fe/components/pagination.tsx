@@ -1,13 +1,13 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
     ArrowLeft01Icon,
     ArrowRight01Icon,
     MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons";
-import { Button } from "@/components/button";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
 import { cn } from "@/lib/utils";
 
 interface PaginationProps {
@@ -59,7 +59,7 @@ export function Pagination({
     return (
         <div
             className={cn(
-                "flex items-center justify-center sm:justify-end space-x-1",
+                "flex items-center justify-center gap-1 sm:justify-end",
                 className,
             )}
         >
@@ -67,17 +67,17 @@ export function Pagination({
                 variant="ghost"
                 onClick={() => onPageChange(pageIndex - 1)}
                 disabled={pageIndex === 0}
-                className="text-muted-foreground hover:text-foreground text-xs gap-1"
+                className="h-9 gap-2 rounded-xl px-4 text-sm text-general-unofficial-ghost-foreground"
             >
                 <Icon icon={ArrowLeft01Icon} />
                 <span className="hidden sm:inline">{t("previous")}</span>
             </Button>
 
-            <span className="sm:hidden text-sm text-muted-foreground px-1">
+            <span className="px-1 text-sm text-muted-foreground sm:hidden">
                 {pageIndex + 1} / {totalPages}
             </span>
 
-            <div className="hidden sm:flex items-center space-x-1">
+            <div className="hidden items-center gap-1 sm:flex">
                 {getPages().map((page, i) =>
                     page === "..." ? (
                         <span
@@ -89,14 +89,11 @@ export function Pagination({
                     ) : (
                         <Button
                             key={page}
-                            variant={pageIndex === page ? "outline" : "ghost"}
-                            size="sm"
+                            variant="ghost"
                             onClick={() => onPageChange(page as number)}
                             className={cn(
-                                "h-9 w-9 font-normal rounded-lg",
-                                pageIndex === page
-                                    ? "border-border bg-background text-foreground shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-transparent",
+                                "h-9 min-w-9 rounded-xl px-3 text-sm text-general-unofficial-ghost-foreground",
+                                pageIndex === page && "bg-general-secondary",
                             )}
                         >
                             {(page as number) + 1}
@@ -109,7 +106,7 @@ export function Pagination({
                 variant="ghost"
                 onClick={() => onPageChange(pageIndex + 1)}
                 disabled={pageIndex >= totalPages - 1}
-                className="text-muted-foreground hover:text-foreground text-xs gap-1"
+                className="h-9 gap-2 rounded-xl px-4 text-sm text-general-unofficial-ghost-foreground"
             >
                 <span className="hidden sm:inline">{t("next")}</span>
                 <Icon icon={ArrowRight01Icon} />

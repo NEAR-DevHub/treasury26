@@ -421,11 +421,11 @@
         "searchPlaceholderShort": "Transaktions-Hash",
         "fromPool": "von {pool}",
         "table": {
-            "type": "TYP",
-            "transaction": "TRANSAKTION",
-            "from": "VON",
-            "to": "AN",
-            "transactionHash": "TRANSAKTIONS-HASH",
+            "type": "Typ",
+            "transaction": "Transaktion",
+            "from": "Von",
+            "to": "An",
+            "transactionHash": "Transaktions-Hash",
             "hashTooltip": "Eindeutige Kennung (Hash) dieser Transaktion",
             "processing": "In Bearbeitung"
         },

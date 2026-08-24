@@ -421,11 +421,11 @@
         "searchPlaceholderShort": "Hash transaksi",
         "fromPool": "dari {pool}",
         "table": {
-            "type": "TIPE",
-            "transaction": "TRANSAKSI",
-            "from": "DARI",
-            "to": "KE",
-            "transactionHash": "HASH TRANSAKSI",
+            "type": "Tipe",
+            "transaction": "Transaksi",
+            "from": "Dari",
+            "to": "Ke",
+            "transactionHash": "Hash transaksi",
             "hashTooltip": "Pengenal unik (hash) dari transaksi ini",
             "processing": "Memproses"
         },

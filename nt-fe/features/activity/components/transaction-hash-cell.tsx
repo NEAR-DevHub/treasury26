@@ -7,6 +7,15 @@ import { useReceiptSearch } from "@/hooks/use-receipt-search";
 import { getExplorerTxUrl } from "@/lib/blockchain-utils";
 import { cn } from "@/lib/utils";
 
+const HASH_PREFIX_LENGTH = 6;
+const HASH_SUFFIX_LENGTH = 9;
+
+/** Middle-truncated so both ends of the hash stay recognisable in a cell. */
+function truncateHash(hash: string) {
+    if (hash.length <= HASH_PREFIX_LENGTH + HASH_SUFFIX_LENGTH) return hash;
+    return `${hash.slice(0, HASH_PREFIX_LENGTH)}..${hash.slice(-HASH_SUFFIX_LENGTH)}`;
+}
+
 interface TransactionHashCellProps {
     transactionHashes?: string[];
     receiptIds?: string[];
@@ -54,16 +63,17 @@ export function TransactionHashCell({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={t("openInExplorer")}
-                    className="text-sm underline"
+                    className="px-2 text-sm font-medium text-general-foreground underline"
                 >
-                    {transactionHash.slice(0, 12)}...
+                    {truncateHash(transactionHash)}
                 </a>
             ) : null}
             <CopyButton
                 text={transactionHash}
                 toastMessage={t("hashCopied")}
                 variant="ghost"
-                size="icon-sm"
+                size="icon"
+                className="size-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
                 tooltipContent={t("copyHash")}
             />
         </div>
