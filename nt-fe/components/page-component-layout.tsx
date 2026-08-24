@@ -111,10 +111,13 @@ export function PageComponentLayout({
                                 variant="ghost"
                                 size="icon-sm"
                                 onClick={toggleSidebar}
-                                className="hidden text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
+                                className="hidden size-10 text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
                                 aria-label={tHeader("toggleSidebar")}
                             >
-                                <Icon icon={PanelLeftIcon} />
+                                <Icon
+                                    icon={PanelLeftIcon}
+                                    className="size-[16.25px]"
+                                />
                             </Button>
                         )}
                         {hasSidebarRail && (
@@ -145,7 +148,7 @@ export function PageComponentLayout({
                             {!hideHeaderContent &&
                                 (logo ?? (
                                     <div className="hidden items-baseline gap-2 lg:flex">
-                                        <h1 className="text-xl font-semibold tracking-tight">
+                                        <h1 className="text-xl font-semibold leading-[1.2] tracking-tight">
                                             {title}
                                         </h1>
                                         {description && (
