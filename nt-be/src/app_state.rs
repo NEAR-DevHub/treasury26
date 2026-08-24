@@ -539,7 +539,7 @@ impl AppState {
             .await?;
 
         tracing::info!("Running database migrations...");
-        // sqlx::migrate!("./migrations").run(&db_pool).await?;
+        sqlx::migrate!("./migrations").run(&db_pool).await?;
 
         tracing::info!("Database connection established successfully");
 
