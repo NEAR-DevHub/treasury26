@@ -238,8 +238,7 @@
             }
         },
         "createTreasury": {
-            "title": "Tạo Ngân quỹ",
-            "description": "Thiết lập một ngân quỹ multisig mới cho đội của bạn"
+            "title": "Tạo Ngân quỹ"
         },
         "manageTreasuries": {
             "title": "Quản lý Ngân quỹ",
@@ -1406,10 +1405,8 @@
         "validation": {
             "nameMin": "Tên ngân quỹ phải có ít nhất 2 ký tự",
             "nameMax": "Tên ngân quỹ phải ít hơn 64 ký tự",
-            "accountMin": "Tên tài khoản phải có ít nhất 2 ký tự",
-            "accountMax": "Tên tài khoản phải ít hơn 64 ký tự",
-            "accountChars": "Tên tài khoản chỉ có thể chứa chữ cái Latin, số và dấu gạch nối",
-            "accountTaken": "Tên tài khoản này đã được dùng"
+            "nameTaken": "Tên ngân quỹ này đã được dùng",
+            "nameInvalid": "Tên ngân quỹ phải chứa chữ cái Latinh hoặc chữ số"
         },
         "votingNote": "Bạn cần thêm thành viên để chỉnh sửa cài đặt bỏ phiếu. Hãy thêm thành viên khác để cấu hình bỏ phiếu.",
         "minimumVoteNote": "Cần ít nhất một phiếu phê duyệt.",
@@ -1417,9 +1414,6 @@
         "addMembers": "Thêm thành viên",
         "addMembersInfo": "Bạn có thể thêm hoặc cập nhật thành viên ngay bây giờ và chỉnh sửa sau bất cứ lúc nào.",
         "treasuryName": "Tên ngân quỹ",
-        "treasuryNamePlaceholder": "Ngân quỹ của tôi",
-        "accountName": "Tên tài khoản",
-        "accountNameInfo": "Day la dia chi vinh vien cua kho bac cua ban. No duoc dung trong URL kho bac cua ban va hien thi tren cac khoan thanh toan. Hay chon thu gi do ngan gon, de nhan biet - sau nay khong the thay doi.",
         "accountPlaceholder": "my-treasury",
         "continue": "Tiếp tục",
         "votingThreshold": "Ngưỡng bỏ phiếu",
@@ -1428,8 +1422,6 @@
         "financialDescription": "Phê duyệt các yêu cầu thanh toán & trao đổi.",
         "governance": "Quản trị",
         "governanceDescription": "Phê duyệt cài đặt, thành viên và cấu hình bỏ phiếu.",
-        "confidential": "Bảo mật",
-        "public": "Công khai",
         "anyone": "Bất kỳ ai",
         "teamOnly": "Chỉ đội",
         "soon": "Sắp",
@@ -1452,20 +1444,12 @@
         "governanceThreshold": "Ngưỡng quản trị",
         "noDeploymentFee": "🎉 Không phí triển khai",
         "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, TREZU bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
-        "createButton": "Tạo Ngân quỹ",
         "connectWalletCreate": "Kết nối ví để tạo ngân quỹ",
         "walletNotSupportedTitle": "{wallet} chưa được hỗ trợ",
         "walletNotSupportedDescription": "Chúng tôi sẽ bổ sung sau. Trong lúc này, hãy đăng nhập bằng NEAR, Ledger hoặc ví EVM mà bạn đang có.",
         "connectNear": "Kết nối NEAR",
         "connectLedger": "Kết nối Ledger",
         "headerDescription": "Thiết lập kho bạc đa chữ ký cho nhóm của bạn hoặc cho chính bạn",
-        "selectTreasuryTypeLabel": "Chọn loại kho bạc",
-        "selectTreasuryTypeError": "Vui lòng chọn loại kho bạc",
-        "publicCardDescription": "Phù hợp nhất cho DAO, dự án công ích và tổ chức mở.",
-        "confidentialCardDescription": "Phù hợp nhất cho doanh nghiệp tư nhân và đội ngũ cần quyền riêng tư tài chính.",
-        "accountPlaceholderUnderscore": "kho_bac_cua_toi",
-        "setupOnUsTitle": "Phần thiết lập để chúng tôi lo",
-        "setupOnUsDescription": "Trezu chi trả phí mạng để khởi chạy kho bạc của bạn.",
         "continueToWallet": "Tiếp tục đến ví",
         "alreadyHaveTreasuryLabel": "Bạn đã có kho bạc?",
         "signInLabel": "Đăng nhập",
@@ -1519,7 +1503,11 @@
             "configuringMembers": "Đang cấu hình thành viên ngân quỹ",
             "provisioningBulkPayment": "Đang thiết lập thanh toán hàng loạt",
             "finalizingSetup": "Đang hoàn tất thiết lập"
-        }
+        },
+        "subtitle": "Tạo miễn phí. Một cú nhấp và ngân quỹ của bạn hoạt động.",
+        "namePlaceholder": "Tên ngân quỹ",
+        "clearName": "Xoá tên ngân quỹ",
+        "createCta": "Tạo ngân quỹ"
     },
     "manageTreasuries": {
         "warningOne": "Phải còn ít nhất một ngân quỹ khả dụng",
@@ -1718,7 +1706,7 @@
         "productSupportDescription": "Liên hệ đội ngũ của chúng tôi để được hỗ trợ."
     },
     "progressModal": {
-        "titleCreating": "Đang tạo Ngân quỹ...",
+        "titleCreating": "Đang tạo ngân quỹ",
         "titleDone": "Đã tạo Ngân quỹ",
         "titleFailed": "Tạo Ngân quỹ thất bại"
     },

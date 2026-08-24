@@ -238,8 +238,7 @@
             }
         },
         "createTreasury": {
-            "title": "创建金库",
-            "description": "为您的团队创建新的多签金库"
+            "title": "创建金库"
         },
         "manageTreasuries": {
             "title": "管理金库",
@@ -1406,10 +1405,8 @@
         "validation": {
             "nameMin": "金库名称至少需 2 个字符",
             "nameMax": "金库名称必须少于 64 个字符",
-            "accountMin": "账户名称至少需 2 个字符",
-            "accountMax": "账户名称必须少于 64 个字符",
-            "accountChars": "账户名称只能包含拉丁字母、数字和连字符",
-            "accountTaken": "此账户名称已被占用"
+            "nameTaken": "此金库名称已被占用",
+            "nameInvalid": "金库名称必须包含拉丁字母或数字"
         },
         "votingNote": "您需要更多成员才能修改投票设置。请添加另一名成员以配置投票。",
         "minimumVoteNote": "至少需要一个批准投票。",
@@ -1417,9 +1414,6 @@
         "addMembers": "添加成员",
         "addMembersInfo": "您现在可以添加或更新成员,稍后随时可以再次编辑。",
         "treasuryName": "金库名称",
-        "treasuryNamePlaceholder": "我的金库",
-        "accountName": "账户名称",
-        "accountNameInfo": "这是您金库的永久地址。它会用于您的金库 URL，并显示在付款中。请选择简短且易于识别的名称 - 之后无法更改。",
         "accountPlaceholder": "my-treasury",
         "continue": "继续",
         "votingThreshold": "投票阈值",
@@ -1428,8 +1422,6 @@
         "financialDescription": "批准付款与兑换请求。",
         "governance": "治理",
         "governanceDescription": "批准设置、成员及投票配置。",
-        "confidential": "机密",
-        "public": "公开",
         "anyone": "任何人",
         "teamOnly": "仅限团队",
         "soon": "即将推出",
@@ -1452,20 +1444,12 @@
         "governanceThreshold": "治理阈值",
         "noDeploymentFee": "🎉 无部署费用",
         "noDeploymentFeeDescription": "为支持新项目,TREZU 承担所有一次性部署及网络存储费用。",
-        "createButton": "创建金库",
         "connectWalletCreate": "连接钱包以创建金库",
         "walletNotSupportedTitle": "{wallet} 暂不支持",
         "walletNotSupportedDescription": "我们之后会补上。现在你可以使用已支持的 NEAR、Ledger 或 EVM 钱包登录。",
         "connectNear": "连接 NEAR",
         "connectLedger": "连接 Ledger",
         "headerDescription": "为你的团队或你自己设置一个多签金库",
-        "selectTreasuryTypeLabel": "选择金库类型",
-        "selectTreasuryTypeError": "请选择金库类型",
-        "publicCardDescription": "最适合 DAO、公共产品和开放型组织。",
-        "confidentialCardDescription": "最适合需要财务隐私的私营公司和团队。",
-        "accountPlaceholderUnderscore": "wo_de_jinku",
-        "setupOnUsTitle": "配置费用由我们承担",
-        "setupOnUsDescription": "Trezu 将承担启动金库所需的网络费用。",
         "continueToWallet": "继续到钱包",
         "alreadyHaveTreasuryLabel": "已经有金库了？",
         "signInLabel": "登录",
@@ -1519,7 +1503,11 @@
             "configuringMembers": "正在配置金库成员",
             "provisioningBulkPayment": "正在设置批量支付",
             "finalizingSetup": "正在完成设置"
-        }
+        },
+        "subtitle": "创建免费。一键即可启用你的金库。",
+        "namePlaceholder": "金库名称",
+        "clearName": "清除金库名称",
+        "createCta": "创建金库"
     },
     "manageTreasuries": {
         "warningOne": "至少需保留一个金库可见",
@@ -1718,7 +1706,7 @@
         "productSupportDescription": "联系我们的团队获取帮助。"
     },
     "progressModal": {
-        "titleCreating": "正在创建金库...",
+        "titleCreating": "正在创建金库",
         "titleDone": "金库已创建",
         "titleFailed": "金库创建失败"
     },

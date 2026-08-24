@@ -242,8 +242,7 @@
             }
         },
         "createTreasury": {
-            "title": "Create Treasury",
-            "description": "Set up a new multisig treasury for your team"
+            "title": "Create Treasury"
         },
         "manageTreasuries": {
             "title": "Manage Treasuries",
@@ -1423,10 +1422,8 @@
         "validation": {
             "nameMin": "Treasury name should be at least 2 characters",
             "nameMax": "Treasury name must be less than 64 characters",
-            "accountMin": "Account name should be at least 2 characters",
-            "accountMax": "Account name must be less than 64 characters",
-            "accountChars": "Account name can contain only Latin letters, numbers, and hyphens",
-            "accountTaken": "This account name is already taken"
+            "nameTaken": "This treasury name is already taken",
+            "nameInvalid": "Treasury name must contain Latin letters or numbers"
         },
         "votingNote": "You need more members to modify voting settings. Add another member to configure voting.",
         "minimumVoteNote": "Minimum one approval vote required.",
@@ -1434,9 +1431,6 @@
         "addMembers": "Add Members",
         "addMembersInfo": "You can add or update members now and edit this later at any time.",
         "treasuryName": "Treasury Name",
-        "treasuryNamePlaceholder": "My Treasury",
-        "accountName": "Account Name",
-        "accountNameInfo": "Your treasury's permanent address. Used in your treasury URL and shown on payments. Pick something short and recognizable – it can't be changed later.",
         "accountPlaceholder": "my-treasury",
         "continue": "Continue",
         "votingThreshold": "Voting Threshold",
@@ -1445,8 +1439,6 @@
         "financialDescription": "Approving payment & exchange requests.",
         "governance": "Governance",
         "governanceDescription": "Approving settings, members, and voting configuration.",
-        "confidential": "Confidential",
-        "public": "Public",
         "anyone": "Anyone",
         "teamOnly": "Team Only",
         "soon": "Soon",
@@ -1469,20 +1461,12 @@
         "governanceThreshold": "Governance Threshold",
         "noDeploymentFee": "🎉 No deployment fee",
         "noDeploymentFeeDescription": "To support new projects, TREZU covers all one-time deployment and network storage fees.",
-        "createButton": "Create Treasury",
         "connectWalletCreate": "Connect Wallet To Create Treasury",
         "walletNotSupportedTitle": "{wallet} not supported yet",
         "walletNotSupportedDescription": "We'll add it later. In the meantime, sign in with NEAR, Ledger, or EVM Wallets - whichever you already have.",
         "connectNear": "Connect NEAR",
         "connectLedger": "Connect Ledger",
         "headerDescription": "Set up a multisig treasury for your team or yourself",
-        "selectTreasuryTypeLabel": "Select treasury type",
-        "selectTreasuryTypeError": "Please select a treasury type",
-        "publicCardDescription": "Best for DAOs, public goods, and open organizations.",
-        "confidentialCardDescription": "Best for private companies and teams that need financial privacy.",
-        "accountPlaceholderUnderscore": "my_treasury",
-        "setupOnUsTitle": "Setup is on us",
-        "setupOnUsDescription": "Trezu covers the network fees to launch your treasury.",
         "continueToWallet": "Continue to wallet",
         "alreadyHaveTreasuryLabel": "Already have a treasury?",
         "signInLabel": "Sign In",
@@ -1536,7 +1520,11 @@
             "configuringMembers": "Configuring treasury members",
             "provisioningBulkPayment": "Setting up bulk payments",
             "finalizingSetup": "Finalizing setup"
-        }
+        },
+        "subtitle": "Free to create. One click and your treasury is live.",
+        "namePlaceholder": "Treasury name",
+        "clearName": "Clear treasury name",
+        "createCta": "Create a treasury"
     },
     "manageTreasuries": {
         "warningOne": "At least one treasury should remain available",
@@ -1735,7 +1723,7 @@
         "productSupportDescription": "Reach our team for help."
     },
     "progressModal": {
-        "titleCreating": "Creating Treasury...",
+        "titleCreating": "Creating treasury",
         "titleDone": "Treasury Created",
         "titleFailed": "Treasury Creation Failed"
     },

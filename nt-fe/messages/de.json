@@ -238,8 +238,7 @@
             }
         },
         "createTreasury": {
-            "title": "Treasury erstellen",
-            "description": "Richten Sie eine neue Multisig-Treasury für Ihr Team ein"
+            "title": "Treasury erstellen"
         },
         "manageTreasuries": {
             "title": "Treasuries verwalten",
@@ -1423,10 +1422,8 @@
         "validation": {
             "nameMin": "Treasury-Name sollte mindestens 2 Zeichen umfassen",
             "nameMax": "Treasury-Name muss weniger als 64 Zeichen umfassen",
-            "accountMin": "Kontoname sollte mindestens 2 Zeichen umfassen",
-            "accountMax": "Kontoname muss weniger als 64 Zeichen umfassen",
-            "accountChars": "Kontoname darf nur lateinische Buchstaben, Zahlen und Bindestriche enthalten",
-            "accountTaken": "Dieser Kontoname ist bereits vergeben"
+            "nameTaken": "Dieser Treasury-Name ist bereits vergeben",
+            "nameInvalid": "Der Treasury-Name muss lateinische Buchstaben oder Zahlen enthalten"
         },
         "votingNote": "Sie benötigen mehr Mitglieder, um die Abstimmungseinstellungen zu ändern. Fügen Sie ein weiteres Mitglied hinzu, um die Abstimmung zu konfigurieren.",
         "minimumVoteNote": "Mindestens eine Genehmigungsstimme erforderlich.",
@@ -1434,9 +1431,6 @@
         "addMembers": "Mitglieder hinzufügen",
         "addMembersInfo": "Sie können jetzt Mitglieder hinzufügen oder aktualisieren und dies jederzeit später bearbeiten.",
         "treasuryName": "Treasury-Name",
-        "treasuryNamePlaceholder": "Meine Treasury",
-        "accountName": "Kontoname",
-        "accountNameInfo": "Die permanente Adresse Ihrer Treasury. Sie wird in Ihrer Treasury-URL verwendet und bei Zahlungen angezeigt. Wahlen Sie etwas Kurzes und Wiedererkennbares - es kann spater nicht geandert werden.",
         "accountPlaceholder": "meine-treasury",
         "continue": "Weiter",
         "votingThreshold": "Abstimmungsschwellenwert",
@@ -1445,8 +1439,6 @@
         "financialDescription": "Genehmigung von Zahlungs- und Tauschanfragen.",
         "governance": "Governance",
         "governanceDescription": "Genehmigung von Einstellungen, Mitgliedern und Abstimmungskonfiguration.",
-        "confidential": "Vertraulich",
-        "public": "Öffentlich",
         "anyone": "Jeder",
         "teamOnly": "Nur Team",
         "soon": "Bald",
@@ -1469,20 +1461,12 @@
         "governanceThreshold": "Governance-Schwellenwert",
         "noDeploymentFee": "🎉 Keine Bereitstellungsgebühr",
         "noDeploymentFeeDescription": "Zur Unterstützung neuer Projekte übernimmt TREZU alle einmaligen Bereitstellungs- und Netzwerkspeichergebühren.",
-        "createButton": "Treasury erstellen",
         "connectWalletCreate": "Wallet verbinden, um Treasury zu erstellen",
         "walletNotSupportedTitle": "{wallet} wird noch nicht unterstützt",
         "walletNotSupportedDescription": "Wir fügen es später hinzu. In der Zwischenzeit melde dich mit NEAR, Ledger oder EVM-Wallets an - je nachdem, was du bereits hast.",
         "connectNear": "NEAR verbinden",
         "connectLedger": "Ledger verbinden",
         "headerDescription": "Richte eine Multisig-Treasury für dein Team oder für dich selbst ein",
-        "selectTreasuryTypeLabel": "Treasury-Typ auswählen",
-        "selectTreasuryTypeError": "Bitte wähle einen Treasury-Typ aus",
-        "publicCardDescription": "Am besten für DAOs, öffentliche Güter und offene Organisationen.",
-        "confidentialCardDescription": "Am besten für private Unternehmen und Teams mit Bedarf an finanzieller Privatsphäre.",
-        "accountPlaceholderUnderscore": "meine_treasury",
-        "setupOnUsTitle": "Setup geht auf uns",
-        "setupOnUsDescription": "Trezu übernimmt die Netzwerkgebühren zum Start deiner Treasury.",
         "continueToWallet": "Weiter zur Wallet",
         "alreadyHaveTreasuryLabel": "Hast du bereits eine Treasury?",
         "signInLabel": "Anmelden",
@@ -1536,7 +1520,11 @@
             "configuringMembers": "Treasury-Mitglieder werden konfiguriert",
             "provisioningBulkPayment": "Massenzahlungen werden eingerichtet",
             "finalizingSetup": "Einrichtung wird abgeschlossen"
-        }
+        },
+        "subtitle": "Kostenlos. Ein Klick und deine Treasury ist live.",
+        "namePlaceholder": "Treasury-Name",
+        "clearName": "Treasury-Namen löschen",
+        "createCta": "Treasury erstellen"
     },
     "manageTreasuries": {
         "warningOne": "Mindestens eine Treasury sollte verfügbar bleiben",
@@ -1735,7 +1723,7 @@
         "productSupportDescription": "Erreiche unser Team für Hilfe."
     },
     "progressModal": {
-        "titleCreating": "Treasury wird erstellt...",
+        "titleCreating": "Treasury wird erstellt",
         "titleDone": "Treasury erstellt",
         "titleFailed": "Treasury-Erstellung fehlgeschlagen"
     },

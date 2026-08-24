@@ -80,6 +80,9 @@ export function PageComponentLayout({
             <header
                 className={cn(
                     "flex items-center min-h-16 justify-between px-3 md:px-6",
+                    // Onboarding owns its own heading, so on a phone the empty
+                    // bar collapses instead of eating 64px above the fold.
+                    hideHeaderContent && !backButton && "min-h-0 md:min-h-16",
                     // Inside the shell the header is part of the floating panel:
                     // transparent and borderless.
                     !hasSidebarRail &&

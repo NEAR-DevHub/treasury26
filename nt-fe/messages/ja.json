@@ -238,8 +238,7 @@
             }
         },
         "createTreasury": {
-            "title": "トレジャリーを作成",
-            "description": "チーム用の新しいマルチシグトレジャリーをセットアップ"
+            "title": "トレジャリーを作成"
         },
         "manageTreasuries": {
             "title": "トレジャリーの管理",
@@ -1423,10 +1422,8 @@
         "validation": {
             "nameMin": "トレジャリー名は少なくとも2文字必要です",
             "nameMax": "トレジャリー名は64文字未満である必要があります",
-            "accountMin": "アカウント名は少なくとも2文字必要です",
-            "accountMax": "アカウント名は64文字未満である必要があります",
-            "accountChars": "アカウント名にはラテン文字、数字、ハイフンのみ使用できます",
-            "accountTaken": "このアカウント名はすでに使用されています"
+            "nameTaken": "このトレジャリー名はすでに使用されています",
+            "nameInvalid": "トレジャリー名にはラテン文字または数字を含めてください"
         },
         "votingNote": "投票設定を変更するにはより多くのメンバーが必要です。投票を設定するには別のメンバーを追加してください。",
         "minimumVoteNote": "最低1票の承認が必要です。",
@@ -1434,9 +1431,6 @@
         "addMembers": "メンバーを追加",
         "addMembersInfo": "今メンバーを追加・更新できます。後でいつでも編集可能です。",
         "treasuryName": "トレジャリー名",
-        "treasuryNamePlaceholder": "My Treasury",
-        "accountName": "アカウント名",
-        "accountNameInfo": "これはあなたのトレジャリーの恒久的なアドレスです。トレジャリーURLで使われ、支払いにも表示されます。短くて分かりやすいものを選んでください。後から変更できません。",
         "accountPlaceholder": "my-treasury",
         "continue": "続ける",
         "votingThreshold": "投票しきい値",
@@ -1445,8 +1439,6 @@
         "financialDescription": "支払いと交換のリクエストを承認します。",
         "governance": "Governance",
         "governanceDescription": "設定、メンバー、投票設定を承認します。",
-        "confidential": "機密",
-        "public": "公開",
         "anyone": "誰でも",
         "teamOnly": "チームのみ",
         "soon": "もうすぐ",
@@ -1469,20 +1461,12 @@
         "governanceThreshold": "Governanceしきい値",
         "noDeploymentFee": "🎉 デプロイ手数料無料",
         "noDeploymentFeeDescription": "新しいプロジェクトを支援するため、TREZUは1回限りのデプロイとネットワークストレージ手数料をすべて負担します。",
-        "createButton": "トレジャリーを作成",
         "connectWalletCreate": "トレジャリー作成のためにウォレットを接続",
         "walletNotSupportedTitle": "{wallet} はまだサポートされていません",
         "walletNotSupportedDescription": "今後対応予定です。今は、すでにお持ちの NEAR、Ledger、または EVM ウォレットでサインインしてください。",
         "connectNear": "NEARを接続",
         "connectLedger": "Ledgerを接続",
         "headerDescription": "チームまたはご自身のためにマルチシグトレジャリーを設定します",
-        "selectTreasuryTypeLabel": "トレジャリーの種類を選択",
-        "selectTreasuryTypeError": "トレジャリーの種類を選択してください",
-        "publicCardDescription": "DAO、公共財プロジェクト、オープンな組織に最適です。",
-        "confidentialCardDescription": "財務プライバシーが必要な民間企業やチームに最適です。",
-        "accountPlaceholderUnderscore": "my_treasury",
-        "setupOnUsTitle": "セットアップ費用は当社負担",
-        "setupOnUsDescription": "Trezuがトレジャリー立ち上げ時のネットワーク手数料を負担します。",
         "continueToWallet": "ウォレットへ進む",
         "alreadyHaveTreasuryLabel": "すでにトレジャリーをお持ちですか？",
         "signInLabel": "サインイン",
@@ -1536,7 +1520,11 @@
             "configuringMembers": "トレジャリーのメンバーを設定中",
             "provisioningBulkPayment": "一括支払いを設定中",
             "finalizingSetup": "セットアップを完了中"
-        }
+        },
+        "subtitle": "作成は無料。ワンクリックでトレジャリーが稼働します。",
+        "namePlaceholder": "トレジャリー名",
+        "clearName": "トレジャリー名をクリア",
+        "createCta": "トレジャリーを作成"
     },
     "manageTreasuries": {
         "warningOne": "少なくとも1つのトレジャリーは利用可能なままにする必要があります",
@@ -1735,7 +1723,7 @@
         "productSupportDescription": "サポートが必要な場合はチームへご連絡ください。"
     },
     "progressModal": {
-        "titleCreating": "トレジャリーを作成中...",
+        "titleCreating": "トレジャリーを作成中",
         "titleDone": "トレジャリーが作成されました",
         "titleFailed": "トレジャリーの作成に失敗しました"
     },
