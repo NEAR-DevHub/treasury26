@@ -63,24 +63,24 @@ import {
     computeQuoteNetworkFee,
     isIntentsCrossChainToken,
     isIntentsToken,
-    isNearChainFtToken,
-    isNearChainNativeToken,
 } from "@/lib/intents-fee";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
-import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import {
     buildIntentsTransferProposal,
     buildNativeNearIntentsKind,
     buildNearFtIntentsKind,
 } from "@/lib/near-proposal-builders";
-import {
-    isEthImplicitNearAddress,
-    isValidNearAddressFormat,
-} from "@/lib/near-validation";
+import { isValidNearAddressFormat } from "@/lib/near-validation";
 import {
     hasNearComAddressPrefix,
     stripNearComAddressPrefix,
 } from "@/lib/nearcom-address";
+import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
+import {
+    classifyPaymentToken,
+    normalizePaymentRecipient,
+    shouldUseDirectPaymentTransfer,
+} from "@/lib/payment-route";
 import type { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
 import { parseTokenQueryParam } from "@/lib/token-query-param";
 import { cn, encodeToMarkdown } from "@/lib/utils";
@@ -542,14 +542,6 @@ function Step2({
 
 type PaymentFormValues = z.infer<ReturnType<typeof buildPaymentFormSchema>>;
 
-type PaymentTokenClassification = {
-    isNearNativeToken: boolean;
-    isNearFtToken: boolean;
-    isNearComRoute: boolean;
-    intentsOriginAsset: string;
-    tokenForIntentsQuote: Token;
-};
-
 /** Decimals for the quote `amount`: destination asset for EXACT_OUTPUT, origin for EXACT_INPUT. */
 function getQuoteAmountDecimals(
     token: Token,
@@ -569,31 +561,6 @@ function getQuoteAmountDecimals(
     const bridgeAsset = findBridgeAssetForToken(bridgeAssets, token);
     return bridgeAsset?.networks.find((n) => n.id === destinationNetwork)
         ?.decimals;
-}
-
-function classifyPaymentToken(
-    token: Token,
-    destinationNetwork?: string,
-): PaymentTokenClassification {
-    const isNearNativeToken = isNearChainNativeToken(token);
-    const isNearFtToken = isNearChainFtToken(token);
-    const isNearComRoute = isNearComNetwork(destinationNetwork);
-    const intentsOriginAsset = isNearNativeToken
-        ? "nep141:wrap.near"
-        : isNearFtToken
-          ? `nep141:${token.address}`
-          : token.address;
-
-    return {
-        isNearNativeToken,
-        isNearFtToken,
-        isNearComRoute,
-        intentsOriginAsset,
-        tokenForIntentsQuote:
-            intentsOriginAsset === token.address
-                ? token
-                : { ...token, address: intentsOriginAsset },
-    };
 }
 
 function buildIntentTransferDescription(
@@ -856,50 +823,28 @@ export default function PaymentsPage() {
         : null;
 
     const watchedTokenClassification = useMemo(
-        () =>
-            watchedToken
-                ? classifyPaymentToken(watchedToken, watchedDestinationNetwork)
-                : null,
-        [watchedToken, watchedDestinationNetwork],
+        () => (watchedToken ? classifyPaymentToken(watchedToken) : null),
+        [watchedToken],
     );
-    const isWatchedNearNativeToken =
-        watchedTokenClassification?.isNearNativeToken ?? false;
-    const isWatchedNearFtToken =
-        watchedTokenClassification?.isNearFtToken ?? false;
-
-    // Strip nearcom: for format checks only — prefix is routing/display.
-    const normalizedWatchedAddress = stripNearComAddressPrefix(
-        watchedAddress ?? "",
-    ).toLowerCase();
-    const isWatchedEthImplicit = isEthImplicitNearAddress(
-        normalizedWatchedAddress,
-    );
-    const isWatchedNearRecipient =
-        isValidNearAddressFormat(normalizedWatchedAddress) &&
-        !isWatchedEthImplicit;
-    const isWatchedNearComRoute =
-        watchedTokenClassification?.isNearComRoute ?? false;
 
     // True when we'll send via a direct Transfer (not through Intents).
     const isWatchedDirectTransfer =
-        !isConfidential &&
-        !isWatchedNearComRoute &&
-        isWatchedNearRecipient &&
-        (isWatchedNearNativeToken || isWatchedNearFtToken);
+        !!watchedToken &&
+        shouldUseDirectPaymentTransfer({
+            token: watchedToken,
+            destinationNetwork: watchedDestinationNetwork,
+            recipient: watchedAddress ?? "",
+            isConfidential,
+        });
 
     // Token object to use for the 1Click quote. For native NEAR and NEAR FT we
     // swap in the nep141: prefix so the hook enables and shows a fee preview.
     // Null while assets load (before default token is seeded).
     const quoteToken = useMemo((): Token | null => {
         if (!watchedToken || !watchedTokenClassification) return null;
-        if (isConfidential || isWatchedDirectTransfer) return watchedToken;
+        if (isWatchedDirectTransfer) return watchedToken;
         return watchedTokenClassification.tokenForIntentsQuote;
-    }, [
-        watchedToken,
-        isConfidential,
-        isWatchedDirectTransfer,
-        watchedTokenClassification,
-    ]);
+    }, [watchedToken, isWatchedDirectTransfer, watchedTokenClassification]);
 
     // Whether this payment will go through the Intents protocol.
     const isViaIntents = !!quoteToken && isIntentsToken(quoteToken);
@@ -1262,31 +1207,18 @@ export default function PaymentsPage() {
             // Form may include nearcom: (routing/display). 1Click gets bare via
             // buildIntentsQuoteRequest; direct transfers use bareAddress.
             const trimmedAddress = data.address.trim();
-            const bareAddress = stripNearComAddressPrefix(trimmedAddress);
-            const tokenClassification = classifyPaymentToken(
+            const bareAddress = normalizePaymentRecipient(trimmedAddress);
+            const tokenClassification = classifyPaymentToken(token);
+            const { isNearNativeToken } = tokenClassification;
+
+            const shouldUseDirectTransfer = shouldUseDirectPaymentTransfer({
                 token,
-                data.destinationNetwork,
-            );
-            const normalizedNearAddress = bareAddress.toLowerCase();
-            const { isNearNativeToken, isNearFtToken, isNearComRoute } =
-                tokenClassification;
+                destinationNetwork: data.destinationNetwork,
+                recipient: trimmedAddress,
+                isConfidential,
+            });
 
-            const isEthImplicit = isEthImplicitNearAddress(
-                normalizedNearAddress,
-            );
-            const isNearRecipient =
-                isValidNearAddressFormat(normalizedNearAddress) &&
-                !isEthImplicit;
-
-            const shouldUseDirectTransfer =
-                !isConfidential &&
-                !isNearComRoute &&
-                isNearRecipient &&
-                (isNearNativeToken || isNearFtToken);
-
-            const shouldUseIntents = isConfidential
-                ? isIntentsToken(token)
-                : !shouldUseDirectTransfer;
+            const shouldUseIntents = !shouldUseDirectTransfer;
 
             const directTransferAmount = Big(data.amount)
                 .mul(Big(10).pow(token.decimals))
