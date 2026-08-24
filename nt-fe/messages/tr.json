@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "Tümü",
-            "sent": "Gönderildi",
-            "received": "Alındı",
-            "stakingRewards": "Staking Ödülleri",
-            "exchange": "Takas"
+            "send": "Gönder",
+            "receive": "Al",
+            "swap": "Takas",
+            "stakingRewards": "Staking Ödülleri"
         },
         "searchPlaceholder": "İşlem hash'i ile ara",
         "searchPlaceholderShort": "İşlem hash'i",

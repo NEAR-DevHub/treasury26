@@ -12,6 +12,14 @@ import { useState, useRef, useEffect, useCallback } from "react";
 interface InputProps extends React.ComponentProps<typeof ShadcnInput> {
     clearable?: boolean;
     search?: boolean;
+    /**
+     * Extra classes for the <input> alone. `className` also lands on the
+     * wrapper, so box styling (border, background) belongs here — otherwise it
+     * gets painted twice.
+     */
+    inputClassName?: string;
+    /** Extra classes for the leading search icon — size, offset and color. */
+    searchIconClassName?: string;
     showAlwaysClear?: boolean;
     onClear?: () => void;
 }
@@ -22,6 +30,8 @@ export function Input({
     onChange,
     clearable = true,
     search,
+    inputClassName,
+    searchIconClassName,
     showAlwaysClear,
     onClear,
     ...props
@@ -40,7 +50,10 @@ export function Input({
             {search && (
                 <Icon
                     icon={Search01Icon}
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    className={cn(
+                        "absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground",
+                        searchIconClassName,
+                    )}
                 />
             )}
             <ShadcnInput
@@ -55,6 +68,7 @@ export function Input({
                     search && "pl-8",
                     showClear && "pr-8",
                     className,
+                    inputClassName,
                 )}
                 {...props}
             />

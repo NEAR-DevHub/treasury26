@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "Semua",
-            "sent": "Terkirim",
-            "received": "Diterima",
-            "stakingRewards": "Imbalan Staking",
-            "exchange": "Tukar"
+            "send": "Kirim",
+            "receive": "Terima",
+            "swap": "Tukar",
+            "stakingRewards": "Imbalan Staking"
         },
         "searchPlaceholder": "Cari berdasarkan hash transaksi",
         "searchPlaceholderShort": "Hash transaksi",

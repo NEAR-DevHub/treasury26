@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "הכל",
-            "sent": "נשלחו",
-            "received": "התקבלו",
-            "stakingRewards": "תגמולי סטייקינג",
-            "exchange": "החלפה"
+            "send": "שליחה",
+            "receive": "קבלה",
+            "swap": "החלפה",
+            "stakingRewards": "תגמולי סטייקינג"
         },
         "searchPlaceholder": "חיפוש לפי גיבוב עסקה",
         "searchPlaceholderShort": "גיבוב עסקה",

@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "Tất cả",
-            "sent": "Đã gửi",
-            "received": "Đã nhận",
-            "stakingRewards": "Phần thưởng Staking",
-            "exchange": "Trao đổi"
+            "send": "Gửi",
+            "receive": "Nhận",
+            "swap": "Trao đổi",
+            "stakingRewards": "Phần thưởng Staking"
         },
         "searchPlaceholder": "Tìm theo hash giao dịch",
         "searchPlaceholderShort": "Hash giao dịch",

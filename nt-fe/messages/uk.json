@@ -412,10 +412,10 @@
         },
         "tabs": {
             "all": "Усі",
-            "sent": "Надіслані",
-            "received": "Отримані",
-            "stakingRewards": "Винагороди за стейкінг",
-            "exchange": "Обмін"
+            "send": "Надіслати",
+            "receive": "Отримати",
+            "swap": "Обміняти",
+            "stakingRewards": "Винагороди за стейкінг"
         },
         "searchPlaceholder": "Шукати за хешем транзакції",
         "searchPlaceholderShort": "Хеш транзакції",

@@ -3,8 +3,8 @@
 import {
     ArrowRight01Icon,
     Clock01Icon,
-    LoaderCircleIcon,
     HelpCircleIcon,
+    LoaderCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
@@ -57,6 +57,8 @@ const CELL_PADDING = [
     "px-3",
     "px-3 text-right",
 ] as const;
+
+const HEAD_CLASS = "h-10 text-sm font-semibold normal-case leading-[1.5]";
 
 /**
  * The table paints a white sheet floating on the card's tertiary surface: the
@@ -241,40 +243,29 @@ export function ActivityTable({
                     <TableHeader className="border-0 bg-transparent">
                         <TableRow className="border-0 hover:bg-transparent">
                             <TableHead
-                                className={cn(
-                                    "h-10 text-sm font-semibold normal-case",
-                                    CELL_PADDING[0],
-                                )}
+                                className={cn(HEAD_CLASS, CELL_PADDING[0])}
                             >
                                 {t("table.type")}
                             </TableHead>
                             <TableHead
-                                className={cn(
-                                    "h-10 text-sm font-semibold normal-case",
-                                    CELL_PADDING[1],
-                                )}
+                                className={cn(HEAD_CLASS, CELL_PADDING[1])}
                             >
                                 {t("table.transaction")}
                             </TableHead>
                             <TableHead
-                                className={cn(
-                                    "h-10 text-sm font-semibold normal-case",
-                                    CELL_PADDING[2],
-                                )}
+                                className={cn(HEAD_CLASS, CELL_PADDING[2])}
                             >
                                 {t("table.from")}
                             </TableHead>
                             <TableHead
-                                className={cn(
-                                    "h-10 text-sm font-semibold normal-case",
-                                    CELL_PADDING[3],
-                                )}
+                                className={cn(HEAD_CLASS, CELL_PADDING[3])}
                             >
                                 {t("table.to")}
                             </TableHead>
                             <TableHead
                                 className={cn(
-                                    "h-10 w-[278px] text-sm font-semibold normal-case",
+                                    HEAD_CLASS,
+                                    "w-[278px]",
                                     CELL_PADDING[4],
                                 )}
                             >
@@ -283,7 +274,7 @@ export function ActivityTable({
                                     <Tooltip content={t("table.hashTooltip")}>
                                         <Icon
                                             icon={HelpCircleIcon}
-                                            className="size-4"
+                                            className="size-4 text-general-muted-foreground"
                                         />
                                     </Tooltip>
                                 </span>
