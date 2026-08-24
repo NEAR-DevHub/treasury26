@@ -7,6 +7,7 @@ import {
     File01Icon,
     LogoutSquare01Icon,
     Moon02Icon,
+    SunMediumIcon,
     User03Icon,
     UserIcon,
 } from "@hugeicons/core-free-icons";
@@ -189,8 +190,10 @@ export function SidebarProfileMenu({
                         className={accountMenuItemClass}
                         onClick={() => setTheme(isDarkTheme ? "light" : "dark")}
                     >
-                        <Icon icon={Moon02Icon} />
-                        {tHeader("darkMode")}
+                        <Icon icon={isDarkTheme ? SunMediumIcon : Moon02Icon} />
+                        {isDarkTheme
+                            ? tHeader("lightMode")
+                            : tHeader("darkMode")}
                     </button>
                     <LanguageSwitcher asMenuRow align="start" />
                 </div>

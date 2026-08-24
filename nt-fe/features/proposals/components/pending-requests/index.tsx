@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
-import { EmptyState } from "@/components/empty-state";
+import { EmptyState, emptyRowFadeMaskStyle } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SlotWarning } from "@/components/warning-message";
@@ -75,15 +75,29 @@ function PendingRequestsGridSkeleton({
     );
 }
 
-function PendingRequestsEmpty() {
+function PendingRequestsEmpty({
+    neverHadRequests,
+}: {
+    neverHadRequests: boolean;
+}) {
     const t = useTranslations("requests.pending");
     return (
         <div className="flex flex-col gap-4">
             <PendingRequestItemSkeleton />
             <EmptyState
-                title={t("emptyTitle")}
-                description={t("emptyDescription")}
-                skeleton={<PendingRequestItemSkeleton opacity={0.2} />}
+                title={
+                    neverHadRequests ? t("emptyNeverTitle") : t("emptyTitle")
+                }
+                description={
+                    neverHadRequests
+                        ? t("emptyNeverDescription")
+                        : t("emptyDescription")
+                }
+                skeleton={
+                    <div style={emptyRowFadeMaskStyle}>
+                        <PendingRequestItemSkeleton />
+                    </div>
+                }
                 className="py-0"
             />
         </div>
@@ -295,8 +309,15 @@ export function PendingRequests() {
             },
             !isHidden,
         );
-
-    const isLoading = isRequestsLoading;
+    const hasPendingRequests = (pendingRequests?.proposals?.length ?? 0) > 0;
+    const { data: anyRequests, isLoading: isAnyRequestsLoading } = useProposals(
+        treasuryId,
+        { page_size: 1 },
+        !isHidden && !isRequestsLoading && !hasPendingRequests,
+    );
+    const neverHadRequests = (anyRequests?.total ?? 0) === 0;
+    const isLoading =
+        isRequestsLoading || (!hasPendingRequests && isAnyRequestsLoading);
 
     if (isHidden) {
         return (
@@ -316,8 +337,6 @@ export function PendingRequests() {
     if (isLoading) {
         return <PendingRequestsSkeleton />;
     }
-
-    const hasPendingRequests = (pendingRequests?.proposals?.length ?? 0) > 0;
 
     return (
         <>
@@ -385,7 +404,7 @@ export function PendingRequests() {
                             ))}
                     </div>
                 ) : (
-                    <PendingRequestsEmpty />
+                    <PendingRequestsEmpty neverHadRequests={neverHadRequests} />
                 )}
             </div>
             <VoteModal

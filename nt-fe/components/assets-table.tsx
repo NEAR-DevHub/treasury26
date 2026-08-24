@@ -51,19 +51,25 @@ const SORT_BUTTON_CLASS =
     "inline-flex h-auto items-center gap-1.5 px-0! py-0! text-sm/5 font-medium text-gray-500 hover:bg-transparent hover:text-gray-900 dark:text-gray-400 dark:hover:bg-transparent dark:hover:text-white";
 
 /** Rounds the row block into an inset card, like the near.com vaults table. */
+const TABLE_CARD_FILL_CLASS = [
+    // Paint on cells, not tbody — a tbody fill is square and bleeds over
+    // the rounded card border at the top corners.
+    "[&>tr>td]:bg-white dark:[&>tr>td]:bg-gray-850",
+    "[&>tr+tr>td]:border-t [&>tr+tr>td]:border-gray-200 dark:[&>tr+tr>td]:border-white/5",
+    "[&>tr:first-child>td:first-child]:rounded-tl-lg",
+    "max-sm:[&>tr:first-child>td:nth-child(2)]:rounded-tr-lg sm:[&>tr:first-child>td:last-child]:rounded-tr-lg",
+    "[&>tr:last-child>td:first-child]:rounded-bl-lg",
+    "max-sm:[&>tr:last-child>td:nth-child(2)]:rounded-br-lg sm:[&>tr:last-child>td:last-child]:rounded-br-lg",
+].join(" ");
+
 const TABLE_CARD_CLASS = [
-    "bg-white dark:bg-gray-850",
+    TABLE_CARD_FILL_CLASS,
     "[&>tr>td]:border-gray-200 dark:[&>tr>td]:border-white/5",
-    "[&>tr+tr>td]:border-t",
     "[&>tr>td:first-child]:border-l",
     // Price/weight/chevron cells are `hidden` below `sm`, so they stay
     // :last-child in the DOM. On mobile the visible last column is Balance.
     "max-sm:[&>tr>td:nth-child(2)]:border-r sm:[&>tr>td:last-child]:border-r",
     "[&>tr:first-child>td]:border-t [&>tr:last-child>td]:border-b",
-    "[&>tr:first-child>td:first-child]:rounded-tl-lg",
-    "max-sm:[&>tr:first-child>td:nth-child(2)]:rounded-tr-lg sm:[&>tr:first-child>td:last-child]:rounded-tr-lg",
-    "[&>tr:last-child>td:first-child]:rounded-bl-lg",
-    "max-sm:[&>tr:last-child>td:nth-child(2)]:rounded-br-lg sm:[&>tr:last-child>td:last-child]:rounded-br-lg",
 ].join(" ");
 
 function toUsd(rawAmount: Big.Big, decimals: number, price: number): number {
@@ -294,9 +300,9 @@ export function AssetsTable({ aggregatedTokens }: Props) {
     return (
         <div className="overflow-hidden">
             <div className="px-1 pb-1">
-                <Table className="min-w-full table-fixed border-separate border-spacing-0 divide-y divide-gray-200 dark:divide-white/10">
-                    <TableHeader className="border-0 bg-transparent">
-                        <TableRow className="hover:bg-transparent">
+                <Table className="min-w-full table-fixed border-separate border-spacing-0">
+                    <TableHeader className="border-0 bg-transparent [&_tr]:border-0">
+                        <TableRow className="border-0 hover:bg-transparent">
                             {renderSortableHead("token", t("columnAsset"), {
                                 headClassName:
                                     "overflow-hidden pr-3 pl-4 sm:pl-5 w-[62%] sm:w-[26%]",
@@ -316,7 +322,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                     "text-right hidden sm:table-cell",
                                 buttonClassName: "ml-auto",
                             })}
-                            <TableHead className="hidden w-8 p-0 sm:table-cell sm:w-10" />
+                            <TableHead className="hidden w-14 p-0 sm:table-cell sm:w-16" />
                         </TableRow>
                     </TableHeader>
                     <TableBody className={TABLE_CARD_CLASS}>
@@ -347,7 +353,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                 <TableRow
                                     key={asset.id}
                                     className={cn(
-                                        "hover:bg-gray-50 dark:hover:bg-white/3",
+                                        "border-0 hover:bg-transparent hover:[&>td]:bg-gray-50 dark:hover:[&>td]:bg-white/3",
                                         actions && "cursor-pointer",
                                     )}
                                     data-testid={`asset-row-${asset.id}`}
@@ -391,7 +397,7 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                         availableUsd={availableUsd}
                                         weight={weight}
                                     />
-                                    <TableCell className="hidden px-2 py-3 pr-3 sm:table-cell sm:pr-4">
+                                    <TableCell className="hidden py-3 pr-4 pl-2 sm:table-cell sm:pr-5">
                                         {actions ? (
                                             <Icon
                                                 icon={ArrowDown01Icon}
@@ -453,8 +459,8 @@ export function AssetsTableSkeleton({
     return (
         <div className="relative">
             <Table className="min-w-full table-fixed border-separate border-spacing-0">
-                <TableHeader className="border-0 bg-transparent">
-                    <TableRow className="hover:bg-transparent">
+                <TableHeader className="border-0 bg-transparent [&_tr]:border-0">
+                    <TableRow className="border-0 hover:bg-transparent">
                         <TableHead
                             className={cn(
                                 SKELETON_HEAD_CLASS,
@@ -487,15 +493,19 @@ export function AssetsTableSkeleton({
                         >
                             {t("weight")}
                         </TableHead>
-                        <TableHead className="hidden w-3 p-0 sm:table-cell sm:w-5" />
+                        <TableHead className="hidden w-14 p-0 sm:table-cell sm:w-16" />
                     </TableRow>
                 </TableHeader>
-                <TableBody className={TABLE_CARD_CLASS}>
+                <TableBody
+                    className={
+                        overlay ? TABLE_CARD_FILL_CLASS : TABLE_CARD_CLASS
+                    }
+                >
                     {Array.from({ length: 3 }).map((_, idx) => (
                         <TableRow
                             key={`skeleton-row-${idx}`}
                             className={cn(
-                                "hover:bg-transparent",
+                                "border-0 hover:bg-transparent",
                                 overlay &&
                                     "**:data-[slot=skeleton]:animate-none",
                             )}
@@ -514,28 +524,35 @@ export function AssetsTableSkeleton({
                                 <div className="flex min-w-0 items-center gap-3">
                                     <Skeleton className="size-9 shrink-0 rounded-full" />
                                     <div className="flex min-w-0 flex-col gap-1.5">
-                                        <Skeleton className="h-3.5 w-14" />
-                                        <Skeleton className="h-3 w-20" />
+                                        <Skeleton className="h-3.5 w-14 rounded-full" />
+                                        <Skeleton className="h-3 w-20 rounded-full" />
                                     </div>
                                 </div>
                             </TableCell>
                             <TableCell className="px-3 py-3 text-right">
-                                <Skeleton className="ml-auto h-3.5 w-16" />
+                                <div className="ml-auto flex flex-col items-end gap-1.5">
+                                    <Skeleton className="h-3.5 w-16 rounded-full" />
+                                    <Skeleton className="h-3 w-24 rounded-full" />
+                                </div>
                             </TableCell>
                             <TableCell className="hidden px-3 py-3 sm:table-cell">
-                                <Skeleton className="ml-auto h-3.5 w-24" />
+                                <Skeleton className="ml-auto h-3.5 w-20 rounded-full" />
                             </TableCell>
                             <TableCell className="hidden px-3 py-3 sm:table-cell">
+                                <Skeleton className="ml-auto h-3.5 w-20 rounded-full" />
+                            </TableCell>
+                            <TableCell className="hidden py-3 pr-4 pl-2 sm:table-cell sm:pr-5">
                                 <Skeleton className="ml-auto size-8 shrink-0 rounded-full" />
                             </TableCell>
-                            <TableCell className="hidden p-0 sm:table-cell" />
                         </TableRow>
                     ))}
                 </TableBody>
             </Table>
             {overlay ? (
-                <div className="pointer-events-none absolute inset-x-0 top-11 bottom-0 flex items-center justify-center px-6">
-                    {overlay}
+                <div className="pointer-events-none absolute inset-x-0 top-10 bottom-0 overflow-hidden rounded-lg border border-gray-200 px-6 dark:border-white/5">
+                    <div className="flex h-full items-center justify-center">
+                        {overlay}
+                    </div>
                 </div>
             ) : null}
         </div>

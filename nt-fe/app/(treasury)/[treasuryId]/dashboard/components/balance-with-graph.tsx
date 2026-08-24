@@ -6,7 +6,6 @@ import {
     Coins02Icon,
     InformationCircleIcon,
     SentIcon,
-    Shield01Icon,
     Tick01Icon,
     ViewIcon,
     ViewOffIcon,
@@ -177,7 +176,6 @@ export default function BalanceWithGraph({
         [],
     );
     const isConfidential = isConfidentialTreasury && isGuestTreasury;
-    const showConfidentialShield = isConfidentialTreasury && !isGuestTreasury;
     // Group tokens by symbol (to handle same token on different networks)
     const groupedTokens = useMemo(() => {
         const grouped = new Map<string, GroupedToken>();
@@ -567,18 +565,6 @@ export default function BalanceWithGraph({
                     <div className="flex-1">
                         <p className="flex items-center gap-1.5 font-medium text-base/[1.2] text-gray-500">
                             {t("totalBalance")}
-                            {showConfidentialShield && (
-                                <Tooltip
-                                    content={tCommon("confidentialDataTooltip")}
-                                >
-                                    <span className="inline-flex">
-                                        <Icon
-                                            icon={Shield01Icon}
-                                            className="fill-foreground"
-                                        />
-                                    </span>
-                                </Tooltip>
-                            )}
                             {!isConfidential &&
                                 selectedToken === "all" &&
                                 chartExcludedSymbols.length > 0 && (

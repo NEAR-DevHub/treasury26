@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "사이드바 토글",
         "toggleTheme": "테마 토글",
-        "darkMode": "다크 모드"
+        "darkMode": "다크 모드",
+        "lightMode": "라이트 모드"
     },
     "nav": {
         "dashboard": "대시보드",
@@ -682,7 +683,9 @@
             "title": "대기 중인 요청",
             "viewAll": "전체 보기",
             "emptyTitle": "모두 처리되었습니다!",
-            "emptyDescription": "대기 중인 요청이 없습니다."
+            "emptyDescription": "대기 중인 요청이 없습니다.",
+            "emptyNeverTitle": "아직 최근 요청이 없습니다.",
+            "emptyNeverDescription": "대기 중인 요청이 여기에 표시됩니다"
         }
     },
     "proposals": {
@@ -2359,6 +2362,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "나중에",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2397,15 +2401,12 @@
             "description": "지금 이 트레저리를 볼 수 있습니다. 멤버가 승인하면 역할에 따라 요청 생성, 투표 또는 자금 관리를 할 수 있습니다."
         },
         "infoBox": {
-            "title": "Trezu에서 더 많은 것을 얻으세요",
+            "title": "near.com for business에서 더 많은 기능 이용",
             "close": "닫기",
-            "description": "다른 사람들이 트레저리를 어떻게 사용하는지 확인하고, 데모를 사용해 보고, 문서를 통해 기능을 알아보세요.",
-            "demoTitle": "Trezu 데모 살펴보기",
-            "demoDescription": "실시간 데모 계정의 작동을 확인하세요.",
             "docsTitle": "문서",
             "docsDescription": "문서에서 모든 기능에 대해 알아보세요.",
-            "videoTitle": "데모 시청",
-            "videoDescription": "Trezu 작동 방식을 보여주는 짧은 비디오를 시청하세요."
+            "videoTitle": "둘러보기 시청",
+            "videoDescription": "짧은 영상으로 사용 방법을 확인하세요"
         }
     },
     "warnings": {

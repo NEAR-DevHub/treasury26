@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "Basculer la barre latérale",
         "toggleTheme": "Basculer le thème",
-        "darkMode": "Mode sombre"
+        "darkMode": "Mode sombre",
+        "lightMode": "Mode clair"
     },
     "nav": {
         "dashboard": "Tableau de bord",
@@ -682,7 +683,9 @@
             "title": "Demandes en attente",
             "viewAll": "Tout voir",
             "emptyTitle": "Tout est à jour !",
-            "emptyDescription": "Il n'y a aucune demande en attente."
+            "emptyDescription": "Il n'y a aucune demande en attente.",
+            "emptyNeverTitle": "Aucune demande récente pour le moment.",
+            "emptyNeverDescription": "Vos demandes en attente apparaîtront ici"
         }
     },
     "proposals": {
@@ -2359,6 +2362,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "Plus tard",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2397,15 +2401,12 @@
             "description": "Vous pouvez déjà consulter cette trésorerie. Lorsqu'un membre vous approuvera, vous pourrez créer des demandes, voter ou gérer les fonds selon votre rôle."
         },
         "infoBox": {
-            "title": "Tirez le meilleur parti de Trezu",
+            "title": "Tirez plus de near.com for business",
             "close": "Fermer",
-            "description": "Découvrez comment d'autres utilisent la trésorerie, essayez la démo et consultez la documentation pour découvrir les fonctionnalités.",
-            "demoTitle": "Explorer la démo Trezu",
-            "demoDescription": "Voyez un compte de démo en direct en action.",
             "docsTitle": "Documentation",
             "docsDescription": "Découvrez toutes les fonctionnalités dans la documentation.",
-            "videoTitle": "Regarder la démo",
-            "videoDescription": "Regardez une courte vidéo montrant comment Trezu fonctionne."
+            "videoTitle": "Regarder le tutoriel",
+            "videoDescription": "Découvrez comment ça marche en une courte vidéo"
         }
     },
     "warnings": {

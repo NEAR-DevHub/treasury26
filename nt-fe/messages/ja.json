@@ -77,7 +77,8 @@
     "header": {
         "toggleSidebar": "サイドバーを切り替え",
         "toggleTheme": "テーマを切り替え",
-        "darkMode": "ダークモード"
+        "darkMode": "ダークモード",
+        "lightMode": "ライトモード"
     },
     "nav": {
         "dashboard": "ダッシュボード",
@@ -682,7 +683,9 @@
             "title": "保留中のリクエスト",
             "viewAll": "すべて表示",
             "emptyTitle": "すべて対応済みです!",
-            "emptyDescription": "保留中のリクエストはありません。"
+            "emptyDescription": "保留中のリクエストはありません。",
+            "emptyNeverTitle": "最近のリクエストはまだありません。",
+            "emptyNeverDescription": "保留中のリクエストはここに表示されます"
         }
     },
     "proposals": {
@@ -2359,6 +2362,7 @@
             "getStarted": "Get started",
             "setupThresholdTitle": "Setup threshold",
             "useSoloLink": "I will use solo",
+            "setupThresholdLater": "後で",
             "createPaymentShort": "Create a first payment"
         },
         "welcome": {
@@ -2397,15 +2401,12 @@
             "description": "このトレジャリーは今すぐ閲覧できます。メンバーが承認すると、ロールに応じてリクエストの作成、投票、資金管理ができるようになります。"
         },
         "infoBox": {
-            "title": "Trezuをもっと活用",
+            "title": "near.com for businessをもっと活用",
             "close": "閉じる",
-            "description": "他のユーザーがどのようにトレジャリーを使っているかを発見し、デモを試し、ドキュメントで機能を学びましょう。",
-            "demoTitle": "Trezuデモを探索",
-            "demoDescription": "ライブのデモアカウントを実際に見てみましょう。",
             "docsTitle": "ドキュメント",
             "docsDescription": "ドキュメントですべての機能について学びましょう。",
-            "videoTitle": "デモを見る",
-            "videoDescription": "Trezuの動作を示す短い動画をご覧ください。"
+            "videoTitle": "ウォークスルーを見る",
+            "videoDescription": "短い動画で使い方を見る"
         }
     },
     "warnings": {

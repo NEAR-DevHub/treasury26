@@ -225,7 +225,10 @@ export function InlineNextButton({
                 disabled={loading}
             >
                 {loading && (
-                    <Icon icon={LoaderCircleIcon} className="mr-2 animate-spin" />
+                    <Icon
+                        icon={LoaderCircleIcon}
+                        className="mr-2 animate-spin"
+                    />
                 )}
                 {text}
             </Button>

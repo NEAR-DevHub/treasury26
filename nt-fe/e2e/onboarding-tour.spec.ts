@@ -32,6 +32,16 @@ const TREASURY_POLICY = {
     bounty_forgiveness_period: "604800000000000",
 };
 
+const TREASURY_POLICY_WITH_MEMBER = {
+    ...TREASURY_POLICY,
+    roles: [
+        {
+            ...TREASURY_POLICY.roles[0],
+            kind: { Group: [ACCOUNT_ID, "alice.near"] },
+        },
+    ],
+};
+
 const SUBSCRIPTION = {
     accountId: TREASURY_ID,
     planType: "free",
@@ -127,10 +137,12 @@ async function setupDashboardMocks(
     options?: {
         assets?: typeof TREASURY_ASSETS;
         proposals?: typeof EMPTY_PROPOSALS;
+        policy?: typeof TREASURY_POLICY;
     },
 ) {
     const assets = options?.assets ?? TREASURY_ASSETS;
     const proposals = options?.proposals ?? EMPTY_PROPOSALS;
+    const policy = options?.policy ?? TREASURY_POLICY;
     await seedMockWalletAccount(page, ACCOUNT_ID, "init");
 
     await page.route("**/*", async (route) => {
@@ -192,7 +204,7 @@ async function setupDashboardMocks(
             return route.fulfill({
                 status: 200,
                 contentType: "application/json",
-                body: JSON.stringify(TREASURY_POLICY),
+                body: JSON.stringify(policy),
             });
         }
 
@@ -863,6 +875,9 @@ test.describe("Onboarding – Progress widget", () => {
 
         await expect(page.getByText("Add a team member")).toBeVisible();
         await expect(page.getByText("I will use solo")).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Later" }),
+        ).not.toBeVisible();
         await expect(page.getByText("Setup threshold")).toBeVisible();
         await expect(page.getByText("Add your first assets")).toBeVisible();
         await expect(page.getByText("Create a first payment")).toBeVisible();
@@ -891,6 +906,33 @@ test.describe("Onboarding – Progress widget", () => {
             timeout: 15000,
         });
         await expect(page.getByText(/set up your treasury/i)).not.toBeVisible();
+    });
+
+    test("sidebar Get started card offers Later on setup threshold after a member is added", async ({
+        page,
+    }) => {
+        await setupDashboardMocks(page, {
+            assets: EMPTY_ASSETS,
+            policy: TREASURY_POLICY_WITH_MEMBER,
+        });
+        await gotoDashboardWithStorage(page, {
+            "welcome-dismissed": "true",
+        });
+
+        await expect(page.getByText("Get started")).toBeVisible({
+            timeout: 15000,
+        });
+        await expect(page.getByText("1/4")).toBeVisible();
+        await expect(page.getByText("I will use solo")).not.toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Later" }).first(),
+        ).toBeVisible();
+
+        await page.getByRole("button", { name: "Later" }).first().click();
+        await expect(page.getByText("2/4")).toBeVisible();
+        await expect(
+            page.getByRole("button", { name: "Later" }),
+        ).not.toBeVisible();
     });
 
     test("sidebar Get started card advances after choosing solo", async ({

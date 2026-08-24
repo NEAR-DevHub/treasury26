@@ -19,6 +19,14 @@ interface EmptyStateProps {
 
 const ICON_CLASS_NAME = "size-5 text-muted-foreground";
 
+/** Fades a single empty-state row so it stays readable but not fully solid. */
+export const emptyRowFadeMaskStyle = {
+    maskImage:
+        "linear-gradient(to bottom, rgb(0 0 0 / 0.55) 0%, rgb(0 0 0 / 0.2) 100%)",
+    WebkitMaskImage:
+        "linear-gradient(to bottom, rgb(0 0 0 / 0.55) 0%, rgb(0 0 0 / 0.2) 100%)",
+} as const;
+
 // Hugeicons ship icons as plain svg data arrays, not components
 const isHugeicon = (icon: EmptyStateIcon): icon is IconSvgElement =>
     Array.isArray(icon);

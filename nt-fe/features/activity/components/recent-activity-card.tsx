@@ -4,7 +4,6 @@ import {
     ArrowDown02Icon,
     ArrowRight01Icon,
     LoaderCircleIcon,
-    Shield01Icon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -15,7 +14,6 @@ import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
 import { Icon } from "@/components/icon";
-import { Tooltip } from "@/components/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseWarningCopy } from "@/components/warning-message";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
@@ -348,7 +346,6 @@ export function RecentActivity() {
     const isMobile = useMediaQuery("(max-width: 640px)");
     const isHistoryRefreshing = useIsHistoryRefreshing();
     const isHidden = isConfidential && isGuestTreasury;
-    const showConfidentialShield = isConfidential && !isGuestTreasury;
     const { getWarning } = useWarnings();
     const activityWarning = getWarning("data.activity");
     const activityWarningMessage = useWarningMessage(
@@ -566,35 +563,27 @@ export function RecentActivity() {
                     <div className="flex min-w-0 flex-1 flex-col">
                         <h2 className="flex items-center gap-1.5 font-semibold text-xl leading-[1.2] tracking-[-0.4px]">
                             {t("recentTitle")}
-                            {showConfidentialShield && (
-                                <Tooltip
-                                    content={tCommon("confidentialDataTooltip")}
-                                >
-                                    <span className="inline-flex">
-                                        <Icon
-                                            icon={Shield01Icon}
-                                            className="fill-foreground"
-                                        />
-                                    </span>
-                                </Tooltip>
-                            )}
                         </h2>
                         <p className="truncate text-muted-foreground text-sm leading-[1.5] sm:text-base">
                             {t("recentSubtitle")}
                         </p>
                     </div>
-                    {!isHidden && (
-                        <Link href={`/${treasuryId}/dashboard/activity`}>
-                            <Button
-                                variant="secondary"
-                                className="bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20"
-                                size={isMobile ? "icon-sm" : "sm"}
-                            >
-                                {!isMobile && <span>{tCommon("seeMore")}</span>}
-                                <Icon icon={ArrowRight01Icon} />
-                            </Button>
-                        </Link>
-                    )}
+                    {!isHidden &&
+                        !showActivityUnavailable &&
+                        activities.length > 0 && (
+                            <Link href={`/${treasuryId}/dashboard/activity`}>
+                                <Button
+                                    variant="secondary"
+                                    className="bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20"
+                                    size={isMobile ? "icon-sm" : "sm"}
+                                >
+                                    {!isMobile && (
+                                        <span>{tCommon("seeMore")}</span>
+                                    )}
+                                    <Icon icon={ArrowRight01Icon} />
+                                </Button>
+                            </Link>
+                        )}
                 </header>
                 <PageCard className="gap-0 overflow-hidden p-2 sm:px-3 sm:py-4">
                     {renderContent()}

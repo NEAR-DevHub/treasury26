@@ -8,6 +8,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { availableBalance } from "@/lib/balance";
 import {
+    canDeferThresholdSetup,
     getOnboardingStepStatus,
     isChangePolicyProposalKind,
     readOnboardingFlag,
@@ -72,6 +73,12 @@ export function useOnboardingSteps() {
         setThresholdSetup(true);
     }, [treasuryId]);
 
+    const markThresholdLater = useCallback(() => {
+        if (!treasuryId) return;
+        writeOnboardingFlag(thresholdSetupKey(treasuryId));
+        setThresholdSetup(true);
+    }, [treasuryId]);
+
     const isLoading =
         isLoadingAssets ||
         isLoadingPayments ||
@@ -82,7 +89,8 @@ export function useOnboardingSteps() {
     const hasAssets =
         tokens.filter((token) => availableBalance(token.balance).gt(0)).length >
         0;
-    const hasTeam = members.length > 1 || soloSelected;
+    const addedMember = members.length > 1;
+    const hasTeam = addedMember || soloSelected;
     const hasPayment = (paymentProposals?.proposals?.length ?? 0) > 0;
     const hasThreshold =
         soloSelected ||
@@ -91,6 +99,10 @@ export function useOnboardingSteps() {
             isChangePolicyProposalKind(proposal.kind),
         ) ??
             false);
+    const canDeferThreshold = canDeferThresholdSetup({
+        addedMember,
+        thresholdComplete: hasThreshold,
+    });
 
     const status = getOnboardingStepStatus({
         hasTeam,
@@ -107,7 +119,9 @@ export function useOnboardingSteps() {
         hasThreshold,
         hasAssets,
         hasPayment,
+        canDeferThreshold,
         status,
         markSolo,
+        markThresholdLater,
     };
 }

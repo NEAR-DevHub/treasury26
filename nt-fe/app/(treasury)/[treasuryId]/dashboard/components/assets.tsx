@@ -22,7 +22,7 @@ export default function Assets({ tokens, state }: Props) {
     const renderContent = () => {
         if (state === "hidden") {
             return (
-                <div className="px-3 pb-3">
+                <div className="px-1 pb-1">
                     <ConfidentialState skeleton={<AssetsTableSkeleton />} />
                 </div>
             );
@@ -30,7 +30,7 @@ export default function Assets({ tokens, state }: Props) {
 
         if (state === "loading" || isHistoryRefreshing) {
             return (
-                <div className="px-3 pb-3">
+                <div className="px-1 pb-1">
                     <AssetsTableSkeleton />
                 </div>
             );
@@ -38,7 +38,7 @@ export default function Assets({ tokens, state }: Props) {
 
         if (aggregatedTokens.length === 0) {
             return (
-                <div className="px-3 pb-3">
+                <div className="px-1 pb-1">
                     <AssetsTableSkeleton
                         overlay={
                             <EmptyState

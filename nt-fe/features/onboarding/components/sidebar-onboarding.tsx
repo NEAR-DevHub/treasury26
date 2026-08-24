@@ -27,8 +27,15 @@ export function GetStartedCard({
     const t = useTranslations("onboarding.progress");
     const router = useRouter();
     const [collapsed, setCollapsed] = useState(false);
-    const { treasuryId, isGuestTreasury, isLoading, status, markSolo } =
-        useOnboardingSteps();
+    const {
+        treasuryId,
+        isGuestTreasury,
+        isLoading,
+        status,
+        markSolo,
+        markThresholdLater,
+        canDeferThreshold,
+    } = useOnboardingSteps();
 
     if (hidden || isGuestTreasury || isLoading || status.allComplete) {
         return null;
@@ -131,6 +138,10 @@ export function GetStartedCard({
                         const muted = !completed && !active;
                         const showSolo =
                             step.id === "add-team-member" && active;
+                        const showLater =
+                            step.id === "setup-threshold" &&
+                            active &&
+                            canDeferThreshold;
 
                         return (
                             <div key={step.id} className="py-1.5">
@@ -182,13 +193,27 @@ export function GetStartedCard({
                                         type="button"
                                         onClick={markSolo}
                                         className={cn(
-                                            "mt-1 ml-7 cursor-pointer text-xs font-bold leading-3",
+                                            "mt-1 ml-8 cursor-pointer text-xs font-bold leading-3",
                                             variant === "rail"
                                                 ? "text-general-unofficial-ghost-foreground"
                                                 : "text-gray-900 dark:text-white",
                                         )}
                                     >
                                         {t("useSoloLink")}
+                                    </button>
+                                )}
+                                {showLater && (
+                                    <button
+                                        type="button"
+                                        onClick={markThresholdLater}
+                                        className={cn(
+                                            "mt-1 ml-8 cursor-pointer text-xs font-bold leading-3",
+                                            variant === "rail"
+                                                ? "text-general-unofficial-ghost-foreground"
+                                                : "text-gray-900 dark:text-white",
+                                        )}
+                                    >
+                                        {t("setupThresholdLater")}
                                     </button>
                                 )}
                             </div>

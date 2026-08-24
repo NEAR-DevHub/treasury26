@@ -323,7 +323,9 @@ export function ActivityTable({
                                                 {status === "pending" ? (
                                                     <span className="flex items-center gap-1 text-sm font-medium text-general-orange-foreground">
                                                         <Icon
-                                                            icon={LoaderCircleIcon}
+                                                            icon={
+                                                                LoaderCircleIcon
+                                                            }
                                                             className="size-3 animate-spin"
                                                         />
                                                         {t("table.processing")}
