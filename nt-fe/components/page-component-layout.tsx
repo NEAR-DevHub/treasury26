@@ -35,6 +35,8 @@ interface PageComponentLayoutProps {
     hideHeaderBottomBorder?: boolean;
     /** Renders an empty header: no logo/title, staging pill, language or theme controls. */
     hideHeaderContent?: boolean;
+    /** Drops the header entirely, so the page owns the full viewport height. */
+    hideHeader?: boolean;
     /** Pins the page to the viewport so it never scrolls, on any breakpoint. */
     fitViewport?: boolean;
     logo?: ReactNode;
@@ -52,6 +54,7 @@ export function PageComponentLayout({
     transparentHeader = false,
     hideHeaderBottomBorder = false,
     hideHeaderContent = false,
+    hideHeader = false,
     fitViewport = false,
     logo,
     mainClassName,
@@ -80,121 +83,125 @@ export function PageComponentLayout({
                 hideHeaderContent && "bg-general-tertiary",
             )}
         >
-            <header
-                className={cn(
-                    "flex shrink-0 items-center min-h-16 justify-between px-3 md:px-6",
-                    // Onboarding owns its own heading, so on a phone the empty
-                    // bar collapses instead of eating 64px above the fold.
-                    hideHeaderContent && !backButton && "min-h-0 md:min-h-16",
-                    // Inside the shell the header is part of the floating panel:
-                    // transparent and borderless.
-                    !hasSidebarRail &&
-                        !hideHeaderBottomBorder &&
-                        "border-b border-border",
-                    hasSidebarRail || transparentHeader
-                        ? "bg-transparent"
-                        : "bg-card",
-                )}
-            >
-                <div className="flex items-center gap-2 md:gap-4">
-                    {!hideCollapseButton && (
-                        <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={toggleSidebar}
-                            className="hidden text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
-                            aria-label={tHeader("toggleSidebar")}
-                        >
-                            <Icon icon={PanelLeftIcon} />
-                        </Button>
+            {!hideHeader && (
+                <header
+                    className={cn(
+                        "flex shrink-0 items-center min-h-16 justify-between px-3 md:px-6",
+                        // Onboarding owns its own heading, so on a phone the empty
+                        // bar collapses instead of eating 64px above the fold.
+                        hideHeaderContent &&
+                            !backButton &&
+                            "min-h-0 md:min-h-16",
+                        // Inside the shell the header is part of the floating panel:
+                        // transparent and borderless.
+                        !hasSidebarRail &&
+                            !hideHeaderBottomBorder &&
+                            "border-b border-border",
+                        hasSidebarRail || transparentHeader
+                            ? "bg-transparent"
+                            : "bg-card",
                     )}
-                    {hasSidebarRail && (
-                        <div className="min-w-0 lg:hidden">
-                            <MobileTreasuryHeaderButton />
-                        </div>
-                    )}
-                    <div className="flex items-center gap-2 md:gap-3">
-                        {backButton && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                    if (typeof backButton === "string") {
-                                        router.push(backButton);
-                                    } else {
-                                        router.back();
-                                    }
-                                }}
-                            >
-                                <Icon
-                                    icon={ArrowLeft01Icon}
-                                    className="stroke-2"
-                                />
-                            </Button>
-                        )}
-
-                        {!hideHeaderContent &&
-                            (logo ?? (
-                                <div className="hidden items-baseline gap-2 lg:flex">
-                                    <h1 className="text-xl font-semibold tracking-tight">
-                                        {title}
-                                    </h1>
-                                    {description && (
-                                        <span className="hidden lg:inline text-xs text-muted-foreground">
-                                            {description}
-                                        </span>
-                                    )}
-                                </div>
-                            ))}
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                    {hasSidebarRail && (
-                        <div className="lg:hidden">
-                            <MobileUserHeaderButton />
-                        </div>
-                    )}
-                    {!hasSidebarRail && !hideHeaderContent && isStaging && (
-                        <>
-                            <span
-                                className="size-2 rounded-full bg-general-orange-foreground md:hidden"
-                                title="Staging"
-                                aria-label="Staging"
-                            />
-                            <Pill
-                                title="Staging"
-                                icon={
-                                    <span className="size-1.5 rounded-full bg-general-orange-foreground" />
-                                }
-                                className="hidden md:flex bg-general-orange-background-faded text-general-orange-foreground"
-                            />
-                        </>
-                    )}
-                    {!hasSidebarRail && !hideHeaderContent && (
-                        <>
-                            <LanguageSwitcher />
+                >
+                    <div className="flex items-center gap-2 md:gap-4">
+                        {!hideCollapseButton && (
                             <Button
                                 variant="ghost"
                                 size="icon-sm"
-                                onClick={() =>
-                                    setTheme(isDarkTheme ? "light" : "dark")
-                                }
-                                aria-label={tHeader("toggleTheme")}
-                                className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                                onClick={toggleSidebar}
+                                className="hidden text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
+                                aria-label={tHeader("toggleSidebar")}
                             >
-                                {isDarkTheme ? (
-                                    <Icon icon={Sun01Icon} />
-                                ) : (
-                                    <Icon icon={MoonIcon} />
-                                )}
+                                <Icon icon={PanelLeftIcon} />
                             </Button>
+                        )}
+                        {hasSidebarRail && (
+                            <div className="min-w-0 lg:hidden">
+                                <MobileTreasuryHeaderButton />
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 md:gap-3">
+                            {backButton && (
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                        if (typeof backButton === "string") {
+                                            router.push(backButton);
+                                        } else {
+                                            router.back();
+                                        }
+                                    }}
+                                >
+                                    <Icon
+                                        icon={ArrowLeft01Icon}
+                                        className="stroke-2"
+                                    />
+                                </Button>
+                            )}
 
-                            {!hideLogin && <SignIn />}
-                        </>
-                    )}
-                </div>
-            </header>
+                            {!hideHeaderContent &&
+                                (logo ?? (
+                                    <div className="hidden items-baseline gap-2 lg:flex">
+                                        <h1 className="text-xl font-semibold tracking-tight">
+                                            {title}
+                                        </h1>
+                                        {description && (
+                                            <span className="hidden lg:inline text-xs text-muted-foreground">
+                                                {description}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {hasSidebarRail && (
+                            <div className="lg:hidden">
+                                <MobileUserHeaderButton />
+                            </div>
+                        )}
+                        {!hasSidebarRail && !hideHeaderContent && isStaging && (
+                            <>
+                                <span
+                                    className="size-2 rounded-full bg-general-orange-foreground md:hidden"
+                                    title="Staging"
+                                    aria-label="Staging"
+                                />
+                                <Pill
+                                    title="Staging"
+                                    icon={
+                                        <span className="size-1.5 rounded-full bg-general-orange-foreground" />
+                                    }
+                                    className="hidden md:flex bg-general-orange-background-faded text-general-orange-foreground"
+                                />
+                            </>
+                        )}
+                        {!hasSidebarRail && !hideHeaderContent && (
+                            <>
+                                <LanguageSwitcher />
+                                <Button
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() =>
+                                        setTheme(isDarkTheme ? "light" : "dark")
+                                    }
+                                    aria-label={tHeader("toggleTheme")}
+                                    className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                                >
+                                    {isDarkTheme ? (
+                                        <Icon icon={Sun01Icon} />
+                                    ) : (
+                                        <Icon icon={MoonIcon} />
+                                    )}
+                                </Button>
+
+                                {!hideLogin && <SignIn />}
+                            </>
+                        )}
+                    </div>
+                </header>
+            )}
 
             <main
                 className={cn(

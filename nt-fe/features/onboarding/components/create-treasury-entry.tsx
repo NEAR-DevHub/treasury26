@@ -207,6 +207,7 @@ export function TreasuryOnboardingPage({
     const tSteps = useTranslations("createTreasury.steps");
     const tPages = useTranslations("pages.createTreasury");
     const tLanding = useTranslations("landing");
+    const tCommon = useTranslations("common");
     const { getWarning, isLoading: isLoadingWarnings } = useWarnings();
     const treasuryCreationWarning = getWarning("treasury-creation");
     const isTreasuryCreationBlocked =
@@ -251,7 +252,10 @@ export function TreasuryOnboardingPage({
         treasuries[0]?.daoId;
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
     const shouldKeepUserOnCreatePage = !!returnTo || forceStayOnCreatePage;
-    const shouldShowHeaderLogo = !returnTo;
+    // Reached from inside the app, the screen is a self-contained detour: it
+    // drops the branding and account chrome and centres the form in the
+    // viewport, with its own way back to the page that sent the user here.
+    const isReturnToFlow = !!returnTo;
     const isCreateRoute = pathname === "/create";
     const isRootSignInScreen = pathname === "/" && showLoginScreen;
     const isConnectWalletLogin = loginScreenSource === "connect-wallet";
@@ -563,7 +567,7 @@ export function TreasuryOnboardingPage({
         }
     };
 
-    const headerLogo = shouldShowHeaderLogo ? (
+    const headerLogo = !isReturnToFlow ? (
         <Link href={LANDING_PAGE} aria-label="Trezu home">
             <Logo size="md" />
         </Link>
@@ -588,14 +592,21 @@ export function TreasuryOnboardingPage({
     };
 
     const createFormBody = (
-        <div className="mx-auto flex w-full max-w-[448px] flex-1 flex-col gap-5 pt-3">
+        <div
+            className={cn(
+                "mx-auto flex w-full max-w-[448px] flex-1 flex-col gap-5 pt-3",
+                isReturnToFlow && "justify-center gap-6 pt-0",
+            )}
+        >
             <div className="flex flex-col gap-[42px]">
-                <NearBusinessLogo className="h-7 w-auto self-start" />
+                {!isReturnToFlow && (
+                    <NearBusinessLogo className="h-7 w-auto self-start" />
+                )}
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl leading-[1.2] font-bold text-general-foreground">
                         {tPages("title")}
                     </h1>
-                    <p className="text-sm leading-normal font-medium text-general-muted-foreground">
+                    <p className="text-sm leading-normal font-medium text-muted-foreground">
                         {t("subtitle")}
                     </p>
                 </div>
@@ -683,16 +694,30 @@ export function TreasuryOnboardingPage({
                         )}
                         {accountId ? t("createCta") : t("continueToWallet")}
                     </Button>
+
+                    {isReturnToFlow && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="xl"
+                            className="w-full rounded-2xl text-general-unofficial-ghost-foreground"
+                            onClick={() => router.push(returnTo)}
+                        >
+                            {tCommon("back")}
+                        </Button>
+                    )}
                 </form>
             </Form>
 
-            <div className="flex flex-1 flex-col justify-end">
-                {accountId ? (
-                    <ConnectedAccountCard accountId={accountId} />
-                ) : (
-                    <AlreadyHaveTreasurySignIn onSignIn={openSignIn} />
-                )}
-            </div>
+            {!isReturnToFlow && (
+                <div className="flex flex-1 flex-col justify-end">
+                    {accountId ? (
+                        <ConnectedAccountCard accountId={accountId} />
+                    ) : (
+                        <AlreadyHaveTreasurySignIn onSignIn={openSignIn} />
+                    )}
+                </div>
+            )}
         </div>
     );
 
@@ -856,6 +881,9 @@ export function TreasuryOnboardingPage({
     // heading, so the app header collapses to an empty bar above them.
     const isCreateScreen = screenBody === createFormBody;
     const isMinimalChrome = isRootSignInScreen || isCreateScreen;
+    // The `returnTo` create screen carries its own Back button, so the header
+    // has nothing left to render and the form can centre in the full viewport.
+    const isCenteredCreateScreen = isCreateScreen && isReturnToFlow;
 
     return (
         <>
@@ -869,13 +897,14 @@ export function TreasuryOnboardingPage({
             <PageComponentLayout
                 title={tPages("title")}
                 description={accountId ? t("headerDescription") : undefined}
-                backButton={returnTo || false}
+                backButton={isCenteredCreateScreen ? false : returnTo || false}
                 hideCollapseButton
                 hideLogin={!accountId}
                 hideAppWarningBanner
                 transparentHeader
                 hideHeaderBottomBorder
                 hideHeaderContent={isMinimalChrome}
+                hideHeader={isCenteredCreateScreen}
                 // Both onboarding screens are short enough to fit any
                 // viewport, so they are pinned to it rather than scrolling.
                 fitViewport={isMinimalChrome}
@@ -886,7 +915,11 @@ export function TreasuryOnboardingPage({
                     // The screen fills the viewport, so the account card sits
                     // 32px off a phone's bottom edge; on desktop it keeps 24px
                     // instead of the 32px the shell uses for scrolling pages.
-                    isCreateScreen && "max-md:pb-8 md:pb-6",
+                    isCreateScreen &&
+                        !isCenteredCreateScreen &&
+                        "max-md:pb-8 md:pb-6",
+                    // Centred in the viewport, the screen owns its spacing.
+                    isCenteredCreateScreen && "py-0 md:py-0",
                 )}
             >
                 {screenBody}
