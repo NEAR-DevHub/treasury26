@@ -8,6 +8,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
+import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedDate } from "@/components/formatted-date";
@@ -168,9 +169,16 @@ function SwapTransactionCell({
             />
             <div className="flex min-w-0 flex-col">
                 <span className="truncate text-xs font-medium tracking-[0.18px] text-muted-foreground">
-                    {swap.sentAmount && sentSymbol
-                        ? `${formatSmartAmount(swap.sentAmount)} ${sentSymbol}`
-                        : (sentSymbol ?? "?")}
+                    {swap.sentAmount && sentSymbol ? (
+                        <>
+                            <MaskedBalance>
+                                {formatSmartAmount(swap.sentAmount)}
+                            </MaskedBalance>{" "}
+                            {sentSymbol}
+                        </>
+                    ) : (
+                        (sentSymbol ?? "?")
+                    )}
                 </span>
                 <span
                     className={cn(
@@ -180,9 +188,17 @@ function SwapTransactionCell({
                             : "text-general-foreground",
                     )}
                 >
-                    {swap.receivedAmount
-                        ? `${isIncoming ? "+" : ""}${formatSmartAmount(swap.receivedAmount)} ${receivedSymbol}`
-                        : receivedSymbol}
+                    {swap.receivedAmount ? (
+                        <>
+                            {isIncoming ? "+" : ""}
+                            <MaskedBalance>
+                                {formatSmartAmount(swap.receivedAmount)}
+                            </MaskedBalance>{" "}
+                            {receivedSymbol}
+                        </>
+                    ) : (
+                        receivedSymbol
+                    )}
                 </span>
             </div>
         </div>
@@ -381,9 +397,11 @@ export function ActivityTable({
                                                             : "text-general-foreground",
                                                     )}
                                                 >
-                                                    {formatActivityAmount(
-                                                        activity.amount,
-                                                    )}{" "}
+                                                    <MaskedBalance>
+                                                        {formatActivityAmount(
+                                                            activity.amount,
+                                                        )}
+                                                    </MaskedBalance>{" "}
                                                     {
                                                         activity.tokenMetadata
                                                             .symbol
