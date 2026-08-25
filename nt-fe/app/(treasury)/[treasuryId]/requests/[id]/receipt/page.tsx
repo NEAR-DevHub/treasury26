@@ -7,7 +7,6 @@ import { use, useEffect, useMemo, useRef } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
-import { ConfidentialState } from "@/components/confidential-state";
 import { CopyButton } from "@/components/copy-button";
 import Logo from "@/components/icons/logo";
 import { Pill } from "@/components/pill";
@@ -710,8 +709,7 @@ export default function RequestReceiptPage({
     const { id } = use(params);
     const searchParams = useSearchParams();
     const recipientFilter = searchParams.get("recipient");
-    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
-    const isHidden = isConfidential && isGuestTreasury;
+    const { treasuryId, isConfidential } = useTreasury();
     const receiptUrl =
         typeof window !== "undefined" ? window.location.href : "";
 
@@ -794,7 +792,7 @@ export default function RequestReceiptPage({
         treasuryId,
         proposal,
         policy,
-        !isHidden && !!proposal && !!policy,
+        !!proposal && !!policy,
     );
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress,
@@ -804,12 +802,9 @@ export default function RequestReceiptPage({
     );
     // Intents-routed proposals gate the receipt on a SUCCESS swap status — a
     // pending/failed/refunded swap has no finalized receipt (mirrors the sidebar
-    // button gate). Public treasury receipts stay accessible to logged-out /
-    // non-member (guest) viewers regardless of swap status.
+    // button gate). Layout already requires login + membership for this page.
     const isSwapSuccessReady =
-        !shouldUseSwapExecutionDate ||
-        (!isConfidential && isGuestTreasury) ||
-        swapStatus?.status === "SUCCESS";
+        !shouldUseSwapExecutionDate || swapStatus?.status === "SUCCESS";
     const {
         executedDate: transactionDate,
         isDateLoading: resolvedTransactionDateLoading,
@@ -908,13 +903,9 @@ export default function RequestReceiptPage({
         : undefined;
     const shouldFetchBatchDestinationToken =
         !!batchDestinationAssetId && !isNearComNetwork(batchDestinationAssetId);
-    const { data: batchTokenData } = useToken(
-        !isHidden ? effectiveBatchTokenId : null,
-    );
+    const { data: batchTokenData } = useToken(effectiveBatchTokenId);
     const { data: batchDestinationTokenData } = useToken(
-        !isHidden && shouldFetchBatchDestinationToken
-            ? batchDestinationAssetId
-            : null,
+        shouldFetchBatchDestinationToken ? batchDestinationAssetId : null,
     );
     const { data: batchHistoricalPrice } = useTokenPriceAtTimestamp(
         effectiveBatchTokenId,
@@ -955,7 +946,6 @@ export default function RequestReceiptPage({
         if (
             hasRecordedGeneratedRef.current ||
             !treasuryId ||
-            isHidden ||
             !isExecutableReceipt
         ) {
             return;
@@ -963,7 +953,7 @@ export default function RequestReceiptPage({
 
         hasRecordedGeneratedRef.current = true;
         recordReceiptMetric(treasuryId, "generated");
-    }, [treasuryId, isHidden, isExecutableReceipt]);
+    }, [treasuryId, isExecutableReceipt]);
     const {
         sourceAmountDisplay,
         destinationAmountDisplay,
@@ -1099,33 +1089,11 @@ export default function RequestReceiptPage({
     }
 
     const handlePrint = () => {
-        if (treasuryId && !isHidden) {
+        if (treasuryId) {
             recordReceiptMetric(treasuryId, "print");
         }
         window.print();
     };
-
-    if (isHidden) {
-        return (
-            <ReceiptPageShell
-                receiptUrl={receiptUrl}
-                showCopyLink={false}
-                onPrint={handlePrint}
-            >
-                <PageCard className="bg-card p-8 rounded-none">
-                    <ConfidentialState
-                        skeleton={
-                            <div className="space-y-3">
-                                <Skeleton className="h-16 w-full" />
-                                <Skeleton className="h-16 w-full" />
-                                <Skeleton className="h-16 w-full" />
-                            </div>
-                        }
-                    />
-                </PageCard>
-            </ReceiptPageShell>
-        );
-    }
 
     if (!isValidReceipt) {
         redirect(`/${treasuryId}/requests`);

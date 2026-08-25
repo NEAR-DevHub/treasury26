@@ -5,6 +5,7 @@ import { Tick01Icon } from "@hugeicons/core-free-icons";
 import { useState, useMemo, useCallback, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/input";
+import { SheetHandle } from "@/components/mobile-shell/sheet-handle";
 import {
     Dialog,
     DialogContent,
@@ -104,14 +105,15 @@ export function SelectModal({
 
     const filteredSections = useMemo(() => {
         if (!sections?.length) return [];
-        if (!normalizedQuery) return sections;
 
         return sections
             .map((section) => ({
                 ...section,
-                options: section.options.filter((option) =>
-                    optionMatchesSearch(option, normalizedQuery),
-                ),
+                options: normalizedQuery
+                    ? section.options.filter((option) =>
+                          optionMatchesSearch(option, normalizedQuery),
+                      )
+                    : section.options,
             }))
             .filter((section) => section.options.length > 0);
     }, [sections, normalizedQuery]);
@@ -216,12 +218,21 @@ export function SelectModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader centerTitle>
-                    <DialogTitle>{title}</DialogTitle>
+            <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-4 sm:max-w-md sm:gap-4">
+                <div className="-mb-2 sm:hidden">
+                    <SheetHandle />
+                </div>
+                <DialogHeader
+                    centerTitle={false}
+                    closeButton={false}
+                    className="border-0 px-0 pb-0 text-left -mx-0 sticky top-0 sm:border-b sm:border-border sm:-mx-4 sm:px-4 sm:pb-3.5"
+                >
+                    <DialogTitle className="text-left text-lg font-semibold">
+                        {title}
+                    </DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="mt-4 space-y-4 min-h-0 flex-1 flex flex-col sm:mt-0">
                     <Input
                         type="text"
                         search
@@ -233,7 +244,7 @@ export function SelectModal({
                     {isLoading ? (
                         <SelectListSkeleton />
                     ) : (
-                        <ScrollArea className="h-[min(400px,calc(80vh-10rem))]">
+                        <ScrollArea className="h-[min(560px,calc(90vh-11rem))]">
                             {sections?.length ? (
                                 filteredSections.length > 0 ? (
                                     filteredSections.map((section) => {
@@ -243,7 +254,7 @@ export function SelectModal({
                                                     key={section.title}
                                                     className="mb-3"
                                                 >
-                                                    <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                                    <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                                         {section.title}
                                                     </div>
                                                     <div className="px-1 flex flex-wrap gap-2">
@@ -323,7 +334,7 @@ export function SelectModal({
 
                                         return (
                                             <div key={section.title}>
-                                                <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                                <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                                     {section.title}
                                                 </div>
                                                 {section.options.map(

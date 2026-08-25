@@ -10,7 +10,8 @@ export type PayShareKind = "public" | "confidential";
  * Confidential one-time: only `id` (quote deposit address). Asset, expiry, and
  * used/expired come from the status API; bridge address is re-derived.
  * Public treasury: `id` is the bridge address plus token/network for display.
- * Confidential reusable: dao from path; `source` selects Trezu vs near.com copy.
+ * Confidential reusable: dao from path; `source` (`ConfidentialOrigin`) is kept
+ * for backward-compatible old pay-share links (UI always opens near.com).
  */
 export type PayShareQuery =
     | {

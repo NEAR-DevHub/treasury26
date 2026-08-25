@@ -137,6 +137,11 @@
         "description": "Görünüşe göre artık çalışmayan bir bağlantıyı takip ettiniz. Geri dönmeyi veya Panel'e dönmeyi deneyin.",
         "backToDashboard": "Panel'e Dön"
     },
+    "notMemberScreen": {
+        "title": "Bu hazinenin üyesi değilsiniz",
+        "description": "Bu hazinenin beklediği hesapla oturum açın veya bir üyeden sizi eklemesini isteyin.",
+        "backToHome": "Ana sayfaya dön"
+    },
     "treasuryInfo": {
         "logoAlt": "Hazine Logosu"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "Para yatırma adresi alınamadı. Lütfen tekrar deneyin.",
             "loginRequired": "Tek kullanımlık bir yatırma adresi oluşturmak için oturum açın."
         },
-        "title": "Para Yatır",
+        "title": "Al",
         "subtitle": "Para yatırma adresini görmek için varlık ve ağ seçin",
         "assetLabel": "Varlık",
+        "tokenLabel": "Token",
         "networkLabel": "Ağ",
         "selectAsset": "Varlık Seç",
         "selectNetwork": "Ağ Seç",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "Yalnızca bu tokeni, bu ağ üzerinden aşağıdaki adrese gönderin.",
         "oneTimeAddressTitle": "{network} ağında tek kullanımlık {symbol} yatırma adresi",
         "oneTimeAddressSubtitle": "Yalnızca bu tokeni, bu ağ üzerinden aşağıdaki adrese gönderin.",
-        "confidentialTrezuTitle": "near.com ağında gizli Trezu’dan yatırma",
-        "confidentialTrezuSubtitle": "Gizli Trezu’dan herhangi bir varlığı alın.",
         "confidentialNearcomTitle": "Dahili ağda gizli near.com’dan yatırma",
         "confidentialNearcomSubtitle": "Gizli near.com’dan herhangi bir varlığı alın.",
         "oneTimeSectionTitle": "Tek kullanımlık gizli yatırma adresi",
@@ -336,10 +340,8 @@
         "anythingElseLost": "Başka yerden gönderilen her şey kaybolur",
         "anythingElseLostSub": "Borsalar, genel cüzdanlar, diğer ağlar – kurtarılamaz.",
         "confidentialAckCheckbox": "Gizli Trezu veya near.com dışından yapılan yatırmaların kaybolacağını anlıyorum.",
-        "onlyFromConfidentialTrezu": "Yalnızca gizli <bold>Trezu</bold>’dan",
         "onlyFromConfidentialNearcom": "Yalnızca gizli <bold>near.com</bold>’dan",
         "reusableDoesntExpire": "<bold>Yeniden kullanılabilir.</bold> Süresi dolmaz",
-        "fundsOutsideTrezuLost": "Gizli Trezu dışından gönderilen fonlar kaybolur",
         "fundsOutsideNearcomLost": "Gizli near.com dışından gönderilen fonlar kaybolur",
         "publicNetworkRecommendation": "Yalnızca <bold>{network}</bold> ağından yatırın. Tam tutarı göndermeden önce küçük bir test işlemiyle başlayın.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "Gizli kullanıcıdan",
                 "subtitle": "Gizli Trezu ve near.com’dan yatırma"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "Gizli Trezu’dan",
-            "nearcom": "Gizli near.com’dan",
-            "short": "Gizliden"
-        },
-        "guestBanner": {
-            "title": "Misafir olarak görüntülüyorsunuz",
-            "description": "Bu adres başka birinin treasury’sine aittir. Göndermeden önce iki kez kontrol edin."
         },
         "transfer": {
             "title": "Treasury’ye transfer",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "near.com ağında",
             "anyAssetOnNearcom": "near.com ağında herhangi bir varlık",
             "securedOnTrezu": "Trezu’da güvende",
+            "securedOnNearcom": "near.com for business üzerinde güvence altında",
             "payWithTrezu": "Trezu ile öde",
             "payWithNearcom": "near.com ile öde",
             "payRequiresTreasury": "Ödemek için bir Trezu treasury’siyle oturum açın.",
@@ -2356,14 +2350,14 @@
             "createPaymentTitle": "Ödeme Talebi Oluşturun",
             "createPaymentDescription": "Kurulumunuzu tamamlamak için bir ödeme talebi oluşturun.",
             "send": "Gönder",
-            "useSolo": "Use Solo",
+            "useSolo": "Solo kullan",
             "addTeamMemberDescription": "Hesabınızı başarıyla kurdunuz. Harika bir başlangıç!",
             "addTeamMemberTitle": "Hazine hesabı oluştur",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Başla",
+            "setupThresholdTitle": "Eşik ayarla",
+            "useSoloLink": "Solo kullanacağım",
             "setupThresholdLater": "Daha sonra",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "İlk ödemeyi oluştur"
         },
         "welcome": {
             "heading": "🎉 Hazineniz hazır",

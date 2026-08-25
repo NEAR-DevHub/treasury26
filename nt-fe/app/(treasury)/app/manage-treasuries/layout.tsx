@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { RequireAuth } from "@/components/require-auth";
 
 export async function generateMetadata(): Promise<Metadata> {
     const t = await getTranslations("pages.manageTreasuries");
@@ -11,5 +12,5 @@ export default function ManageTreasuriesLayout({
 }: {
     children: React.ReactNode;
 }) {
-    return children;
+    return <RequireAuth>{children}</RequireAuth>;
 }

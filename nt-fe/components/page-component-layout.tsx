@@ -27,7 +27,8 @@ import { useSidebarStore } from "@/stores/sidebar-store";
 interface PageComponentLayoutProps {
     title: string;
     description?: string;
-    backButton?: boolean | string;
+    /** `true` = router.back(); string = push path; function = custom handler. */
+    backButton?: boolean | string | (() => void);
     hideLogin?: boolean;
     hideCollapseButton?: boolean;
     hideAppWarningBanner?: boolean;
@@ -35,6 +36,11 @@ interface PageComponentLayoutProps {
     hideHeaderBottomBorder?: boolean;
     /** Renders an empty header: no logo/title, staging pill, language or theme controls. */
     hideHeaderContent?: boolean;
+    /**
+     * Hides the mobile treasury selector + profile controls. Use with
+     * `backButton` for stacked sub-pages (e.g. Receive) that own their title.
+     */
+    hideMobileShellControls?: boolean;
     /** Page-specific controls pinned to the right edge of the header. */
     headerActions?: ReactNode;
     /** Drops the header entirely, so the page owns the full viewport height. */
@@ -56,6 +62,7 @@ export function PageComponentLayout({
     transparentHeader = false,
     hideHeaderBottomBorder = false,
     hideHeaderContent = false,
+    hideMobileShellControls = false,
     headerActions,
     hideHeader = false,
     fitViewport = false,
@@ -83,20 +90,22 @@ export function PageComponentLayout({
             className={cn(
                 "flex h-full flex-col gap-2 sm:gap-0",
                 fitViewport && "h-dvh overflow-hidden",
-                hideHeaderContent && "bg-general-tertiary",
+                hideHeaderContent && "bg-general-bg-tertiary",
             )}
         >
             {!hideHeader && (
                 <header
                     className={cn(
                         "flex shrink-0 items-center min-h-16 justify-between px-3 md:px-6",
-                        // Onboarding owns its own heading, so on a phone the empty
-                        // bar collapses instead of eating 64px above the fold.
+                        // Onboarding / stacked mobile headers collapse the empty bar.
                         hideHeaderContent &&
                             !backButton &&
                             "min-h-0 md:min-h-16",
-                        // Inside the shell the header is part of the floating panel:
-                        // transparent and borderless.
+                        hideMobileShellControls &&
+                            backButton &&
+                            "min-h-12 pt-[max(0.5rem,env(safe-area-inset-top))] lg:min-h-16 lg:pt-0",
+                        // Inside the shell the floating panel owns the surface, so
+                        // the content area must not paint over it.
                         !hasSidebarRail &&
                             !hideHeaderBottomBorder &&
                             "border-b border-border",
@@ -120,7 +129,7 @@ export function PageComponentLayout({
                                 />
                             </Button>
                         )}
-                        {hasSidebarRail && (
+                        {hasSidebarRail && !hideMobileShellControls && (
                             <div className="min-w-0 lg:hidden">
                                 <MobileTreasuryHeaderButton />
                             </div>
@@ -131,12 +140,20 @@ export function PageComponentLayout({
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => {
-                                        if (typeof backButton === "string") {
+                                        if (typeof backButton === "function") {
+                                            backButton();
+                                        } else if (
+                                            typeof backButton === "string"
+                                        ) {
                                             router.push(backButton);
                                         } else {
                                             router.back();
                                         }
                                     }}
+                                    className={cn(
+                                        hideMobileShellControls &&
+                                            "size-10 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:hidden",
+                                    )}
                                 >
                                     <Icon
                                         icon={ArrowLeft01Icon}
@@ -163,7 +180,7 @@ export function PageComponentLayout({
 
                     <div className="flex items-center gap-3">
                         {headerActions}
-                        {hasSidebarRail && (
+                        {hasSidebarRail && !hideMobileShellControls && (
                             <div className="lg:hidden">
                                 <MobileUserHeaderButton />
                             </div>
@@ -216,7 +233,9 @@ export function PageComponentLayout({
                     fitViewport ? "min-h-0 overflow-hidden" : "overflow-y-auto",
                     // Inside the shell the floating panel owns the surface, so
                     // the content area must not paint over it.
-                    hasSidebarRail ? "bg-transparent" : "bg-page-bg",
+                    hasSidebarRail
+                        ? "bg-transparent"
+                        : "bg-general-bg-tertiary",
                     mainClassName,
                 )}
             >

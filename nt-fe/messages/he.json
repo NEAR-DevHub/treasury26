@@ -137,6 +137,11 @@
         "description": "נראה שלחצת על קישור שכבר לא פועל. נסה לחזור או לעבור ללוח הבקרה.",
         "backToDashboard": "חזרה ללוח הבקרה"
     },
+    "notMemberScreen": {
+        "title": "אינכם חברים באוצר הזה",
+        "description": "היכנסו עם החשבון שהאוצר הזה מצפה לו, או בקשו מחבר להוסיף אתכם.",
+        "backToHome": "חזרה לדף הבית"
+    },
     "treasuryInfo": {
         "logoAlt": "לוגו האוצר"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "אחזור כתובת ההפקדה נכשל. אנא נסה שוב.",
             "loginRequired": "התחבר כדי ליצור כתובת הפקדה חד-פעמית."
         },
-        "title": "הפקדה",
+        "title": "קבלה",
         "subtitle": "בחר נכס ורשת כדי לראות כתובת הפקדה",
         "assetLabel": "נכס",
+        "tokenLabel": "Token",
         "networkLabel": "רשת",
         "selectAsset": "בחר נכס",
         "selectNetwork": "בחר רשת",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "שלח רק את הטוקן הזה, ברשת הזו, לכתובת למטה.",
         "oneTimeAddressTitle": "כתובת הפקדה חד-פעמית של {symbol} ברשת {network}",
         "oneTimeAddressSubtitle": "שלח רק את הטוקן הזה, ברשת הזו, לכתובת למטה.",
-        "confidentialTrezuTitle": "הפקדה מ-Trezu חסוי ברשת near.com",
-        "confidentialTrezuSubtitle": "קבל כל נכס מ-Trezu חסוי.",
         "confidentialNearcomTitle": "הפקדה מ-near.com חסוי ברשת הפנימית",
         "confidentialNearcomSubtitle": "קבל כל נכס מ-near.com חסוי.",
         "oneTimeSectionTitle": "כתובת הפקדה חסויה חד-פעמית",
@@ -336,10 +340,8 @@
         "anythingElseLost": "כל דבר שנשלח ממקום אחר יאבד",
         "anythingElseLostSub": "בורסות, ארנקים ציבוריים, רשתות אחרות – לא ניתן לשחזר.",
         "confidentialAckCheckbox": "אני מבין שהפקדות מחוץ ל-Trezu או near.com חסויים יאבדו.",
-        "onlyFromConfidentialTrezu": "רק מ-<bold>Trezu</bold> חסוי",
         "onlyFromConfidentialNearcom": "רק מ-<bold>near.com</bold> חסוי",
         "reusableDoesntExpire": "<bold>ניתן לשימוש חוזר.</bold> לא פג תוקף",
-        "fundsOutsideTrezuLost": "כספים שנשלחו מחוץ ל-Trezu חסוי יאבדו",
         "fundsOutsideNearcomLost": "כספים שנשלחו מחוץ ל-near.com חסוי יאבדו",
         "publicNetworkRecommendation": "הפקד רק מרשת <bold>{network}</bold>. התחל בעסקה קטנה לבדיקה לפני שליחת הסכום המלא.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "ממשתמש חסוי",
                 "subtitle": "הפקדה מ-Trezu ו-near.com חסויים"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "מ-Trezu חסוי",
-            "nearcom": "מ-near.com חסוי",
-            "short": "מחסוי"
-        },
-        "guestBanner": {
-            "title": "אתה צופה כאורח",
-            "description": "כתובת זו שייכת ל-treasury של מישהו אחר. בדוק שוב לפני השליחה."
         },
         "transfer": {
             "title": "העברה ל-Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "ברשת near.com",
             "anyAssetOnNearcom": "כל נכס ברשת near.com",
             "securedOnTrezu": "מאובטח ב-Trezu",
+            "securedOnNearcom": "מאובטח ב-near.com for business",
             "payWithTrezu": "שלם עם Trezu",
             "payWithNearcom": "שלם עם near.com",
             "payRequiresTreasury": "התחבר עם treasury של Trezu כדי לשלם.",
@@ -2356,14 +2350,14 @@
             "createPaymentTitle": "צור בקשת תשלום",
             "createPaymentDescription": "צור בקשת תשלום להשלמת ההגדרה שלך.",
             "send": "שליחה",
-            "useSolo": "Use Solo",
+            "useSolo": "להשתמש ב-Solo",
             "addTeamMemberDescription": "הגדרת את החשבון שלך בהצלחה. התחלה מצוינת!",
             "addTeamMemberTitle": "צור חשבון אוצר",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "להתחיל",
+            "setupThresholdTitle": "הגדרת סף",
+            "useSoloLink": "אשתמש ב-Solo",
             "setupThresholdLater": "אחר כך",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "יצירת תשלום ראשון"
         },
         "welcome": {
             "heading": "🎉 האוצר שלך מוכן",

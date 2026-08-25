@@ -24,6 +24,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from "@/constants/config";
+import { buildLoginHref } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { Address } from "./address";
@@ -56,13 +57,7 @@ export function useConnectWallet() {
     const connect = useCallback(() => {
         setIsConnecting(true);
         try {
-            const params = new URLSearchParams();
-            const currentQuery = searchParams.toString();
-            const returnTo = currentQuery
-                ? `${pathname}?${currentQuery}`
-                : pathname;
-            params.set("returnTo", returnTo);
-            router.push(`/login?${params.toString()}`);
+            router.push(buildLoginHref(pathname, searchParams.toString()));
         } finally {
             setIsConnecting(false);
         }

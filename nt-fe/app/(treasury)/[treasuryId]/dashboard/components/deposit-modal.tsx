@@ -1,7 +1,5 @@
 "use client";
 
-import { Icon } from "@/components/icon";
-import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -15,11 +13,13 @@ import {
 } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Button } from "@/components/button";
-import { PageCard } from "@/components/card";
 import { HighlightedText } from "@/components/highlighted-text";
 import { getNetworkDisplayName } from "@/components/token-display";
-import { SlotWarning, WarningMessage } from "@/components/warning-message";
+import {
+    parseWarningCopy,
+    SlotWarning,
+    WarningMessage,
+} from "@/components/warning-message";
 import {
     NEAR_COM_DIRECT_NETWORK_ID,
     NEAR_NETWORK_ID,
@@ -42,6 +42,7 @@ import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
+import { withNearComAddressPrefix } from "@/lib/nearcom-address";
 import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import { DepositAckPanel } from "./deposit/deposit-ack-panel";
@@ -56,12 +57,10 @@ import {
     resolvePrefillSelection,
 } from "./deposit/deposit-asset-catalog";
 import { DepositAssetNetworkForm } from "./deposit/deposit-asset-network-form";
-import { DepositConfidentialSourceTabs } from "./deposit/deposit-confidential-source-tabs";
 import {
     DEPOSIT_ADDRESS_VALIDITY_MS,
     isDepositAddressExpired,
 } from "./deposit/deposit-expires";
-import { DepositGuestBanner } from "./deposit/deposit-guest-banner";
 import {
     buildConfidentialOriginNotices,
     buildPublicTreasuryNotices,
@@ -70,7 +69,6 @@ import {
 import { DepositSourceCards } from "./deposit/deposit-source-cards";
 import { buildPaySharePath } from "./deposit/deposit-transfer-url";
 import type {
-    ConfidentialOrigin,
     DepositInfo,
     DepositSource,
     DepositStep,
@@ -204,10 +202,8 @@ export function DepositModal({
             }),
         [t],
     );
-    const { treasuryId, isConfidential, isGuestTreasury, config } =
-        useTreasury();
+    const { treasuryId, isConfidential, config } = useTreasury();
     const { accountId } = useNear();
-    const showGuestBanner = isConfidential && (isGuestTreasury || !accountId);
     const router = useRouter();
     const locale = useLocale();
     const {
@@ -229,8 +225,6 @@ export function DepositModal({
     const [step, setStep] = useState<DepositStep>("select");
     const [depositSource, setDepositSource] =
         useState<DepositSource>("public_wallet");
-    const [confidentialOrigin, setConfidentialOrigin] =
-        useState<ConfidentialOrigin>("trezu");
     const [hasAcknowledged, setHasAcknowledged] = useState(false);
     const [modalType, setModalType] = useState<"asset" | "network" | null>(
         null,
@@ -239,6 +233,8 @@ export function DepositModal({
     const lastPublicAutoFetchKeyRef = useRef<string | null>(null);
     /** Failed public asset+network key (block auto-advance until selection/login changes). */
     const failedPublicFetchKeyRef = useRef<string | null>(null);
+    /** User left address for this pair — don't auto-advance until selection changes. */
+    const dismissedAddressKeyRef = useRef<string | null>(null);
     const [depositAssetsState, dispatchDepositAssets] = useReducer(
         depositAssetsReducer,
         initialDepositAssetsState,
@@ -263,26 +259,66 @@ export function DepositModal({
 
     const selectedAsset = form.watch("asset");
     const selectedNetwork = form.watch("network");
+    // Confidential path has no asset/network pickers — no scoped warnings UI.
+    const depositWarningToken =
+        depositSource === "confidential_user" ? undefined : selectedAsset?.id;
+    const depositWarningNetwork =
+        depositSource === "confidential_user"
+            ? undefined
+            : selectedNetwork?.name;
     const {
         warning: depositScopeWarning,
         blocked: depositBlocked,
         scopedMessage: depositScopedMessage,
     } = useScopedSlotWarning(
         "deposit",
-        selectedAsset?.id,
-        selectedNetwork?.name,
+        depositWarningToken,
+        depositWarningNetwork,
     );
-    // A token/network-scoped pause only blocks that combination — keep the
-    // selectors enabled so the user can switch. Only disable them when the whole
-    // deposit slot is paused or the app is in maintenance.
+    // Token/network-scoped pause: keep selectors enabled so the user can switch.
+    // Slot-wide / app pause: disable selectors and confidential Show address.
     const depositTokenNetworkScoped =
         isTokenOrNetworkScopedWarning(depositScopeWarning);
+    const isDepositSlotWideBlocked =
+        depositBlocked && !depositTokenNetworkScoped;
+    const isConfidentialUserSource = depositSource === "confidential_user";
+    // Public wallet (or public treasury): scoped pause/slow placement.
+    const showPublicSelectWarnings =
+        step === "select" && !isConfidentialUserSource && depositBlocked;
+    const showSelectTokenNetworkBannerBelow =
+        showPublicSelectWarnings &&
+        Boolean(depositScopeWarning?.token && depositScopeWarning?.network);
+    const showSelectTokenPausedInline =
+        showPublicSelectWarnings &&
+        Boolean(depositScopeWarning?.token && !depositScopeWarning?.network);
+    const showSelectNetworkPausedInline =
+        showPublicSelectWarnings &&
+        Boolean(depositScopeWarning?.network && !depositScopeWarning?.token);
+    const showSelectSlotWideBanner =
+        step === "select" && isDepositSlotWideBlocked;
+    const showAddressWarningBanner =
+        step === "address" &&
+        !isConfidentialUserSource &&
+        depositScopeWarning?.response === "notice" &&
+        depositTokenNetworkScoped;
+    // Flatten heading+body so inline field copy shows the full sentence.
+    let inlineScopedMessage: string | null = null;
+    if (
+        depositScopedMessage &&
+        (showSelectTokenPausedInline || showSelectNetworkPausedInline)
+    ) {
+        const { heading, body } = parseWarningCopy(depositScopedMessage);
+        inlineScopedMessage =
+            heading && body
+                ? `${heading} ${body}`
+                : heading || body || depositScopedMessage;
+    }
     const {
         data: bridgeAssets = STABLE_EMPTY_ARRAY,
         isLoading: isLoadingAssets,
     } = useBridgeTokens(true);
     const depositSelectorsDisabled =
-        isLoadingAssets || (depositBlocked && !depositTokenNetworkScoped);
+        isLoadingAssets || isDepositSlotWideBlocked;
 
     const invalidatePendingAddressRequest = useCallback(() => {
         latestAddressRequestRef.current += 1;
@@ -298,7 +334,6 @@ export function DepositModal({
         form.reset({ asset: null, network: null });
         setStep("select");
         setDepositSource("public_wallet");
-        setConfidentialOrigin("trezu");
         setHasAcknowledged(false);
         setModalType(null);
         setDepositInfo(null);
@@ -468,10 +503,7 @@ export function DepositModal({
             dispatchDepositAssets({
                 type: "SELECT_ASSET",
                 payload: {
-                    filteredNetworks: availableNetworks.map((n) => ({
-                        ...n,
-                        name: getNetworkDisplayName(n.name),
-                    })),
+                    filteredNetworks: availableNetworks,
                     selectedNetworkBalances:
                         networkBalancesByAsset.get(asset.id) || new Map(),
                 },
@@ -631,11 +663,19 @@ export function DepositModal({
 
         const fetchKey = `${selectedAsset.id}:${selectedNetwork.id}`;
 
+        if (
+            dismissedAddressKeyRef.current &&
+            dismissedAddressKeyRef.current !== fetchKey
+        ) {
+            dismissedAddressKeyRef.current = null;
+        }
+
         // Advance to a dedicated address page; keep select form off-screen.
         if (step === "select") {
             // Same pair already failed — keep form errors visible until user
             // re-selects or signs in (accountId effect clears the failure latch).
             if (failedPublicFetchKeyRef.current === fetchKey) return;
+            if (dismissedAddressKeyRef.current === fetchKey) return;
             setDepositInfo(null);
             setStep("address");
             return;
@@ -731,10 +771,28 @@ export function DepositModal({
 
     const handleCreateNewAddress = () => mintOneTimeAddress();
 
+    const handleBackFromAddress = useCallback(() => {
+        // Remember this asset+network so the public auto-advance effect does
+        // not immediately bounce the user back to the address step.
+        if (selectedAsset?.id && selectedNetwork?.id) {
+            dismissedAddressKeyRef.current = `${selectedAsset.id}:${selectedNetwork.id}`;
+        }
+        setDepositInfo(null);
+        setStep("select");
+        invalidatePendingAddressRequest();
+    }, [
+        invalidatePendingAddressRequest,
+        selectedAsset?.id,
+        selectedNetwork?.id,
+    ]);
+
     const handleShowConfidentialAddress = () => {
-        if (!hasAcknowledged || !treasuryId) return;
+        if (!hasAcknowledged || !treasuryId || isDepositSlotWideBlocked) {
+            return;
+        }
         setDepositInfo({
-            address: treasuryId,
+            // Trezu / near.com confidential deposits use a nearcom: recipient.
+            address: withNearComAddressPrefix(treasuryId),
             memo: null,
             minDepositAmount: null,
             expiresAtMs: null,
@@ -754,7 +812,7 @@ export function DepositModal({
         const path = isConfidentialShare
             ? buildPaySharePath(treasuryId, {
                   kind: "confidential",
-                  source: confidentialOrigin,
+                  source: "nearcom",
               })
             : isConfidential && depositInfo.quoteDepositAddress
               ? buildPaySharePath(treasuryId, {
@@ -772,26 +830,6 @@ export function DepositModal({
 
         if (!path) return;
         router.push(path);
-    };
-
-    const handleBack = () => {
-        if (step === "address") {
-            if (!isConfidential) {
-                // Clear network so re-selecting auto-opens the address step again.
-                invalidatePendingAddressRequest();
-                form.setValue("network", null);
-                form.clearErrors("network");
-                setDepositInfo(null);
-                lastPublicAutoFetchKeyRef.current = null;
-                failedPublicFetchKeyRef.current = null;
-            } else if (depositSource === "public_wallet") {
-                // Clear generated one-time address so user must generate again.
-                setDepositInfo(null);
-            }
-            setStep("select");
-            return;
-        }
-        router.push(`/${treasuryId!}/dashboard`);
     };
 
     const showAssetNetworkForm =
@@ -846,7 +884,7 @@ export function DepositModal({
         }
 
         if (depositSource === "confidential_user") {
-            return buildConfidentialOriginNotices(t, confidentialOrigin);
+            return buildConfidentialOriginNotices(t);
         }
 
         return buildPublicWalletOneTimeNotices(
@@ -862,7 +900,6 @@ export function DepositModal({
     }, [
         isConfidential,
         depositSource,
-        confidentialOrigin,
         minDepositDisplay,
         assetSymbol,
         networkDisplayName,
@@ -886,85 +923,191 @@ export function DepositModal({
             });
         }
         if (depositSource === "confidential_user") {
-            return confidentialOrigin === "trezu"
-                ? t("confidentialTrezuTitle")
-                : t("confidentialNearcomTitle");
+            return t("confidentialNearcomTitle");
         }
         return t("oneTimeAddressTitle", {
             symbol: assetSymbol,
             network: networkDisplayName,
         });
-    }, [
-        isConfidential,
-        depositSource,
-        confidentialOrigin,
-        assetSymbol,
-        networkDisplayName,
-        t,
-    ]);
+    }, [isConfidential, depositSource, assetSymbol, networkDisplayName, t]);
 
     const addressSubtitle = useMemo(() => {
         if (!isConfidential) return t("publicAddressSubtitle");
         if (depositSource === "confidential_user") {
-            return confidentialOrigin === "trezu"
-                ? t("confidentialTrezuSubtitle")
-                : t("confidentialNearcomSubtitle");
+            return t("confidentialNearcomSubtitle");
         }
         return t("oneTimeAddressSubtitle");
-    }, [isConfidential, depositSource, confidentialOrigin, t]);
+    }, [isConfidential, depositSource, t]);
 
     return (
-        <PageCard className="gap-2 w-full">
-            <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleBack}
-                        className="h-8 w-8"
-                        data-testid="deposit-back-button"
-                    >
-                        <Icon icon={ArrowLeft01Icon} />
-                    </Button>
-                    {step === "address" ? (
-                        <p className="font-semibold text-sm">{t("back")}</p>
-                    ) : (
-                        <p className="font-semibold">{t("title")}</p>
-                    )}
-                </div>
+        <div className="flex w-full flex-col gap-4">
+            {showSelectSlotWideBanner && (
+                <SlotWarning slot="deposit" className="mb-0" />
+            )}
 
-                {step === "select" && showGuestBanner && <DepositGuestBanner />}
+            {step === "select" && isConfidential && (
+                <DepositSourceCards
+                    value={depositSource}
+                    onChange={handleSourceChange}
+                />
+            )}
 
-                {step === "select" && isConfidential && (
-                    <DepositSourceCards
-                        value={depositSource}
-                        onChange={handleSourceChange}
-                    />
-                )}
+            {step === "select" && showAssetNetworkForm && (
+                <DepositAssetNetworkForm
+                    form={form}
+                    selectedAsset={selectedAsset}
+                    selectedNetwork={selectedNetwork}
+                    selectorsDisabled={depositSelectorsDisabled}
+                    isAssetsPending={isAssetsPending}
+                    showTopBorder={isConfidential}
+                    separateFields={isConfidential}
+                    onOpenAssetModal={() => setModalType("asset")}
+                    onOpenNetworkModal={() => setModalType("network")}
+                    tokenWarning={
+                        showSelectTokenPausedInline ? (
+                            <WarningMessage
+                                variant="inline"
+                                message={inlineScopedMessage}
+                                className="text-sm whitespace-normal"
+                            />
+                        ) : null
+                    }
+                    networkWarning={
+                        showSelectNetworkPausedInline ? (
+                            <WarningMessage
+                                variant="inline"
+                                message={inlineScopedMessage}
+                                className="text-sm whitespace-normal"
+                            />
+                        ) : null
+                    }
+                />
+            )}
 
-                {step === "select" && showAssetNetworkForm && (
-                    <>
-                        <SlotWarning slot="deposit" className="mb-0" />
-                        <DepositAssetNetworkForm
-                            form={form}
-                            selectedAsset={selectedAsset}
-                            selectedNetwork={selectedNetwork}
-                            selectorsDisabled={depositSelectorsDisabled}
-                            isAssetsPending={isAssetsPending}
-                            showTopBorder={isConfidential}
-                            onOpenAssetModal={() => setModalType("asset")}
-                            onOpenNetworkModal={() => setModalType("network")}
-                        />
-                    </>
-                )}
+            {/* Token + one network paused (public wallet) → banner below selectors */}
+            {showSelectTokenNetworkBannerBelow && (
+                <SlotWarning
+                    slot={depositScopeWarning?.slot ?? "deposit"}
+                    token={depositScopeWarning?.token ?? undefined}
+                    network={depositScopeWarning?.network ?? undefined}
+                    action="deposit"
+                />
+            )}
 
-                {depositBlocked &&
-                    selectedAsset &&
-                    selectedNetwork &&
-                    step === "select" &&
-                    showAssetNetworkForm && (
-                        <div className="space-y-3">
+            {showOneTimeAck && (
+                <DepositAckPanel
+                    title={t("oneTimeSectionTitle")}
+                    subtitle={t("oneTimeSectionSubtitle")}
+                    items={[
+                        ...(minDepositDisplay
+                            ? [
+                                  {
+                                      id: "min",
+                                      tone: "success" as const,
+                                      content: t.rich("minDepositValue", {
+                                          amount: minDepositDisplay,
+                                          symbol: assetSymbol,
+                                          bold: (chunks) => (
+                                              <span className="text-foreground">
+                                                  {chunks}
+                                              </span>
+                                          ),
+                                      }),
+                                  },
+                              ]
+                            : []),
+                        {
+                            id: "no-test",
+                            tone: "danger",
+                            content: t.rich("doNotSendTestDeposit", {
+                                bold: (chunks) => (
+                                    <span className="text-foreground">
+                                        {chunks}
+                                    </span>
+                                ),
+                            }),
+                        },
+                        {
+                            id: "no-reuse",
+                            tone: "danger",
+                            content: t.rich("doNotReuseAddress", {
+                                bold: (chunks) => (
+                                    <span className="text-foreground">
+                                        {chunks}
+                                    </span>
+                                ),
+                            }),
+                        },
+                    ]}
+                    checkboxLabel={
+                        minDepositDisplay
+                            ? t("oneTimeAckCheckbox", {
+                                  amount: minDepositDisplay,
+                                  symbol: assetSymbol,
+                              })
+                            : t("oneTimeAckCheckboxNoMin")
+                    }
+                    checked={hasAcknowledged}
+                    onCheckedChange={setHasAcknowledged}
+                    ctaLabel={t("generateAddress")}
+                    onCta={handleGenerateOneTimeAddress}
+                    ctaLoading={isLoadingAddress}
+                />
+            )}
+
+            {showConfidentialAck && (
+                <DepositAckPanel
+                    className="border-t border-general-border pt-6"
+                    title={t("internalAddressTitle")}
+                    items={[
+                        {
+                            id: "receives-only",
+                            tone: "success",
+                            content: t("receivesOnlyConfidential"),
+                            subtext: t("receivesOnlyConfidentialSub"),
+                        },
+                        {
+                            id: "anything-else",
+                            tone: "danger",
+                            content: t("anythingElseLost"),
+                            subtext: t("anythingElseLostSub"),
+                        },
+                    ]}
+                    checkboxLabel={t("confidentialAckCheckbox")}
+                    checked={hasAcknowledged}
+                    onCheckedChange={setHasAcknowledged}
+                    ctaLabel={t("showAddress")}
+                    onCta={handleShowConfidentialAddress}
+                    disabled={isDepositSlotWideBlocked}
+                />
+            )}
+
+            {step === "address" && (isLoadingAddress || !depositInfo) && (
+                <DepositAddressSkeleton />
+            )}
+
+            {step === "address" && depositInfo && !isLoadingAddress && (
+                <DepositAddressView
+                    title={addressTitle}
+                    subtitle={addressSubtitle}
+                    address={depositInfo.address}
+                    memo={depositInfo.memo}
+                    // Sputnik-dao treasury id — plain text, no highlight.
+                    preferPlainAddress={
+                        isConfidential && depositSource === "confidential_user"
+                    }
+                    notices={addressNotices}
+                    onShare={handleShare}
+                    showShare={!oneTimeAddressInactive}
+                    onCreateNewAddress={
+                        isConfidential && depositSource === "public_wallet"
+                            ? handleCreateNewAddress
+                            : undefined
+                    }
+                    createNewAddressDisabled={isLoadingAddress}
+                    onBack={handleBackFromAddress}
+                    headerSlot={
+                        showAddressWarningBanner ? (
                             <SlotWarning
                                 slot={depositScopeWarning?.slot ?? "deposit"}
                                 token={depositScopeWarning?.token ?? undefined}
@@ -973,147 +1116,10 @@ export function DepositModal({
                                 }
                                 action="deposit"
                             />
-                        </div>
-                    )}
-
-                {depositScopedMessage && step === "select" && (
-                    <WarningMessage
-                        variant="inline"
-                        message={depositScopedMessage}
-                        className="text-sm"
-                    />
-                )}
-
-                {showOneTimeAck && (
-                    <DepositAckPanel
-                        title={t("oneTimeSectionTitle")}
-                        subtitle={t("oneTimeSectionSubtitle")}
-                        items={[
-                            ...(minDepositDisplay
-                                ? [
-                                      {
-                                          id: "min",
-                                          tone: "success" as const,
-                                          content: t.rich("minDepositValue", {
-                                              amount: minDepositDisplay,
-                                              symbol: assetSymbol,
-                                              bold: (chunks) => (
-                                                  <span className="text-foreground">
-                                                      {chunks}
-                                                  </span>
-                                              ),
-                                          }),
-                                      },
-                                  ]
-                                : []),
-                            {
-                                id: "no-test",
-                                tone: "danger",
-                                content: t.rich("doNotSendTestDeposit", {
-                                    bold: (chunks) => (
-                                        <span className="text-foreground">
-                                            {chunks}
-                                        </span>
-                                    ),
-                                }),
-                            },
-                            {
-                                id: "no-reuse",
-                                tone: "danger",
-                                content: t.rich("doNotReuseAddress", {
-                                    bold: (chunks) => (
-                                        <span className="text-foreground">
-                                            {chunks}
-                                        </span>
-                                    ),
-                                }),
-                            },
-                        ]}
-                        checkboxLabel={
-                            minDepositDisplay
-                                ? t("oneTimeAckCheckbox", {
-                                      amount: minDepositDisplay,
-                                      symbol: assetSymbol,
-                                  })
-                                : t("oneTimeAckCheckboxNoMin")
-                        }
-                        checked={hasAcknowledged}
-                        onCheckedChange={setHasAcknowledged}
-                        ctaLabel={t("generateAddress")}
-                        onCta={handleGenerateOneTimeAddress}
-                        ctaLoading={isLoadingAddress}
-                    />
-                )}
-
-                {showConfidentialAck && (
-                    <DepositAckPanel
-                        title={t("internalAddressTitle")}
-                        items={[
-                            {
-                                id: "receives-only",
-                                tone: "success",
-                                content: (
-                                    <span className="font-semibold text-foreground">
-                                        {t("receivesOnlyConfidential")}
-                                    </span>
-                                ),
-                                subtext: t("receivesOnlyConfidentialSub"),
-                            },
-                            {
-                                id: "anything-else",
-                                tone: "danger",
-                                content: (
-                                    <span className="font-semibold text-foreground">
-                                        {t("anythingElseLost")}
-                                    </span>
-                                ),
-                                subtext: t("anythingElseLostSub"),
-                            },
-                        ]}
-                        checkboxLabel={t("confidentialAckCheckbox")}
-                        checked={hasAcknowledged}
-                        onCheckedChange={setHasAcknowledged}
-                        ctaLabel={t("showAddress")}
-                        onCta={handleShowConfidentialAddress}
-                    />
-                )}
-
-                {step === "address" && (isLoadingAddress || !depositInfo) && (
-                    <DepositAddressSkeleton />
-                )}
-
-                {step === "address" && depositInfo && !isLoadingAddress && (
-                    <DepositAddressView
-                        title={addressTitle}
-                        subtitle={addressSubtitle}
-                        address={depositInfo.address}
-                        memo={depositInfo.memo}
-                        // Sputnik-dao treasury id — plain text, no highlight.
-                        preferPlainAddress={
-                            isConfidential &&
-                            depositSource === "confidential_user"
-                        }
-                        notices={addressNotices}
-                        onShare={handleShare}
-                        showShare={!oneTimeAddressInactive}
-                        onCreateNewAddress={
-                            isConfidential && depositSource === "public_wallet"
-                                ? handleCreateNewAddress
-                                : undefined
-                        }
-                        createNewAddressDisabled={isLoadingAddress}
-                        headerSlot={
-                            isConfidential &&
-                            depositSource === "confidential_user" ? (
-                                <DepositConfidentialSourceTabs
-                                    value={confidentialOrigin}
-                                    onChange={setConfidentialOrigin}
-                                />
-                            ) : undefined
-                        }
-                    />
-                )}
-            </div>
+                        ) : undefined
+                    }
+                />
+            )}
 
             <SelectModal
                 isOpen={modalType === "asset"}
@@ -1153,19 +1159,19 @@ export function DepositModal({
                 selectedId={selectedNetwork?.id}
                 renderContent={(item, { searchQuery }) => {
                     const option = item as SelectOption;
+                    const networkLabel = getNetworkDisplayName(
+                        option.name || option.symbol || "",
+                    );
                     return (
                         <div className="flex-1 text-left">
                             <div
                                 className={cn(
                                     "font-semibold",
-                                    getNetworkDisplayCaseClass(
-                                        option.name,
-                                        "uppercase",
-                                    ),
+                                    getNetworkDisplayCaseClass(option.name),
                                 )}
                             >
                                 <HighlightedText
-                                    text={option.name || option.symbol || ""}
+                                    text={networkLabel}
                                     query={searchQuery}
                                 />
                             </div>
@@ -1173,14 +1179,6 @@ export function DepositModal({
                                 <div className="text-xs text-muted-foreground font-normal">
                                     <HighlightedText
                                         text={option.description}
-                                        query={searchQuery}
-                                    />
-                                </div>
-                            )}
-                            {option.symbol && (
-                                <div className="text-sm text-muted-foreground">
-                                    <HighlightedText
-                                        text={option.symbol}
                                         query={searchQuery}
                                     />
                                 </div>
@@ -1197,6 +1195,6 @@ export function DepositModal({
                     );
                 }}
             />
-        </PageCard>
+        </div>
     );
 }

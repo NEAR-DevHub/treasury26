@@ -15,6 +15,7 @@ import { PageCard } from "@/components/card";
 import { GuestBadge } from "@/components/guest-badge";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
+import { resolveTreasuryHomeHref } from "@/lib/treasury-home";
 import {
     Dialog,
     DialogContent,
@@ -148,7 +149,7 @@ export default function ManageTreasuriesPage() {
     const tCommon = useTranslations("common");
     const router = useRouter();
     const { accountId, isInitializing } = useNear();
-    const { lastTreasuryId } = useTreasury();
+    const { lastTreasuryId, memberTreasuries } = useTreasury();
     const { data: treasuries = [], isLoading } = useUserTreasuriesWithOptions(
         accountId,
         { includeHidden: true },
@@ -185,7 +186,10 @@ export default function ManageTreasuriesPage() {
         <PageComponentLayout
             title={t("title")}
             description={t("description")}
-            backButton={lastTreasuryId ? `/${lastTreasuryId}` : "/"}
+            backButton={resolveTreasuryHomeHref(
+                memberTreasuries,
+                lastTreasuryId,
+            )}
             hideCollapseButton
         >
             <div className="max-w-[720px] mx-auto">

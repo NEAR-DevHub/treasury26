@@ -53,6 +53,11 @@ export function useTreasury() {
             : !accountId ||
               !!guestTreasuryConfig ||
               (shouldLoadGuestConfig && isLoadingGuestConfig));
+    const isMember = Boolean(currentTreasury?.isMember);
+    const memberTreasuries = useMemo(
+        () => treasuries.filter((treasury) => treasury.isMember),
+        [treasuries],
+    );
     const isLoading =
         isInitializing ||
         (accountId ? isLoadingTreasuries : false) ||
@@ -64,15 +69,16 @@ export function useTreasury() {
             guestTreasuryConfig?.isConfidential) ??
         false;
 
-    // Store the latest treasury ID when it changes
+    // Remember last visited treasury; home resolver still filters by membership.
     useEffect(() => {
-        if (treasuryId && !treasuryNotFound) {
+        if (treasuryId) {
             setLastTreasuryId(treasuryId);
         }
-    }, [treasuryId, treasuryNotFound, setLastTreasuryId]);
+    }, [treasuryId, setLastTreasuryId]);
 
     return {
         isGuestTreasury,
+        isMember,
         isSaved: currentTreasury?.isSaved,
         isLoading,
         treasuryId,
@@ -80,6 +86,7 @@ export function useTreasury() {
         lastTreasuryId,
         config: currentTreasury?.config || guestTreasuryConfig,
         treasuries: visibleTreasuries,
+        memberTreasuries,
         treasuryNotFound,
     };
 }

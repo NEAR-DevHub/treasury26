@@ -310,9 +310,15 @@ export function PendingRequests() {
             !isHidden,
         );
     const hasPendingRequests = (pendingRequests?.proposals?.length ?? 0) > 0;
+    // Confidential setup creates ~3 proposals as the backend signer. Exclude
+    // that sponsor server-side (`exclude_setup_proposer`) so "never had
+    // requests" only counts real user proposals — without learning signer_id.
     const { data: anyRequests, isLoading: isAnyRequestsLoading } = useProposals(
         treasuryId,
-        { page_size: 1 },
+        {
+            page_size: 1,
+            exclude_setup_proposer: true,
+        },
         !isHidden && !isRequestsLoading && !hasPendingRequests,
     );
     const neverHadRequests = (anyRequests?.total ?? 0) === 0;

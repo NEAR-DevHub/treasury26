@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import { sanitizeReturnTo } from "@/lib/auth-redirect";
 import { useNear } from "@/stores/near-store";
 
 const UTM_KEYS = [
@@ -12,12 +13,6 @@ const UTM_KEYS = [
     "utm_campaign",
     "utm_content",
 ] as const;
-
-function sanitizeReturnTo(raw: string | null): string | null {
-    if (!raw) return null;
-    if (!raw.startsWith("/")) return null;
-    return raw;
-}
 
 function appendUtmParamsToReturnTo(
     returnTo: string,
@@ -65,7 +60,7 @@ export default function LoginPage() {
             hideHeaderBottomBorder
             hideHeaderContent
             fitViewport
-            mainClassName="flex flex-col bg-general-tertiary pt-1"
+            mainClassName="flex flex-col bg-general-bg-tertiary pt-1"
         >
             <div className="mx-auto w-full max-w-[448px] space-y-3 md:mt-3">
                 <ConnectWalletSelector

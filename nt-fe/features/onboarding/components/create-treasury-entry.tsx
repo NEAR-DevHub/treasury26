@@ -42,6 +42,8 @@ import {
     submitWhitelistRequest,
 } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
+import { sanitizeReturnTo } from "@/lib/auth-redirect";
+import { resolvePreferredMemberTreasuryId } from "@/lib/treasury-home";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
@@ -69,12 +71,6 @@ type LoginScreenSource = "sign-in" | "connect-wallet";
 type FormValues = {
     treasuryName: string;
 };
-
-function sanitizeReturnTo(raw: string | null): string | null {
-    if (!raw) return null;
-    if (!raw.startsWith("/")) return null;
-    return raw;
-}
 
 /**
  * The treasury handle is no longer entered by hand — it's derived from the
@@ -220,7 +216,7 @@ export function TreasuryOnboardingPage({
         authError,
         clearError,
     } = useNear();
-    const { treasuries, isLoading, lastTreasuryId } = useTreasury();
+    const { isLoading, lastTreasuryId, memberTreasuries } = useTreasury();
     const [isCheckingHandle, setIsCheckingHandle] = useState(false);
     const [progressOpen, setProgressOpen] = useState(false);
     const [progressSteps, setProgressSteps] = useState<CreationStep[]>([]);
@@ -245,11 +241,10 @@ export function TreasuryOnboardingPage({
     const waitlistSubtextClassName =
         "w-full text-center text-sm leading-5 tracking-normal text-muted-foreground";
 
-    const preferredTreasuryId =
-        (lastTreasuryId &&
-            treasuries.some((treasury) => treasury.daoId === lastTreasuryId) &&
-            lastTreasuryId) ||
-        treasuries[0]?.daoId;
+    const preferredTreasuryId = resolvePreferredMemberTreasuryId(
+        memberTreasuries,
+        lastTreasuryId,
+    );
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
     const shouldKeepUserOnCreatePage = !!returnTo || forceStayOnCreatePage;
     // Reached from inside the app, the screen is a self-contained detour: it
@@ -911,7 +906,7 @@ export function TreasuryOnboardingPage({
                 logo={headerLogo}
                 mainClassName={cn(
                     "pt-1",
-                    isMinimalChrome && "flex flex-col bg-general-tertiary",
+                    isMinimalChrome && "flex flex-col bg-general-bg-tertiary",
                     // The screen fills the viewport, so the account card sits
                     // 32px off a phone's bottom edge; on desktop it keeps 24px
                     // instead of the 32px the shell uses for scrolling pages.

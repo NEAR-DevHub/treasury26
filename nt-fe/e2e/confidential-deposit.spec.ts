@@ -239,7 +239,7 @@ test("Confidential deposit — dashboard deposit page flow", async ({
         timeout: 10_000,
     });
 
-    await expect(page.getByText("Deposit", { exact: true })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Receive" })).toBeVisible({
         timeout: 10_000,
     });
 
@@ -252,14 +252,14 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     await expect(confidentialSource).toBeVisible({ timeout: 10_000 });
 
     await expect(
-        page.getByText("Select asset and network to see deposit address"),
+        page.getByText("Select token and network to see deposit address"),
     ).toBeVisible();
 
     const assetSelectButton = page.getByTestId("deposit-asset-selector");
     await expect(assetSelectButton).toBeVisible({ timeout: 10_000 });
     await assetSelectButton.click();
     await expect(
-        page.getByRole("heading", { name: "Select Asset" }),
+        page.getByRole("heading", { name: "Select token" }),
     ).toBeVisible({ timeout: 10_000 });
     await page
         .getByRole("button", { name: /USD Coin/i })
@@ -270,7 +270,7 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     await expect(networkSelectButton).toBeVisible({ timeout: 10_000 });
     await networkSelectButton.click();
     await expect(
-        page.getByRole("heading", { name: "Select Network" }),
+        page.getByRole("heading", { name: "Select network" }),
     ).toBeVisible({ timeout: 10_000 });
     await page.getByRole("button", { name: "Near Protocol" }).first().click();
 
@@ -300,8 +300,8 @@ test("Confidential deposit — dashboard deposit page flow", async ({
 
     await expect(page.getByText(/Expires in/i)).toBeVisible();
 
-    // Back to select, then switch to confidential user source
-    await page.getByTestId("deposit-back-button").click();
+    // Return to select, then switch to confidential user source
+    await page.goto(`/${DAO_ID}/dashboard/deposit`);
     await expect(confidentialSource).toBeVisible({ timeout: 10_000 });
     await confidentialSource.click();
 
@@ -314,10 +314,9 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     await expect(showAddressButton).toBeEnabled();
     await showAddressButton.click();
 
-    await expect(page.getByTestId("deposit-origin-trezu")).toBeVisible({
-        timeout: 10_000,
-    });
-    await expect(page.getByTestId("deposit-origin-nearcom")).toBeVisible();
+    await expect(
+        page.getByText(/Deposit address any asset on near.com/i),
+    ).toBeVisible({ timeout: 10_000 });
 
     const confidentialAddressElement = page.locator("code").first();
     await expect(confidentialAddressElement).toBeVisible({ timeout: 10_000 });
@@ -326,13 +325,13 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     await expect(page.locator("svg").first()).toBeVisible();
 
     // Verify "Other" asset is not available on public-wallet path
-    await page.getByTestId("deposit-back-button").click();
+    await page.goto(`/${DAO_ID}/dashboard/deposit`);
     await publicSource.click();
     const selectedAssetButton = page.getByTestId("deposit-asset-selector");
     await expect(selectedAssetButton).toBeVisible({ timeout: 10_000 });
     await selectedAssetButton.click();
     await expect(
-        page.getByRole("heading", { name: "Select Asset" }),
+        page.getByRole("heading", { name: "Select token" }),
     ).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("button", { name: /^Other$/i })).toHaveCount(0);
 });

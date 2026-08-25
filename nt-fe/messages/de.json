@@ -137,6 +137,11 @@
         "description": "Es scheint, dass Sie einem nicht mehr funktionierenden Link gefolgt sind. Gehen Sie zurück oder kehren Sie zum Dashboard zurück.",
         "backToDashboard": "Zurück zum Dashboard"
     },
+    "notMemberScreen": {
+        "title": "Du bist kein Mitglied dieser Treasury",
+        "description": "Melde dich mit dem Konto an, das diese Treasury erwartet, oder bitte ein Mitglied, dich hinzuzufügen.",
+        "backToHome": "Zurück zur Startseite"
+    },
     "treasuryInfo": {
         "logoAlt": "Treasury-Logo"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "Abrufen der Einzahlungsadresse fehlgeschlagen. Bitte erneut versuchen.",
             "loginRequired": "Melde dich an, um eine einmalige Einzahlungsadresse zu erstellen."
         },
-        "title": "Einzahlen",
+        "title": "Empfangen",
         "subtitle": "Wählen Sie Vermögenswert und Netzwerk, um die Einzahlungsadresse anzuzeigen",
         "assetLabel": "Vermögenswert",
+        "tokenLabel": "Token",
         "networkLabel": "Netzwerk",
         "selectAsset": "Vermögenswert auswählen",
         "selectNetwork": "Netzwerk auswählen",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "Sende nur diesen Token, auf diesem Netzwerk, an die Adresse unten.",
         "oneTimeAddressTitle": "Einmalige Einzahlungsadresse {symbol} auf dem {network}-Netzwerk",
         "oneTimeAddressSubtitle": "Sende nur diesen Token, auf diesem Netzwerk, an die Adresse unten.",
-        "confidentialTrezuTitle": "Einzahlung von vertraulichem Trezu im near.com-Netzwerk",
-        "confidentialTrezuSubtitle": "Empfange jedes Asset von vertraulichem Trezu.",
         "confidentialNearcomTitle": "Einzahlung von vertraulichem near.com im internen Netzwerk",
         "confidentialNearcomSubtitle": "Empfange jedes Asset von vertraulichem near.com.",
         "oneTimeSectionTitle": "Einmalige vertrauliche Einzahlungsadresse",
@@ -336,10 +340,8 @@
         "anythingElseLost": "Alles von woanders Gesendete geht verloren",
         "anythingElseLostSub": "Börsen, öffentliche Wallets, andere Netzwerke – nicht wiederherstellbar.",
         "confidentialAckCheckbox": "Ich verstehe, dass Einzahlungen von außerhalb vertraulichem Trezu oder near.com verloren gehen.",
-        "onlyFromConfidentialTrezu": "Nur von vertraulichem <bold>Trezu</bold>",
         "onlyFromConfidentialNearcom": "Nur von vertraulichem <bold>near.com</bold>",
         "reusableDoesntExpire": "<bold>Wiederverwendbar.</bold> Läuft nicht ab",
-        "fundsOutsideTrezuLost": "Mittel von außerhalb vertraulichem Trezu gehen verloren",
         "fundsOutsideNearcomLost": "Mittel von außerhalb vertraulichem near.com gehen verloren",
         "publicNetworkRecommendation": "Zahle nur aus dem <bold>{network}</bold>-Netzwerk ein. Beginne mit einer kleinen Testtransaktion, bevor du den vollen Betrag sendest.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "Von vertraulichem Nutzer",
                 "subtitle": "Einzahlung von vertraulichem Trezu & near.com"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "Von vertraulichem Trezu",
-            "nearcom": "Von vertraulichem near.com",
-            "short": "Aus vertraulichem"
-        },
-        "guestBanner": {
-            "title": "Du siehst dies als Gast",
-            "description": "Diese Adresse gehört zu einer fremden Treasury. Vor dem Senden doppelt prüfen."
         },
         "transfer": {
             "title": "Überweisung an Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "im near.com-Netzwerk",
             "anyAssetOnNearcom": "Beliebiges Asset im near.com-Netzwerk",
             "securedOnTrezu": "Gesichert auf Trezu",
+            "securedOnNearcom": "Gesichert auf near.com for business",
             "payWithTrezu": "Mit Trezu bezahlen",
             "payWithNearcom": "Mit near.com bezahlen",
             "payRequiresTreasury": "Melde dich mit einer Trezu-Treasury an, um zu zahlen.",
@@ -2356,14 +2350,14 @@
             "createPaymentTitle": "Zahlungsanfrage erstellen",
             "createPaymentDescription": "Erstellen Sie eine Zahlungsanfrage, um Ihre Einrichtung abzuschließen.",
             "send": "Senden",
-            "useSolo": "Use Solo",
+            "useSolo": "Solo verwenden",
             "addTeamMemberDescription": "Sie haben Ihr Konto erfolgreich eingerichtet. Großartiger Start!",
             "addTeamMemberTitle": "Treasury-Konto erstellen",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Loslegen",
+            "setupThresholdTitle": "Schwellenwert festlegen",
+            "useSoloLink": "Ich nutze Solo",
             "setupThresholdLater": "Später",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "Erste Zahlung erstellen"
         },
         "welcome": {
             "heading": "🎉 Ihre Treasury ist bereit",
