@@ -18,6 +18,7 @@ import {
 import { TokenDisplay } from "@/components/token-display-with-network";
 import type { Token } from "@/components/token-input";
 import { Tooltip } from "@/components/tooltip";
+import { Separator } from "@/components/ui/separator";
 import { User } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -508,15 +509,13 @@ function PartiesSection({
 }
 
 /**
- * Status, date, contract call info and the transaction hash rows.
+ * Status, rate, date, contract call info and the transaction hash rows,
+ * shared by every variant's detail list.
  */
-function DetailsSection({
-    activity,
-    variant,
-}: {
-    activity: RecentActivity;
-    variant: ActivityDetailsVariant;
-}) {
+function useDetailItems(
+    activity: RecentActivity,
+    variant: ActivityDetailsVariant,
+): InfoItem[] {
     const t = useTranslations("activity.details");
 
     const items: InfoItem[] = [
@@ -575,10 +574,129 @@ function DetailsSection({
         });
     }
 
+    return items;
+}
+
+function DetailsSection({
+    activity,
+    variant,
+}: {
+    activity: RecentActivity;
+    variant: ActivityDetailsVariant;
+}) {
+    const items = useDetailItems(activity, variant);
+
     return (
         <ModalSection className="rounded-t-[12px]">
             <InfoDisplay hideSeparator items={items} className="w-full" />
         </ModalSection>
+    );
+}
+
+/**
+ * Label / value rows for the deposit dialog: muted label on the left, the
+ * value right-aligned and emphasised.
+ */
+function DepositDetailRows({ items }: { items: InfoItem[] }) {
+    return (
+        <div className="flex w-full flex-col gap-2">
+            {items.map((item) => (
+                <div
+                    key={item.label}
+                    className="flex items-center justify-between gap-4 py-1"
+                >
+                    <p className="text-sm font-medium text-muted-foreground">
+                        {item.label}
+                    </p>
+                    <div className="text-right text-sm font-semibold text-foreground">
+                        {item.value}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+/**
+ * Deposit dialog body: who sent the funds, what landed in the treasury, then
+ * the detail rows — all on the dialog's single white surface.
+ */
+function DepositBody({
+    activity,
+    treasuryId,
+}: {
+    activity: RecentActivity;
+    treasuryId: string;
+}) {
+    const t = useTranslations("activity.details");
+    const getFromAccount = useGetFromAccount();
+    const { isConfidential } = useTreasury();
+    const items = useDetailItems(activity, "deposit");
+
+    const fromAccountId = getFromAccountId(activity, true, treasuryId);
+    const fromLabel = getFromAccount(
+        activity,
+        true,
+        treasuryId,
+        isConfidential,
+    );
+    const token = activityToken(activity.tokenMetadata);
+
+    return (
+        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 pl-1.5">
+                    {fromAccountId ? (
+                        <User
+                            accountId={fromAccountId}
+                            variant="avatar"
+                            size="md"
+                        />
+                    ) : null}
+                    <div className="flex min-w-0 flex-col">
+                        <span className="text-base font-medium leading-tight text-muted-foreground">
+                            {t("from")}
+                        </span>
+                        <span className="truncate text-base font-semibold leading-tight text-foreground">
+                            {fromLabel}
+                        </span>
+                    </div>
+                </div>
+
+                <Icon
+                    icon={ArrowDown02Icon}
+                    className="ml-2 size-7 text-muted-foreground"
+                />
+
+                <div className="flex items-center gap-3">
+                    <TokenDisplay
+                        symbol={token.symbol}
+                        icon={token.icon}
+                        iconSize="3xl"
+                    />
+                    <div className="flex min-w-0 flex-col">
+                        <span className="text-2xl leading-tight font-bold break-all text-foreground">
+                            <MaskedBalance>
+                                {formatActivityAmount(activity.amount)}
+                            </MaskedBalance>{" "}
+                            {token.symbol}
+                        </span>
+                        {activity.valueUsd ? (
+                            <span className="text-base leading-tight font-medium break-all text-muted-foreground">
+                                ≈{" "}
+                                <MaskedBalance>
+                                    {formatCurrency(activity.valueUsd)}
+                                </MaskedBalance>
+                            </span>
+                        ) : null}
+                    </div>
+                </div>
+            </div>
+
+            <Separator className="bg-general-border" />
+
+            <DepositDetailRows items={items} />
+        </div>
     );
 }
 
@@ -623,6 +741,29 @@ export function TransactionDetailsModal({
 
     const variant = getActivityDetailsVariant(activity);
     const showParties = variant !== "exchange" && !isProposalCall(activity);
+
+    if (variant === "deposit") {
+        return (
+            <Dialog open={isOpen} onOpenChange={onClose}>
+                <DialogContent className="gap-3 bg-card sm:max-w-[448px]! sm:gap-3 sm:p-0">
+                    <DialogHeader className="border-b-0 px-0 pb-0 sm:mx-0 sm:px-5 sm:pt-4">
+                        <DialogTitle className="text-base">
+                            {t("detailsTitle")}
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <DepositBody activity={activity} treasuryId={treasuryId} />
+
+                    {activity.proposalId != null ? (
+                        <ViewLinkedRequestButton
+                            treasuryId={treasuryId}
+                            proposalId={activity.proposalId}
+                        />
+                    ) : null}
+                </DialogContent>
+            </Dialog>
+        );
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
