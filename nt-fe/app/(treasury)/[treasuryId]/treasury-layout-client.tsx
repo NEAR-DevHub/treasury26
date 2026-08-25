@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AppShellProvider } from "@/components/app-shell-context";
+import { BalanceMaskProvider } from "@/components/balance-mask";
 import { LoadingScreen } from "@/components/loading-screen";
 import { MobileBottomNav } from "@/components/mobile-shell/mobile-bottom-nav";
 import { MobileLanguageSheet } from "@/components/mobile-shell/mobile-language-sheet";
@@ -45,31 +46,35 @@ export function TreasuryLayoutClient({
     }
     return (
         <AppShellProvider>
-            <div
-                className={cn(
-                    "flex h-dvh lg:h-screen overflow-hidden transition-colors duration-200",
-                    shellSurfaceClass(isConfidential),
-                )}
-            >
-                <AppEventsProvider scope={{ treasuryId }} />
-                <PrimaryColorProvider treasuryId={treasuryId} />
-                <div className="hidden lg:block">
-                    <Sidebar
-                        isOpen={isSidebarOpen}
-                        onClose={() => setSidebarOpen(false)}
-                    />
-                </div>
-                <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:py-2 lg:pr-2">
-                    <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-850 lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
-                        {children}
+            {/* Above the sidebar so the "hide balances" toggle on the dashboard
+                also masks the treasury balances in the rail and its selector. */}
+            <BalanceMaskProvider>
+                <div
+                    className={cn(
+                        "flex h-dvh lg:h-screen overflow-hidden transition-colors duration-200",
+                        shellSurfaceClass(isConfidential),
+                    )}
+                >
+                    <AppEventsProvider scope={{ treasuryId }} />
+                    <PrimaryColorProvider treasuryId={treasuryId} />
+                    <div className="hidden lg:block">
+                        <Sidebar
+                            isOpen={isSidebarOpen}
+                            onClose={() => setSidebarOpen(false)}
+                        />
                     </div>
-                    <MobileBottomNav />
-                    <MobileMenuSheet />
-                    <MobileUserSheet />
-                    <MobileLanguageSheet />
-                    <MobileTreasurySheet />
-                </main>
-            </div>
+                    <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:py-2 lg:pr-2">
+                        <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-850 lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
+                            {children}
+                        </div>
+                        <MobileBottomNav />
+                        <MobileMenuSheet />
+                        <MobileUserSheet />
+                        <MobileLanguageSheet />
+                        <MobileTreasurySheet />
+                    </main>
+                </div>
+            </BalanceMaskProvider>
         </AppShellProvider>
     );
 }
