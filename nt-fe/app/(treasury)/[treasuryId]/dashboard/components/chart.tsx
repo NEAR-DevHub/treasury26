@@ -9,6 +9,7 @@ import {
     type ChartConfig,
 } from "@/components/ui/chart";
 import { formatCurrencyWithSubCent } from "@/lib/utils";
+import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
 import { EmptyState } from "@/components/empty-state";
 
 interface ChartDataPoint {
@@ -36,6 +37,7 @@ export default function BalanceChart({
     onMouseLeave,
 }: BalanceChartProps) {
     const t = useTranslations("balanceChart");
+    const isMasked = useIsBalanceMasked();
     const chartConfig = {
         usdValue: {
             label: t("usdValue"),
@@ -191,13 +193,14 @@ export default function BalanceChart({
                                     name === "usdValue"
                                         ? "var(--color-foreground)"
                                         : "var(--muted-foreground)";
-                                const formatted =
-                                    name === "usdValue"
-                                        ? formatCurrencyWithSubCent(num)
-                                        : `${num.toLocaleString(undefined, {
-                                              minimumFractionDigits: 2,
-                                              maximumFractionDigits: 6,
-                                          })}${symbol ? ` ${symbol.toUpperCase()}` : ""}`;
+                                const formatted = isMasked
+                                    ? BALANCE_MASK
+                                    : name === "usdValue"
+                                      ? formatCurrencyWithSubCent(num)
+                                      : `${num.toLocaleString(undefined, {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 6,
+                                        })}${symbol ? ` ${symbol.toUpperCase()}` : ""}`;
 
                                 return (
                                     <>
