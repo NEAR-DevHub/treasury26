@@ -556,7 +556,10 @@ function useDetailItems(
         ),
     });
 
-    if (isProposalCall(activity)) {
+    // Only governance calls surface their method/contract — a bulk transfer is
+    // a FunctionCall too, but `ft_transfer_call` on the bulk payment contract
+    // is protocol plumbing, not something the sender needs to read.
+    if (isProposalMethodCall(activity)) {
         items.push(
             { label: t("method"), value: activity.methodName },
             {
