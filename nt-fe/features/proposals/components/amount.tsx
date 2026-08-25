@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { getNetworkDisplayName } from "@/components/token-display";
@@ -93,6 +94,7 @@ export function Amount({
 }: AmountProps) {
     const tCommon = useTranslations("common");
     const tAmount = useTranslations("amount");
+    const isMasked = useIsBalanceMasked();
     const tAddressBookTable = useTranslations("addressBookTable");
     const requestDisplayContext = useRequestDisplayContext();
     const effectiveShowUSDValue =
@@ -123,6 +125,10 @@ export function Amount({
         const price = tokenData?.price;
         return `≈ ${formatCurrencyWithSubCent(parsedAmount * price!)}`;
     }, [usdTextOverride, tokenData, rawAmountValue, tCommon, usdValue]);
+    // Masking keeps the token (icon, symbol, network) and hides only the figures,
+    // so a request stays identifiable while balances are hidden.
+    const displayAmount = isMasked ? BALANCE_MASK : amountValue;
+    const displayUSDValue = isMasked ? BALANCE_MASK : estimatedUSDValue;
     const networkLabel = resolveAmountNetworkLabel({
         tokenId,
         tokenNetwork: tokenData?.network,
@@ -154,11 +160,11 @@ export function Amount({
         const textOnlyAmount = (
             <div className="flex flex-col items-end gap-0.5">
                 <p className="text-sm font-semibold">
-                    {amountValue} {tokenData?.symbol}
+                    {displayAmount} {tokenData?.symbol}
                 </p>
                 {effectiveShowUSDValue && (
                     <span className="text-muted-foreground text-xs">
-                        {estimatedUSDValue}
+                        {displayUSDValue}
                     </span>
                 )}
             </div>
@@ -188,13 +194,13 @@ export function Amount({
                 )}
                 {tokenData && (
                     <span className="font-medium">
-                        {amountValue} {tokenData?.symbol}
+                        {displayAmount} {tokenData?.symbol}
                     </span>
                 )}
             </div>
             {effectiveShowUSDValue && (
                 <span className="text-muted-foreground text-xs">
-                    {estimatedUSDValue}
+                    {displayUSDValue}
                 </span>
             )}
             {showNetwork &&

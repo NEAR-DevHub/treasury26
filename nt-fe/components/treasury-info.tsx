@@ -4,6 +4,7 @@ import { Icon } from "@/components/icon";
 import { DatabaseIcon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
 import { useAssets } from "@/hooks/use-assets";
 import { cn, formatCurrency } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
@@ -99,14 +100,22 @@ export function TreasuryBalance({
     className?: string;
     skeletonClassName?: string;
 }) {
+    const isMasked = useIsBalanceMasked();
     const { data, isLoading } = useAssets(daoId, { enabled: !isConfidential });
+
+    if (isConfidential || isMasked)
+        return (
+            <span className={cn("text-sm text-muted-foreground", className)}>
+                {BALANCE_MASK}
+            </span>
+        );
     if (isLoading)
         return <Skeleton className={skeletonClassName ?? "h-4 w-16"} />;
     if (!data?.tokens) return null;
     const totalBalance = data.tokens.reduce((sum, t) => sum + t.balanceUSD, 0);
     return (
         <span className={cn("text-sm text-muted-foreground", className)}>
-            {isConfidential ? "••••••" : formatCurrency(totalBalance)}
+            {formatCurrency(totalBalance)}
         </span>
     );
 }

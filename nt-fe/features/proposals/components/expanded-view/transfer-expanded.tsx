@@ -2,6 +2,7 @@ import { Icon } from "@/components/icon";
 import { ArrowUpRight01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Amount } from "../amount";
+import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { User } from "@/components/user";
 import { PaymentRequestData } from "../../types/index";
@@ -26,6 +27,7 @@ interface TransferExpandedProps {
 export function TransferExpanded({ data }: TransferExpandedProps) {
     const t = useTranslations("proposals.expanded");
     const tIntents = useTranslations("intentsQuote");
+    const isMasked = useIsBalanceMasked();
     const requestDisplayContext = useRequestDisplayContext();
     const isExecuted = requestDisplayContext?.isExecuted ?? false;
     const { data: tokenData } = useToken(
@@ -109,10 +111,13 @@ export function TransferExpanded({ data }: TransferExpandedProps) {
     ];
 
     if (hasFeeData) {
+        const fee = isMasked
+            ? BALANCE_MASK
+            : formatTokenDisplayAmount(data.networkFee!);
         infoItems.push({
             label: t("networkFee"),
             info: tIntents("networkFeeTooltip"),
-            value: `${formatTokenDisplayAmount(data.networkFee!)} ${tokenData?.symbol || ""}`.trim(),
+            value: `${fee} ${tokenData?.symbol || ""}`.trim(),
         });
     }
 

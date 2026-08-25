@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
 import { InfoAlert } from "@/components/info-alert";
 import { InsufficientBalanceInfo } from "../hooks/use-proposal-insufficient-balance";
 
@@ -8,6 +9,7 @@ export function NotEnoughBalance({
     insufficientBalanceInfo: InsufficientBalanceInfo;
 }) {
     const t = useTranslations("proposals.insufficientBalance");
+    const isMasked = useIsBalanceMasked();
     if (!insufficientBalanceInfo.hasInsufficientBalance) return null;
 
     if (insufficientBalanceInfo.type === "no-asset") {
@@ -28,7 +30,9 @@ export function NotEnoughBalance({
                 ? "readyToWithdraw"
                 : "continue";
     const symbol = insufficientBalanceInfo.tokenSymbol ?? "";
-    const amount = insufficientBalanceInfo.differenceDisplay ?? "";
+    const amount = isMasked
+        ? BALANCE_MASK
+        : (insufficientBalanceInfo.differenceDisplay ?? "");
 
     return (
         <InfoAlert

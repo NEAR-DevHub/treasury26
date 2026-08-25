@@ -13,6 +13,7 @@ import { useIntentsWithdrawalFee } from "@/hooks/use-intents-withdrawal-fee";
 import { BatchPaymentRequestData } from "../../types/index";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { Amount } from "../amount";
+import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
 import { BatchPayment, PaymentStatus } from "@/lib/api";
 import { Button } from "@/components/button";
 import {
@@ -251,6 +252,7 @@ export function BatchPaymentExpandedView({
 }: BatchPaymentExpandedViewProps) {
     const t = useTranslations("proposals.expanded");
     const tIntents = useTranslations("intentsQuote");
+    const isMasked = useIsBalanceMasked();
     const [expanded, setExpanded] = useState<number[]>([]);
 
     const { data: tokenData } = useToken(tokenId);
@@ -348,7 +350,7 @@ export function BatchPaymentExpandedView({
                   {
                       label: t("networkFee"),
                       info: tIntents("networkFeeTooltip"),
-                      value: `${totalNetworkFee.toString()} ${tokenData?.symbol || ""}`.trim(),
+                      value: `${isMasked ? BALANCE_MASK : totalNetworkFee.toString()} ${tokenData?.symbol || ""}`.trim(),
                   } satisfies InfoItem,
               ]
             : []),

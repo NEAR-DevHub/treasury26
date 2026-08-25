@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { AppShellProvider } from "@/components/app-shell-context";
+import { BalanceMaskProvider } from "@/components/balance-mask";
 import { LoadingScreen } from "@/components/loading-screen";
 import { MobileBottomNav } from "@/components/mobile-shell/mobile-bottom-nav";
 import { MobileLanguageSheet } from "@/components/mobile-shell/mobile-language-sheet";
@@ -56,6 +57,7 @@ export function TreasuryLayoutClient({
         </div>
     ) : (
         <AppShellProvider>
+            <BalanceMaskProvider>
             <div
                 className={cn(
                     "flex h-dvh lg:h-screen overflow-hidden transition-colors duration-200",
@@ -80,7 +82,8 @@ export function TreasuryLayoutClient({
                     <MobileLanguageSheet />
                     <MobileTreasurySheet />
                 </main>
-            </div>
+                </div>
+            </BalanceMaskProvider>
         </AppShellProvider>
     );
 
