@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
     balanceAssetIdFromQuote,
     findQuoteAssetIdForDestination,
+    formatAssetForIntentsAPI,
     isOneClickRoutingAsset,
     NBTC_BALANCE_ASSET_ID,
     ONE_CLICK_BTC_NATIVE_ASSET_ID,
@@ -22,6 +23,27 @@ describe("oneclick-asset-routing", () => {
         );
         expect(balanceAssetIdFromQuote(ONE_CLICK_BTC_NATIVE_ASSET_ID)).toBe(
             NBTC_BALANCE_ASSET_ID,
+        );
+    });
+
+    it("prefixes bare NEAR FT contracts for 1Click tokenIn", () => {
+        expect(
+            formatAssetForIntentsAPI(
+                "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+            ),
+        ).toBe(
+            "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        );
+        expect(
+            formatAssetForIntentsAPI(
+                "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+            ),
+        ).toBe(
+            "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+        );
+        expect(formatAssetForIntentsAPI("near")).toBe("nep141:wrap.near");
+        expect(formatAssetForIntentsAPI(ONE_CLICK_BTC_NATIVE_ASSET_ID)).toBe(
+            ONE_CLICK_BTC_NATIVE_ASSET_ID,
         );
     });
 

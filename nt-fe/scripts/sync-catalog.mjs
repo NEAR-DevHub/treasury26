@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Copies shared/status-situations.json into lib/generated/.
- * Run automatically via `predev` and `prebuild` hooks.
+ * Run automatically via `predev`, `pretest`, and `prebuild` hooks.
  */
 import { readFileSync, mkdirSync, writeFileSync } from "fs";
 import { resolve, dirname } from "path";
