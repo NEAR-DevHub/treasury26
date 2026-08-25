@@ -12,7 +12,6 @@ import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { FormattedDate } from "@/components/formatted-date";
 import { Icon } from "@/components/icon";
-import { NearIntentsLogo } from "@/components/icons/near-intents-logo";
 import { InfoDisplay, type InfoItem } from "@/components/info-display";
 import {
     Dialog,
@@ -248,12 +247,10 @@ function ModalSection({
 }
 
 function TokenAmountColumn({
-    title,
     token,
     amount,
     usdValue,
 }: {
-    title?: string;
     token: Token;
     /** Already masked by the caller when it holds a figure rather than a status. */
     amount: ReactNode;
@@ -261,11 +258,6 @@ function TokenAmountColumn({
 }) {
     return (
         <div className="flex flex-1 flex-col items-center gap-2 text-center">
-            {title ? (
-                <p className="text-xs font-medium text-muted-foreground">
-                    {title}
-                </p>
-            ) : null}
             <TokenDisplay
                 symbol={token.symbol}
                 icon={token.icon}
@@ -308,132 +300,6 @@ function TokenAmountHeader({ activity }: { activity: RecentActivity }) {
                 }
                 usdValue={activity.valueUsd}
             />
-        </ModalSection>
-    );
-}
-
-/**
- * Sell / receive summary for exchanges.
- */
-function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
-    const t = useTranslations("activity.details");
-    const isMobile = useMediaQuery("(max-width: 639px)");
-    const sentToken = swap.sentTokenMetadata
-        ? activityToken(swap.sentTokenMetadata)
-        : null;
-    const receivedToken = activityToken(swap.receivedTokenMetadata);
-    const receivedAmount = swap.receivedAmount ? (
-        <MaskedBalance>{formatSmartAmount(swap.receivedAmount)}</MaskedBalance>
-    ) : (
-        t("pending")
-    );
-
-    if (isMobile) {
-        return (
-            <div className="flex flex-col gap-3 bg-card py-3">
-                {sentToken && swap.sentAmount ? (
-                    <MobileSwapTokenRow
-                        token={sentToken}
-                        amount={
-                            <MaskedBalance>
-                                {formatSmartAmount(swap.sentAmount)}
-                            </MaskedBalance>
-                        }
-                        usdValue={swap.sentAmountUsd}
-                    />
-                ) : null}
-                <Icon
-                    icon={ArrowDown02Icon}
-                    className="mx-auto size-4 text-muted-foreground"
-                />
-                <MobileSwapTokenRow
-                    token={receivedToken}
-                    amount={receivedAmount}
-                    usdValue={swap.receivedAmountUsd}
-                />
-            </div>
-        );
-    }
-
-    return (
-        <ModalSection className="flex py-6 rounded-b-[12px]">
-            <div className="relative flex w-full items-center justify-center gap-4">
-                {swap.sentAmount && sentToken ? (
-                    <TokenAmountColumn
-                        title={t("sell")}
-                        token={sentToken}
-                        amount={
-                            <MaskedBalance>
-                                {formatSmartAmount(swap.sentAmount)}
-                            </MaskedBalance>
-                        }
-                        usdValue={swap.sentAmountUsd}
-                    />
-                ) : null}
-
-                <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
-                    <div className="rounded-full bg-card border p-1.5 shadow-sm">
-                        <Icon
-                            icon={ArrowRight01Icon}
-                            className="text-muted-foreground"
-                        />
-                    </div>
-                </div>
-
-                <TokenAmountColumn
-                    title={t("receive")}
-                    token={receivedToken}
-                    amount={receivedAmount}
-                    usdValue={swap.receivedAmountUsd}
-                />
-            </div>
-        </ModalSection>
-    );
-}
-
-function MobileSwapTokenRow({
-    token,
-    amount,
-    usdValue,
-}: {
-    token: Token;
-    /** Already masked by the caller when it holds a figure rather than a status. */
-    amount: ReactNode;
-    usdValue?: number;
-}) {
-    return (
-        <div className="flex items-center gap-3">
-            <TokenDisplay
-                symbol={token.symbol}
-                icon={token.icon}
-                chainIcons={token.chainIcons}
-                iconSize="xl"
-            />
-            <div className="min-w-0">
-                <p className="font-semibold text-xl leading-tight text-foreground">
-                    {amount} {token.symbol}
-                </p>
-                {usdValue ? (
-                    <p className="text-sm text-muted-foreground">
-                        <MaskedBalance>
-                            {formatCurrency(usdValue)}
-                        </MaskedBalance>
-                    </p>
-                ) : null}
-            </div>
-        </div>
-    );
-}
-
-function ViaIntentsSection() {
-    const t = useTranslations("activity.details");
-    const isMobile = useMediaQuery("(max-width: 639px)");
-    if (isMobile) return null;
-
-    return (
-        <ModalSection className="flex rounded-[12px]">
-            <p className="text-sm text-muted-foreground">{t("via")}</p>
-            <NearIntentsLogo className="h-3" />
         </ModalSection>
     );
 }
@@ -608,8 +474,8 @@ function DetailsSection({
 }
 
 /**
- * Label / value rows for the deposit, send and bulk dialogs: muted label on
- * the left, the value right-aligned and emphasised.
+ * Label / value rows for the deposit, send, bulk and swap dialogs: muted
+ * label on the left, the value right-aligned and emphasised.
  */
 function DetailRows({ items }: { items: InfoItem[] }) {
     return (
@@ -952,6 +818,100 @@ function BulkSendBody({
     );
 }
 
+/**
+ * One leg of a swap: token icon, the signed amount and its USD value.
+ */
+function SwapAmountRow({
+    token,
+    amount,
+    usdValue,
+}: {
+    token: Token;
+    /** Already masked by the caller when it holds a figure rather than a status. */
+    amount: ReactNode;
+    usdValue?: number;
+}) {
+    return (
+        <div className="flex items-center gap-3">
+            <TokenDisplay
+                symbol={token.symbol}
+                icon={token.icon}
+                iconSize="3xl"
+            />
+            <div className="flex min-w-0 flex-col">
+                <span className="text-2xl leading-tight font-bold break-all text-foreground">
+                    {amount} {token.symbol}
+                </span>
+                {usdValue ? (
+                    <span className="text-base leading-tight font-medium break-all text-muted-foreground">
+                        <MaskedBalance>
+                            {formatCurrency(usdValue)}
+                        </MaskedBalance>
+                    </span>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Swap dialog body: the leg the treasury paid, the leg it got back, then the
+ * detail rows — all on the dialog's single white surface.
+ */
+function SwapBody({
+    activity,
+    swap,
+}: {
+    activity: RecentActivity;
+    swap: SwapInfo;
+}) {
+    const t = useTranslations("activity.details");
+    const items = useDetailItems(activity, "exchange");
+
+    const sentToken = swap.sentTokenMetadata
+        ? activityToken(swap.sentTokenMetadata)
+        : null;
+    const receivedToken = activityToken(swap.receivedTokenMetadata);
+
+    return (
+        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+            <div className="flex flex-col gap-3">
+                {sentToken && swap.sentAmount ? (
+                    <SwapAmountRow
+                        token={sentToken}
+                        amount={
+                            <MaskedBalance>
+                                {`-${formatSmartAmount(swap.sentAmount)}`}
+                            </MaskedBalance>
+                        }
+                        usdValue={swap.sentAmountUsd}
+                    />
+                ) : null}
+
+                <DownArrow />
+
+                <SwapAmountRow
+                    token={receivedToken}
+                    amount={
+                        swap.receivedAmount ? (
+                            <MaskedBalance>
+                                {`+${formatSmartAmount(swap.receivedAmount)}`}
+                            </MaskedBalance>
+                        ) : (
+                            t("pending")
+                        )
+                    }
+                    usdValue={swap.receivedAmountUsd}
+                />
+            </div>
+
+            <Separator className="bg-general-border" />
+
+            <DetailRows items={items} />
+        </div>
+    );
+}
+
 function ViewLinkedRequestButton({
     treasuryId,
     proposalId,
@@ -1065,14 +1025,21 @@ export function TransactionDetailsModal({
     const isContractCall = isProposalCall(activity);
     const showParties = variant !== "exchange" && !isContractCall;
 
-    if (variant === "deposit") {
+    // Deposits and swaps share the compact single-surface dialog.
+    const compactBody = activity.swap ? (
+        <SwapBody activity={activity} swap={activity.swap} />
+    ) : variant === "deposit" ? (
+        <DepositBody activity={activity} treasuryId={treasuryId} />
+    ) : null;
+
+    if (compactBody) {
         return (
             <TransferDialog
                 title={t("detailsTitle")}
                 isOpen={isOpen}
                 onClose={onClose}
             >
-                <DepositBody activity={activity} treasuryId={treasuryId} />
+                {compactBody}
 
                 {activity.proposalId != null ? (
                     <ViewLinkedRequestButton
@@ -1106,13 +1073,8 @@ export function TransactionDetailsModal({
                     </DialogTitle>
                 </DialogHeader>
 
-                {variant === "exchange" && activity.swap ? (
-                    <ExchangeSummarySection swap={activity.swap} />
-                ) : (
-                    <TokenAmountHeader activity={activity} />
-                )}
+                <TokenAmountHeader activity={activity} />
 
-                {variant === "exchange" ? <ViaIntentsSection /> : null}
                 {showParties ? (
                     <PartiesSection
                         activity={activity}
