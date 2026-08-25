@@ -341,6 +341,11 @@ export interface ProposalFilters {
     // User filters
     proposers?: string[];
     proposers_not?: string[];
+    /**
+     * Exclude the backend gas-sponsor / confidential-setup proposer server-side
+     * (clients never need the signer account id).
+     */
+    exclude_setup_proposer?: boolean;
     approvers?: string[];
     approvers_not?: string[];
     voter_votes?: string; // format: "account:vote,account:vote" where vote is "approved", "rejected", or "no_voted"
@@ -406,6 +411,8 @@ export async function getProposals(
                 params.proposers = filters.proposers.join(",");
             if (filters.proposers_not)
                 params.proposers_not = filters.proposers_not.join(",");
+            if (filters.exclude_setup_proposer)
+                params.exclude_setup_proposer = "true";
             if (filters.approvers)
                 params.approvers = filters.approvers.join(",");
             if (filters.approvers_not)

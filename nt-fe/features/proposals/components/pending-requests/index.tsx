@@ -21,7 +21,6 @@ import { FormattedDate } from "@/components/formatted-date";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SlotWarning } from "@/components/warning-message";
 import { useProposals } from "@/hooks/use-proposals";
-import { useSponsorAccountId } from "@/hooks/use-sponsor-account-id";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useProposalApproveBlock } from "@/hooks/use-warnings";
@@ -311,34 +310,20 @@ export function PendingRequests() {
             !isHidden,
         );
     const hasPendingRequests = (pendingRequests?.proposals?.length ?? 0) > 0;
-    const {
-        data: sponsorAccountId,
-        isLoading: isSponsorLoading,
-        isError: isSponsorError,
-    } = useSponsorAccountId();
-    // Confidential setup creates ~3 proposals as the backend signer. Treat the
-    // treasury as "never had requests" unless a non-signer proposer exists.
-    // When /api/health fails to return signer_id, probe without proposers_not
-    // (may count setup proposals) rather than forcing the empty-never copy.
-    const canProbeNonSetupProposers =
-        !isSponsorLoading && (!!sponsorAccountId || isSponsorError);
+    // Confidential setup creates ~3 proposals as the backend signer. Exclude
+    // that sponsor server-side (`exclude_setup_proposer`) so "never had
+    // requests" only counts real user proposals — without learning signer_id.
     const { data: anyRequests, isLoading: isAnyRequestsLoading } = useProposals(
         treasuryId,
         {
             page_size: 1,
-            ...(sponsorAccountId ? { proposers_not: [sponsorAccountId] } : {}),
+            exclude_setup_proposer: true,
         },
-        !isHidden &&
-            !isRequestsLoading &&
-            !hasPendingRequests &&
-            canProbeNonSetupProposers,
+        !isHidden && !isRequestsLoading && !hasPendingRequests,
     );
     const neverHadRequests = (anyRequests?.total ?? 0) === 0;
     const isLoading =
-        isRequestsLoading ||
-        (!hasPendingRequests &&
-            (isSponsorLoading ||
-                (canProbeNonSetupProposers && isAnyRequestsLoading)));
+        isRequestsLoading || (!hasPendingRequests && isAnyRequestsLoading);
 
     if (isHidden) {
         return (

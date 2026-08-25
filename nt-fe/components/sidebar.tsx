@@ -24,14 +24,12 @@ import { SlotWarning } from "@/components/warning-message";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { SidebarOnboarding } from "@/features/onboarding/components/sidebar-onboarding";
 import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
-import { PAGE_TOUR_SELECTORS } from "@/features/onboarding/steps/page-tours";
 import { useCustomRequestsEnabled } from "@/features/proposal-templates/hooks/use-custom-requests-enabled";
 import { useProposalTemplates } from "@/features/proposal-templates/hooks/use-proposal-templates";
 import { manifestIdOf } from "@/features/proposal-templates/manifest";
 import { useProposals } from "@/hooks/use-proposals";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useSaveTreasuryMutation } from "@/hooks/use-treasury-mutations";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
@@ -238,16 +236,10 @@ export function Sidebar({ onClose }: SidebarProps) {
     const [templatesExpanded, setTemplatesExpanded] = useState(true);
     const { accountId } = useNear();
     const tNav = useTranslations("nav");
-    const tCommon = useTranslations("common");
     const tCustom = useTranslations("customTemplates");
     const { currentTour } = useNextStep();
 
-    const {
-        isGuestTreasury,
-        isLoading: isLoadingGuestTreasury,
-        treasuryId,
-        isSaved,
-    } = useTreasury();
+    const { isGuestTreasury, treasuryId } = useTreasury();
     const { data: proposals } = useProposals(treasuryId, {
         statuses: ["InProgress"],
         ...(accountId && {
@@ -270,7 +262,6 @@ export function Sidebar({ onClose }: SidebarProps) {
             template.pinned &&
             manifestIdOf(template.manifest),
     );
-    const saveTreasuryMutation = useSaveTreasuryMutation(accountId, treasuryId);
 
     // Dashboard tour step 5 opens treasury selector; close it once that tour ends
     // so follow-up tours (e.g. Earn announcement) are not hidden behind dropdown.
@@ -354,42 +345,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                                 onOpenChange={setDropdownOpen}
                             />
                             <div className="px-3 py-2.5">
-                                {isGuestTreasury && !isLoadingGuestTreasury ? (
-                                    accountId && !isSaved ? (
-                                        <Button
-                                            id={PAGE_TOUR_SELECTORS.GUEST_SAVE_BTN.slice(
-                                                1,
-                                            )}
-                                            variant="outline"
-                                            size="sm"
-                                            className="group h-7 w-fit justify-center gap-1.5 text-xs"
-                                            tooltipContent={tNav(
-                                                "saveGuestTreasury",
-                                            )}
-                                            side="right"
-                                            onClick={() =>
-                                                saveTreasuryMutation.mutate()
-                                            }
-                                            disabled={
-                                                saveTreasuryMutation.isPending
-                                            }
-                                        >
-                                            <Icon
-                                                icon={Bookmark01Icon}
-                                                className={cn(
-                                                    "shrink-0",
-                                                    iconHoverAnimations.drop,
-                                                )}
-                                            />
-                                            {tCommon("save")}
-                                        </Button>
-                                    ) : null
-                                ) : (
-                                    <ApprovalInfo
-                                        variant="pupil"
-                                        side="right"
-                                    />
-                                )}
+                                <ApprovalInfo variant="pupil" side="right" />
                             </div>
                         </div>
                     )}

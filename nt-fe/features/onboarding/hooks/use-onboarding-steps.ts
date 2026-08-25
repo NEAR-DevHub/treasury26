@@ -7,7 +7,6 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryMembers } from "@/hooks/use-treasury-members";
 import { availableBalance } from "@/lib/balance";
-import { useNear } from "@/stores/near-store";
 import {
     canDeferThresholdSetup,
     getOnboardingStepStatus,
@@ -24,7 +23,6 @@ import {
 
 export function useOnboardingSteps() {
     const pathname = usePathname();
-    const { accountId } = useNear();
     const {
         isGuestTreasury,
         isLoading: isLoadingGuestTreasury,
@@ -39,10 +37,14 @@ export function useOnboardingSteps() {
             refetchOnMount: "always",
             refetchInterval: buildPaymentPendingRefetchInterval(treasuryId),
         });
+    // Exclude backend sponsor ChangePolicy (confidential setup) server-side so
+    // any remaining policy proposal — including from a fellow council member —
+    // can complete the threshold onboarding step.
     const { data: policyProposals, isLoading: isLoadingPolicy } = useProposals(
         treasuryId,
         {
             proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
+            exclude_setup_proposer: true,
         },
     );
     const [soloSelected, setSoloSelected] = useState(false);
@@ -94,19 +96,11 @@ export function useOnboardingSteps() {
     const addedMember = members.length > 1;
     const hasTeam = addedMember || soloSelected;
     const hasPayment = (paymentProposals?.proposals?.length ?? 0) > 0;
-    // Confidential setup also submits a ChangePolicy as the backend signer —
-    // that must not complete this step. Only the signed-in user's own policy
-    // proposals (or explicit solo/Later flags) count.
-    const hasUserThresholdProposal =
-        !!accountId &&
-        (policyProposals?.proposals?.some(
-            (proposal) =>
-                isChangePolicyProposalKind(proposal.kind) &&
-                proposal.proposer === accountId,
-        ) ??
-            false);
-    const hasThreshold =
-        soloSelected || thresholdSetup || hasUserThresholdProposal;
+    const hasThresholdProposal =
+        policyProposals?.proposals?.some((proposal) =>
+            isChangePolicyProposalKind(proposal.kind),
+        ) ?? false;
+    const hasThreshold = soloSelected || thresholdSetup || hasThresholdProposal;
     const canDeferThreshold = canDeferThresholdSetup({
         addedMember,
         thresholdComplete: hasThreshold,

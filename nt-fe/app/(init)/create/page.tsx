@@ -1,5 +1,6 @@
 import { AuthProvider } from "@/components/auth-provider";
 import { NearInitializer } from "@/components/near-initializer";
+import { RequireAuth } from "@/components/require-auth";
 import { TreasuryOnboardingPage } from "@/features/onboarding/components/create-treasury-entry";
 
 export default function CreatePage() {
@@ -7,7 +8,9 @@ export default function CreatePage() {
         <>
             <NearInitializer />
             <AuthProvider>
-                <TreasuryOnboardingPage initialScreen="create" />
+                <RequireAuth>
+                    <TreasuryOnboardingPage initialScreen="create" />
+                </RequireAuth>
             </AuthProvider>
         </>
     );

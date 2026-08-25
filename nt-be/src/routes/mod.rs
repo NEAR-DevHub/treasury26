@@ -72,9 +72,6 @@ async fn health_check(
     Ok(Json(json!({
         "status": "healthy",
         "timestamp": chrono::Utc::now().to_rfc3339(),
-        // Public NEAR account that submits gas-sponsored / confidential-setup
-        // proposals. Frontends exclude it when deciding "has any real requests".
-        "signer_id": state.signer_id,
         "database": {
             "connected": true,
             "pool_size": pool_size,
@@ -527,6 +524,6 @@ mod tests {
 
         assert_eq!(body["status"], "healthy");
         assert_eq!(body["background_jobs"]["local"]["role"], "starting");
-        assert!(body["signer_id"].is_string());
+        assert!(body.get("signer_id").is_none());
     }
 }

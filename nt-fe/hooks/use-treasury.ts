@@ -69,12 +69,12 @@ export function useTreasury() {
             guestTreasuryConfig?.isConfidential) ??
         false;
 
-    // Only remember treasuries the user belongs to (for Back to home / landing).
+    // Remember last visited treasury; home resolver still filters by membership.
     useEffect(() => {
-        if (treasuryId && isMember) {
+        if (treasuryId) {
             setLastTreasuryId(treasuryId);
         }
-    }, [treasuryId, isMember, setLastTreasuryId]);
+    }, [treasuryId, setLastTreasuryId]);
 
     return {
         isGuestTreasury,
