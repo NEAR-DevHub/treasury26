@@ -827,7 +827,9 @@ export default function BalanceWithGraph({
                                     )}
                                 </span>
                                 <span className="font-semibold text-foreground">
-                                    {formatCurrencyWithSubCent(item.value)}
+                                    <MaskedBalance>
+                                        {formatCurrencyWithSubCent(item.value)}
+                                    </MaskedBalance>
                                 </span>
                             </div>
                         ))}
