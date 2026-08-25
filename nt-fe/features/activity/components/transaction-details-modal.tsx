@@ -674,7 +674,8 @@ function CounterpartyBlock({
 }: {
     avatar: ReactNode;
     label: string;
-    name: string;
+    /** Omitted when the label already names the counterparty, e.g. bulk. */
+    name?: string;
     /** Trailing control, e.g. the bulk recipients toggle. */
     action?: ReactNode;
 }) {
@@ -682,12 +683,20 @@ function CounterpartyBlock({
         <div className="flex items-center gap-3 pl-1.5">
             {avatar}
             <div className="flex min-w-0 flex-1 flex-col">
-                <span className="text-base font-medium leading-tight text-muted-foreground">
-                    {label}
-                </span>
-                <span className="truncate text-base font-semibold leading-tight text-foreground">
-                    {name}
-                </span>
+                {name ? (
+                    <>
+                        <span className="text-base font-medium leading-tight text-muted-foreground">
+                            {label}
+                        </span>
+                        <span className="truncate text-base font-semibold leading-tight text-foreground">
+                            {name}
+                        </span>
+                    </>
+                ) : (
+                    <span className="truncate text-base font-semibold leading-tight text-foreground">
+                        {label}
+                    </span>
+                )}
             </div>
             {action}
         </div>
@@ -897,7 +906,6 @@ function BulkSendBody({
                 <CounterpartyBlock
                     avatar={<BulkRecipientsAvatar />}
                     label={t("toRecipients", { count: recipients.length })}
-                    name={recipients.map((r) => r.accountId).join(", ")}
                     action={
                         <Button
                             type="button"
