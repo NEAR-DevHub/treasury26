@@ -13,6 +13,8 @@
         "format": "biome format . --write",
         "format:check": "biome check . --formatter-enabled=true --linter-enabled=false --assist-enabled=false",
         "check:i18n": "node scripts/check-i18n.mjs",
+        "pretest": "node scripts/sync-catalog.mjs",
+        "test": "bun test lib features app hooks",
         "proxy": "node proxy-server.js",
         "proxy:staging": "BACKEND_PROXY_TARGET=https://api.testenv.trezu.app node proxy-server.js",
         "proxy:prod": "BACKEND_PROXY_TARGET=https://api.trezu.app node proxy-server.js",

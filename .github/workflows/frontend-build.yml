@@ -43,6 +43,10 @@ jobs:
       working-directory: nt-fe
       run: bun run check:i18n
 
+    - name: Run unit tests
+      working-directory: nt-fe
+      run: bun run test
+
     - name: Build
       working-directory: nt-fe
       run: bun run build
