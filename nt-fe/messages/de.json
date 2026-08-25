@@ -460,10 +460,14 @@
             "processing": "In Bearbeitung",
             "failed": "Fehlgeschlagen",
             "exchangeTransaction": "Umtauschtransaktion",
-            "transferTransaction": "Überweisungstransaktion",
             "rate": "Kurs",
             "detailsTitle": "Details",
-            "linkedRequest": "Verknüpfte Anfrage"
+            "linkedRequest": "Verknüpfte Anfrage",
+            "sendTransaction": "Sendetransaktion",
+            "bulkTitle": "Details der Sammelüberweisung",
+            "toRecipients": "An {count} Empfänger",
+            "showRecipients": "Empfänger anzeigen",
+            "hideRecipients": "Empfänger ausblenden"
         },
         "refresh": {
             "ariaLabel": "Vertraulichen Verlauf aktualisieren",

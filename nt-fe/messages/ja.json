@@ -460,10 +460,14 @@
             "processing": "処理中",
             "failed": "失敗",
             "exchangeTransaction": "交換トランザクション",
-            "transferTransaction": "送金トランザクション",
             "rate": "レート",
             "detailsTitle": "詳細",
-            "linkedRequest": "リンクされたリクエスト"
+            "linkedRequest": "リンクされたリクエスト",
+            "sendTransaction": "送信トランザクション",
+            "bulkTitle": "一括送金の詳細",
+            "toRecipients": "{count} 件の受取人へ",
+            "showRecipients": "受取人を表示",
+            "hideRecipients": "受取人を非表示"
         },
         "refresh": {
             "ariaLabel": "機密履歴を更新",

@@ -460,10 +460,14 @@
             "processing": "İşleniyor",
             "failed": "Başarısız",
             "exchangeTransaction": "Takas İşlemi",
-            "transferTransaction": "Transfer İşlemi",
             "rate": "Kur",
             "detailsTitle": "Detaylar",
-            "linkedRequest": "Bağlantılı talep"
+            "linkedRequest": "Bağlantılı talep",
+            "sendTransaction": "Gönderme İşlemi",
+            "bulkTitle": "Toplu Transfer Ayrıntıları",
+            "toRecipients": "{count} alıcıya",
+            "showRecipients": "Alıcıları göster",
+            "hideRecipients": "Alıcıları gizle"
         },
         "refresh": {
             "ariaLabel": "Gizli geçmişi yenile",

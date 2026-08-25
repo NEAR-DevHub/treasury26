@@ -460,10 +460,14 @@
             "processing": "Đang xử lý",
             "failed": "Thất bại",
             "exchangeTransaction": "Giao dịch trao đổi",
-            "transferTransaction": "Giao dịch chuyển khoản",
             "rate": "Tỷ giá",
             "detailsTitle": "Chi tiết",
-            "linkedRequest": "Yêu cầu liên kết"
+            "linkedRequest": "Yêu cầu liên kết",
+            "sendTransaction": "Giao dịch gửi",
+            "bulkTitle": "Chi tiết chuyển hàng loạt",
+            "toRecipients": "Đến {count} người nhận",
+            "showRecipients": "Hiện người nhận",
+            "hideRecipients": "Ẩn người nhận"
         },
         "refresh": {
             "ariaLabel": "Làm mới lịch sử bảo mật",

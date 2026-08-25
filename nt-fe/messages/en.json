@@ -462,8 +462,12 @@
             "processing": "Processing",
             "failed": "Failed",
             "exchangeTransaction": "Exchange Transaction",
-            "transferTransaction": "Transfer Transaction",
-            "rate": "Rate"
+            "rate": "Rate",
+            "sendTransaction": "Send Transaction",
+            "bulkTitle": "Bulk Transfer Details",
+            "toRecipients": "To {count} recipients",
+            "showRecipients": "Show recipients",
+            "hideRecipients": "Hide recipients"
         },
         "refresh": {
             "ariaLabel": "Refresh confidential history",

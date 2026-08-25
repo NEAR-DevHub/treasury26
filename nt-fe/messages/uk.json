@@ -460,10 +460,14 @@
             "processing": "Обробляється",
             "failed": "Невдало",
             "exchangeTransaction": "Транзакція обміну",
-            "transferTransaction": "Транзакція переказу",
             "rate": "Курс",
             "detailsTitle": "Деталі",
-            "linkedRequest": "Пов'язаний запит"
+            "linkedRequest": "Пов'язаний запит",
+            "sendTransaction": "Транзакція надсилання",
+            "bulkTitle": "Деталі масового переказу",
+            "toRecipients": "До {count} отримувачів",
+            "showRecipients": "Показати отримувачів",
+            "hideRecipients": "Сховати отримувачів"
         },
         "refresh": {
             "ariaLabel": "Оновити конфіденційну історію",

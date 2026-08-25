@@ -460,10 +460,14 @@
             "processing": "Processando",
             "failed": "Falhou",
             "exchangeTransaction": "Transação de troca",
-            "transferTransaction": "Transação de transferência",
             "rate": "Taxa",
             "detailsTitle": "Detalhes",
-            "linkedRequest": "Solicitação vinculada"
+            "linkedRequest": "Solicitação vinculada",
+            "sendTransaction": "Transação de envio",
+            "bulkTitle": "Detalhes da transferência em massa",
+            "toRecipients": "Para {count} destinatários",
+            "showRecipients": "Mostrar destinatários",
+            "hideRecipients": "Ocultar destinatários"
         },
         "refresh": {
             "ariaLabel": "Atualizar histórico confidencial",
