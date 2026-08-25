@@ -137,6 +137,11 @@
         "description": "Parece que seguiste un enlace que ya no funciona. Intenta volver atrás o regresa al Panel.",
         "backToDashboard": "Volver al Panel"
     },
+    "notMemberScreen": {
+        "title": "No eres miembro de esta tesorería",
+        "description": "Inicia sesión con la cuenta que esta tesorería espera, o pide a un miembro que te añada.",
+        "backToHome": "Volver al inicio"
+    },
     "treasuryInfo": {
         "logoAlt": "Logotipo de tesorería"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "Error al obtener la dirección de depósito. Inténtalo de nuevo.",
             "loginRequired": "Inicia sesión para generar una dirección de depósito de un solo uso."
         },
-        "title": "Depositar",
+        "title": "Recibir",
         "subtitle": "Selecciona activo y red para ver la dirección de depósito",
         "assetLabel": "Activo",
+        "tokenLabel": "Token",
         "networkLabel": "Red",
         "selectAsset": "Seleccionar activo",
         "selectNetwork": "Seleccionar red",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "Envía solo este token, en esta red, a la dirección de abajo.",
         "oneTimeAddressTitle": "Dirección de depósito de un solo uso {symbol} en la red {network}",
         "oneTimeAddressSubtitle": "Envía solo este token, en esta red, a la dirección de abajo.",
-        "confidentialTrezuTitle": "Depósito desde Trezu confidencial en la red near.com",
-        "confidentialTrezuSubtitle": "Recibe cualquier activo desde Trezu confidencial.",
         "confidentialNearcomTitle": "Depósito desde near.com confidencial en la red interna",
         "confidentialNearcomSubtitle": "Recibe cualquier activo desde near.com confidencial.",
         "oneTimeSectionTitle": "Dirección de depósito confidencial de un solo uso",
@@ -336,10 +340,8 @@
         "anythingElseLost": "Todo lo enviado desde otro lugar se pierde",
         "anythingElseLostSub": "Exchanges, carteras públicas, otras redes: no se puede recuperar.",
         "confidentialAckCheckbox": "Entiendo que los depósitos desde fuera de Trezu o near.com confidenciales se perderán.",
-        "onlyFromConfidentialTrezu": "Solo desde <bold>Trezu</bold> confidencial",
         "onlyFromConfidentialNearcom": "Solo desde <bold>near.com</bold> confidencial",
         "reusableDoesntExpire": "<bold>Reutilizable.</bold> No caduca",
-        "fundsOutsideTrezuLost": "Los fondos enviados desde fuera de Trezu confidencial se perderán",
         "fundsOutsideNearcomLost": "Los fondos enviados desde fuera de near.com confidencial se perderán",
         "publicNetworkRecommendation": "Deposita solo desde la red <bold>{network}</bold>. Empieza con una transacción de prueba pequeña antes de enviar el importe completo.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "Desde usuario confidencial",
                 "subtitle": "Depósito desde Trezu y near.com confidenciales"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "Desde Trezu confidencial",
-            "nearcom": "Desde near.com confidencial",
-            "short": "Desde confidencial"
-        },
-        "guestBanner": {
-            "title": "Estás viendo como invitado",
-            "description": "Esta dirección pertenece a la treasury de otra persona. Comprueba dos veces antes de enviar."
         },
         "transfer": {
             "title": "Transferir a la Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "en la red near.com",
             "anyAssetOnNearcom": "Cualquier activo en la red near.com",
             "securedOnTrezu": "Asegurado en Trezu",
+            "securedOnNearcom": "Protegido en near.com for business",
             "payWithTrezu": "Pagar con Trezu",
             "payWithNearcom": "Pagar con near.com",
             "payRequiresTreasury": "Inicia sesión con una treasury de Trezu para pagar.",
@@ -2356,14 +2350,14 @@
             "createPaymentTitle": "Crear una solicitud de pago",
             "createPaymentDescription": "Crea una solicitud de pago para completar la configuración.",
             "send": "Enviar",
-            "useSolo": "Use Solo",
+            "useSolo": "Usar Solo",
             "addTeamMemberDescription": "Has configurado tu cuenta con éxito. ¡Buen comienzo!",
             "addTeamMemberTitle": "Crear cuenta de tesorería",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Empezar",
+            "setupThresholdTitle": "Configurar umbral",
+            "useSoloLink": "Usaré Solo",
             "setupThresholdLater": "Más tarde",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "Crear un primer pago"
         },
         "welcome": {
             "heading": "🎉 Tu tesorería está lista",

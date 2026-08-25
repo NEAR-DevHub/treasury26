@@ -1,6 +1,8 @@
 "use client";
 
+import { Globe02Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
+import { Icon } from "@/components/icon";
 import { cn } from "@/lib/utils";
 import type { DepositSource } from "./deposit-types";
 
@@ -21,23 +23,26 @@ export function DepositSourceCards({
         id: DepositSource;
         title: string;
         subtitle: string;
+        icon: typeof Globe02Icon;
         disabled?: boolean;
     }[] = [
         {
             id: "public_wallet",
             title: t("publicWallet.title"),
             subtitle: t("publicWallet.subtitle"),
+            icon: Globe02Icon,
             disabled: disablePublicWallet,
         },
         {
             id: "confidential_user",
             title: t("confidentialUser.title"),
             subtitle: t("confidentialUser.subtitle"),
+            icon: Shield01Icon,
         },
     ];
 
     return (
-        <div className="grid gap-3 md:grid-cols-2 mb-2">
+        <div className="mb-2 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
             {cards.map((card) => {
                 const selected = value === card.id;
                 return (
@@ -48,26 +53,32 @@ export function DepositSourceCards({
                         onClick={() => onChange(card.id)}
                         data-testid={`deposit-source-${card.id}`}
                         className={cn(
-                            "h-full rounded-xl border border-general-border p-3 md:p-4 text-left transition hover:bg-muted/70",
-                            selected ? "bg-general-tertiary" : "",
-                            card.disabled && "opacity-50 cursor-not-allowed",
+                            "flex h-full items-start justify-between gap-2 rounded-2xl border border-general-border bg-card p-3 text-left transition hover:bg-muted/50 md:p-4",
+                            card.disabled && "cursor-not-allowed opacity-50",
                         )}
                     >
-                        <div className="flex h-full items-start justify-between gap-3">
-                            <div className="space-y-1">
-                                <p className="text-sm font-semibold">
+                        <div className="flex min-w-0 flex-1 items-start gap-2">
+                            <Icon
+                                icon={card.icon}
+                                className="mt-0.5 size-5 shrink-0"
+                            />
+                            <div className="min-w-0">
+                                <p className="text-base font-semibold leading-[120%] text-foreground">
                                     {card.title}
                                 </p>
-                                <p className="text-xs text-muted-foreground">
+                                <p className="mt-0.5 text-sm font-medium leading-[150%] text-muted-foreground">
                                     {card.subtitle}
                                 </p>
                             </div>
-                            <div className="self-start size-5 min-h-5 min-w-5 shrink-0 rounded-full border-2 border-general-unofficial-border-3 flex items-center justify-center">
-                                {selected && (
-                                    <div className="size-2.5 rounded-full bg-foreground" />
-                                )}
-                            </div>
                         </div>
+                        <span
+                            aria-hidden="true"
+                            className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-general-unofficial-border-3"
+                        >
+                            {selected && (
+                                <span className="size-2.5 rounded-full bg-foreground" />
+                            )}
+                        </span>
                     </button>
                 );
             })}

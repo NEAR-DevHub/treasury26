@@ -37,10 +37,14 @@ export function useOnboardingSteps() {
             refetchOnMount: "always",
             refetchInterval: buildPaymentPendingRefetchInterval(treasuryId),
         });
+    // Exclude backend sponsor ChangePolicy (confidential setup) server-side so
+    // any remaining policy proposal — including from a fellow council member —
+    // can complete the threshold onboarding step.
     const { data: policyProposals, isLoading: isLoadingPolicy } = useProposals(
         treasuryId,
         {
             proposal_types: ["ChangePolicy", "ChangePolicyUpdateParameters"],
+            exclude_setup_proposer: true,
         },
     );
     const [soloSelected, setSoloSelected] = useState(false);
@@ -92,13 +96,11 @@ export function useOnboardingSteps() {
     const addedMember = members.length > 1;
     const hasTeam = addedMember || soloSelected;
     const hasPayment = (paymentProposals?.proposals?.length ?? 0) > 0;
-    const hasThreshold =
-        soloSelected ||
-        thresholdSetup ||
-        (policyProposals?.proposals?.some((proposal) =>
+    const hasThresholdProposal =
+        policyProposals?.proposals?.some((proposal) =>
             isChangePolicyProposalKind(proposal.kind),
-        ) ??
-            false);
+        ) ?? false;
+    const hasThreshold = soloSelected || thresholdSetup || hasThresholdProposal;
     const canDeferThreshold = canDeferThresholdSetup({
         addedMember,
         thresholdComplete: hasThreshold,

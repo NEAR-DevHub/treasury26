@@ -137,6 +137,11 @@
         "description": "您访问的链接已失效。请返回上一页或回到仪表板。",
         "backToDashboard": "返回仪表板"
     },
+    "notMemberScreen": {
+        "title": "你不是此金库的成员",
+        "description": "请使用此金库所需的账户登录，或请成员将你添加进来。",
+        "backToHome": "返回首页"
+    },
     "treasuryInfo": {
         "logoAlt": "金库标志"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "获取存款地址失败。请再试一次。",
             "loginRequired": "请登录以生成一次性充值地址。"
         },
-        "title": "存款",
+        "title": "接收",
         "subtitle": "选择资产和网络以查看存款地址",
         "assetLabel": "资产",
+        "tokenLabel": "Token",
         "networkLabel": "网络",
         "selectAsset": "选择资产",
         "selectNetwork": "选择网络",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "请仅通过此网络将此代币发送到下方地址。",
         "oneTimeAddressTitle": "{network} 网络上的一次性 {symbol} 充值地址",
         "oneTimeAddressSubtitle": "请仅通过此网络将此代币发送到下方地址。",
-        "confidentialTrezuTitle": "从机密 Trezu 在 near.com 网络充值",
-        "confidentialTrezuSubtitle": "接收来自机密 Trezu 的任意资产。",
         "confidentialNearcomTitle": "从机密 near.com 在内部网络充值",
         "confidentialNearcomSubtitle": "接收来自机密 near.com 的任意资产。",
         "oneTimeSectionTitle": "一次性机密充值地址",
@@ -336,10 +340,8 @@
         "anythingElseLost": "从其他地方发送的资金将丢失",
         "anythingElseLostSub": "交易所、公开钱包、其他网络 – 无法找回。",
         "confidentialAckCheckbox": "我理解从机密 Trezu 或 near.com 以外充值将会丢失。",
-        "onlyFromConfidentialTrezu": "仅来自机密 <bold>Trezu</bold>",
         "onlyFromConfidentialNearcom": "仅来自机密 <bold>near.com</bold>",
         "reusableDoesntExpire": "<bold>可重复使用。</bold>不会过期",
-        "fundsOutsideTrezuLost": "从机密 Trezu 以外发送的资金将丢失",
         "fundsOutsideNearcomLost": "从机密 near.com 以外发送的资金将丢失",
         "publicNetworkRecommendation": "请仅从 <bold>{network}</bold> 网络充值。建议先进行小额测试交易，再发送全额。",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "来自机密用户",
                 "subtitle": "从机密 Trezu 与 near.com 充值"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "来自机密 Trezu",
-            "nearcom": "来自机密 near.com",
-            "short": "从保密"
-        },
-        "guestBanner": {
-            "title": "你正在以访客身份查看",
-            "description": "此地址属于他人的 treasury。发送前请仔细核对。"
         },
         "transfer": {
             "title": "转账至 Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "在 near.com 网络",
             "anyAssetOnNearcom": "near.com 网络上的任意资产",
             "securedOnTrezu": "由 Trezu 保障安全",
+            "securedOnNearcom": "受 near.com for business 保护",
             "payWithTrezu": "使用 Trezu 支付",
             "payWithNearcom": "使用 near.com 支付",
             "payRequiresTreasury": "请使用 Trezu treasury 登录以支付。",
@@ -2339,14 +2333,14 @@
             "createPaymentTitle": "创建付款请求",
             "createPaymentDescription": "创建付款请求以完成您的设置。",
             "send": "发送",
-            "useSolo": "Use Solo",
+            "useSolo": "使用 Solo",
             "addTeamMemberDescription": "您已成功设置账户。开端不错!",
             "addTeamMemberTitle": "创建金库账户",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "开始",
+            "setupThresholdTitle": "设置阈值",
+            "useSoloLink": "我将使用 Solo",
             "setupThresholdLater": "稍后",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "创建首笔付款"
         },
         "welcome": {
             "heading": "🎉 您的金库已就绪",

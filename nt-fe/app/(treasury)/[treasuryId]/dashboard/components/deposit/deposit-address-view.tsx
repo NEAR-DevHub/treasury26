@@ -1,8 +1,9 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { Alert01Icon } from "@hugeicons/core-free-icons";
+import { Alert01Icon, ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
+import { Button } from "@/components/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { DepositAddressCard } from "./deposit-address-card";
@@ -33,6 +34,8 @@ interface DepositAddressViewProps {
     onCreateNewAddress?: () => void;
     createNewAddressDisabled?: boolean;
     showShare?: boolean;
+    /** In-flow back to the previous deposit step (asset/network select). */
+    onBack?: () => void;
     className?: string;
     headerSlot?: ReactNode;
 }
@@ -48,10 +51,10 @@ export function DepositAddressSkeleton({ className }: { className?: string }) {
                 <Skeleton className="h-4 w-1/2" />
             </div>
 
-            <div className="rounded-xl overflow-hidden bg-muted">
+            <div className="rounded-xl overflow-hidden border border-general-border bg-card">
                 <div className="bg-card p-3">
                     <div className="flex flex-col items-center gap-3 md:flex-row md:items-center">
-                        <Skeleton className="size-28 md:size-22 rounded-lg shrink-0" />
+                        <Skeleton className="size-22 rounded-lg shrink-0" />
                         <div className="w-full md:flex-1 min-w-0 space-y-2 md:pt-1">
                             <Skeleton className="h-3 w-16" />
                             <Skeleton className="h-5 w-full" />
@@ -86,20 +89,33 @@ export function DepositAddressView({
     onCreateNewAddress,
     createNewAddressDisabled = false,
     showShare = true,
+    onBack,
     className,
     headerSlot,
 }: DepositAddressViewProps) {
     const t = useTranslations("depositModal");
 
     return (
-        <div className={cn("space-y-4", className)}>
+        <div className={cn("space-y-6", className)}>
             {headerSlot}
             <div>
-                <h2 className="font-semibold text-base leading-snug">
+                {onBack && (
+                    <Button
+                        type="button"
+                        variant="unstyled"
+                        onClick={onBack}
+                        className="mb-3 inline-flex h-auto items-center gap-1 p-0 text-sm font-semibold text-general-foreground hover:opacity-80"
+                        data-testid="deposit-address-back"
+                    >
+                        <Icon icon={ArrowLeft01Icon} className="size-4" />
+                        {t("back")}
+                    </Button>
+                )}
+                <h2 className="text-xl font-semibold leading-7 tracking-[-0.03125rem] text-foreground">
                     {title}
                 </h2>
                 {subtitle && (
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="mt-1 text-base font-medium leading-[120%] text-muted-foreground">
                         {subtitle}
                     </p>
                 )}

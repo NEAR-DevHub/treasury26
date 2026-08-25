@@ -137,6 +137,11 @@
         "description": "Схоже, ви перейшли за посиланням, яке більше не працює. Спробуйте повернутися назад або перейти на головну сторінку.",
         "backToDashboard": "Повернутися на головну сторінку"
     },
+    "notMemberScreen": {
+        "title": "Ви не є учасником цієї скарбниці",
+        "description": "Увійдіть за допомогою облікового запису, який очікує ця скарбниця, або попросіть учасника додати вас.",
+        "backToHome": "Повернутися на головну"
+    },
     "treasuryInfo": {
         "logoAlt": "Логотип скарбниці"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "Не вдалось отримати адресу депозиту. Спробуйте ще раз.",
             "loginRequired": "Увійдіть, щоб створити одноразову адресу для депозиту."
         },
-        "title": "Поповнити",
+        "title": "Отримати",
         "subtitle": "Оберіть актив і мережу, щоб побачити адресу депозиту",
         "assetLabel": "Актив",
+        "tokenLabel": "Token",
         "networkLabel": "Мережа",
         "selectAsset": "Оберіть актив",
         "selectNetwork": "Оберіть мережу",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "Надсилайте лише цей токен, у цій мережі, на адресу нижче.",
         "oneTimeAddressTitle": "Одноразова адреса депозиту {symbol} у мережі {network}",
         "oneTimeAddressSubtitle": "Надсилайте лише цей токен, у цій мережі, на адресу нижче.",
-        "confidentialTrezuTitle": "Депозит із конфіденційного Trezu у мережі near.com",
-        "confidentialTrezuSubtitle": "Отримуйте будь-який актив із конфіденційного Trezu.",
         "confidentialNearcomTitle": "Депозит із конфіденційного near.com у внутрішній мережі",
         "confidentialNearcomSubtitle": "Отримуйте будь-який актив із конфіденційного near.com.",
         "oneTimeSectionTitle": "Одноразова конфіденційна адреса депозиту",
@@ -336,10 +340,8 @@
         "anythingElseLost": "Усе надіслане звідкись ще буде втрачено",
         "anythingElseLostSub": "Біржі, публічні гаманці, інші мережі – відновити неможливо.",
         "confidentialAckCheckbox": "Я розумію, що депозити з-поза конфіденційного Trezu або near.com буде втрачено.",
-        "onlyFromConfidentialTrezu": "Лише з конфіденційного <bold>Trezu</bold>",
         "onlyFromConfidentialNearcom": "Лише з конфіденційного <bold>near.com</bold>",
         "reusableDoesntExpire": "<bold>Багаторазова.</bold> Не закінчується",
-        "fundsOutsideTrezuLost": "Кошти, надіслані з-поза конфіденційного Trezu, буде втрачено",
         "fundsOutsideNearcomLost": "Кошти, надіслані з-поза конфіденційного near.com, буде втрачено",
         "publicNetworkRecommendation": "Вносьте депозит лише з мережі <bold>{network}</bold>. Почніть із невеликої тестової транзакції, перш ніж надсилати повну суму.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "Від конфіденційного користувача",
                 "subtitle": "Депозит із конфіденційних Trezu і near.com"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "З конфіденційного Trezu",
-            "nearcom": "З конфіденційного near.com",
-            "short": "З конфіденційного"
-        },
-        "guestBanner": {
-            "title": "Ви переглядаєте як гість",
-            "description": "Ця адреса належить чужій treasury. Перевірте двічі перед надсиланням."
         },
         "transfer": {
             "title": "Переказ до Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "у мережі near.com",
             "anyAssetOnNearcom": "Будь-який актив у мережі near.com",
             "securedOnTrezu": "Захищено на Trezu",
+            "securedOnNearcom": "Захищено на near.com for business",
             "payWithTrezu": "Сплатити через Trezu",
             "payWithNearcom": "Сплатити через near.com",
             "payRequiresTreasury": "Увійдіть із treasury Trezu, щоб сплатити.",
@@ -2339,14 +2333,14 @@
             "createPaymentTitle": "Створити запит на платіж",
             "createPaymentDescription": "Створіть запит на платіж, щоб завершити налаштування.",
             "send": "Надіслати",
-            "useSolo": "Use Solo",
+            "useSolo": "Використовувати Solo",
             "addTeamMemberDescription": "Ви успішно налаштували обліковий запис. Гарний початок!",
             "addTeamMemberTitle": "Створити обліковий запис скарбниці",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Почати",
+            "setupThresholdTitle": "Налаштувати поріг",
+            "useSoloLink": "Я використовуватиму Solo",
             "setupThresholdLater": "Пізніше",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "Створити перший платіж"
         },
         "welcome": {
             "heading": "🎉 Ваша скарбниця готова",

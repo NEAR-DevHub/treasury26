@@ -1,6 +1,4 @@
 "use client";
-import { Icon } from "@/components/icon";
-import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -30,7 +28,7 @@ export function DepositNoticeList({
             {notices.map((notice) => (
                 <div
                     key={notice.id}
-                    className="flex gap-2 items-start text-sm text-muted-foreground"
+                    className="flex gap-2 items-start text-sm font-medium leading-[150%] text-muted-foreground"
                 >
                     <DepositNoticeIcon tone={notice.tone} />
                     <span>{notice.content}</span>
@@ -43,8 +41,8 @@ export function DepositNoticeList({
 
 export function DepositNoticeInfoRow({ children }: { children: ReactNode }) {
     return (
-        <div className="flex gap-2 items-start text-sm text-muted-foreground">
-            <Icon icon={InformationCircleIcon} className="shrink-0 mt-0.5" />
+        <div className="flex gap-2 items-start text-sm font-medium leading-[150%] text-muted-foreground">
+            <DepositNoticeIcon tone="info" />
             <span>{children}</span>
         </div>
     );
