@@ -25,6 +25,7 @@ Environments: rules below apply to `environment:production` only. Staging events
 | `CONF_INTENT_MARK_FAILED_LOST` | Submit failed AND the `failed`-status write was lost; row looks `pending` forever | Manually set the row's status/`submit_result`, then treat as `CONF_INTENT_SUBMIT_FAILED`. |
 | `FLEET_STALLED` | Liveness monitor: most job queues stale or DB unreachable; process self-restarts | Usually recovers on restart. If it repeats: check Postgres health/connection count, then Render service events. |
 | `DB_UNAVAILABLE` (via `/api/health` 503 + Oh Dear) | App database down | Render database dashboard; check connection exhaustion (`DATABASE_MAX_CONNECTIONS`). |
+| `GOLDSKY_SINK_CONNECT_FAILED` | Goldsky sink DB unreachable at boot — app starts anyway with the enrichment worker disabled, and the `goldsky.database` status probe reports Skipped (pool is `None`), so nothing else will page | Check the sink DB / `GOLDSKY_DATABASE_URL`, then redeploy/restart to reconnect. Until then ingestion enrichment is silently off. |
 
 ### p1
 

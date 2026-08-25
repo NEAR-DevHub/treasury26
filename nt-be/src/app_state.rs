@@ -393,9 +393,11 @@ impl AppStateBuilder {
                     Some(pool)
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "Failed to connect to Goldsky sink database: {} — enrichment worker disabled",
-                        e
+                    tracing::error!(
+                        tags.error_code = "GOLDSKY_SINK_CONNECT_FAILED",
+                        tags.alert_priority = "p0",
+                        error = %e,
+                        "Failed to connect to Goldsky sink database — enrichment worker disabled"
                     );
                     None
                 }
