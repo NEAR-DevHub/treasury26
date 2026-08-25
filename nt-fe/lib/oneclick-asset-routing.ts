@@ -7,8 +7,27 @@
  * chain-specific 1cs id as an INTENTS receive asset.
  */
 
+import {
+    NEAR_NETWORK_ID,
+    NEP141_WRAP_NEAR_ASSET_ID,
+} from "@/constants/network-ids";
+
 export const NBTC_BALANCE_ASSET_ID = "nep141:nbtc.bridge.near";
 export const ONE_CLICK_BTC_NATIVE_ASSET_ID = "1cs_v1:btc:native:coin";
+
+/**
+ * 1Click `/v0/quote` tokenIn/tokenOut ids. Bare NEAR FT contracts must be
+ * `nep141:<contract>`; native NEAR is wrap.near. Already-prefixed and `1cs_v1:`
+ * ids are left alone.
+ */
+export function formatAssetForIntentsAPI(tokenAddress: string): string {
+    if (tokenAddress.startsWith("nep") || tokenAddress.startsWith("1cs_v1:")) {
+        return tokenAddress;
+    }
+    return tokenAddress === NEAR_NETWORK_ID
+        ? NEP141_WRAP_NEAR_ASSET_ID
+        : `nep141:${tokenAddress}`;
+}
 
 /** True when the asset id is a 1Click Omni (`1cs_v1:`) routing id. */
 export function isOneClickRoutingAsset(
