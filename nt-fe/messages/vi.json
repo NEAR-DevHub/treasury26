@@ -138,9 +138,9 @@
         "backToDashboard": "Quay lại Bảng điều khiển"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "Bạn không phải là thành viên của kho bạc này",
+        "description": "Đăng nhập bằng tài khoản mà kho bạc này yêu cầu, hoặc nhờ một thành viên thêm bạn vào.",
+        "backToHome": "Quay lại trang chủ"
     },
     "treasuryInfo": {
         "logoAlt": "Logo Ngân quỹ"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "trên mạng near.com",
             "anyAssetOnNearcom": "Bất kỳ tài sản nào trên mạng near.com",
             "securedOnTrezu": "Được bảo vệ trên Trezu",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "Được bảo mật trên near.com for business",
             "payWithTrezu": "Thanh toán bằng Trezu",
             "payWithNearcom": "Thanh toán bằng near.com",
             "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",
@@ -2333,14 +2333,14 @@
             "createPaymentTitle": "Tạo yêu cầu thanh toán",
             "createPaymentDescription": "Tạo một yêu cầu thanh toán để hoàn tất thiết lập của bạn.",
             "send": "Gửi",
-            "useSolo": "Use Solo",
+            "useSolo": "Dùng Solo",
             "addTeamMemberDescription": "Bạn đã thiết lập tài khoản thành công. Khởi đầu tuyệt vời!",
             "addTeamMemberTitle": "Tạo tài khoản Ngân quỹ",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Bắt đầu",
+            "setupThresholdTitle": "Thiết lập ngưỡng",
+            "useSoloLink": "Tôi sẽ dùng Solo",
             "setupThresholdLater": "Để sau",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "Tạo khoản thanh toán đầu tiên"
         },
         "welcome": {
             "heading": "🎉 Ngân quỹ của bạn đã sẵn sàng",

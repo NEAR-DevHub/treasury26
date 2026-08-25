@@ -50,7 +50,7 @@ describe("resolveTreasuryHomeHref", () => {
         ).toBe("/only.near");
     });
 
-    it("sends users with no memberships to sign-in", () => {
-        expect(resolveTreasuryHomeHref([], null)).toBe("/login");
+    it("sends users with no memberships to create", () => {
+        expect(resolveTreasuryHomeHref([], null)).toBe("/create");
     });
 });

@@ -138,9 +138,9 @@
         "backToDashboard": "חזרה ללוח הבקרה"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "אינכם חברים באוצר הזה",
+        "description": "היכנסו עם החשבון שהאוצר הזה מצפה לו, או בקשו מחבר להוסיף אתכם.",
+        "backToHome": "חזרה לדף הבית"
     },
     "treasuryInfo": {
         "logoAlt": "לוגו האוצר"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "ברשת near.com",
             "anyAssetOnNearcom": "כל נכס ברשת near.com",
             "securedOnTrezu": "מאובטח ב-Trezu",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "מאובטח ב-near.com for business",
             "payWithTrezu": "שלם עם Trezu",
             "payWithNearcom": "שלם עם near.com",
             "payRequiresTreasury": "התחבר עם treasury של Trezu כדי לשלם.",
@@ -2350,14 +2350,14 @@
             "createPaymentTitle": "צור בקשת תשלום",
             "createPaymentDescription": "צור בקשת תשלום להשלמת ההגדרה שלך.",
             "send": "שליחה",
-            "useSolo": "Use Solo",
+            "useSolo": "להשתמש ב-Solo",
             "addTeamMemberDescription": "הגדרת את החשבון שלך בהצלחה. התחלה מצוינת!",
             "addTeamMemberTitle": "צור חשבון אוצר",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "להתחיל",
+            "setupThresholdTitle": "הגדרת סף",
+            "useSoloLink": "אשתמש ב-Solo",
             "setupThresholdLater": "אחר כך",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "יצירת תשלום ראשון"
         },
         "welcome": {
             "heading": "🎉 האוצר שלך מוכן",

@@ -138,9 +138,9 @@
         "backToDashboard": "Kembali ke Dasbor"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "Anda bukan anggota treasury ini",
+        "description": "Masuk dengan akun yang diharapkan treasury ini, atau minta anggota untuk menambahkan Anda.",
+        "backToHome": "Kembali ke beranda"
     },
     "treasuryInfo": {
         "logoAlt": "Logo Treasury"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "di jaringan near.com",
             "anyAssetOnNearcom": "Aset apa pun di jaringan near.com",
             "securedOnTrezu": "Diamankan di Trezu",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "Diamankan di near.com for business",
             "payWithTrezu": "Bayar dengan Trezu",
             "payWithNearcom": "Bayar dengan near.com",
             "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",
@@ -2346,18 +2346,18 @@
             "title": "Ikuti Langkah Cepat untuk Menjelajahi Treasury",
             "addAssetsTitle": "Tambah Aset Anda",
             "addAssetsDescription": "Mulailah dengan menambahkan aset untuk melihatnya beraksi.",
-            "deposit": "Deposit",
+            "deposit": "Setor",
             "createPaymentTitle": "Buat Permintaan Pembayaran",
             "createPaymentDescription": "Buat permintaan pembayaran untuk menyelesaikan pengaturan Anda.",
             "send": "Kirim",
-            "useSolo": "Use Solo",
+            "useSolo": "Gunakan Solo",
             "addTeamMemberDescription": "Anda telah berhasil menyiapkan akun Anda. Awal yang bagus!",
             "addTeamMemberTitle": "Buat akun Treasury",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Mulai",
+            "setupThresholdTitle": "Atur ambang batas",
+            "useSoloLink": "Saya akan memakai Solo",
             "setupThresholdLater": "Nanti",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "Buat pembayaran pertama"
         },
         "welcome": {
             "heading": "🎉 Perbendaharaan Anda siap",

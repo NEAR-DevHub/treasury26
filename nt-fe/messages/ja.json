@@ -138,9 +138,9 @@
         "backToDashboard": "ダッシュボードに戻る"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "このトレジャリーのメンバーではありません",
+        "description": "このトレジャリーが想定するアカウントでサインインするか、メンバーに追加を依頼してください。",
+        "backToHome": "ホームに戻る"
     },
     "treasuryInfo": {
         "logoAlt": "トレジャリーロゴ"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "near.com ネットワーク上",
             "anyAssetOnNearcom": "near.com ネットワーク上の任意の資産",
             "securedOnTrezu": "Trezu で保護",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "near.com for business で保護されています",
             "payWithTrezu": "Trezu で支払う",
             "payWithNearcom": "near.com で支払う",
             "payRequiresTreasury": "支払うには Trezu treasury でサインインしてください。",
@@ -2350,14 +2350,14 @@
             "createPaymentTitle": "支払いリクエストを作成",
             "createPaymentDescription": "支払いリクエストを作成してセットアップを完了しましょう。",
             "send": "送金",
-            "useSolo": "Use Solo",
+            "useSolo": "Solo を使う",
             "addTeamMemberDescription": "アカウントが正常にセットアップされました。素晴らしいスタートです!",
             "addTeamMemberTitle": "トレジャリーアカウントを作成",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "はじめる",
+            "setupThresholdTitle": "しきい値を設定",
+            "useSoloLink": "ソロで使用します",
             "setupThresholdLater": "後で",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "最初の支払いを作成"
         },
         "welcome": {
             "heading": "🎉 お金庫の準備ができました",

@@ -138,9 +138,9 @@
         "backToDashboard": "返回仪表板"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "你不是此金库的成员",
+        "description": "请使用此金库所需的账户登录，或请成员将你添加进来。",
+        "backToHome": "返回首页"
     },
     "treasuryInfo": {
         "logoAlt": "金库标志"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "在 near.com 网络",
             "anyAssetOnNearcom": "near.com 网络上的任意资产",
             "securedOnTrezu": "由 Trezu 保障安全",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "受 near.com for business 保护",
             "payWithTrezu": "使用 Trezu 支付",
             "payWithNearcom": "使用 near.com 支付",
             "payRequiresTreasury": "请使用 Trezu treasury 登录以支付。",
@@ -2333,14 +2333,14 @@
             "createPaymentTitle": "创建付款请求",
             "createPaymentDescription": "创建付款请求以完成您的设置。",
             "send": "发送",
-            "useSolo": "Use Solo",
+            "useSolo": "使用 Solo",
             "addTeamMemberDescription": "您已成功设置账户。开端不错!",
             "addTeamMemberTitle": "创建金库账户",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "开始",
+            "setupThresholdTitle": "设置阈值",
+            "useSoloLink": "我将使用 Solo",
             "setupThresholdLater": "稍后",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "创建首笔付款"
         },
         "welcome": {
             "heading": "🎉 您的金库已就绪",

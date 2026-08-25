@@ -138,9 +138,9 @@
         "backToDashboard": "Voltar ao Painel"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "Você não é membro desta tesouraria",
+        "description": "Entre com a conta que esta tesouraria espera, ou peça a um membro para adicioná-lo.",
+        "backToHome": "Voltar ao início"
     },
     "treasuryInfo": {
         "logoAlt": "Logotipo da tesouraria"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "na rede near.com",
             "anyAssetOnNearcom": "Qualquer ativo na rede near.com",
             "securedOnTrezu": "Protegido no Trezu",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "Protegido no near.com for business",
             "payWithTrezu": "Pagar com Trezu",
             "payWithNearcom": "Pagar com near.com",
             "payRequiresTreasury": "Entre com uma treasury Trezu para pagar.",
@@ -2350,14 +2350,14 @@
             "createPaymentTitle": "Crie uma solicitação de pagamento",
             "createPaymentDescription": "Crie uma solicitação de pagamento para concluir sua configuração.",
             "send": "Enviar",
-            "useSolo": "Use Solo",
+            "useSolo": "Usar Solo",
             "addTeamMemberDescription": "Você configurou sua conta com sucesso. Ótimo começo!",
             "addTeamMemberTitle": "Criar conta da tesouraria",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Começar",
+            "setupThresholdTitle": "Definir limite",
+            "useSoloLink": "Vou usar Solo",
             "setupThresholdLater": "Mais tarde",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "Criar um primeiro pagamento"
         },
         "welcome": {
             "heading": "🎉 Sua tesouraria está pronta",

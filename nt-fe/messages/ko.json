@@ -138,9 +138,9 @@
         "backToDashboard": "대시보드로 돌아가기"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "이 트레저리의 멤버가 아닙니다",
+        "description": "이 트레저리가 요구하는 계정으로 로그인하거나, 멤버에게 초대를 요청하세요.",
+        "backToHome": "홈으로 돌아가기"
     },
     "treasuryInfo": {
         "logoAlt": "트레저리 로고"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "near.com 네트워크에서",
             "anyAssetOnNearcom": "near.com 네트워크의 모든 자산",
             "securedOnTrezu": "Trezu에서 보호됨",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "near.com for business에서 보호됨",
             "payWithTrezu": "Trezu로 결제",
             "payWithNearcom": "near.com로 결제",
             "payRequiresTreasury": "결제하려면 Trezu treasury로 로그인하세요.",
@@ -2350,14 +2350,14 @@
             "createPaymentTitle": "결제 요청 생성",
             "createPaymentDescription": "설정을 완료하기 위해 결제 요청을 생성하세요.",
             "send": "보내기",
-            "useSolo": "Use Solo",
+            "useSolo": "Solo 사용",
             "addTeamMemberDescription": "계정 설정을 성공적으로 완료했습니다. 좋은 시작입니다!",
             "addTeamMemberTitle": "트레저리 계정 생성",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "시작하기",
+            "setupThresholdTitle": "임계값 설정",
+            "useSoloLink": "Solo로 사용하겠습니다",
             "setupThresholdLater": "나중에",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "첫 결제 만들기"
         },
         "welcome": {
             "heading": "🎉 트레저리가 준비되었습니다",

@@ -25,12 +25,12 @@ export function resolvePreferredMemberTreasuryId(
 
 /**
  * Destination for "Back to home" when the user isn't a member of the current
- * treasury: preferred member treasury, else the sign-in page.
+ * treasury: preferred member treasury, else create (user is already signed in).
  */
 export function resolveTreasuryHomeHref(
     treasuries: ReadonlyArray<MemberTreasury>,
     lastTreasuryId: string | null | undefined,
 ): string {
     const daoId = resolvePreferredMemberTreasuryId(treasuries, lastTreasuryId);
-    return daoId ? `/${daoId}` : "/login";
+    return daoId ? `/${daoId}` : "/create";
 }

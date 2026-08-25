@@ -138,9 +138,9 @@
         "backToDashboard": "Panel'e Dön"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "Bu hazinenin üyesi değilsiniz",
+        "description": "Bu hazinenin beklediği hesapla oturum açın veya bir üyeden sizi eklemesini isteyin.",
+        "backToHome": "Ana sayfaya dön"
     },
     "treasuryInfo": {
         "logoAlt": "Hazine Logosu"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "near.com ağında",
             "anyAssetOnNearcom": "near.com ağında herhangi bir varlık",
             "securedOnTrezu": "Trezu’da güvende",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "near.com for business üzerinde güvence altında",
             "payWithTrezu": "Trezu ile öde",
             "payWithNearcom": "near.com ile öde",
             "payRequiresTreasury": "Ödemek için bir Trezu treasury’siyle oturum açın.",
@@ -2350,14 +2350,14 @@
             "createPaymentTitle": "Ödeme Talebi Oluşturun",
             "createPaymentDescription": "Kurulumunuzu tamamlamak için bir ödeme talebi oluşturun.",
             "send": "Gönder",
-            "useSolo": "Use Solo",
+            "useSolo": "Solo kullan",
             "addTeamMemberDescription": "Hesabınızı başarıyla kurdunuz. Harika bir başlangıç!",
             "addTeamMemberTitle": "Hazine hesabı oluştur",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Başla",
+            "setupThresholdTitle": "Eşik ayarla",
+            "useSoloLink": "Solo kullanacağım",
             "setupThresholdLater": "Daha sonra",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "İlk ödemeyi oluştur"
         },
         "welcome": {
             "heading": "🎉 Hazineniz hazır",

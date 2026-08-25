@@ -138,9 +138,9 @@
         "backToDashboard": "Retour au tableau de bord"
     },
     "notMemberScreen": {
-        "title": "You're not a member of this treasury",
-        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
-        "backToHome": "Back to home"
+        "title": "Vous n'êtes pas membre de cette trésorerie",
+        "description": "Connectez-vous avec le compte attendu par cette trésorerie, ou demandez à un membre de vous ajouter.",
+        "backToHome": "Retour à l'accueil"
     },
     "treasuryInfo": {
         "logoAlt": "Logo de la trésorerie"
@@ -366,7 +366,7 @@
             "onNearcomNetwork": "sur le réseau near.com",
             "anyAssetOnNearcom": "N’importe quel actif sur le réseau near.com",
             "securedOnTrezu": "Sécurisé sur Trezu",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "Sécurisé sur near.com for business",
             "payWithTrezu": "Payer avec Trezu",
             "payWithNearcom": "Payer avec near.com",
             "payRequiresTreasury": "Connectez-vous avec une treasury Trezu pour payer.",
@@ -2350,14 +2350,14 @@
             "createPaymentTitle": "Créer une demande de paiement",
             "createPaymentDescription": "Créez une demande de paiement pour terminer votre configuration.",
             "send": "Envoyer",
-            "useSolo": "Use Solo",
+            "useSolo": "Utiliser Solo",
             "addTeamMemberDescription": "Vous avez configuré votre compte avec succès. Excellent début !",
             "addTeamMemberTitle": "Créer un compte de trésorerie",
-            "getStarted": "Get started",
-            "setupThresholdTitle": "Setup threshold",
-            "useSoloLink": "I will use solo",
+            "getStarted": "Commencer",
+            "setupThresholdTitle": "Définir le seuil",
+            "useSoloLink": "J'utiliserai Solo",
             "setupThresholdLater": "Plus tard",
-            "createPaymentShort": "Create a first payment"
+            "createPaymentShort": "Créer un premier paiement"
         },
         "welcome": {
             "heading": "🎉 Votre trésorerie est prête",
