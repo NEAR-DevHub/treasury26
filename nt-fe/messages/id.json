@@ -137,6 +137,11 @@
         "description": "Sepertinya Anda mengikuti tautan yang sudah tidak berfungsi. Coba kembali atau pergi ke Dasbor.",
         "backToDashboard": "Kembali ke Dasbor"
     },
+    "notMemberScreen": {
+        "title": "You're not a member of this treasury",
+        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
+        "backToHome": "Back to home"
+    },
     "treasuryInfo": {
         "logoAlt": "Logo Treasury"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "Gagal mengambil alamat deposit. Silakan coba lagi.",
             "loginRequired": "Masuk untuk membuat alamat deposit sekali pakai."
         },
-        "title": "Deposit",
+        "title": "Terima",
         "subtitle": "Pilih aset dan jaringan untuk melihat alamat deposit",
         "assetLabel": "Aset",
+        "tokenLabel": "Token",
         "networkLabel": "Jaringan",
         "selectAsset": "Pilih Aset",
         "selectNetwork": "Pilih Jaringan",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "Kirim hanya token ini, di jaringan ini, ke alamat di bawah.",
         "oneTimeAddressTitle": "Alamat deposit sekali pakai {symbol} di jaringan {network}",
         "oneTimeAddressSubtitle": "Kirim hanya token ini, di jaringan ini, ke alamat di bawah.",
-        "confidentialTrezuTitle": "Deposit dari Trezu rahasia di jaringan near.com",
-        "confidentialTrezuSubtitle": "Terima aset apa pun dari Trezu rahasia.",
         "confidentialNearcomTitle": "Deposit dari near.com rahasia di jaringan internal",
         "confidentialNearcomSubtitle": "Terima aset apa pun dari near.com rahasia.",
         "oneTimeSectionTitle": "Alamat deposit rahasia sekali pakai",
@@ -336,10 +340,8 @@
         "anythingElseLost": "Apa pun yang dikirim dari tempat lain akan hilang",
         "anythingElseLostSub": "Exchange, dompet publik, jaringan lain – tidak dapat dipulihkan.",
         "confidentialAckCheckbox": "Saya memahami deposit dari luar Trezu atau near.com rahasia akan hilang.",
-        "onlyFromConfidentialTrezu": "Hanya dari <bold>Trezu</bold> rahasia",
         "onlyFromConfidentialNearcom": "Hanya dari <bold>near.com</bold> rahasia",
         "reusableDoesntExpire": "<bold>Dapat digunakan ulang.</bold> Tidak kedaluwarsa",
-        "fundsOutsideTrezuLost": "Dana yang dikirim dari luar Trezu rahasia akan hilang",
         "fundsOutsideNearcomLost": "Dana yang dikirim dari luar near.com rahasia akan hilang",
         "publicNetworkRecommendation": "Deposit hanya dari jaringan <bold>{network}</bold>. Mulai dengan transaksi uji kecil sebelum mengirim jumlah penuh.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "Dari pengguna rahasia",
                 "subtitle": "Deposit dari Trezu & near.com rahasia"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "Dari Trezu rahasia",
-            "nearcom": "Dari near.com rahasia",
-            "short": "Dari rahasia"
-        },
-        "guestBanner": {
-            "title": "Anda melihat sebagai tamu",
-            "description": "Alamat ini milik treasury orang lain. Periksa ulang sebelum mengirim."
         },
         "transfer": {
             "title": "Transfer ke Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "di jaringan near.com",
             "anyAssetOnNearcom": "Aset apa pun di jaringan near.com",
             "securedOnTrezu": "Diamankan di Trezu",
+            "securedOnNearcom": "Secured on near.com for business",
             "payWithTrezu": "Bayar dengan Trezu",
             "payWithNearcom": "Bayar dengan near.com",
             "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",

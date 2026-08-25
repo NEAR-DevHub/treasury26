@@ -5,7 +5,6 @@ import {
     isDepositExpiryUrgent,
 } from "./deposit-expires";
 import type { DepositNoticeItem } from "./deposit-notice-list";
-import type { ConfidentialOrigin } from "./deposit-types";
 
 /** Compatible with next-intl `useTranslations("depositModal")`. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -18,22 +17,14 @@ function richForeground(chunks: ReactNode) {
 
 export function buildConfidentialOriginNotices(
     t: DepositTranslator,
-    origin: ConfidentialOrigin,
 ): DepositNoticeItem[] {
-    const onlyFromKey =
-        origin === "trezu"
-            ? "onlyFromConfidentialTrezu"
-            : "onlyFromConfidentialNearcom";
-    const outsideLost =
-        origin === "trezu"
-            ? t("fundsOutsideTrezuLost")
-            : t("fundsOutsideNearcomLost");
-
     return [
         {
             id: "only-from",
             tone: "success",
-            content: t.rich(onlyFromKey, { bold: richForeground }),
+            content: t.rich("onlyFromConfidentialNearcom", {
+                bold: richForeground,
+            }),
         },
         {
             id: "reusable",
@@ -43,7 +34,7 @@ export function buildConfidentialOriginNotices(
         {
             id: "outside-lost",
             tone: "danger",
-            content: outsideLost,
+            content: t("fundsOutsideNearcomLost"),
         },
     ];
 }

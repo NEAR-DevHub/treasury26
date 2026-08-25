@@ -24,10 +24,7 @@ import { SlotWarning } from "@/components/warning-message";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { SidebarOnboarding } from "@/features/onboarding/components/sidebar-onboarding";
 import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
-import {
-    PAGE_TOUR_SELECTORS,
-    useGuestSaveTour,
-} from "@/features/onboarding/steps/page-tours";
+import { PAGE_TOUR_SELECTORS } from "@/features/onboarding/steps/page-tours";
 import { useCustomRequestsEnabled } from "@/features/proposal-templates/hooks/use-custom-requests-enabled";
 import { useProposalTemplates } from "@/features/proposal-templates/hooks/use-proposal-templates";
 import { manifestIdOf } from "@/features/proposal-templates/manifest";
@@ -41,7 +38,6 @@ import { useNear } from "@/stores/near-store";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { ApprovalInfo } from "./approval-info";
 import { Button } from "./button";
-import { GuestBadge } from "./guest-badge";
 import { NumberBadge } from "./number-badge";
 import { SidebarProfileMenu } from "./sidebar-profile-menu";
 import { SponsoredActionsLimitNotice } from "./sponsored-actions-limit-notice";
@@ -275,7 +271,6 @@ export function Sidebar({ onClose }: SidebarProps) {
             manifestIdOf(template.manifest),
     );
     const saveTreasuryMutation = useSaveTreasuryMutation(accountId, treasuryId);
-    useGuestSaveTour(accountId ?? undefined, isSaved ?? false);
 
     // Dashboard tour step 5 opens treasury selector; close it once that tour ends
     // so follow-up tours (e.g. Earn announcement) are not hidden behind dropdown.
@@ -360,44 +355,35 @@ export function Sidebar({ onClose }: SidebarProps) {
                             />
                             <div className="px-3 py-2.5">
                                 {isGuestTreasury && !isLoadingGuestTreasury ? (
-                                    <div className="flex gap-2">
-                                        <GuestBadge
-                                            id={PAGE_TOUR_SELECTORS.GUEST_BADGE.slice(
+                                    accountId && !isSaved ? (
+                                        <Button
+                                            id={PAGE_TOUR_SELECTORS.GUEST_SAVE_BTN.slice(
                                                 1,
                                             )}
-                                            showTooltip
+                                            variant="outline"
+                                            size="sm"
+                                            className="group h-7 w-fit justify-center gap-1.5 text-xs"
+                                            tooltipContent={tNav(
+                                                "saveGuestTreasury",
+                                            )}
                                             side="right"
-                                        />
-                                        {accountId && !isSaved && (
-                                            <Button
-                                                id={PAGE_TOUR_SELECTORS.GUEST_SAVE_BTN.slice(
-                                                    1,
+                                            onClick={() =>
+                                                saveTreasuryMutation.mutate()
+                                            }
+                                            disabled={
+                                                saveTreasuryMutation.isPending
+                                            }
+                                        >
+                                            <Icon
+                                                icon={Bookmark01Icon}
+                                                className={cn(
+                                                    "shrink-0",
+                                                    iconHoverAnimations.drop,
                                                 )}
-                                                variant="outline"
-                                                size="sm"
-                                                className="group h-7 w-fit justify-center gap-1.5 text-xs"
-                                                tooltipContent={tNav(
-                                                    "saveGuestTreasury",
-                                                )}
-                                                side="right"
-                                                onClick={() =>
-                                                    saveTreasuryMutation.mutate()
-                                                }
-                                                disabled={
-                                                    saveTreasuryMutation.isPending
-                                                }
-                                            >
-                                                <Icon
-                                                    icon={Bookmark01Icon}
-                                                    className={cn(
-                                                        "shrink-0",
-                                                        iconHoverAnimations.drop,
-                                                    )}
-                                                />
-                                                {tCommon("save")}
-                                            </Button>
-                                        )}
-                                    </div>
+                                            />
+                                            {tCommon("save")}
+                                        </Button>
+                                    ) : null
                                 ) : (
                                     <ApprovalInfo
                                         variant="pupil"

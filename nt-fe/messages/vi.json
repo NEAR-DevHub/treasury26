@@ -137,6 +137,11 @@
         "description": "Có vẻ như bạn đã đi theo một liên kết không còn hoạt động. Hãy thử quay lại hoặc trở về Bảng điều khiển.",
         "backToDashboard": "Quay lại Bảng điều khiển"
     },
+    "notMemberScreen": {
+        "title": "You're not a member of this treasury",
+        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
+        "backToHome": "Back to home"
+    },
     "treasuryInfo": {
         "logoAlt": "Logo Ngân quỹ"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "Không thể lấy địa chỉ nạp tiền. Vui lòng thử lại.",
             "loginRequired": "Đăng nhập để tạo địa chỉ nạp một lần."
         },
-        "title": "Nạp tiền",
+        "title": "Nhận",
         "subtitle": "Chọn tài sản và mạng để xem địa chỉ nạp tiền",
         "assetLabel": "Tài sản",
+        "tokenLabel": "Token",
         "networkLabel": "Mạng",
         "selectAsset": "Chọn tài sản",
         "selectNetwork": "Chọn mạng",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "Chỉ gửi token này, trên mạng này, tới địa chỉ bên dưới.",
         "oneTimeAddressTitle": "Địa chỉ nạp một lần {symbol} trên mạng {network}",
         "oneTimeAddressSubtitle": "Chỉ gửi token này, trên mạng này, tới địa chỉ bên dưới.",
-        "confidentialTrezuTitle": "Nạp từ Trezu bảo mật trên mạng near.com",
-        "confidentialTrezuSubtitle": "Nhận bất kỳ tài sản nào từ Trezu bảo mật.",
         "confidentialNearcomTitle": "Nạp từ near.com bảo mật trên mạng nội bộ",
         "confidentialNearcomSubtitle": "Nhận bất kỳ tài sản nào từ near.com bảo mật.",
         "oneTimeSectionTitle": "Địa chỉ nạp bảo mật một lần",
@@ -336,10 +340,8 @@
         "anythingElseLost": "Mọi thứ gửi từ nơi khác sẽ bị mất",
         "anythingElseLostSub": "Sàn giao dịch, ví công khai, mạng khác – không thể khôi phục.",
         "confidentialAckCheckbox": "Tôi hiểu các khoản nạp từ ngoài Trezu hoặc near.com bảo mật sẽ bị mất.",
-        "onlyFromConfidentialTrezu": "Chỉ từ <bold>Trezu</bold> bảo mật",
         "onlyFromConfidentialNearcom": "Chỉ từ <bold>near.com</bold> bảo mật",
         "reusableDoesntExpire": "<bold>Dùng lại được.</bold> Không hết hạn",
-        "fundsOutsideTrezuLost": "Tiền gửi từ ngoài Trezu bảo mật sẽ bị mất",
         "fundsOutsideNearcomLost": "Tiền gửi từ ngoài near.com bảo mật sẽ bị mất",
         "publicNetworkRecommendation": "Chỉ nạp từ mạng <bold>{network}</bold>. Hãy bắt đầu bằng một giao dịch thử nhỏ trước khi gửi toàn bộ số tiền.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "Từ người dùng bảo mật",
                 "subtitle": "Nạp từ Trezu & near.com bảo mật"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "Từ Trezu bảo mật",
-            "nearcom": "Từ near.com bảo mật",
-            "short": "Từ bảo mật"
-        },
-        "guestBanner": {
-            "title": "Bạn đang xem với tư cách khách",
-            "description": "Địa chỉ này thuộc treasury của người khác. Hãy kiểm tra kỹ trước khi gửi."
         },
         "transfer": {
             "title": "Chuyển tới Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "trên mạng near.com",
             "anyAssetOnNearcom": "Bất kỳ tài sản nào trên mạng near.com",
             "securedOnTrezu": "Được bảo vệ trên Trezu",
+            "securedOnNearcom": "Secured on near.com for business",
             "payWithTrezu": "Thanh toán bằng Trezu",
             "payWithNearcom": "Thanh toán bằng near.com",
             "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",

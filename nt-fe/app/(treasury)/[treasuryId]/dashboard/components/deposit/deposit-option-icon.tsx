@@ -4,10 +4,12 @@ export function DepositOptionIcon({
     icon,
     name,
     gradient,
+    className,
 }: {
     icon: string;
     name: string;
     gradient?: string;
+    className?: string;
 }) {
     const isUrl =
         icon?.startsWith("http") ||
@@ -16,7 +18,12 @@ export function DepositOptionIcon({
 
     if (isUrl) {
         return (
-            <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
+            <div
+                className={cn(
+                    "size-6 rounded-full overflow-hidden shrink-0",
+                    className,
+                )}
+            >
                 <img
                     src={icon}
                     alt={name}
@@ -29,8 +36,9 @@ export function DepositOptionIcon({
     return (
         <div
             className={cn(
-                "w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-normal shrink-0",
+                "size-6 rounded-full flex items-center justify-center text-white text-xs font-normal shrink-0",
                 gradient ?? "bg-brand-blue",
+                className,
             )}
         >
             {icon}

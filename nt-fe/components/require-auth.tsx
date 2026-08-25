@@ -3,32 +3,37 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import { LoadingScreen } from "@/components/loading-screen";
+import { buildLoginHref } from "@/lib/auth-redirect";
 import { useNear } from "@/stores/near-store";
 
 /**
- * Gates a route behind a connected wallet: visitors without a session are sent
- * to `/login` with a `returnTo` pointing back at the page they asked for, so
- * they land on it once the wallet is connected.
+ * Blocks treasury app UI until the user is signed in. Unauthenticated visitors
+ * are sent to `/login` with a safe `returnTo` so they land back on this page.
  *
- * Render inside `AuthProvider`, which resolves the stored session first — on
- * its own this only knows about the wallet connector's init.
+ * Redirect must key off `isAuthenticated`, not `accountId`. `accountId` stays
+ * null until terms are accepted (`AuthProvider` / `AcceptTermsModal`); using it
+ * for redirect would bounce users who still need to accept terms.
+ *
+ * Render inside `AuthProvider`, which resolves the stored session first.
  */
 export function RequireAuth({ children }: { children: React.ReactNode }) {
+    const { accountId, isAuthenticated, isInitializing } = useNear();
     const router = useRouter();
-    const pathname = usePathname();
+    const pathname = usePathname() ?? "/";
     const searchParams = useSearchParams();
-    const { isInitializing, isAuthenticated } = useNear();
-
-    const shouldRedirect = !isInitializing && !isAuthenticated;
 
     useEffect(() => {
-        if (!shouldRedirect) return;
-        const query = searchParams.toString();
-        const returnTo = query ? `${pathname}?${query}` : pathname;
-        router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
-    }, [pathname, router, searchParams, shouldRedirect]);
+        if (isInitializing || isAuthenticated) return;
+        router.replace(buildLoginHref(pathname, searchParams.toString()));
+    }, [isAuthenticated, isInitializing, pathname, searchParams, router]);
 
-    if (isInitializing || shouldRedirect) {
+    if (isInitializing || !isAuthenticated) {
+        return <LoadingScreen />;
+    }
+
+    // Wallet is connected but terms are still pending — keep a loading surface
+    // so AuthProvider can show AcceptTermsModal without mounting treasury UI.
+    if (!accountId) {
         return <LoadingScreen />;
     }
 

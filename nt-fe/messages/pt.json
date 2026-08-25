@@ -137,6 +137,11 @@
         "description": "Parece que você seguiu um link que não funciona mais. Tente voltar ou retornar ao Painel.",
         "backToDashboard": "Voltar ao Painel"
     },
+    "notMemberScreen": {
+        "title": "You're not a member of this treasury",
+        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
+        "backToHome": "Back to home"
+    },
     "treasuryInfo": {
         "logoAlt": "Logotipo da tesouraria"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "Falha ao obter o endereço de depósito. Por favor, tente novamente.",
             "loginRequired": "Entre para gerar um endereço de depósito de uso único."
         },
-        "title": "Depósito",
+        "title": "Receber",
         "subtitle": "Selecione o ativo e a rede para ver o endereço de depósito",
         "assetLabel": "Ativo",
+        "tokenLabel": "Token",
         "networkLabel": "Rede",
         "selectAsset": "Selecionar ativo",
         "selectNetwork": "Selecionar rede",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "Envie apenas este token, nesta rede, para o endereço abaixo.",
         "oneTimeAddressTitle": "Endereço de depósito de uso único {symbol} na rede {network}",
         "oneTimeAddressSubtitle": "Envie apenas este token, nesta rede, para o endereço abaixo.",
-        "confidentialTrezuTitle": "Depósito do Trezu confidencial na rede near.com",
-        "confidentialTrezuSubtitle": "Receba qualquer ativo do Trezu confidencial.",
         "confidentialNearcomTitle": "Depósito do near.com confidencial na rede interna",
         "confidentialNearcomSubtitle": "Receba qualquer ativo do near.com confidencial.",
         "oneTimeSectionTitle": "Endereço de depósito confidencial de uso único",
@@ -336,10 +340,8 @@
         "anythingElseLost": "Tudo enviado de outro lugar é perdido",
         "anythingElseLostSub": "Exchanges, carteiras públicas, outras redes – não pode ser recuperado.",
         "confidentialAckCheckbox": "Entendo que depósitos de fora do Trezu ou near.com confidenciais serão perdidos.",
-        "onlyFromConfidentialTrezu": "Apenas do <bold>Trezu</bold> confidencial",
         "onlyFromConfidentialNearcom": "Apenas do <bold>near.com</bold> confidencial",
         "reusableDoesntExpire": "<bold>Reutilizável.</bold> Não expira",
-        "fundsOutsideTrezuLost": "Fundos enviados de fora do Trezu confidencial serão perdidos",
         "fundsOutsideNearcomLost": "Fundos enviados de fora do near.com confidencial serão perdidos",
         "publicNetworkRecommendation": "Deposite apenas da rede <bold>{network}</bold>. Comece com uma pequena transação de teste antes de enviar o valor total.",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "De usuário confidencial",
                 "subtitle": "Depósito do Trezu e near.com confidenciais"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "Do Trezu confidencial",
-            "nearcom": "Do near.com confidencial",
-            "short": "De confidencial"
-        },
-        "guestBanner": {
-            "title": "Você está visualizando como convidado",
-            "description": "Este endereço pertence à treasury de outra pessoa. Verifique antes de enviar."
         },
         "transfer": {
             "title": "Transferir para a Treasury",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "na rede near.com",
             "anyAssetOnNearcom": "Qualquer ativo na rede near.com",
             "securedOnTrezu": "Protegido no Trezu",
+            "securedOnNearcom": "Secured on near.com for business",
             "payWithTrezu": "Pagar com Trezu",
             "payWithNearcom": "Pagar com near.com",
             "payRequiresTreasury": "Entre com uma treasury Trezu para pagar.",

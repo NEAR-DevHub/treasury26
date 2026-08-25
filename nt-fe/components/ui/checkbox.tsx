@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { MinusSignIcon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { CheckIcon, MinusSignIcon } from "@hugeicons/core-free-icons";
 import * as React from "react";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import { cn } from "@/lib/utils";
@@ -27,7 +27,7 @@ function Checkbox({
                 {props.checked === "indeterminate" && (
                     <Icon icon={MinusSignIcon} />
                 )}
-                {props.checked === true && <Icon icon={Tick01Icon} />}
+                {props.checked === true && <Icon icon={CheckIcon} />}
             </CheckboxPrimitive.Indicator>
         </CheckboxPrimitive.Root>
     );

@@ -137,6 +137,11 @@
         "description": "リンクが無効になっているようです。前のページに戻るか、ダッシュボードへお戻りください。",
         "backToDashboard": "ダッシュボードに戻る"
     },
+    "notMemberScreen": {
+        "title": "You're not a member of this treasury",
+        "description": "Sign in with the account this treasury expects, or ask a member to add you.",
+        "backToHome": "Back to home"
+    },
     "treasuryInfo": {
         "logoAlt": "トレジャリーロゴ"
     },
@@ -270,9 +275,10 @@
             "fetchFailed": "入金アドレスの取得に失敗しました。もう一度お試しください。",
             "loginRequired": "ワンタイム入金アドレスを生成するにはサインインしてください。"
         },
-        "title": "入金",
+        "title": "受取",
         "subtitle": "資産とネットワークを選択して入金アドレスを表示",
         "assetLabel": "資産",
+        "tokenLabel": "Token",
         "networkLabel": "ネットワーク",
         "selectAsset": "資産を選択",
         "selectNetwork": "ネットワークを選択",
@@ -310,8 +316,6 @@
         "publicAddressSubtitle": "このトークンのみを、このネットワークで下のアドレスに送ってください。",
         "oneTimeAddressTitle": "{network} ネットワーク上のワンタイム {symbol} 入金アドレス",
         "oneTimeAddressSubtitle": "このトークンのみを、このネットワークで下のアドレスに送ってください。",
-        "confidentialTrezuTitle": "near.com ネットワーク上の機密 Trezu からの入金",
-        "confidentialTrezuSubtitle": "機密 Trezu から任意の資産を受け取れます。",
         "confidentialNearcomTitle": "内部ネットワーク上の機密 near.com からの入金",
         "confidentialNearcomSubtitle": "機密 near.com から任意の資産を受け取れます。",
         "oneTimeSectionTitle": "ワンタイム機密入金アドレス",
@@ -336,10 +340,8 @@
         "anythingElseLost": "他から送られたものは失われます",
         "anythingElseLostSub": "取引所、公開ウォレット、他のネットワーク – 復元できません。",
         "confidentialAckCheckbox": "機密 Trezu または near.com 以外からの入金は失われることを理解しています。",
-        "onlyFromConfidentialTrezu": "機密 <bold>Trezu</bold> からのみ",
         "onlyFromConfidentialNearcom": "機密 <bold>near.com</bold> からのみ",
         "reusableDoesntExpire": "<bold>再利用可能。</bold>期限なし",
-        "fundsOutsideTrezuLost": "機密 Trezu 以外から送られた資金は失われます",
         "fundsOutsideNearcomLost": "機密 near.com 以外から送られた資金は失われます",
         "publicNetworkRecommendation": "<bold>{network}</bold> ネットワークからのみ入金してください。全額を送る前に少額のテスト取引から始めることをおすすめします。",
         "sourceCards": {
@@ -351,15 +353,6 @@
                 "title": "機密ユーザーから",
                 "subtitle": "機密 Trezu と near.com から入金"
             }
-        },
-        "confidentialOrigins": {
-            "trezu": "機密 Trezu から",
-            "nearcom": "機密 near.com から",
-            "short": "機密から"
-        },
-        "guestBanner": {
-            "title": "ゲストとして表示しています",
-            "description": "このアドレスは他者の treasury のものです。送信前に再確認してください。"
         },
         "transfer": {
             "title": "Treasury へ送金",
@@ -373,6 +366,7 @@
             "onNearcomNetwork": "near.com ネットワーク上",
             "anyAssetOnNearcom": "near.com ネットワーク上の任意の資産",
             "securedOnTrezu": "Trezu で保護",
+            "securedOnNearcom": "Secured on near.com for business",
             "payWithTrezu": "Trezu で支払う",
             "payWithNearcom": "near.com で支払う",
             "payRequiresTreasury": "支払うには Trezu treasury でサインインしてください。",

@@ -1,7 +1,6 @@
 "use client";
 
-import { Icon } from "@/components/icon";
-import { Clock01Icon, FlashIcon, Link02Icon } from "@hugeicons/core-free-icons";
+import { Clock, Zap } from "lucide-react";
 import Link from "next/link";
 import {
     useParams,
@@ -13,21 +12,22 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/button";
-import { PageCard } from "@/components/card";
+import { Icon } from "@/components/icon";
 import Logo from "@/components/icons/logo";
+import { NearBusinessLogo } from "@/components/icons/near-business-logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { NEAR_COM_ICON } from "@/constants/token";
+import { withNearComAddressPrefix } from "@/lib/nearcom-address";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useConfidentialBridgeAddress } from "@/hooks/use-confidential-bridge-address";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
 import { useDepositExpiryClock } from "@/hooks/use-deposit-expiry-clock";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
+import { Copy01Icon } from "@hugeicons/core-free-icons";
 import { DepositAddressCard } from "../../dashboard/components/deposit/deposit-address-card";
 import { DepositAddressSkeleton } from "../../dashboard/components/deposit/deposit-address-view";
-import { DepositConfidentialSourceTabs } from "../../dashboard/components/deposit/deposit-confidential-source-tabs";
 import { isDepositAddressUsed } from "../../dashboard/components/deposit/deposit-expires";
 import { DepositNoticeList } from "../../dashboard/components/deposit/deposit-notice-list";
 import {
@@ -51,7 +51,6 @@ import {
     withChoosePayerParam,
     withoutChoosePayerParam,
 } from "../../dashboard/components/deposit/deposit-transfer-url";
-import type { ConfidentialOrigin } from "../../dashboard/components/deposit/deposit-types";
 import { formatMinDepositDisplay } from "../../dashboard/components/deposit/format-min-deposit";
 
 export default function PaySharePage() {
@@ -72,8 +71,7 @@ export default function PaySharePage() {
     const tokenId = searchParams.get("token") || "";
     const networkFromUrl = searchParams.get("network") || "";
     const shouldOpenPicker = searchParams.get(CHOOSE_PAYER_QUERY) === "1";
-    const confidentialOrigin: ConfidentialOrigin =
-        searchParams.get("source") === "nearcom" ? "nearcom" : "trezu";
+    const payWithNearcom = isConfidential;
 
     const isOneTimeConfidentialShare = kind === "public" && isConfidential;
     const isPublicTreasuryShare = kind === "public" && !isConfidential;
@@ -100,19 +98,6 @@ export default function PaySharePage() {
         (kind === "public" &&
             (!shareId ||
                 (isPublicTreasuryShare && !isLoading && !networkFromUrl)));
-
-    const setConfidentialOrigin = useCallback(
-        (origin: ConfidentialOrigin) => {
-            if (kind !== "confidential") return;
-            const next = new URLSearchParams(searchParams.toString());
-            next.set("source", origin);
-            const qs = next.toString();
-            router.replace(`${pathname}${qs ? `?${qs}` : ""}`, {
-                scroll: false,
-            });
-        },
-        [kind, searchParams, pathname, router],
-    );
 
     useEffect(() => {
         if (!treasuryId) return;
@@ -176,7 +161,7 @@ export default function PaySharePage() {
 
     const depositAddress =
         kind === "confidential"
-            ? recipientDaoId
+            ? withNearComAddressPrefix(recipientDaoId)
             : isOneTimeConfidentialShare
               ? bridgeAddress || ""
               : shareId;
@@ -200,7 +185,7 @@ export default function PaySharePage() {
 
     const notices = useMemo(() => {
         if (kind === "confidential") {
-            return buildConfidentialOriginNotices(t, confidentialOrigin);
+            return buildConfidentialOriginNotices(t);
         }
 
         const symbol = sendTokenMeta?.symbol || tokenId;
@@ -223,7 +208,6 @@ export default function PaySharePage() {
     }, [
         kind,
         isConfidential,
-        confidentialOrigin,
         sendTokenMeta?.symbol,
         sendTokenMeta?.networkName,
         minDepositDisplay,
@@ -236,12 +220,10 @@ export default function PaySharePage() {
     ]);
 
     const isConfidentialShare = kind === "confidential";
-    const isConfidentialNearcomShare =
-        isConfidentialShare && confidentialOrigin === "nearcom";
 
     const paymentPrefill = useMemo(() => {
-        // near.com CTA opens near.com/home — no Trezu payments prefill.
-        if (isConfidentialNearcomShare) return null;
+        // Confidential treasuries pay on near.com — no Trezu payments prefill.
+        if (payWithNearcom) return null;
         if (kind === "public") {
             // Exact ids for payments matching — not display names or JSON blobs.
             if (
@@ -257,24 +239,15 @@ export default function PaySharePage() {
                 network: sendTokenMeta.networkId,
             };
         }
-        if (!recipientDaoId) return null;
-        // Confidential Trezu pays via near.com into the DAO id.
-        return { address: recipientDaoId, networks: NEAR_COM_NETWORK_ID };
-    }, [
-        isConfidentialNearcomShare,
-        kind,
-        depositAddress,
-        sendTokenMeta,
-        recipientDaoId,
-    ]);
+        return null;
+    }, [payWithNearcom, kind, depositAddress, sendTokenMeta]);
 
     const payWithTrezuFilter = useMemo(
         () => ({
             destinationTreasuryId: recipientDaoId,
-            confidentialOnly:
-                isConfidentialShare && !isConfidentialNearcomShare,
+            confidentialOnly: false,
         }),
-        [recipientDaoId, isConfidentialShare, isConfidentialNearcomShare],
+        [recipientDaoId],
     );
 
     const currentSharePath = withoutChoosePayerParam(
@@ -388,7 +361,7 @@ export default function PaySharePage() {
     };
 
     const handlePayCta = () => {
-        if (isConfidentialNearcomShare) {
+        if (payWithNearcom) {
             handlePayWithNearcom();
             return;
         }
@@ -419,16 +392,20 @@ export default function PaySharePage() {
     return (
         <PageComponentLayout
             title={pageTitle}
+            hideHeader
             hideCollapseButton
             hideAppWarningBanner
-            logo={
-                <Link href="/">
-                    <Logo size="sm" />
-                </Link>
-            }
         >
-            <div className="flex justify-center w-full md:mt-4">
-                <PageCard className="w-full max-w-150 gap-4">
+            <div className="flex justify-center w-full mt-8 md:mt-20">
+                <div className="flex w-full max-w-[700px] flex-col gap-4">
+                    <Link href="/" className="w-fit">
+                        {isConfidential ? (
+                            <NearBusinessLogo className="h-7 w-auto" />
+                        ) : (
+                            <Logo size="sm" />
+                        )}
+                    </Link>
+
                     {isStatusLoading ? (
                         <div data-testid="deposit-transfer-status-skeleton">
                             <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3 pb-3 border-b border-general-border mb-3">
@@ -448,22 +425,15 @@ export default function PaySharePage() {
                         />
                     ) : (
                         <>
-                            <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3 pb-3 border-b border-general-border mb-3">
-                                <h1 className="font-semibold text-lg leading-snug">
+                            <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 mt-4 sm:mt-8 sm:mb-5">
+                                <h1 className="text-2xl font-bold leading-[120%] text-foreground">
                                     {pageTitle}
                                 </h1>
                                 <span className="inline-flex items-center gap-1.5 rounded-full bg-general-orange-background-faded text-general-orange-foreground px-2.5 py-1 text-xs font-medium shrink-0">
-                                    <Icon icon={Clock01Icon} />
+                                    <Clock className="size-3.5" />
                                     {t("transfer.waitingForPayment")}
                                 </span>
                             </div>
-
-                            {kind === "confidential" && (
-                                <DepositConfidentialSourceTabs
-                                    value={confidentialOrigin}
-                                    onChange={setConfidentialOrigin}
-                                />
-                            )}
 
                             <DepositTransferSummary
                                 variant={
@@ -485,33 +455,24 @@ export default function PaySharePage() {
                                 copyMode="inline"
                                 showShare={false}
                                 footer={
-                                    <div className="px-3 py-2.5 border-t border-general-tertiary">
+                                    <div className="px-3 py-3">
                                         <DepositNoticeList notices={notices} />
                                     </div>
                                 }
                             />
 
-                            <div className="space-y-2">
+                            <div className="space-y-2 mt-4">
                                 <Button
                                     type="button"
                                     onClick={handlePayCta}
-                                    className="w-full gap-2"
+                                    className="h-11 w-full gap-2 rounded-2xl text-base font-bold leading-4 text-primary-foreground"
                                     data-testid={
-                                        isConfidentialNearcomShare
+                                        payWithNearcom
                                             ? "deposit-pay-with-nearcom"
                                             : "deposit-pay-with-trezu"
                                     }
                                 >
-                                    {isConfidentialNearcomShare ? (
-                                        <img
-                                            src={NEAR_COM_ICON}
-                                            alt=""
-                                            className="size-4 rounded"
-                                        />
-                                    ) : (
-                                        <Icon icon={FlashIcon} />
-                                    )}
-                                    {isConfidentialNearcomShare
+                                    {payWithNearcom
                                         ? t("transfer.payWithNearcom")
                                         : t("transfer.payWithTrezu")}
                                 </Button>
@@ -519,19 +480,19 @@ export default function PaySharePage() {
                                     type="button"
                                     variant="secondary"
                                     onClick={handleCopyLink}
-                                    className="w-full gap-2"
+                                    className="h-11 w-full gap-2 rounded-2xl bg-general-bg-secondary text-base font-bold leading-4 text-muted-foreground hover:bg-general-bg-secondary/80"
                                     data-testid="deposit-copy-link"
                                 >
-                                    <Icon icon={Link02Icon} />
+                                    <Icon icon={Copy01Icon} />
                                     {t("transfer.copyLink")}
                                 </Button>
                             </div>
                         </>
                     )}
-                </PageCard>
+                </div>
             </div>
 
-            {!isInactive && !isConfidentialNearcomShare && (
+            {!isInactive && !payWithNearcom && (
                 <DepositPayTreasuryModal
                     open={showPicker}
                     onOpenChange={handlePickerOpenChange}

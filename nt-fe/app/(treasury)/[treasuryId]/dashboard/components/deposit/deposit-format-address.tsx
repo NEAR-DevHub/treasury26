@@ -17,7 +17,7 @@ export function formatDepositAddress(
         isSputnikDaoAddress(address) ||
         address.length <= HIGHLIGHT_LEN * 2
     ) {
-        return <span className="text-foreground">{address}</span>;
+        return <span className="text-general-foreground">{address}</span>;
     }
 
     const first = address.slice(0, HIGHLIGHT_LEN);
@@ -27,9 +27,15 @@ export function formatDepositAddress(
     // Keep ends emphasized but same color as the middle so wrapped lines stay readable.
     return (
         <>
-            <span className="text-foreground font-semibold">{first}</span>
-            <span className="text-foreground font-normal">{middle}</span>
-            <span className="text-foreground font-semibold">{last}</span>
+            <span className="font-semibold text-general-foreground">
+                {first}
+            </span>
+            <span className="font-normal text-general-foreground">
+                {middle}
+            </span>
+            <span className="font-semibold text-general-foreground">
+                {last}
+            </span>
         </>
     );
 }
