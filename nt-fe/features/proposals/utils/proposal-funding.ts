@@ -50,13 +50,16 @@ function findNearTokenById(
     tokens: TreasuryAsset[],
     tokenId: string,
 ): TreasuryAsset | undefined {
-    return tokens.find(
+    const matches = tokens.filter(
         (t) =>
             t.contractId === tokenId ||
             (tokenId.toLowerCase() === NEAR_NETWORK_ID &&
                 t.contractId == null &&
                 t.residency === "Near"),
     );
+    // FT lockup rows share the same contractId but cannot fund ft_transfer /
+    // payment proposals. Prefer the liquid wallet row when both exist.
+    return matches.find((t) => !t.lockupInstanceId) ?? matches[0];
 }
 
 function stakingMeta(token: TreasuryAsset | undefined): {
@@ -243,9 +246,7 @@ export function getProposalFundingAvailability(
         return getStakingFundingAvailability(tokens, data as StakingData);
     }
 
-    const token =
-        findNearTokenById(tokens, requiredFunds.tokenId) ??
-        tokens.find((t) => t.contractId === requiredFunds.tokenId);
+    const token = findNearTokenById(tokens, requiredFunds.tokenId);
 
     if (!token) {
         return {

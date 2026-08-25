@@ -14,6 +14,31 @@ import {
     legacyGroupedDecimalOrNull,
 } from "./amount-format";
 
+/** Same ICU call `formatCanonicalWithIntl` uses — expected glyphs vary by OS/Bun. */
+function intlCanonical(
+    canonical: string,
+    locale: string,
+    options: Intl.NumberFormatOptions = {},
+): string {
+    const unsigned = canonical.replace(/^-/, "");
+    const fractionDigits = unsigned.includes(".")
+        ? (unsigned.split(".")[1] ?? "").length
+        : 0;
+    return new Intl.NumberFormat(locale, {
+        ...options,
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+    }).format(canonical as Intl.StringNumericLiteral);
+}
+
+function intlCurrency(
+    canonical: string,
+    locale: string,
+    currency: string,
+): string {
+    return intlCanonical(canonical, locale, { style: "currency", currency });
+}
+
 describe("exact amount conversion", () => {
     it("converts base units without display precision loss", () => {
         expect(
@@ -140,12 +165,12 @@ describe("fiat, prices, rates, percentages, and locales", () => {
                 profile: "exact",
                 locale: "de",
             }).display,
-        ).toBe("1.234.567,89");
+        ).toBe(intlCanonical("1234567.89", "de"));
         expect(formatFiatValue("1234.5", { locale: "es" }).display).toBe(
-            "1234,50 US$",
+            intlCurrency("1234.50", "es", "USD"),
         );
         expect(formatTokenQuantity("1234.5", { locale: "uk" }).display).toBe(
-            "1 234,5",
+            intlCanonical("1234.5", "uk"),
         );
     });
 
@@ -155,19 +180,19 @@ describe("fiat, prices, rates, percentages, and locales", () => {
                 profile: "exact",
                 locale: "hi-IN",
             }).display,
-        ).toBe("12,34,567.89");
+        ).toBe(intlCanonical("1234567.89", "hi-IN"));
         expect(
             formatTokenQuantity("1234567.89", {
                 profile: "exact",
                 locale: "de-CH",
             }).display,
-        ).toBe("1’234’567.89");
+        ).toBe(intlCanonical("1234567.89", "de-CH"));
         expect(
             formatTokenQuantity("1234567.89", {
                 profile: "exact",
                 locale: "ar-EG",
             }).display,
-        ).toBe("١٬٢٣٤٬٥٦٧٫٨٩");
+        ).toBe(intlCanonical("1234567.89", "ar-EG"));
     });
 
     it("lets Intl place localized currency signs and affixes", () => {
@@ -176,19 +201,19 @@ describe("fiat, prices, rates, percentages, and locales", () => {
                 locale: "de-CH",
                 currency: "CHF",
             }).display,
-        ).toBe("CHF 1’234.50");
+        ).toBe(intlCurrency("1234.50", "de-CH", "CHF"));
         expect(
             formatFiatValue("-1234.5", {
                 locale: "de-CH",
                 currency: "CHF",
             }).display,
-        ).toBe("CHF-1’234.50");
+        ).toBe(intlCurrency("-1234.50", "de-CH", "CHF"));
         expect(
             formatFiatValue("-1234.5", {
                 locale: "de-DE",
                 currency: "EUR",
             }).display,
-        ).toBe("-1.234,50 €");
+        ).toBe(intlCurrency("-1234.50", "de-DE", "EUR"));
     });
 
     it("preserves large and high-precision canonical decimals through Intl", () => {

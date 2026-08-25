@@ -149,11 +149,21 @@ test("Signed in + no treasuries + creation disabled => waitlist is shown", async
 
     await gotoStartPageAndWaitForBootstrapRequests(page);
 
-    await page.getByRole("button", { name: /public best for daos/i }).click();
+    // Signed-in users with no treasuries are redirected `/` → `/create`.
+    // Selecting a type on `/` is lost when that remounts the form.
+    await expect(page).toHaveURL(/\/create/, { timeout: 15000 });
+
+    const publicType = page.getByRole("radio", { name: "Public" });
+    await publicType.click();
+    await expect(publicType).toBeChecked();
+
     await page
         .getByRole("textbox", { name: "My Treasury" })
         .fill("testing-by-playwright");
-    await page.getByRole("button", { name: /create treasury/i }).click();
+
+    const createButton = page.getByRole("button", { name: /create treasury/i });
+    await expect(createButton).toBeEnabled();
+    await createButton.click();
 
     await expect(page).toHaveURL(/create/);
     await expect(
