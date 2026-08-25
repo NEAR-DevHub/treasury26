@@ -2,6 +2,8 @@
 import { ArrowDown02Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
+import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { FormattedDate } from "@/components/formatted-date";
 import { Icon } from "@/components/icon";
@@ -241,7 +243,8 @@ function TokenAmountColumn({
 }: {
     title?: string;
     token: Token;
-    amount: string;
+    /** Already masked by the caller when it holds a figure rather than a status. */
+    amount: ReactNode;
     usdValue?: number;
 }) {
     return (
@@ -266,7 +269,10 @@ function TokenAmountColumn({
                 </p>
                 {usdValue ? (
                     <p className="text-xxs text-muted-foreground break-all">
-                        ≈ {formatCurrency(usdValue)}
+                        ≈{" "}
+                        <MaskedBalance>
+                            {formatCurrency(usdValue)}
+                        </MaskedBalance>
                     </p>
                 ) : null}
             </div>
@@ -283,7 +289,11 @@ function TokenAmountHeader({ activity }: { activity: RecentActivity }) {
         <ModalSection className="items-center py-8 rounded-b-[12px]">
             <TokenAmountColumn
                 token={activityToken(activity.tokenMetadata)}
-                amount={formatActivityAmount(activity.amount)}
+                amount={
+                    <MaskedBalance>
+                        {formatActivityAmount(activity.amount)}
+                    </MaskedBalance>
+                }
                 usdValue={activity.valueUsd}
             />
         </ModalSection>
@@ -300,9 +310,11 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
         ? activityToken(swap.sentTokenMetadata)
         : null;
     const receivedToken = activityToken(swap.receivedTokenMetadata);
-    const receivedAmount = swap.receivedAmount
-        ? formatSmartAmount(swap.receivedAmount)
-        : t("pending");
+    const receivedAmount = swap.receivedAmount ? (
+        <MaskedBalance>{formatSmartAmount(swap.receivedAmount)}</MaskedBalance>
+    ) : (
+        t("pending")
+    );
 
     if (isMobile) {
         return (
@@ -310,7 +322,11 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
                 {sentToken && swap.sentAmount ? (
                     <MobileSwapTokenRow
                         token={sentToken}
-                        amount={formatSmartAmount(swap.sentAmount)}
+                        amount={
+                            <MaskedBalance>
+                                {formatSmartAmount(swap.sentAmount)}
+                            </MaskedBalance>
+                        }
                         usdValue={swap.sentAmountUsd}
                     />
                 ) : null}
@@ -334,7 +350,11 @@ function ExchangeSummarySection({ swap }: { swap: SwapInfo }) {
                     <TokenAmountColumn
                         title={t("sell")}
                         token={sentToken}
-                        amount={formatSmartAmount(swap.sentAmount)}
+                        amount={
+                            <MaskedBalance>
+                                {formatSmartAmount(swap.sentAmount)}
+                            </MaskedBalance>
+                        }
                         usdValue={swap.sentAmountUsd}
                     />
                 ) : null}
@@ -365,7 +385,8 @@ function MobileSwapTokenRow({
     usdValue,
 }: {
     token: Token;
-    amount: string;
+    /** Already masked by the caller when it holds a figure rather than a status. */
+    amount: ReactNode;
     usdValue?: number;
 }) {
     return (
@@ -382,7 +403,9 @@ function MobileSwapTokenRow({
                 </p>
                 {usdValue ? (
                     <p className="text-sm text-muted-foreground">
-                        {formatCurrency(usdValue)}
+                        <MaskedBalance>
+                            {formatCurrency(usdValue)}
+                        </MaskedBalance>
                     </p>
                 ) : null}
             </div>
