@@ -108,11 +108,14 @@ export function useBulkTransferRecipients(
             return {
                 batchId: null,
                 recipients: confidentialLegs.recipients.map((leg) => {
-                    const { recipient, amountInFormatted } =
+                    // Net (`amountOut`), not the gross charged to the treasury:
+                    // the card reads as what the recipient gets, and the bridge
+                    // fee is the difference. Same choice as the expanded view.
+                    const { recipient, amountOutFormatted } =
                         mapConfidentialBulkRecipientPayment(leg.quote_metadata);
                     let units: Big | null = null;
                     try {
-                        units = Big(amountInFormatted || "0");
+                        units = Big(amountOutFormatted || "0");
                     } catch {
                         units = null;
                     }
