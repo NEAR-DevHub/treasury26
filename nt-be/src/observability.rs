@@ -521,9 +521,12 @@ mod tests {
     #[test]
     fn fingerprint_groups_by_error_code_then_queue() {
         let mut event = sentry::protocol::Event {
-            tags: [("error_code".to_string(), "CONF_INTENT_SUBMIT_FAILED".to_string())]
-                .into_iter()
-                .collect(),
+            tags: [(
+                "error_code".to_string(),
+                "CONF_INTENT_SUBMIT_FAILED".to_string(),
+            )]
+            .into_iter()
+            .collect(),
             ..Default::default()
         };
         apply_stable_fingerprint(&mut event);

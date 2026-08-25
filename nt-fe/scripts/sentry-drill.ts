@@ -72,9 +72,13 @@ async function main() {
         { code: "FE_WALLET_SIGN_FAILED", priority: "p1" },
     );
     // FE_WALLET_AUTH_FAILED defaults to p2 (Sentry only).
-    reportError(new Error("[DRILL] wallet auth failed"), "Authentication failed", {
-        code: "FE_WALLET_AUTH_FAILED",
-    });
+    reportError(
+        new Error("[DRILL] wallet auth failed"),
+        "Authentication failed",
+        {
+            code: "FE_WALLET_AUTH_FAILED",
+        },
+    );
 
     fireQueryError("FE_QUERY_FAILED", "drill-query");
     fireQueryError("FE_MUTATION_FAILED", "drill-mutation");
