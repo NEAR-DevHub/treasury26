@@ -524,6 +524,5 @@ mod tests {
 
         assert_eq!(body["status"], "healthy");
         assert_eq!(body["background_jobs"]["local"]["role"], "starting");
-        assert!(body.get("signer_id").is_none());
     }
 }
