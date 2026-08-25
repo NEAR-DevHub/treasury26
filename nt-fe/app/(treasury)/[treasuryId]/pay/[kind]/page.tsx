@@ -12,20 +12,24 @@ import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/button";
-import { Icon } from "@/components/icon";
+import { CopyButton } from "@/components/copy-button";
 import Logo from "@/components/icons/logo";
 import { NearBusinessLogo } from "@/components/icons/near-business-logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_ICON } from "@/constants/token";
-import { withNearComAddressPrefix } from "@/lib/nearcom-address";
+import {
+    buildNearComSendHref,
+    NEAR_COM_SEND_INTERNAL_NETWORK,
+    withNearComAddressPrefix,
+} from "@/lib/nearcom-address";
+import { buildLoginHref } from "@/lib/auth-redirect";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useConfidentialBridgeAddress } from "@/hooks/use-confidential-bridge-address";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
 import { useDepositExpiryClock } from "@/hooks/use-deposit-expiry-clock";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useNear } from "@/stores/near-store";
-import { Copy01Icon } from "@hugeicons/core-free-icons";
 import { DepositAddressCard } from "../../dashboard/components/deposit/deposit-address-card";
 import { DepositAddressSkeleton } from "../../dashboard/components/deposit/deposit-address-view";
 import { isDepositAddressUsed } from "../../dashboard/components/deposit/deposit-expires";
@@ -330,18 +334,32 @@ export default function PaySharePage() {
         continuePayWithTrezu,
     ]);
 
-    const handleCopyLink = async () => {
-        const url = getAbsoluteTransferUrl(currentSharePath);
-        try {
-            await navigator.clipboard.writeText(url);
-            toast.success(t("linkCopied"));
-        } catch {
-            toast.error(t("errors.fetchFailed"));
-        }
-    };
-
     const handlePayWithNearcom = () => {
-        window.open("https://near.com/send", "_blank", "noopener,noreferrer");
+        if (!depositAddress) {
+            toast.error(t("errors.addressUnavailable"));
+            return;
+        }
+
+        // Confidential reusable address → near.com intents recipient.
+        // One-time public→confidential bridge → token + chain + bridge address.
+        // Deposit quote uses originAsset === destinationAsset, so paymentToken
+        // matches token.
+        const sendToken = sendTokenMeta?.symbol || tokenId || null;
+        const href =
+            kind === "confidential"
+                ? buildNearComSendHref({
+                      network: NEAR_COM_SEND_INTERNAL_NETWORK,
+                      recipient: depositAddress,
+                  })
+                : buildNearComSendHref({
+                      token: sendToken,
+                      paymentToken: sendToken,
+                      network:
+                          sendTokenMeta?.bridgeNetworkName || networkId || null,
+                      recipient: depositAddress,
+                  });
+
+        window.open(href, "_blank", "noopener,noreferrer");
     };
 
     const handlePayWithTrezu = () => {
@@ -351,8 +369,9 @@ export default function PaySharePage() {
         }
 
         if (!accountId) {
-            const returnTo = withChoosePayerParam(currentSharePath);
-            router.push(`/login?returnTo=${encodeURIComponent(returnTo)}`);
+            router.push(
+                buildLoginHref(withChoosePayerParam(currentSharePath), ""),
+            );
             return;
         }
 
@@ -397,7 +416,7 @@ export default function PaySharePage() {
             hideAppWarningBanner
         >
             <div className="flex justify-center w-full mt-8 md:mt-20">
-                <div className="flex w-full max-w-[700px] flex-col gap-4">
+                <div className="flex w-full max-w-[700px] flex-col gap-5 lg:gap-4">
                     <Link href="/" className="w-fit">
                         {isConfidential ? (
                             <NearBusinessLogo className="h-7 w-auto" />
@@ -476,16 +495,17 @@ export default function PaySharePage() {
                                         ? t("transfer.payWithNearcom")
                                         : t("transfer.payWithTrezu")}
                                 </Button>
-                                <Button
-                                    type="button"
+                                <CopyButton
+                                    text={getAbsoluteTransferUrl(
+                                        currentSharePath,
+                                    )}
+                                    toastMessage={t("linkCopied")}
                                     variant="secondary"
-                                    onClick={handleCopyLink}
                                     className="h-11 w-full gap-2 rounded-2xl bg-general-bg-secondary text-base font-bold leading-4 text-muted-foreground hover:bg-general-bg-secondary/80"
                                     data-testid="deposit-copy-link"
                                 >
-                                    <Icon icon={Copy01Icon} />
                                     {t("transfer.copyLink")}
-                                </Button>
+                                </CopyButton>
                             </div>
                         </>
                     )}

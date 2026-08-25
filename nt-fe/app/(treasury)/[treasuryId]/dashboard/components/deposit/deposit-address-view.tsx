@@ -104,7 +104,7 @@ export function DepositAddressView({
                         type="button"
                         variant="unstyled"
                         onClick={onBack}
-                        className="mb-3 inline-flex h-auto items-center gap-1 p-0 text-sm font-medium text-general-foreground hover:opacity-80"
+                        className="mb-3 inline-flex h-auto items-center gap-1 p-0 text-sm font-semibold text-general-foreground hover:opacity-80"
                         data-testid="deposit-address-back"
                     >
                         <Icon icon={ArrowLeft01Icon} className="size-4" />

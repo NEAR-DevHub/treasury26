@@ -32,7 +32,7 @@ export default function DepositPage() {
             hideMobileShellControls
         >
             <div className="flex justify-center w-full">
-                <div className="flex w-full max-w-[588px] min-w-[300px] flex-1 flex-col gap-4">
+                <div className="flex w-full max-w-[588px] min-w-[300px] flex-1 flex-col gap-7 lg:gap-4">
                     <h1 className="mt-3 text-xl font-semibold leading-[1.2] tracking-tight lg:hidden">
                         {t("title")}
                     </h1>

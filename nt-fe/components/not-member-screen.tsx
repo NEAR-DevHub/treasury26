@@ -27,7 +27,7 @@ export function NotMemberScreen() {
                 <h1 className="max-w-md text-2xl font-bold leading-[1.2] text-general-foreground">
                     {t("title")}
                 </h1>
-                <p className="max-w-sm text-base font-medium leading-[150%] text-general-secondary-foreground">
+                <p className="max-w-sm text-base font-medium leading-[150%] text-general-secondary-foreground w-80 md:w-auto">
                     {t("description")}
                 </p>
                 <Button

@@ -3,6 +3,15 @@ import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 /** Prefix for near.com payment / deposit recipients (public + confidential). */
 export const NEAR_COM_ADDRESS_PREFIX = "nearcom:";
 
+/** Base URL for the near.com send flow (apps/defuse-near). */
+export const NEAR_COM_SEND_URL = "https://near.com/send";
+
+/**
+ * Network id apps/defuse-near expects for near.com internal / intents
+ * destinations (`nearcom:` recipients).
+ */
+export const NEAR_COM_SEND_INTERNAL_NETWORK = "near_intents";
+
 /** Strip a leading `nearcom:` (case-insensitive). */
 export function stripNearComAddressPrefix(address: string): string {
     const trimmed = address.trim();
@@ -41,4 +50,37 @@ export function formatRecipientForNearComDestination(
         return trimmed;
     }
     return withNearComAddressPrefix(trimmed);
+}
+
+export type NearComSendPrefill = {
+    /** Token symbol to receive / destination asset. */
+    token?: string | null;
+    /** Destination chain (e.g. eth, near_intents). */
+    network?: string | null;
+    /** Recipient address (may include `nearcom:` for internal destinations). */
+    recipient?: string | null;
+    /**
+     * Asset the payer sends. Deposit quotes use origin === destination, so
+     * callers should pass the same value as `token`.
+     */
+    paymentToken?: string | null;
+};
+
+/**
+ * Build a near.com/send deep link with the query params apps/defuse-near reads
+ * (`token`, `network`, `recipient`, `paymentToken`).
+ */
+export function buildNearComSendHref(prefill: NearComSendPrefill): string {
+    const url = new URL(NEAR_COM_SEND_URL);
+    const entries: [keyof NearComSendPrefill, string | null | undefined][] = [
+        ["token", prefill.token],
+        ["network", prefill.network],
+        ["recipient", prefill.recipient],
+        ["paymentToken", prefill.paymentToken],
+    ];
+    for (const [key, value] of entries) {
+        const trimmed = value?.trim();
+        if (trimmed) url.searchParams.set(key, trimmed);
+    }
+    return url.toString();
 }
