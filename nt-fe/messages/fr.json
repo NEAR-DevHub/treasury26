@@ -460,10 +460,14 @@
             "processing": "En cours",
             "failed": "Échoué",
             "exchangeTransaction": "Transaction d'échange",
-            "transferTransaction": "Transaction de transfert",
             "rate": "Taux",
             "detailsTitle": "Détails",
-            "linkedRequest": "Demande liée"
+            "linkedRequest": "Demande liée",
+            "sendTransaction": "Transaction d'envoi",
+            "bulkTitle": "Détails du transfert groupé",
+            "toRecipients": "À {count} destinataires",
+            "showRecipients": "Afficher les destinataires",
+            "hideRecipients": "Masquer les destinataires"
         },
         "refresh": {
             "ariaLabel": "Actualiser l'historique confidentiel",

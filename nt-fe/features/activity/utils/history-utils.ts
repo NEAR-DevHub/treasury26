@@ -71,6 +71,18 @@ export function getHistoryDescription(
 const PROPOSAL_METHODS = ["add_proposal", "act_proposal"];
 
 /**
+ * DAO governance calls (`add_proposal` / `act_proposal`) rather than a
+ * transfer — they have no counterparty or amount worth showing.
+ */
+export function isProposalMethodCall(activity: ActivityAccount): boolean {
+    return (
+        activity.actionKind === "FunctionCall" &&
+        !!activity.methodName &&
+        PROPOSAL_METHODS.includes(activity.methodName)
+    );
+}
+
+/**
  * Activity type for helper functions
  */
 export interface ActivityAccount {
@@ -147,11 +159,7 @@ export function getActivityLabel(
     }
     if (activity.actionKind === "StakingReward") return labels.stakingRewards;
 
-    if (
-        activity.actionKind === "FunctionCall" &&
-        activity.methodName &&
-        PROPOSAL_METHODS.includes(activity.methodName)
-    ) {
+    if (isProposalMethodCall(activity)) {
         return labels.proposalAction;
     }
 
@@ -192,11 +200,7 @@ export function getActivitySubLabel(
 
     if (activity.actionKind === "StakingReward") return "";
 
-    if (
-        activity.actionKind === "FunctionCall" &&
-        activity.methodName &&
-        PROPOSAL_METHODS.includes(activity.methodName)
-    ) {
+    if (isProposalMethodCall(activity)) {
         return "";
     }
 

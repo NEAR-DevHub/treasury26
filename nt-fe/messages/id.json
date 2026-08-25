@@ -460,10 +460,14 @@
             "processing": "Diproses",
             "failed": "Gagal",
             "exchangeTransaction": "Transaksi Penukaran",
-            "transferTransaction": "Transaksi Transfer",
             "rate": "Kurs",
             "detailsTitle": "Detail",
-            "linkedRequest": "Permintaan tertaut"
+            "linkedRequest": "Permintaan tertaut",
+            "sendTransaction": "Transaksi Kirim",
+            "bulkTitle": "Detail Transfer Massal",
+            "toRecipients": "Ke {count} penerima",
+            "showRecipients": "Tampilkan penerima",
+            "hideRecipients": "Sembunyikan penerima"
         },
         "refresh": {
             "ariaLabel": "Segarkan riwayat rahasia",

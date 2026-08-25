@@ -1,8 +1,13 @@
 "use client";
-import { ArrowDown02Icon, ArrowRight01Icon } from "@hugeicons/core-free-icons";
+import {
+    ArrowDown01Icon,
+    ArrowDown02Icon,
+    ArrowRight01Icon,
+    Contact01Icon,
+} from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { FormattedDate } from "@/components/formatted-date";
@@ -21,6 +26,7 @@ import { Tooltip } from "@/components/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { User } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useBulkPaymentTransactionHash } from "@/hooks/use-bulk-payment-transactions";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity, SwapInfo, TokenMetadataInfo } from "@/lib/api";
@@ -33,10 +39,15 @@ import {
     formatSmartAmount,
 } from "@/lib/utils";
 import {
+    type BulkTransferRecipient,
+    useBulkTransferRecipients,
+} from "../hooks/use-bulk-transfer-recipients";
+import {
     getActivityStatus,
     getFromAccountId,
     getToAccount,
     getToAccountId,
+    isProposalMethodCall,
     useGetFromAccount,
 } from "../utils/history-utils";
 import { ActivityStatusPill } from "./activity-status-pill";
@@ -53,7 +64,7 @@ const TITLE_KEYS: Record<ActivityDetailsVariant, string> = {
 const TRANSACTION_LABEL_KEYS: Record<ActivityDetailsVariant, string> = {
     deposit: "depositTransaction",
     exchange: "exchangeTransaction",
-    transfer: "transferTransaction",
+    transfer: "sendTransaction",
 };
 
 interface TransactionDetailsModalProps {
@@ -545,7 +556,10 @@ function useDetailItems(
         ),
     });
 
-    if (isProposalCall(activity)) {
+    // Only governance calls surface their method/contract — a bulk transfer is
+    // a FunctionCall too, but `ft_transfer_call` on the bulk payment contract
+    // is protocol plumbing, not something the sender needs to read.
+    if (isProposalMethodCall(activity)) {
         items.push(
             { label: t("method"), value: activity.methodName },
             {
@@ -594,10 +608,10 @@ function DetailsSection({
 }
 
 /**
- * Label / value rows for the deposit dialog: muted label on the left, the
- * value right-aligned and emphasised.
+ * Label / value rows for the deposit, send and bulk dialogs: muted label on
+ * the left, the value right-aligned and emphasised.
  */
-function DepositDetailRows({ items }: { items: InfoItem[] }) {
+function DetailRows({ items }: { items: InfoItem[] }) {
     return (
         <div className="flex w-full flex-col gap-2">
             {items.map((item) => (
@@ -614,6 +628,87 @@ function DepositDetailRows({ items }: { items: InfoItem[] }) {
                 </div>
             ))}
         </div>
+    );
+}
+
+/**
+ * Headline of the deposit and send dialogs: the token, the signed amount and
+ * its approximate USD value.
+ */
+function TokenAmountBlock({ activity }: { activity: RecentActivity }) {
+    const token = activityToken(activity.tokenMetadata);
+
+    return (
+        <div className="flex items-center gap-3">
+            <TokenDisplay
+                symbol={token.symbol}
+                icon={token.icon}
+                iconSize="3xl"
+            />
+            <div className="flex min-w-0 flex-col">
+                <span className="text-2xl leading-tight font-bold break-all text-foreground">
+                    <MaskedBalance>
+                        {formatActivityAmount(activity.amount)}
+                    </MaskedBalance>{" "}
+                    {token.symbol}
+                </span>
+                {activity.valueUsd ? (
+                    <span className="text-base leading-tight font-medium break-all text-muted-foreground">
+                        ≈{" "}
+                        <MaskedBalance>
+                            {formatCurrency(activity.valueUsd)}
+                        </MaskedBalance>
+                    </span>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+/** The counterparty of a deposit or send: avatar, role label and account. */
+function CounterpartyBlock({
+    avatar,
+    label,
+    name,
+    action,
+}: {
+    avatar: ReactNode;
+    label: string;
+    /** Omitted when the label already names the counterparty, e.g. bulk. */
+    name?: string;
+    /** Trailing control, e.g. the bulk recipients toggle. */
+    action?: ReactNode;
+}) {
+    return (
+        <div className="flex items-center gap-3 pl-1.5">
+            {avatar}
+            <div className="flex min-w-0 flex-1 flex-col">
+                {name ? (
+                    <>
+                        <span className="text-base font-medium leading-tight text-muted-foreground">
+                            {label}
+                        </span>
+                        <span className="truncate text-base font-semibold leading-tight text-foreground">
+                            {name}
+                        </span>
+                    </>
+                ) : (
+                    <span className="truncate text-base font-semibold leading-tight text-foreground">
+                        {label}
+                    </span>
+                )}
+            </div>
+            {action}
+        </div>
+    );
+}
+
+function DownArrow() {
+    return (
+        <Icon
+            icon={ArrowDown02Icon}
+            className="ml-2 size-7 text-muted-foreground"
+        />
     );
 }
 
@@ -640,62 +735,219 @@ function DepositBody({
         treasuryId,
         isConfidential,
     );
-    const token = activityToken(activity.tokenMetadata);
 
     return (
         <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
             <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3 pl-1.5">
-                    {fromAccountId ? (
-                        <User
-                            accountId={fromAccountId}
-                            variant="avatar"
-                            size="md"
-                        />
-                    ) : null}
-                    <div className="flex min-w-0 flex-col">
-                        <span className="text-base font-medium leading-tight text-muted-foreground">
-                            {t("from")}
-                        </span>
-                        <span className="truncate text-base font-semibold leading-tight text-foreground">
-                            {fromLabel}
-                        </span>
-                    </div>
-                </div>
-
-                <Icon
-                    icon={ArrowDown02Icon}
-                    className="ml-2 size-7 text-muted-foreground"
+                <CounterpartyBlock
+                    avatar={
+                        fromAccountId ? (
+                            <User
+                                accountId={fromAccountId}
+                                variant="avatar"
+                                size="md"
+                            />
+                        ) : null
+                    }
+                    label={t("from")}
+                    name={fromLabel}
                 />
 
-                <div className="flex items-center gap-3">
-                    <TokenDisplay
-                        symbol={token.symbol}
-                        icon={token.icon}
-                        iconSize="3xl"
-                    />
-                    <div className="flex min-w-0 flex-col">
-                        <span className="text-2xl leading-tight font-bold break-all text-foreground">
-                            <MaskedBalance>
-                                {formatActivityAmount(activity.amount)}
-                            </MaskedBalance>{" "}
-                            {token.symbol}
-                        </span>
-                        {activity.valueUsd ? (
-                            <span className="text-base leading-tight font-medium break-all text-muted-foreground">
-                                ≈{" "}
-                                <MaskedBalance>
-                                    {formatCurrency(activity.valueUsd)}
-                                </MaskedBalance>
-                            </span>
-                        ) : null}
-                    </div>
-                </div>
+                <DownArrow />
+
+                <TokenAmountBlock activity={activity} />
             </div>
 
             <Separator className="bg-general-border" />
 
-            <DepositDetailRows items={items} />
+            <DetailRows items={items} />
+        </div>
+    );
+}
+
+/**
+ * Send dialog body: what left the treasury, then where it went — the mirror
+ * of the deposit layout.
+ */
+function SendBody({
+    activity,
+    treasuryId,
+}: {
+    activity: RecentActivity;
+    treasuryId: string;
+}) {
+    const t = useTranslations("activity.details");
+    const { isConfidential } = useTreasury();
+    const items = useDetailItems(activity, "transfer");
+
+    const toAccountId = getToAccountId(activity, false, treasuryId);
+    const toLabel = getToAccount(activity, false, treasuryId, isConfidential);
+
+    return (
+        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+            <div className="flex flex-col gap-3">
+                <TokenAmountBlock activity={activity} />
+
+                <DownArrow />
+
+                <CounterpartyBlock
+                    avatar={
+                        toAccountId ? (
+                            <User
+                                accountId={toAccountId}
+                                variant="avatar"
+                                size="md"
+                            />
+                        ) : null
+                    }
+                    label={t("to")}
+                    name={toLabel}
+                />
+            </div>
+
+            <Separator className="bg-general-border" />
+
+            <DetailRows items={items} />
+        </div>
+    );
+}
+
+/** Bulk payouts have no single counterparty to show an avatar for. */
+function BulkRecipientsAvatar() {
+    return (
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground">
+            <Icon icon={Contact01Icon} className="size-4" />
+        </div>
+    );
+}
+
+/**
+ * One payout of a bulk transfer: recipient, their share of the total, and the
+ * transaction that settled it.
+ */
+function BulkRecipientCard({
+    recipient,
+    batchId,
+    symbol,
+}: {
+    recipient: BulkTransferRecipient;
+    batchId: string | null;
+    symbol: string;
+}) {
+    const t = useTranslations("activity.details");
+    const canLinkPayout = batchId != null && recipient.isPaid;
+    const { data: payout } = useBulkPaymentTransactionHash(
+        canLinkPayout ? batchId : null,
+        canLinkPayout ? recipient.accountId : null,
+    );
+
+    return (
+        <div className="flex flex-col gap-3 rounded-2xl border border-general-border p-4">
+            <div className="flex items-center gap-3">
+                <span className="min-w-0 flex-1 truncate text-base font-medium leading-tight text-foreground">
+                    {recipient.accountId}
+                </span>
+                <div className="flex min-w-0 flex-col items-end">
+                    <span className="truncate text-base font-semibold leading-tight text-foreground">
+                        -<MaskedBalance>{recipient.amount}</MaskedBalance>{" "}
+                        {symbol}
+                    </span>
+                    {recipient.valueUsd != null ? (
+                        <span className="text-base font-medium leading-tight text-muted-foreground">
+                            ≈{" "}
+                            <MaskedBalance>
+                                {formatCurrency(recipient.valueUsd)}
+                            </MaskedBalance>
+                        </span>
+                    ) : null}
+                </div>
+            </div>
+
+            {payout?.transactionHash ? (
+                <div className="flex items-center justify-between gap-4 py-1">
+                    <p className="text-sm font-medium text-muted-foreground">
+                        {t("sendTransaction")}
+                    </p>
+                    <TransactionHashCell
+                        transactionHashes={[payout.transactionHash]}
+                        chainName={NEAR_NETWORK_ID}
+                        className="flex items-center gap-2"
+                    />
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
+/**
+ * Bulk transfer dialog body: the total that left the treasury, the recipients
+ * it was split between, and — on demand — every individual payout.
+ */
+function BulkSendBody({
+    activity,
+    recipients,
+    batchId,
+}: {
+    activity: RecentActivity;
+    recipients: BulkTransferRecipient[];
+    batchId: string | null;
+}) {
+    const t = useTranslations("activity.details");
+    const [showRecipients, setShowRecipients] = useState(false);
+    const items = useDetailItems(activity, "transfer");
+
+    return (
+        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+            <div className="flex flex-col gap-3">
+                <TokenAmountBlock activity={activity} />
+
+                <DownArrow />
+
+                <CounterpartyBlock
+                    avatar={<BulkRecipientsAvatar />}
+                    label={t("toRecipients", { count: recipients.length })}
+                    action={
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="icon"
+                            aria-label={t(
+                                showRecipients
+                                    ? "hideRecipients"
+                                    : "showRecipients",
+                            )}
+                            aria-expanded={showRecipients}
+                            className="size-9 shrink-0 rounded-xl"
+                            onClick={() => setShowRecipients((open) => !open)}
+                        >
+                            <Icon
+                                icon={
+                                    showRecipients
+                                        ? ArrowDown01Icon
+                                        : ArrowRight01Icon
+                                }
+                            />
+                        </Button>
+                    }
+                />
+
+                {showRecipients ? (
+                    <div className="flex max-h-[302px] flex-col gap-2 overflow-y-auto">
+                        {recipients.map((recipient) => (
+                            <BulkRecipientCard
+                                key={recipient.accountId}
+                                recipient={recipient}
+                                batchId={batchId}
+                                symbol={activity.tokenMetadata.symbol}
+                            />
+                        ))}
+                    </div>
+                ) : null}
+            </div>
+
+            <Separator className="bg-general-border" />
+
+            <DetailRows items={items} />
         </div>
     );
 }
@@ -729,6 +981,76 @@ function ViewLinkedRequestButton({
     );
 }
 
+/** Deposit and send share the single-surface dialog chrome. */
+function TransferDialog({
+    title,
+    isOpen,
+    onClose,
+    children,
+}: {
+    title: string;
+    isOpen: boolean;
+    onClose: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="gap-3 bg-card sm:max-w-[448px]! sm:gap-3 sm:p-0">
+                <DialogHeader className="border-b-0 px-0 pb-0 sm:mx-0 sm:px-5 sm:pt-4">
+                    <DialogTitle className="text-base">{title}</DialogTitle>
+                </DialogHeader>
+
+                {children}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/**
+ * Send dialog. Batch payouts only reveal their recipients once the proposal
+ * and the bulk payment list have loaded, so the layout resolves lazily.
+ */
+function SendDetailsDialog({
+    activity,
+    treasuryId,
+    isOpen,
+    onClose,
+}: {
+    activity: RecentActivity;
+    treasuryId: string;
+    isOpen: boolean;
+    onClose: () => void;
+}) {
+    const t = useTranslations("activity.details");
+    const bulk = useBulkTransferRecipients(activity, treasuryId);
+    const isBulk = !!bulk?.recipients.length;
+
+    return (
+        <TransferDialog
+            title={isBulk ? t("bulkTitle") : t("detailsTitle")}
+            isOpen={isOpen}
+            onClose={onClose}
+        >
+            {bulk && isBulk ? (
+                <BulkSendBody
+                    activity={activity}
+                    recipients={bulk.recipients}
+                    batchId={bulk.batchId}
+                />
+            ) : (
+                <SendBody activity={activity} treasuryId={treasuryId} />
+            )}
+
+            {activity.proposalId != null ? (
+                <ViewLinkedRequestButton
+                    treasuryId={treasuryId}
+                    proposalId={activity.proposalId}
+                />
+            ) : null}
+        </TransferDialog>
+    );
+}
+
 export function TransactionDetailsModal({
     activity,
     treasuryId,
@@ -740,28 +1062,38 @@ export function TransactionDetailsModal({
     if (!activity) return null;
 
     const variant = getActivityDetailsVariant(activity);
-    const showParties = variant !== "exchange" && !isProposalCall(activity);
+    const isContractCall = isProposalCall(activity);
+    const showParties = variant !== "exchange" && !isContractCall;
 
     if (variant === "deposit") {
         return (
-            <Dialog open={isOpen} onOpenChange={onClose}>
-                <DialogContent className="gap-3 bg-card sm:max-w-[448px]! sm:gap-3 sm:p-0">
-                    <DialogHeader className="border-b-0 px-0 pb-0 sm:mx-0 sm:px-5 sm:pt-4">
-                        <DialogTitle className="text-base">
-                            {t("detailsTitle")}
-                        </DialogTitle>
-                    </DialogHeader>
+            <TransferDialog
+                title={t("detailsTitle")}
+                isOpen={isOpen}
+                onClose={onClose}
+            >
+                <DepositBody activity={activity} treasuryId={treasuryId} />
 
-                    <DepositBody activity={activity} treasuryId={treasuryId} />
+                {activity.proposalId != null ? (
+                    <ViewLinkedRequestButton
+                        treasuryId={treasuryId}
+                        proposalId={activity.proposalId}
+                    />
+                ) : null}
+            </TransferDialog>
+        );
+    }
 
-                    {activity.proposalId != null ? (
-                        <ViewLinkedRequestButton
-                            treasuryId={treasuryId}
-                            proposalId={activity.proposalId}
-                        />
-                    ) : null}
-                </DialogContent>
-            </Dialog>
+    // Governance calls keep the generic layout — there is no recipient or
+    // amount for the send layout to lead with.
+    if (variant === "transfer" && !isProposalMethodCall(activity)) {
+        return (
+            <SendDetailsDialog
+                activity={activity}
+                treasuryId={treasuryId}
+                isOpen={isOpen}
+                onClose={onClose}
+            />
         );
     }
 

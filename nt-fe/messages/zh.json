@@ -460,10 +460,14 @@
             "processing": "处理中",
             "failed": "失败",
             "exchangeTransaction": "兑换交易",
-            "transferTransaction": "转账交易",
             "rate": "汇率",
             "detailsTitle": "详情",
-            "linkedRequest": "关联请求"
+            "linkedRequest": "关联请求",
+            "sendTransaction": "发送交易",
+            "bulkTitle": "批量转账详情",
+            "toRecipients": "发送给 {count} 位收款人",
+            "showRecipients": "显示收款人",
+            "hideRecipients": "隐藏收款人"
         },
         "refresh": {
             "ariaLabel": "刷新机密历史记录",

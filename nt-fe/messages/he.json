@@ -460,10 +460,14 @@
             "processing": "בתהליך",
             "failed": "נכשל",
             "exchangeTransaction": "עסקת המרה",
-            "transferTransaction": "עסקת העברה",
             "rate": "שער",
             "detailsTitle": "פרטים",
-            "linkedRequest": "בקשה מקושרת"
+            "linkedRequest": "בקשה מקושרת",
+            "sendTransaction": "עסקת שליחה",
+            "bulkTitle": "פרטי העברה מרוכזת",
+            "toRecipients": "אל {count} נמענים",
+            "showRecipients": "הצג נמענים",
+            "hideRecipients": "הסתר נמענים"
         },
         "refresh": {
             "ariaLabel": "רענון היסטוריה חסויה",

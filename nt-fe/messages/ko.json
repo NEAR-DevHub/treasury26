@@ -460,10 +460,14 @@
             "processing": "처리 중",
             "failed": "실패",
             "exchangeTransaction": "교환 트랜잭션",
-            "transferTransaction": "이체 트랜잭션",
             "rate": "환율",
             "detailsTitle": "상세",
-            "linkedRequest": "연결된 요청"
+            "linkedRequest": "연결된 요청",
+            "sendTransaction": "보내기 트랜잭션",
+            "bulkTitle": "대량 전송 세부 정보",
+            "toRecipients": "{count}명의 수신자에게",
+            "showRecipients": "수신자 표시",
+            "hideRecipients": "수신자 숨기기"
         },
         "refresh": {
             "ariaLabel": "기밀 기록 새로 고침",
