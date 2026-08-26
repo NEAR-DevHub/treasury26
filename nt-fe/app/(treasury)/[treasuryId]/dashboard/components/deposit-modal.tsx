@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import {
     useCallback,
@@ -67,7 +66,10 @@ import {
     buildPublicWalletOneTimeNotices,
 } from "./deposit/deposit-notices";
 import { DepositSourceCards } from "./deposit/deposit-source-cards";
-import { buildPaySharePath } from "./deposit/deposit-transfer-url";
+import {
+    buildPaySharePath,
+    getAbsoluteTransferUrl,
+} from "./deposit/deposit-transfer-url";
 import type {
     DepositInfo,
     DepositSource,
@@ -204,7 +206,6 @@ export function DepositModal({
     );
     const { treasuryId, isConfidential, config } = useTreasury();
     const { accountId } = useNear();
-    const router = useRouter();
     const locale = useLocale();
     const {
         data: { tokens: treasuryAssets } = { tokens: STABLE_EMPTY_ARRAY },
@@ -829,7 +830,11 @@ export function DepositModal({
                 : null;
 
         if (!path) return;
-        router.push(path);
+        window.open(
+            getAbsoluteTransferUrl(path),
+            "_blank",
+            "noopener,noreferrer",
+        );
     };
 
     const showAssetNetworkForm =
