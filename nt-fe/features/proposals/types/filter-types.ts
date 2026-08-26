@@ -13,7 +13,7 @@ export interface BaseFilterData {
 }
 
 export interface TokenFilterData extends BaseFilterData {
-    token: TokenOption;
+    token?: TokenOption;
     amountOperation?: string;
     minAmount?: string;
     maxAmount?: string;
@@ -28,11 +28,14 @@ export interface ProposalTypeFilterData extends BaseFilterData {
 }
 
 export interface DateFilterData extends BaseFilterData {
-    date: string;
+    dateRange?: {
+        from?: string;
+        to?: string;
+    };
 }
 
-export interface TextFilterData extends BaseFilterData {
-    text: string;
+export interface UserFilterData extends BaseFilterData {
+    users: string[];
 }
 
 export type FilterData =
@@ -40,10 +43,12 @@ export type FilterData =
     | MyVoteFilterData
     | ProposalTypeFilterData
     | DateFilterData
-    | TextFilterData;
+    | UserFilterData;
 
 // Helper to parse filter data (no fallback for backward compatibility)
-export function parseFilterData<T extends FilterData>(value: string): T | null {
+export function parseFilterData<T extends FilterData>(
+    value: string | null,
+): T | null {
     if (!value) return null;
     try {
         return JSON.parse(value) as T;
@@ -51,4 +56,20 @@ export function parseFilterData<T extends FilterData>(value: string): T | null {
         // No fallback - enforce new JSON format
         return null;
     }
+}
+
+/**
+ * A filter is "pending" from the moment it is added until a value is picked:
+ * the pill renders as a bare label, it doesn't count towards the "Filters (N)"
+ * total, and it doesn't narrow any results. This tells the two apart.
+ */
+export function hasFilterValue(value: string | null): boolean {
+    const parsed = parseFilterData(value);
+    if (!parsed) return false;
+    if ("token" in parsed) return Boolean(parsed.token);
+    if ("selected" in parsed) return parsed.selected.length > 0;
+    if ("users" in parsed) return parsed.users.length > 0;
+    if ("dateRange" in parsed)
+        return Boolean(parsed.dateRange?.from || parsed.dateRange?.to);
+    return false;
 }

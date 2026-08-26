@@ -20,6 +20,7 @@ import {
     type FilterOption,
     ProposalFilters as GenericFilters,
 } from "@/features/proposals/components/proposal-filters";
+import { hasFilterValue } from "@/features/proposals/types/filter-types";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import {
@@ -27,6 +28,7 @@ import {
     useRecentActivityRecipients,
     useRecentActivitySenders,
 } from "@/hooks/use-treasury-queries";
+import { cn } from "@/lib/utils";
 
 // Constants
 const PAGE_SIZE = 15;
@@ -299,16 +301,16 @@ export default function ActivityPage() {
         [searchParams, router, pathname],
     );
 
-    // Check if any filters are active
-    const hasActiveFilters = useMemo(() => {
-        const filterParams = [
-            "created_date",
-            "token",
-            "from",
-            "to",
-            "min_usd_value",
-        ];
-        return filterParams.some((param) => searchParams.has(param));
+    // Count active filters — the Filters button labels itself with the total.
+    // A filter that has been added but has no value picked yet is not counted,
+    // since it isn't narrowing anything.
+    const activeFilterCount = useMemo(() => {
+        const filterParams = ["created_date", "token", "from", "to"];
+        return (
+            filterParams.filter((param) =>
+                hasFilterValue(searchParams.get(param)),
+            ).length + (searchParams.has("min_usd_value") ? 1 : 0)
+        );
     }, [searchParams]);
 
     useEffect(() => {
@@ -336,6 +338,11 @@ export default function ActivityPage() {
         { value: "exchange", label: tActivity("tabs.swap") },
     ];
 
+    const filtersLabel =
+        activeFilterCount > 0
+            ? tCommon("filtersWithCount", { count: activeFilterCount })
+            : tCommon("filters");
+
     const actions = (
         <div className="flex items-center justify-end gap-2">
             <ResponsiveInput
@@ -353,22 +360,22 @@ export default function ActivityPage() {
             <Button
                 variant="secondary"
                 size="icon"
-                className="relative md:h-10 md:w-auto md:gap-2 md:rounded-xl md:px-4"
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                aria-label={
-                    hasActiveFilters
-                        ? tCommon("filterActive")
-                        : tCommon("filter")
-                }
-            >
-                <Icon icon={FilterIcon} />
-                <span className="hidden md:inline">{tCommon("filter")}</span>
-                {hasActiveFilters && (
-                    <span
-                        className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground"
-                        aria-hidden="true"
-                    />
+                className={cn(
+                    "rounded-lg md:h-10 md:w-auto md:gap-2 md:px-4 md:text-sm",
+                    // Active state is the design's gray-900 (#171717) surface.
+                    // Surface and label are overridden as a pair: both
+                    // `--general-foreground` and `--background` flip with the
+                    // theme, and neither is rewritten by `PrimaryColorProvider`,
+                    // so branded treasuries keep a readable label too.
+                    activeFilterCount > 0
+                        ? "bg-general-foreground text-background hover:bg-general-foreground/90"
+                        : "text-muted-foreground",
                 )}
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                aria-label={filtersLabel}
+            >
+                <Icon icon={FilterIcon} className="md:size-[13.25px]" />
+                <span className="hidden md:inline">{filtersLabel}</span>
             </Button>
         </div>
     );
@@ -381,7 +388,7 @@ export default function ActivityPage() {
                 opacity: isFiltersOpen ? 1 : 0,
             }}
         >
-            <div className="px-4 py-3 md:px-0">
+            <div className="px-4 py-3 md:px-0 md:py-0">
                 <GenericFilters filterOptions={activityFilterOptions} />
             </div>
         </div>

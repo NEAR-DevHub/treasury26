@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { Cancel01Icon, Delete01Icon } from "@hugeicons/core-free-icons";
+import { Delete01Icon } from "@hugeicons/core-free-icons";
 import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
@@ -13,7 +13,9 @@ interface BaseFilterPopoverProps {
     operation: string;
     operations: string[];
     onOperationChange: (operation: string) => void;
-    onClear: () => void;
+    /** Omit to hide the "Clear" action — filters whose body can be emptied
+     * on its own (token, from/to) don't show one in the design. */
+    onClear?: () => void;
     onDelete: () => void;
     children: ReactNode;
     className?: string;
@@ -31,10 +33,10 @@ export function BaseFilterPopover({
 }: BaseFilterPopoverProps) {
     const tF = useTranslations("requests.filters");
     return (
-        <div className={cn("w-full pb-1.5 flex flex-col", className)}>
-            <div className="flex px-2 pt-1 h-[35px] gap-3 justify-between items-baseline">
-                <div className="flex items-baseline gap-1">
-                    <span className="text-xs  text-muted-foreground">
+        <div className={cn("flex w-full flex-col", className)}>
+            <div className="flex items-center justify-between gap-3 p-2">
+                <div className="flex items-center gap-1">
+                    <span className="text-general-muted-foreground text-sm">
                         {filterLabel}
                     </span>
                     <OperationSelect
@@ -43,22 +45,24 @@ export function BaseFilterPopover({
                         onOperationChange={onOperationChange}
                     />
                 </div>
-                <div className="flex w-full items-center flex-1 ml-auto">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onClear}
-                        className="ml-auto text-muted-foreground hover:text-foreground h-7 px-1.5"
-                    >
-                        {tF("clear")}
-                    </Button>
+                <div className="flex items-center gap-2">
+                    {onClear && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={onClear}
+                            className="text-general-unofficial-ghost-foreground h-7 rounded-sm px-2 text-xs font-bold"
+                        >
+                            {tF("clear")}
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={onDelete}
-                        className="text-muted-foreground hover:text-foreground h-7 w-7"
+                        className="text-general-unofficial-ghost-foreground size-7 rounded-sm"
                     >
-                        <Icon icon={Delete01Icon} />
+                        <Icon icon={Delete01Icon} className="size-3.5" />
                     </Button>
                 </div>
             </div>

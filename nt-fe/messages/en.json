@@ -12,6 +12,8 @@
         "search": "Search",
         "filter": "Filter",
         "filterActive": "Filter (active)",
+        "filters": "Filters",
+        "filtersWithCount": "Filters ({count})",
         "export": "Export",
         "exporting": "Exporting",
         "import": "Import",
@@ -400,7 +402,7 @@
     },
     "activity": {
         "filters": {
-            "createdDate": "Created Date",
+            "createdDate": "Created date",
             "token": "Token",
             "from": "From",
             "to": "To"
@@ -610,13 +612,12 @@
                 "No Voted": "No Voted"
             },
             "requestsType": "Requests Type",
-            "createdDate": "Created Date",
+            "createdDate": "Created date",
             "recipient": "Recipient",
             "token": "Token",
             "requester": "Requester",
             "approver": "Approver",
             "myVoteStatus": "My Vote Status",
-            "all": "ALL",
             "amount": "Amount",
             "from": "From",
             "to": "To",
@@ -627,7 +628,7 @@
             "operationBefore": " before",
             "operationAfter": " after",
             "operationContains": " contains",
-            "searchByAddress": "Search by address",
+            "searchByAddress": "Search address",
             "loadingMembers": "Loading members...",
             "noMembersFound": "No members found. Press Enter to add \"{query}\"",
             "noMembersAvailable": "No members available",

@@ -1,32 +1,36 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { Add01Icon, ArrowDown01Icon } from "@hugeicons/core-free-icons";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { endOfDay, format, isSameDay, startOfDay } from "date-fns";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
+import { Input } from "@/components/input";
+import { OperationSelect } from "@/components/operation-select";
+import { TokenSelectPopover } from "@/components/token-select-popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    type DatePresetKey,
+    DateTimePicker,
+    useDatePresets,
+} from "@/components/ui/datepicker";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/input";
-import { DateTimePicker } from "@/components/ui/datepicker";
-import { endOfDay, format, isSameDay, startOfDay } from "date-fns";
-import { OperationSelect } from "@/components/operation-select";
-import { TokenSelectPopover } from "@/components/token-select-popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { BaseFilterPopover } from "./base-filter-popover";
-import { useFilterState } from "../hooks/use-filter-state";
-import { parseFilterData } from "../types/filter-types";
-import { TooltipUser, User } from "@/components/user";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { User } from "@/components/user";
 import { useRecentAddresses } from "@/hooks/use-recent-addresses";
 import { useTreasury } from "@/hooks/use-treasury";
+import { cn } from "@/lib/utils";
+import { type UserListType, useDaoUsers } from "../hooks/use-dao-users";
+import { useFilterState } from "../hooks/use-filter-state";
+import { hasFilterValue, parseFilterData } from "../types/filter-types";
+import { BaseFilterPopover } from "./base-filter-popover";
 import { CheckboxFilterContent } from "./checkbox-filter-content";
-import { useDaoUsers, UserListType } from "../hooks/use-dao-users";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 const PROPOSAL_TYPE_OPTIONS = [
     "Payments",
@@ -58,8 +62,25 @@ const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
 
 const PROPOSAL_TYPE_OPERATIONS = ["Is", "Is Not"];
 const DATE_OPERATIONS = ["Is"];
+const CREATED_DATE_PRESETS: readonly DatePresetKey[] = [
+    "today",
+    "yesterday",
+    "last7Days",
+    "last14Days",
+    "lastMonth",
+    "last3Months",
+    "last6Months",
+];
 const USER_OPERATIONS = ["Is", "Is Not"];
 const FROM_OPERATIONS = ["Is", "Is Not"];
+
+/** Shared chrome for the filter row's buttons (Reset, the active filter pills,
+ * Add filter): 12px radius, and a label that darkens on hover. */
+const FILTER_BUTTON_CLASS =
+    "text-muted-foreground hover:text-general-unofficial-ghost-foreground h-9 shrink-0 rounded-lg px-3 leading-none font-bold";
+/** The #F2F2F2 surface those buttons sit on; the dark theme keeps `secondary`. */
+const FILTER_BUTTON_SURFACE_CLASS =
+    "bg-[#F2F2F2] hover:bg-[#F2F2F2] dark:bg-secondary dark:hover:bg-secondary/80";
 
 interface TokenOption {
     id: string;
@@ -134,12 +155,12 @@ export function ProposalFilters({
     );
 
     return (
-        <div className={cn("flex items-center gap-3", className)}>
+        <div className={cn("flex items-center gap-2", className)}>
             <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={resetFilters}
-                className="h-9 px-3 border-none bg-muted/50 hover:bg-muted font-medium"
+                className={cn(FILTER_BUTTON_CLASS, FILTER_BUTTON_SURFACE_CLASS)}
             >
                 {tF("reset")}
             </Button>
@@ -176,22 +197,26 @@ export function ProposalFilters({
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 gap-1.5 text-muted-foreground hover:text-foreground font-medium shrink-0"
+                                className={cn(FILTER_BUTTON_CLASS, "gap-1.5")}
                             >
-                                <Icon icon={Add01Icon} />
+                                <Icon
+                                    icon={Add01Icon}
+                                    className="size-[13.25px]"
+                                />
                                 {tF("addFilter")}
                             </Button>
                         </PopoverTrigger>
                         <PopoverContent
-                            className="w-fit p-0 min-w-36"
+                            className="border-general-border w-fit min-w-[123px] rounded-xl p-1.5"
                             align="start"
                         >
-                            <div className="flex flex-col">
+                            <div className="flex flex-col gap-0.5">
                                 {availableFilters.map((filter) => (
                                     <Button
                                         key={filter.id}
                                         variant="ghost"
-                                        className="justify-start px-2 font-normal not-first:rounded-t-none not-last:rounded-b-none"
+                                        size="sm"
+                                        className="text-muted-foreground h-8 justify-start px-4 font-semibold"
                                         onClick={() => {
                                             updateFilters({ [filter.id]: "" });
                                             setIsAddFilterOpen(false);
@@ -240,10 +265,32 @@ function FilterPill({
         return parseFilterData(value);
     }, [value]);
 
-    const displayValue = useMemo(() => {
-        if (!value || filterData) return tF("all");
-        return value;
-    }, [value, filterData, tF]);
+    /** A freshly added filter carries no value yet: it shows as a bare label
+     * ("Token") until something is picked, and filters nothing in the meantime. */
+    const hasValue = useMemo(() => hasFilterValue(value), [value]);
+
+    /** Overlapping avatar stack used by the user-shaped pills (from/to and
+     * recipients/proposers/approvers). */
+    const renderUserStack = (users: string[], visible: number) => (
+        <span className="flex items-center">
+            {users.slice(0, visible).map((accountId) => (
+                <span
+                    key={accountId}
+                    className="border-general-border bg-card inline-flex rounded-full border not-first:-ml-[7px]"
+                >
+                    <User
+                        accountId={accountId}
+                        variant="avatar"
+                        size="sm"
+                        withLink={false}
+                    />
+                </span>
+            ))}
+            {users.length > visible && (
+                <span className="ml-1">+{users.length - visible}</span>
+            )}
+        </span>
+    );
 
     const renderFilterContent = () => {
         switch (id) {
@@ -357,9 +404,10 @@ function FilterPill({
         return "";
     };
 
+    /** Only rendered once `hasValue` is true, so every branch here has
+     * something concrete to show. */
     const renderFilterDisplay = () => {
-        if (!filterData)
-            return <span className="font-medium">{displayValue}</span>;
+        if (!filterData) return null;
 
         // Token filter display
         if (id === "token" && (filterData as any).token) {
@@ -379,37 +427,18 @@ function FilterPill({
             }
 
             return (
-                <div className="flex items-center gap-1.5">
-                    {token.icon?.startsWith("http") ||
-                    token.icon?.startsWith("data:") ? (
-                        <img
-                            src={token.icon}
-                            alt={token.symbol}
-                            className="w-4 h-4 rounded-full object-contain"
-                        />
-                    ) : (
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white text-[8px] font-normal bg-brand-blue">
-                            <span>{token.icon}</span>
-                        </div>
-                    )}
-                    {amountDisplay && (
-                        <span className="text-sm text-foreground">
-                            {amountDisplay}
-                        </span>
-                    )}
-                    <span className="text-sm text-foreground">
-                        {token.symbol}
-                    </span>
-                </div>
+                <span>
+                    {amountDisplay && `${amountDisplay} `}
+                    {(token.id ?? token.name ?? "").toUpperCase()}
+                </span>
             );
         }
 
         // My Vote filter display
         if (id === "my_vote" && (filterData as any).selected) {
             const selected = (filterData as any).selected as string[];
-            if (selected.length === 0) return tF("all");
             return (
-                <span className="font-medium text-sm">
+                <span>
                     {selected
                         .map((v) =>
                             tF(
@@ -426,29 +455,15 @@ function FilterPill({
 
         if (id === "from" || id === "to") {
             const users = (filterData as any).users;
-            if (Array.isArray(users)) {
-                if (users.length === 0) return tF("all");
-                return (
-                    <span className="font-medium text-sm">
-                        {users.length > 1
-                            ? `${users[0]} +${users.length - 1}`
-                            : users[0]}
-                    </span>
-                );
-            }
-            return (
-                <span className="font-medium text-sm">
-                    {users || tF("all")}
-                </span>
-            );
+            if (Array.isArray(users)) return renderUserStack(users, 3);
+            return <span>{users}</span>;
         }
 
         // Proposal Type filter display
         if (id === "proposal_types" && (filterData as any).selected) {
             const selected = (filterData as any).selected as string[];
-            if (selected.length === 0) return tF("all");
             return (
-                <span className="font-medium text-sm">
+                <span>
                     {selected
                         .map((v) =>
                             tF(
@@ -472,27 +487,18 @@ function FilterPill({
         if (id === "created_date" && (filterData as any).dateRange) {
             try {
                 const { from, to } = (filterData as any).dateRange;
-                if (!from && !to) return tF("all");
                 if (from && to && !isSameDay(new Date(from), new Date(to))) {
                     return (
-                        <span className="font-medium text-sm">
+                        <span>
                             {format(new Date(from), "MMM d, yyyy")} -{" "}
                             {format(new Date(to), "MMM d, yyyy")}
                         </span>
                     );
                 } else if (from) {
-                    return (
-                        <span className="font-medium text-sm">
-                            {format(new Date(from), "MMM d, yyyy")}
-                        </span>
-                    );
+                    return <span>{format(new Date(from), "MMM d, yyyy")}</span>;
                 }
             } catch {
-                return (
-                    <span className="font-medium text-sm">
-                        {tF("invalidDate")}
-                    </span>
-                );
+                return <span>{tF("invalidDate")}</span>;
             }
         }
 
@@ -502,52 +508,46 @@ function FilterPill({
             (filterData as any).users
         ) {
             const users = (filterData as any).users as string[];
-            if (users.length === 0) return tF("all");
-            return (
-                <div className="flex items-center">
-                    {users.slice(0, 3).map((accountId, index) => (
-                        <TooltipUser key={accountId} accountId={accountId}>
-                            <div
-                                className="cursor-pointer"
-                                style={{ marginLeft: index > 0 ? "-6px" : "0" }}
-                            >
-                                <User accountId={accountId} variant="avatar" />
-                            </div>
-                        </TooltipUser>
-                    ))}
-                    {users.length > 3 && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                            +{users.length - 3}
-                        </span>
-                    )}
-                </div>
-            );
+            return renderUserStack(users, 3);
         }
 
-        return <span className="font-medium">{displayValue}</span>;
+        return null;
     };
 
     return (
         <div className="flex items-center shrink-0">
             <Popover open={isOpen} onOpenChange={setIsOpen}>
-                <PopoverTrigger asChild className="[&_button]:bg-secondary">
+                <PopoverTrigger asChild>
                     <Button
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
-                        className="h-9 bg-secondary hover:bg-secondary px-3 font-normal gap-1.5"
+                        className={cn(
+                            FILTER_BUTTON_CLASS,
+                            FILTER_BUTTON_SURFACE_CLASS,
+                            "gap-1.5",
+                        )}
                     >
-                        <span className="text-muted-foreground">
-                            {label}
-                            {getOperationSuffix()}:
-                        </span>
-                        {renderFilterDisplay()}
+                        {hasValue ? (
+                            <>
+                                <span>
+                                    {label}
+                                    {getOperationSuffix()}:
+                                </span>
+                                {renderFilterDisplay()}
+                            </>
+                        ) : (
+                            <span>{label}</span>
+                        )}
                         <Icon
                             icon={ArrowDown01Icon}
-                            className="text-muted-foreground ml-1"
+                            className="size-[13.25px]"
                         />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="p-0 max-w-96 w-fit" align="start">
+                <PopoverContent
+                    className="border-general-border w-fit max-w-none rounded-xl p-1.5"
+                    align="start"
+                >
                     {renderFilterContent()}
                 </PopoverContent>
             </Popover>
@@ -578,7 +578,7 @@ function TokenFilterContent({
     hideAmount,
 }: TokenFilterContentProps) {
     const tF = useTranslations("requests.filters");
-    const { operation, setOperation, data, setData, handleClear } =
+    const { operation, setOperation, data, setData } =
         useFilterState<TokenData>({
             value,
             onUpdate,
@@ -621,17 +621,14 @@ function TokenFilterContent({
             operation={operation}
             operations={TOKEN_OPERATIONS}
             onOperationChange={setOperation}
-            onClear={handleClear}
             onDelete={handleDelete}
-            className="max-w-80 pb-1"
+            className="w-[248px]"
         >
-            <div className="px-2">
-                <TokenSelectPopover
-                    selectedToken={data?.token || null}
-                    onTokenChange={(token) => updateData({ token })}
-                    className="w-full"
-                />
-            </div>
+            <TokenSelectPopover
+                selectedToken={data?.token || null}
+                onTokenChange={(token) => updateData({ token })}
+                className="w-full"
+            />
 
             {!hideAmount && data?.token && operation === "Is" && (
                 <>
@@ -849,6 +846,8 @@ function CreatedDateFilterContent({
         return startOfDay(new Date());
     }, [data?.dateRange?.from]);
 
+    const presets = useDatePresets(CREATED_DATE_PRESETS);
+
     return (
         <BaseFilterPopover
             filterLabel={tF("createdDate")}
@@ -857,12 +856,13 @@ function CreatedDateFilterContent({
             onOperationChange={setOperation}
             onClear={handleClear}
             onDelete={handleDelete}
-            className="flex w-96 pb-1"
+            className="w-[432px]"
         >
-            <div className="flex max-w-md w-full">
-                <div className="h-full w-full flex items-center justify-center">
+            <div className="flex w-full">
+                <div className="flex h-full w-full items-start justify-center">
                     <DateTimePicker
                         mode="range"
+                        presets={presets}
                         value={
                             data?.dateRange
                                 ? {
@@ -935,8 +935,8 @@ function UserFilterContent({
     const { recentAddresses, addRecentAddress } = useRecentAddresses();
     const [searchQuery, setSearchQuery] = useState("");
 
-    const { operation, setOperation, data, setData, handleClear } =
-        useFilterState<UserData>({
+    const { operation, setOperation, data, setData } = useFilterState<UserData>(
+        {
             value,
             onUpdate,
             parseData: (parsed) => ({
@@ -946,7 +946,8 @@ function UserFilterContent({
                 operation: op,
                 users: d.users,
             }),
-        });
+        },
+    );
 
     // Determine which user list type to fetch based on label
     const userListType: UserListType = useMemo(() => {
@@ -1036,12 +1037,11 @@ function UserFilterContent({
             operation={operation}
             operations={operations}
             onOperationChange={setOperation}
-            onClear={handleClear}
             onDelete={handleDelete}
-            className="w-64"
+            className="w-[268px]"
         >
             <div className="flex flex-col">
-                <div className="px-2 py-1.5">
+                <div className="pb-3">
                     <Input
                         autoFocus
                         placeholder={tF("searchByAddress")}
@@ -1049,7 +1049,9 @@ function UserFilterContent({
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        className="h-8 text-sm"
+                        className="h-9"
+                        inputClassName="rounded-xl border border-general-border bg-card! hover:bg-card! pl-9 text-sm placeholder:font-medium placeholder:text-general-muted-foreground focus-visible:border-general-border focus-visible:ring-0"
+                        searchIconClassName="left-2 size-5 text-general-muted-foreground"
                     />
                 </div>
 
@@ -1060,7 +1062,7 @@ function UserFilterContent({
                     </div>
                 ) : (
                     <ScrollArea
-                        className="h-60 [&>[data-radix-scroll-area-viewport]>div]:block!"
+                        className="h-80 [&>[data-radix-scroll-area-viewport]>div]:block!"
                         type="always"
                     >
                         {filteredMembers.length > 0 && (
@@ -1072,7 +1074,7 @@ function UserFilterContent({
                                     return (
                                         <label
                                             key={accountId}
-                                            className="flex px-2 items-center gap-2 cursor-pointer hover:bg-muted/50 py-1.5 rounded-md"
+                                            className="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2"
                                         >
                                             <Checkbox
                                                 checked={isSelected}
@@ -1085,7 +1087,7 @@ function UserFilterContent({
                                                 <User
                                                     accountId={accountId}
                                                     withLink={false}
-                                                    size="sm"
+                                                    size="lg"
                                                     highlightQuery={searchQuery}
                                                 />
                                             </div>
