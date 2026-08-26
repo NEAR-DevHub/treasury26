@@ -364,11 +364,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let access_token = auth_data["accessToken"].as_str().unwrap();
-    let refresh_token = auth_data["refreshToken"].as_str().unwrap();
-    println!("DAO authenticated!");
-    println!("\nAdd these to your .env:");
-    println!("DAO_CONFIDENTIAL_ACCESS_TOKEN={}", access_token);
-    println!("DAO_CONFIDENTIAL_REFRESH_TOKEN={}", refresh_token);
+    println!("DAO authenticated! (tokens withheld from output; the backend stores them encrypted)");
 
     // Step 4: Check DAO's confidential balance
     println!("\n=== Step 4: DAO confidential balance ===\n");

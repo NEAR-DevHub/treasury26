@@ -15,6 +15,7 @@ use crate::{
     },
     handlers::relay::{effects::background, parse::ProposalKind},
     observability::sanitize_sensitive_json_value,
+    services::{CredentialScope, TokenBundle},
     utils::cache::CacheKey,
 };
 use base64::Engine;
@@ -313,7 +314,8 @@ pub async fn submit_intent_to_oneclick(
     let status = response.status();
     let resp_body: Value = response.json().await.unwrap_or_default();
     if !status.is_success() {
-        return Err(format!("1click {} {}: {:?}", path, status, resp_body));
+        let sanitized_body = sanitize_sensitive_json_value(&resp_body);
+        return Err(format!("1click {} {}: {:?}", path, status, sanitized_body));
     }
     Ok(resp_body)
 }
@@ -486,43 +488,93 @@ pub async fn try_auto_submit_intent(
             // For auth flavors: store the JWT tokens in monitored_accounts.
             // `auth` authenticates the DAO itself; `bulk_auth` authenticates
             // the DAO's bulk-payment subaccount (bulk-payments activation).
-            if (intent_type == "auth" || intent_type == "bulk_auth")
-                && let (Some(access_token), Some(refresh_token)) = (
+            // An auth intent is only `submitted` once its credentials are
+            // stored — a 200 without tokens or a failed save marks it
+            // `failed` (the UI maps that to a restartable state).
+            if intent_type == "auth" || intent_type == "bulk_auth" {
+                let (Some(access_token), Some(refresh_token)) = (
                     resp_body.get("accessToken").and_then(|v| v.as_str()),
                     resp_body.get("refreshToken").and_then(|v| v.as_str()),
-                )
-            {
+                ) else {
+                    tracing::error!(
+                        "1Click {} response missing tokens for {} (hash={}): {:?}",
+                        intent_type,
+                        treasury_id,
+                        payload_hash,
+                        sanitized_resp_body
+                    );
+                    let _ = sqlx::query!(
+                        "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
+                        serde_json::json!({
+                            "error": format!("{} response missing tokens", intent_type)
+                        }),
+                        treasury_id,
+                        payload_hash,
+                    )
+                    .execute(&state.db_pool)
+                    .await;
+                    return;
+                };
                 let expires_in = resp_body
                     .get("expiresIn")
                     .and_then(|v| v.as_i64())
                     .unwrap_or(3600);
                 let expires_at = chrono::Utc::now() + chrono::Duration::seconds(expires_in);
 
-                let update_sql = if intent_type == "bulk_auth" {
-                    r#"
-                        UPDATE monitored_accounts
-                        SET bulk_payment_access_token = $1,
-                            bulk_payment_refresh_token = $2,
-                            bulk_payment_token_expires_at = $3
-                        WHERE account_id = $4
-                        "#
+                let scope = if intent_type == "bulk_auth" {
+                    CredentialScope::BulkPayment
                 } else {
-                    r#"
-                        UPDATE monitored_accounts
-                        SET confidential_access_token = $1,
-                            confidential_refresh_token = $2,
-                            confidential_token_expires_at = $3
-                        WHERE account_id = $4
-                        "#
+                    CredentialScope::Dao
                 };
-                let _ = sqlx::query(update_sql)
-                    .bind(access_token)
-                    .bind(refresh_token)
-                    .bind(expires_at)
-                    .bind(treasury_id)
+                let bundle = TokenBundle {
+                    access_token: access_token.to_string(),
+                    refresh_token: refresh_token.to_string(),
+                };
+                let store = state.confidential_credentials();
+                let persisted = match store
+                    .store_new(treasury_id, scope, &bundle, expires_at)
+                    .await
+                {
+                    Ok(()) => Ok(()),
+                    // A stale-generation fence rejection mid-rotation would
+                    // otherwise be terminal here: this trigger fires exactly
+                    // once, retrying on this pod can never pass the fence,
+                    // and 1Click has already issued the pair. Persist it
+                    // plaintext-only instead — the load-time heal
+                    // re-encrypts it under the active key on the next touch
+                    // from an up-to-date pod.
+                    Err(e) if e.is_retryable() => {
+                        tracing::warn!(
+                            "Generation fence rejected {} JWT persistence for DAO {} ({}); storing via plaintext fallback for heal-on-load",
+                            intent_type,
+                            treasury_id,
+                            e
+                        );
+                        store
+                            .store_new_plaintext_fallback(treasury_id, scope, &bundle, expires_at)
+                            .await
+                    }
+                    Err(e) => Err(e),
+                };
+                if let Err(e) = persisted {
+                    tracing::error!(
+                        "Failed to persist {} JWT for DAO {}: {}",
+                        intent_type,
+                        treasury_id,
+                        e
+                    );
+                    let _ = sqlx::query!(
+                        "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
+                        serde_json::json!({
+                            "error": format!("failed to persist {} credentials: {}", intent_type, e)
+                        }),
+                        treasury_id,
+                        payload_hash,
+                    )
                     .execute(&state.db_pool)
                     .await;
-
+                    return;
+                }
                 tracing::info!(
                     "Stored {} JWT for DAO {} (expires in {}s)",
                     intent_type,
