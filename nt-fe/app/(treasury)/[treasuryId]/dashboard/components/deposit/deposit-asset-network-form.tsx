@@ -92,6 +92,7 @@ export function DepositAssetNetworkForm({
     const selectedAssetLabel =
         selectedAsset?.symbol || selectedAsset?.name || "";
     const assetLabel = separateFields ? t("tokenLabel") : t("assetLabel");
+    const networkLabel = t("networkLabel");
 
     return (
         <>
@@ -233,7 +234,7 @@ export function DepositAssetNetworkForm({
                                     title={
                                         separateFields
                                             ? undefined
-                                            : t("networkLabel")
+                                            : networkLabel
                                     }
                                     invalid={!!fieldState.error}
                                     className={
@@ -293,9 +294,9 @@ export function DepositAssetNetworkForm({
                                                         {separateFields ? (
                                                             <div className="flex min-w-0 flex-col">
                                                                 <span className="text-sm font-medium leading-[150%] text-muted-foreground">
-                                                                    {t(
-                                                                        "networkLabel",
-                                                                    )}
+                                                                    {
+                                                                        networkLabel
+                                                                    }
                                                                 </span>
                                                                 <span
                                                                     className={cn(

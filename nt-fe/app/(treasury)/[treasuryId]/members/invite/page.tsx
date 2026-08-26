@@ -187,7 +187,6 @@ export default function InviteMemberPage() {
                                         />
                                         <CopyButton
                                             text={inviteUrl || ""}
-                                            toastMessage={tInvite("linkCopied")}
                                             size="default"
                                             disabled={!inviteUrl}
                                         >

@@ -319,11 +319,7 @@ export function TooltipUser({
                                     </Link>
                                 </Button>
                             )}
-                        <CopyButton
-                            text={accountId}
-                            toastMessage={t("walletCopiedToast")}
-                            variant="ghost"
-                        >
+                        <CopyButton text={accountId} variant="ghost">
                             <span className="break-all">
                                 {t("copyWalletAddress")}
                             </span>

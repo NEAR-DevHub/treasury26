@@ -221,8 +221,9 @@ export default function PaySharePage() {
 
     const isConfidentialShare = kind === "confidential";
 
-    // Prefills Trezu `/payments` (see payments/page.tsx query handling):
+    // Prefills Trezu `/payments` (see payments/page.tsx):
     // - reusable confidential: bare dao `address` + soft `networks=near.com`
+    //   (payments locks destination via prefersNearCom → nearChainDestination(true))
     // - public / one-time: `address` + exact `token` + `network`
     const paymentPrefill = useMemo((): PaymentsDeepLinkParams | null => {
         if (kind === "confidential") {

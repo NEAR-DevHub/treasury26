@@ -39,12 +39,7 @@ export const Address = forwardRef<HTMLDivElement, AddressProps>(
             >
                 <span>{displayedAddress}</span>
                 {copyable && (
-                    <CopyButton
-                        text={address}
-                        toastMessage={t("copied")}
-                        variant="ghost"
-                        size="icon-sm"
-                    />
+                    <CopyButton text={address} variant="ghost" size="icon-sm" />
                 )}
             </div>
         );

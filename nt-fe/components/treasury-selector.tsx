@@ -221,6 +221,8 @@ export function TreasurySelector({
                                         {displayName}
                                     </span>
                                     {treasuryId && (
+                                        // Members see balances even on confidential
+                                        // treasuries; guests don't (masked).
                                         <TreasuryBalance
                                             daoId={treasuryId}
                                             className="truncate max-w-full font-medium text-gray-500 dark:text-gray-400 text-xs"

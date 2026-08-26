@@ -11,15 +11,12 @@ const COPIED_RESET_MS = 2000;
 
 interface CopyButtonProps extends React.ComponentProps<typeof Button> {
     text: string;
-    /** Unused — success feedback is inline. Kept so existing call sites type-check. */
-    toastMessage?: string;
     iconClassName?: string;
     icon?: IconSvgElement;
 }
 
 export function CopyButton({
     text,
-    toastMessage: _toastMessage,
     children,
     iconClassName,
     icon = Copy01Icon,

@@ -96,7 +96,6 @@ export function AccountMenuItems({
             )}
             <CopyButton
                 text={accountId}
-                toastMessage={tAddress("copied")}
                 variant="ghost"
                 className={cn(accountMenuItemClass, "h-auto justify-start")}
             >

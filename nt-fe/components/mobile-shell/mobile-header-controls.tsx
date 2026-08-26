@@ -36,6 +36,8 @@ export function MobileTreasuryHeaderButton() {
                     {displayName}
                 </span>
                 {treasuryId ? (
+                    // Same privacy contract as desktop TreasurySelector: members
+                    // see balances on confidential treasuries; guests get a mask.
                     <TreasuryBalance
                         daoId={treasuryId}
                         className="w-full truncate text-xs font-medium leading-tight text-muted-foreground"
