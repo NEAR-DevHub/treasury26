@@ -1,8 +1,7 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { Coins01Icon } from "@hugeicons/core-free-icons";
+import { Coins01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { ConfidentialTreasuryMark } from "@/components/icons/confidential-treasury-mark";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { TreasuryLogo } from "@/components/treasury-info";
 import { NEAR_COM_ICON } from "@/constants/token";
@@ -97,7 +96,15 @@ export function DepositTransferSummary({
                 </p>
                 <div className="flex items-start gap-2.5">
                     {variant === "confidential" || isConfidentialTreasury ? (
-                        <ConfidentialTreasuryMark />
+                        <span
+                            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card"
+                            aria-hidden
+                        >
+                            <Icon
+                                icon={Shield01Icon}
+                                className="size-4 text-green-500"
+                            />
+                        </span>
                     ) : (
                         <TreasuryLogo
                             logo={treasuryLogo}
