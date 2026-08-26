@@ -194,7 +194,7 @@ impl ErrorCode {
             },
             C::AlertTelegramSendFailed => EventSpec {
                 code: "ALERT_TELEGRAM_SEND_FAILED",
-                priority: P::P2,
+                priority: P::P1,
                 surface: S::BackgroundJob,
                 dependency: Some(D::Telegram),
                 title: "background job / send ops alert / Telegram send failed — alerting path itself degraded",
@@ -222,7 +222,7 @@ impl ErrorCode {
             },
             C::VerificationGateFailed => EventSpec {
                 code: "VERIFICATION_GATE_FAILED",
-                priority: P::P2,
+                priority: P::P1,
                 surface: S::BackgroundJob,
                 dependency: None,
                 title: "background job / verify public balances / drift beyond tolerance — chart stays unavailable",
@@ -292,10 +292,10 @@ impl ErrorCode {
             },
             C::ConfIntentMarkFailedLost => EventSpec {
                 code: "CONF_INTENT_MARK_FAILED_LOST",
-                priority: P::P1,
+                priority: P::P0,
                 surface: S::UserAction,
                 dependency: Some(D::Postgres),
-                title: "user action / confidential transfer / failed-status write lost ",
+                title: "user action / confidential transfer / failed-status write lost",
             },
             C::RelaySubmitFailed => EventSpec {
                 code: "RELAY_SUBMIT_FAILED",
