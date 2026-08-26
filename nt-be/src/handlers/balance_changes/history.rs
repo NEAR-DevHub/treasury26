@@ -1253,6 +1253,37 @@ mod tests {
     use chrono::TimeZone;
 
     #[test]
+    fn start_bound_uses_requested_start_when_inside_plan_window() {
+        // Regression: the plan cutoff used to win unconditionally, so a
+        // `startDate` inside the plan window was dropped and older rows
+        // (e.g. July) leaked into an August-only request.
+        let cutoff = Utc.with_ymd_and_hms(2026, 2, 25, 0, 0, 0).unwrap();
+        let start = Utc.with_ymd_and_hms(2026, 8, 18, 22, 0, 0).unwrap();
+
+        assert_eq!(narrower_start_bound(Some(cutoff), Some(start)), Some(start));
+    }
+
+    #[test]
+    fn start_bound_keeps_plan_cutoff_when_requested_start_is_older() {
+        let cutoff = Utc.with_ymd_and_hms(2026, 2, 25, 0, 0, 0).unwrap();
+        let start = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+
+        assert_eq!(
+            narrower_start_bound(Some(cutoff), Some(start)),
+            Some(cutoff)
+        );
+    }
+
+    #[test]
+    fn start_bound_falls_back_to_whichever_bound_exists() {
+        let bound = Utc.with_ymd_and_hms(2026, 8, 18, 22, 0, 0).unwrap();
+
+        assert_eq!(narrower_start_bound(Some(bound), None), Some(bound));
+        assert_eq!(narrower_start_bound(None, Some(bound)), Some(bound));
+        assert_eq!(narrower_start_bound(None, None), None);
+    }
+
+    #[test]
     fn test_interval_increment_hourly() {
         let dt = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
         let result = Interval::Hourly.increment(dt);
@@ -1694,6 +1725,20 @@ pub struct RecentActivity {
     pub method_name: Option<String>,
 }
 
+/// `BalanceChangesQuery` carries a single lower time bound, but the plan
+/// history cutoff and the caller's `startDate` both narrow the window. Collapse
+/// them to whichever is later so the plan limit cannot be bypassed and the
+/// requested range is still honoured.
+fn narrower_start_bound(
+    date_cutoff: Option<DateTime<Utc>>,
+    start_date: Option<DateTime<Utc>>,
+) -> Option<DateTime<Utc>> {
+    match (date_cutoff, start_date) {
+        (Some(cutoff), Some(start)) => Some(cutoff.max(start)),
+        (cutoff, start) => cutoff.or(start),
+    }
+}
+
 pub async fn get_recent_activity(
     State(state): State<Arc<AppState>>,
     user: OptionalAuthUser,
@@ -1794,9 +1839,6 @@ pub async fn get_recent_activity(
         None
     };
 
-    // Build query filters for total count (need to count before USD filtering)
-    let count_date_cutoff_str: Option<String> = date_cutoff.map(|dt| dt.to_rfc3339());
-
     // For recent activity, "incoming" should exclude staking rewards (shown in separate tab)
     let transaction_types_for_query = params
         .transaction_type
@@ -1825,6 +1867,9 @@ pub async fn get_recent_activity(
         exclude_near_dust: true,
         exclude_swaps_from_direction: true, // Recent activity: exclude swaps from incoming/outgoing (separate tab)
     };
+
+    let effective_start_str: Option<String> =
+        narrower_start_bound(filters.date_cutoff, filters.start_date).map(|dt| dt.to_rfc3339());
 
     // Count query
     let count_query_str = build_count_query(&filters);
@@ -1866,9 +1911,7 @@ pub async fn get_recent_activity(
         account_id: params.account_id.clone(),
         limit: None,
         offset: None,
-        start_time: count_date_cutoff_str
-            .clone()
-            .or_else(|| start_date.map(|s| s.to_string())),
+        start_time: effective_start_str.clone(),
         end_time: end_date.map(|s| s.to_string()),
         token_ids: token_ids.clone(),
         exclude_token_ids: exclude_token_ids.clone(),
@@ -1923,13 +1966,11 @@ pub async fn get_recent_activity(
 
     // Use the source already selected for this request so the rows cannot
     // switch stores after the count query has completed.
-    let start_time_str: Option<String> =
-        count_date_cutoff_str.or_else(|| start_date.map(|s| s.to_string()));
     let balance_query = BalanceChangesQuery {
         account_id: params.account_id.clone(),
         limit: Some(fetch_limit),
         offset: Some(offset),
-        start_time: start_time_str,
+        start_time: effective_start_str,
         end_time: end_date.map(|s| s.to_string()),
         token_ids: token_ids.clone(),
         exclude_token_ids: exclude_token_ids.clone(),
