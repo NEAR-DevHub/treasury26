@@ -53,31 +53,31 @@ export function OperationSelect({
         <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
                 <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     className={cn(
-                        "gap-1 px-1.5! w-fit h-5 items-center bg-card hover:bg-card border-0 text-xxs",
+                        "text-muted-foreground h-5 w-fit items-center gap-1 rounded-[3.5px] px-1.5! text-xs",
                         className,
                     )}
                 >
                     <span className="font-medium">
                         {labelFor(selectedOperation)}
                     </span>
-                    <Icon
-                        icon={ArrowDown01Icon}
-                        className="text-muted-foreground"
-                    />
+                    <Icon icon={ArrowDown01Icon} className="size-4" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-fit p-1 min-w-32" align="start">
-                <div className="flex flex-col">
+            <PopoverContent
+                className="border-general-border w-fit min-w-32 rounded-xl p-1.5"
+                align="start"
+            >
+                <div className="flex flex-col gap-0.5">
                     {operations.map((operation) => (
                         <Button
                             key={operation}
                             variant="ghost"
                             size="sm"
                             className={cn(
-                                "justify-start font-normal h-8 text-xxs",
+                                "text-muted-foreground h-8 justify-start rounded-lg px-4 text-sm font-semibold",
                                 selectedOperation === operation && "bg-muted",
                             )}
                             onClick={() => {

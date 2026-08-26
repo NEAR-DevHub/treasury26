@@ -105,7 +105,7 @@ export function TokenSelectPopover({
                     variant="outline"
                     size="sm"
                     className={cn(
-                        "h-9 gap-2 bg-card hover:bg-card border-border min-w-32",
+                        "border-general-border bg-card hover:bg-card h-12 min-w-32 justify-start gap-1 rounded-[20px] px-2 font-semibold",
                         className,
                     )}
                 >
@@ -116,29 +116,33 @@ export function TokenSelectPopover({
                                 <img
                                     src={selectedToken.icon}
                                     alt={selectedToken.name}
-                                    className="w-5 h-5 rounded-full object-contain"
+                                    className="size-9 rounded-full object-contain"
                                 />
                             ) : (
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-normal bg-brand-blue">
+                                <div className="bg-brand-blue flex size-9 items-center justify-center rounded-full text-sm font-normal text-white">
                                     <span>{selectedToken.icon}</span>
                                 </div>
                             )}
-                            <span className="font-medium">
-                                {selectedToken.name}
-                            </span>
+                            <span>{selectedToken.id.toUpperCase()}</span>
                         </>
                     ) : (
-                        <span className="text-muted-foreground">
-                            {t("selectToken")}
-                        </span>
+                        <>
+                            <span className="border-general-unofficial-border-3 size-9 rounded-full border border-dashed" />
+                            <span className="text-general-muted-foreground">
+                                {t("selectToken")}
+                            </span>
+                        </>
                     )}
                     <Icon
                         icon={ArrowDown01Icon}
-                        className="text-muted-foreground ml-auto"
+                        className="text-general-muted-foreground ml-auto size-4"
                     />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-64 p-2" align="start">
+            <PopoverContent
+                className="border-general-border w-64 rounded-xl p-2"
+                align="start"
+            >
                 <div className="space-y-2">
                     <Input
                         type="text"

@@ -1,41 +1,42 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
     ArrowLeftRightIcon,
     FilterIcon,
     SentIcon,
 } from "@hugeicons/core-free-icons";
-import { useTranslations } from "next-intl";
-import { PageCard } from "@/components/card";
-import { PageComponentLayout } from "@/components/page-component-layout";
-import { TabsContent } from "@/components/underline-tabs";
-import { useProposals } from "@/hooks/use-proposals";
-import { useTreasury } from "@/hooks/use-treasury";
-import { getProposals, ProposalStatus } from "@/lib/proposals-api";
-import {
-    useSearchParams,
-    useRouter,
-    usePathname,
-    useParams,
-} from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { ProposalsTable } from "@/features/proposals";
-import { Button } from "@/components/button";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-    ProposalFilters as ProposalFiltersComponent,
-    FilterOption,
-} from "@/features/proposals/components/proposal-filters";
-import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
-import { NumberBadge } from "@/components/number-badge";
-import { TableSkeleton } from "@/components/table-skeleton";
-import { ResponsiveInput } from "@/components/input";
-import { useNear } from "@/stores/near-store";
+    useParams,
+    usePathname,
+    useRouter,
+    useSearchParams,
+} from "next/navigation";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AuthButton } from "@/components/auth-button";
+import { Button } from "@/components/button";
+import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
-import { ResponsiveTabs, TabItem } from "@/components/responsive-tabs";
+import { Icon } from "@/components/icon";
+import { ResponsiveInput } from "@/components/input";
+import { NumberBadge } from "@/components/number-badge";
+import { PageComponentLayout } from "@/components/page-component-layout";
+import { ResponsiveTabs, type TabItem } from "@/components/responsive-tabs";
+import { TableSkeleton } from "@/components/table-skeleton";
+import { TabsContent } from "@/components/underline-tabs";
+import { ProposalsTable } from "@/features/proposals";
+import {
+    type FilterOption,
+    ProposalFilters as ProposalFiltersComponent,
+} from "@/features/proposals/components/proposal-filters";
+import { hasFilterValue } from "@/features/proposals/types/filter-types";
+import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
+import { useProposals } from "@/hooks/use-proposals";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { getProposals, type ProposalStatus } from "@/lib/proposals-api";
+import { useNear } from "@/stores/near-store";
 
 // Constants
 const SEARCH_DEBOUNCE_MS = 300;
@@ -92,10 +93,12 @@ function ProposalsList({
             "token",
             "created_date",
             "my_vote",
-            "search",
         ];
         return (
-            filterParams.some((param) => searchParams.has(param)) ||
+            filterParams.some((param) =>
+                hasFilterValue(searchParams.get(param)),
+            ) ||
+            Boolean(searchParams.get("search")?.trim()) ||
             (status !== "InProgress" && status !== undefined)
         );
     }, [searchParams]);
@@ -179,7 +182,7 @@ function ProposalsList({
 
 function NoRequestsFound() {
     const tEmpty = useTranslations("requests.empty");
-    const { treasuryId: treasuryId } = useTreasury();
+    const { treasuryId } = useTreasury();
     const router = useRouter();
     return (
         <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
@@ -295,7 +298,9 @@ export default function RequestsPage() {
             "created_date",
             "my_vote",
         ];
-        return filterParams.some((param) => searchParams.has(param));
+        return filterParams.some((param) =>
+            hasFilterValue(searchParams.get(param)),
+        );
     }, [searchParams]);
 
     const isSearchActive = useMemo(() => {

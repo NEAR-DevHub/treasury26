@@ -2,10 +2,8 @@
 
 import { Icon } from "@/components/icon";
 import {
-    ArrowDown01Icon,
     ArrowLeft01Icon,
     ArrowRight01Icon,
-    ArrowUp01Icon,
     Calendar01Icon,
     CancelCircleIcon,
 } from "@hugeicons/core-free-icons";
@@ -83,99 +81,76 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 
-export interface DatePresetLabels {
-    today: string;
-    yesterday: string;
-    last3Days: string;
-    last7Days: string;
-    last14Days: string;
-    last30Days: string;
-    lastMonth: string;
-    last3Months: string;
-    last6Months: string;
-}
+/** Ranges the picker can offer as one-click shortcuts, newest-first. */
+export const DATE_PRESET_KEYS = [
+    "today",
+    "yesterday",
+    "last3Days",
+    "last7Days",
+    "last14Days",
+    "last30Days",
+    "lastMonth",
+    "last3Months",
+    "last6Months",
+] as const;
 
-export function buildDefaultDatePresets(labels: DatePresetLabels) {
-    return [
-        {
-            label: labels.today,
-            value: {
-                from: startOfDay(new Date()),
-                to: endOfDay(new Date()),
-            },
-        },
-        {
-            label: labels.yesterday,
-            value: {
-                from: subDays(startOfDay(new Date()), 1),
-                to: subDays(endOfDay(new Date()), 1),
-            },
-        },
-        {
-            label: labels.last3Days,
-            value: {
-                from: subDays(startOfDay(new Date()), 3),
-                to: endOfDay(new Date()),
-            },
-        },
-        {
-            label: labels.last7Days,
-            value: {
-                from: subDays(startOfDay(new Date()), 7),
-                to: endOfDay(new Date()),
-            },
-        },
-        {
-            label: labels.last14Days,
-            value: {
-                from: subDays(startOfDay(new Date()), 14),
-                to: endOfDay(new Date()),
-            },
-        },
-        {
-            label: labels.last30Days,
-            value: {
-                from: subDays(startOfDay(new Date()), 30),
-                to: endOfDay(new Date()),
-            },
-        },
-        {
-            label: labels.lastMonth,
-            value: {
-                from: startOfMonth(subMonths(new Date(), 1)),
-                to: endOfMonth(subMonths(new Date(), 1)),
-            },
-        },
-        {
-            label: labels.last3Months,
-            value: {
-                from: subMonths(startOfDay(new Date()), 3),
-                to: endOfDay(new Date()),
-            },
-        },
-        {
-            label: labels.last6Months,
-            value: {
-                from: subMonths(startOfDay(new Date()), 6),
-                to: endOfDay(new Date()),
-            },
-        },
-    ];
+export type DatePresetKey = (typeof DATE_PRESET_KEYS)[number];
+
+const DATE_PRESET_RANGES: Record<DatePresetKey, () => DateRange> = {
+    today: () => ({
+        from: startOfDay(new Date()),
+        to: endOfDay(new Date()),
+    }),
+    yesterday: () => ({
+        from: subDays(startOfDay(new Date()), 1),
+        to: subDays(endOfDay(new Date()), 1),
+    }),
+    last3Days: () => ({
+        from: subDays(startOfDay(new Date()), 3),
+        to: endOfDay(new Date()),
+    }),
+    last7Days: () => ({
+        from: subDays(startOfDay(new Date()), 7),
+        to: endOfDay(new Date()),
+    }),
+    last14Days: () => ({
+        from: subDays(startOfDay(new Date()), 14),
+        to: endOfDay(new Date()),
+    }),
+    last30Days: () => ({
+        from: subDays(startOfDay(new Date()), 30),
+        to: endOfDay(new Date()),
+    }),
+    lastMonth: () => ({
+        from: startOfMonth(subMonths(new Date(), 1)),
+        to: endOfMonth(subMonths(new Date(), 1)),
+    }),
+    last3Months: () => ({
+        from: subMonths(startOfDay(new Date()), 3),
+        to: endOfDay(new Date()),
+    }),
+    last6Months: () => ({
+        from: subMonths(startOfDay(new Date()), 6),
+        to: endOfDay(new Date()),
+    }),
+};
+
+/**
+ * Localised shortcut ranges, in the order the keys are passed. Callers that
+ * only want part of the catalogue (e.g. the activity filters) pass a subset.
+ */
+export function useDatePresets(
+    keys: readonly DatePresetKey[] = DATE_PRESET_KEYS,
+) {
+    const t = useTranslations("datePresets");
+    return keys.map((key) => ({
+        label: t(key),
+        value: DATE_PRESET_RANGES[key](),
+    }));
 }
 
 export function useDefaultDatePresets() {
-    const t = useTranslations("datePresets");
-    return buildDefaultDatePresets({
-        today: t("today"),
-        yesterday: t("yesterday"),
-        last3Days: t("last3Days"),
-        last7Days: t("last7Days"),
-        last14Days: t("last14Days"),
-        last30Days: t("last30Days"),
-        lastMonth: t("lastMonth"),
-        last3Months: t("last3Months"),
-        last6Months: t("last6Months"),
-    });
+    return useDatePresets();
 }
 
 export type CalendarProps = Omit<
@@ -403,88 +378,54 @@ export function DateTimePicker({
         <div className="flex w-auto">
             {/* Preset buttons for range mode */}
             {mode === "range" && presets && presets.length > 0 && (
-                <div className="pr-3">
-                    <div className="grid">
-                        {presets.map((preset, index) => (
-                            <Button
-                                key={index}
-                                variant="ghost"
-                                className="justify-start text-sm px-2"
-                                onClick={() => onDayChanged(preset.value)}
-                            >
-                                {preset.label}
-                            </Button>
-                        ))}
-                    </div>
+                <div className="flex flex-col gap-0.5 px-4 py-2">
+                    {presets.map((preset, index) => (
+                        <Button
+                            key={index}
+                            variant="ghost"
+                            className="text-general-unofficial-ghost-foreground h-9 w-32 justify-start px-2 text-sm"
+                            onClick={() => onDayChanged(preset.value)}
+                        >
+                            {preset.label}
+                        </Button>
+                    ))}
                 </div>
             )}
             <div>
-                <div className="flex items-center justify-between w-auto">
-                    <div className="ms-2 flex cursor-pointer items-center text-sm font-medium">
-                        <div>
-                            <span
-                                onClick={() =>
-                                    setMonthYearPicker(
-                                        monthYearPicker === "month"
-                                            ? false
-                                            : "month",
-                                    )
-                                }
-                            >
-                                {format(month, "MMMM", {
-                                    locale: dateFnsLocale,
-                                })}
-                            </span>
-                            <span
-                                className="ms-1"
-                                onClick={() =>
-                                    setMonthYearPicker(
-                                        monthYearPicker === "year"
-                                            ? false
-                                            : "year",
-                                    )
-                                }
-                            >
-                                {format(month, "yyyy")}
-                            </span>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                                setMonthYearPicker(
-                                    monthYearPicker ? false : "year",
-                                )
-                            }
-                        >
-                            {monthYearPicker ? (
-                                <Icon icon={ArrowUp01Icon} />
-                            ) : (
-                                <Icon icon={ArrowDown01Icon} />
-                            )}
-                        </Button>
-                    </div>
-                    <div
+                <div className="flex w-auto items-center justify-between">
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         className={cn(
-                            "flex space-x-2",
-                            monthYearPicker ? "hidden" : "",
+                            "size-7 rounded-sm",
+                            monthYearPicker && "invisible",
                         )}
+                        onClick={onPrevMonth}
                     >
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onPrevMonth}
-                        >
-                            <Icon icon={ArrowLeft01Icon} />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onNextMonth}
-                        >
-                            <Icon icon={ArrowRight01Icon} />
-                        </Button>
-                    </div>
+                        <Icon icon={ArrowLeft01Icon} className="size-3.5" />
+                    </Button>
+                    {/* The month/year drilldown lives on the label itself so the
+                        header stays a plain "‹ July 2026 ›" row. */}
+                    <button
+                        type="button"
+                        className="flex-1 cursor-pointer text-center text-sm font-medium"
+                        onClick={() =>
+                            setMonthYearPicker(monthYearPicker ? false : "year")
+                        }
+                    >
+                        {format(month, "MMMM yyyy", { locale: dateFnsLocale })}
+                    </button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                            "size-7 rounded-sm",
+                            monthYearPicker && "invisible",
+                        )}
+                        onClick={onNextMonth}
+                    >
+                        <Icon icon={ArrowRight01Icon} className="size-3.5" />
+                    </Button>
                 </div>
 
                 <div className="relative overflow-hidden">
@@ -555,8 +496,8 @@ export function DateTimePicker({
                                 mode === "range" &&
                                     "hover:rounded-none [.day-range-start_&]:hover:rounded-l-md [.day-range-start_&]:hover:rounded-r-none [.day-range-end_&]:hover:rounded-r-md [.day-range-end_&]:hover:rounded-l-none",
                             ),
-                            range_end: "day-range-end rounded-r-md",
-                            range_start: "day-range-start rounded-l-md",
+                            range_end: "day-range-end rounded-r-sm",
+                            range_start: "day-range-start rounded-l-sm",
                             selected: cn(
                                 "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-none",
                                 !isRange(value) && "rounded-md",
@@ -566,7 +507,7 @@ export function DateTimePicker({
                                 "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
                             disabled: "text-muted-foreground opacity-50",
                             range_middle:
-                                "aria-selected:bg-general-tertiary aria-selected:text-accent-foreground",
+                                "aria-selected:bg-accent aria-selected:text-accent-foreground",
                             hidden: "invisible",
                         }}
                         showOutsideDays={true}
