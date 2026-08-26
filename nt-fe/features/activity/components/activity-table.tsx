@@ -8,6 +8,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
+import { Address } from "@/components/address";
 import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
@@ -421,19 +422,21 @@ export function ActivityTable({
                                                         ?.chainName
                                                 }
                                             >
-                                                <span className="block truncate text-sm font-semibold text-general-foreground">
-                                                    {fromId}
-                                                </span>
+                                                <Address
+                                                    address={fromId}
+                                                    className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                />
                                             </TooltipUser>
                                         ) : (
-                                            <span className="block truncate text-sm font-semibold text-general-foreground">
-                                                {getFromAccount(
+                                            <Address
+                                                address={getFromAccount(
                                                     activity,
                                                     isReceived,
                                                     treasuryId,
                                                     isConfidential,
                                                 )}
-                                            </span>
+                                                className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                            />
                                         )}
                                     </TableCell>
                                     <TableCell
@@ -451,19 +454,21 @@ export function ActivityTable({
                                                         ?.chainName
                                                 }
                                             >
-                                                <span className="block truncate text-sm font-semibold text-general-foreground">
-                                                    {toId}
-                                                </span>
+                                                <Address
+                                                    address={toId}
+                                                    className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                />
                                             </TooltipUser>
                                         ) : (
-                                            <span className="block truncate text-sm font-semibold text-general-foreground">
-                                                {getToAccount(
+                                            <Address
+                                                address={getToAccount(
                                                     activity,
                                                     isReceived,
                                                     treasuryId,
                                                     isConfidential,
                                                 )}
-                                            </span>
+                                                className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                            />
                                         )}
                                     </TableCell>
                                     <TableCell

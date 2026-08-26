@@ -8,6 +8,7 @@ import {
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
+import { Address } from "@/components/address";
 import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
 import { FormattedDate } from "@/components/formatted-date";
@@ -554,9 +555,10 @@ function CounterpartyBlock({
                         <span className="text-base font-medium leading-tight text-muted-foreground">
                             {label}
                         </span>
-                        <span className="truncate text-base font-semibold leading-tight text-foreground">
-                            {name}
-                        </span>
+                        <Address
+                            address={name}
+                            className="min-w-0 truncate text-base font-semibold leading-tight text-foreground"
+                        />
                     </>
                 ) : (
                     <span className="truncate text-base font-semibold leading-tight text-foreground">
