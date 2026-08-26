@@ -2144,12 +2144,12 @@
         "network": "Network: {network}"
     },
     "activityLabels": {
-        "exchangePending": "Exchange Pending",
-        "exchangeRequest": "Exchange Request",
-        "exchangeFulfillment": "Exchange",
+        "exchangePending": "Swap Pending",
+        "exchangeRequest": "Swap Request",
+        "exchangeFulfillment": "Swap",
         "stakingRewards": "Staking Rewards",
         "proposalAction": "Proposal Action",
-        "deposit": "Deposit",
+        "deposit": "Receive",
         "transfer": "Transfer",
         "transaction": "Transaction",
         "viaIntents": "via NEAR Intents",

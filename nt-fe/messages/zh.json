@@ -2132,7 +2132,7 @@
         "exchangeFulfillment": "兑换",
         "stakingRewards": "质押奖励",
         "proposalAction": "提案操作",
-        "deposit": "存款",
+        "deposit": "接收",
         "transfer": "转账",
         "transaction": "交易",
         "viaIntents": "通过 NEAR Intents",
