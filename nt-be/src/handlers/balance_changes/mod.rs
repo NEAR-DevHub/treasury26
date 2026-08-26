@@ -18,5 +18,6 @@ pub mod query_builder;
 pub mod staking_rewards;
 pub mod swap_detector;
 pub mod token_discovery;
+pub mod token_filter;
 pub mod transfer_hints;
 pub mod utils;
