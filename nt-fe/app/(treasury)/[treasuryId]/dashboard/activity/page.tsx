@@ -358,15 +358,17 @@ export default function ActivityPage() {
                 search
             />
             <Button
-                variant={activeFilterCount > 0 ? "default" : "secondary"}
+                variant="secondary"
                 size="icon"
                 className={cn(
                     "rounded-lg md:h-10 md:w-auto md:gap-2 md:px-4 md:text-sm",
                     // Active state is the design's gray-900 (#171717) surface.
-                    // `default` keeps the paired label colour, and
-                    // `general-foreground` flips to white in the dark theme.
+                    // Surface and label are overridden as a pair: both
+                    // `--general-foreground` and `--background` flip with the
+                    // theme, and neither is rewritten by `PrimaryColorProvider`,
+                    // so branded treasuries keep a readable label too.
                     activeFilterCount > 0
-                        ? "bg-general-foreground hover:bg-general-foreground/90"
+                        ? "bg-general-foreground text-background hover:bg-general-foreground/90"
                         : "text-muted-foreground",
                 )}
                 onClick={() => setIsFiltersOpen(!isFiltersOpen)}
