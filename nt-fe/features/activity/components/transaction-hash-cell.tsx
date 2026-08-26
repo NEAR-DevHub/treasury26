@@ -70,7 +70,6 @@ export function TransactionHashCell({
             ) : null}
             <CopyButton
                 text={transactionHash}
-                toastMessage={t("hashCopied")}
                 variant="ghost"
                 size="icon"
                 className="size-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"

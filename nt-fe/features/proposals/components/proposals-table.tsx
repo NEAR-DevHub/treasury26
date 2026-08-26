@@ -9,7 +9,7 @@ import {
     InformationCircleIcon,
     SearchMinusIcon,
     SentIcon,
-    Tick01Icon,
+    CheckIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -594,7 +594,7 @@ export function ProposalsTable({
                                     approveSlot.blocked
                                 }
                             >
-                                <Icon icon={Tick01Icon} />
+                                <Icon icon={CheckIcon} />
                                 {tCommon("approve")}
                             </Button>
                         </div>

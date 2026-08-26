@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "<bold>{network}</bold> 네트워크에서 <bold>{symbol}</bold>만 보내세요. 다른 자산이나 네트워크는 자금 손실을 초래합니다.",
         "expiresInDays": "<bold>{days}일</bold> 후 만료 – <bold>사용하지 않아도</bold>.",
         "createNewAddressHint": "다른 입금 정보가 필요하신가요? <link>새 주소 만들기</link>. 다른 주소를 만들어도 이 주소는 비활성화되지 않습니다.",
-        "receivesOnlyConfidential": "기밀 Trezu 또는 near.com 계정에서만 자금을 받습니다",
+        "receivesOnlyConfidential": "near.com 또는 near business에서만 자금을 받습니다",
         "receivesOnlyConfidentialSub": "재사용 가능. 만료되지 않음.",
         "anythingElseLost": "다른 곳에서 보낸 것은 모두 손실됩니다",
         "anythingElseLostSub": "거래소, 공개 지갑, 다른 네트워크 – 복구할 수 없습니다.",
-        "confidentialAckCheckbox": "기밀 Trezu 또는 near.com 외부에서의 입금은 손실됨을 이해합니다.",
-        "onlyFromConfidentialNearcom": "기밀 <bold>near.com</bold>에서만",
+        "confidentialAckCheckbox": "near.com 또는 near business 외부에서의 입금은 손실됨을 이해합니다.",
+        "onlyFromConfidentialNearcom": "<bold>near.com 또는 near business</bold>에서만",
         "reusableDoesntExpire": "<bold>재사용 가능.</bold> 만료되지 않음",
-        "fundsOutsideNearcomLost": "기밀 near.com 외부에서 보낸 자금은 손실됩니다",
+        "fundsOutsideNearcomLost": "near.com 또는 near business 외부에서 보낸 자금은 손실됩니다",
         "publicNetworkRecommendation": "<bold>{network}</bold> 네트워크에서만 입금하세요. 전액을 보내기 전에 소액 테스트 거래로 시작하세요.",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "기밀 사용자에서",
-                "subtitle": "기밀 Trezu 및 near.com에서 입금"
+                "subtitle": "near business에서 입금"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "near.com 네트워크에서",
             "anyAssetOnNearcom": "near.com 네트워크의 모든 자산",
             "securedOnTrezu": "Trezu에서 보호됨",
-            "securedOnNearcom": "near.com for business에서 보호됨",
+            "securedOnNearcom": "near business에서 보호됨",
             "payWithTrezu": "Trezu로 결제",
-            "payWithNearcom": "near.com로 결제",
+            "payWithNearcom": "near business로 결제",
             "payRequiresTreasury": "결제하려면 Trezu treasury로 로그인하세요.",
             "copyLink": "링크 복사",
-            "titleConfidential": "기밀 Treasury로 전송",
+            "titleConfidential": "near business로 전송",
             "chooseTreasuryTitle": "Treasury 선택",
             "chooseTreasuryDescription": "이 결제는 어느 treasury에서 나오나요?",
             "noMemberTreasuries": "아직 어떤 treasury의 멤버도 아닙니다.",
@@ -1797,7 +1797,7 @@
         "contains": "포함"
     },
     "copyButton": {
-        "copied": "클립보드에 복사됨",
+        "copied": "복사됨",
         "failed": "복사에 실패했습니다"
     },
     "recipientForm": {
@@ -2400,7 +2400,7 @@
             "description": "지금 이 트레저리를 볼 수 있습니다. 멤버가 승인하면 역할에 따라 요청 생성, 투표 또는 자금 관리를 할 수 있습니다."
         },
         "infoBox": {
-            "title": "near.com for business에서 더 많은 기능 이용",
+            "title": "near business에서 더 많은 기능 이용",
             "close": "닫기",
             "docsTitle": "문서",
             "docsDescription": "문서에서 모든 기능에 대해 알아보세요.",

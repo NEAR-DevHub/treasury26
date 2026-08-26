@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "Chỉ gửi <bold>{symbol}</bold> trên mạng <bold>{network}</bold>. Tài sản hoặc mạng khác sẽ dẫn đến mất tiền.",
         "expiresInDays": "Hết hạn sau <bold>{days} ngày</bold> – <bold>kể cả khi chưa dùng</bold>.",
         "createNewAddressHint": "Cần thông tin nạp khác? <link>Tạo địa chỉ mới</link>. Tạo địa chỉ khác sẽ không vô hiệu hóa địa chỉ này.",
-        "receivesOnlyConfidential": "Chỉ nhận tiền từ tài khoản Trezu hoặc near.com bảo mật",
+        "receivesOnlyConfidential": "Chỉ nhận tiền từ near.com hoặc near business",
         "receivesOnlyConfidentialSub": "Dùng lại được. Không hết hạn.",
         "anythingElseLost": "Mọi thứ gửi từ nơi khác sẽ bị mất",
         "anythingElseLostSub": "Sàn giao dịch, ví công khai, mạng khác – không thể khôi phục.",
-        "confidentialAckCheckbox": "Tôi hiểu các khoản nạp từ ngoài Trezu hoặc near.com bảo mật sẽ bị mất.",
-        "onlyFromConfidentialNearcom": "Chỉ từ <bold>near.com</bold> bảo mật",
+        "confidentialAckCheckbox": "Tôi hiểu các khoản nạp từ ngoài near.com hoặc near business sẽ bị mất.",
+        "onlyFromConfidentialNearcom": "Chỉ từ <bold>near.com hoặc near business</bold>",
         "reusableDoesntExpire": "<bold>Dùng lại được.</bold> Không hết hạn",
-        "fundsOutsideNearcomLost": "Tiền gửi từ ngoài near.com bảo mật sẽ bị mất",
+        "fundsOutsideNearcomLost": "Tiền gửi từ ngoài near.com hoặc near business sẽ bị mất",
         "publicNetworkRecommendation": "Chỉ nạp từ mạng <bold>{network}</bold>. Hãy bắt đầu bằng một giao dịch thử nhỏ trước khi gửi toàn bộ số tiền.",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "Từ người dùng bảo mật",
-                "subtitle": "Nạp từ Trezu & near.com bảo mật"
+                "subtitle": "Nạp từ near business"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "trên mạng near.com",
             "anyAssetOnNearcom": "Bất kỳ tài sản nào trên mạng near.com",
             "securedOnTrezu": "Được bảo vệ trên Trezu",
-            "securedOnNearcom": "Được bảo mật trên near.com for business",
+            "securedOnNearcom": "Được bảo mật trên near business",
             "payWithTrezu": "Thanh toán bằng Trezu",
-            "payWithNearcom": "Thanh toán bằng near.com",
+            "payWithNearcom": "Thanh toán bằng near business",
             "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",
             "copyLink": "Sao chép liên kết",
-            "titleConfidential": "Chuyển tới Treasury bảo mật",
+            "titleConfidential": "Chuyển tới near business",
             "chooseTreasuryTitle": "Chọn một Treasury",
             "chooseTreasuryDescription": "Thanh toán này đến từ treasury nào?",
             "noMemberTreasuries": "Bạn chưa là thành viên của treasury nào.",
@@ -1780,7 +1780,7 @@
         "contains": "Chứa"
     },
     "copyButton": {
-        "copied": "Đã sao chép vào bộ nhớ tạm",
+        "copied": "Đã sao chép",
         "failed": "Không thể sao chép"
     },
     "recipientForm": {
@@ -2383,7 +2383,7 @@
             "description": "Bạn có thể xem ngân quỹ này ngay bây giờ. Khi một thành viên phê duyệt bạn, bạn sẽ có thể tạo yêu cầu, bỏ phiếu hoặc quản lý quỹ theo vai trò của mình."
         },
         "infoBox": {
-            "title": "Tận dụng hơn nữa near.com for business",
+            "title": "Tận dụng hơn nữa near business",
             "close": "Đóng",
             "docsTitle": "Tài liệu",
             "docsDescription": "Tìm hiểu về tất cả tính năng trong tài liệu.",

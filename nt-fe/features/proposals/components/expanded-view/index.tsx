@@ -212,7 +212,6 @@ export function ExpandedView({
                     <div className="flex items-center gap-2">
                         <CopyButton
                             text={requestUrl}
-                            toastMessage={t("linkCopied")}
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"

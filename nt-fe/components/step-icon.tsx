@@ -1,5 +1,5 @@
 import { Icon } from "@/components/icon";
-import { Cancel01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { Cancel01Icon, CheckIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
 
 interface StepIconProps {
@@ -28,7 +28,7 @@ export function StepIcon({ status, size = "md" }: StepIconProps) {
                     )}
                 >
                     <Icon
-                        icon={Tick01Icon}
+                        icon={CheckIcon}
                         className={cn(iconClass[size], "text-white shrink-0")}
                     />
                 </div>

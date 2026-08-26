@@ -96,15 +96,15 @@ export function DepositTransferSummary({
                 </p>
                 <div className="flex items-start gap-2.5">
                     {variant === "confidential" || isConfidentialTreasury ? (
-                        <div
-                            className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary"
+                        <span
+                            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card"
                             aria-hidden
                         >
                             <Icon
                                 icon={Shield01Icon}
-                                className="fill-primary-foreground text-primary-foreground"
+                                className="size-4 text-green-500"
                             />
-                        </div>
+                        </span>
                     ) : (
                         <TreasuryLogo
                             logo={treasuryLogo}

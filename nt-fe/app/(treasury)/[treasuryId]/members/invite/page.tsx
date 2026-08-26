@@ -7,7 +7,7 @@ import {
     Link01Icon,
     LoaderCircleIcon,
     Refresh01Icon,
-    Tick01Icon,
+    CheckIcon,
     UserAdd01Icon,
 } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
@@ -135,7 +135,7 @@ export default function InviteMemberPage() {
                                 <div className="flex items-start gap-3">
                                     <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15">
                                         <Icon
-                                            icon={Tick01Icon}
+                                            icon={CheckIcon}
                                             className="text-emerald-600"
                                         />
                                     </div>
@@ -187,7 +187,6 @@ export default function InviteMemberPage() {
                                         />
                                         <CopyButton
                                             text={inviteUrl || ""}
-                                            toastMessage={tInvite("linkCopied")}
                                             size="default"
                                             disabled={!inviteUrl}
                                         >

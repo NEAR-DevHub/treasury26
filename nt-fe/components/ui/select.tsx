@@ -4,7 +4,7 @@ import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
     ArrowUp01Icon,
-    Tick01Icon,
+    CheckIcon,
 } from "@hugeicons/core-free-icons";
 import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
@@ -129,7 +129,7 @@ function SelectItem({
         >
             <span className="absolute right-2 flex size-3.5 items-center justify-center">
                 <SelectPrimitive.ItemIndicator>
-                    <Icon icon={Tick01Icon} />
+                    <Icon icon={CheckIcon} />
                 </SelectPrimitive.ItemIndicator>
             </span>
             <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>

@@ -272,7 +272,6 @@ function ConnectPageInner() {
                                 </code>
                                 <CopyButton
                                     text="/connect"
-                                    toastMessage={tTg("commandCopied")}
                                     variant="secondary"
                                     size="sm"
                                 >

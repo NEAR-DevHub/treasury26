@@ -1,6 +1,6 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { Globe02Icon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { Globe02Icon, CheckIcon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -112,7 +112,7 @@ export function LanguageSwitcher({
                             </span>
                             <span>{localeNames[code]}</span>
                         </span>
-                        {code === locale && <Icon icon={Tick01Icon} />}
+                        {code === locale && <Icon icon={CheckIcon} />}
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>

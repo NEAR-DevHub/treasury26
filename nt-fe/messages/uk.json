@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "Надсилайте лише <bold>{symbol}</bold> у мережі <bold>{network}</bold>. Інші активи чи мережі призведуть до втрати коштів.",
         "expiresInDays": "Дійсна <bold>{days} днів</bold> – <bold>навіть якщо не використана</bold>.",
         "createNewAddressHint": "Потрібні інші дані для депозиту? <link>Створити нову адресу</link>. Створення іншої не деактивує цю.",
-        "receivesOnlyConfidential": "Приймає кошти лише з конфіденційних акаунтів Trezu або near.com",
+        "receivesOnlyConfidential": "Приймає кошти лише від near.com або near business",
         "receivesOnlyConfidentialSub": "Багаторазова. Не закінчується.",
         "anythingElseLost": "Усе надіслане звідкись ще буде втрачено",
         "anythingElseLostSub": "Біржі, публічні гаманці, інші мережі – відновити неможливо.",
-        "confidentialAckCheckbox": "Я розумію, що депозити з-поза конфіденційного Trezu або near.com буде втрачено.",
-        "onlyFromConfidentialNearcom": "Лише з конфіденційного <bold>near.com</bold>",
+        "confidentialAckCheckbox": "Я розумію, що депозити з-поза near.com або near business буде втрачено.",
+        "onlyFromConfidentialNearcom": "Лише з <bold>near.com або near business</bold>",
         "reusableDoesntExpire": "<bold>Багаторазова.</bold> Не закінчується",
-        "fundsOutsideNearcomLost": "Кошти, надіслані з-поза конфіденційного near.com, буде втрачено",
+        "fundsOutsideNearcomLost": "Кошти, надіслані з-поза near.com або near business, буде втрачено",
         "publicNetworkRecommendation": "Вносьте депозит лише з мережі <bold>{network}</bold>. Почніть із невеликої тестової транзакції, перш ніж надсилати повну суму.",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "Від конфіденційного користувача",
-                "subtitle": "Депозит із конфіденційних Trezu і near.com"
+                "subtitle": "Депозит із near business"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "у мережі near.com",
             "anyAssetOnNearcom": "Будь-який актив у мережі near.com",
             "securedOnTrezu": "Захищено на Trezu",
-            "securedOnNearcom": "Захищено на near.com for business",
+            "securedOnNearcom": "Захищено на near business",
             "payWithTrezu": "Сплатити через Trezu",
-            "payWithNearcom": "Сплатити через near.com",
+            "payWithNearcom": "Сплатити через near business",
             "payRequiresTreasury": "Увійдіть із treasury Trezu, щоб сплатити.",
             "copyLink": "Копіювати посилання",
-            "titleConfidential": "Переказ до конфіденційної Treasury",
+            "titleConfidential": "Переказ до near business",
             "chooseTreasuryTitle": "Оберіть Treasury",
             "chooseTreasuryDescription": "З якої treasury надходить цей платіж?",
             "noMemberTreasuries": "Ви ще не є учасником жодної treasury.",
@@ -1780,7 +1780,7 @@
         "contains": "Містить"
     },
     "copyButton": {
-        "copied": "Скопійовано в буфер обміну",
+        "copied": "Скопійовано",
         "failed": "Не вдалось скопіювати"
     },
     "recipientForm": {
@@ -2383,7 +2383,7 @@
             "description": "Ви вже можете переглядати цю скарбницю. Коли учасник вас схвалить, ви зможете створювати запити, голосувати або керувати коштами відповідно до своєї ролі."
         },
         "infoBox": {
-            "title": "Отримайте більше від near.com for business",
+            "title": "Отримайте більше від near business",
             "close": "Закрити",
             "docsTitle": "Документація",
             "docsDescription": "Дізнайтесь про всі функції у документації.",

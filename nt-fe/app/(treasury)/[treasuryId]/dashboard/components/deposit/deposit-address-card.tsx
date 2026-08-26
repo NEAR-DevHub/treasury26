@@ -63,7 +63,6 @@ function AddressBody({
                         {copyMode === "inline" && (
                             <CopyButton
                                 text={address}
-                                toastMessage={t("addressCopied")}
                                 variant="unstyled"
                                 size="icon-sm"
                                 className="pt-0.5 pl-0.5 size-8 shrink-0 rounded-md bg-general-secondary text-general-secondary-foreground hover:bg-general-secondary/80"
@@ -85,7 +84,6 @@ function AddressBody({
                         </code>
                         <CopyButton
                             text={memo}
-                            toastMessage={t("memoCopied")}
                             variant="unstyled"
                             size="icon-sm"
                             className="shrink-0"
@@ -150,7 +148,6 @@ export function DepositAddressCard({
                 <div className="flex items-center justify-start gap-4 px-2 py-2">
                     <CopyButton
                         text={address}
-                        toastMessage={t("addressCopied")}
                         variant="unstyled"
                         className="h-auto justify-start gap-2 rounded-lg px-1 py-2 text-sm font-bold leading-[0.875rem] text-general-unofficial-ghost-foreground hover:bg-transparent"
                     >

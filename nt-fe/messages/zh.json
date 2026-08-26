@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "请仅在 <bold>{network}</bold> 网络发送 <bold>{symbol}</bold>。发送其他资产或使用其他网络将导致资金损失。",
         "expiresInDays": "<bold>{days} 天后</bold>过期 – <bold>即使未使用</bold>。",
         "createNewAddressHint": "需要其他充值信息？<link>创建新地址</link>。创建另一个地址不会停用此地址。",
-        "receivesOnlyConfidential": "仅接收来自机密 Trezu 或 near.com 账户的资金",
+        "receivesOnlyConfidential": "仅接收来自 near.com 或 near business 的资金",
         "receivesOnlyConfidentialSub": "可重复使用。不会过期。",
         "anythingElseLost": "从其他地方发送的资金将丢失",
         "anythingElseLostSub": "交易所、公开钱包、其他网络 – 无法找回。",
-        "confidentialAckCheckbox": "我理解从机密 Trezu 或 near.com 以外充值将会丢失。",
-        "onlyFromConfidentialNearcom": "仅来自机密 <bold>near.com</bold>",
+        "confidentialAckCheckbox": "我理解从 near.com 或 near business 以外充值将会丢失。",
+        "onlyFromConfidentialNearcom": "仅来自 <bold>near.com 或 near business</bold>",
         "reusableDoesntExpire": "<bold>可重复使用。</bold>不会过期",
-        "fundsOutsideNearcomLost": "从机密 near.com 以外发送的资金将丢失",
+        "fundsOutsideNearcomLost": "从 near.com 或 near business 以外发送的资金将丢失",
         "publicNetworkRecommendation": "请仅从 <bold>{network}</bold> 网络充值。建议先进行小额测试交易，再发送全额。",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "来自机密用户",
-                "subtitle": "从机密 Trezu 与 near.com 充值"
+                "subtitle": "从 near business 充值"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "在 near.com 网络",
             "anyAssetOnNearcom": "near.com 网络上的任意资产",
             "securedOnTrezu": "由 Trezu 保障安全",
-            "securedOnNearcom": "受 near.com for business 保护",
+            "securedOnNearcom": "受 near business 保护",
             "payWithTrezu": "使用 Trezu 支付",
-            "payWithNearcom": "使用 near.com 支付",
+            "payWithNearcom": "使用 near business 支付",
             "payRequiresTreasury": "请使用 Trezu treasury 登录以支付。",
             "copyLink": "复制链接",
-            "titleConfidential": "转账至机密 Treasury",
+            "titleConfidential": "转账至 near business",
             "chooseTreasuryTitle": "选择 Treasury",
             "chooseTreasuryDescription": "这笔付款来自哪个 treasury？",
             "noMemberTreasuries": "你还不是任何 treasury 的成员。",
@@ -1780,7 +1780,7 @@
         "contains": "包含"
     },
     "copyButton": {
-        "copied": "已复制到剪贴板",
+        "copied": "已复制",
         "failed": "复制失败"
     },
     "recipientForm": {
@@ -2383,7 +2383,7 @@
             "description": "您现在可以查看此金库。成员批准后，您将可以根据角色创建请求、投票或管理资金。"
         },
         "infoBox": {
-            "title": "从 near.com for business 获得更多",
+            "title": "从 near business 获得更多",
             "close": "关闭",
             "docsTitle": "文档",
             "docsDescription": "在文档中了解所有功能。",

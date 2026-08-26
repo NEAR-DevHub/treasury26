@@ -1,6 +1,6 @@
 "use client";
 
-import { Tick01Icon } from "@hugeicons/core-free-icons";
+import { CheckIcon } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -73,7 +73,7 @@ export function MobileLanguageSheet() {
                             <span className="flex-1">{localeNames[code]}</span>
                             {code === locale ? (
                                 <Icon
-                                    icon={Tick01Icon}
+                                    icon={CheckIcon}
                                     className="size-4 text-foreground"
                                 />
                             ) : null}

@@ -248,9 +248,6 @@ export function Step2({ handleBack }: StepProps) {
                                                         localLiveQuoteData.quote
                                                             .depositAddress
                                                     }
-                                                    toastMessage={tEx(
-                                                        "info.depositAddressCopied",
-                                                    )}
                                                     variant="unstyled"
                                                     size="icon"
                                                     className="h-6 w-6 p-0!"

@@ -166,7 +166,6 @@ export function SidebarProfileMenu({
                     </div>
                     <CopyButton
                         text={accountId}
-                        toastMessage={tAddress("copied")}
                         variant="ghost"
                         size="icon-sm"
                         className="shrink-0 text-muted-foreground"

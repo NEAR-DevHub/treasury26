@@ -2,7 +2,7 @@ import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
     Delete01Icon,
-    Tick01Icon,
+    CheckIcon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
 import { TooltipUser, User } from "@/components/user";
@@ -27,7 +27,7 @@ export function UserVote({
         case "Approve":
             icon = (
                 <Icon
-                    icon={Tick01Icon}
+                    icon={CheckIcon}
                     className={cn(
                         iconStyle,
                         "bg-general-success-foreground",
