@@ -44,6 +44,14 @@ pub struct BalanceStamps {
 }
 
 impl BalanceStamps {
+    /// A native receipt normally maps to exactly one ledger row, but a
+    /// clamp-split or 1-yocto-attachment split produces two rows sharing
+    /// the same receipt_id — the user-owned piece and the sponsor/attachment
+    /// piece. `load_balance_stamps` has no ORDER BY, so a plain last-write-
+    /// wins insert would pick whichever arrived in an arbitrary scan order.
+    /// The leg represents the receipt's whole economic effect, so the
+    /// correct stamp is the one AFTER both pieces applied — keep the higher
+    /// intra_block_seq deterministically, regardless of row order.
     pub fn from_rows(rows: Vec<BalanceStampRow>) -> Self {
         let mut stamps = Self::default();
         for row in rows {
@@ -54,7 +62,12 @@ impl BalanceStamps {
             if row.token_standard == "native"
                 && let Some(receipt_id) = row.receipt_id
             {
-                stamps.by_receipt.insert(receipt_id, stamp);
+                match stamps.by_receipt.get(&receipt_id) {
+                    Some(existing) if existing.intra_block_seq >= stamp.intra_block_seq => {}
+                    _ => {
+                        stamps.by_receipt.insert(receipt_id, stamp);
+                    }
+                }
                 continue;
             }
             stamps.by_entry_key.insert(row.entry_key, stamp);

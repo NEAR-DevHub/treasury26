@@ -17,3 +17,9 @@ nt-be/src/bin/confidential_deposit_verifier.rs
 nt-be/scripts/verify_confidential_deposits.sh
 nt-be/scripts/import_staging_balance_changes.sh
 .gstack/
+
+# local-only DAO history stop/clamp operator script
+nt-be/examples/dao_history_control.rs
+
+# local-only verification re-check diagnostic script
+nt-be/examples/verify_check_local.rs

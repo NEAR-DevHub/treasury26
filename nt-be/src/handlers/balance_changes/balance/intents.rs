@@ -22,6 +22,44 @@ fn parse_nep245_asset_id(token_id: &str) -> Result<(&str, &str), String> {
     Ok((contract, token))
 }
 
+/// Resolve decimals for a NEAR Intents multi-token.
+/// - intents.near tokens: use the token registry via ensure_ft_metadata (full token_id as key)
+/// - Other NEP-245 contracts (e.g. v2_1.omni.hot.tg): query mt_metadata_base_by_token_id
+pub async fn resolve_decimals(
+    pool: &PgPool,
+    network: &NetworkConfig,
+    token_id: &str,
+) -> Result<u8, Box<dyn std::error::Error>> {
+    let (contract_str, token) = parse_nep245_asset_id(token_id)
+        .map_err(|message| -> Box<dyn std::error::Error> { message.into() })?;
+
+    if contract_str == "intents.near" {
+        let registry_result = ensure_ft_metadata(pool, network, token_id)
+            .await
+            .map_err(|error| error.to_string());
+        match registry_result {
+            Ok(decimals) => Ok(decimals),
+            Err(registry_error_message) => {
+                // Owner discovery is authoritative and may surface a valid
+                // Intents asset before the bundled registry is updated. Fall
+                // back to the contract's NEP-245 metadata instead of making
+                // that one new asset block the DAO snapshot generation.
+                tracing::warn!(
+                    token_id,
+                    error = %registry_error_message,
+                    "intents token missing from static registry; using on-chain MT metadata"
+                );
+                Ok(
+                    ensure_nep245_token_decimals(pool, network, token_id, contract_str, token)
+                        .await?,
+                )
+            }
+        }
+    } else {
+        Ok(ensure_nep245_token_decimals(pool, network, token_id, contract_str, token).await?)
+    }
+}
+
 /// Query NEAR Intents multi-token balance at a specific block height
 ///
 /// Returns an error if the block doesn't exist (UnknownBlock). The caller (binary search)
@@ -50,32 +88,7 @@ pub async fn get_balance_at_block(
     // contract-specific token id. Token ids may themselves contain colons.
     let (contract_str, token) = parse_nep245_asset_id(token_id)
         .map_err(|message| -> Box<dyn std::error::Error> { message.into() })?;
-
-    // Resolve decimals for the token.
-    // - intents.near tokens: use the token registry via ensure_ft_metadata (full token_id as key)
-    // - Other NEP-245 contracts (e.g. v2_1.omni.hot.tg): query mt_metadata_base_by_token_id
-    let decimals = if contract_str == "intents.near" {
-        let registry_result = ensure_ft_metadata(pool, network, token_id)
-            .await
-            .map_err(|error| error.to_string());
-        match registry_result {
-            Ok(decimals) => decimals,
-            Err(registry_error_message) => {
-                // Owner discovery is authoritative and may surface a valid
-                // Intents asset before the bundled registry is updated. Fall
-                // back to the contract's NEP-245 metadata instead of making
-                // that one new asset block the DAO snapshot generation.
-                tracing::warn!(
-                    token_id,
-                    error = %registry_error_message,
-                    "intents token missing from static registry; using on-chain MT metadata"
-                );
-                ensure_nep245_token_decimals(pool, network, token_id, contract_str, token).await?
-            }
-        }
-    } else {
-        ensure_nep245_token_decimals(pool, network, token_id, contract_str, token).await?
-    };
+    let decimals = resolve_decimals(pool, network, token_id).await?;
 
     let contract_id = near_api::types::AccountId::from_str(contract_str)?;
     let contract = Contract(contract_id);
