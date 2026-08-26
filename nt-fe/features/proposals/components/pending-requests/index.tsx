@@ -366,11 +366,7 @@ export function PendingRequests() {
 
                     {hasPendingRequests && (
                         <Link href={`/${treasuryId}/requests`}>
-                            <Button
-                                variant="pill"
-                                size="sm"
-                                className="rounded-lg bg-[#F2F2F2] text-gray-500"
-                            >
+                            <Button variant="neutral" size="sm">
                                 <span className="font-bold text-[14px] leading-none">
                                     {t("viewAll")}
                                 </span>
