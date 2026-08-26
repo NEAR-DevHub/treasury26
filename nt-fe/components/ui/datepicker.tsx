@@ -8,17 +8,21 @@ import {
     CancelCircleIcon,
 } from "@hugeicons/core-free-icons";
 import {
+    addDays,
     addMonths,
     endOfDay,
     endOfMonth,
+    endOfWeek,
     endOfYear,
     format,
     getMonth,
     getYear,
+    isSameDay,
     setMonth as setMonthFns,
     setYear,
     startOfDay,
     startOfMonth,
+    startOfWeek,
     startOfYear,
     subMonths,
     subDays,
@@ -349,6 +353,45 @@ export function DateTimePicker({
         [onChange, mode, timezone],
     );
 
+    const selectedRange = isRange(value) ? value : undefined;
+
+    /**
+     * The range highlight flows like a text selection: a corner is only rounded
+     * where the band's outline actually turns, so week rows sitting flush
+     * against each other read as one continuous shape.
+     */
+    const bandCorners = useMemo(() => {
+        const from = selectedRange?.from
+            ? startOfDay(selectedRange.from)
+            : undefined;
+        if (!from) return undefined;
+
+        const to = endOfDay(selectedRange?.to ?? from);
+        const inBand = (date: Date) => date >= from && date <= to;
+        const opensRow = (date: Date) =>
+            isSameDay(date, from) ||
+            isSameDay(date, startOfWeek(date, { locale: dateFnsLocale }));
+        const closesRow = (date: Date) =>
+            isSameDay(date, to) ||
+            isSameDay(date, endOfWeek(date, { locale: dateFnsLocale }));
+        const turnsAt =
+            (edge: (date: Date) => boolean, neighbour: number) =>
+            (date: Date) =>
+                inBand(date) && edge(date) && !inBand(addDays(date, neighbour));
+
+        return {
+            bandTopLeft: turnsAt(opensRow, -7),
+            bandBottomLeft: turnsAt(opensRow, 7),
+            bandTopRight: turnsAt(closesRow, -7),
+            bandBottomRight: turnsAt(closesRow, 7),
+        };
+    }, [selectedRange, dateFnsLocale]);
+
+    /** Until the second day is picked, the start shows as one closed pill. */
+    const isPartialRange =
+        !!selectedRange?.from &&
+        (!selectedRange.to || isSameDay(selectedRange.from, selectedRange.to));
+
     const onMonthYearChanged = useCallback(
         (d: Date, mode: "month" | "year") => {
             setMonth(d);
@@ -375,15 +418,16 @@ export function DateTimePicker({
     }, [open, initDate]);
 
     return (
-        <div className="flex w-auto">
-            {/* Preset buttons for range mode */}
+        <div className="flex w-auto flex-col md:flex-row">
+            {/* Preset buttons for range mode. A phone has no room for a column
+                beside the calendar, so they become a scrollable strip above it. */}
             {mode === "range" && presets && presets.length > 0 && (
-                <div className="flex flex-col gap-0.5 px-4 py-2">
+                <div className="flex gap-1 overflow-x-auto border-b border-general-border px-4 py-2 scrollbar-hide md:flex-col md:gap-0.5 md:overflow-visible md:border-b-0">
                     {presets.map((preset, index) => (
                         <Button
                             key={index}
                             variant="ghost"
-                            className="text-general-unofficial-ghost-foreground h-9 w-32 justify-start px-2 text-sm"
+                            className="text-general-unofficial-ghost-foreground h-9 shrink-0 justify-start px-2 text-sm md:w-32"
                             onClick={() => onDayChanged(preset.value)}
                         >
                             {preset.label}
@@ -391,7 +435,7 @@ export function DateTimePicker({
                     ))}
                 </div>
             )}
-            <div>
+            <div className="px-4 md:px-0">
                 <div className="flex w-auto items-center justify-between">
                     <Button
                         variant="ghost"
@@ -447,6 +491,13 @@ export function DateTimePicker({
                             ].filter(Boolean) as Matcher[]
                         }
                         onMonthChange={setMonth}
+                        modifiers={bandCorners}
+                        modifiersClassNames={{
+                            bandTopLeft: "rounded-tl-md",
+                            bandBottomLeft: "rounded-bl-md",
+                            bandTopRight: "rounded-tr-md",
+                            bandBottomRight: "rounded-br-md",
+                        }}
                         components={{
                             Day: (props) => {
                                 const date = props.day.date;
@@ -485,29 +536,41 @@ export function DateTimePicker({
                             button_previous: "hidden",
                             button_next: "hidden",
                             month_grid: "w-full border-collapse",
-                            weekdays: "flex justify-between mt-2",
+                            weekdays: "flex w-full mt-2 mb-1",
                             weekday:
-                                "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
-                            week: "flex w-full justify-between mt-2",
-                            day: "h-9 w-9 text-center text-sm p-0 relative flex items-center justify-center [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20 rounded-1",
+                                "min-w-9 flex-1 text-muted-foreground font-normal text-[0.8rem]",
+                            // Weeks sit flush against each other so a range
+                            // spanning several of them stays one unbroken band.
+                            week: "flex w-full",
+                            day: "group relative flex h-9 min-w-9 flex-1 items-center justify-center p-0 text-center text-sm focus-within:z-20",
                             day_button: cn(
                                 buttonVariants({ variant: "ghost" }),
-                                "size-9 p-0 font-normal aria-selected:opacity-100 rounded-md focus-visible:ring-0",
-                                mode === "range" &&
-                                    "hover:rounded-none [.day-range-start_&]:hover:rounded-l-md [.day-range-start_&]:hover:rounded-r-none [.day-range-end_&]:hover:rounded-r-md [.day-range-end_&]:hover:rounded-l-none",
+                                "h-9 rounded-md p-0 font-normal focus-visible:ring-0",
+                                mode === "range"
+                                    ? // The cell paints the band, so the button
+                                      // just covers it and keeps its hover wash
+                                      // off days that are already selected.
+                                      "w-full group-aria-selected:hover:bg-transparent group-aria-selected:hover:text-inherit"
+                                    : // Single dates stay a square pill drawn on
+                                      // the button, not the full-width cell.
+                                      "w-9 group-aria-selected:bg-primary group-aria-selected:text-primary-foreground group-aria-selected:hover:bg-primary group-aria-selected:hover:text-primary-foreground",
                             ),
-                            range_end: "day-range-end rounded-r-sm",
-                            range_start: "day-range-start rounded-l-sm",
-                            selected: cn(
-                                "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-none",
-                                !isRange(value) && "rounded-md",
+                            selected:
+                                mode === "range"
+                                    ? "bg-primary text-primary-foreground"
+                                    : "",
+                            range_start: cn(
+                                "rounded-l-md",
+                                isPartialRange && "rounded-r-md",
                             ),
-                            today: "bg-accent text-accent-foreground rounded-md",
-                            outside:
-                                "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
-                            disabled: "text-muted-foreground opacity-50",
+                            range_end: "rounded-r-md",
                             range_middle:
                                 "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                            today: "[&:not([aria-selected])>button]:bg-accent [&:not([aria-selected])>button]:text-accent-foreground",
+                            // Dimming the text rather than the cell keeps a band
+                            // that runs into the next month at one solid tone.
+                            outside: "text-muted-foreground/60",
+                            disabled: "text-muted-foreground opacity-50",
                             hidden: "invisible",
                         }}
                         showOutsideDays={true}

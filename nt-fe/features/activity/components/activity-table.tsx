@@ -36,9 +36,18 @@ import {
     getToAccount,
     getToAccountId,
     useGetActivityLabel,
+    useGetActivitySubLabel,
     useGetFromAccount,
 } from "../utils/history-utils";
+import {
+    ActivityRow,
+    RowAmount,
+    RowDate,
+    RowStatus,
+    SwapAmount,
+} from "./activity-row";
 import { ActivityGlyph, ActivityRowIcon } from "./activity-row-icon";
+import { RecentActivitySkeleton } from "./recent-activity-card";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 import { TransactionHashCell } from "./transaction-hash-cell";
 
@@ -61,6 +70,9 @@ const CELL_PADDING = [
 ] as const;
 
 const HEAD_CLASS = "h-10 text-sm font-semibold normal-case leading-[1.5]";
+
+/** The mobile list is short enough that a full page of placeholders is noise. */
+const MOBILE_SKELETON_ROWS = 6;
 
 /**
  * The table paints a white sheet floating on the card's tertiary surface: the
@@ -216,6 +228,7 @@ export function ActivityTable({
 }: ActivityTableProps) {
     const t = useTranslations("activity");
     const getActivityLabel = useGetActivityLabel();
+    const getActivitySubLabel = useGetActivitySubLabel();
     const getFromAccount = useGetFromAccount();
     const { treasuryId, isConfidential } = useTreasury();
     const [selectedActivity, setSelectedActivity] =
@@ -231,286 +244,370 @@ export function ActivityTable({
 
     if (isLoading) {
         return (
-            <TableSkeleton
-                rows={pageSize}
-                columns={5}
-                className="rounded-2xl border-general-border"
-            />
+            <>
+                <div className="md:hidden">
+                    <RecentActivitySkeleton rows={MOBILE_SKELETON_ROWS} />
+                </div>
+                <TableSkeleton
+                    rows={pageSize}
+                    columns={5}
+                    className="hidden rounded-2xl border-general-border md:block"
+                />
+            </>
         );
     }
 
     if (activities.length === 0) {
         return (
-            <TableSheet>
-                <div className="rounded-xl border border-general-border bg-card">
+            <>
+                <div className="md:hidden">
                     <EmptyState
                         icon={Clock01Icon}
                         title={t("empty.title")}
                         description={t("empty.description")}
                     />
                 </div>
-            </TableSheet>
+                <div className="hidden md:block">
+                    <TableSheet>
+                        <div className="rounded-xl border border-general-border bg-card">
+                            <EmptyState
+                                icon={Clock01Icon}
+                                title={t("empty.title")}
+                                description={t("empty.description")}
+                            />
+                        </div>
+                    </TableSheet>
+                </div>
+            </>
         );
     }
 
     return (
         <div className="space-y-2">
-            <TableSheet>
-                <Table className="table-fixed border-separate border-spacing-0">
-                    <TableHeader className="border-0 bg-transparent">
-                        <TableRow className="border-0 hover:bg-transparent">
-                            <TableHead
-                                className={cn(HEAD_CLASS, CELL_PADDING[0])}
-                            >
-                                {t("table.type")}
-                            </TableHead>
-                            <TableHead
-                                className={cn(HEAD_CLASS, CELL_PADDING[1])}
-                            >
-                                {t("table.transaction")}
-                            </TableHead>
-                            <TableHead
-                                className={cn(HEAD_CLASS, CELL_PADDING[2])}
-                            >
-                                {t("table.from")}
-                            </TableHead>
-                            <TableHead
-                                className={cn(HEAD_CLASS, CELL_PADDING[3])}
-                            >
-                                {t("table.to")}
-                            </TableHead>
-                            <TableHead
-                                className={cn(
-                                    HEAD_CLASS,
-                                    "w-[278px]",
-                                    CELL_PADDING[4],
-                                )}
-                            >
-                                <span className="flex items-center justify-end gap-2">
-                                    {t("table.transactionHash")}
-                                    <Tooltip content={t("table.hashTooltip")}>
-                                        <Icon
-                                            icon={HelpCircleIcon}
-                                            className="size-4 text-general-muted-foreground"
-                                        />
-                                    </Tooltip>
-                                </span>
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {activities.map((activity, index) => {
-                            const isFirstRow = index === 0;
-                            const isLastRow = index === activities.length - 1;
-                            const isReceived = parseFloat(activity.amount) > 0;
-                            const status = getActivityStatus(activity);
-                            const fromId = getFromAccountId(
-                                activity,
-                                isReceived,
-                                treasuryId,
-                            );
-                            const toId = getToAccountId(
-                                activity,
-                                isReceived,
-                                treasuryId,
-                            );
+            {/* Mobile: the five columns collapse into a badge + two stacked lines. */}
+            <div className="flex flex-col py-4 md:hidden">
+                {activities.map((activity) => {
+                    const status = getActivityStatus(activity);
+                    const isReceived = parseFloat(activity.amount) > 0;
 
-                            return (
-                                <TableRow
-                                    key={activity.id}
-                                    className="group border-0 hover:bg-transparent"
+                    return (
+                        <ActivityRow
+                            key={activity.id}
+                            icon={
+                                <ActivityRowIcon>
+                                    <ActivityGlyph activity={activity} />
+                                </ActivityRowIcon>
+                            }
+                            label={getActivityLabel(activity)}
+                            subLabel={getActivitySubLabel(activity, treasuryId)}
+                            amount={
+                                activity.swap ? (
+                                    <SwapAmount swap={activity.swap} />
+                                ) : (
+                                    <RowAmount
+                                        className={
+                                            isReceived
+                                                ? "text-general-success-foreground"
+                                                : "text-general-foreground"
+                                        }
+                                    >
+                                        {formatActivityAmount(activity.amount)}{" "}
+                                        {activity.tokenMetadata?.symbol ??
+                                            activity.tokenId}
+                                    </RowAmount>
+                                )
+                            }
+                            meta={
+                                status ? (
+                                    <RowStatus status={status} />
+                                ) : (
+                                    <RowDate
+                                        date={activity.blockTime}
+                                        relative={false}
+                                    />
+                                )
+                            }
+                            onClick={() => openTransactionDetails(activity)}
+                        />
+                    );
+                })}
+            </div>
+
+            <div className="hidden md:block">
+                <TableSheet>
+                    <Table className="table-fixed border-separate border-spacing-0">
+                        <TableHeader className="border-0 bg-transparent">
+                            <TableRow className="border-0 hover:bg-transparent">
+                                <TableHead
+                                    className={cn(HEAD_CLASS, CELL_PADDING[0])}
                                 >
-                                    <TableCell
-                                        className={bodyCellClassName(
-                                            0,
-                                            isFirstRow,
-                                            isLastRow,
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <ActivityRowIcon>
-                                                <ActivityGlyph
-                                                    activity={activity}
-                                                />
-                                            </ActivityRowIcon>
-                                            <div className="flex min-w-0 flex-1 flex-col">
-                                                <span className="truncate text-sm font-semibold text-general-foreground">
-                                                    {getActivityLabel(activity)}
-                                                </span>
-                                                {status === "pending" ? (
-                                                    <span className="flex items-center gap-1 text-sm font-medium text-general-orange-foreground">
-                                                        <Icon
-                                                            icon={
-                                                                LoaderCircleIcon
-                                                            }
-                                                            className="size-3 animate-spin"
-                                                        />
-                                                        {t("table.processing")}
-                                                    </span>
-                                                ) : (
-                                                    <span className="truncate text-sm font-medium text-muted-foreground">
-                                                        <FormattedDate
-                                                            date={
-                                                                new Date(
-                                                                    activity.blockTime,
-                                                                )
-                                                            }
-                                                            includeTime
-                                                        />
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell
-                                        className={bodyCellClassName(
-                                            1,
-                                            isFirstRow,
-                                            isLastRow,
-                                        )}
-                                    >
-                                        {activity.swap ? (
-                                            <SwapTransactionCell
-                                                swap={activity.swap}
+                                    {t("table.type")}
+                                </TableHead>
+                                <TableHead
+                                    className={cn(HEAD_CLASS, CELL_PADDING[1])}
+                                >
+                                    {t("table.transaction")}
+                                </TableHead>
+                                <TableHead
+                                    className={cn(HEAD_CLASS, CELL_PADDING[2])}
+                                >
+                                    {t("table.from")}
+                                </TableHead>
+                                <TableHead
+                                    className={cn(HEAD_CLASS, CELL_PADDING[3])}
+                                >
+                                    {t("table.to")}
+                                </TableHead>
+                                <TableHead
+                                    className={cn(
+                                        HEAD_CLASS,
+                                        "w-[278px]",
+                                        CELL_PADDING[4],
+                                    )}
+                                >
+                                    <span className="flex items-center justify-end gap-2">
+                                        {t("table.transactionHash")}
+                                        <Tooltip
+                                            content={t("table.hashTooltip")}
+                                        >
+                                            <Icon
+                                                icon={HelpCircleIcon}
+                                                className="size-4 text-general-muted-foreground"
                                             />
-                                        ) : (
+                                        </Tooltip>
+                                    </span>
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {activities.map((activity, index) => {
+                                const isFirstRow = index === 0;
+                                const isLastRow =
+                                    index === activities.length - 1;
+                                const isReceived =
+                                    parseFloat(activity.amount) > 0;
+                                const status = getActivityStatus(activity);
+                                const fromId = getFromAccountId(
+                                    activity,
+                                    isReceived,
+                                    treasuryId,
+                                );
+                                const toId = getToAccountId(
+                                    activity,
+                                    isReceived,
+                                    treasuryId,
+                                );
+
+                                return (
+                                    <TableRow
+                                        key={activity.id}
+                                        className="group border-0 hover:bg-transparent"
+                                    >
+                                        <TableCell
+                                            className={bodyCellClassName(
+                                                0,
+                                                isFirstRow,
+                                                isLastRow,
+                                            )}
+                                        >
                                             <div className="flex items-center gap-2">
-                                                <TokenDisplay
-                                                    symbol={
-                                                        activity.tokenMetadata
-                                                            .symbol
-                                                    }
-                                                    icon={
-                                                        activity.tokenMetadata
-                                                            .icon || ""
-                                                    }
-                                                    iconSize="xl"
-                                                />
-                                                <span
-                                                    className={cn(
-                                                        "truncate text-sm font-semibold",
-                                                        isReceived
-                                                            ? "text-general-success-foreground"
-                                                            : "text-general-foreground",
-                                                    )}
-                                                >
-                                                    <MaskedBalance>
-                                                        {formatActivityAmount(
-                                                            activity.amount,
+                                                <ActivityRowIcon>
+                                                    <ActivityGlyph
+                                                        activity={activity}
+                                                    />
+                                                </ActivityRowIcon>
+                                                <div className="flex min-w-0 flex-1 flex-col">
+                                                    <span className="truncate text-sm font-semibold text-general-foreground">
+                                                        {getActivityLabel(
+                                                            activity,
                                                         )}
-                                                    </MaskedBalance>{" "}
-                                                    {
-                                                        activity.tokenMetadata
-                                                            .symbol
-                                                    }
-                                                </span>
+                                                    </span>
+                                                    {status === "pending" ? (
+                                                        <span className="flex items-center gap-1 text-sm font-medium text-general-orange-foreground">
+                                                            <Icon
+                                                                icon={
+                                                                    LoaderCircleIcon
+                                                                }
+                                                                className="size-3 animate-spin"
+                                                            />
+                                                            {t(
+                                                                "table.processing",
+                                                            )}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="truncate text-sm font-medium text-muted-foreground">
+                                                            <FormattedDate
+                                                                date={
+                                                                    new Date(
+                                                                        activity.blockTime,
+                                                                    )
+                                                                }
+                                                                includeTime
+                                                            />
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
-                                        )}
-                                    </TableCell>
-                                    <TableCell
-                                        className={bodyCellClassName(
-                                            2,
-                                            isFirstRow,
-                                            isLastRow,
-                                        )}
-                                    >
-                                        {fromId ? (
-                                            <TooltipUser
-                                                accountId={fromId}
-                                                chainName={
-                                                    activity.tokenMetadata
-                                                        ?.chainName
-                                                }
-                                            >
-                                                <Address
-                                                    address={fromId}
-                                                    className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                        </TableCell>
+                                        <TableCell
+                                            className={bodyCellClassName(
+                                                1,
+                                                isFirstRow,
+                                                isLastRow,
+                                            )}
+                                        >
+                                            {activity.swap ? (
+                                                <SwapTransactionCell
+                                                    swap={activity.swap}
                                                 />
-                                            </TooltipUser>
-                                        ) : (
-                                            <Address
-                                                address={getFromAccount(
-                                                    activity,
-                                                    isReceived,
-                                                    treasuryId,
-                                                    isConfidential,
-                                                )}
-                                                className="min-w-0 truncate text-sm font-semibold text-general-foreground"
-                                            />
-                                        )}
-                                    </TableCell>
-                                    <TableCell
-                                        className={bodyCellClassName(
-                                            3,
-                                            isFirstRow,
-                                            isLastRow,
-                                        )}
-                                    >
-                                        {toId ? (
-                                            <TooltipUser
-                                                accountId={toId}
-                                                chainName={
-                                                    activity.tokenMetadata
-                                                        ?.chainName
-                                                }
-                                            >
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <TokenDisplay
+                                                        symbol={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .symbol
+                                                        }
+                                                        icon={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .icon || ""
+                                                        }
+                                                        iconSize="xl"
+                                                    />
+                                                    <span
+                                                        className={cn(
+                                                            "truncate text-sm font-semibold",
+                                                            isReceived
+                                                                ? "text-general-success-foreground"
+                                                                : "text-general-foreground",
+                                                        )}
+                                                    >
+                                                        <MaskedBalance>
+                                                            {formatActivityAmount(
+                                                                activity.amount,
+                                                            )}
+                                                        </MaskedBalance>{" "}
+                                                        {
+                                                            activity
+                                                                .tokenMetadata
+                                                                .symbol
+                                                        }
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell
+                                            className={bodyCellClassName(
+                                                2,
+                                                isFirstRow,
+                                                isLastRow,
+                                            )}
+                                        >
+                                            {fromId ? (
+                                                <TooltipUser
+                                                    accountId={fromId}
+                                                    chainName={
+                                                        activity.tokenMetadata
+                                                            ?.chainName
+                                                    }
+                                                >
+                                                    <Address
+                                                        address={fromId}
+                                                        className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                    />
+                                                </TooltipUser>
+                                            ) : (
                                                 <Address
-                                                    address={toId}
-                                                    className="min-w-0 truncate text-sm font-semibold text-general-foreground"
-                                                />
-                                            </TooltipUser>
-                                        ) : (
-                                            <Address
-                                                address={getToAccount(
-                                                    activity,
-                                                    isReceived,
-                                                    treasuryId,
-                                                    isConfidential,
-                                                )}
-                                                className="min-w-0 truncate text-sm font-semibold text-general-foreground"
-                                            />
-                                        )}
-                                    </TableCell>
-                                    <TableCell
-                                        className={bodyCellClassName(
-                                            4,
-                                            isFirstRow,
-                                            isLastRow,
-                                        )}
-                                    >
-                                        <div className="flex items-center justify-end gap-1">
-                                            <TransactionHashCell
-                                                transactionHashes={
-                                                    activity.transactionHashes
-                                                }
-                                                receiptIds={activity.receiptIds}
-                                                chainName={
-                                                    activity.tokenMetadata
-                                                        ?.chainName
-                                                }
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="icon"
-                                                aria-label={t("details.title")}
-                                                className="size-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
-                                                onClick={() =>
-                                                    openTransactionDetails(
+                                                    address={getFromAccount(
                                                         activity,
-                                                    )
-                                                }
-                                            >
-                                                <Icon icon={ArrowRight01Icon} />
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            </TableSheet>
+                                                        isReceived,
+                                                        treasuryId,
+                                                        isConfidential,
+                                                    )}
+                                                    className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                />
+                                            )}
+                                        </TableCell>
+                                        <TableCell
+                                            className={bodyCellClassName(
+                                                3,
+                                                isFirstRow,
+                                                isLastRow,
+                                            )}
+                                        >
+                                            {toId ? (
+                                                <TooltipUser
+                                                    accountId={toId}
+                                                    chainName={
+                                                        activity.tokenMetadata
+                                                            ?.chainName
+                                                    }
+                                                >
+                                                    <Address
+                                                        address={toId}
+                                                        className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                    />
+                                                </TooltipUser>
+                                            ) : (
+                                                <Address
+                                                    address={getToAccount(
+                                                        activity,
+                                                        isReceived,
+                                                        treasuryId,
+                                                        isConfidential,
+                                                    )}
+                                                    className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                />
+                                            )}
+                                        </TableCell>
+                                        <TableCell
+                                            className={bodyCellClassName(
+                                                4,
+                                                isFirstRow,
+                                                isLastRow,
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-end gap-1">
+                                                <TransactionHashCell
+                                                    transactionHashes={
+                                                        activity.transactionHashes
+                                                    }
+                                                    receiptIds={
+                                                        activity.receiptIds
+                                                    }
+                                                    chainName={
+                                                        activity.tokenMetadata
+                                                            ?.chainName
+                                                    }
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    aria-label={t(
+                                                        "details.title",
+                                                    )}
+                                                    className="size-9 shrink-0 rounded-xl text-muted-foreground hover:text-foreground"
+                                                    onClick={() =>
+                                                        openTransactionDetails(
+                                                            activity,
+                                                        )
+                                                    }
+                                                >
+                                                    <Icon
+                                                        icon={ArrowRight01Icon}
+                                                    />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </TableSheet>
+            </div>
 
             {totalPages > 1 && (
                 <Pagination
