@@ -25,6 +25,10 @@ const buttonVariants = cva(
                 ghost: "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
                 link: "text-primary underline-offset-4 hover:underline",
                 pill: "rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-900 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20",
+                // Same neutral surface as `pill`, minus the capsule: the
+                // dashboard section headers use a 12px radius (`--radius`).
+                neutral:
+                    "bg-[#F2F2F2] text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:bg-white/10 dark:text-gray-200 dark:hover:bg-white/20",
                 unstyled: "",
             },
             size: {

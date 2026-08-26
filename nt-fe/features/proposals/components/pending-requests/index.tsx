@@ -358,7 +358,7 @@ export function PendingRequests() {
                             {t("title")}
                         </h2>
                         {hasPendingRequests && (
-                            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-general-orange-background-faded px-2 font-bold text-general-orange-foreground text-xs tabular-nums">
+                            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-general-orange-solid px-2 font-medium text-[12px] text-white leading-[16px] tabular-nums">
                                 {pendingRequests?.proposals?.length ?? 0}
                             </span>
                         )}
@@ -366,8 +366,10 @@ export function PendingRequests() {
 
                     {hasPendingRequests && (
                         <Link href={`/${treasuryId}/requests`}>
-                            <Button variant="pill" size="sm">
-                                {t("viewAll")}
+                            <Button variant="neutral" size="sm">
+                                <span className="font-bold text-[14px] leading-none">
+                                    {t("viewAll")}
+                                </span>
                                 <Icon icon={ArrowRight01Icon} />
                             </Button>
                         </Link>
