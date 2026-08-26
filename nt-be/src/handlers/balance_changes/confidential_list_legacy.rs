@@ -13,6 +13,7 @@ use near_api::AccountId;
 use sqlx::{PgPool, QueryBuilder, Row};
 
 use crate::AppState;
+use crate::handlers::balance_changes::token_filter::push_token_match;
 use crate::handlers::intents::confidential::types::{ConfidentialTxType, bare_account};
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, SwapInfo};
@@ -188,6 +189,15 @@ fn build_filtered_legs_query(
                         THEN COALESCE(origin_asset, destination_asset)
                     ELSE destination_asset
                 END AS leg_token_id,
+                -- An exchange leg displays the token it received, but the token
+                -- it spent is just as much part of the row, so token filters test
+                -- both sides. Non-exchange legs repeat leg_token_id here so
+                -- exclusion filters stay symmetric with inclusion ones.
+                CASE
+                    WHEN transaction_type IN ('sent', 'exchange')
+                        THEN COALESCE(origin_asset, destination_asset)
+                    ELSE destination_asset
+                END AS leg_counter_token_id,
                 CASE
                     WHEN transaction_type = 'sent'
                         THEN -COALESCE(amount_in, 0)
@@ -257,14 +267,20 @@ fn build_filtered_legs_query(
     }
 
     if let Some(tokens) = params.token_ids.as_ref().filter(|t| !t.is_empty()) {
-        builder.push(" AND leg_token_id = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(
+            &mut builder,
+            &["leg_token_id", "leg_counter_token_id"],
+            tokens,
+        );
     }
     if let Some(exclude) = params.exclude_token_ids.as_ref().filter(|t| !t.is_empty()) {
-        builder.push(" AND NOT (leg_token_id = ANY(");
-        builder.push_bind(exclude.clone());
-        builder.push("))");
+        builder.push(" AND NOT ");
+        push_token_match(
+            &mut builder,
+            &["leg_token_id", "leg_counter_token_id"],
+            exclude,
+        );
     }
 
     if let Some(from_allow) = from_allow {
@@ -335,9 +351,8 @@ pub async fn load_prior_balances(
     builder.push(" AND origin_asset IS NOT NULL AND origin_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND origin_asset = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["origin_asset"], tokens);
     }
 
     builder.push(
@@ -358,9 +373,8 @@ pub async fn load_prior_balances(
     builder.push(" AND destination_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND destination_asset = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["destination_asset"], tokens);
     }
 
     builder.push(
