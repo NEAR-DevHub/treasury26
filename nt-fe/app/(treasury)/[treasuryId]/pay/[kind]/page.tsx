@@ -416,7 +416,7 @@ export default function PaySharePage() {
                                 <h1 className="text-2xl font-bold leading-[120%] text-foreground">
                                     {pageTitle}
                                 </h1>
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-general-orange-background-faded text-general-orange-foreground px-2.5 py-1 text-xs font-medium shrink-0">
+                                <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full border border-solid border-general-orange-border bg-general-orange-background-faded px-2.5 py-1 text-xs font-medium text-general-orange-foreground">
                                     <Clock className="size-3.5" />
                                     {t("transfer.waitingForPayment")}
                                 </span>

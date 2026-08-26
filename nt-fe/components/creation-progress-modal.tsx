@@ -69,7 +69,7 @@ function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
                 <div
                     className={cn(
                         stepBadgeClassName,
-                        "border-general-orange-background bg-general-orange-background-faded",
+                        "border-general-orange-border bg-general-orange-background-faded",
                     )}
                 >
                     <Icon
