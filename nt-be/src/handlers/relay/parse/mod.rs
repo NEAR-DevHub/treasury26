@@ -42,9 +42,11 @@ pub type RelayError = (StatusCode, Json<RelayResponse>);
 #[serde(rename_all = "camelCase")]
 pub struct RelayRequest {
     pub treasury_id: AccountId,
-    /// Estimated bytes of DAO-contract storage a new `add_proposal` occupies. The
-    /// relayer tops up the DAO's balance to cover it. Unrelated to NEP-141
-    /// `storage_deposit` registrations.
+    /// DEPRECATED / IGNORED. Previously a client-supplied estimate of the DAO-contract
+    /// storage a new `add_proposal` occupies, used to size the sponsor top-up. It is no
+    /// longer trusted: the required storage is now derived server-side from the actual
+    /// parsed proposal (see [`ParsedRelay::proposal_storage_bytes`]). Still accepted on
+    /// the wire for backward compatibility, but never read.
     pub storage_bytes: U128,
     /// Base64-encoded borsh-serialized SignedDelegateAction.
     pub signed_delegate_action: Base64VecU8,
@@ -192,7 +194,18 @@ pub struct ParsedRelay {
     pub operation: RelayOperation,
     /// Total NEAR attached across the sponsored calls (proposal bonds).
     pub attached_deposit: NearToken,
+    /// Server-derived estimate of the DAO-contract storage (bytes) that this relay's
+    /// `add_proposal` calls occupy — measured from the actual proposal args we
+    /// received, never from a client-supplied number. Zero for vote-only relays.
+    /// Used to size (and cap) the sponsor storage top-up.
+    pub proposal_storage_bytes: u128,
 }
+
+/// Conservative flat padding (bytes) added to the measured proposal args for
+/// Sputnik's per-proposal overhead. The exact value isn't load-bearing: the
+/// estimate is derived server-side (a client can't inflate the top-up) and
+/// clamped to a hard maximum before any NEAR is fronted.
+const PROPOSAL_STORAGE_BASE_BYTES: u128 = 64;
 
 /// The `proposal` argument of `add_proposal`. `kind` is kept as raw JSON because the
 /// relay does not authorize on it — DAO permissions are enforced on-chain and via
@@ -297,12 +310,14 @@ pub fn parse_sponsored_proposals(
             calls,
         )
     };
-    let (operation, attached_deposit) = validate_calls(&treasury_id, calls)?;
+    let (operation, attached_deposit, proposal_storage_bytes) =
+        validate_calls(&treasury_id, calls)?;
     Ok(ParsedRelay {
         treasury_id,
         submission,
         operation,
         attached_deposit,
+        proposal_storage_bytes,
     })
 }
 
@@ -354,7 +369,7 @@ fn collect_direct_calls(
 fn validate_calls(
     treasury_id: &AccountId,
     calls: Vec<DaoCall>,
-) -> Result<(RelayOperation, NearToken), String> {
+) -> Result<(RelayOperation, NearToken, u128), String> {
     if calls.is_empty() {
         return Err("Delegate action contains no sponsorable proposal calls".to_owned());
     }
@@ -362,6 +377,7 @@ fn validate_calls(
     let mut add_proposals = Vec::new();
     let mut votes = Vec::new();
     let mut attached_deposit = NearToken::from_near(0);
+    let mut proposal_storage_bytes: u128 = 0;
     for call in calls {
         if &call.receiver_id != treasury_id {
             return Err(format!(
@@ -371,7 +387,16 @@ fn validate_calls(
         }
         attached_deposit = attached_deposit.saturating_add(call.deposit);
         match call.method_name.as_str() {
-            "add_proposal" => add_proposals.push(parse_add_proposal(&call)?),
+            "add_proposal" => {
+                // Size the sponsored storage top-up from the actual proposal args we
+                // received (fixed overhead + payload bytes), not a client-supplied
+                // number. Saturating so a pathological args length can't overflow;
+                // the value is clamped to a hard maximum before any NEAR is fronted.
+                proposal_storage_bytes = proposal_storage_bytes
+                    .saturating_add(PROPOSAL_STORAGE_BASE_BYTES)
+                    .saturating_add(call.args.len() as u128);
+                add_proposals.push(parse_add_proposal(&call)?);
+            }
             "act_proposal" => votes.push(parse_act_proposal(&call)?),
             other => {
                 return Err(format!(
@@ -395,7 +420,7 @@ fn validate_calls(
         }
     };
 
-    Ok((operation, attached_deposit))
+    Ok((operation, attached_deposit, proposal_storage_bytes))
 }
 
 fn parse_add_proposal(call: &DaoCall) -> Result<ProposalInput, String> {
@@ -474,7 +499,7 @@ mod tests {
 
     #[test]
     fn validates_add_proposals_and_sums_deposit() {
-        let (operation, attached_deposit) = validate_calls(
+        let (operation, attached_deposit, storage_bytes) = validate_calls(
             &acc(TREASURY),
             vec![add_call(TREASURY, transfer_kind(), 100)],
         )
@@ -484,6 +509,37 @@ mod tests {
             other => panic!("expected AddProposals, got {other:?}"),
         }
         assert_eq!(attached_deposit, NearToken::from_yoctonear(100));
+        // Storage is derived from the actual proposal args (base overhead + args len),
+        // never zero for an add and never a client-supplied number.
+        assert!(storage_bytes > PROPOSAL_STORAGE_BASE_BYTES);
+    }
+
+    #[test]
+    fn derives_storage_bytes_from_proposal_and_ignores_client() {
+        // A larger proposal payload yields a larger derived storage estimate, and a
+        // vote-only relay derives zero. Neither reads any client-provided value.
+        let small = validate_calls(&acc(TREASURY), vec![add_call(TREASURY, transfer_kind(), 0)])
+            .unwrap()
+            .2;
+        let big_kind = json!({
+            "Transfer": { "token_id": "", "receiver_id": "bob.near", "amount": "1",
+                "extra": "x".repeat(500) }
+        });
+        let big = validate_calls(&acc(TREASURY), vec![add_call(TREASURY, big_kind, 0)])
+            .unwrap()
+            .2;
+        assert!(
+            big > small,
+            "bigger proposal must derive bigger storage: {big} vs {small}"
+        );
+
+        let votes = validate_calls(
+            &acc(TREASURY),
+            vec![act_call(TREASURY, 1, "VoteApprove", None)],
+        )
+        .unwrap()
+        .2;
+        assert_eq!(votes, 0, "vote-only relays occupy no new proposal storage");
     }
 
     #[test]
@@ -493,7 +549,7 @@ mod tests {
             act_call(TREASURY, 8, "VoteReject", None),
             act_call(TREASURY, 9, "VoteApprove", None),
         ];
-        let (operation, _) = validate_calls(&acc(TREASURY), calls).unwrap();
+        let (operation, _, _) = validate_calls(&acc(TREASURY), calls).unwrap();
         assert_eq!(operation.vote_approve_ids(), vec![7, 9]);
     }
 
@@ -514,7 +570,7 @@ mod tests {
             act_call(TREASURY, 1, "VoteApprove", Some(v1_kind("aaaa"))),
             act_call(TREASURY, 2, "VoteApprove", Some(v1_kind("bbbb"))),
         ];
-        let (operation, _) = validate_calls(&acc(TREASURY), calls).unwrap();
+        let (operation, _, _) = validate_calls(&acc(TREASURY), calls).unwrap();
         assert_eq!(
             operation.confidential_payload_hashes(),
             vec!["aaaa".to_owned(), "bbbb".to_owned()]

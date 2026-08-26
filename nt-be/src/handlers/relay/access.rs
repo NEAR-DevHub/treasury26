@@ -33,6 +33,11 @@ pub struct AuthorizedRelay {
     pub operation: RelayOperation,
     pub attached_deposit: NearToken,
     pub tier: SponsorshipTier,
+    /// The treasury's plan — used to atomically reserve a gas credit before spending.
+    pub plan_type: PlanType,
+    /// Server-derived DAO storage (bytes) for this relay's `add_proposal` calls; sizes
+    /// the sponsor top-up. Zero for vote-only relays. See [`ParsedRelay`].
+    pub proposal_storage_bytes: u128,
 }
 
 /// Fetch the treasury's `monitored_accounts` row, if it is tracked. Presence here is
@@ -101,6 +106,7 @@ pub async fn authorize(
         submission,
         operation,
         attached_deposit,
+        proposal_storage_bytes,
     } = parsed;
     tracing::Span::current().record("treasury_id", tracing::field::display(&treasury_id));
 
@@ -145,6 +151,9 @@ pub async fn authorize(
             ),
         )
     })?;
+    // Fast-fail on an obviously out-of-credit treasury. This is a non-atomic read;
+    // the authoritative, race-safe reservation happens at spend time in the handler
+    // via `accounting::reserve_gas_credit`.
     if !has_gas_covered_credits(
         treasury_record.plan_type,
         treasury_record.gas_covered_transactions,
@@ -157,10 +166,12 @@ pub async fn authorize(
 
     Ok(AuthorizedRelay {
         tier: SponsorshipTier::for_treasury(treasury_record.created_at),
+        plan_type: treasury_record.plan_type,
         treasury_id,
         submission,
         operation,
         attached_deposit,
+        proposal_storage_bytes,
     })
 }
 

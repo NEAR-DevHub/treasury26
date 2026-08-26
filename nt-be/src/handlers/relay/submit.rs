@@ -50,7 +50,9 @@ pub async fn relay_delegate_action(
     // treasury id are independent from here on.
     let RelayRequest {
         treasury_id,
-        storage_bytes,
+        // Ignored: the sponsored storage is derived server-side from the parsed
+        // proposal, never from this client-supplied number.
+        storage_bytes: _,
         signed_delegate_action: raw_signed_delegate_action,
         proposal_type,
         address_book_payment,
@@ -80,15 +82,19 @@ pub async fn relay_delegate_action(
         operation,
         attached_deposit,
         tier,
+        plan_type,
+        proposal_storage_bytes,
     } = access::authorize(&state, &auth_user, parsed, treasury_record).await?;
 
-    // 4. Bound the attached deposit, then compensate the DAO contract for the storage
-    //    a NEW proposal occupies. Only `add_proposal` grows DAO storage, so
-    //    `act_proposal`-only relays (votes) get no top-up. (Authorization already
-    //    proved the treasury is a Sputnik DAO, so no further check is needed here.)
+    // 4. Bound the attached deposit and size the DAO-storage compensation. Only
+    //    `add_proposal` grows DAO storage, so `act_proposal`-only relays (votes) get no
+    //    top-up. The storage figure is derived server-side from the parsed proposal and
+    //    clamped to the cap by `proposal_storage_cost` — the client's `storageBytes` is
+    //    never trusted. Both `enforce_deposit_limit` and the reservation below are pure
+    //    validation/bookkeeping that complete BEFORE any sponsor NEAR moves.
     let compensate_proposal_storage = operation.is_add_proposals();
     let proposal_storage_cost = if compensate_proposal_storage {
-        policy::proposal_storage_cost(storage_bytes.0)
+        policy::proposal_storage_cost(proposal_storage_bytes)
     } else {
         NearToken::from_near(0)
     };
@@ -100,14 +106,24 @@ pub async fn relay_delegate_action(
         proposal_storage_cost,
     )
     .await?;
-    if compensate_proposal_storage {
-        policy::top_up_proposal_storage(
-            &state,
-            &treasury_id,
-            storage_bytes.0,
-            proposal_storage_cost,
-        )
-        .await?;
+
+    // 5. Atomically reserve the gas credit BEFORE any sponsor spend, so concurrent
+    //    relays cannot double-spend one credit. Nothing has moved yet, so any failure
+    //    here (402 "no credits" or 500 "row missing") needs no refund — the credit
+    //    table is already in its final state from the conditional UPDATE itself.
+    //    On any later failure that abandons the relay we refund it (preserving today's
+    //    "a failed relay consumes no credit" behavior).
+    let credit_reservation =
+        accounting::reserve_gas_credit(&state.db_pool, &treasury_id, plan_type).await?;
+
+    // 6. Compensate the DAO contract for the new proposal's storage. This is the first
+    //    step that moves sponsor NEAR; a failure refunds the reserved credit.
+    if compensate_proposal_storage
+        && let Err(top_up_error) =
+            policy::top_up_proposal_storage(&state, &treasury_id, proposal_storage_cost).await
+    {
+        accounting::spawn_refund_gas_credit(&state, &treasury_id, credit_reservation);
+        return Err(top_up_error);
     }
     // The proposal-storage top-up leaves the sponsor's account the moment it lands,
     // so it is charged to `paid_near` even if a later step fails. (Already zero when
@@ -119,19 +135,21 @@ pub async fn relay_delegate_action(
         registrations: registrations_spend,
     };
 
-    // 5. Sponsor-paid NEP-141 registrations for any approving votes. Their spend is
+    // 7. Sponsor-paid NEP-141 registrations for any approving votes. Their spend is
     //    recorded even when a required registration fails and aborts the relay.
     let approve_proposal_ids = operation.vote_approve_ids();
     let registrations =
         registrations::register_vote_approvals(&state, &treasury_id, &approve_proposal_ids).await;
     if let Some(registration_error) = registrations.error {
         accounting::spawn_record_spend(&state, &treasury_id, fronted_spend(registrations.spent));
+        accounting::spawn_refund_gas_credit(&state, &treasury_id, credit_reservation);
         return Err(registration_error);
     }
     let registrations_spend = registrations.spent;
 
-    // 6. Submit (retried on transient send errors via on-chain nonce protection).
-    //    On failure the NEAR already fronted is still recorded; no credit is spent.
+    // 8. Submit (retried on transient send errors via on-chain nonce protection).
+    //    On failure the NEAR already fronted is still recorded and the reserved credit
+    //    is refunded.
     let outcome_debug = match submit_relay(&state, submission).await {
         Ok(outcome_debug) => outcome_debug,
         Err(submit_error) => {
@@ -140,13 +158,15 @@ pub async fn relay_delegate_action(
                 &treasury_id,
                 fronted_spend(registrations_spend),
             );
+            accounting::spawn_refund_gas_credit(&state, &treasury_id, credit_reservation);
             return Err(submit_error);
         }
     };
 
-    // 7. Success: charge a gas credit plus the full spend (incl. attached deposits),
-    //    then run the remaining non-critical work in the background.
-    accounting::spawn_charge(
+    // 9. Success: the gas credit was already reserved in step 5, so here we only record
+    //    the full sponsored spend (incl. attached deposits), then run the remaining
+    //    non-critical work in the background.
+    accounting::spawn_record_spend(
         &state,
         &treasury_id,
         SpentNear {

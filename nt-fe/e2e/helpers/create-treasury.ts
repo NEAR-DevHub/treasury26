@@ -4,6 +4,8 @@
  * Used by E2E tests that need a DAO registered in the sandbox backend.
  */
 
+import { loginAndGetCookie } from "./auth";
+
 const BACKEND_URL =
     process.env.BACKEND_URL ||
     process.env.NEXT_PUBLIC_BACKEND_API_BASE ||
@@ -68,9 +70,19 @@ function isTransientRpcError(error: unknown): boolean {
 export async function createTreasury(
     opts: CreateTreasuryOptions,
 ): Promise<void> {
+    // create-stream requires an authenticated member. Log in as one of the new
+    // DAO's members (all sandbox accounts share the genesis key) and pass the
+    // resulting session cookie.
+    const member =
+        opts.requestors[0] ?? opts.governors[0] ?? opts.financiers[0];
+    if (!member) {
+        throw new Error("createTreasury requires at least one member");
+    }
+    const cookie = await loginAndGetCookie(BACKEND_URL, member);
+
     const resp = await fetch(`${BACKEND_URL}/api/treasury/create-stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({
             name: opts.name,
             accountId: opts.accountId,
