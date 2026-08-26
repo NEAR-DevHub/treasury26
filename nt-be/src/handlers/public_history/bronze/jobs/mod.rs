@@ -23,6 +23,21 @@ pub(crate) use worker::{board_storages, public_history_queue_specs};
 /// advisory lock is released.
 pub(crate) type PublicHistorySupervisorFuture = Pin<Box<dyn Future<Output = ()> + Send + 'static>>;
 
+/// Force a synchronous readiness refresh for one account — drains all 3
+/// NearBlocks sources to the current provider head and stamps coverage.
+/// Exposed for diagnostics (verification's candidate query requires a fresh
+/// watermark); the normal path is the scheduled readiness cycle via
+/// `run_public_history_readiness_scheduler_cycle`.
+pub async fn refresh_readiness_for_account(
+    state: &AppState,
+    account_id: &str,
+) -> Result<(), String> {
+    worker::run_readiness_refresh(state, account_id)
+        .await
+        .map(|_| ())
+        .map_err(|(_, message)| message)
+}
+
 pub async fn setup_public_history_queue_workers(state: &AppState) -> Result<(), sqlx::Error> {
     if state.env_vars.nearblocks_api_key.is_none() {
         tracing::warn!("public history queue workers disabled: NEARBLOCKS_API_KEY missing");
