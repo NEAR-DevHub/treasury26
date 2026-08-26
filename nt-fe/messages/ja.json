@@ -2149,7 +2149,7 @@
         "exchangeFulfillment": "交換",
         "stakingRewards": "ステーキング報酬",
         "proposalAction": "提案アクション",
-        "deposit": "入金",
+        "deposit": "受取",
         "transfer": "送金",
         "transaction": "トランザクション",
         "viaIntents": "NEAR Intents経由",

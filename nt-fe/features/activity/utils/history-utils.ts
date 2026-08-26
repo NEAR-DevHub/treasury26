@@ -127,10 +127,10 @@ export function getActivityStatus(activity: ActivityAccount): ActivityStatus {
  * Get the display label for an activity based on its action kind.
  *
  * Priority order:
- * 1. Swaps → "Exchange"
+ * 1. Swaps → "Swap"
  * 2. Staking rewards → "Staking Rewards"
  * 3. Proposal actions → "Proposal Action"
- * 4. Positive amount → "Deposit"
+ * 4. Positive amount → "Receive"
  * 5. Negative amount or action data → "Transfer"
  * 6. No direction or action data → "Transaction"
  */

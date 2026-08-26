@@ -2149,7 +2149,7 @@
         "exchangeFulfillment": "Tausch",
         "stakingRewards": "Staking-Belohnungen",
         "proposalAction": "Vorschlagsaktion",
-        "deposit": "Einzahlen",
+        "deposit": "Empfangen",
         "transfer": "Überweisung",
         "transaction": "Transaktion",
         "viaIntents": "über NEAR Intents",
