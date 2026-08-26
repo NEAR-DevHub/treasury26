@@ -16,11 +16,13 @@ import {
 } from "@/components/responsive-tabs";
 import { ActivityTable } from "@/features/activity";
 import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
+import { MobileFilterSheet } from "@/features/proposals/components/mobile-filter-sheet";
 import {
     type FilterOption,
     ProposalFilters as GenericFilters,
 } from "@/features/proposals/components/proposal-filters";
 import { hasFilterValue } from "@/features/proposals/types/filter-types";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useTreasury } from "@/hooks/use-treasury";
 import {
@@ -33,6 +35,12 @@ import { cn } from "@/lib/utils";
 // Constants
 const PAGE_SIZE = 15;
 const FILTER_PANEL_MAX_HEIGHT = "500px";
+/**
+ * The 40px #F2F2F2 square the design gives the mobile controls. Desktop keeps
+ * the design system's 8px radius.
+ */
+const ICON_BUTTON_CLASS =
+    "size-10 rounded-xl bg-general-bg-secondary hover:bg-general-bg-secondary/80 md:rounded-lg";
 
 /** Backend activity statuses the tabs can filter by ("all" filters by nothing). */
 type ActivityStatus = "outgoing" | "incoming" | "exchange";
@@ -201,7 +209,10 @@ export default function ActivityPage() {
     const router = useRouter();
     const pathname = usePathname();
     const { data: subscriptionData } = useSubscription(treasuryId);
+    // Matches the `md` breakpoint the filter panel and table already switch on.
+    const isMobile = useMediaQuery("(max-width: 767px)");
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+    const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const txHashValue = searchParams.get("tx_hash") || "";
     const [txHashInput, setTxHashInput] = useState(txHashValue);
 
@@ -353,6 +364,7 @@ export default function ActivityPage() {
                 placeholder={tActivity("searchPlaceholder")}
                 mobilePlaceholder={tActivity("searchPlaceholderShort")}
                 className="md:h-10 md:w-[290px] md:shrink-0"
+                buttonClassName={ICON_BUTTON_CLASS}
                 inputClassName="md:rounded-lg md:border md:border-general-border md:bg-card! md:hover:bg-card! md:pl-9 md:placeholder:font-medium md:placeholder:text-general-muted-foreground dark:md:placeholder:text-muted-foreground focus-visible:border-general-border focus-visible:ring-0"
                 searchIconClassName="md:left-2 md:size-5 md:text-general-muted-foreground dark:md:text-muted-foreground"
                 search
@@ -361,7 +373,8 @@ export default function ActivityPage() {
                 variant="secondary"
                 size="icon"
                 className={cn(
-                    "rounded-lg md:h-10 md:w-auto md:gap-2 md:px-4 md:text-sm",
+                    ICON_BUTTON_CLASS,
+                    "md:h-10 md:w-auto md:gap-2 md:px-4 md:text-sm",
                     // Active state is the design's gray-900 (#171717) surface.
                     // Surface and label are overridden as a pair: both
                     // `--general-foreground` and `--background` flip with the
@@ -371,7 +384,13 @@ export default function ActivityPage() {
                         ? "bg-general-foreground text-background hover:bg-general-foreground/90"
                         : "text-muted-foreground",
                 )}
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                // A popover row of filter pills has nowhere to go on a phone,
+                // so mobile drills into the same filters through a sheet.
+                onClick={() =>
+                    isMobile
+                        ? setIsMobileFiltersOpen(true)
+                        : setIsFiltersOpen(!isFiltersOpen)
+                }
                 aria-label={filtersLabel}
             >
                 <Icon icon={FilterIcon} className="md:size-[13.25px]" />
@@ -380,9 +399,11 @@ export default function ActivityPage() {
         </div>
     );
 
+    // Mobile edits the same filters through `MobileFilterSheet`, so the inline
+    // panel is desktop-only rather than merely collapsed.
     const filterPanel = (
         <div
-            className="overflow-hidden transition-all duration-500 ease-in-out"
+            className="hidden overflow-hidden transition-all duration-500 ease-in-out md:block"
             style={{
                 maxHeight: isFiltersOpen ? FILTER_PANEL_MAX_HEIGHT : "0px",
                 opacity: isFiltersOpen ? 1 : 0,
@@ -403,8 +424,25 @@ export default function ActivityPage() {
     return (
         <PageComponentLayout
             title={t("title")}
-            headerActions={<HistoryRefreshButton className="size-10" />}
+            // Activity is reachable from several places, so the mobile back
+            // button always lands on the treasury dashboard rather than
+            // unwinding history.
+            backButton={`/${treasuryId}`}
+            hideMobileShellControls
+            headerActions={
+                <HistoryRefreshButton className={ICON_BUTTON_CLASS} />
+            }
         >
+            {/* The shell header only carries the page title from `lg` up, so on
+                phones the page states its own heading above the controls. */}
+            <div className="flex flex-col gap-1 pb-4 lg:hidden">
+                <h1 className="font-semibold text-2xl leading-[1.2] tracking-[-0.48px]">
+                    {t("title")}
+                </h1>
+                <p className="text-base text-general-secondary-foreground leading-[1.5]">
+                    {tActivity("recentSubtitle")}
+                </p>
+            </div>
             <ResponsiveTabs
                 tabs={tabs}
                 value={currentTab}
@@ -416,6 +454,11 @@ export default function ActivityPage() {
                 {filterPanel}
                 {tabContents}
             </ResponsiveTabs>
+            <MobileFilterSheet
+                filterOptions={activityFilterOptions}
+                open={isMobileFiltersOpen}
+                onOpenChange={setIsMobileFiltersOpen}
+            />
         </PageComponentLayout>
     );
 }

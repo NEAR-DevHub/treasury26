@@ -27,6 +27,7 @@ import { useRecentAddresses } from "@/hooks/use-recent-addresses";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
 import { type UserListType, useDaoUsers } from "../hooks/use-dao-users";
+import { useFilterParams } from "../hooks/use-filter-params";
 import { useFilterState } from "../hooks/use-filter-state";
 import { hasFilterValue, parseFilterData } from "../types/filter-types";
 import { BaseFilterPopover } from "./base-filter-popover";
@@ -62,7 +63,7 @@ const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
 
 const PROPOSAL_TYPE_OPERATIONS = ["Is", "Is Not"];
 const DATE_OPERATIONS = ["Is"];
-const CREATED_DATE_PRESETS: readonly DatePresetKey[] = [
+export const CREATED_DATE_PRESETS: readonly DatePresetKey[] = [
     "today",
     "yesterday",
     "last7Days",
@@ -108,7 +109,7 @@ export function ProposalFilters({
     filterOptions,
 }: ProposalFiltersProps) {
     const tF = useTranslations("requests.filters");
-    const searchParams = useSearchParams();
+    const { searchParams, setFilters: updateFilters } = useFilterParams();
     const router = useRouter();
     const pathname = usePathname();
     const [isAddFilterOpen, setIsAddFilterOpen] = useState(false);
@@ -122,22 +123,6 @@ export function ProposalFilters({
         });
         return filters;
     }, [searchParams, filterOptions]);
-
-    const updateFilters = useCallback(
-        (updates: Record<string, string | null>) => {
-            const params = new URLSearchParams(searchParams.toString());
-            Object.entries(updates).forEach(([key, value]) => {
-                if (value === null) {
-                    params.delete(key);
-                } else {
-                    params.set(key, value);
-                }
-            });
-            params.delete("page"); // Reset page when filters change
-            router.push(`${pathname}?${params.toString()}`);
-        },
-        [searchParams, router, pathname],
-    );
 
     const resetFilters = () => {
         const params = new URLSearchParams();

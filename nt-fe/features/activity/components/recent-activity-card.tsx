@@ -3,17 +3,14 @@ import {
     Alert01Icon,
     ArrowDown02Icon,
     ArrowRight01Icon,
-    LoaderCircleIcon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
-import { MaskedBalance } from "@/components/balance-mask";
+import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { ConfidentialState } from "@/components/confidential-state";
 import { EmptyState } from "@/components/empty-state";
-import { FormattedDate } from "@/components/formatted-date";
 import { Icon } from "@/components/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { parseWarningCopy } from "@/components/warning-message";
@@ -23,13 +20,19 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useRecentActivity } from "@/hooks/use-treasury-queries";
 import { useWarningMessage, useWarnings } from "@/hooks/use-warnings";
 import type { RecentActivity as RecentActivityType } from "@/lib/api";
-import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
+import { cn, formatActivityAmount } from "@/lib/utils";
 import {
-    type ActivityStatus,
     getActivityStatus,
     useGetActivityLabel,
     useGetActivitySubLabel,
 } from "../utils/history-utils";
+import {
+    ActivityRow,
+    RowAmount,
+    RowDate,
+    RowStatus,
+    SwapAmount,
+} from "./activity-row";
 import { ActivityGlyph, ActivityRowIcon } from "./activity-row-icon";
 import { useIsHistoryRefreshing } from "./history-refresh-indicator";
 import { TransactionDetailsModal } from "./transaction-details-modal";
@@ -130,134 +133,6 @@ const groupStakingActivities = (
 
     return grouped;
 };
-
-interface ActivityRowProps {
-    icon: ReactNode;
-    label: ReactNode;
-    subLabel?: ReactNode;
-    amount: ReactNode;
-    /** Secondary line under the amount: relative date or execution status. */
-    meta: ReactNode;
-    trailing?: ReactNode;
-    onClick: () => void;
-    className?: string;
-}
-
-function ActivityRow({
-    icon,
-    label,
-    subLabel,
-    amount,
-    meta,
-    trailing,
-    onClick,
-    className,
-}: ActivityRowProps) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            className={cn(
-                "flex w-full cursor-pointer items-center rounded-2xl px-1 text-left transition-colors hover:bg-general-secondary",
-                className,
-            )}
-        >
-            <div className="flex h-16 items-center px-2">{icon}</div>
-            <div className="flex h-16 min-w-0 flex-1 flex-col justify-center px-2">
-                <span className="truncate font-semibold text-sm leading-[1.2] sm:text-base">
-                    {label}
-                </span>
-                {subLabel ? (
-                    <span className="truncate font-medium text-muted-foreground text-xs leading-[1.5] sm:text-sm">
-                        {subLabel}
-                    </span>
-                ) : null}
-            </div>
-            <div className="flex h-16 min-w-0 flex-1 flex-col items-end justify-center gap-0.5 px-2">
-                {amount}
-                {meta}
-            </div>
-            {trailing ? (
-                <div className="flex h-16 items-center pr-1">{trailing}</div>
-            ) : null}
-        </button>
-    );
-}
-
-function RowAmount({
-    children,
-    className,
-}: {
-    children: ReactNode;
-    className?: string;
-}) {
-    return (
-        <span
-            className={cn(
-                "w-full truncate text-right font-semibold text-sm leading-[1.2] sm:text-base",
-                className,
-            )}
-        >
-            <MaskedBalance>{children}</MaskedBalance>
-        </span>
-    );
-}
-
-function RowDate({ date }: { date: string }) {
-    return (
-        <span className="w-full truncate text-right font-medium text-muted-foreground text-xs leading-[1.5] sm:text-sm">
-            {/* The row itself is the button, so the date can't carry one. */}
-            <FormattedDate date={new Date(date)} relative withTooltip={false} />
-        </span>
-    );
-}
-
-/** Replaces the date line while a transaction is still settling or has failed. */
-function RowStatus({ status }: { status: NonNullable<ActivityStatus> }) {
-    const t = useTranslations("activity.details");
-    return (
-        <span
-            className={cn(
-                "flex items-center gap-1 font-medium text-xs leading-[1.5] sm:text-sm",
-                status === "failed"
-                    ? "text-general-destructive-foreground"
-                    : "text-general-orange-foreground",
-            )}
-        >
-            {status === "pending" ? (
-                <Icon icon={LoaderCircleIcon} className="animate-spin" />
-            ) : null}
-            {status === "pending" ? t("processing") : t("failed")}
-        </span>
-    );
-}
-
-function SwapAmount({
-    swap,
-    compact,
-}: {
-    swap: NonNullable<RecentActivityType["swap"]>;
-    compact?: boolean;
-}) {
-    const sentSymbol = swap.sentTokenMetadata?.symbol ?? null;
-    const receivedSymbol =
-        swap.receivedTokenMetadata?.symbol ?? swap.receivedTokenId;
-    const sent =
-        swap.sentAmount && sentSymbol
-            ? `${formatSmartAmount(swap.sentAmount)} ${sentSymbol}`
-            : (sentSymbol ?? "?");
-    const received = swap.receivedAmount
-        ? `${formatSmartAmount(swap.receivedAmount)} ${receivedSymbol}`
-        : receivedSymbol;
-
-    return (
-        <RowAmount>
-            {compact ? (sentSymbol ?? "?") : sent}
-            {" → "}
-            {compact ? receivedSymbol : received}
-        </RowAmount>
-    );
-}
 
 const SKELETON_ROWS = ["a", "b", "c", "d", "e", "f"];
 

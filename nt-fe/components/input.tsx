@@ -95,6 +95,8 @@ interface ResponsiveInputProps extends InputProps {
     mobilePlaceholder?: string;
     /** Called when the mobile search input expands/collapses. */
     onSearchActiveChange?: (active: boolean) => void;
+    /** Applied to the collapsed mobile icon button. */
+    buttonClassName?: string;
 }
 
 /**
@@ -112,6 +114,7 @@ export function ResponsiveInput({
     search: _search,
     icon = Search01Icon,
     onSearchActiveChange,
+    buttonClassName,
     ...props
 }: ResponsiveInputProps) {
     const t = useTranslations("input");
@@ -172,7 +175,7 @@ export function ResponsiveInput({
                     variant="secondary"
                     size="icon"
                     aria-label={t("openSearch")}
-                    className="flex md:hidden"
+                    className={cn("flex md:hidden", buttonClassName)}
                     onClick={() => {
                         setIsOpen(true);
                         onSearchActiveChange?.(true);

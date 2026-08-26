@@ -1,27 +1,24 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { ArrowDown01Icon, Search01Icon } from "@hugeicons/core-free-icons";
-import { useState, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
+import { Input } from "@/components/input";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { Input } from "@/components/input";
+import {
+    type TokenOption,
+    useBridgeTokenOptions,
+    useFilteredTokenOptions,
+} from "@/hooks/use-bridge-token-options";
 import { cn } from "@/lib/utils";
-import { fetchBridgeTokens } from "@/lib/bridge-api";
-import { ScrollArea } from "./ui/scroll-area";
 import { HighlightedText } from "./highlighted-text";
-
-interface TokenOption {
-    id: string;
-    name: string;
-    icon?: string;
-    gradient?: string;
-}
+import { ScrollArea } from "./ui/scroll-area";
 
 interface TokenSelectPopoverProps {
     selectedToken: TokenOption | null;
@@ -37,60 +34,8 @@ export function TokenSelectPopover({
     const t = useTranslations("tokenSelect");
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState("");
-    const [tokens, setTokens] = useState<TokenOption[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        const loadTokens = async () => {
-            setIsLoading(true);
-            try {
-                const assets = await fetchBridgeTokens();
-
-                // Format and deduplicate tokens by symbol (network-agnostic)
-                const tokenMap = new Map<string, TokenOption>();
-                console.log(assets);
-
-                assets.forEach((asset: any) => {
-                    const id = asset.id;
-                    if (id && !tokenMap.has(id)) {
-                        const hasValidIcon =
-                            asset.icon &&
-                            (asset.icon.startsWith("http") ||
-                                asset.icon.startsWith("data:") ||
-                                asset.icon.startsWith("/"));
-
-                        tokenMap.set(id, {
-                            id: asset.id,
-                            name: asset.name || asset.assetName,
-                            icon: hasValidIcon
-                                ? asset.icon
-                                : asset.symbol?.charAt(0) || "?",
-                            gradient: "bg-brand-blue",
-                        });
-                    }
-                });
-
-                setTokens(Array.from(tokenMap.values()));
-            } catch (err) {
-                console.error("Failed to load tokens:", err);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        loadTokens();
-    }, []);
-
-    const filteredTokens = useMemo(() => {
-        if (!search) return tokens;
-
-        const query = search.toLowerCase();
-        return tokens.filter(
-            (token) =>
-                token.id.toLowerCase().includes(query) ||
-                token.name.toLowerCase().includes(query),
-        );
-    }, [tokens, search]);
+    const { tokens, isLoading } = useBridgeTokenOptions();
+    const filteredTokens = useFilteredTokenOptions(tokens, search);
 
     const handleSelect = (token: TokenOption) => {
         onTokenChange(token);

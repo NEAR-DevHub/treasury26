@@ -72,15 +72,23 @@ export function ResponsiveTabs({
             <div
                 className={cn(
                     "relative flex flex-row items-center justify-between border-b px-5 py-3.5 gap-2",
-                    isPlain &&
-                        "md:items-end md:gap-6 md:border-b-0 md:px-0 md:py-0",
+                    // `plain` drops the panel chrome at every breakpoint: on
+                    // mobile the page owns the padding, and the tab select
+                    // becomes a standalone pill rather than a bare label.
+                    isPlain && "border-b-0 p-0 md:items-end md:gap-6",
                     hideHeader && "hidden",
                 )}
             >
                 {/* Mobile: Select dropdown */}
                 <div className="flex md:hidden shrink-0">
                     <Select value={value} onValueChange={onValueChange}>
-                        <SelectTrigger className="border-0 h-auto gap-1.5 font-medium text-sm focus:ring-0 w-auto">
+                        <SelectTrigger
+                            className={cn(
+                                "border-0 h-auto gap-1.5 font-medium text-sm focus:ring-0 w-auto",
+                                isPlain &&
+                                    "h-10 gap-2 rounded-xl bg-general-bg-secondary px-4 font-bold text-general-secondary-foreground shadow-none [&_svg]:size-[13.25px] [&_svg]:opacity-100",
+                            )}
+                        >
                             <span className="flex items-center gap-1.5">
                                 {currentLabel}
                             </span>
