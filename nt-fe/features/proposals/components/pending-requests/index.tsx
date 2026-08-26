@@ -358,7 +358,7 @@ export function PendingRequests() {
                             {t("title")}
                         </h2>
                         {hasPendingRequests && (
-                            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#FF6900] px-2 font-medium text-[12px] text-white leading-[16px] tabular-nums">
+                            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-general-orange-solid px-2 font-medium text-[12px] text-white leading-[16px] tabular-nums">
                                 {pendingRequests?.proposals?.length ?? 0}
                             </span>
                         )}

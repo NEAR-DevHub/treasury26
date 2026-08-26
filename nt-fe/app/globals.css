@@ -252,6 +252,7 @@
     --general-orange-background-faded: rgb(255, 247, 237);
     --general-orange-border: rgb(255, 237, 213);
     --general-orange-foreground: rgb(194, 65, 12);
+    --general-orange-solid: rgb(255, 105, 0);
     --general-destructive-background-faded: rgb(254, 242, 242);
     --general-destructive-foreground: rgb(220, 38, 38);
     --general-error-icon: rgb(255, 32, 86);
@@ -368,6 +369,7 @@
     --general-orange-background-faded: rgb(67, 20, 7);
     --general-orange-border: rgb(124, 45, 18);
     --general-orange-foreground: rgb(249, 115, 22);
+    --general-orange-solid: rgb(249, 115, 22);
     --general-info-background-faded: rgba(23, 37, 84);
     --general-info-border: rgb(30, 58, 138);
     --general-info-foreground: rgb(147, 197, 253);
@@ -523,6 +525,7 @@
     );
     --color-general-orange-border: var(--general-orange-border);
     --color-general-orange-foreground: var(--general-orange-foreground);
+    --color-general-orange-solid: var(--general-orange-solid);
 
     --color-chart-1: var(--chart-1);
     --color-chart-2: var(--chart-2);
