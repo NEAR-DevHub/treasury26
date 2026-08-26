@@ -981,6 +981,8 @@ export async function createTreasuryStream(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
+        // Send the auth cookie: the backend requires a signed-in member.
+        credentials: "include",
     });
 
     if (!response.ok) {
