@@ -34,6 +34,7 @@ use crate::handlers::relay::confidential::compute_nep413_hash;
 use crate::handlers::treasury::confidential_setup::{
     derive_bulk_subaccount_id, ensure_bulk_subaccount,
 };
+use crate::services::CredentialScope;
 use crate::{AppState, auth::AuthUser};
 
 #[derive(Serialize, Debug, PartialEq)]
@@ -80,14 +81,15 @@ fn parse_dao_id(dao_id: &str) -> Result<AccountId, (StatusCode, String)> {
 }
 
 /// Confirms the account is a monitored confidential treasury; returns
-/// whether the bulk-payment JWT is already stored.
+/// whether bulk-payment credentials are already stored (without ever
+/// pulling token material out of the database).
 async fn load_bulk_token_state(
     state: &AppState,
     dao_id: &str,
 ) -> Result<bool, (StatusCode, String)> {
-    let row: Option<(bool, Option<String>)> = sqlx::query_as(
+    let row: Option<(bool,)> = sqlx::query_as(
         r#"
-        SELECT is_confidential_account, bulk_payment_access_token
+        SELECT is_confidential_account
         FROM monitored_accounts
         WHERE account_id = $1
         "#,
@@ -103,8 +105,17 @@ async fn load_bulk_token_state(
     })?;
 
     match row {
-        Some((true, token)) => Ok(token.is_some()),
-        Some((false, _)) => Err((
+        Some((true,)) => state
+            .confidential_credentials()
+            .present(dao_id, CredentialScope::BulkPayment)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to load treasury {}: {}", dao_id, e),
+                )
+            }),
+        Some((false,)) => Err((
             StatusCode::BAD_REQUEST,
             format!("{} is not a confidential treasury", dao_id),
         )),

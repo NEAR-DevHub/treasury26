@@ -160,7 +160,7 @@ The relay handler (`handlers/relay/confidential.rs`) automatically handles post-
 
 ### Database Tables
 
-- `monitored_accounts` — stores `confidential_access_token`, `confidential_refresh_token`, `confidential_token_expires_at` per DAO
+- `monitored_accounts` — stores the 1Click JWTs per DAO as AES-256-GCM envelopes (`confidential_credentials_enc` for the DAO scope, `bulk_payment_credentials_enc` for the bulk-payment subaccount) plus plaintext expiry metadata (`confidential_token_expires_at`, `bulk_payment_token_expires_at`). The encryption key lives only in the `CONFIDENTIAL_TOKEN_KEYRING_JSON` env secret; all reads/writes go through `ConfidentialCredentialStore` (`services/confidential_credentials.rs`). The legacy plaintext token columns remain only until the encrypted rollout completes.
 - `confidential_intents` — stores intent payloads (or auth payloads) awaiting MPC signature, with `intent_type` ('shield' or 'auth') and `status` ('pending', 'submitted', 'failed')
 
 ## Sandbox Testing

@@ -31,6 +31,8 @@ services:
         value: 300
       - key: JWT_SECRET
         sync: false
+      - key: CONFIDENTIAL_TOKEN_KEYRING_JSON
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: near-business-db
@@ -118,6 +120,8 @@ services:
       - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
         value: 300
       - key: JWT_SECRET
+        sync: false
+      - key: CONFIDENTIAL_TOKEN_KEYRING_JSON
         sync: false
       - key: DATABASE_URL
         fromDatabase:
