@@ -58,30 +58,30 @@ export function TreasuryLayoutClient({
     ) : (
         <AppShellProvider>
             <BalanceMaskProvider>
-            <div
-                className={cn(
-                    "flex h-dvh lg:h-screen overflow-hidden transition-colors duration-200",
-                    shellSurfaceClass(isConfidential),
-                )}
-            >
-                <AppEventsProvider scope={{ treasuryId }} />
-                <PrimaryColorProvider treasuryId={treasuryId} />
-                <div className="hidden lg:block">
-                    <Sidebar
-                        isOpen={isSidebarOpen}
-                        onClose={() => setSidebarOpen(false)}
-                    />
-                </div>
-                <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:py-2 lg:pr-2">
-                    <div className="min-h-0 flex-1 overflow-y-auto bg-general-bg-tertiary lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
-                        {children}
+                <div
+                    className={cn(
+                        "flex h-dvh lg:h-screen overflow-hidden transition-colors duration-200",
+                        shellSurfaceClass(isConfidential),
+                    )}
+                >
+                    <AppEventsProvider scope={{ treasuryId }} />
+                    <PrimaryColorProvider treasuryId={treasuryId} />
+                    <div className="hidden lg:block">
+                        <Sidebar
+                            isOpen={isSidebarOpen}
+                            onClose={() => setSidebarOpen(false)}
+                        />
                     </div>
-                    <MobileBottomNav />
-                    <MobileMenuSheet />
-                    <MobileUserSheet />
-                    <MobileLanguageSheet />
-                    <MobileTreasurySheet />
-                </main>
+                    <main className="flex min-h-0 flex-1 flex-col overflow-hidden lg:py-2 lg:pr-2">
+                        <div className="min-h-0 flex-1 overflow-y-auto bg-general-bg-tertiary lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
+                            {children}
+                        </div>
+                        <MobileBottomNav />
+                        <MobileMenuSheet />
+                        <MobileUserSheet />
+                        <MobileLanguageSheet />
+                        <MobileTreasurySheet />
+                    </main>
                 </div>
             </BalanceMaskProvider>
         </AppShellProvider>

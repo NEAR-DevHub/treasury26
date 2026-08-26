@@ -2,7 +2,7 @@
 import { Icon } from "@/components/icon";
 import {
     ArrowLeft01Icon,
-    Tick01Icon,
+    CheckIcon,
     Wallet01Icon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
@@ -429,7 +429,7 @@ export function ConnectWalletSelector({
                     <div className="flex items-start gap-2">
                         <div className="bg-general-success-background-faded rounded-full size-7 sm:size-6 flex items-center justify-center p-1 sm:p-0">
                             <Icon
-                                icon={Tick01Icon}
+                                icon={CheckIcon}
                                 className="shrink-0 text-general-success-foreground"
                             />
                         </div>

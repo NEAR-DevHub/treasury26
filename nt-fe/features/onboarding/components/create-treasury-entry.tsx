@@ -6,7 +6,7 @@ import {
     Coins01Icon,
     LoaderCircleIcon,
     LogoutSquare01Icon,
-    Tick01Icon,
+    CheckIcon,
     User03Icon,
 } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -838,7 +838,7 @@ export function TreasuryOnboardingPage({
                         <div className="flex w-full flex-col items-center justify-center gap-2">
                             <div className="inline-flex size-9 items-center justify-center rounded-full bg-general-success-background-faded">
                                 <Icon
-                                    icon={Tick01Icon}
+                                    icon={CheckIcon}
                                     className="text-general-success-foreground"
                                 />
                             </div>

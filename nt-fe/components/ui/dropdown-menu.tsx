@@ -4,7 +4,7 @@ import { Icon } from "@/components/icon";
 import {
     ArrowRight01Icon,
     CircleIcon,
-    Tick01Icon,
+    CheckIcon,
 } from "@hugeicons/core-free-icons";
 import * as React from "react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
@@ -126,7 +126,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
         {children}
         <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
             <DropdownMenuPrimitive.ItemIndicator>
-                <Icon icon={Tick01Icon} />
+                <Icon icon={CheckIcon} />
             </DropdownMenuPrimitive.ItemIndicator>
         </span>
     </DropdownMenuPrimitive.CheckboxItem>

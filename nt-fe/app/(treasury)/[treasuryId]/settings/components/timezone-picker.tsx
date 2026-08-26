@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { ArrowDown01Icon, Tick01Icon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, CheckIcon } from "@hugeicons/core-free-icons";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
@@ -131,7 +131,7 @@ export function TimezonePicker({
                                         }}
                                     >
                                         <Icon
-                                            icon={Tick01Icon}
+                                            icon={CheckIcon}
                                             className={cn(
                                                 "mt-0.5 shrink-0",
                                                 selected

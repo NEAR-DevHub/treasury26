@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "שלח רק <bold>{symbol}</bold> ברשת <bold>{network}</bold>. נכסים או רשתות אחרים יובילו לאובדן כספים.",
         "expiresInDays": "פג תוקף בעוד <bold>{days} ימים</bold> – <bold>גם אם לא נעשה שימוש</bold>.",
         "createNewAddressHint": "צריך פרטי הפקדה אחרים? <link>צור כתובת חדשה</link>. יצירת כתובת נוספת לא תשבית את זו.",
-        "receivesOnlyConfidential": "מקבל כספים רק מחשבונות Trezu או near.com חסויים",
+        "receivesOnlyConfidential": "מקבל כספים רק מ-near.com או near business",
         "receivesOnlyConfidentialSub": "ניתן לשימוש חוזר. לא פג תוקף.",
         "anythingElseLost": "כל דבר שנשלח ממקום אחר יאבד",
         "anythingElseLostSub": "בורסות, ארנקים ציבוריים, רשתות אחרות – לא ניתן לשחזר.",
-        "confidentialAckCheckbox": "אני מבין שהפקדות מחוץ ל-Trezu או near.com חסויים יאבדו.",
-        "onlyFromConfidentialNearcom": "רק מ-<bold>near.com</bold> חסוי",
+        "confidentialAckCheckbox": "אני מבין שהפקדות מחוץ ל-near.com או near business יאבדו.",
+        "onlyFromConfidentialNearcom": "רק מ-<bold>near.com או near business</bold>",
         "reusableDoesntExpire": "<bold>ניתן לשימוש חוזר.</bold> לא פג תוקף",
-        "fundsOutsideNearcomLost": "כספים שנשלחו מחוץ ל-near.com חסוי יאבדו",
+        "fundsOutsideNearcomLost": "כספים שנשלחו מחוץ ל-near.com או near business יאבדו",
         "publicNetworkRecommendation": "הפקד רק מרשת <bold>{network}</bold>. התחל בעסקה קטנה לבדיקה לפני שליחת הסכום המלא.",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "ממשתמש חסוי",
-                "subtitle": "הפקדה מ-Trezu ו-near.com חסויים"
+                "subtitle": "הפקדה מ-near business"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "ברשת near.com",
             "anyAssetOnNearcom": "כל נכס ברשת near.com",
             "securedOnTrezu": "מאובטח ב-Trezu",
-            "securedOnNearcom": "מאובטח ב-near.com for business",
+            "securedOnNearcom": "מאובטח ב-near business",
             "payWithTrezu": "שלם עם Trezu",
-            "payWithNearcom": "שלם עם near.com",
+            "payWithNearcom": "שלם עם near business",
             "payRequiresTreasury": "התחבר עם treasury של Trezu כדי לשלם.",
             "copyLink": "העתק קישור",
-            "titleConfidential": "העברה ל-Treasury חסוי",
+            "titleConfidential": "העברה ל-near business",
             "chooseTreasuryTitle": "בחר Treasury",
             "chooseTreasuryDescription": "מאיזו treasury מגיע התשלום הזה?",
             "noMemberTreasuries": "אינך חבר עדיין באף treasury.",
@@ -1797,7 +1797,7 @@
         "contains": "מכיל"
     },
     "copyButton": {
-        "copied": "הועתק ללוח",
+        "copied": "הועתק",
         "failed": "ההעתקה נכשלה"
     },
     "recipientForm": {
@@ -2400,7 +2400,7 @@
             "description": "אפשר כבר לצפות באוצר הזה. כשחבר יאשר אותך, תוכל ליצור בקשות, להצביע או לנהל כספים בהתאם לתפקיד שלך."
         },
         "infoBox": {
-            "title": "קבלו יותר מ-near.com for business",
+            "title": "קבלו יותר מ-near business",
             "close": "סגירה",
             "docsTitle": "תיעוד",
             "docsDescription": "למד על כל התכונות בתיעוד.",

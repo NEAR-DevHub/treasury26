@@ -24,10 +24,11 @@ export function DepositNoticeIcon({ tone }: { tone: DepositNoticeTone }) {
             </span>
         );
     }
+    // Fill the circle only — keep InfoIcon so it matches the other notice glyphs.
     return (
         <Icon
             icon={InfoIcon}
-            className="size-4 shrink-0 mt-0.5 text-general-info-icon"
+            className="size-4 shrink-0 mt-0.5 text-white [&_circle]:fill-general-info-icon [&_circle]:stroke-general-info-icon"
         />
     );
 }

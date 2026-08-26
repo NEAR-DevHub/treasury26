@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "Kirim hanya <bold>{symbol}</bold> di jaringan <bold>{network}</bold>. Aset atau jaringan lain akan menyebabkan dana hilang.",
         "expiresInDays": "Kedaluwarsa dalam <bold>{days} hari</bold> – <bold>meski tidak digunakan</bold>.",
         "createNewAddressHint": "Butuh detail deposit lain? <link>Buat alamat baru</link>. Membuat alamat lain tidak menonaktifkan yang ini.",
-        "receivesOnlyConfidential": "Hanya menerima dana dari akun Trezu atau near.com rahasia",
+        "receivesOnlyConfidential": "Hanya menerima dana dari near.com atau near business",
         "receivesOnlyConfidentialSub": "Dapat digunakan ulang. Tidak kedaluwarsa.",
         "anythingElseLost": "Apa pun yang dikirim dari tempat lain akan hilang",
         "anythingElseLostSub": "Exchange, dompet publik, jaringan lain – tidak dapat dipulihkan.",
-        "confidentialAckCheckbox": "Saya memahami deposit dari luar Trezu atau near.com rahasia akan hilang.",
-        "onlyFromConfidentialNearcom": "Hanya dari <bold>near.com</bold> rahasia",
+        "confidentialAckCheckbox": "Saya memahami deposit dari luar near.com atau near business akan hilang.",
+        "onlyFromConfidentialNearcom": "Hanya dari <bold>near.com atau near business</bold>",
         "reusableDoesntExpire": "<bold>Dapat digunakan ulang.</bold> Tidak kedaluwarsa",
-        "fundsOutsideNearcomLost": "Dana yang dikirim dari luar near.com rahasia akan hilang",
+        "fundsOutsideNearcomLost": "Dana yang dikirim dari luar near.com atau near business akan hilang",
         "publicNetworkRecommendation": "Deposit hanya dari jaringan <bold>{network}</bold>. Mulai dengan transaksi uji kecil sebelum mengirim jumlah penuh.",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "Dari pengguna rahasia",
-                "subtitle": "Deposit dari Trezu & near.com rahasia"
+                "subtitle": "Deposit dari near business"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "di jaringan near.com",
             "anyAssetOnNearcom": "Aset apa pun di jaringan near.com",
             "securedOnTrezu": "Diamankan di Trezu",
-            "securedOnNearcom": "Diamankan di near.com for business",
+            "securedOnNearcom": "Diamankan di near business",
             "payWithTrezu": "Bayar dengan Trezu",
-            "payWithNearcom": "Bayar dengan near.com",
+            "payWithNearcom": "Bayar dengan near business",
             "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",
             "copyLink": "Salin tautan",
-            "titleConfidential": "Transfer ke Treasury rahasia",
+            "titleConfidential": "Transfer ke near business",
             "chooseTreasuryTitle": "Pilih Treasury",
             "chooseTreasuryDescription": "Pembayaran ini berasal dari treasury mana?",
             "noMemberTreasuries": "Anda belum menjadi anggota treasury mana pun.",
@@ -1797,7 +1797,7 @@
         "contains": "Mengandung"
     },
     "copyButton": {
-        "copied": "Disalin ke papan klip",
+        "copied": "Disalin",
         "failed": "Gagal menyalin"
     },
     "recipientForm": {
@@ -2400,7 +2400,7 @@
             "description": "Anda sudah dapat melihat treasury ini. Setelah anggota menyetujui Anda, Anda dapat membuat permintaan, memberikan suara, atau mengelola dana sesuai peran Anda."
         },
         "infoBox": {
-            "title": "Dapatkan lebih banyak dari near.com for business",
+            "title": "Dapatkan lebih banyak dari near business",
             "close": "Tutup",
             "docsTitle": "Dokumentasi",
             "docsDescription": "Pelajari semua fitur di dokumen.",

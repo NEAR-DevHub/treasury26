@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "N’envoyez que <bold>{symbol}</bold> sur le réseau <bold>{network}</bold>. D’autres actifs ou réseaux entraîneront une perte de fonds.",
         "expiresInDays": "Expire dans <bold>{days} jours</bold> – <bold>même si inutilisée</bold>.",
         "createNewAddressHint": "Besoin d’autres détails de dépôt ? <link>Créer une nouvelle adresse</link>. En créer une autre ne désactive pas celle-ci.",
-        "receivesOnlyConfidential": "Reçoit des fonds uniquement depuis des comptes Trezu ou near.com confidentiels",
+        "receivesOnlyConfidential": "Reçoit des fonds uniquement depuis near.com ou near business",
         "receivesOnlyConfidentialSub": "Réutilisable. N’expire pas.",
         "anythingElseLost": "Tout envoi depuis ailleurs est perdu",
         "anythingElseLostSub": "Exchanges, portefeuilles publics, autres réseaux – irrécupérable.",
-        "confidentialAckCheckbox": "Je comprends que les dépôts hors Trezu ou near.com confidentiels seront perdus.",
-        "onlyFromConfidentialNearcom": "Uniquement depuis <bold>near.com</bold> confidentiel",
+        "confidentialAckCheckbox": "Je comprends que les dépôts hors de near.com ou near business seront perdus.",
+        "onlyFromConfidentialNearcom": "Uniquement depuis <bold>near.com ou near business</bold>",
         "reusableDoesntExpire": "<bold>Réutilisable.</bold> N’expire pas",
-        "fundsOutsideNearcomLost": "Les fonds envoyés hors de near.com confidentiel seront perdus",
+        "fundsOutsideNearcomLost": "Les fonds envoyés hors de near.com ou near business seront perdus",
         "publicNetworkRecommendation": "Ne déposez que depuis le réseau <bold>{network}</bold>. Commencez par une petite transaction de test avant d’envoyer le montant total.",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "Depuis un utilisateur confidentiel",
-                "subtitle": "Dépôt depuis Trezu & near.com confidentiels"
+                "subtitle": "Dépôt depuis near business"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "sur le réseau near.com",
             "anyAssetOnNearcom": "N’importe quel actif sur le réseau near.com",
             "securedOnTrezu": "Sécurisé sur Trezu",
-            "securedOnNearcom": "Sécurisé sur near.com for business",
+            "securedOnNearcom": "Sécurisé sur near business",
             "payWithTrezu": "Payer avec Trezu",
-            "payWithNearcom": "Payer avec near.com",
+            "payWithNearcom": "Payer avec near business",
             "payRequiresTreasury": "Connectez-vous avec une treasury Trezu pour payer.",
             "copyLink": "Copier le lien",
-            "titleConfidential": "Transfert vers la Treasury confidentielle",
+            "titleConfidential": "Transfert vers near business",
             "chooseTreasuryTitle": "Choisir une Treasury",
             "chooseTreasuryDescription": "De quelle treasury provient ce paiement ?",
             "noMemberTreasuries": "Vous n’êtes encore membre d’aucune treasury.",
@@ -1797,7 +1797,7 @@
         "contains": "Contient"
     },
     "copyButton": {
-        "copied": "Copié dans le presse-papiers",
+        "copied": "Copié",
         "failed": "Échec de la copie"
     },
     "recipientForm": {
@@ -2400,7 +2400,7 @@
             "description": "Vous pouvez déjà consulter cette trésorerie. Lorsqu'un membre vous approuvera, vous pourrez créer des demandes, voter ou gérer les fonds selon votre rôle."
         },
         "infoBox": {
-            "title": "Tirez plus de near.com for business",
+            "title": "Tirez plus de near business",
             "close": "Fermer",
             "docsTitle": "Documentation",
             "docsDescription": "Découvrez toutes les fonctionnalités dans la documentation.",

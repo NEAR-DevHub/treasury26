@@ -314,14 +314,14 @@
         "expiresInRemaining": "Expires in <time>{duration}</time> – <bold>even if unused</bold>.",
         "addressExpired": "This address has expired.",
         "createNewAddressHint": "Need different deposit details? <link>Create a new address</link>. Creating another address will not deactivate this one.",
-        "receivesOnlyConfidential": "Receives funds only from near.com for business",
+        "receivesOnlyConfidential": "Receives funds only from near.com or near business",
         "receivesOnlyConfidentialSub": "Reusable. Doesn't expire.",
         "anythingElseLost": "Anything sent from anywhere else is lost",
         "anythingElseLostSub": "Exchanges, public wallets, other networks — can't be recovered.",
-        "confidentialAckCheckbox": "I understand deposits from near.com or outside near.com for business will be lost.",
-        "onlyFromConfidentialNearcom": "Only from <bold>near.com for business</bold>",
+        "confidentialAckCheckbox": "I understand deposits from outside near.com or near business will be lost.",
+        "onlyFromConfidentialNearcom": "Only from <bold>near.com or near business</bold>",
         "reusableDoesntExpire": "<bold>Reusable.</bold> Doesn't expire",
-        "fundsOutsideNearcomLost": "Funds sent from outside near.com for business will be lost",
+        "fundsOutsideNearcomLost": "Funds sent from outside near.com or near business will be lost",
         "publicNetworkRecommendation": "Only deposit from the <bold>{network}</bold> network. We recommend starting with a small test transaction to ensure everything works correctly before sending the full amount.",
         "depositAddressSubtitleConfidential": "<semibold>Single-use deposit address.</semibold> Reusing this address or sending funds after expiration may result in a permanent loss of funds.",
         "depositAddressSubtitleConfidentialExpiry": "Valid for 14 days from the time of generation. Expires in: {expiresIn} remaining",
@@ -341,12 +341,12 @@
             },
             "confidentialUser": {
                 "title": "From confidential user",
-                "subtitle": "Deposit from near.com for business"
+                "subtitle": "Deposit from near business"
             }
         },
         "transfer": {
             "title": "Transfer to Treasury",
-            "titleConfidential": "Transfer to near.com for business",
+            "titleConfidential": "Transfer to near business",
             "waitingForPayment": "Waiting for payment",
             "expired": "Expired",
             "used": "Used",
@@ -361,9 +361,9 @@
             "onNearcomNetwork": "on internal network",
             "anyAssetOnNearcom": "Any asset on near.com network",
             "securedOnTrezu": "Secured on Trezu",
-            "securedOnNearcom": "Secured on near.com for business",
+            "securedOnNearcom": "Secured on near business",
             "payWithTrezu": "Pay with Trezu",
-            "payWithNearcom": "Pay with near.com",
+            "payWithNearcom": "Pay with near business",
             "payRequiresTreasury": "Sign in with a Trezu treasury to pay.",
             "chooseTreasuryTitle": "Choose a Treasury",
             "chooseTreasuryDescription": "Which treasury is this payment coming from?",
@@ -1797,7 +1797,7 @@
         "contains": "Contains"
     },
     "copyButton": {
-        "copied": "Copied to clipboard",
+        "copied": "Copied",
         "failed": "Failed to copy"
     },
     "recipientForm": {
@@ -2400,7 +2400,7 @@
             "description": "You can view this treasury now. When a member approves you, you'll be able to create requests, vote, or manage funds based on your role."
         },
         "infoBox": {
-            "title": "Get more from near.com for business",
+            "title": "Get more from near business",
             "close": "Close",
             "docsTitle": "Read the docs",
             "docsDescription": "Find detailed guides for every feature.",

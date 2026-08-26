@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { Tick01Icon } from "@hugeicons/core-free-icons";
+import { CheckIcon } from "@hugeicons/core-free-icons";
 import { Toaster as SonnerToaster, toast } from "sonner";
 import { useTheme } from "next-themes";
 const ErrorIcon = () => (
@@ -55,7 +55,7 @@ export function Toaster() {
             icons={{
                 success: (
                     <Icon
-                        icon={Tick01Icon}
+                        icon={CheckIcon}
                         className="p-0.5 bg-general-success-foreground rounded-full stroke-3 text-white shrink-0"
                     />
                 ),

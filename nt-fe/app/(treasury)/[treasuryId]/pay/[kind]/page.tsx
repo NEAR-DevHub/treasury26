@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Zap } from "lucide-react";
+import { Clock } from "lucide-react";
 import Link from "next/link";
 import {
     useParams,
@@ -17,13 +17,9 @@ import Logo from "@/components/icons/logo";
 import { NearBusinessLogo } from "@/components/icons/near-business-logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
-import { NEAR_COM_ICON } from "@/constants/token";
-import {
-    buildNearComSendHref,
-    NEAR_COM_SEND_INTERNAL_NETWORK,
-    withNearComAddressPrefix,
-} from "@/lib/nearcom-address";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { buildLoginHref } from "@/lib/auth-redirect";
+import { withNearComAddressPrefix } from "@/lib/nearcom-address";
 import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
 import { useConfidentialBridgeAddress } from "@/hooks/use-confidential-bridge-address";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
@@ -52,6 +48,7 @@ import {
     CHOOSE_PAYER_QUERY,
     getAbsoluteTransferUrl,
     parsePayShareKind,
+    type PaymentsDeepLinkParams,
     withChoosePayerParam,
     withoutChoosePayerParam,
 } from "../../dashboard/components/deposit/deposit-transfer-url";
@@ -75,7 +72,6 @@ export default function PaySharePage() {
     const tokenId = searchParams.get("token") || "";
     const networkFromUrl = searchParams.get("network") || "";
     const shouldOpenPicker = searchParams.get(CHOOSE_PAYER_QUERY) === "1";
-    const payWithNearcom = isConfidential;
 
     const isOneTimeConfidentialShare = kind === "public" && isConfidential;
     const isPublicTreasuryShare = kind === "public" && !isConfidential;
@@ -225,11 +221,18 @@ export default function PaySharePage() {
 
     const isConfidentialShare = kind === "confidential";
 
-    const paymentPrefill = useMemo(() => {
-        // Confidential treasuries pay on near.com — no Trezu payments prefill.
-        if (payWithNearcom) return null;
+    // Prefills Trezu `/payments` (see payments/page.tsx query handling):
+    // - reusable confidential: bare dao `address` + soft `networks=near.com`
+    // - public / one-time: `address` + exact `token` + `network`
+    const paymentPrefill = useMemo((): PaymentsDeepLinkParams | null => {
+        if (kind === "confidential") {
+            if (!recipientDaoId) return null;
+            return {
+                address: recipientDaoId,
+                networks: NEAR_COM_NETWORK_ID,
+            };
+        }
         if (kind === "public") {
-            // Exact ids for payments matching — not display names or JSON blobs.
             if (
                 !depositAddress ||
                 !sendTokenMeta?.assetId ||
@@ -244,14 +247,14 @@ export default function PaySharePage() {
             };
         }
         return null;
-    }, [payWithNearcom, kind, depositAddress, sendTokenMeta]);
+    }, [kind, recipientDaoId, depositAddress, sendTokenMeta]);
 
     const payWithTrezuFilter = useMemo(
         () => ({
             destinationTreasuryId: recipientDaoId,
-            confidentialOnly: false,
+            confidentialOnly: isConfidentialShare,
         }),
-        [recipientDaoId],
+        [recipientDaoId, isConfidentialShare],
     );
 
     const currentSharePath = withoutChoosePayerParam(
@@ -334,35 +337,7 @@ export default function PaySharePage() {
         continuePayWithTrezu,
     ]);
 
-    const handlePayWithNearcom = () => {
-        if (!depositAddress) {
-            toast.error(t("errors.addressUnavailable"));
-            return;
-        }
-
-        // Confidential reusable address → near.com intents recipient.
-        // One-time public→confidential bridge → token + chain + bridge address.
-        // Deposit quote uses originAsset === destinationAsset, so paymentToken
-        // matches token.
-        const sendToken = sendTokenMeta?.symbol || tokenId || null;
-        const href =
-            kind === "confidential"
-                ? buildNearComSendHref({
-                      network: NEAR_COM_SEND_INTERNAL_NETWORK,
-                      recipient: depositAddress,
-                  })
-                : buildNearComSendHref({
-                      token: sendToken,
-                      paymentToken: sendToken,
-                      network:
-                          sendTokenMeta?.bridgeNetworkName || networkId || null,
-                      recipient: depositAddress,
-                  });
-
-        window.open(href, "_blank", "noopener,noreferrer");
-    };
-
-    const handlePayWithTrezu = () => {
+    const handlePayCta = () => {
         if (!paymentPrefill) {
             toast.error(t("transfer.payRequiresTreasury"));
             return;
@@ -377,14 +352,6 @@ export default function PaySharePage() {
 
         if (isLoading) return;
         continuePayWithTrezu();
-    };
-
-    const handlePayCta = () => {
-        if (payWithNearcom) {
-            handlePayWithNearcom();
-            return;
-        }
-        handlePayWithTrezu();
     };
 
     const handlePickerOpenChange = (open: boolean) => {
@@ -484,14 +451,15 @@ export default function PaySharePage() {
                                 <Button
                                     type="button"
                                     onClick={handlePayCta}
+                                    disabled={!paymentPrefill}
                                     className="h-11 w-full gap-2 rounded-2xl text-base font-bold leading-4 text-primary-foreground"
                                     data-testid={
-                                        payWithNearcom
-                                            ? "deposit-pay-with-nearcom"
+                                        isConfidential
+                                            ? "deposit-pay-with-near-business"
                                             : "deposit-pay-with-trezu"
                                     }
                                 >
-                                    {payWithNearcom
+                                    {isConfidential
                                         ? t("transfer.payWithNearcom")
                                         : t("transfer.payWithTrezu")}
                                 </Button>
@@ -512,7 +480,7 @@ export default function PaySharePage() {
                 </div>
             </div>
 
-            {!isInactive && !payWithNearcom && (
+            {!isInactive && (
                 <DepositPayTreasuryModal
                     open={showPicker}
                     onOpenChange={handlePickerOpenChange}

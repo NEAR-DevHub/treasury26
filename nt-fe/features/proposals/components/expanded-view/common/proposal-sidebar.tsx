@@ -5,7 +5,7 @@ import {
     File01Icon,
     LinkSquare02Icon,
     LoaderCircleIcon,
-    Tick01Icon,
+    CheckIcon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -737,7 +737,7 @@ export function ProposalSidebar({
                                     className="mr-2 animate-spin"
                                 />
                             ) : (
-                                <Icon icon={Tick01Icon} className="mr-2" />
+                                <Icon icon={CheckIcon} className="mr-2" />
                             )}
                             {t("approve")}
                         </AuthButtonWithProposal>

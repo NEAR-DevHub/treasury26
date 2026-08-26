@@ -3,7 +3,7 @@
 import {
     ArrowDown01Icon,
     ArrowRight01Icon,
-    Tick01Icon,
+    CheckIcon,
 } from "@hugeicons/core-free-icons";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -238,8 +238,11 @@ function StepCircle({
 }) {
     if (completed) {
         return (
-            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#163528]">
-                <Icon icon={Tick01Icon} className="size-3 text-[#3DDC97]" />
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-general-success-background-faded">
+                <Icon
+                    icon={CheckIcon}
+                    className="size-3 text-general-success-foreground"
+                />
             </span>
         );
     }

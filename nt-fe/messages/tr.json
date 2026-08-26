@@ -337,14 +337,14 @@
         "onlySendAssetNetwork": "Yalnızca <bold>{network}</bold> ağında <bold>{symbol}</bold> gönderin. Diğer varlıklar veya ağlar fon kaybına yol açar.",
         "expiresInDays": "<bold>{days} gün</bold> içinde sona erer – <bold>kullanılmasa bile</bold>.",
         "createNewAddressHint": "Farklı yatırma bilgileri mi lazım? <link>Yeni bir adres oluştur</link>. Başka bir adres oluşturmak bunu devre dışı bırakmaz.",
-        "receivesOnlyConfidential": "Yalnızca gizli Trezu veya near.com hesaplarından fon alır",
+        "receivesOnlyConfidential": "Yalnızca near.com veya near business’tan fon alır",
         "receivesOnlyConfidentialSub": "Yeniden kullanılabilir. Süresi dolmaz.",
         "anythingElseLost": "Başka yerden gönderilen her şey kaybolur",
         "anythingElseLostSub": "Borsalar, genel cüzdanlar, diğer ağlar – kurtarılamaz.",
-        "confidentialAckCheckbox": "Gizli Trezu veya near.com dışından yapılan yatırmaların kaybolacağını anlıyorum.",
-        "onlyFromConfidentialNearcom": "Yalnızca gizli <bold>near.com</bold>’dan",
+        "confidentialAckCheckbox": "near.com veya near business dışından yapılan yatırmaların kaybolacağını anlıyorum.",
+        "onlyFromConfidentialNearcom": "Yalnızca <bold>near.com veya near business</bold>’dan",
         "reusableDoesntExpire": "<bold>Yeniden kullanılabilir.</bold> Süresi dolmaz",
-        "fundsOutsideNearcomLost": "Gizli near.com dışından gönderilen fonlar kaybolur",
+        "fundsOutsideNearcomLost": "near.com veya near business dışından gönderilen fonlar kaybolur",
         "publicNetworkRecommendation": "Yalnızca <bold>{network}</bold> ağından yatırın. Tam tutarı göndermeden önce küçük bir test işlemiyle başlayın.",
         "sourceCards": {
             "publicWallet": {
@@ -353,7 +353,7 @@
             },
             "confidentialUser": {
                 "title": "Gizli kullanıcıdan",
-                "subtitle": "Gizli Trezu ve near.com’dan yatırma"
+                "subtitle": "near business’tan yatırma"
             }
         },
         "transfer": {
@@ -368,12 +368,12 @@
             "onNearcomNetwork": "near.com ağında",
             "anyAssetOnNearcom": "near.com ağında herhangi bir varlık",
             "securedOnTrezu": "Trezu’da güvende",
-            "securedOnNearcom": "near.com for business üzerinde güvence altında",
+            "securedOnNearcom": "near business üzerinde güvence altında",
             "payWithTrezu": "Trezu ile öde",
-            "payWithNearcom": "near.com ile öde",
+            "payWithNearcom": "near business ile öde",
             "payRequiresTreasury": "Ödemek için bir Trezu treasury’siyle oturum açın.",
             "copyLink": "Bağlantıyı kopyala",
-            "titleConfidential": "Gizli Treasury’ye transfer",
+            "titleConfidential": "near business’ye transfer",
             "chooseTreasuryTitle": "Bir Treasury seçin",
             "chooseTreasuryDescription": "Bu ödeme hangi treasury’den geliyor?",
             "noMemberTreasuries": "Henüz hiçbir treasury’nin üyesi değilsiniz.",
@@ -1797,7 +1797,7 @@
         "contains": "İçeriyor"
     },
     "copyButton": {
-        "copied": "Panoya kopyalandı",
+        "copied": "Kopyalandı",
         "failed": "Kopyalanamadı"
     },
     "recipientForm": {
@@ -2400,7 +2400,7 @@
             "description": "Bu hazineyi şimdi görüntüleyebilirsiniz. Bir üye sizi onayladığında, rolünüze göre istek oluşturabilir, oy verebilir veya fonları yönetebilirsiniz."
         },
         "infoBox": {
-            "title": "near.com for business'tan daha fazlasını alın",
+            "title": "near business'tan daha fazlasını alın",
             "close": "Kapat",
             "docsTitle": "Belgeler",
             "docsDescription": "Tüm özellikler hakkında belgelerden bilgi edinin.",

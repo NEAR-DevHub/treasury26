@@ -6,7 +6,7 @@ import {
     Coins02Icon,
     InformationCircleIcon,
     SentIcon,
-    Tick01Icon,
+    CheckIcon,
     ViewIcon,
     ViewOffIcon,
 } from "@hugeicons/core-free-icons";
@@ -714,7 +714,7 @@ export default function BalanceWithGraph({
                                             </span>
                                             {selectedToken === "all" && (
                                                 <Icon
-                                                    icon={Tick01Icon}
+                                                    icon={CheckIcon}
                                                     className="text-foreground"
                                                 />
                                             )}
@@ -747,7 +747,7 @@ export default function BalanceWithGraph({
                                                 {selectedToken ===
                                                     group.symbol && (
                                                     <Icon
-                                                        icon={Tick01Icon}
+                                                        icon={CheckIcon}
                                                         className="text-foreground"
                                                     />
                                                 )}
@@ -799,7 +799,7 @@ export default function BalanceWithGraph({
                                             <span>{t(`period.${period}`)}</span>
                                             {selectedPeriod === period && (
                                                 <Icon
-                                                    icon={Tick01Icon}
+                                                    icon={CheckIcon}
                                                     className="text-foreground"
                                                 />
                                             )}

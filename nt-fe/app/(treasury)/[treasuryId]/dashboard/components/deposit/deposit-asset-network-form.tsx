@@ -124,7 +124,7 @@ export function DepositAssetNetworkForm({
                                     invalid={!!fieldState.error}
                                     className={
                                         separateFields
-                                            ? "rounded-2xl border border-general-border bg-card"
+                                            ? "h-16 rounded-3xl border border-general-border bg-card p-0 [&>div:first-child]:hidden"
                                             : "rounded-none border-0 bg-transparent"
                                     }
                                 >
@@ -138,19 +138,42 @@ export function DepositAssetNetworkForm({
                                         }
                                         data-testid="deposit-asset-selector"
                                         className={cn(
-                                            "w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0!",
-                                            !separateFields && "mt-1",
+                                            "w-full cursor-pointer justify-start text-left hover:opacity-80",
+                                            separateFields
+                                                ? "h-full gap-3 rounded-3xl py-[0.59375rem] pl-3 pr-4"
+                                                : "mt-1 h-auto p-0!",
                                         )}
                                     >
-                                        <div className="w-full flex items-center justify-between py-1">
+                                        <div
+                                            className={cn(
+                                                "flex w-full items-center justify-between",
+                                                separateFields
+                                                    ? "gap-3"
+                                                    : "gap-2 py-1",
+                                            )}
+                                        >
                                             {isAssetsPending &&
                                             !selectedAsset ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Skeleton className="size-10 rounded-full shrink-0" />
+                                                <div
+                                                    className={cn(
+                                                        "flex items-center",
+                                                        separateFields
+                                                            ? "gap-3"
+                                                            : "gap-2",
+                                                    )}
+                                                >
+                                                    <Skeleton className="size-10 shrink-0 rounded-full" />
                                                     <Skeleton className="h-5 w-24" />
                                                 </div>
                                             ) : selectedAsset ? (
-                                                <div className="flex items-center gap-2">
+                                                <div
+                                                    className={cn(
+                                                        "flex min-w-0 items-center",
+                                                        separateFields
+                                                            ? "gap-3"
+                                                            : "gap-2",
+                                                    )}
+                                                >
                                                     <DepositOptionIcon
                                                         icon={
                                                             selectedAsset.icon
@@ -179,26 +202,24 @@ export function DepositAssetNetworkForm({
                                                             </span>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-foreground font-medium">
+                                                        <span className="font-medium text-foreground">
                                                             {selectedAssetLabel}
                                                         </span>
                                                     )}
                                                 </div>
                                             ) : (
-                                                <span className="text-muted-foreground text-lg font-normal">
+                                                <span className="text-lg font-normal text-muted-foreground">
                                                     {t("selectAsset")}
                                                 </span>
                                             )}
-                                            <ChevronDown className="w-5 h-5 shrink-0" />
+                                            <ChevronDown className="h-5 w-5 shrink-0" />
                                         </div>
                                     </Button>
-                                    {fieldState.error ? <FormMessage /> : null}
-                                    {tokenWarning ? (
-                                        <div className="mt-2">
-                                            {tokenWarning}
-                                        </div>
-                                    ) : null}
                                 </InputBlock>
+                                {fieldState.error ? <FormMessage /> : null}
+                                {tokenWarning ? (
+                                    <div className="mt-2">{tokenWarning}</div>
+                                ) : null}
                             </FormItem>
                         )}
                     />
@@ -217,7 +238,7 @@ export function DepositAssetNetworkForm({
                                     invalid={!!fieldState.error}
                                     className={
                                         separateFields
-                                            ? "rounded-2xl border border-general-border bg-card"
+                                            ? "h-16 rounded-3xl border border-general-border bg-card p-0 [&>div:first-child]:hidden"
                                             : "rounded-none border-0 bg-transparent"
                                     }
                                 >
@@ -228,109 +249,125 @@ export function DepositAssetNetworkForm({
                                         disabled={selectorsDisabled}
                                         data-testid="deposit-network-selector"
                                         className={cn(
-                                            "w-full text-left cursor-pointer hover:opacity-80 h-auto justify-start p-0!",
-                                            !separateFields && "mt-1",
+                                            "w-full cursor-pointer justify-start text-left hover:opacity-80",
+                                            separateFields
+                                                ? "h-full gap-3 rounded-3xl py-[0.59375rem] pl-3 pr-4"
+                                                : "mt-1 h-auto p-0!",
                                         )}
                                     >
-                                        <div className="w-full flex flex-col gap-0 py-1">
+                                        <div
+                                            className={cn(
+                                                "w-full",
+                                                separateFields
+                                                    ? "flex items-center justify-between gap-3"
+                                                    : "flex flex-col gap-0 py-1",
+                                            )}
+                                        >
                                             {selectedNetwork ? (
-                                                <>
-                                                    <div className="flex items-center justify-between gap-2">
-                                                        <div className="flex min-w-0 items-center gap-2">
-                                                            <DepositOptionIcon
-                                                                icon={
-                                                                    selectedNetwork.icon
-                                                                }
-                                                                name={
-                                                                    selectedNetwork.name
-                                                                }
-                                                                gradient={
-                                                                    selectedNetwork.gradient ||
-                                                                    "bg-linear-to-br from-green-500 to-teal-500"
-                                                                }
-                                                                className={
-                                                                    separateFields
-                                                                        ? "size-10"
-                                                                        : undefined
-                                                                }
-                                                            />
-                                                            {separateFields ? (
-                                                                <div className="flex min-w-0 flex-col">
-                                                                    <span className="text-sm font-medium leading-[150%] text-muted-foreground">
-                                                                        {t(
-                                                                            "networkLabel",
-                                                                        )}
-                                                                    </span>
-                                                                    <span
-                                                                        className={cn(
-                                                                            "text-base font-semibold leading-[120%] text-foreground",
-                                                                            getNetworkDisplayCaseClass(
-                                                                                selectedNetwork.name,
-                                                                            ),
-                                                                        )}
-                                                                    >
-                                                                        {getNetworkDisplayName(
-                                                                            selectedNetwork.name,
-                                                                        )}
-                                                                    </span>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="flex flex-col">
-                                                                    <span
-                                                                        className={cn(
-                                                                            "text-foreground font-medium",
-                                                                            getNetworkDisplayCaseClass(
-                                                                                selectedNetwork.name,
-                                                                            ),
-                                                                        )}
-                                                                    >
-                                                                        {getNetworkDisplayName(
-                                                                            selectedNetwork.name,
-                                                                        )}
-                                                                    </span>
-                                                                    {selectedNetwork.description && (
-                                                                        <span className="text-xs text-muted-foreground font-normal">
-                                                                            {
-                                                                                selectedNetwork.description
-                                                                            }
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <ChevronDown className="w-5 h-5 shrink-0" />
-                                                    </div>
-                                                    {selectedAsset?.id ===
-                                                        "other" && (
-                                                        <div className="break-all overflow-wrap-anywhere text-wrap mt-2 text-xs text-general-info-foreground">
-                                                            {t(
-                                                                "otherNetworkInfo",
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <span className="flex items-center gap-2">
-                                                        {separateFields && (
-                                                            <EmptyNetworkIcon />
+                                                <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                                                    <div
+                                                        className={cn(
+                                                            "flex min-w-0 items-center",
+                                                            separateFields
+                                                                ? "gap-3"
+                                                                : "gap-2",
                                                         )}
+                                                    >
+                                                        <DepositOptionIcon
+                                                            icon={
+                                                                selectedNetwork.icon
+                                                            }
+                                                            name={
+                                                                selectedNetwork.name
+                                                            }
+                                                            gradient={
+                                                                selectedNetwork.gradient ||
+                                                                "bg-linear-to-br from-green-500 to-teal-500"
+                                                            }
+                                                            className={
+                                                                separateFields
+                                                                    ? "size-10"
+                                                                    : undefined
+                                                            }
+                                                        />
+                                                        {separateFields ? (
+                                                            <div className="flex min-w-0 flex-col">
+                                                                <span className="text-sm font-medium leading-[150%] text-muted-foreground">
+                                                                    {t(
+                                                                        "networkLabel",
+                                                                    )}
+                                                                </span>
+                                                                <span
+                                                                    className={cn(
+                                                                        "text-base font-semibold leading-[120%] text-foreground",
+                                                                        getNetworkDisplayCaseClass(
+                                                                            selectedNetwork.name,
+                                                                        ),
+                                                                    )}
+                                                                >
+                                                                    {getNetworkDisplayName(
+                                                                        selectedNetwork.name,
+                                                                    )}
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex flex-col">
+                                                                <span
+                                                                    className={cn(
+                                                                        "font-medium text-foreground",
+                                                                        getNetworkDisplayCaseClass(
+                                                                            selectedNetwork.name,
+                                                                        ),
+                                                                    )}
+                                                                >
+                                                                    {getNetworkDisplayName(
+                                                                        selectedNetwork.name,
+                                                                    )}
+                                                                </span>
+                                                                {selectedNetwork.description ? (
+                                                                    <span className="text-xs font-normal text-muted-foreground">
+                                                                        {
+                                                                            selectedNetwork.description
+                                                                        }
+                                                                    </span>
+                                                                ) : null}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <ChevronDown className="h-5 w-5 shrink-0" />
+                                                </div>
+                                            ) : (
+                                                <div className="flex w-full items-center justify-between gap-3">
+                                                    <span
+                                                        className={cn(
+                                                            "flex items-center",
+                                                            separateFields
+                                                                ? "gap-3"
+                                                                : "gap-2",
+                                                        )}
+                                                    >
+                                                        {separateFields ? (
+                                                            <EmptyNetworkIcon />
+                                                        ) : null}
                                                         <span className="text-base font-semibold leading-[120%] text-muted-foreground">
                                                             {t("selectNetwork")}
                                                         </span>
                                                     </span>
-                                                    <ChevronDown className="w-5 h-5 shrink-0" />
+                                                    <ChevronDown className="h-5 w-5 shrink-0" />
                                                 </div>
                                             )}
                                         </div>
                                     </Button>
-                                    {fieldState.error ? <FormMessage /> : null}
-                                    {networkWarning ? (
-                                        <div className="mt-2">
-                                            {networkWarning}
-                                        </div>
-                                    ) : null}
                                 </InputBlock>
+                                {fieldState.error ? <FormMessage /> : null}
+                                {networkWarning ? (
+                                    <div className="mt-2">{networkWarning}</div>
+                                ) : null}
+                                {selectedAsset?.id === "other" ? (
+                                    <div className="mt-2 break-all text-wrap text-xs text-general-info-foreground overflow-wrap-anywhere">
+                                        {t("otherNetworkInfo")}
+                                    </div>
+                                ) : null}
                             </FormItem>
                         )}
                     />

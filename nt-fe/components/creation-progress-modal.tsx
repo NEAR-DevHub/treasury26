@@ -3,7 +3,7 @@ import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
     LoaderCircleIcon,
-    Tick02Icon,
+    CheckIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,7 @@ function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
                     )}
                 >
                     <Icon
-                        icon={Tick02Icon}
+                        icon={CheckIcon}
                         className="size-2.5 text-green-700"
                     />
                 </div>

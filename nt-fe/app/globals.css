@@ -246,8 +246,8 @@
     --general-unofficial-ghost-foreground: rgba(64, 64, 64);
     --general-unofficial-accent: rgba(229, 229, 229);
     --general-unofficial-accent-0: rgba(250, 250, 250);
-    --general-success-background-faded: rgb(220, 252, 231);
-    --general-success-foreground: rgb(0, 150, 96);
+    --general-success-background-faded: rgba(240, 255, 249, 1);
+    --general-success-foreground: rgba(0, 150, 96, 1);
     --general-orange-background: rgba(255, 237, 213);
     --general-orange-background-faded: rgb(255, 237, 213);
     --general-orange-foreground: rgb(194, 65, 12);
@@ -359,7 +359,7 @@
     --sidebar-border: rgb(30, 30, 30);
     --sidebar-ring: rgb(82, 82, 82);
     --general-success-background-faded: rgb(11, 46, 37);
-    --general-success-foreground: rgb(0, 236, 151);
+    --general-success-foreground: rgba(0, 236, 151, 1);
     --general-destructive-background-faded: rgb(69, 10, 10);
     --general-destructive-foreground: rgb(220, 38, 38);
     --general-error-icon: rgb(255, 32, 86);
@@ -443,8 +443,8 @@
     --ring: rgb(161, 161, 161);
 
     /* Status pill colors (Executed) */
-    --general-success-background-faded: rgb(220, 252, 231);
-    --general-success-foreground: rgb(0, 150, 96);
+    --general-success-background-faded: rgba(240, 255, 249, 1);
+    --general-success-foreground: rgba(0, 150, 96, 1);
     --general-error-icon: rgb(255, 32, 86);
 }
 
