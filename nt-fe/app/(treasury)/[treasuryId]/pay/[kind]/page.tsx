@@ -62,8 +62,14 @@ export default function PaySharePage() {
     const searchParams = useSearchParams();
     const params = useParams<{ kind?: string }>();
     const { accountId, isInitializing } = useNear();
-    const { treasuryId, config, treasuries, isConfidential, isLoading } =
-        useTreasury();
+    const {
+        treasuryId,
+        config,
+        treasuries,
+        isConfidential,
+        isLoading,
+        isMember,
+    } = useTreasury();
     const resumedChoosePayerRef = useRef(false);
     const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -464,16 +470,18 @@ export default function PaySharePage() {
                                         ? t("transfer.payWithNearcom")
                                         : t("transfer.payWithTrezu")}
                                 </Button>
-                                <CopyButton
-                                    text={getAbsoluteTransferUrl(
-                                        currentSharePath,
-                                    )}
-                                    variant="secondary"
-                                    className="h-11 w-full gap-2 rounded-2xl bg-general-bg-secondary text-base font-bold leading-4 text-muted-foreground hover:bg-general-bg-secondary/80"
-                                    data-testid="deposit-copy-link"
-                                >
-                                    {t("transfer.copyLink")}
-                                </CopyButton>
+                                {isMember ? (
+                                    <CopyButton
+                                        text={getAbsoluteTransferUrl(
+                                            currentSharePath,
+                                        )}
+                                        variant="secondary"
+                                        className="h-11 w-full gap-2 rounded-2xl bg-general-bg-secondary text-base font-bold leading-4 text-muted-foreground hover:bg-general-bg-secondary/80"
+                                        data-testid="deposit-copy-link"
+                                    >
+                                        {t("transfer.copyLink")}
+                                    </CopyButton>
+                                ) : null}
                             </div>
                         </>
                     )}

@@ -97,7 +97,7 @@ export function DepositTransferSummary({
                 <div className="flex items-start gap-2.5">
                     {variant === "confidential" || isConfidentialTreasury ? (
                         <span
-                            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-card"
+                            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-general-bg-primary"
                             aria-hidden
                         >
                             <Icon
