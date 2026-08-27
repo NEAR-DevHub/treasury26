@@ -900,8 +900,8 @@ export function TreasuryOnboardingPage({
                 hideHeaderBottomBorder
                 hideHeaderContent={isMinimalChrome}
                 hideHeader={isCenteredCreateScreen}
-                // Both onboarding screens are short enough to fit any
-                // viewport, so they are pinned to it rather than scrolling.
+                // Both onboarding screens are pinned to the viewport, and
+                // scroll inside it only when a short one can't fit them.
                 fitViewport={isMinimalChrome}
                 logo={headerLogo}
                 mainClassName={cn(
