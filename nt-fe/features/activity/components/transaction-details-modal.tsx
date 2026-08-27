@@ -67,6 +67,13 @@ const TRANSACTION_LABEL_KEYS: Record<ActivityDetailsVariant, string> = {
     transfer: "sendTransaction",
 };
 
+/**
+ * The shared dialog chrome is edge-to-edge on mobile; the details sheet floats
+ * with a small inset instead, so it needs rounded corners on all sides.
+ */
+const MOBILE_INSET =
+    "inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-auto rounded-3xl pb-4";
+
 interface TransactionDetailsModalProps {
     activity: RecentActivity | null;
     treasuryId: string;
@@ -968,7 +975,12 @@ function TransferDialog({
 }) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="gap-3 bg-card sm:max-w-[448px]! sm:gap-3 sm:p-0">
+            <DialogContent
+                className={cn(
+                    MOBILE_INSET,
+                    "gap-3 bg-card sm:max-w-[448px]! sm:gap-3 sm:p-0",
+                )}
+            >
                 <DialogHeader className="mx-0 border-b-0 px-0 pb-0 sm:px-5 sm:pt-4">
                     <DialogTitle className="text-base">{title}</DialogTitle>
                 </DialogHeader>
@@ -1079,7 +1091,12 @@ export function TransactionDetailsModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="gap-0 bg-card sm:max-w-[448px]! sm:gap-0.5 sm:bg-muted sm:p-0">
+            <DialogContent
+                className={cn(
+                    MOBILE_INSET,
+                    "gap-0 bg-card sm:max-w-[448px]! sm:gap-0.5 sm:bg-muted sm:p-0",
+                )}
+            >
                 <DialogHeader className="mx-0 border-b-0 bg-card px-0 py-3 sm:px-4 sm:py-3.5">
                     <DialogTitle>
                         {isMobile ? t("detailsTitle") : t(TITLE_KEYS[variant])}
