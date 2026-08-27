@@ -2072,7 +2072,7 @@
         "emptyDescription": "Bakiye geçmişi bulunmuyor"
     },
     "user": {
-        "saveToAddressBook": "Adres defterine kaydet",
+        "saveToAddressBook": "Kişilere kaydet",
         "walletCopiedToast": "Cüzdan adresi panoya kopyalandı",
         "copyWalletAddress": "Cüzdan Adresini Kopyala"
     },

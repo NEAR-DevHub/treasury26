@@ -2072,7 +2072,7 @@
         "emptyDescription": "Aucun historique de solde disponible"
     },
     "user": {
-        "saveToAddressBook": "Enregistrer dans le carnet d'adresses",
+        "saveToAddressBook": "Enregistrer dans les contacts",
         "walletCopiedToast": "Adresse du portefeuille copiée dans le presse-papiers",
         "copyWalletAddress": "Copier l'adresse du portefeuille"
     },

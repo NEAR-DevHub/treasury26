@@ -2072,7 +2072,7 @@
         "emptyDescription": "Tidak ada riwayat saldo"
     },
     "user": {
-        "saveToAddressBook": "Simpan ke Buku alamat",
+        "saveToAddressBook": "Simpan ke Kontak",
         "walletCopiedToast": "Alamat dompet disalin ke papan klip",
         "copyWalletAddress": "Salin Alamat Dompet"
     },

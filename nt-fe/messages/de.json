@@ -2072,7 +2072,7 @@
         "emptyDescription": "Kein Kontostandsverlauf verfügbar"
     },
     "user": {
-        "saveToAddressBook": "Im Adressbuch speichern",
+        "saveToAddressBook": "In Kontakten speichern",
         "walletCopiedToast": "Wallet-Adresse in die Zwischenablage kopiert",
         "copyWalletAddress": "Wallet-Adresse kopieren"
     },

@@ -2072,7 +2072,7 @@
         "emptyDescription": "残高履歴がありません"
     },
     "user": {
-        "saveToAddressBook": "アドレス帳に保存",
+        "saveToAddressBook": "連絡先に保存",
         "walletCopiedToast": "ウォレットアドレスをクリップボードにコピーしました",
         "copyWalletAddress": "ウォレットアドレスをコピー"
     },

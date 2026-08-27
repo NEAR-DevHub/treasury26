@@ -2072,7 +2072,7 @@
         "emptyDescription": "No hay historial de saldo disponible"
     },
     "user": {
-        "saveToAddressBook": "Guardar en libreta de direcciones",
+        "saveToAddressBook": "Guardar en contactos",
         "walletCopiedToast": "Dirección de cartera copiada al portapapeles",
         "copyWalletAddress": "Copiar dirección"
     },
