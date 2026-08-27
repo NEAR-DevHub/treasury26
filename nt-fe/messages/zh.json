@@ -1857,6 +1857,7 @@
         "Batch Payment Request": "批量付款请求",
         "Payment Request": "付款请求",
         "Confidential Request": "机密请求",
+        "Move to Confidential": "转移至机密",
         "Exchange": "兑换",
         "Function Call": "函数调用",
         "Change Policy": "修改策略",
@@ -2661,5 +2662,40 @@
         "signInRequired": "连接钱包以管理您的账户。",
         "avatarUploaded": "头像上传成功",
         "uploadError": "上传图片时出错，请重试。"
+    },
+    "moveAssets": {
+        "title": "转移资产",
+        "description": "将资产从公开链转移到您的机密金库。",
+        "submitted": "转移请求已提交",
+        "banner": {
+            "title": "<amount></amount> 已到达您的公开余额",
+            "description": "有人通过错误的网络发送了资金。将其转移到此处以使其机密化。",
+            "moveAssets": "转移资产",
+            "viewRequest": "查看请求"
+        },
+        "list": {
+            "title": "需要转移的资金",
+            "token": "代币",
+            "moveAssets": "转移资产",
+            "emptyTitle": "没有需要转移的资产",
+            "emptyDescription": "您的公开余额为空。发送到公开账户的资金将显示在此处。",
+            "viewRequest": "查看请求"
+        },
+        "form": {
+            "title": "至机密",
+            "review": "检查转移",
+            "reviewDisabled": "输入金额"
+        },
+        "review": {
+            "title": "检查您的转移",
+            "youMove": "您转移"
+        },
+        "errors": {
+            "invalid": "请输入有效金额",
+            "zero": "金额必须大于零",
+            "tooManyDecimals": "该代币的小数位数过多",
+            "exceedsBalance": "金额超过公开余额",
+            "failed": "无法准备转移请求。请重试。"
+        }
     }
 }

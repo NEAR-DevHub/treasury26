@@ -121,7 +121,12 @@ function ProposalTimelineDate({
         proposal,
         treasuryId,
     )?.depositAddress;
-    const shouldUseSwapDate = isProposalExecuted && !!depositAddress;
+    // Moves to confidential settle via a confidential quote whose status only
+    // carries the quote time — keep the on-chain execution date for those.
+    const shouldUseSwapDate =
+        isProposalExecuted &&
+        !!depositAddress &&
+        getProposalUIKind(proposal) !== "Move to Confidential";
 
     const {
         data: transaction,

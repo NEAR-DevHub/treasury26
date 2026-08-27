@@ -7,6 +7,7 @@ import {
     HistoryRefreshIndicatorProvider,
     RecentActivity,
 } from "@/features/activity";
+import { PublicBalanceBanner } from "@/features/confidential/components/public-balance-banner";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { GetStartedCard } from "@/features/onboarding/components/sidebar-onboarding";
 import { InfoBox } from "@/features/onboarding/components/info-box";
@@ -44,6 +45,7 @@ export default function AppPage() {
                             <CreateBanner />
                         </div>
                         <PendingJoinBanner />
+                        <PublicBalanceBanner />
                         <div className="lg:hidden">
                             <GetStartedCard />
                         </div>

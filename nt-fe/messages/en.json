@@ -1874,6 +1874,7 @@
         "Batch Payment Request": "Batch Payment Request",
         "Payment Request": "Payment Request",
         "Confidential Request": "Confidential Request",
+        "Move to Confidential": "Move to Confidential",
         "Exchange": "Exchange",
         "Function Call": "Function Call",
         "Change Policy": "Change Policy",
@@ -2661,5 +2662,40 @@
         "avatarUploaded": "Avatar uploaded successfully",
         "uploadError": "Error occurred while uploading image, please try again.",
         "signInRequired": "Connect your wallet to manage your account."
+    },
+    "moveAssets": {
+        "title": "Move Assets",
+        "description": "Move assets from public chain to your Confidential treasury.",
+        "submitted": "Move request submitted",
+        "banner": {
+            "title": "<amount></amount> landed on your public balance",
+            "description": "Someone sent it over the wrong network. Move it here to make it confidential.",
+            "moveAssets": "Move Assets",
+            "viewRequest": "View Request"
+        },
+        "list": {
+            "title": "The funds that need to move",
+            "token": "Token",
+            "moveAssets": "Move Assets",
+            "emptyTitle": "Nothing to move",
+            "emptyDescription": "Your public balance is empty. Funds sent to the public account will show up here.",
+            "viewRequest": "View Request"
+        },
+        "form": {
+            "title": "To Confidential",
+            "review": "Review Moving",
+            "reviewDisabled": "Enter amount"
+        },
+        "review": {
+            "title": "Review Your Moving",
+            "youMove": "You move"
+        },
+        "errors": {
+            "invalid": "Enter a valid amount",
+            "zero": "Amount must be greater than zero",
+            "tooManyDecimals": "Too many decimal places for this token",
+            "exceedsBalance": "Amount exceeds the public balance",
+            "failed": "Could not prepare the move request. Please try again."
+        }
     }
 }

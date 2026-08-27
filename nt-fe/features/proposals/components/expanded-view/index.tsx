@@ -72,7 +72,8 @@ export function ExpandedViewInternal({
     const { isExecuted } = useRequestDisplayContext()!;
 
     switch (type) {
-        case "Payment Request": {
+        case "Payment Request":
+        case "Move to Confidential": {
             const paymentData = data as PaymentRequestData;
             return <TransferExpanded data={paymentData} />;
         }

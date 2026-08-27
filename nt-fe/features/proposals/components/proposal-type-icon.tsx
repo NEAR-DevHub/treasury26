@@ -73,6 +73,8 @@ export function ProposalTypeIcon({
                 return <TreasuryTypeIcon type="confidential" />;
             }
         }
+        case "Move to Confidential":
+            return <TreasuryTypeIcon type="confidential" />;
         case "Function Call":
             return (
                 <div className="flex size-9 shrink-0 items-center justify-center rounded-full dark:bg-blue-500/10 bg-blue-100">

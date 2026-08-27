@@ -1874,6 +1874,7 @@
         "Batch Payment Request": "Solicitação de pagamento em lote",
         "Payment Request": "Solicitação de pagamento",
         "Confidential Request": "Solicitação confidencial",
+        "Move to Confidential": "Mover para Confidencial",
         "Exchange": "Troca",
         "Function Call": "Chamada de função",
         "Change Policy": "Alterar política",
@@ -2661,5 +2662,40 @@
         "signInRequired": "Conecte sua carteira para gerenciar sua conta.",
         "avatarUploaded": "Avatar enviado com sucesso",
         "uploadError": "Erro ao enviar a imagem. Tente novamente."
+    },
+    "moveAssets": {
+        "title": "Mover ativos",
+        "description": "Mova ativos da cadeia pública para a sua tesouraria confidencial.",
+        "submitted": "Pedido de movimentação enviado",
+        "banner": {
+            "title": "<amount></amount> chegaram ao seu saldo público",
+            "description": "Alguém enviou pela rede errada. Mova para cá para torná-los confidenciais.",
+            "moveAssets": "Mover ativos",
+            "viewRequest": "Ver solicitação"
+        },
+        "list": {
+            "title": "Fundos que precisam ser movidos",
+            "token": "Token",
+            "moveAssets": "Mover ativos",
+            "emptyTitle": "Nada para mover",
+            "emptyDescription": "Seu saldo público está vazio. Fundos enviados à conta pública aparecerão aqui.",
+            "viewRequest": "Ver solicitação"
+        },
+        "form": {
+            "title": "Para Confidencial",
+            "review": "Revisar movimentação",
+            "reviewDisabled": "Insira o valor"
+        },
+        "review": {
+            "title": "Revise sua movimentação",
+            "youMove": "Você move"
+        },
+        "errors": {
+            "invalid": "Insira um valor válido",
+            "zero": "O valor deve ser maior que zero",
+            "tooManyDecimals": "Casas decimais demais para este token",
+            "exceedsBalance": "O valor excede o saldo público",
+            "failed": "Não foi possível preparar o pedido de movimentação. Tente novamente."
+        }
     }
 }

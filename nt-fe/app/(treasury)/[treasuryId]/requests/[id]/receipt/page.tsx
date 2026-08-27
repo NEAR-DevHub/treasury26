@@ -793,7 +793,12 @@ export default function RequestReceiptPage({
         receiptSourceAmountUsd !== undefined ||
         receiptDestinationAmountUsd !== undefined;
     const isExecutableReceipt = status === "Executed";
-    const shouldUseSwapExecutionDate = isExecutableReceipt && !!depositAddress;
+    // Intents-routed receipts poll swap status for settlement gating; a move
+    // to confidential does too, but its date comes from the chain transaction
+    // (the confidential quote status only exposes the quote time).
+    const shouldTrackSwapStatus = isExecutableReceipt && !!depositAddress;
+    const shouldUseSwapExecutionDate =
+        shouldTrackSwapStatus && proposalUiKind !== "Move to Confidential";
 
     const {
         data: transaction,
@@ -808,7 +813,7 @@ export default function RequestReceiptPage({
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress,
         undefined,
-        shouldUseSwapExecutionDate,
+        shouldTrackSwapStatus,
         treasuryId,
     );
     // Intents-routed proposals gate the receipt on a SUCCESS swap status — a

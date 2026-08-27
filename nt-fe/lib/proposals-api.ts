@@ -267,6 +267,21 @@ export interface Proposal {
             amount_out_usd?: string | null;
             usd_change?: string | null;
         };
+        /**
+         * Public-to-confidential move binding (set for proposals carrying the
+         * `public-to-confidential` marker). `verified` means the backend
+         * matched the call's deposit address + asset to a 1Click quote in
+         * this DAO's confidential history.
+         */
+        public_move?: {
+            verified: boolean;
+            deposit_address: string;
+            origin_asset: string;
+            amount_raw: string;
+            status?: string | null;
+            quote_created_at?: string | null;
+            amount_in_formatted?: string | null;
+        };
         /** Bulk-payment overlay (only set for bulk header proposals). */
         bulk?: {
             status: string;

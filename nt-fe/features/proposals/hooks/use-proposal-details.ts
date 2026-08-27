@@ -53,7 +53,9 @@ export function useProposalDetails(proposal: Proposal, policy: Policy) {
     const isExecuted = status === "Executed";
 
     const isExchangeProposal = proposalType === "Exchange";
-    const isPaymentProposal = proposalType === "Payment Request";
+    const isPaymentProposal =
+        proposalType === "Payment Request" ||
+        proposalType === "Move to Confidential";
     const isConfidentialRequestProposal =
         proposalType === "Confidential Request";
     const isBatchPaymentProposal = proposalType === "Batch Payment Request";
