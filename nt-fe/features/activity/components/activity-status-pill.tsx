@@ -15,10 +15,10 @@ const STATUS_CLASSES: Record<
     string
 > = {
     completed:
-        "bg-general-success-background-faded text-general-success-foreground",
+        "border-green-100 bg-general-success-background-faded text-general-success-foreground dark:border-green-900",
     pending:
-        "bg-general-orange-background-faded text-general-orange-foreground",
-    failed: "bg-general-destructive-background-faded text-general-destructive-foreground",
+        "border-general-orange-border bg-general-orange-background-faded text-general-orange-foreground",
+    failed: "border-transparent bg-general-destructive-background-faded text-general-destructive-foreground",
 };
 
 const STATUS_LABEL_KEYS: Record<
@@ -44,7 +44,7 @@ export function ActivityStatusPill({
     return (
         <span
             className={cn(
-                "inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium",
+                "inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-xs font-medium",
                 STATUS_CLASSES[resolvedStatus],
                 className,
             )}
