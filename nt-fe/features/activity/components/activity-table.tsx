@@ -100,6 +100,14 @@ function bodyCellClassName(
     );
 }
 
+/**
+ * The whole row opens the details dialog, so a click that lands on a link or a
+ * button inside it (the explorer link, copy, the details arrow) is left alone.
+ */
+function isInteractiveTarget(target: EventTarget | null) {
+    return target instanceof HTMLElement && !!target.closest("a, button");
+}
+
 /** The tertiary frame the white row sheet floats inside. */
 function TableSheet({ children }: { children: ReactNode }) {
     return (
@@ -401,7 +409,16 @@ export function ActivityTable({
                                 return (
                                     <TableRow
                                         key={activity.id}
-                                        className="group border-0 hover:bg-transparent"
+                                        className="group cursor-pointer border-0 hover:bg-transparent"
+                                        onClick={(event) => {
+                                            if (
+                                                isInteractiveTarget(
+                                                    event.target,
+                                                )
+                                            )
+                                                return;
+                                            openTransactionDetails(activity);
+                                        }}
                                     >
                                         <TableCell
                                             className={bodyCellClassName(
