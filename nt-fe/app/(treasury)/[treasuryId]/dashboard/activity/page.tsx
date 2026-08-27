@@ -14,7 +14,11 @@ import {
     type TabItem,
     TabsContent,
 } from "@/components/responsive-tabs";
-import { ActivityTable } from "@/features/activity";
+import {
+    ActivityTable,
+    HistoryRefreshIndicatorProvider,
+    useIsHistoryRefreshing,
+} from "@/features/activity";
 import { HistoryRefreshButton } from "@/features/activity/components/history-refresh-button";
 import { MobileFilterSheet } from "@/features/proposals/components/mobile-filter-sheet";
 import {
@@ -171,6 +175,9 @@ function ActivityList({ status }: { status?: ActivityStatus }) {
         }
     }
 
+    // "Update treasury data" invalidates and awaits this query, so the skeleton
+    // covers the refresh as well as the first load.
+    const isHistoryRefreshing = useIsHistoryRefreshing();
     const { data, isLoading } = useRecentActivity(
         treasuryId,
         PAGE_SIZE,
@@ -191,7 +198,7 @@ function ActivityList({ status }: { status?: ActivityStatus }) {
     return (
         <ActivityTable
             activities={data?.data ?? []}
-            isLoading={isLoading}
+            isLoading={isLoading || isHistoryRefreshing}
             pageIndex={page}
             pageSize={PAGE_SIZE}
             total={data?.total ?? 0}
@@ -422,43 +429,47 @@ export default function ActivityPage() {
     ));
 
     return (
-        <PageComponentLayout
-            title={t("title")}
-            // Activity is reachable from several places, so the mobile back
-            // button always lands on the treasury dashboard rather than
-            // unwinding history.
-            backButton={`/${treasuryId}`}
-            hideMobileShellControls
-            headerActions={
-                <HistoryRefreshButton className={ICON_BUTTON_CLASS} />
-            }
-        >
-            {/* The shell header only carries the page title from `lg` up, so on
-                phones the page states its own heading above the controls. */}
-            <div className="flex flex-col gap-1 pb-4 lg:hidden">
-                <h1 className="font-semibold text-2xl leading-[1.2] tracking-[-0.48px]">
-                    {t("title")}
-                </h1>
-                <p className="text-base text-general-secondary-foreground leading-[1.5]">
-                    {tActivity("recentSubtitle")}
-                </p>
-            </div>
-            <ResponsiveTabs
-                tabs={tabs}
-                value={currentTab}
-                onValueChange={handleTabChange}
-                actions={actions}
-                variant="plain"
-                className="md:gap-4"
+        // The refresh button lives in the shell header while the table it
+        // reloads lives in the body, so they share state through the provider.
+        <HistoryRefreshIndicatorProvider>
+            <PageComponentLayout
+                title={t("title")}
+                // Activity is reachable from several places, so the mobile back
+                // button always lands on the treasury dashboard rather than
+                // unwinding history.
+                backButton={`/${treasuryId}`}
+                hideMobileShellControls
+                headerActions={
+                    <HistoryRefreshButton className={ICON_BUTTON_CLASS} />
+                }
             >
-                {filterPanel}
-                {tabContents}
-            </ResponsiveTabs>
-            <MobileFilterSheet
-                filterOptions={activityFilterOptions}
-                open={isMobileFiltersOpen}
-                onOpenChange={setIsMobileFiltersOpen}
-            />
-        </PageComponentLayout>
+                {/* The shell header only carries the page title from `lg` up, so on
+                phones the page states its own heading above the controls. */}
+                <div className="flex flex-col gap-1 pb-4 lg:hidden">
+                    <h1 className="font-semibold text-2xl leading-[1.2] tracking-[-0.48px]">
+                        {t("title")}
+                    </h1>
+                    <p className="text-base text-general-secondary-foreground leading-[1.5]">
+                        {tActivity("recentSubtitle")}
+                    </p>
+                </div>
+                <ResponsiveTabs
+                    tabs={tabs}
+                    value={currentTab}
+                    onValueChange={handleTabChange}
+                    actions={actions}
+                    variant="plain"
+                    className="md:gap-4"
+                >
+                    {filterPanel}
+                    {tabContents}
+                </ResponsiveTabs>
+                <MobileFilterSheet
+                    filterOptions={activityFilterOptions}
+                    open={isMobileFiltersOpen}
+                    onOpenChange={setIsMobileFiltersOpen}
+                />
+            </PageComponentLayout>
+        </HistoryRefreshIndicatorProvider>
     );
 }
