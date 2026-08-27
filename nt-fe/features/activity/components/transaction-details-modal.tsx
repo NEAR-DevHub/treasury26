@@ -581,6 +581,17 @@ function DownArrow() {
 }
 
 /**
+ * Shared chrome for the dialog bodies. The bottom padding is dropped when a
+ * linked-request button follows, tightening the gap between the two.
+ */
+function bodyClassName(activity: RecentActivity) {
+    return cn(
+        "flex flex-col gap-4 sm:px-5",
+        activity.proposalId == null && "sm:pb-5",
+    );
+}
+
+/**
  * Deposit dialog body: who sent the funds, what landed in the treasury, then
  * the detail rows — all on the dialog's single white surface.
  */
@@ -605,7 +616,7 @@ function DepositBody({
     );
 
     return (
-        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+        <div className={bodyClassName(activity)}>
             <div className="flex flex-col gap-3">
                 <CounterpartyBlock
                     avatar={
@@ -652,7 +663,7 @@ function SendBody({
     const toLabel = getToAccount(activity, false, treasuryId, isConfidential);
 
     return (
-        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+        <div className={bodyClassName(activity)}>
             <div className="flex flex-col gap-3">
                 <TokenAmountBlock activity={activity} />
 
@@ -765,7 +776,7 @@ function BulkSendBody({
     const items = useDetailItems(activity, "transfer");
 
     return (
-        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+        <div className={bodyClassName(activity)}>
             <div className="flex flex-col gap-3">
                 <TokenAmountBlock activity={activity} />
 
@@ -876,7 +887,7 @@ function SwapBody({
     const receivedToken = activityToken(swap.receivedTokenMetadata);
 
     return (
-        <div className="flex flex-col gap-4 sm:px-5 sm:pb-5">
+        <div className={bodyClassName(activity)}>
             <div className="flex flex-col gap-3">
                 {sentToken && swap.sentAmount ? (
                     <SwapAmountRow
