@@ -2072,9 +2072,9 @@
         "emptyDescription": "We're loading your asset data. This will only take a moment."
     },
     "user": {
-        "saveToAddressBook": "Save to Address book",
+        "saveToAddressBook": "Save to contacts",
         "walletCopiedToast": "Wallet address copied to clipboard",
-        "copyWalletAddress": "Copy Wallet Address"
+        "copyWalletAddress": "Copy wallet address"
     },
     "infoDisplay": {
         "viewLess": "View Less",
