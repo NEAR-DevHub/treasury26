@@ -7,7 +7,7 @@ import {
     LoaderCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { Address } from "@/components/address";
 import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
@@ -23,7 +23,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
-import { TableSkeleton } from "@/components/table-skeleton";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
 import { TooltipUser } from "@/components/user";
@@ -47,7 +46,14 @@ import {
     SwapAmount,
 } from "./activity-row";
 import { ActivityGlyph, ActivityRowIcon } from "./activity-row-icon";
-import { RecentActivitySkeleton } from "./recent-activity-card";
+import {
+    bodyCellClassName,
+    CELL_PADDING,
+    HASH_COLUMN_CLASS,
+    HEAD_CLASS,
+    TableSheet,
+} from "./activity-table-layout";
+import { ActivityTableSkeleton } from "./activity-table-skeleton";
 import { TransactionDetailsModal } from "./transaction-details-modal";
 import { TransactionHashCell } from "./transaction-hash-cell";
 
@@ -60,61 +66,12 @@ interface ActivityTableProps {
     onPageChange: (page: number) => void;
 }
 
-/** Shared geometry for the five columns, applied to header and body alike. */
-const CELL_PADDING = [
-    "px-6",
-    "px-4",
-    "px-3",
-    "px-3",
-    "px-3 text-right",
-] as const;
-
-const HEAD_CLASS = "h-10 text-sm font-semibold normal-case leading-[1.5]";
-
-/** The mobile list is short enough that a full page of placeholders is noise. */
-const MOBILE_SKELETON_ROWS = 6;
-
-/**
- * The table paints a white sheet floating on the card's tertiary surface: the
- * header sits on the surface itself while the rows form a rounded, bordered
- * block. `border-separate` keeps that block's corners round — with collapsed
- * borders the radius on the outer cells would be dropped.
- */
-function bodyCellClassName(
-    columnIndex: number,
-    isFirstRow: boolean,
-    isLastRow: boolean,
-) {
-    return cn(
-        "h-[66px] bg-card border-b border-general-border align-middle transition-colors group-hover:bg-general-tertiary",
-        CELL_PADDING[columnIndex],
-        isFirstRow && "border-t",
-        columnIndex === 0 && "border-l",
-        columnIndex === CELL_PADDING.length - 1 && "border-r",
-        isFirstRow && columnIndex === 0 && "rounded-tl-xl",
-        isFirstRow &&
-            columnIndex === CELL_PADDING.length - 1 &&
-            "rounded-tr-xl",
-        isLastRow && columnIndex === 0 && "rounded-bl-xl",
-        isLastRow && columnIndex === CELL_PADDING.length - 1 && "rounded-br-xl",
-    );
-}
-
 /**
  * The whole row opens the details dialog, so a click that lands on a link or a
  * button inside it (the explorer link, copy, the details arrow) is left alone.
  */
 function isInteractiveTarget(target: EventTarget | null) {
     return target instanceof HTMLElement && !!target.closest("a, button");
-}
-
-/** The tertiary frame the white row sheet floats inside. */
-function TableSheet({ children }: { children: ReactNode }) {
-    return (
-        <div className="rounded-2xl border border-general-border bg-general-tertiary p-1">
-            {children}
-        </div>
-    );
 }
 
 /** Token glyph sized for the overlapping swap pair, which needs 20/28px. */
@@ -251,18 +208,7 @@ export function ActivityTable({
     };
 
     if (isLoading) {
-        return (
-            <>
-                <div className="md:hidden">
-                    <RecentActivitySkeleton rows={MOBILE_SKELETON_ROWS} />
-                </div>
-                <TableSkeleton
-                    rows={pageSize}
-                    columns={5}
-                    className="hidden rounded-2xl border-general-border md:block"
-                />
-            </>
-        );
+        return <ActivityTableSkeleton />;
     }
 
     if (activities.length === 0) {
@@ -369,7 +315,7 @@ export function ActivityTable({
                                 <TableHead
                                     className={cn(
                                         HEAD_CLASS,
-                                        "w-[278px]",
+                                        HASH_COLUMN_CLASS,
                                         CELL_PADDING[4],
                                     )}
                                 >
