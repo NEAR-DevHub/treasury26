@@ -45,7 +45,11 @@ interface PageComponentLayoutProps {
     headerActions?: ReactNode;
     /** Drops the header entirely, so the page owns the full viewport height. */
     hideHeader?: boolean;
-    /** Pins the page to the viewport so it never scrolls, on any breakpoint. */
+    /**
+     * Pins the page to the viewport height on every breakpoint, so the document
+     * never scrolls. The content area still scrolls on its own when a short
+     * viewport can't fit it.
+     */
     fitViewport?: boolean;
     logo?: ReactNode;
     mainClassName?: string;
@@ -230,7 +234,10 @@ export function PageComponentLayout({
             <main
                 className={cn(
                     "flex-1 px-4 pb-6 md:px-6 md:pb-8",
-                    fitViewport ? "min-h-0 overflow-hidden" : "overflow-y-auto",
+                    "overflow-y-auto",
+                    // Without this the content area grows past the pinned
+                    // viewport instead of scrolling inside it.
+                    fitViewport && "min-h-0",
                     // Inside the shell the floating panel owns the surface, so
                     // the content area must not paint over it.
                     hasSidebarRail
