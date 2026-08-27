@@ -265,6 +265,25 @@ export function extractPaymentRequestData(
 }
 
 /**
+ * Public-to-confidential move: a payment-shaped FunctionCall to a 1Click
+ * deposit address. The on-chain receiver is shown as-is — the description
+ * marker is proposer-controlled and must never relabel where funds go; the
+ * kind label ("Move to Confidential") carries the intent. The receiver is
+ * also exposed as `depositAddress` so settlement (swap status) tracking and
+ * receipt gating run like any other Intents-routed transfer.
+ */
+export function extractMoveToConfidentialData(
+    proposal: Proposal,
+): PaymentRequestData {
+    const data = extractPaymentRequestData(proposal);
+    return {
+        ...data,
+        depositAddress: data.receiver,
+        destinationAssetId: NEAR_COM_NETWORK_ID,
+    };
+}
+
+/**
  * Extract Function Call data from proposal
  */
 export function extractFunctionCallData(proposal: Proposal): FunctionCallData {
@@ -1007,6 +1026,9 @@ export function extractProposalData(
             break;
         case "Confidential Request":
             data = extractConfidentialRequestData(proposal, treasuryId);
+            break;
+        case "Move to Confidential":
+            data = extractMoveToConfidentialData(proposal);
             break;
         case "Function Call":
             data = extractFunctionCallData(proposal);

@@ -93,6 +93,7 @@ export function extractConfidentialBulkReceiptData(
 export function isReceiptEligibleProposalKind(proposalKind?: string): boolean {
     return (
         proposalKind === "Payment Request" ||
+        proposalKind === "Move to Confidential" ||
         proposalKind === "Batch Payment Request" ||
         proposalKind === "Exchange" ||
         proposalKind === "Confidential Request"
@@ -199,7 +200,7 @@ export function extractReceiptProposalData(
     try {
         const { type, data } = extractProposalData(proposal, treasuryId);
 
-        if (type === "Payment Request") {
+        if (type === "Payment Request" || type === "Move to Confidential") {
             return toPaymentReceiptData(data as PaymentRequestData);
         }
 

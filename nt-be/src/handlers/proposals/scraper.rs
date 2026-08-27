@@ -345,6 +345,96 @@ pub async fn fetch_batch_payment_list(
         .map(|r| r.data)
 }
 
+/// `proposal action` marker written by the frontend for public-to-confidential
+/// recovery proposals.
+pub const PUBLIC_TO_CONFIDENTIAL_ACTION: &str = "public-to-confidential";
+
+/// Decoded and validated call of a public-to-confidential move — exactly the
+/// shapes `lib/near-proposal-builders.ts` produces: `wrap.near`
+/// `near_deposit` + `ft_transfer`, a single NEP-141 `ft_transfer`, or a
+/// single `intents.near` `mt_transfer`. Anything else (extra actions,
+/// undecodable args, zero amount) is not a move, whatever the description says.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicToConfidentialCall {
+    /// 1Click asset id the transfer funds (`nep141:wrap.near`, `nep141:<ft>`
+    /// or the intents token id) — compared against the quote's `originAsset`.
+    pub origin_asset: String,
+    pub deposit_address: String,
+    pub amount_raw: u128,
+}
+
+impl PublicToConfidentialCall {
+    pub fn from_kind(kind: &Value) -> Option<Self> {
+        let call = kind.get("FunctionCall")?;
+        let receiver = call.get("receiver_id")?.as_str()?;
+        let actions = call.get("actions")?.as_array()?;
+        let decoded: Vec<(&str, Value, &str)> = actions
+            .iter()
+            .map(|action| {
+                let method = action.get("method_name").and_then(Value::as_str)?;
+                let args = action.get("args").and_then(Value::as_str)?;
+                let args = BASE64_STANDARD.decode(args).ok()?;
+                let args = serde_json::from_slice::<Value>(&args).ok()?;
+                let deposit = action.get("deposit").and_then(Value::as_str)?;
+                Some((method, args, deposit))
+            })
+            .collect::<Option<Vec<_>>>()?;
+
+        let transfer = |args: &Value| -> Option<(String, u128)> {
+            let deposit_address = args.get("receiver_id")?.as_str()?;
+            if deposit_address.is_empty() {
+                return None;
+            }
+            let amount: u128 = args.get("amount")?.as_str()?.parse().ok()?;
+            (amount > 0).then(|| (deposit_address.to_string(), amount))
+        };
+
+        match (receiver, decoded.as_slice()) {
+            (
+                "wrap.near",
+                [
+                    ("near_deposit", _, wrap_deposit),
+                    ("ft_transfer", args, "1"),
+                ],
+            ) => {
+                let (deposit_address, amount_raw) = transfer(args)?;
+                (wrap_deposit.parse::<u128>().ok()? == amount_raw).then(|| Self {
+                    origin_asset: "nep141:wrap.near".to_string(),
+                    deposit_address,
+                    amount_raw,
+                })
+            }
+            ("intents.near", [("mt_transfer", args, "1")]) => {
+                let (deposit_address, amount_raw) = transfer(args)?;
+                let token_id = args.get("token_id")?.as_str()?;
+                (!token_id.is_empty()).then(|| Self {
+                    origin_asset: token_id.to_string(),
+                    deposit_address,
+                    amount_raw,
+                })
+            }
+            (contract, [("ft_transfer", args, "1")]) if contract != "wrap.near" => {
+                let (deposit_address, amount_raw) = transfer(args)?;
+                Some(Self {
+                    origin_asset: format!("nep141:{contract}"),
+                    deposit_address,
+                    amount_raw,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    /// Marker + valid call shape. Not yet bound to a quote — see
+    /// `ConfidentialRequestInfo::is_public_to_confidential` for the verified check.
+    pub fn from_marked_proposal(proposal: &Proposal) -> Option<Self> {
+        (extract_from_description(&proposal.description, "proposalaction").as_deref()
+            == Some(PUBLIC_TO_CONFIDENTIAL_ACTION))
+        .then(|| Self::from_kind(&proposal.kind))
+        .flatten()
+    }
+}
+
 pub fn extract_from_description(desc: &str, key: &str) -> Option<String> {
     let key_normalized = key.to_lowercase().replace(' ', "");
 
@@ -640,6 +730,23 @@ impl ConfidentialRequestInfo {
         extract_from_description(&proposal.description, "proposalaction")
             == Some("confidential".to_string())
             && extract_payload_hash_from_kind(&proposal.kind).is_some()
+    }
+
+    /// Recovery proposal moving a confidential treasury's public balance into
+    /// its confidential balance. The description marker is proposer-controlled,
+    /// so a proposal only counts once the backend has bound its call (deposit
+    /// address, asset) to a 1Click quote in this DAO's own history —
+    /// `confidential_metadata.public_move.verified`, attached by
+    /// `enrich_public_to_confidential_proposals`.
+    pub fn is_public_to_confidential(proposal: &Proposal) -> bool {
+        PublicToConfidentialCall::from_marked_proposal(proposal).is_some()
+            && proposal
+                .confidential_metadata
+                .as_ref()
+                .and_then(|meta| meta.get("public_move"))
+                .and_then(|public_move| public_move.get("verified"))
+                .and_then(Value::as_bool)
+                == Some(true)
     }
 }
 
@@ -1309,6 +1416,66 @@ impl ProposalType for BulkPayment {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn b64(value: Value) -> String {
+        BASE64_STANDARD.encode(value.to_string())
+    }
+
+    const DEPOSIT: &str = "2c24463faef2c501440b35e9a5433858c85e19a83bfcd4306b6005286409c1f2";
+
+    #[test]
+    fn public_move_call_decodes_the_three_builder_shapes() {
+        let wrap = json!({"FunctionCall": {"receiver_id": "wrap.near", "actions": [
+            {"method_name": "near_deposit", "args": b64(json!({})), "deposit": "5", "gas": "1"},
+            {"method_name": "ft_transfer", "args": b64(json!({"receiver_id": DEPOSIT, "amount": "5"})), "deposit": "1", "gas": "1"},
+        ]}});
+        assert_eq!(
+            PublicToConfidentialCall::from_kind(&wrap),
+            Some(PublicToConfidentialCall {
+                origin_asset: "nep141:wrap.near".into(),
+                deposit_address: DEPOSIT.into(),
+                amount_raw: 5,
+            })
+        );
+
+        let ft = json!({"FunctionCall": {"receiver_id": "usdc.near", "actions": [
+            {"method_name": "ft_transfer", "args": b64(json!({"receiver_id": DEPOSIT, "amount": "7"})), "deposit": "1", "gas": "1"},
+        ]}});
+        assert_eq!(
+            PublicToConfidentialCall::from_kind(&ft).map(|c| c.origin_asset),
+            Some("nep141:usdc.near".to_string())
+        );
+
+        let mt = json!({"FunctionCall": {"receiver_id": "intents.near", "actions": [
+            {"method_name": "mt_transfer", "args": b64(json!({"receiver_id": DEPOSIT, "amount": "7", "token_id": "nep141:usdc.near"})), "deposit": "1", "gas": "1"},
+        ]}});
+        assert_eq!(
+            PublicToConfidentialCall::from_kind(&mt).map(|c| c.origin_asset),
+            Some("nep141:usdc.near".to_string())
+        );
+    }
+
+    #[test]
+    fn public_move_call_rejects_invalid_shapes() {
+        let extra_action = json!({"FunctionCall": {"receiver_id": "usdc.near", "actions": [
+            {"method_name": "ft_transfer", "args": b64(json!({"receiver_id": DEPOSIT, "amount": "7"})), "deposit": "1", "gas": "1"},
+            {"method_name": "storage_deposit", "args": b64(json!({})), "deposit": "1", "gas": "1"},
+        ]}});
+        let wrap_mismatch = json!({"FunctionCall": {"receiver_id": "wrap.near", "actions": [
+            {"method_name": "near_deposit", "args": b64(json!({})), "deposit": "4", "gas": "1"},
+            {"method_name": "ft_transfer", "args": b64(json!({"receiver_id": DEPOSIT, "amount": "5"})), "deposit": "1", "gas": "1"},
+        ]}});
+        let bad_args = json!({"FunctionCall": {"receiver_id": "usdc.near", "actions": [
+            {"method_name": "ft_transfer", "args": "not-base64", "deposit": "1", "gas": "1"},
+        ]}});
+        let zero = json!({"FunctionCall": {"receiver_id": "usdc.near", "actions": [
+            {"method_name": "ft_transfer", "args": b64(json!({"receiver_id": DEPOSIT, "amount": "0"})), "deposit": "1", "gas": "1"},
+        ]}});
+        let transfer = json!({"Transfer": {"token_id": "", "receiver_id": DEPOSIT, "amount": "5"}});
+        for kind in [extra_action, wrap_mismatch, bad_args, zero, transfer] {
+            assert_eq!(PublicToConfidentialCall::from_kind(&kind), None);
+        }
+    }
 
     /// Regression test: `BatchPayment.recipient` was previously typed as `AccountId`,
     /// which caused deserialization to fail for Solana base58 addresses containing

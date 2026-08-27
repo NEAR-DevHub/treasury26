@@ -131,6 +131,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::balance_changes::history::get_balance_chart),
         )
         .route(
+            "/api/confidential/public-assets",
+            get(handlers::user::assets::get_confidential_public_assets),
+        )
+        .route(
             "/api/confidential/balance-chart",
             get(handlers::intents::confidential::gold::snapshots::get_confidential_balance_chart),
         )

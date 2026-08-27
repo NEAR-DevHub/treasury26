@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Proposal } from "@/lib/proposals-api";
+import { usePublicAssets } from "@/features/confidential/hooks/use-public-assets";
 import { useAssets } from "@/hooks/use-assets";
 import {
     getProposalFundingAvailability,
@@ -20,6 +21,7 @@ export function useProposalsInsufficientBalance(
     isLoading: boolean;
 } {
     const { data: assets, isLoading } = useAssets(treasuryId);
+    const { data: publicAssets } = usePublicAssets();
 
     const insufficientBalanceIds = useMemo(() => {
         const ids = new Set<number>();
@@ -30,13 +32,14 @@ export function useProposalsInsufficientBalance(
                 proposal,
                 assets.tokens,
                 treasuryId ?? undefined,
+                publicAssets?.tokens,
             );
             if (funding && isFundingInsufficient(funding)) {
                 ids.add(proposal.id);
             }
         }
         return ids;
-    }, [proposals, assets, treasuryId]);
+    }, [proposals, assets, publicAssets, treasuryId]);
 
     return { insufficientBalanceIds, isLoading };
 }

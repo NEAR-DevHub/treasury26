@@ -13,7 +13,7 @@ import { useSlotBlock } from "@/hooks/use-warnings";
 import { stripMessageForTooltip } from "@/lib/warnings";
 import { Tooltip } from "@/components/tooltip";
 
-interface PermissionRequirement {
+export interface PermissionRequirement {
     kind: string;
     action: string;
 }

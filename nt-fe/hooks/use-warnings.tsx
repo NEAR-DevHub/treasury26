@@ -589,6 +589,7 @@ const PROPOSAL_KIND_TO_SLOT: Record<string, string> = {
     "Payment Request": "payments",
     "Batch Payment Request": "payments",
     "Confidential Request": "payments",
+    "Move to Confidential": "payments",
     Exchange: "exchange",
 };
 

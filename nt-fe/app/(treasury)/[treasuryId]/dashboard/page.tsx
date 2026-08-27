@@ -7,6 +7,7 @@ import {
     HistoryRefreshIndicatorProvider,
     RecentActivity,
 } from "@/features/activity";
+import { PublicBalanceBanner } from "@/features/confidential/components/public-balance-banner";
 import { OnboardingProgress } from "@/features/onboarding";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { InfoBox } from "@/features/onboarding/components/info-box";
@@ -49,6 +50,7 @@ export default function AppPage() {
                             <CreateBanner />
                         </div>
                         <PendingJoinBanner />
+                        <PublicBalanceBanner />
                         <OnboardingProgress
                             onDepositClick={handleDepositOpen}
                         />

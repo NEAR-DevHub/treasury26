@@ -228,15 +228,25 @@ export function getStakingFundingAvailability(
  * Staking proposals use staked / ready-to-withdraw balances where appropriate;
  * other proposals use liquid treasury balance.
  */
+/**
+ * `publicTokens`: a confidential treasury's liquid public balances. Only
+ * "Move to Confidential" proposals are funded from them; every other kind
+ * is checked against `tokens`.
+ */
 export function getProposalFundingAvailability(
     proposal: Proposal,
     tokens: TreasuryAsset[],
     treasuryId?: string,
+    publicTokens: TreasuryAsset[] = [],
 ): ProposalFundingAvailability | null {
     const requiredFunds = getProposalRequiredFunds(proposal, treasuryId);
     if (!requiredFunds) return null;
 
     const { type: uiKind, data } = extractProposalData(proposal, treasuryId);
+
+    if (uiKind === "Move to Confidential") {
+        tokens = publicTokens;
+    }
 
     if (
         uiKind === "Earn NEAR" ||

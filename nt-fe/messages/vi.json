@@ -1871,6 +1871,7 @@
         "Batch Payment Request": "Yêu cầu thanh toán hàng loạt",
         "Payment Request": "Yêu cầu thanh toán",
         "Confidential Request": "Yêu cầu bảo mật",
+        "Move to Confidential": "Chuyển sang Bảo mật",
         "Exchange": "Trao đổi",
         "Function Call": "Gọi hàm",
         "Change Policy": "Thay đổi chính sách",
@@ -2664,5 +2665,40 @@
         "signInRequired": "Kết nối ví để quản lý tài khoản của bạn.",
         "avatarUploaded": "Đã tải ảnh đại diện lên thành công",
         "uploadError": "Đã xảy ra lỗi khi tải ảnh lên, vui lòng thử lại."
+    },
+    "moveAssets": {
+        "title": "Chuyển tài sản",
+        "description": "Chuyển tài sản từ chuỗi công khai sang kho bạc Bảo mật của bạn.",
+        "submitted": "Đã gửi yêu cầu chuyển",
+        "banner": {
+            "title": "<amount></amount> đã vào số dư công khai của bạn",
+            "description": "Ai đó đã gửi qua nhầm mạng. Chuyển vào đây để bảo mật.",
+            "moveAssets": "Chuyển tài sản",
+            "viewRequest": "Xem yêu cầu"
+        },
+        "list": {
+            "title": "Số tiền cần chuyển",
+            "token": "Token",
+            "moveAssets": "Chuyển tài sản",
+            "emptyTitle": "Không có gì để chuyển",
+            "emptyDescription": "Số dư công khai của bạn trống. Tiền gửi vào tài khoản công khai sẽ hiển thị ở đây.",
+            "viewRequest": "Xem yêu cầu"
+        },
+        "form": {
+            "title": "Sang Bảo mật",
+            "review": "Xem lại chuyển",
+            "reviewDisabled": "Nhập số tiền"
+        },
+        "review": {
+            "title": "Xem lại việc chuyển",
+            "youMove": "Bạn chuyển"
+        },
+        "errors": {
+            "invalid": "Nhập số tiền hợp lệ",
+            "zero": "Số tiền phải lớn hơn 0",
+            "tooManyDecimals": "Quá nhiều chữ số thập phân cho token này",
+            "exceedsBalance": "Số tiền vượt quá số dư công khai",
+            "failed": "Không thể chuẩn bị yêu cầu chuyển. Vui lòng thử lại."
+        }
     }
 }

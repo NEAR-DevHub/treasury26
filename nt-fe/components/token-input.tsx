@@ -133,6 +133,12 @@ interface TokenInputProps<
     /** Fires after the user picks a different token. */
     onTokenChange?: (token: Token) => void;
     usdValueOverride?: number | null;
+    /**
+     * Take balance / price / decimals from the form token only, ignoring the
+     * treasury assets query (e.g. public balances of a confidential treasury,
+     * which must not be matched against confidential assets).
+     */
+    balanceFromToken?: boolean;
 }
 
 export function TokenInput<
@@ -157,6 +163,7 @@ export function TokenInput<
     onMaxSet,
     onTokenChange,
     usdValueOverride,
+    balanceFromToken = false,
 }: TokenInputProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("tokenInput");
     const amountFormat = useAmountFormat();
@@ -173,15 +180,19 @@ export function TokenInput<
     );
 
     const matchedAsset = useMemo(
-        () => findMatchingTreasuryAsset(assetsData?.tokens, token),
-        [assetsData?.tokens, token],
+        () =>
+            balanceFromToken
+                ? null
+                : findMatchingTreasuryAsset(assetsData?.tokens, token),
+        [assetsData?.tokens, token, balanceFromToken],
     );
 
     // Prefer live assets balance; fall back to the form token's balance.
     // Never invent "0" while assets are still loading (avoids Balance: 0 flash).
     const tokenBalance = matchedAsset
         ? availableBalance(matchedAsset.balance).toFixed(0)
-        : (token?.balance ?? (isAssetsPending ? null : "0"));
+        : (token?.balance ??
+          (isAssetsPending && !balanceFromToken ? null : "0"));
     const tokenPrice = matchedAsset?.price ?? token?.price;
     const tokenDecimals = matchedAsset?.decimals ?? token?.decimals;
 
