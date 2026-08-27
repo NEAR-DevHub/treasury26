@@ -333,7 +333,7 @@ export function TooltipUser({
         useAddressBook,
     });
     const addressBookParams = new URLSearchParams({
-        name: name ?? profile?.name ?? accountId,
+        name: resolvedName,
         address: accountId,
     });
     addressBookParams.set("network", chainName);
