@@ -531,7 +531,7 @@ export function ActivityTable({
                                                 >
                                                     <Address
                                                         address={fromId}
-                                                        className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                        className="w-fit min-w-0 max-w-full truncate text-sm font-semibold text-general-foreground"
                                                     />
                                                 </TooltipUser>
                                             ) : (
@@ -563,7 +563,7 @@ export function ActivityTable({
                                                 >
                                                     <Address
                                                         address={toId}
-                                                        className="min-w-0 truncate text-sm font-semibold text-general-foreground"
+                                                        className="w-fit min-w-0 max-w-full truncate text-sm font-semibold text-general-foreground"
                                                     />
                                                 </TooltipUser>
                                             ) : (
