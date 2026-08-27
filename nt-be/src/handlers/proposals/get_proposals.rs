@@ -16,6 +16,7 @@ use crate::handlers::proposals::{
         extract_payload_hash_from_kind, fetch_policy, fetch_proposal, fetch_proposals,
     },
 };
+use crate::handlers::public_history::quotes::quote_asset_matches_token;
 use crate::{
     AppState,
     auth::OptionalAuthUser,
@@ -617,7 +618,21 @@ async fn enrich_public_to_confidential_proposals(
     let candidates: Vec<(usize, PublicToConfidentialCall)> = proposals
         .iter()
         .enumerate()
-        .filter_map(|(i, p)| PublicToConfidentialCall::from_marked_proposal(p).map(|c| (i, c)))
+        .filter(|(_, p)| PublicToConfidentialCall::is_marked(p))
+        .filter_map(|(i, p)| match PublicToConfidentialCall::from_kind(&p.kind) {
+            Some(call) => Some((i, call)),
+            None => {
+                // Marked but not one of the builder shapes: stays a plain
+                // function call. Logged so a new builder shape (or a forged
+                // marker) is visible instead of silently unlabelled.
+                tracing::warn!(
+                    "proposal {} of {} carries the public-to-confidential marker but not a move call shape",
+                    p.id,
+                    dao_id
+                );
+                None
+            }
+        })
         .collect();
     if candidates.is_empty() {
         return;
@@ -673,7 +688,13 @@ async fn enrich_public_to_confidential_proposals(
                 && ["ORIGIN_CHAIN", "INTENTS"]
                     .iter()
                     .any(|t| quote.deposit_type.eq_ignore_ascii_case(t))
-                && quote.origin_asset.as_deref() == Some(call.origin_asset.as_str())
+                // Tolerant id match (`nep141:` prefix, wrap/near forms,
+                // `intents.near:` prefix) — 1Click's stored id and the
+                // builder's id must not have to agree byte-for-byte.
+                && quote
+                    .origin_asset
+                    .as_deref()
+                    .is_some_and(|origin| quote_asset_matches_token(origin, &call.origin_asset))
         });
         let public_move = serde_json::json!({
             "verified": verified,

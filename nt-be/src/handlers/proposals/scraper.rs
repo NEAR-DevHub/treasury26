@@ -425,13 +425,18 @@ impl PublicToConfidentialCall {
         }
     }
 
+    /// Description carries the `public-to-confidential` marker (proposer-controlled).
+    pub fn is_marked(proposal: &Proposal) -> bool {
+        extract_from_description(&proposal.description, "proposalaction").as_deref()
+            == Some(PUBLIC_TO_CONFIDENTIAL_ACTION)
+    }
+
     /// Marker + valid call shape. Not yet bound to a quote — see
     /// `ConfidentialRequestInfo::is_public_to_confidential` for the verified check.
     pub fn from_marked_proposal(proposal: &Proposal) -> Option<Self> {
-        (extract_from_description(&proposal.description, "proposalaction").as_deref()
-            == Some(PUBLIC_TO_CONFIDENTIAL_ACTION))
-        .then(|| Self::from_kind(&proposal.kind))
-        .flatten()
+        Self::is_marked(proposal)
+            .then(|| Self::from_kind(&proposal.kind))
+            .flatten()
     }
 }
 
