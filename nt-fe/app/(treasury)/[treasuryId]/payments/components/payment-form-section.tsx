@@ -15,7 +15,10 @@ import { ContactRound, X } from "lucide-react";
 import { InputBlock } from "@/components/input-block";
 import { TokenInput, Token } from "@/components/token-input";
 import AccountInput from "@/components/account-input";
-import { CreateRequestButton } from "@/components/create-request-button";
+import {
+    CreateRequestButton,
+    type PermissionRequirement,
+} from "@/components/create-request-button";
 import { InfoAlert } from "@/components/info-alert";
 import { getBlockchainType } from "@/lib/blockchain-utils";
 import { useAddressBook, AddressBookEntry } from "@/features/address-book";
@@ -48,6 +51,16 @@ interface PaymentFormSectionProps<
     recipientName: Path<TFieldValues>;
 
     tokenLocked?: boolean;
+    /**
+     * Recipient is fixed by the caller (shown read-only, no validation or
+     * address book). Used by public-to-confidential moves where the DAO
+     * itself is the recipient.
+     */
+    recipientLocked?: boolean;
+    /** Balance/price come from the form token, not the treasury assets. */
+    balanceFromToken?: boolean;
+    /** Permission(s) required to submit; defaults to `transfer` AddProposal. */
+    savePermissions?: PermissionRequirement | PermissionRequirement[];
     feeErrorMessage?: string | null;
     networkFee?: string | null;
     showRestrictedRecipientAlert?: boolean;
@@ -99,6 +112,9 @@ export function PaymentFormSection<
     tokenName,
     recipientName,
     tokenLocked = false,
+    recipientLocked = false,
+    balanceFromToken = false,
+    savePermissions = { kind: "transfer", action: "AddProposal" },
     feeErrorMessage = null,
     networkFee = null,
     showRestrictedRecipientAlert = false,
@@ -322,7 +338,7 @@ export function PaymentFormSection<
         slotBlocked ||
         !hasValidAmount ||
         !recipient ||
-        (hideRecipientNetwork && !isRecipientValid) ||
+        (hideRecipientNetwork && !recipientLocked && !isRecipientValid) ||
         (!hideRecipientNetwork && !hasSelectedNetwork) ||
         showRestrictedRecipientAlert ||
         isValidatingRecipient ||
@@ -361,21 +377,27 @@ export function PaymentFormSection<
                     !feeErrorMessage || showRestrictedRecipientAlert
                 }
                 networkFee={networkFee}
+                balanceFromToken={balanceFromToken}
             />
 
             <InputBlock
-                interactive={!selectedContact}
+                interactive={!selectedContact && !recipientLocked}
                 title={t("to")}
                 className="relative"
                 invalid={
                     hideRecipientNetwork &&
+                    !recipientLocked &&
                     !selectedContact &&
                     !!recipient &&
                     !isRecipientValid &&
                     !isValidatingRecipient
                 }
             >
-                {selectedContact ? (
+                {recipientLocked ? (
+                    <p className="text-muted-foreground truncate pt-1">
+                        {recipient}
+                    </p>
+                ) : selectedContact ? (
                     <div className="flex items-center pt-1 pr-20">
                         <div className="flex flex-col gap-1 min-w-0">
                             <User
@@ -419,7 +441,7 @@ export function PaymentFormSection<
                     >
                         <X className="size-3.5" />
                     </Button>
-                    {showContactButton && (
+                    {showContactButton && !recipientLocked && (
                         <Button
                             variant="card"
                             size="icon-sm"
@@ -566,10 +588,7 @@ export function PaymentFormSection<
                 disabled={isSaveDisabled}
                 isSubmitting={isSubmitting}
                 idleMessage={saveButtonText}
-                permissions={{
-                    kind: "transfer",
-                    action: "AddProposal",
-                }}
+                permissions={savePermissions}
             />
         </>
     );

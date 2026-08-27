@@ -55,6 +55,12 @@ export function buildIntentsQuoteRequest(
     options?: {
         /** 1Click routing id for cross-chain destination (may be `1cs_v1:`) */
         destinationQuoteAssetId?: string;
+        /**
+         * Deliver a public-origin quote into the recipient's confidential
+         * balance (public-to-confidential recovery). Only affects the
+         * near.com route; the origin/refund side stays public.
+         */
+        confidentialRecipient?: boolean;
     },
 ) {
     const deadlineMs = nanosToMs(proposalPeriod);
@@ -76,7 +82,7 @@ export function buildIntentsQuoteRequest(
         ? isNearComNetwork(destinationNetwork)
         : !destinationNetwork || isNearComNetwork(destinationNetwork);
     const recipientType = isNearComRoute
-        ? isConfidential
+        ? isConfidential || options?.confidentialRecipient
             ? ("CONFIDENTIAL_INTENTS" as const)
             : ("INTENTS" as const)
         : ("DESTINATION_CHAIN" as const);

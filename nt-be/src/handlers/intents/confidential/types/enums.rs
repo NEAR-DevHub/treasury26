@@ -30,6 +30,7 @@ impl HistoryStatus {
 pub enum DepositType {
     ConfidentialIntents,
     Intents,
+    OriginChain,
     Other,
 }
 
@@ -39,6 +40,8 @@ impl DepositType {
             DepositType::ConfidentialIntents
         } else if value.eq_ignore_ascii_case("INTENTS") {
             DepositType::Intents
+        } else if value.eq_ignore_ascii_case("ORIGIN_CHAIN") {
+            DepositType::OriginChain
         } else {
             DepositType::Other
         }

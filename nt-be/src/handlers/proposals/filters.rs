@@ -827,8 +827,11 @@ fn matches_types_filter(
             ConfidentialRequestInfo::Swap { .. } => "Exchange",
             ConfidentialRequestInfo::Payment { .. } => "Payments",
         }
-    } else if is_confidential_marker {
-        // Confidential but not yet enriched — treat as generic confidential.
+    } else if is_confidential_marker || ConfidentialRequestInfo::is_public_to_confidential(proposal)
+    {
+        // Confidential but not yet enriched, or a public-to-confidential
+        // recovery transfer — treat as generic confidential (it would
+        // otherwise read as an exchange/payment `ft_transfer`).
         "Confidential"
     } else if AssetExchangeInfo::from_proposal(proposal).is_some() {
         "Exchange"
@@ -1221,5 +1224,97 @@ impl ProposalFilters {
             .into_iter()
             .filter_map(|proposal| T::from_proposal(&proposal).map(|info| (proposal, info)))
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::handlers::proposals::scraper::{PUBLIC_TO_CONFIDENTIAL_ACTION, ProposalStatus};
+    use std::collections::HashMap;
+
+    fn ft_transfer_proposal(description: &str) -> Proposal {
+        // {"receiver_id":"2c24…c1f2","amount":"7"} base64-encoded.
+        let args = base64::Engine::encode(
+            &base64::prelude::BASE64_STANDARD,
+            r#"{"receiver_id":"2c24463faef2c501440b35e9a5433858c85e19a83bfcd4306b6005286409c1f2","amount":"7"}"#,
+        );
+        Proposal {
+            id: 1,
+            proposer: "alice.near".to_string(),
+            description: description.to_string(),
+            kind: serde_json::json!({
+                "FunctionCall": {
+                    "receiver_id": "usdc.near",
+                    "actions": [{
+                        "method_name": "ft_transfer",
+                        "args": args,
+                        "deposit": "1",
+                        "gas": "100000000000000"
+                    }]
+                }
+            }),
+            status: ProposalStatus::InProgress,
+            vote_counts: HashMap::new(),
+            votes: HashMap::new(),
+            submission_time: 0.into(),
+            last_actions_log: None,
+            confidential_metadata: None,
+            public_metadata: None,
+        }
+    }
+
+    fn matches(proposal: &Proposal, types: &[&str]) -> bool {
+        let bulk: near_api::AccountId = "bulkpayment.near".parse().unwrap();
+        let set: HashSet<&str> = types.iter().copied().collect();
+        matches_types_filter(proposal, &Some(set), &None, &bulk, "dao.sputnik-dao.near")
+    }
+
+    fn verified(mut proposal: Proposal) -> Proposal {
+        proposal.confidential_metadata =
+            Some(serde_json::json!({ "public_move": { "verified": true } }));
+        proposal
+    }
+
+    #[test]
+    fn public_to_confidential_marker_is_a_confidential_type() {
+        let proposal = verified(ft_transfer_proposal(&format!(
+            "* Proposal Action: {PUBLIC_TO_CONFIDENTIAL_ACTION}"
+        )));
+        assert!(matches(&proposal, &["Confidential"]));
+        assert!(!matches(&proposal, &["Payments"]));
+        assert!(!matches(&proposal, &["Exchange"]));
+    }
+
+    #[test]
+    fn unverified_marker_is_not_confidential() {
+        // Marker + shape, but no quote bound to it by the backend.
+        let proposal = ft_transfer_proposal(&format!(
+            "* Proposal Action: {PUBLIC_TO_CONFIDENTIAL_ACTION}"
+        ));
+        assert!(!matches(&proposal, &["Confidential"]));
+    }
+
+    #[test]
+    fn marker_without_move_shape_is_not_confidential() {
+        let mut proposal = verified(ft_transfer_proposal(&format!(
+            "* Proposal Action: {PUBLIC_TO_CONFIDENTIAL_ACTION}"
+        )));
+        proposal.kind["FunctionCall"]["actions"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({
+                "method_name": "storage_deposit",
+                "args": "e30=",
+                "deposit": "1",
+                "gas": "100000000000000"
+            }));
+        assert!(!matches(&proposal, &["Confidential"]));
+    }
+
+    #[test]
+    fn unmarked_ft_transfer_is_not_confidential() {
+        let proposal = ft_transfer_proposal("* Proposal Action: payment-transfer");
+        assert!(!matches(&proposal, &["Confidential"]));
     }
 }

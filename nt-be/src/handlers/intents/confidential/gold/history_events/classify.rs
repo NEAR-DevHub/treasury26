@@ -108,7 +108,11 @@ fn classify(
     Classification::Project(ConfidentialTxType::Deposit)
 }
 
-fn is_intents_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
+/// Deposit funded from the DAO's own public balance (public intents or the
+/// NEAR chain) into its confidential balance. 1Click reports the executed
+/// amount for these, so `amount_out` is the full credit — unlike
+/// deposit-address quotes, where the nominal is misreported.
+fn is_public_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
     let deposit_type = DepositType::parse(&row.deposit_type);
     let recipient_type = row
         .recipient_type
@@ -116,7 +120,10 @@ fn is_intents_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
         .map(DepositType::parse)
         .unwrap_or(DepositType::Other);
 
-    deposit_type == DepositType::Intents && recipient_type == DepositType::ConfidentialIntents
+    matches!(
+        deposit_type,
+        DepositType::Intents | DepositType::OriginChain
+    ) && recipient_type == DepositType::ConfidentialIntents
 }
 
 pub(crate) fn project_row(
@@ -193,7 +200,7 @@ pub(crate) fn project_row(
     let zero = BigDecimal::zero();
     let amount_out_usd_for_delta = amount_out_usd.clone().unwrap_or_else(BigDecimal::zero);
     let intents_to_confidential_deposit =
-        kind == ConfidentialTxType::Deposit && is_intents_to_confidential_deposit(row);
+        kind == ConfidentialTxType::Deposit && is_public_to_confidential_deposit(row);
 
     // 1Click can refund part (slippage remainder) or most (nominal-executed
     // quote) of a transfer. When the refund destination is this DAO's
@@ -686,6 +693,62 @@ mod tests {
         assert_eq!(
             ledger.get("nep141:usdt.near"),
             Some(&BigDecimal::from_str("0.001").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_project_origin_chain_to_confidential_same_asset_deposit_credits_full_amount() {
+        // Public-to-confidential recovery: NEAR-chain wNEAR sent to a 1Click
+        // deposit address, credited to the DAO's own confidential balance.
+        let raw_payload = payload(&[
+            ("depositType", Value::String("ORIGIN_CHAIN".to_string())),
+            (
+                "recipientType",
+                Value::String("CONFIDENTIAL_INTENTS".to_string()),
+            ),
+            ("refundType", Value::String("ORIGIN_CHAIN".to_string())),
+            (
+                "amountInFormatted",
+                Value::String("0.010670239882819299999997".to_string()),
+            ),
+            (
+                "amountOutFormatted",
+                Value::String("0.010670239882819299999997".to_string()),
+            ),
+            ("amountInUsd", Value::String("0.020593562974".to_string())),
+            ("amountOutUsd", Value::String("0.020593562974".to_string())),
+        ]);
+        let mut row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:wrap.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        row.deposit_type = "ORIGIN_CHAIN".to_string();
+        row.recipient_type = Some("CONFIDENTIAL_INTENTS".to_string());
+        let mut ledger = HashMap::new();
+        ledger.insert(
+            "nep141:wrap.near".to_string(),
+            BigDecimal::from_str("0.2").unwrap(),
+        );
+
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("deposit should project")
+        .expect("deposit should not skip");
+
+        assert_eq!(projected.transaction_type, ConfidentialTxType::Deposit);
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from_str("0.210670239882819299999997").unwrap())
+        );
+        assert_eq!(
+            ledger.get("nep141:wrap.near"),
+            Some(&BigDecimal::from_str("0.210670239882819299999997").unwrap())
         );
     }
 

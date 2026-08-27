@@ -280,4 +280,46 @@ describe("buildIntentsQuoteRequest for payments", () => {
             recipientType: "DESTINATION_CHAIN",
         });
     });
+
+    it("confidentialRecipient keeps a public origin but delivers confidentially", () => {
+        const { tokenForIntentsQuote } = classifyPaymentToken(PUBLIC_NATIVE);
+        const request = buildIntentsQuoteRequest(
+            TREASURY_ID,
+            tokenForIntentsQuote,
+            TREASURY_ID,
+            AMOUNT,
+            false,
+            PROPOSAL_PERIOD,
+            "total",
+            NEAR_COM_NETWORK_ID,
+            true,
+            { confidentialRecipient: true },
+        );
+        expect(request).toMatchObject({
+            swapType: "EXACT_INPUT",
+            depositType: "ORIGIN_CHAIN",
+            refundType: "ORIGIN_CHAIN",
+            refundTo: TREASURY_ID,
+            recipient: TREASURY_ID,
+            recipientType: "CONFIDENTIAL_INTENTS",
+        });
+
+        // Off the near.com route the option must not touch the recipient type.
+        const toEth = buildIntentsQuoteRequest(
+            TREASURY_ID,
+            tokenForIntentsQuote,
+            ETH_RECIPIENT,
+            AMOUNT,
+            false,
+            PROPOSAL_PERIOD,
+            "total",
+            ETH_USDC_QUOTE_ID,
+            true,
+            {
+                destinationQuoteAssetId: ETH_USDC_QUOTE_ID,
+                confidentialRecipient: true,
+            },
+        );
+        expect(toEth.recipientType).toBe("DESTINATION_CHAIN");
+    });
 });

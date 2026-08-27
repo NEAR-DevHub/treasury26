@@ -11,6 +11,7 @@ export type ProposalUIKind =
     | "Batch Payment Request"
     | "Payment Request"
     | "Confidential Request"
+    | "Move to Confidential"
     | "Exchange"
     | "Function Call"
     | "Change Policy"
@@ -348,6 +349,7 @@ export interface FactoryInfoUpdateData {
 export interface ProposalTypeDataMap {
     "Payment Request": PaymentRequestData;
     "Confidential Request": ConfidentialRequestData;
+    "Move to Confidential": PaymentRequestData;
     "Function Call": FunctionCallData;
     "Change Policy": ChangePolicyData;
     "Update General Settings": ChangeConfigData;
