@@ -19,13 +19,14 @@ export function PublicBalanceBanner() {
     const t = useTranslations("moveAssets.banner");
     const { treasuryId } = useTreasury();
     const { data, isSuccess } = usePublicAssets();
-    const pending = usePendingMoveRequests(data?.tokens);
+    const tokens = data?.tokens ?? [];
+    const pending = usePendingMoveRequests(tokens);
 
-    if (!isSuccess || !treasuryId || data.tokens.length === 0) return null;
+    if (!isSuccess || !treasuryId || tokens.length === 0) return null;
 
     // Every asset already has an in-progress move request → point at it
     // (single request) or at the pending list instead of a second move.
-    const allPending = data.tokens.every((asset) =>
+    const allPending = tokens.every((asset) =>
         pending.has(publicAssetKey(asset)),
     );
     const pendingIds = [...new Set(pending.values())];
@@ -46,7 +47,7 @@ export function PublicBalanceBanner() {
                         amount: () => (
                             <FormattedAmount
                                 kind="fiat"
-                                value={data.totalBalanceUSD}
+                                value={data?.totalBalanceUSD}
                             />
                         ),
                     })}
