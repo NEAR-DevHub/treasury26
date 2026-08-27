@@ -958,7 +958,7 @@ function TransferDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="gap-3 bg-card sm:max-w-[448px]! sm:gap-3 sm:p-0">
-                <DialogHeader className="border-b-0 px-0 pb-0 sm:mx-0 sm:px-5 sm:pt-4">
+                <DialogHeader className="mx-0 border-b-0 px-0 pb-0 sm:px-5 sm:pt-4">
                     <DialogTitle className="text-base">{title}</DialogTitle>
                 </DialogHeader>
 
