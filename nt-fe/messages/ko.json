@@ -2072,7 +2072,7 @@
         "emptyDescription": "잔액 기록이 없습니다"
     },
     "user": {
-        "saveToAddressBook": "주소록에 저장",
+        "saveToAddressBook": "연락처에 저장",
         "walletCopiedToast": "지갑 주소가 클립보드에 복사되었습니다",
         "copyWalletAddress": "지갑 주소 복사"
     },

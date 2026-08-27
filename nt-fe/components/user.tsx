@@ -1,21 +1,21 @@
-import { Icon } from "@/components/icon";
 import { Contact01Icon } from "@hugeicons/core-free-icons";
-import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { useProfile } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/hooks/use-treasury";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Button } from "./button";
-import { Tooltip, TooltipProps } from "./tooltip";
-import { Separator } from "./ui/separator";
-import { Skeleton } from "./ui/skeleton";
-import { CopyButton } from "./copy-button";
-import { Address } from "./address";
-import { HighlightedText } from "./highlighted-text";
+import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { Icon } from "@/components/icon";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useProfile } from "@/hooks/use-treasury-queries";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { cn } from "@/lib/utils";
+import { Address } from "./address";
+import { Button } from "./button";
+import { CopyButton } from "./copy-button";
+import { HighlightedText } from "./highlighted-text";
+import { Tooltip, type TooltipProps } from "./tooltip";
+import { Separator } from "./ui/separator";
+import { Skeleton } from "./ui/skeleton";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -26,6 +26,29 @@ export const sizeClasses = {
 } as const;
 
 type UserSize = keyof typeof sizeClasses;
+
+type UserProfile = ReturnType<typeof useProfile>["data"];
+
+/** Explicit override first, then the profile, then the raw account id. */
+function resolveUserName({
+    accountId,
+    name,
+    profile,
+    useAddressBook,
+}: {
+    accountId: string;
+    name?: string;
+    profile: UserProfile;
+    useAddressBook: boolean;
+}) {
+    return (
+        name ??
+        (useAddressBook
+            ? (profile?.addressBookName ?? profile?.name)
+            : profile?.name) ??
+        accountId
+    );
+}
 
 /** How to render the user row. */
 export type UserVariant =
@@ -49,21 +72,28 @@ function getUserAvatarInitial(name: string, address: string): string {
     return address.charAt(0).toLowerCase();
 }
 
+interface UserAvatarProps {
+    name: string;
+    address: string;
+    imageUrl?: string;
+    size?: UserSize;
+    /** Overrides the avatar geometry (size and roundness) for one call site. */
+    className?: string;
+}
+
 function UserAvatarFallback({
     name,
     address,
     size = "sm",
-}: {
-    name: string;
-    address: string;
-    size?: UserSize;
-}) {
+    className,
+}: Omit<UserAvatarProps, "imageUrl">) {
     return (
         <div
             className={cn(
                 "rounded-full shrink-0 flex items-center justify-center bg-accent text-accent-foreground font-medium",
                 sizeClasses[size],
                 avatarTextSizeClasses[size],
+                className,
             )}
             aria-hidden
         >
@@ -72,17 +102,13 @@ function UserAvatarFallback({
     );
 }
 
-function UserAvatar({
+export function UserAvatar({
     name,
     address,
     imageUrl,
     size = "sm",
-}: {
-    name: string;
-    address: string;
-    imageUrl?: string;
-    size?: UserSize;
-}) {
+    className,
+}: UserAvatarProps) {
     const [hasImageError, setHasImageError] = useState(false);
 
     useEffect(() => {
@@ -90,21 +116,27 @@ function UserAvatar({
     }, [imageUrl]);
 
     if (!imageUrl || hasImageError) {
-        return <UserAvatarFallback name={name} address={address} size={size} />;
+        return (
+            <UserAvatarFallback
+                name={name}
+                address={address}
+                size={size}
+                className={className}
+            />
+        );
     }
 
     return (
-        <div className="rounded-full flex bg-muted border border-border">
-            <img
-                src={imageUrl}
-                alt={name}
-                className={cn(
-                    "rounded-full shrink-0 object-cover",
-                    sizeClasses[size],
-                )}
-                onError={() => setHasImageError(true)}
-            />
-        </div>
+        <img
+            src={imageUrl}
+            alt={name}
+            className={cn(
+                "rounded-full shrink-0 border border-border bg-muted object-cover",
+                sizeClasses[size],
+                className,
+            )}
+            onError={() => setHasImageError(true)}
+        />
     );
 }
 
@@ -263,6 +295,15 @@ export function UserWithData({
 
 // ─── TooltipUser ──────────────────────────────────────────────────────────────
 
+/**
+ * 40px ghost rows, left aligned, that fill the tooltip's 6px action tray.
+ * `rounded-lg` is the design's 12px — this project rebases the radius scale on
+ * `--radius: 0.75rem`, so `rounded-xl` would be 16px.
+ */
+const TOOLTIP_ACTION_CLASS =
+    "h-10 justify-start rounded-lg px-4 text-sm text-general-unofficial-ghost-foreground";
+const TOOLTIP_ACTION_ICON_CLASS = "size-[13.25px]";
+
 interface TooltipUserProps {
     accountId: string;
     name?: string;
@@ -285,8 +326,14 @@ export function TooltipUser({
     const { data: profile, isLoading: isProfileLoading } =
         useProfile(accountId);
     const isSavedInAddressBook = profile?.isInAddressBook ?? false;
+    const resolvedName = resolveUserName({
+        accountId,
+        name,
+        profile,
+        useAddressBook,
+    });
     const addressBookParams = new URLSearchParams({
-        name: name ?? profile?.name ?? accountId,
+        name: resolvedName,
         address: accountId,
     });
     addressBookParams.set("network", chainName);
@@ -295,39 +342,80 @@ export function TooltipUser({
         ? `/${treasuryId}/address-book?${addressBookParams.toString()}`
         : null;
 
+    // Without a profile name the heading would repeat the wallet verbatim, so
+    // the address moves up into it rather than being printed twice.
+    const nameIsAddress = resolvedName === accountId;
+
     return (
         <Tooltip
             content={
-                <div className="flex flex-col gap-2">
-                    <User
-                        accountId={accountId}
-                        name={name}
-                        useAddressBook={useAddressBook}
-                        size="lg"
-                        withLink={false}
-                    />
-                    <Separator className="h-0.5!" />
-                    <div className="flex flex-col gap-1">
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-3 p-3">
+                        <UserAvatar
+                            name={resolvedName}
+                            address={accountId}
+                            imageUrl={resolveProfileImageUrl(profile?.image)}
+                            // The design gives the tooltip a 28px rounded
+                            // square, not the circle the inline rows use.
+                            className="size-7 rounded-lg"
+                        />
+                        <div className="flex min-w-0 flex-col">
+                            {nameIsAddress ? (
+                                <Address
+                                    address={accountId}
+                                    className="text-sm font-semibold leading-[1.5]"
+                                />
+                            ) : (
+                                <>
+                                    <span className="truncate text-sm font-semibold leading-[1.5]">
+                                        {resolvedName}
+                                    </span>
+                                    <Address
+                                        address={accountId}
+                                        className="text-xs leading-4 tracking-[0.18px] text-general-secondary-foreground"
+                                    />
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    <Separator className="bg-general-unofficial-border-3" />
+                    <div className="flex flex-col gap-0.5 p-1.5">
                         {!isProfileLoading &&
                             !isSavedInAddressBook &&
                             addToAddressBookUrl &&
                             !isGuestTreasury && (
-                                <Button asChild type="button" variant="ghost">
+                                <Button
+                                    asChild
+                                    type="button"
+                                    variant="ghost"
+                                    className={TOOLTIP_ACTION_CLASS}
+                                >
                                     <Link href={addToAddressBookUrl}>
-                                        <Icon icon={Contact01Icon} />
+                                        <Icon
+                                            icon={Contact01Icon}
+                                            className={
+                                                TOOLTIP_ACTION_ICON_CLASS
+                                            }
+                                        />
                                         {t("saveToAddressBook")}
                                     </Link>
                                 </Button>
                             )}
-                        <CopyButton text={accountId} variant="ghost">
-                            <span className="break-all">
-                                {t("copyWalletAddress")}
-                            </span>
+                        <CopyButton
+                            text={accountId}
+                            variant="ghost"
+                            className={TOOLTIP_ACTION_CLASS}
+                            iconClassName={TOOLTIP_ACTION_ICON_CLASS}
+                        >
+                            {t("copyWalletAddress")}
                         </CopyButton>
                     </div>
                 </div>
             }
-            contentProps={{ className: "max-w-72 min-w-60" }}
+            contentProps={{
+                className:
+                    "w-[233px] max-w-none rounded-2xl border-transparent bg-general-bg-secondary p-0",
+            }}
             triggerProps={triggerProps}
         >
             {children}
@@ -372,12 +460,12 @@ export function User({
         return <UserSkeleton variant={variant} size={size} />;
     }
 
-    const resolvedName =
-        nameProp ??
-        (useAddressBook
-            ? (profile?.addressBookName ?? profile?.name)
-            : profile?.name) ??
-        accountId;
+    const resolvedName = resolveUserName({
+        accountId,
+        name: nameProp,
+        profile,
+        useAddressBook,
+    });
 
     return (
         <UserWithData

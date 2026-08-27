@@ -2055,7 +2055,7 @@
         "emptyDescription": "Không có lịch sử số dư"
     },
     "user": {
-        "saveToAddressBook": "Lưu vào sổ địa chỉ",
+        "saveToAddressBook": "Lưu vào danh bạ",
         "walletCopiedToast": "Đã sao chép địa chỉ ví vào bộ nhớ tạm",
         "copyWalletAddress": "Sao chép địa chỉ ví"
     },

@@ -2055,7 +2055,7 @@
         "emptyDescription": "暂无余额历史记录"
     },
     "user": {
-        "saveToAddressBook": "保存到地址簿",
+        "saveToAddressBook": "保存到联系人",
         "walletCopiedToast": "钱包地址已复制到剪贴板",
         "copyWalletAddress": "复制钱包地址"
     },

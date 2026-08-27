@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import {
-    Tooltip as TooltipPrimitive,
     TooltipContent as TooltipContentPrimitive,
+    Tooltip as TooltipPrimitive,
     TooltipTrigger,
 } from "./ui/tooltip";
 
@@ -40,7 +40,7 @@ function TooltipContent({
 }: React.ComponentProps<typeof TooltipContentPrimitive>) {
     return (
         <TooltipContentPrimitive
-            className={cn("max-w-56 text-xs", tooltipSurfaceClass)}
+            className={cn("max-w-56 text-xs", tooltipSurfaceClass, className)}
             {...props}
         >
             {children}

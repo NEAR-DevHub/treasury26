@@ -2055,7 +2055,7 @@
         "emptyDescription": "Історія балансу недоступна"
     },
     "user": {
-        "saveToAddressBook": "Зберегти в адресну книгу",
+        "saveToAddressBook": "Зберегти в контакти",
         "walletCopiedToast": "Адресу гаманця скопійовано в буфер обміну",
         "copyWalletAddress": "Скопіювати адресу"
     },
