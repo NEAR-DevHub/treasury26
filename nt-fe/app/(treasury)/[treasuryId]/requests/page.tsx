@@ -33,13 +33,13 @@ import {
 } from "@/features/proposals/components/proposal-filters";
 import { hasFilterValue } from "@/features/proposals/types/filter-types";
 import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { getProposals, type ProposalStatus } from "@/lib/proposals-api";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
 
 // Constants
 const SEARCH_DEBOUNCE_MS = 300;
@@ -243,8 +243,9 @@ export default function RequestsPage() {
             voter_votes: `${accountId}:No Voted`,
         }),
     });
-    // Matches the `md` breakpoint the filter panel and table already switch on.
-    const isMobile = useMediaQuery("(max-width: 767px)");
+    // The same source `ProposalsTable` reads, so the filter sheet and the row
+    // click agree on where "mobile" ends.
+    const { isMobile } = useResponsiveSidebar();
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const { data: allProposals } = useProposals(treasuryId, {});
@@ -400,10 +401,11 @@ export default function RequestsPage() {
     );
 
     // Mobile edits the same filters through `MobileFilterSheet`, so the inline
-    // panel is desktop-only rather than merely collapsed.
+    // panel is desktop-only rather than merely collapsed. `lg` is where
+    // `isMobile` flips, so the panel is never shown without a way to open it.
     const filterPanel = selectedCount === 0 && (
         <div
-            className="hidden overflow-hidden transition-all duration-500 ease-in-out md:block"
+            className="hidden overflow-hidden transition-all duration-500 ease-in-out lg:block"
             style={{
                 maxHeight: isFiltersOpen ? FILTER_PANEL_MAX_HEIGHT : "0px",
                 opacity: isFiltersOpen ? 1 : 0,
