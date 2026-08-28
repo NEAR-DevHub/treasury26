@@ -13,21 +13,24 @@ interface SwapCellProps {
     textOnly?: boolean;
 }
 
+/**
+ * The amount of one leg, in exactly one of the two shapes a swap proposal
+ * stores: `amount` is the raw on-chain integer and needs the token's decimals
+ * applied, `amountWithDecimals` is already scaled. The union keeps a caller
+ * from passing both (which shape wins?) or neither (a silent zero).
+ */
+type SwapLegAmount =
+    | { amount: string; amountWithDecimals?: never }
+    | { amountWithDecimals: string; amount?: never };
+
 /** One leg of a swap: its token metadata plus a formatted "1,234.00 USDC". */
-function useSwapLeg({
-    tokenId,
-    amount,
-    amountWithDecimals,
-}: {
-    tokenId: string;
-    amount?: string;
-    amountWithDecimals?: string;
-}) {
+function useSwapLeg(leg: { tokenId: string } & SwapLegAmount) {
     const isMasked = useIsBalanceMasked();
-    const { data: token } = useToken(tokenId);
-    const rawAmount = amount
-        ? formatBalance(amount, token?.decimals || 24)
-        : (amountWithDecimals ?? "0");
+    const { data: token } = useToken(leg.tokenId);
+    const rawAmount =
+        leg.amount !== undefined
+            ? formatBalance(leg.amount, token?.decimals || 24)
+            : leg.amountWithDecimals;
     const displayAmount = isMasked
         ? BALANCE_MASK
         : formatTokenDisplayAmount(rawAmount);
