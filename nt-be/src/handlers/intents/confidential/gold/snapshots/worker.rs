@@ -167,14 +167,12 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
     skip_all,
     fields(job = "confidential_balance_snapshot")
 )]
-pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
-    let dao_ids = match load_confidential_history_accounts(&state.db_pool).await {
-        Ok(ids) => ids,
-        Err(e) => {
-            tracing::error!("account load failed: {}", e);
-            return;
-        }
-    };
+pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) -> Result<(), String> {
+    // Propagated as a task error so the cycle shows Failed on the board and
+    // the SentryLayer captures it, instead of a green run that did nothing.
+    let dao_ids = load_confidential_history_accounts(&state.db_pool)
+        .await
+        .map_err(|e| format!("account load failed: {e}"))?;
 
     let accounts_seen = dao_ids.len();
     if accounts_seen > 0 {
@@ -208,6 +206,7 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
             }
         })
         .await;
+    Ok(())
 }
 
 #[cfg(test)]

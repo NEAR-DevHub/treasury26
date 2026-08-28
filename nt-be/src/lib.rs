@@ -2,6 +2,7 @@ pub mod app_state;
 pub mod auth;
 pub mod config;
 pub mod constants;
+pub mod error_event;
 pub mod events;
 pub mod handlers;
 pub mod jobs;

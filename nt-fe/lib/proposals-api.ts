@@ -1,9 +1,9 @@
 import { getProposalStatus } from "@/features/proposals/utils/proposal-utils";
-import { Policy, VotePolicy } from "@/types/policy";
-import axios from "axios";
 import Big from "@/lib/big";
-import { nanosToMs } from "@/lib/utils";
+import { http as axios } from "@/lib/http";
 import { isAxiosErrorWithStatus } from "@/lib/query-retry";
+import { nanosToMs } from "@/lib/utils";
+import type { Policy, VotePolicy } from "@/types/policy";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 

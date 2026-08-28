@@ -3,18 +3,34 @@
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubSentryEvent } from "./lib/sentry-scrub";
 
 Sentry.init({
-    dsn: "https://770b93020aaf1120d67ef430ff7fd074@o4510946911715328.ingest.us.sentry.io/4510946913222656",
+    dsn:
+        process.env.NEXT_PUBLIC_SENTRY_DSN ??
+        "https://770b93020aaf1120d67ef430ff7fd074@o4510946911715328.ingest.us.sentry.io/4510946913222656",
 
-    // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-    tracesSampleRate: 1,
+    // Separates prod / staging / dev events into Sentry environments so alert
+    // rules only fire for production.
+    environment:
+        process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
+
+    tracesSampleRate: 0.1,
+
+    // Attach sentry-trace/baggage to backend API requests so a frontend event
+    // and its backend handler share a trace.
+    tracePropagationTargets: process.env.NEXT_PUBLIC_BACKEND_API_BASE
+        ? [process.env.NEXT_PUBLIC_BACKEND_API_BASE]
+        : [],
+
     // Enable logs to be sent to Sentry
     enableLogs: true,
 
     // Disable sending user PII (Personally Identifiable Information)
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
     sendDefaultPii: false,
+
+    beforeSend: scrubSentryEvent,
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
@@ -26,7 +42,9 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN!, {
     ui_host: "https://us.posthog.com",
     flags_api_host: "/_features",
     defaults: "2026-01-30",
-    capture_exceptions: true,
+    // Sentry is the error-reporting system; capturing exceptions here too
+    // produced duplicate, unrouted copies of every client error.
+    capture_exceptions: false,
     // We use custom onboarding questionnaire UI; disable PostHog survey runtime.
     disable_surveys: true,
     debug: process.env.NODE_ENV === "development",
