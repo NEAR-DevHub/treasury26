@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Demandes",
-            "description": "Consultez et gérez toutes les demandes multisig en attente",
             "detailDescription": "Détails de la demande",
             "detailTitle": "Demande #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "Chargement des membres...",
             "noMembersFound": "Aucun membre trouvé. Appuyez sur Entrée pour ajouter « {query} »",
             "noMembersAvailable": "Aucun membre disponible",
+            "editOnDesktop": "Modifier sur ordinateur",
             "reset": "Réinitialiser",
+            "resetAll": "Tout réinitialiser",
             "clear": "Effacer",
             "addFilter": "Ajouter un filtre"
         },
@@ -662,10 +663,10 @@
         "table": {
             "selectAll": "Tout sélectionner",
             "selectRow": "Sélectionner la ligne",
-            "request": "Demande",
+            "request": "Demandes",
             "transaction": "Transaction",
             "requester": "Demandeur",
-            "voting": "Vote",
+            "voting": "Approbations",
             "votingTooltip": "Le premier nombre indique les approbations reçues. Le second indique les approbations requises pour exécuter.",
             "status": "Statut",
             "notPending": "La proposition n'est pas en attente.",

@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Solicitudes",
-            "description": "Ver y gestionar todas las solicitudes multifirma pendientes",
             "detailDescription": "Detalles de la solicitud",
             "detailTitle": "Solicitud n.º {id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "Cargando miembros...",
             "noMembersFound": "No se encontraron miembros. Pulsa Intro para añadir \"{query}\"",
             "noMembersAvailable": "No hay miembros disponibles",
+            "editOnDesktop": "Editar en escritorio",
             "reset": "Restablecer",
+            "resetAll": "Restablecer todo",
             "clear": "Limpiar",
             "addFilter": "Añadir filtro"
         },
@@ -662,10 +663,10 @@
         "table": {
             "selectAll": "Seleccionar todo",
             "selectRow": "Seleccionar fila",
-            "request": "Solicitud",
+            "request": "Solicitudes",
             "transaction": "Transacción",
             "requester": "Solicitante",
-            "voting": "Votación",
+            "voting": "Aprobaciones",
             "votingTooltip": "El primer número muestra las aprobaciones recibidas. El segundo muestra las aprobaciones requeridas para ejecutar.",
             "status": "Estado",
             "notPending": "La propuesta no está pendiente.",

@@ -3,7 +3,10 @@
 import { useTranslations } from "next-intl";
 import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TokenDisplay } from "@/components/token-display-with-network";
+import {
+    TokenDisplay,
+    type TokenIconSize,
+} from "@/components/token-display-with-network";
 import { getNetworkDisplayName } from "@/components/token-display";
 import { Tooltip } from "@/components/tooltip";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
@@ -29,7 +32,9 @@ interface AmountProps {
     usdValue?: number;
     network?: string; // Optional override for network display
     textOnly?: boolean;
-    iconSize?: "sm" | "md" | "lg";
+    iconSize?: TokenIconSize;
+    /** Off when the caller renders the token icon itself, beside the amount. */
+    showIcon?: boolean;
     usdTextOverride?: string | null;
     /** Enable NearBlocks FT metadata fallback for native NEAR tokens */
     nearFt?: boolean;
@@ -89,6 +94,7 @@ export function Amount({
     usdValue,
     network,
     iconSize = "lg",
+    showIcon = true,
     usdTextOverride = null,
     nearFt,
 }: AmountProps) {
@@ -184,7 +190,7 @@ export function Amount({
     const amountContent = (
         <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
-                {tokenData && (
+                {showIcon && tokenData && (
                     <TokenDisplay
                         symbol={tokenData.symbol}
                         icon={tokenData.icon ?? ""}
@@ -193,7 +199,7 @@ export function Amount({
                     />
                 )}
                 {tokenData && (
-                    <span className="font-medium">
+                    <span className="font-semibold">
                         {displayAmount} {tokenData?.symbol}
                     </span>
                 )}

@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Yêu cầu",
-            "description": "Xem và quản lý tất cả yêu cầu multisig đang chờ",
             "detailDescription": "Chi tiết yêu cầu",
             "detailTitle": "Yêu cầu #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "Đang tải thành viên...",
             "noMembersFound": "Không tìm thấy thành viên. Nhấn Enter để thêm \"{query}\"",
             "noMembersAvailable": "Không có thành viên khả dụng",
+            "editOnDesktop": "Chỉnh sửa trên máy tính",
             "reset": "Đặt lại",
+            "resetAll": "Đặt lại tất cả",
             "clear": "Xóa",
             "addFilter": "Thêm bộ lọc"
         },
@@ -665,7 +666,7 @@
             "request": "Yêu cầu",
             "transaction": "Giao dịch",
             "requester": "Người yêu cầu",
-            "voting": "Bỏ phiếu",
+            "voting": "Phê duyệt",
             "votingTooltip": "Số đầu tiên cho biết số phê duyệt đã nhận. Số thứ hai cho biết số phê duyệt cần để thực thi.",
             "status": "Trạng thái",
             "notPending": "Đề xuất không ở trạng thái chờ.",

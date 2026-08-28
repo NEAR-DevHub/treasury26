@@ -144,7 +144,12 @@ export function FormattedDate(props: FormattedDateProps) {
     return tooltipText && props.withTooltip !== false ? (
         <Tooltip
             content={tooltipText}
-            triggerProps={{ asChild: false, className: "py-px flex" }}
+            // `max-w-full` keeps the trigger inside a narrow parent so the
+            // label's own `truncate` can take effect.
+            triggerProps={{
+                asChild: false,
+                className: "py-px flex max-w-full",
+            }}
         >
             {content}
         </Tooltip>

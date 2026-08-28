@@ -13,7 +13,7 @@ import {
     useSearchParams,
 } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -26,6 +26,7 @@ import { ResponsiveTabs, type TabItem } from "@/components/responsive-tabs";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { TabsContent } from "@/components/underline-tabs";
 import { ProposalsTable } from "@/features/proposals";
+import { MobileFilterSheet } from "@/features/proposals/components/mobile-filter-sheet";
 import {
     type FilterOption,
     ProposalFilters as ProposalFiltersComponent,
@@ -36,11 +37,16 @@ import { useProposals } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import { getProposals, type ProposalStatus } from "@/lib/proposals-api";
+import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
+import { useResponsiveSidebar } from "@/stores/sidebar-store";
 
 // Constants
 const SEARCH_DEBOUNCE_MS = 300;
 const FILTER_PANEL_MAX_HEIGHT = "500px";
+/** The 40px #F2F2F2, 12px-radius square the design gives the toolbar controls. */
+const ICON_BUTTON_CLASS =
+    "size-10 rounded-lg bg-general-bg-secondary hover:bg-general-bg-secondary/80";
 
 function useProposalFilterOptions(): FilterOption[] {
     const tFilters = useTranslations("requests.filters");
@@ -69,6 +75,47 @@ function useProposalFilterOptions(): FilterOption[] {
     );
 }
 
+/**
+ * The URL params the filter panel writes. The tab and the search box narrow the
+ * table too, but neither is edited through the panel, so they're reported
+ * separately rather than folded into the count.
+ */
+const FILTER_PARAM_IDS = [
+    "proposers",
+    "approvers",
+    "recipients",
+    "proposal_types",
+    "token",
+    "created_date",
+    "my_vote",
+] as const;
+
+/**
+ * One reading of "is this list filtered?" for the toolbar and the table alike:
+ * `activeFilterCount` labels the Filters button, `isNarrowed` decides whether
+ * an empty table means "nothing here" or "nothing matched".
+ */
+function useActiveFilters(status?: ProposalStatus) {
+    const searchParams = useSearchParams();
+
+    return useMemo(() => {
+        // A filter that has been added but has no value picked yet isn't
+        // narrowing anything, so it isn't counted.
+        const activeFilterCount = FILTER_PARAM_IDS.filter((param) =>
+            hasFilterValue(searchParams.get(param)),
+        ).length;
+
+        return {
+            activeFilterCount,
+            hasActiveFilters: activeFilterCount > 0,
+            isNarrowed:
+                activeFilterCount > 0 ||
+                Boolean(searchParams.get("search")?.trim()) ||
+                (status !== undefined && status !== "InProgress"),
+        };
+    }, [searchParams, status]);
+}
+
 function ProposalsList({
     status,
     onSelectionChange,
@@ -84,24 +131,7 @@ function ProposalsList({
     const queryClient = useQueryClient();
     const { accountId } = useNear();
 
-    const hasActiveFilters = useMemo(() => {
-        const filterParams = [
-            "proposers",
-            "approvers",
-            "recipients",
-            "proposal_types",
-            "token",
-            "created_date",
-            "my_vote",
-        ];
-        return (
-            filterParams.some((param) =>
-                hasFilterValue(searchParams.get(param)),
-            ) ||
-            Boolean(searchParams.get("search")?.trim()) ||
-            (status !== "InProgress" && status !== undefined)
-        );
-    }, [searchParams]);
+    const { isNarrowed } = useActiveFilters(status);
 
     const page = parseInt(searchParams.get("page") || "0", 10);
     const pageSize = 15;
@@ -157,7 +187,13 @@ function ProposalsList({
     }, [data, page, treasuryId, filters, queryClient, pageSize]);
 
     if (isLoading) {
-        return <TableSkeleton rows={12} columns={7} />;
+        return (
+            <TableSkeleton
+                rows={12}
+                columns={7}
+                className="rounded-2xl border-general-border"
+            />
+        );
     }
 
     return (
@@ -167,7 +203,7 @@ function ProposalsList({
                     proposals={data?.proposals ?? []}
                     policy={policy}
                     config={config}
-                    withFilters={hasActiveFilters}
+                    withFilters={isNarrowed}
                     searchQuery={searchParams.get("search") || ""}
                     pageIndex={page}
                     pageSize={pageSize}
@@ -231,12 +267,15 @@ export default function RequestsPage() {
             voter_votes: `${accountId}:No Voted`,
         }),
     });
+    // The same source `ProposalsTable` reads, so the filter sheet and the row
+    // click agree on where "mobile" ends.
+    const { isMobile } = useResponsiveSidebar();
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+    const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const { data: allProposals } = useProposals(treasuryId, {});
     const [searchValue, setSearchValue] = useState(
         searchParams.get("search") || "",
     );
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [selectedCount, setSelectedCount] = useState(0);
 
     const currentTab = searchParams.get("tab") || "InProgress";
@@ -253,22 +292,14 @@ export default function RequestsPage() {
 
     const handleSearchChange = useCallback(
         (value: string) => {
-            setSearchValue(value);
-
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
+            const params = new URLSearchParams(searchParams.toString());
+            if (value.trim()) {
+                params.set("search", value.trim());
+            } else {
+                params.delete("search");
             }
-
-            searchTimeoutRef.current = setTimeout(() => {
-                const params = new URLSearchParams(searchParams.toString());
-                if (value.trim()) {
-                    params.set("search", value.trim());
-                } else {
-                    params.delete("search");
-                }
-                params.delete("page");
-                router.push(`${pathname}?${params.toString()}`);
-            }, SEARCH_DEBOUNCE_MS);
+            params.delete("page");
+            router.push(`${pathname}?${params.toString()}`);
         },
         [searchParams, router, pathname],
     );
@@ -279,29 +310,7 @@ export default function RequestsPage() {
         setSearchValue(urlSearch);
     }, [searchParams]);
 
-    // Cleanup timeout on unmount
-    useEffect(() => {
-        return () => {
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
-            }
-        };
-    }, []);
-
-    const hasActiveFilters = useMemo(() => {
-        const filterParams = [
-            "proposers",
-            "approvers",
-            "recipients",
-            "proposal_types",
-            "token",
-            "created_date",
-            "my_vote",
-        ];
-        return filterParams.some((param) =>
-            hasFilterValue(searchParams.get(param)),
-        );
-    }, [searchParams]);
+    const { activeFilterCount, hasActiveFilters } = useActiveFilters();
 
     const isSearchActive = useMemo(() => {
         return searchParams.has("search");
@@ -316,7 +325,11 @@ export default function RequestsPage() {
             label: tReq("tabs.pending"),
             trigger:
                 !!pendingCount && pendingCount > 0 ? (
-                    <NumberBadge number={pendingCount} variant="secondary" />
+                    <NumberBadge
+                        number={pendingCount}
+                        variant="outline"
+                        shape="pill"
+                    />
                 ) : undefined,
         },
         { value: "Approved", label: tReq("tabs.executed") },
@@ -332,10 +345,7 @@ export default function RequestsPage() {
         !isSearchActive
     ) {
         return (
-            <PageComponentLayout
-                title={t("title")}
-                description={t("description")}
-            >
+            <PageComponentLayout title={t("title")}>
                 <NoRequestsFound />
             </PageComponentLayout>
         );
@@ -350,69 +360,87 @@ export default function RequestsPage() {
         </TabsContent>
     ));
 
+    const filtersLabel = hasActiveFilters
+        ? tCommon("filtersWithCount", { count: activeFilterCount })
+        : tCommon("filters");
+
     const actions = (
-        <div className="flex items-center justify-end w-full gap-2">
+        <div className="flex items-center justify-end gap-2">
             <ResponsiveInput
                 type="text"
                 placeholder={tReq("searchPlaceholder")}
                 mobilePlaceholder={tReq("searchPlaceholderShort")}
-                className="max-w-72 w-full"
+                className="md:h-10 md:w-[290px] md:shrink-0"
+                buttonClassName={ICON_BUTTON_CLASS}
+                inputClassName="md:rounded-lg md:border md:border-general-border md:bg-card! md:hover:bg-card! md:pl-9 md:placeholder:font-medium md:placeholder:text-general-muted-foreground dark:md:placeholder:text-muted-foreground focus-visible:border-general-border focus-visible:ring-0"
+                searchIconClassName="md:left-2 md:size-5 md:text-general-muted-foreground dark:md:text-muted-foreground"
                 search
                 value={searchValue}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onDebouncedChange={handleSearchChange}
+                debounceMs={SEARCH_DEBOUNCE_MS}
             />
 
             <Button
                 variant="secondary"
                 size="icon"
-                className="relative md:w-auto md:px-3 md:gap-1.5"
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                aria-label={
+                className={cn(
+                    ICON_BUTTON_CLASS,
+                    "md:h-10 md:w-auto md:gap-2 md:px-4 md:text-sm",
+                    // Active state is the design's gray-900 (#171717) surface.
                     hasActiveFilters
-                        ? tCommon("filterActive")
-                        : tCommon("filter")
-                }
-            >
-                <Icon icon={FilterIcon} />
-                <span className="hidden md:inline">{tCommon("filter")}</span>
-                {hasActiveFilters && (
-                    <span
-                        className="absolute top-1 right-1.5 size-2 rounded-full bg-general-info-foreground"
-                        aria-hidden="true"
-                    />
+                        ? "bg-general-foreground text-background hover:bg-general-foreground/90"
+                        : "text-muted-foreground",
                 )}
+                // A popover row of filter pills has nowhere to go on a phone,
+                // so mobile drills into the same filters through a sheet.
+                onClick={() =>
+                    isMobile
+                        ? setIsMobileFiltersOpen(true)
+                        : setIsFiltersOpen(!isFiltersOpen)
+                }
+                aria-label={filtersLabel}
+            >
+                <Icon icon={FilterIcon} className="md:size-[13.25px]" />
+                <span className="hidden md:inline">{filtersLabel}</span>
             </Button>
         </div>
     );
 
+    // Mobile edits the same filters through `MobileFilterSheet`, so the inline
+    // panel is desktop-only rather than merely collapsed. `lg` is where
+    // `isMobile` flips, so the panel is never shown without a way to open it.
     const filterPanel = selectedCount === 0 && (
         <div
-            className="overflow-hidden transition-all duration-500 ease-in-out"
+            className="hidden overflow-hidden transition-all duration-500 ease-in-out lg:block"
             style={{
                 maxHeight: isFiltersOpen ? FILTER_PANEL_MAX_HEIGHT : "0px",
                 opacity: isFiltersOpen ? 1 : 0,
             }}
         >
-            <div className="py-3 px-4">
-                <ProposalFiltersComponent filterOptions={filterOptions} />
-            </div>
+            <ProposalFiltersComponent filterOptions={filterOptions} />
         </div>
     );
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
-            <PageCard className="p-0">
-                <ResponsiveTabs
-                    tabs={tabs}
-                    value={currentTab}
-                    onValueChange={handleTabChange}
-                    actions={actions}
-                    hideHeader={selectedCount > 0}
-                >
-                    {filterPanel}
-                    {tabContents}
-                </ResponsiveTabs>
-            </PageCard>
+        <PageComponentLayout title={t("title")}>
+            <ResponsiveTabs
+                tabs={tabs}
+                value={currentTab}
+                onValueChange={handleTabChange}
+                actions={actions}
+                hideHeader={selectedCount > 0}
+                variant="plain"
+                className="md:gap-4"
+            >
+                {filterPanel}
+                {tabContents}
+            </ResponsiveTabs>
+            <MobileFilterSheet
+                filterOptions={filterOptions}
+                open={isMobileFiltersOpen}
+                onOpenChange={setIsMobileFiltersOpen}
+            />
         </PageComponentLayout>
     );
 }

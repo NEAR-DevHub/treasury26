@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Anfragen",
-            "description": "Alle ausstehenden Multisig-Anfragen anzeigen und verwalten",
             "detailDescription": "Details zur Anfrage",
             "detailTitle": "Anfrage Nr. {id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "Mitglieder werden geladen...",
             "noMembersFound": "Keine Mitglieder gefunden. Drücken Sie Eingabe, um \"{query}\" hinzuzufügen",
             "noMembersAvailable": "Keine Mitglieder verfügbar",
+            "editOnDesktop": "Am Desktop bearbeiten",
             "reset": "Zurücksetzen",
+            "resetAll": "Alle zurücksetzen",
             "clear": "Löschen",
             "addFilter": "Filter hinzufügen"
         },
@@ -662,10 +663,10 @@
         "table": {
             "selectAll": "Alle auswählen",
             "selectRow": "Zeile auswählen",
-            "request": "Anfrage",
+            "request": "Anfragen",
             "transaction": "Transaktion",
             "requester": "Antragsteller",
-            "voting": "Abstimmung",
+            "voting": "Genehmigungen",
             "votingTooltip": "Die erste Zahl zeigt erhaltene Genehmigungen. Die zweite Zahl zeigt zur Ausführung erforderliche Genehmigungen.",
             "status": "Status",
             "notPending": "Vorschlag ist nicht ausstehend.",

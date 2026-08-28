@@ -10,11 +10,33 @@ import {
 import { Amount } from "../amount";
 import { TooltipUser } from "@/components/user";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
-import { useProfile } from "@/hooks/use-treasury-queries";
+import { useProfile, useToken } from "@/hooks/use-treasury-queries";
+import { TokenDisplay } from "@/components/token-display-with-network";
 import { useTreasury } from "@/hooks/use-treasury";
 import { Tooltip } from "@/components/tooltip";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
 import { Address } from "@/components/address";
+
+/**
+ * The 36px token badge the row shows to the left of the amount. Split out of
+ * `Amount` so the "to: ..." line can sit under the amount instead of under the
+ * badge.
+ */
+function TokenIcon({ tokenId, nearFt }: { tokenId: string; nearFt?: boolean }) {
+    const { data: token } = useToken(
+        tokenId,
+        nearFt ? { nearFt: true } : undefined,
+    );
+    if (!token) return null;
+    return (
+        <TokenDisplay
+            symbol={token.symbol}
+            icon={token.icon ?? ""}
+            chainIcons={token.chainIcons}
+            iconSize="xl"
+        />
+    );
+}
 
 interface TokenCellProps {
     data: PaymentRequestData | VestingData | StakingData;
@@ -43,7 +65,7 @@ export function TokenCell({
             showUSDValue={false}
             showNetworkTooltip
             expandNearComLabel={"destinationAssetId" in data}
-            iconSize="sm"
+            showIcon={false}
             textOnly={textOnly}
             nearFt={nearFt}
         />
@@ -92,6 +114,11 @@ export function TokenCell({
         <TitleSubtitleCell
             title={title}
             subtitle={subtitle}
+            icon={
+                textOnly ? undefined : (
+                    <TokenIcon tokenId={data.tokenId} nearFt={nearFt} />
+                )
+            }
             timestamp={timestamp}
         />
     );

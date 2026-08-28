@@ -18,23 +18,24 @@ interface StatusPillProps {
     className?: string;
 }
 
+/** Surface, border and label for a pill — the design tints all three together. */
 export function getStatusColor(status: PillStatus): string {
     switch (status) {
         case "Approved":
         case "Executed":
         case "Paid":
-            return "bg-general-success-background-faded text-general-success-foreground";
+            return "border-general-success-border bg-general-success-background-faded text-general-success-foreground";
         case "Failed":
-            return "bg-general-warning-background-faded text-general-warning-foreground";
+            return "border-general-warning-border bg-general-warning-background-faded text-general-warning-foreground";
         case "Rejected":
         case "Removed":
-            return "bg-general-destructive-background-faded text-general-destructive-foreground";
+            return "border-general-destructive-border bg-general-destructive-background-faded text-general-destructive-foreground";
         case "Pending":
-            return "bg-general-orange-background-faded text-general-orange-foreground";
+            return "border-general-orange-border bg-general-orange-background-faded text-general-orange-foreground";
         case "Expired":
-            return "bg-secondary text-secondary-foreground";
+            return "border-general-border bg-general-bg-secondary text-general-secondary-foreground";
         default:
-            return "bg-muted text-muted-foreground";
+            return "border-general-border bg-muted text-muted-foreground";
     }
 }
 
@@ -64,7 +65,7 @@ export function StatusPill({ status, className }: StatusPillProps) {
     return (
         <span
             className={cn(
-                "inline-flex px-2 py-1 rounded-md text-xs font-medium",
+                "inline-flex min-h-6 items-center rounded-lg border px-2 py-[3px] text-xs font-semibold",
                 getStatusColor(status),
                 className,
             )}

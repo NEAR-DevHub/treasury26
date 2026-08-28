@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Requests",
-            "description": "View and manage all pending multisig requests",
             "detailDescription": "Details for Request",
             "detailTitle": "Request #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "Loading members...",
             "noMembersFound": "No members found. Press Enter to add \"{query}\"",
             "noMembersAvailable": "No members available",
+            "editOnDesktop": "Edit on desktop",
             "reset": "Reset",
+            "resetAll": "Reset all",
             "clear": "Clear",
             "addFilter": "Add Filter"
         },
@@ -662,10 +663,10 @@
         "table": {
             "selectAll": "Select all",
             "selectRow": "Select row",
-            "request": "Request",
+            "request": "Requests",
             "transaction": "Transaction",
             "requester": "Requester",
-            "voting": "Voting",
+            "voting": "Approvals",
             "votingTooltip": "First number shows approvals received. Second number shows approvals required to execute.",
             "status": "Status",
             "notPending": "Proposal is not pending.",

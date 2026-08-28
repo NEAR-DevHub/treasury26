@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "请求",
-            "description": "查看并管理所有待处理的多签请求",
             "detailDescription": "请求详情",
             "detailTitle": "请求 #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "正在加载成员...",
             "noMembersFound": "未找到成员。按 Enter 添加“{query}”",
             "noMembersAvailable": "无可用成员",
+            "editOnDesktop": "在桌面端编辑",
             "reset": "重置",
+            "resetAll": "全部重置",
             "clear": "清除",
             "addFilter": "添加筛选"
         },
@@ -665,7 +666,7 @@
             "request": "请求",
             "transaction": "交易",
             "requester": "请求者",
-            "voting": "投票",
+            "voting": "批准",
             "votingTooltip": "第一个数字显示已收到的批准数。第二个数字显示执行所需的批准数。",
             "status": "状态",
             "notPending": "提案不处于待处理状态。",

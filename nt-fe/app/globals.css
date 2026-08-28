@@ -247,6 +247,7 @@
     --general-unofficial-accent: rgba(229, 229, 229);
     --general-unofficial-accent-0: rgba(250, 250, 250);
     --general-success-background-faded: rgb(240, 255, 249);
+    --general-success-border: rgb(213, 255, 240);
     --general-success-foreground: rgb(0, 150, 96);
     --general-orange-background: rgb(255, 237, 213);
     --general-orange-background-faded: rgb(255, 247, 237);
@@ -254,6 +255,7 @@
     --general-orange-foreground: rgb(194, 65, 12);
     --general-orange-solid: rgb(255, 105, 0);
     --general-destructive-background-faded: rgb(254, 242, 242);
+    --general-destructive-border: rgb(255, 228, 230);
     --general-destructive-foreground: rgb(220, 38, 38);
     --general-error-icon: rgb(255, 32, 86);
     --general-info-background-faded: rgba(239, 246, 255);
@@ -362,8 +364,10 @@
     --sidebar-border: rgb(30, 30, 30);
     --sidebar-ring: rgb(82, 82, 82);
     --general-success-background-faded: rgb(11, 46, 37);
+    --general-success-border: rgb(19, 78, 63);
     --general-success-foreground: rgba(0, 236, 151, 1);
     --general-destructive-background-faded: rgb(69, 10, 10);
+    --general-destructive-border: rgb(127, 29, 29);
     --general-destructive-foreground: rgb(220, 38, 38);
     --general-error-icon: rgb(255, 32, 86);
     --general-orange-background: rgb(124, 45, 18);
@@ -451,6 +455,7 @@
 
     /* Status pill colors (Executed) */
     --general-success-background-faded: rgb(240, 255, 249);
+    --general-success-border: rgb(213, 255, 240);
     --general-success-foreground: rgb(0, 150, 96);
     --general-error-icon: rgb(255, 32, 86);
 }
@@ -483,10 +488,12 @@
     --color-general-success-background-faded: var(
         --general-success-background-faded
     );
+    --color-general-success-border: var(--general-success-border);
     --color-general-success-foreground: var(--general-success-foreground);
     --color-general-destructive-background-faded: var(
         --general-destructive-background-faded
     );
+    --color-general-destructive-border: var(--general-destructive-border);
     --color-general-destructive-foreground: var(
         --general-destructive-foreground
     );

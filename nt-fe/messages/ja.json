@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "リクエスト",
-            "description": "保留中のすべてのマルチシグリクエストを表示・管理",
             "detailDescription": "リクエストの詳細",
             "detailTitle": "リクエスト #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "メンバーを読み込み中...",
             "noMembersFound": "メンバーが見つかりません。Enterキーで「{query}」を追加します",
             "noMembersAvailable": "利用可能なメンバーはいません",
+            "editOnDesktop": "デスクトップで編集",
             "reset": "リセット",
+            "resetAll": "すべてリセット",
             "clear": "クリア",
             "addFilter": "フィルターを追加"
         },
@@ -665,7 +666,7 @@
             "request": "リクエスト",
             "transaction": "トランザクション",
             "requester": "依頼者",
-            "voting": "投票",
+            "voting": "承認",
             "votingTooltip": "最初の数字は受け取った承認数を示し、2つ目の数字は実行に必要な承認数を示します。",
             "status": "ステータス",
             "notPending": "提案は保留中ではありません。",

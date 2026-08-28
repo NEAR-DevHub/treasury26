@@ -10,7 +10,7 @@ const iconSizeClasses = {
     "3xl": "size-11 border border-[rgba(23,23,23,0.1)]",
 } as const;
 
-type TokenIconSize = keyof typeof iconSizeClasses;
+export type TokenIconSize = keyof typeof iconSizeClasses;
 
 const networkIconSizeClasses = {
     sm: "size-2.5",

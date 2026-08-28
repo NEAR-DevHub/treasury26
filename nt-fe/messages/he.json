@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "בקשות",
-            "description": "הצג ונהל את כל בקשות המולטיסיג הממתינות",
             "detailDescription": "פרטי בקשה",
             "detailTitle": "בקשה #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "טוען חברים...",
             "noMembersFound": "לא נמצאו חברים. לחץ Enter כדי להוסיף \"{query}\"",
             "noMembersAvailable": "אין חברים זמינים",
+            "editOnDesktop": "עריכה במחשב",
             "reset": "איפוס",
+            "resetAll": "אפס הכל",
             "clear": "נקה",
             "addFilter": "הוסף מסנן"
         },
@@ -662,10 +663,10 @@
         "table": {
             "selectAll": "בחר הכל",
             "selectRow": "בחר שורה",
-            "request": "בקשה",
+            "request": "בקשות",
             "transaction": "עסקה",
             "requester": "מבקש",
-            "voting": "הצבעה",
+            "voting": "אישורים",
             "votingTooltip": "המספר הראשון מציג אישורים שהתקבלו. המספר השני מציג אישורים הנדרשים לביצוע.",
             "status": "סטטוס",
             "notPending": "ההצעה אינה ממתינה.",

@@ -9,6 +9,8 @@ const styles = cva("flex items-center justify-center text-xs font-semibold", {
             default: "bg-orange-500 text-white",
             secondary: "bg-muted text-muted-foreground",
             accent: "bg-general-unofficial-border text-foreground",
+            outline:
+                "border border-general-border bg-card font-medium text-general-secondary-foreground",
             error: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
         },
         sizes: {
@@ -35,7 +37,7 @@ export function NumberBadge({
     ariaLabel,
 }: {
     number: number;
-    variant?: "default" | "secondary" | "accent" | "error";
+    variant?: "default" | "secondary" | "accent" | "error" | "outline";
     sizes?: "default" | "sm";
     shape?: "default" | "pill";
     ariaLabel?: string;

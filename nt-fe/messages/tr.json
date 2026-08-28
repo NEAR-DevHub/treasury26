@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Talepler",
-            "description": "Tüm bekleyen multisig taleplerini görüntüleyin ve yönetin",
             "detailDescription": "Talep Ayrıntıları",
             "detailTitle": "Talep #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "Üyeler yükleniyor...",
             "noMembersFound": "Üye bulunamadı. \"{query}\" eklemek için Enter tuşuna basın",
             "noMembersAvailable": "Kullanılabilir üye yok",
+            "editOnDesktop": "Masaüstünde düzenle",
             "reset": "Sıfırla",
+            "resetAll": "Tümünü sıfırla",
             "clear": "Temizle",
             "addFilter": "Filtre Ekle"
         },
@@ -662,10 +663,10 @@
         "table": {
             "selectAll": "Tümünü seç",
             "selectRow": "Satırı seç",
-            "request": "Talep",
+            "request": "Talepler",
             "transaction": "İşlem",
             "requester": "Talep Eden",
-            "voting": "Oylama",
+            "voting": "Onaylar",
             "votingTooltip": "İlk sayı alınan onayları gösterir. İkinci sayı yürütme için gereken onayları gösterir.",
             "status": "Durum",
             "notPending": "Öneri beklemede değil.",

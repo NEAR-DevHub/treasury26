@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "요청",
-            "description": "모든 대기 중인 멀티시그 요청을 보고 관리하세요",
             "detailDescription": "요청 세부정보",
             "detailTitle": "요청 #{id}"
         },
@@ -633,7 +632,9 @@
             "loadingMembers": "멤버 로딩 중...",
             "noMembersFound": "멤버를 찾을 수 없습니다. \"{query}\"을(를) 추가하려면 Enter를 누르세요",
             "noMembersAvailable": "이용 가능한 멤버가 없습니다",
+            "editOnDesktop": "데스크톱에서 편집",
             "reset": "재설정",
+            "resetAll": "모두 재설정",
             "clear": "지우기",
             "addFilter": "필터 추가"
         },
@@ -665,7 +666,7 @@
             "request": "요청",
             "transaction": "트랜잭션",
             "requester": "요청자",
-            "voting": "투표",
+            "voting": "승인",
             "votingTooltip": "첫 번째 숫자는 받은 승인 수입니다. 두 번째 숫자는 실행에 필요한 승인 수입니다.",
             "status": "상태",
             "notPending": "제안이 대기 상태가 아닙니다.",

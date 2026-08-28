@@ -24,10 +24,11 @@ import {
     TableRow,
 } from "@/components/table";
 import { TokenDisplay } from "@/components/token-display-with-network";
+import { SwapTokenPair } from "@/components/token-pair";
 import { Tooltip } from "@/components/tooltip";
 import { TooltipUser } from "@/components/user";
 import { useTreasury } from "@/hooks/use-treasury";
-import type { RecentActivity, TokenMetadataInfo } from "@/lib/api";
+import type { RecentActivity } from "@/lib/api";
 import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
 import {
     getActivityStatus,
@@ -72,60 +73,6 @@ interface ActivityTableProps {
  */
 function isInteractiveTarget(target: EventTarget | null) {
     return target instanceof HTMLElement && !!target.closest("a, button");
-}
-
-/** Token glyph sized for the overlapping swap pair, which needs 20/28px. */
-function TokenGlyph({
-    token,
-    className,
-}: {
-    token: TokenMetadataInfo;
-    className?: string;
-}) {
-    const icon = token.icon;
-    const isImageIcon =
-        !!icon && (icon.startsWith("data:image") || icon.startsWith("http"));
-
-    return isImageIcon ? (
-        <img
-            src={icon}
-            alt={token.symbol}
-            className={cn("shrink-0 rounded-full", className)}
-        />
-    ) : (
-        <div
-            className={cn(
-                "flex shrink-0 items-center justify-center rounded-full bg-brand-blue text-white text-xs font-normal",
-                className,
-            )}
-        >
-            {token.symbol.charAt(0).toUpperCase()}
-        </div>
-    );
-}
-
-/** Sent token tucked behind the received one, matching the 36px row badge. */
-function SwapTokenPair({
-    sent,
-    received,
-}: {
-    sent?: TokenMetadataInfo;
-    received: TokenMetadataInfo;
-}) {
-    return (
-        <div className="relative size-9 shrink-0">
-            {sent && (
-                <TokenGlyph
-                    token={sent}
-                    className="absolute left-0 top-0 size-5"
-                />
-            )}
-            <TokenGlyph
-                token={received}
-                className="absolute bottom-0 right-0 size-7 border border-card bg-card"
-            />
-        </div>
-    );
 }
 
 function SwapTransactionCell({
