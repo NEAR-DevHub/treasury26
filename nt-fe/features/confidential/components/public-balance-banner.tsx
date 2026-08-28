@@ -11,6 +11,8 @@ import { usePendingMoveRequests } from "../hooks/use-pending-move-requests";
 import { usePublicAssets } from "../hooks/use-public-assets";
 import { publicAssetKey } from "../utils/public-to-confidential";
 
+const MIN_BANNER_USD = 1;
+
 /**
  * Dashboard notice for a confidential treasury whose public account holds
  * funds. Hidden while loading, on error, and when nothing is detected.
@@ -22,7 +24,13 @@ export function PublicBalanceBanner() {
     const tokens = data?.tokens ?? [];
     const pending = usePendingMoveRequests(tokens);
 
-    if (!isSuccess || !treasuryId || tokens.length === 0) return null;
+    if (
+        !isSuccess ||
+        !treasuryId ||
+        tokens.length === 0 ||
+        !data.totalBalanceUSD.gt(MIN_BANNER_USD)
+    )
+        return null;
 
     // Every asset already has an in-progress move request → point at it
     // (single request) or at the pending list instead of a second move.
