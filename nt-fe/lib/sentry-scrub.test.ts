@@ -28,6 +28,15 @@ describe("scrubSentryEvent", () => {
         expect(event.message).not.toContain("[REDACTED]");
     });
 
+    it("does not redact short eyJ fragments or long dotted strings without the JWT header", () => {
+        const event = scrubSentryEvent({
+            message:
+                'left ".eyJ_aa.aa.aa" right abcdefghijklmnop.abcdefghijklmnop.abcdefghijklmnop end',
+        } as Event);
+
+        expect(event.message).not.toContain("[REDACTED]");
+    });
+
     it("redacts sensitive keys in extra and breadcrumb data, keeps the rest", () => {
         const event = scrubSentryEvent({
             breadcrumbs: [

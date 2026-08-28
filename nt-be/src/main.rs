@@ -59,12 +59,10 @@ async fn async_main() {
             Ok(origin) => Some(origin),
             Err(e) => {
                 // A dropped origin silently blocks the whole frontend via CORS.
-                tracing::error!(
-                    tags.error_code = "CONFIG_INVALID_CORS_ORIGIN",
-                    tags.alert_priority = "p1",
+                nt_be::error_event!(
+                    nt_be::error_event::ErrorCode::ConfigInvalidCorsOrigin,
                     origin = s,
-                    error = %e,
-                    "invalid CORS origin in config; it will not be allowed"
+                    error = %e
                 );
                 None
             }

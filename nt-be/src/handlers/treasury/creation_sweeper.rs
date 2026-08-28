@@ -97,13 +97,11 @@ async fn resume_one(state: &Arc<AppState>, candidate: SweepCandidate) {
             );
 
             if attempts >= MAX_SWEEP_ATTEMPTS {
-                tracing::error!(
-                    tags.error_code = "TREASURY_CREATE_GAVE_UP",
-                    tags.alert_priority = "p1",
+                crate::error_event!(
+                    crate::error_event::ErrorCode::TreasuryCreateGaveUp,
                     account,
                     attempts,
-                    error = %message,
-                    "treasury creation sweeper gave up"
+                    error = %message
                 );
                 if let Err(e) =
                     creation_requests::mark_creation_failed(&state.db_pool, &account, &message)

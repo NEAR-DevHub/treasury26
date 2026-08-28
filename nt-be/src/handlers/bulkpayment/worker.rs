@@ -103,12 +103,10 @@ async fn complete_pending_list(pool: &PgPool, list_id: &str) {
     .execute(pool)
     .await
     {
-        tracing::error!(
-            tags.error_code = "BULK_PAYOUT_STATE_WRITE_FAILED",
-            tags.alert_priority = "p2",
+        crate::error_event!(
+            crate::error_event::ErrorCode::BulkPayoutStateWriteFailed,
             list_id,
-            error = %e,
-            "failed to mark list as completed in pending_payment_lists"
+            error = %e
         );
     }
 }
@@ -224,12 +222,10 @@ pub async fn query_and_process_pending_lists(
                 let err_str = e.to_string();
                 // Retried every tick with no give-up; sustained failures page
                 // via a Sentry frequency rule on this code.
-                tracing::error!(
-                    tags.error_code = "BULK_PAYOUT_FAILED",
-                    tags.alert_priority = "p2",
+                crate::error_event!(
+                    crate::error_event::ErrorCode::BulkPayoutFailed,
                     list_id,
-                    error = %err_str,
-                    "failed to process payout batch"
+                    error = %err_str
                 );
 
                 // Remove list from tracking if it's not found or completed

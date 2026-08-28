@@ -174,12 +174,10 @@ async fn refresh_scoped_jwt(
         .load(account_id, scope)
         .await
         .map_err(|e| {
-            tracing::error!(
-                tags.error_code = "CONF_JWT_LOAD_FAILED",
-                tags.alert_priority = "p2",
+            crate::error_event!(
+                crate::error_event::ErrorCode::ConfJwtLoadFailed,
                 label,
-                error = %e,
-                "failed to load stored JWT"
+                error = %e
             );
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -253,12 +251,10 @@ async fn refresh_scoped_jwt(
         .store_refreshed(account_id, scope, &bundle, outcome.expires_at)
         .await
         .map_err(|e| {
-            tracing::error!(
-                tags.error_code = "CONF_JWT_PERSIST_FAILED",
-                tags.alert_priority = "p2",
+            crate::error_event!(
+                crate::error_event::ErrorCode::ConfJwtPersistFailed,
                 label,
-                error = %e,
-                "failed to persist refreshed JWT"
+                error = %e
             );
             // A stale-generation fence rejection is transient during a key
             // rotation rollout: retryable, and a retry lands on a pod

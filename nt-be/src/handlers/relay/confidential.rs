@@ -358,13 +358,11 @@ pub async fn try_auto_submit_intent(
             // intent will sit `pending` forever. Marker absent is the routine
             // non-approving vote (no signature expected yet).
             if result_debug.contains(MPC_SIGNATURE_MARKER) {
-                tracing::error!(
-                    tags.error_code = "CONF_INTENT_SIG_PARSE_FAILED",
-                    tags.alert_priority = "p0",
+                crate::error_event!(
+                    crate::error_event::ErrorCode::ConfIntentSigParseFailed,
                     treasury_id,
                     payload_hash,
-                    proposal_id,
-                    "MPC signature present in vote result but could not be parsed; intent stays pending"
+                    proposal_id
                 );
             } else {
                 tracing::debug!(
@@ -514,14 +512,12 @@ pub async fn try_auto_submit_intent(
                     resp_body.get("accessToken").and_then(|v| v.as_str()),
                     resp_body.get("refreshToken").and_then(|v| v.as_str()),
                 ) else {
-                    tracing::error!(
-                        tags.error_code = "CONF_AUTH_TOKENS_MISSING",
-                        tags.alert_priority = "p1",
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::ConfAuthTokensMissing,
                         intent_type,
                         treasury_id,
                         payload_hash,
-                        response = ?sanitized_resp_body,
-                        "1Click response missing tokens; intent marked failed"
+                        response = ?sanitized_resp_body
                     );
                     let _ = sqlx::query!(
                         "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
@@ -577,13 +573,11 @@ pub async fn try_auto_submit_intent(
                     Err(e) => Err(e),
                 };
                 if let Err(e) = persisted {
-                    tracing::error!(
-                        tags.error_code = "CONF_JWT_PERSIST_FAILED",
-                        tags.alert_priority = "p2",
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::ConfJwtPersistFailed,
                         intent_type,
                         treasury_id,
-                        error = %e,
-                        "failed to persist JWT credentials; intent marked failed"
+                        error = %e
                     );
                     let _ = sqlx::query!(
                         "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
@@ -657,15 +651,13 @@ pub async fn try_auto_submit_intent(
             }
         }
         Err(err) => {
-            tracing::error!(
-                tags.error_code = "CONF_INTENT_SUBMIT_FAILED",
-                tags.alert_priority = "p0",
+            crate::error_event!(
+                crate::error_event::ErrorCode::ConfIntentSubmitFailed,
                 treasury_id,
                 payload_hash,
                 proposal_id,
                 intent_type,
-                error = %err,
-                "1Click intent submission failed after approved vote"
+                error = %err
             );
             if let Err(db_err) = sqlx::query!(
                 "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
@@ -678,13 +670,11 @@ pub async fn try_auto_submit_intent(
             {
                 // The intent now looks `pending` with nothing ever touching it
                 // again — the one state no inline alert can catch later.
-                tracing::error!(
-                    tags.error_code = "CONF_INTENT_MARK_FAILED_LOST",
-                    tags.alert_priority = "p0",
+                crate::error_event!(
+                    crate::error_event::ErrorCode::ConfIntentMarkFailedLost,
                     treasury_id,
                     payload_hash,
-                    error = %db_err,
-                    "failed to mark confidential intent as failed; row stays pending"
+                    error = %db_err
                 );
             }
         }

@@ -278,14 +278,12 @@ pub async fn get_deposit_address(
         .await
         .inspect_err(|(status, msg)| {
             if status.is_server_error() {
-                tracing::error!(
-                    tags.error_code = "DEPOSIT_ADDRESS_FAILED",
-                    tags.alert_priority = "p2",
+                crate::error_event!(
+                    crate::error_event::ErrorCode::DepositAddressFailed,
                     account_id = %account_id,
                     chain,
                     status = %status,
-                    error = %msg,
-                    "deposit address generation failed"
+                    error = %msg
                 );
             }
         })?;

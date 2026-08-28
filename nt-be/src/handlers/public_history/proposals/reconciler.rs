@@ -105,12 +105,10 @@ async fn apply_status(
             // not distinguishable here (insufficient DAO balance vs infra),
             // so p2: Telegram paging comes from a Sentry frequency alert
             // rule, not per event.
-            tracing::error!(
-                tags.error_code = "PROPOSAL_EXECUTION_FAILED",
-                tags.alert_priority = "p2",
+            crate::error_event!(
+                crate::error_event::ErrorCode::ProposalExecutionFailed,
                 dao_id = proposal.dao_id,
-                proposal_id = proposal.proposal_id,
-                "proposal execution failed on-chain"
+                proposal_id = proposal.proposal_id
             );
         }
         // Silver legs already carry proposal_ref; status is joined fresh from

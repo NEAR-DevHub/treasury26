@@ -149,22 +149,21 @@ fn report_terminal_failure(proposal: &StaleQuoteProposal, merged: &Value) {
         return;
     }
 
-    let (error_code, label) = match proposal_quote_from_metadata(Some(merged)).map(|q| q.quote_type)
-    {
-        Some(QuoteProposalType::PaymentTransfer) => ("PAYMENT_TERMINAL_FAILED", "payment"),
-        _ => ("EXCHANGE_TERMINAL_FAILED", "exchange"),
+    let code = match proposal_quote_from_metadata(Some(merged)).map(|q| q.quote_type) {
+        Some(QuoteProposalType::PaymentTransfer) => {
+            crate::error_event::ErrorCode::PaymentTerminalFailed
+        }
+        _ => crate::error_event::ErrorCode::ExchangeTerminalFailed,
     };
     let status_text =
         quote_status_text_from_metadata(Some(merged)).unwrap_or_else(|| "failed".to_string());
 
-    tracing::error!(
-        tags.error_code = error_code,
-        tags.alert_priority = "p1",
+    crate::error_event!(
+        code,
         dao_id = proposal.dao_id,
         proposal_id = proposal.proposal_id,
         deposit_address = proposal.quote_deposit_address,
-        status = status_text,
-        "1Click {label} reached terminal failed status"
+        status = status_text
     );
 }
 

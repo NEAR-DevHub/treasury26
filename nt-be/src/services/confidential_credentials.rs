@@ -725,13 +725,11 @@ impl ConfidentialCredentialStore {
                     }
                     // Still serve the newer pair.
                     Err(e) => {
-                        tracing::error!(
-                            tags.error_code = "CONF_ENVELOPE_HEAL_FAILED",
-                            tags.alert_priority = "p2",
+                        crate::error_event!(
+                            crate::error_event::ErrorCode::ConfEnvelopeHealFailed,
                             account_id,
                             scope = scope.as_str(),
-                            error = %e,
-                            "failed to heal envelope from plaintext"
+                            error = %e
                         );
                     }
                 }
@@ -1044,13 +1042,11 @@ impl ConfidentialCredentialStore {
                 };
                 if let Err(e) = row_result {
                     report.failed += 1;
-                    tracing::error!(
-                        tags.error_code = "CONF_CREDENTIAL_RECONCILE_FAILED",
-                        tags.alert_priority = "p2",
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::ConfCredentialReconcileFailed,
                         account_id,
                         scope = scope.as_str(),
-                        error = %e,
-                        "credential reconcile failed for row"
+                        error = %e
                     );
                 }
             }

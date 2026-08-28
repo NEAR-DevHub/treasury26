@@ -6,6 +6,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::broadcast;
 
 use crate::{
+    error_event::ErrorCode,
     events::{AppEvent, EVENT_BUS_CAPACITY},
     handlers::balance_changes::transfer_hints::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
@@ -410,12 +411,7 @@ impl AppStateBuilder {
                     Some(pool)
                 }
                 Err(e) => {
-                    tracing::error!(
-                        tags.error_code = "GOLDSKY_SINK_CONNECT_FAILED",
-                        tags.alert_priority = "p0",
-                        error = %e,
-                        "Failed to connect to Goldsky sink database — enrichment worker disabled"
-                    );
+                    crate::error_event!(ErrorCode::GoldskySinkConnectFailed, error = %e);
                     None
                 }
             }
@@ -449,12 +445,7 @@ impl AppStateBuilder {
             None => match TokenKeyring::from_env() {
                 Ok(keyring) => keyring.map(Arc::new),
                 Err(e) => {
-                    tracing::error!(
-                        tags.error_code = "CONF_KEYRING_REJECTED",
-                        tags.alert_priority = "p0",
-                        error = %e,
-                        "confidential keyring rejected"
-                    );
+                    crate::error_event!(ErrorCode::ConfKeyringRejected, error = %e);
                     return Err(e.into());
                 }
             },
@@ -647,11 +638,10 @@ impl AppState {
         if state.confidential_keyring.is_some() {
             let store = state.confidential_credentials();
             if let Err(e) = store.ensure_key_state().await {
-                tracing::error!(
-                    tags.error_code = "CONF_KEYRING_REJECTED",
-                    tags.alert_priority = "p0",
-                    error = %e,
-                    "confidential keyring rejected by key-state fence"
+                crate::error_event!(
+                    ErrorCode::ConfKeyringRejected,
+                    cause = "key-state fence",
+                    error = %e
                 );
                 let _ = state
                     .telegram_client
@@ -698,12 +688,7 @@ impl AppState {
                     }
                 }
                 Err(e) => {
-                    tracing::error!(
-                        tags.error_code = "CONF_CREDENTIAL_RECONCILE_FAILED",
-                        tags.alert_priority = "p2",
-                        error = %e,
-                        "confidential credential reconcile failed"
-                    );
+                    crate::error_event!(ErrorCode::ConfCredentialReconcileFailed, error = %e);
                     let _ = state
                         .telegram_client
                         .send_ops_alert_html(&format!(

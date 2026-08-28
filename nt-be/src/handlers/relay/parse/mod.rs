@@ -89,12 +89,10 @@ pub fn error_response(status: StatusCode, msg: impl Into<String>) -> RelayError 
     if status.is_server_error() {
         // Sponsor-side failure blocking proposal creation/votes for real
         // users. A Sentry alert rule on `alert_priority:p1` routes it to Telegram.
-        tracing::error!(
-            tags.error_code = "RELAY_SUBMIT_FAILED",
-            tags.alert_priority = "p1",
+        crate::error_event!(
+            crate::error_event::ErrorCode::RelaySubmitFailed,
             status = %status,
-            error = %msg,
-            "relay request failed"
+            error = %msg
         );
     } else {
         tracing::warn!(status = %status, error = %msg, "relay request rejected");

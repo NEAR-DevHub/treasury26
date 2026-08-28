@@ -312,15 +312,13 @@ impl<'a> BalanceVerifier<'a> {
             written > 0
         } else {
             set_head_check_result(&mut tx, account_id, head_block, false).await?;
-            tracing::error!(
-                tags.error_code = "VERIFICATION_HEAD_DRIFT",
-                tags.alert_priority = "p2",
+            crate::error_event!(
+                crate::error_event::ErrorCode::VerificationHeadDrift,
                 tags.dao = account_id,
                 head_block,
                 ledger_balance = %ledger_balance,
                 chain_balance = %chain_balance,
-                drift = %drift,
-                "native head drift beyond tolerance at ledger head; chart marked stale"
+                drift = %drift
             );
             false
         };
@@ -441,9 +439,8 @@ impl<'a> BalanceVerifier<'a> {
             )
             .await?;
             for outcome in outcomes.iter().filter(|outcome| !outcome.passed) {
-                tracing::error!(
-                    tags.error_code = "VERIFICATION_GATE_FAILED",
-                    tags.alert_priority = "p1",
+                crate::error_event!(
+                    crate::error_event::ErrorCode::VerificationGateFailed,
                     tags.dao = account_id,
                     asset = outcome.asset,
                     ledger_balance = %outcome.ledger_balance,
@@ -451,8 +448,7 @@ impl<'a> BalanceVerifier<'a> {
                     drift = %outcome.drift,
                     min_running_balance = %outcome.min_running_balance,
                     min_user_running_balance = %outcome.min_user_running_balance,
-                    sponsor_absorbed = %outcome.sponsor_absorbed,
-                    "public balance verification FAILED; chart stays unavailable"
+                    sponsor_absorbed = %outcome.sponsor_absorbed
                 );
             }
         }
