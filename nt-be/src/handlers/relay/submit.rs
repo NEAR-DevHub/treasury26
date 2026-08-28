@@ -211,7 +211,8 @@ async fn submit_relay(
         }
     };
 
-    // `error_response` logs the failure at ERROR (→ Sentry); no extra log
-    // here or the same failure would produce two events.
+    // `error_response` logs the failure at ERROR (→ Sentry, tagged
+    // RELAY_SUBMIT_FAILED / p1); no extra log here or the same failure would
+    // produce two events.
     result.map_err(|error_message| error_response(StatusCode::INTERNAL_SERVER_ERROR, error_message))
 }

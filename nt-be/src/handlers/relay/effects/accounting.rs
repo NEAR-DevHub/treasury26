@@ -139,7 +139,11 @@ pub fn spawn_refund_gas_credit(
 
         match result {
             Ok(_) => tracing::info!("Refunded gas credit for treasury {}", treasury_id),
-            Err(e) => tracing::error!("Failed to refund gas credit for {}: {}", treasury_id, e),
+            Err(e) => crate::error_event!(
+                crate::error_event::ErrorCode::RelayCreditRefundFailed,
+                treasury_id = %treasury_id,
+                error = %e
+            ),
         }
     });
 }
@@ -184,7 +188,11 @@ pub fn spawn_record_spend(
         .await;
 
         if let Err(e) = result {
-            tracing::error!("Failed to record relay spend for {}: {}", treasury_id, e);
+            crate::error_event!(
+                crate::error_event::ErrorCode::RelaySpendRecordFailed,
+                treasury_id = %treasury_id,
+                error = %e
+            );
         }
     });
 }

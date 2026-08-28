@@ -1,4 +1,5 @@
-import axios, { isAxiosError } from "axios";
+import { isAxiosError } from "axios";
+import { http as axios } from "@/lib/http";
 import type { ProposalTemplate } from "./types";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;

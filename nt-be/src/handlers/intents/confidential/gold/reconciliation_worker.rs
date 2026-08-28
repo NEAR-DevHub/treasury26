@@ -13,22 +13,34 @@ use super::history_events::{
 pub const CONFIDENTIAL_GOLD_RECONCILIATION_INTERVAL: Duration = Duration::from_secs(86_400);
 
 #[tracing::instrument(level = "info", skip_all, fields(job = "confidential_gold_reconciliation", phase = phase))]
-pub async fn run_reconciliation_pass(state: &Arc<AppState>, phase: &str) {
+/// Failures are aggregated into the returned task error (projection still
+/// runs after a mark-dirty failure), so a failed pass shows Failed on the
+/// board instead of a green run.
+pub async fn run_reconciliation_pass(state: &Arc<AppState>, phase: &str) -> Result<(), String> {
     let pool = &state.db_pool;
+    let mut errors = Vec::new();
     match mark_backfilled_confidential_daos_gold_dirty(pool).await {
         Ok(rows) => tracing::info!(
             "{} reconciliation marked {} backfilled cursor rows dirty",
             phase,
             rows
         ),
-        Err(e) => tracing::error!("{} reconciliation mark-dirty failed: {}", phase, e),
+        Err(e) => errors.push(format!("{phase} reconciliation mark-dirty failed: {e}")),
     }
 
-    project_dirty_daos(state, phase, "projection").await;
+    if let Err(e) = project_dirty_daos(state, phase, "projection").await {
+        errors.push(e);
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
 }
 
 #[tracing::instrument(level = "info", skip_all, fields(phase = phase, step = step))]
-async fn project_dirty_daos(state: &Arc<AppState>, phase: &str, step: &str) {
+async fn project_dirty_daos(state: &Arc<AppState>, phase: &str, step: &str) -> Result<(), String> {
     match project_confidential_gold_for_dirty_daos(
         &state.db_pool,
         CONFIDENTIAL_GOLD_RECONCILIATION_WORKERS,
@@ -52,8 +64,9 @@ async fn project_dirty_daos(state: &Arc<AppState>, phase: &str, step: &str) {
                 verify_confidential_ledger_heads(state, &account_id).await;
                 state.publish_treasury_projection_updated(account_id).await;
             }
+            Ok(())
         }
-        Ok(_) => {}
-        Err(e) => tracing::error!("{} reconciliation projection failed: {}", phase, e),
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("{phase} reconciliation projection failed: {e}")),
     }
 }

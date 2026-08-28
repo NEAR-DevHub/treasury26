@@ -1,4 +1,4 @@
-import axios from "axios";
+import { http as axios } from "@/lib/http";
 import { jsonToBase64 } from "@/lib/utils";
 
 // Bulk Payment Contract Configuration

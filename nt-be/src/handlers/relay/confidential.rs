@@ -159,9 +159,12 @@ pub async fn store_pending_intent(
 
 /// Extract MPC signature from the execution result debug string.
 /// Searches for the base64 marker "eyJzY2hlbWUi" (= `{"scheme"`).
+/// Base64 prefix of the signer's `{"scheme":…}` signature payload; its
+/// presence in a vote outcome means a signature was produced.
+pub(crate) const MPC_SIGNATURE_MARKER: &str = "eyJzY2hlbWUi";
+
 pub(crate) fn extract_mpc_signature(result_debug: &str) -> Option<Vec<u8>> {
-    let marker = "eyJzY2hlbWUi";
-    let start = result_debug.find(marker)?;
+    let start = result_debug.find(MPC_SIGNATURE_MARKER)?;
     let rest = &result_debug[start..];
     let end = rest
         .find(|c: char| !c.is_alphanumeric() && c != '+' && c != '/' && c != '=')
@@ -350,11 +353,24 @@ pub async fn try_auto_submit_intent(
     let sig_bytes = match extract_mpc_signature(result_debug) {
         Some(bytes) => bytes,
         None => {
-            tracing::warn!(
-                "No MPC signature found in vote result for {} (hash={})",
-                treasury_id,
-                payload_hash
-            );
+            // The marker present but unparseable means the signer produced a
+            // signature we no longer understand (format/protocol drift) — the
+            // intent will sit `pending` forever. Marker absent is the routine
+            // non-approving vote (no signature expected yet).
+            if result_debug.contains(MPC_SIGNATURE_MARKER) {
+                crate::error_event!(
+                    crate::error_event::ErrorCode::ConfIntentSigParseFailed,
+                    treasury_id,
+                    payload_hash,
+                    proposal_id
+                );
+            } else {
+                tracing::debug!(
+                    treasury_id,
+                    payload_hash,
+                    "no MPC signature in vote result (vote did not approve yet)"
+                );
+            }
             return;
         }
     };
@@ -496,12 +512,12 @@ pub async fn try_auto_submit_intent(
                     resp_body.get("accessToken").and_then(|v| v.as_str()),
                     resp_body.get("refreshToken").and_then(|v| v.as_str()),
                 ) else {
-                    tracing::error!(
-                        "1Click {} response missing tokens for {} (hash={}): {:?}",
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::ConfAuthTokensMissing,
                         intent_type,
                         treasury_id,
                         payload_hash,
-                        sanitized_resp_body
+                        response = ?sanitized_resp_body
                     );
                     let _ = sqlx::query!(
                         "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
@@ -557,11 +573,11 @@ pub async fn try_auto_submit_intent(
                     Err(e) => Err(e),
                 };
                 if let Err(e) = persisted {
-                    tracing::error!(
-                        "Failed to persist {} JWT for DAO {}: {}",
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::ConfJwtPersistFailed,
                         intent_type,
                         treasury_id,
-                        e
+                        error = %e
                     );
                     let _ = sqlx::query!(
                         "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
@@ -635,21 +651,32 @@ pub async fn try_auto_submit_intent(
             }
         }
         Err(err) => {
-            tracing::error!(
-                "1Click {} failed for {} (hash={}): {}",
-                intent_type,
+            crate::error_event!(
+                crate::error_event::ErrorCode::ConfIntentSubmitFailed,
                 treasury_id,
                 payload_hash,
-                err
+                proposal_id,
+                intent_type,
+                error = %err
             );
-            let _ = sqlx::query!(
+            if let Err(db_err) = sqlx::query!(
                 "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
                 serde_json::json!({ "error": err }),
                 treasury_id,
                 payload_hash,
             )
             .execute(&state.db_pool)
-            .await;
+            .await
+            {
+                // The intent now looks `pending` with nothing ever touching it
+                // again — the one state no inline alert can catch later.
+                crate::error_event!(
+                    crate::error_event::ErrorCode::ConfIntentMarkFailedLost,
+                    treasury_id,
+                    payload_hash,
+                    error = %db_err
+                );
+            }
         }
     }
 }

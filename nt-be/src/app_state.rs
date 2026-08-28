@@ -6,6 +6,7 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::broadcast;
 
 use crate::{
+    error_event::ErrorCode,
     events::{AppEvent, EVENT_BUS_CAPACITY},
     handlers::balance_changes::transfer_hints::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
@@ -410,10 +411,7 @@ impl AppStateBuilder {
                     Some(pool)
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "Failed to connect to Goldsky sink database: {} — enrichment worker disabled",
-                        e
-                    );
+                    crate::error_event!(ErrorCode::GoldskySinkConnectFailed, error = %e);
                     None
                 }
             }
@@ -447,7 +445,7 @@ impl AppStateBuilder {
             None => match TokenKeyring::from_env() {
                 Ok(keyring) => keyring.map(Arc::new),
                 Err(e) => {
-                    tracing::error!("confidential keyring rejected: {}", e);
+                    crate::error_event!(ErrorCode::ConfKeyringRejected, error = %e);
                     return Err(e.into());
                 }
             },
@@ -581,7 +579,14 @@ impl AppState {
 
         tracing::info!("Database connection established successfully");
 
-        let http_client = reqwest::Client::new();
+        // Bounded so no handler or job can hang forever on an external HTTP
+        // call (1Click, NearBlocks, DeFiLlama, …); a hung call now fails and
+        // hits the normal retry/alert paths instead of holding a slot.
+        let http_client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(5))
+            .build()
+            .expect("failed to build shared HTTP client");
 
         // Initialize price service with DeFiLlama provider (free, no API key required)
         let base_url = &env_vars.defillama_api_base_url;
@@ -597,6 +602,15 @@ impl AppState {
             env_vars.telegram_bot_token.clone(),
             env_vars.telegram_chat_id.clone(),
             env_vars.telegram_ops_chat_id.clone(),
+        );
+        tracing::info!(
+            bot_configured = env_vars
+                .telegram_bot_token
+                .as_deref()
+                .is_some_and(|t| !t.is_empty()),
+            notifications_chat = env_vars.telegram_chat_id.is_some(),
+            ops_chat = env_vars.telegram_ops_chat_id.is_some(),
+            "telegram channel configuration"
         );
 
         // Use the builder pattern internally for consistency
@@ -624,7 +638,11 @@ impl AppState {
         if state.confidential_keyring.is_some() {
             let store = state.confidential_credentials();
             if let Err(e) = store.ensure_key_state().await {
-                tracing::error!("confidential keyring rejected by key-state fence: {}", e);
+                crate::error_event!(
+                    ErrorCode::ConfKeyringRejected,
+                    cause = "key-state fence",
+                    error = %e
+                );
                 let _ = state
                     .telegram_client
                     .send_ops_alert_html(&format!(
@@ -670,7 +688,7 @@ impl AppState {
                     }
                 }
                 Err(e) => {
-                    tracing::error!("confidential credential reconcile failed: {}", e);
+                    crate::error_event!(ErrorCode::ConfCredentialReconcileFailed, error = %e);
                     let _ = state
                         .telegram_client
                         .send_ops_alert_html(&format!(

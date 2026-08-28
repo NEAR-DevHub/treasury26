@@ -396,7 +396,8 @@ pub async fn job_watchdog(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
                 last_alerted.insert(job.queue.clone(), Instant::now());
                 // ERROR on purpose: the tracing→Sentry bridge captures
                 // ERROR-level events, so this is the Sentry alert.
-                tracing::error!(
+                crate::error_event!(
+                    crate::error_event::ErrorCode::JobStale,
                     queue = %job.queue,
                     failure_mode = job.failure_mode.unwrap_or("unknown"),
                     reason = job.reason.as_deref().unwrap_or(""),
@@ -408,8 +409,7 @@ pub async fn job_watchdog(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
                     available_slots = job.available_slots,
                     oldest_waiting_secs = ?job.oldest_waiting_secs,
                     start_latency_p95_secs = ?job.start_latency_p95_secs,
-                    reclaims_last_hour = job.reclaims_last_hour,
-                    "background job stale: not making progress"
+                    reclaims_last_hour = job.reclaims_last_hour
                 );
             }
         } else if last_alerted.remove(&job.queue).is_some() {
@@ -583,10 +583,10 @@ pub async fn run_liveness_monitor(pool: PgPool) {
                 if consecutive >= needed {
                     // ERROR → Sentry (this task is alive even when the fleet is
                     // not, so unlike the in-process watchdog this alert fires).
-                    tracing::error!(
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::FleetStalled,
                         reason = %reason,
-                        consecutive,
-                        "job fleet stalled; restarting process to recover"
+                        consecutive
                     );
                     // Give the log/Sentry a moment to flush before exit.
                     tokio::time::sleep(Duration::from_secs(2)).await;

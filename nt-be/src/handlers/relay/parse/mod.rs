@@ -83,7 +83,13 @@ pub struct RelayResponse {
 pub fn error_response(status: StatusCode, msg: impl Into<String>) -> RelayError {
     let msg = msg.into();
     if status.is_server_error() {
-        tracing::error!(status = %status, error = %msg, "relay request failed");
+        // Sponsor-side failure blocking proposal creation/votes for real
+        // users. A Sentry alert rule on `alert_priority:p1` routes it to Telegram.
+        crate::error_event!(
+            crate::error_event::ErrorCode::RelaySubmitFailed,
+            status = %status,
+            error = %msg
+        );
     } else {
         tracing::warn!(status = %status, error = %msg, "relay request rejected");
     }

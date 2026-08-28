@@ -1,4 +1,4 @@
-import axios from "axios";
+import { http as axios } from "@/lib/http";
 import type {
     AddressBookEntry,
     AddressBookEntryInput,
