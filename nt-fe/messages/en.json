@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Requests",
-            "description": "View and manage all pending multisig requests",
             "detailDescription": "Details for Request",
             "detailTitle": "Request #{id}"
         },

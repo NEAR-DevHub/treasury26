@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Solicitações",
-            "description": "Visualize e gerencie todas as solicitações multisig pendentes",
             "detailDescription": "Detalhes da solicitação",
             "detailTitle": "Solicitação nº {id}"
         },

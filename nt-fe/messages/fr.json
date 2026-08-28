@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Demandes",
-            "description": "Consultez et gérez toutes les demandes multisig en attente",
             "detailDescription": "Détails de la demande",
             "detailTitle": "Demande #{id}"
         },

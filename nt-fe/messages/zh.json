@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "请求",
-            "description": "查看并管理所有待处理的多签请求",
             "detailDescription": "请求详情",
             "detailTitle": "请求 #{id}"
         },

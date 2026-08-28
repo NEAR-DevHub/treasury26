@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Yêu cầu",
-            "description": "Xem và quản lý tất cả yêu cầu multisig đang chờ",
             "detailDescription": "Chi tiết yêu cầu",
             "detailTitle": "Yêu cầu #{id}"
         },

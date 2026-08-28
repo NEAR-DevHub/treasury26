@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Anfragen",
-            "description": "Alle ausstehenden Multisig-Anfragen anzeigen und verwalten",
             "detailDescription": "Details zur Anfrage",
             "detailTitle": "Anfrage Nr. {id}"
         },

@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "요청",
-            "description": "모든 대기 중인 멀티시그 요청을 보고 관리하세요",
             "detailDescription": "요청 세부정보",
             "detailTitle": "요청 #{id}"
         },

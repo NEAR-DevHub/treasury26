@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "リクエスト",
-            "description": "保留中のすべてのマルチシグリクエストを表示・管理",
             "detailDescription": "リクエストの詳細",
             "detailTitle": "リクエスト #{id}"
         },

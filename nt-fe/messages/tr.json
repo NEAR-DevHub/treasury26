@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Talepler",
-            "description": "Tüm bekleyen multisig taleplerini görüntüleyin ve yönetin",
             "detailDescription": "Talep Ayrıntıları",
             "detailTitle": "Talep #{id}"
         },

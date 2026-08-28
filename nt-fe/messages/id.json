@@ -178,7 +178,6 @@
         },
         "requests": {
             "title": "Permintaan",
-            "description": "Lihat dan kelola semua permintaan multisig yang tertunda",
             "detailDescription": "Detail Permintaan",
             "detailTitle": "Permintaan #{id}"
         },
