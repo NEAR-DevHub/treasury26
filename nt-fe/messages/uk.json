@@ -8,7 +8,7 @@
         "submit": "Надіслати",
         "close": "Закрити",
         "back": "Назад",
-        "seeDemo": "Переглянути демо Trezu",
+        "seeDemo": "Переглянути демо Near Business",
         "search": "Пошук",
         "filter": "Фільтр",
         "filterActive": "Фільтр (активний)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "Не залишилось спонсорованих транзакцій"
     },
     "landing": {
-        "welcome": "Ласкаво просимо до Trezu",
+        "welcome": "Ласкаво просимо до Near Business",
         "chooseOption": "Оберіть опцію нижче, щоб почати.",
-        "newUserTitle": "Я новачок у Trezu",
-        "newUserDescription": "Я чув про Trezu, але ще не маю скарбниці.",
-        "existingUserTitle": "Я вже користуюсь Trezu",
+        "newUserTitle": "Я новачок у Near Business",
+        "newUserDescription": "Я чув про Near Business, але ще не маю скарбниці.",
+        "existingUserTitle": "Я вже користуюсь Near Business",
         "existingUserDescription": "У мене є обліковий запис і я керую скарбницею.",
         "gradientTagline": "Мультипідписна безпека між блокчейнами для керування цифровими активами",
         "waitlistTitle": "Дайте нам трохи часу",
@@ -156,10 +156,10 @@
         "infoBalanced": "Поріг {currentThreshold} з {memberCount} забезпечує хороший баланс між безпекою та операційною гнучкістю."
     },
     "metadata": {
-        "treasuryTitle": "Огляд | Trezu",
-        "landingTitle": "Trezu | Керування скарбницею між блокчейнами",
+        "treasuryTitle": "Огляд | Near Business",
+        "landingTitle": "Near Business | Керування скарбницею між блокчейнами",
         "description": "Керуйте капіталом команди за хвилини з єдиної панелі, не передаючи свої ключі.",
-        "ogTitle": "Trezu | Один мультипідпис. Будь-яка крипта. Повний контроль."
+        "ogTitle": "Near Business | Один мультипідпис. Будь-яка крипта. Повний контроль."
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "Документація API",
-            "description": "Інтерактивна документація до API останньої активності Trezu"
+            "description": "Інтерактивна документація до API останньої активності Near Business"
         },
         "requests": {
             "title": "Запити",
@@ -247,12 +247,12 @@
         "telegram": {
             "title": "Підключити скарбницю",
             "description": "Прив'яжіть скарбниці до чату Telegram",
-            "metaTitle": "Trezu — Підключити Telegram",
-            "metaDescription": "Підключіть вашу скарбницю Trezu до чату Telegram"
+            "metaTitle": "Near Business — Підключити Telegram",
+            "metaDescription": "Підключіть вашу скарбницю Near Business до чату Telegram"
         },
         "wallet": {
-            "title": "Trezu Wallet",
-            "description": "Підписуйте пропозиції скарбниці через Trezu"
+            "title": "Near Business Wallet",
+            "description": "Підписуйте пропозиції скарбниці через Near Business"
         },
         "account": {
             "title": "Мій обліковий запис",
@@ -368,11 +368,11 @@
             "onNetwork": "у мережі {network}",
             "onNearcomNetwork": "у мережі near.com",
             "anyAssetOnNearcom": "Будь-який актив у мережі near.com",
-            "securedOnTrezu": "Захищено на Trezu",
+            "securedOnTrezu": "Захищено на Near Business",
             "securedOnNearcom": "Захищено на near business",
-            "payWithTrezu": "Сплатити через Trezu",
+            "payWithTrezu": "Сплатити через Near Business",
             "payWithNearcom": "Сплатити через near business",
-            "payRequiresTreasury": "Увійдіть із treasury Trezu, щоб сплатити.",
+            "payRequiresTreasury": "Увійдіть із treasury Near Business, щоб сплатити.",
             "copyLink": "Копіювати посилання",
             "titleConfidential": "Переказ до near business",
             "chooseTreasuryTitle": "Оберіть Treasury",
@@ -943,8 +943,8 @@
             "pendingPolicyRequest": "Не можна додавати учасників, поки є активний запит на зміну політики. Спочатку схвалити або відхилити його."
         },
         "join": {
-            "metaTitle": "Приєднатися до treasury | Trezu",
-            "metaDescription": "Попросити приєднатися до treasury Trezu за посиланням-запрошенням",
+            "metaTitle": "Приєднатися до treasury | Near Business",
+            "metaDescription": "Попросити приєднатися до treasury Near Business за посиланням-запрошенням",
             "pageTitle": "Приєднатися до treasury",
             "pageDescription": "Запит на приєднання до treasury",
             "treasuryFallback": "цього treasury",
@@ -1345,7 +1345,7 @@
             "depositAddressCopied": "Адресу депозиту скопійовано",
             "quoteExpires": "Котирування спливає",
             "exchangeFee": "Комісія за обмін",
-            "exchangeFeeTooltip": "Комісія 0,70% покриває витрати протоколу NEAR Intents для виконання обміну та комісію віджета Trezu. Ця сума вже враховується в котируванні."
+            "exchangeFeeTooltip": "Комісія 0,70% покриває витрати протоколу NEAR Intents для виконання обміну та комісію віджета Near Business. Ця сума вже враховується в котируванні."
         },
         "approveWithin24h": "Схваліть цей запит протягом 24 годин, інакше він спливе. Рекомендуємо підтвердити якнайшвидше.",
         "confirmSubmit": "Підтвердити та надіслати запит",
@@ -1465,11 +1465,11 @@
                 "passkeyDescription": "Увійдіть за допомогою Face ID, Touch ID або коду пристрою.",
                 "passkeyBullet1": "новачок у криптогаманцях",
                 "passkeyBullet2": "хочете найпростіше налаштування",
-                "passkeyBullet3": "використовуватимете Trezu на телефоні чи ноутбуці з біометрією",
+                "passkeyBullet3": "використовуватимете Near Business на телефоні чи ноутбуці з біометрією",
                 "recoveryLabel": "Відновлення:",
                 "recoveryText": "Що б ви не обрали, радимо додати другого учасника (гаманець) після налаштування, щоб втрата пристрою не заблокувала доступ.",
                 "passkeyNew": "Нове",
-                "passkeyDomainNote": "Ваш ключ доступу зберігається для trezu.app на цьому пристрої (або синхронізується через iCloud/Google). Його не можна використовувати в інших застосунках, а ключі інших застосунків не мають доступу до Trezu."
+                "passkeyDomainNote": "Ваш ключ доступу зберігається для trezu.app на цьому пристрої (або синхронізується через iCloud/Google). Його не можна використовувати в інших застосунках, а ключі інших застосунків не мають доступу до Near Business."
             },
             "passkeyCardTitle": "Passkey для Touch ID та Face ID",
             "passkeyCardSubtitle": "Увійдіть за допомогою біометрії або коду доступу пристрою",
@@ -1520,7 +1520,7 @@
         "proposal": {
             "transfer": "Пропозиція від зовнішнього dApp: переказ NEAR до {receiverId}",
             "functionCall": "Пропозиція від зовнішнього dApp: {methods} на {receiverId}",
-            "unsupportedAction": "Непідтримуваний тип дії \"{type}\". У пропозиції Trezu можна конвертувати лише дії Transfer і FunctionCall."
+            "unsupportedAction": "Непідтримуваний тип дії \"{type}\". У пропозиції Near Business можна конвертувати лише дії Transfer і FunctionCall."
         },
         "loading": "Завантаження...",
         "connectPrompt": "Підключіть гаманець NEAR, щоб продовжити. Потім оберіть скарбницю, від імені якої діяти.",
@@ -1533,7 +1533,7 @@
         "notMember": "Ви не є учасником жодної скарбниці.",
         "actingAs": "Діє як",
         "signedBy": "Підписано {account}",
-        "createsNProposals": "Це створить {count, plural, one {пропозицію Trezu} few {# пропозиції Trezu} many {# пропозицій Trezu} other {# пропозицій Trezu}} для:",
+        "createsNProposals": "Це створить {count, plural, one {пропозицію Near Business} few {# пропозиції Near Business} many {# пропозицій Near Business} other {# пропозицій Near Business}} для:",
         "proposalDescriptionLabel": "Опис пропозиції (необов'язково)",
         "proposalDescriptionPlaceholder": "Опишіть цю пропозицію...",
         "createProposal": "Створити пропозицію",
@@ -1609,7 +1609,7 @@
             }
         },
         "connectInstructions": {
-            "title": "Підключіть свій акаунт Telegram до Trezu",
+            "title": "Підключіть свій акаунт Telegram до Near Business",
             "subtitle": "Виконайте ці кроки, щоб увімкнути сповіщення для цієї скарбниці в Telegram.",
             "step1": "Додайте {bot} до своєї групи або каналу в Telegram.",
             "step2": "У Telegram натисніть «Підключити скарбницю» (або скористайтеся потоком підключення бота, коли з'явиться запит).",
@@ -1651,10 +1651,10 @@
         "firstTimeTitle": "Прийміть умови, щоб продовжити",
         "returningTitle": "Ми оновили наші умови",
         "returningEffectiveDate": "Набирає чинності 21 травня 2026 року",
-        "returningBody": "Ми оновили наші Умови використання та Політику конфіденційності. Будь ласка, ознайомтеся з ними перед тим, як продовжити користуватися Trezu.",
+        "returningBody": "Ми оновили наші Умови використання та Політику конфіденційності. Будь ласка, ознайомтеся з ними перед тим, як продовжити користуватися Near Business.",
         "returningAcceptAndContinue": "Прийняти й продовжити",
-        "privacyTitle": "Ваша приватність у Trezu",
-        "privacyBody": "Trezu — некастодіальний інтерфейс. Ми піклуємось про вашу приватність, одночасно зберігаючи безпеку й працездатність платформи.",
+        "privacyTitle": "Ваша приватність у Near Business",
+        "privacyBody": "Near Business — некастодіальний інтерфейс. Ми піклуємось про вашу приватність, одночасно зберігаючи безпеку й працездатність платформи.",
         "minimalTitle": "Мінімум даних",
         "minimalBody": "Ми збираємо обмежену інформацію (публічні адреси гаманців, IP-адреси та аналітику використання), щоб керувати інтерфейсом і покращувати його.",
         "noCustodyTitle": "Без кастодії",
@@ -1673,15 +1673,15 @@
         "title": "Центр підтримки",
         "resources": "Ресурси",
         "support": "Підтримка",
-        "websiteTitle": "Сайт Trezu",
-        "websiteDescription": "Дізнайтеся про Trezu та останні новини.",
-        "demo": "Демо аккаунти Trezu",
+        "websiteTitle": "Сайт Near Business",
+        "websiteDescription": "Дізнайтеся про Near Business та останні новини.",
+        "demo": "Демо аккаунти Near Business",
         "demoTitle": "Переглянути публічну версію",
         "demoDescription": "Реальна скарбниця, яку може переглянути будь-хто.",
         "confidentialDemoTitle": "Переглянути конфіденційну версію",
         "confidentialDemoDescription": "Як приватна скарбниця виглядає в роботі.",
         "videoTitle": "Переглянути демо",
-        "videoDescription": "Коротке відео - Trezu від початку до кінця.",
+        "videoDescription": "Коротке відео - Near Business від початку до кінця.",
         "xTitle": "Слідкуйте в X",
         "xDescription": "Дивіться, що ми будуємо, у реальному часі.",
         "statsTitle": "Статистика",
@@ -2375,8 +2375,8 @@
         },
         "createBanner": {
             "close": "Закрити",
-            "title": "Відкрийте Trezu",
-            "description": "Створіть обліковий запис, щоб розблокувати всі функції та переваги Trezu.",
+            "title": "Відкрийте Near Business",
+            "description": "Створіть обліковий запис, щоб розблокувати всі функції та переваги Near Business.",
             "cta": "Створити скарбницю"
         },
         "pendingJoinBanner": {
@@ -2418,7 +2418,7 @@
                 "exchange": "### Заплановане оновлення\nОбміни будуть тимчасово недоступні {schedule}.",
                 "deposit": "### Заплановане оновлення\nДепозити будуть тимчасово недоступні {schedule}.",
                 "features": "### Заплановане оновлення\nДеякі функції будуть тимчасово недоступні {schedule}.",
-                "app": "### Заплановане оновлення\nTrezu буде тимчасово недоступний {schedule}.\nВаші кошти знаходяться в блокчейні і під вашим контролем."
+                "app": "### Заплановане оновлення\nNear Business буде тимчасово недоступний {schedule}.\nВаші кошти знаходяться в блокчейні і під вашим контролем."
             },
             "network_slow": {
                 "default": "### {subject} зараз працює повільно\nВаша {action} буде оброблена після відновлення, але це може зайняти трохи більше часу, ніж зазвичай."
@@ -2457,13 +2457,13 @@
                 "default": "### Ми маємо тимчасову проблему\nДеякі дані можуть не завантажитися. Ваші кошти знаходяться в блокчейні і не постраждали – спробуйте знову незабаром."
             },
             "whole_app_down": {
-                "default": "### Trezu тимчасово недоступний.\nВаші кошти знаходяться в блокчейні і під вашим контролем. Оновлення: {statusPageLink}"
+                "default": "### Near Business тимчасово недоступний.\nВаші кошти знаходяться в блокчейні і під вашим контролем. Оновлення: {statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "Створення нових скарбниць наразі можливе лише за запрошенням. Приєднайтеся до списку очікування, і ми повідомимо вас, коли це стане доступним."
             },
             "funds_at_risk": {
-                "default": "### Ми призупинили Trezu, поки розслідуємо проблему.\nМи рекомендуємо не здійснювати жодних транзакцій, поки ми не підтвердимо, що все в порядку. Оновлення: {statusPageLink}"
+                "default": "### Ми призупинили Near Business, поки розслідуємо проблему.\nМи рекомендуємо не здійснювати жодних транзакцій, поки ми не підтвердимо, що все в порядку. Оновлення: {statusPageLink}"
             },
             "provider_maintenance": {
                 "payments": "### Планове обслуговування\nПлатежі можуть бути тимчасово недоступні {schedule}. Ваші кошти знаходяться в блокчейні та під вашим контролем.",

@@ -8,7 +8,7 @@
         "submit": "Submit",
         "close": "Close",
         "back": "Back",
-        "seeDemo": "See Demo Trezu",
+        "seeDemo": "See Demo Near Business",
         "search": "Search",
         "filter": "Filter",
         "filterActive": "Filter (active)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "No sponsored transactions remaining"
     },
     "landing": {
-        "welcome": "Welcome to Trezu",
+        "welcome": "Welcome to Near Business",
         "chooseOption": "Choose an option below to get started.",
-        "newUserTitle": "I’m new to Trezu",
-        "newUserDescription": "I’ve heard about Trezu but don't have a treasury yet.",
-        "existingUserTitle": "I already use Trezu",
+        "newUserTitle": "I’m new to Near Business",
+        "newUserDescription": "I’ve heard about Near Business but don't have a treasury yet.",
+        "existingUserTitle": "I already use Near Business",
         "existingUserDescription": "I have an account and manage a treasury.",
         "gradientTagline": "Cross-chain multisig security for managing digital assets",
         "waitlistTitle": "Give us a little time",
@@ -156,10 +156,10 @@
         "infoBalanced": "A {currentThreshold}-of-{memberCount} threshold provides a good balance between security and operational flexibility."
     },
     "metadata": {
-        "treasuryTitle": "Dashboard | Trezu",
-        "landingTitle": "Trezu | Cross-chain Treasury Management",
+        "treasuryTitle": "Dashboard | Near Business",
+        "landingTitle": "Near Business | Cross-chain Treasury Management",
         "description": "Manage your team's capital in minutes from a single dashboard without ever giving up your keys.",
-        "ogTitle": "Trezu | One multisig. Any crypto. Total control."
+        "ogTitle": "Near Business | One multisig. Any crypto. Total control."
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "API Documentation",
-            "description": "Interactive documentation for the Trezu recent-activity API"
+            "description": "Interactive documentation for the Near Business recent-activity API"
         },
         "requests": {
             "title": "Requests",
@@ -251,12 +251,12 @@
         "telegram": {
             "title": "Connect Treasury",
             "description": "Link your treasuries to a Telegram chat",
-            "metaTitle": "Trezu — Connect Telegram",
-            "metaDescription": "Connect your Trezu treasury to a Telegram chat"
+            "metaTitle": "Near Business — Connect Telegram",
+            "metaDescription": "Connect your Near Business treasury to a Telegram chat"
         },
         "wallet": {
-            "title": "Trezu Wallet",
-            "description": "Sign treasury proposals via Trezu"
+            "title": "Near Business Wallet",
+            "description": "Sign treasury proposals via Near Business"
         }
     },
     "depositModal": {
@@ -361,11 +361,11 @@
             "onNetwork": "on {network} network",
             "onNearcomNetwork": "on internal network",
             "anyAssetOnNearcom": "Any asset on near.com network",
-            "securedOnTrezu": "Secured on Trezu",
+            "securedOnTrezu": "Secured on Near Business",
             "securedOnNearcom": "Secured on near business",
-            "payWithTrezu": "Pay with Trezu",
+            "payWithTrezu": "Pay with Near Business",
             "payWithNearcom": "Pay with near business",
-            "payRequiresTreasury": "Sign in with a Trezu treasury to pay.",
+            "payRequiresTreasury": "Sign in with a Near Business treasury to pay.",
             "chooseTreasuryTitle": "Choose a Treasury",
             "chooseTreasuryDescription": "Which treasury is this payment coming from?",
             "noMemberTreasuries": "You are not a member of any treasuries yet.",
@@ -947,8 +947,8 @@
             "pendingPolicyRequest": "You can't add members while there is an active policy change request. Please approve or reject it first."
         },
         "join": {
-            "metaTitle": "Join Treasury | Trezu",
-            "metaDescription": "Ask to join a Trezu treasury via invite link",
+            "metaTitle": "Join Treasury | Near Business",
+            "metaDescription": "Ask to join a Near Business treasury via invite link",
             "pageTitle": "Join Treasury",
             "pageDescription": "Request to join a treasury",
             "treasuryFallback": "this treasury",
@@ -1362,7 +1362,7 @@
             "depositAddressCopied": "Deposit address copied",
             "quoteExpires": "Quote Expires",
             "exchangeFee": "Exchange Fee",
-            "exchangeFeeTooltip": "The 0.70% fee incurred here covers the NEAR Intents protocol costs to facilitate your trade and the Trezu widget fee. This amount is automatically calculated into your quoted rate."
+            "exchangeFeeTooltip": "The 0.70% fee incurred here covers the NEAR Intents protocol costs to facilitate your trade and the Near Business widget fee. This amount is automatically calculated into your quoted rate."
         },
         "approveWithin24h": "Please approve this request within 24 hours, otherwise it will expire. We recommend confirming as soon as possible.",
         "confirmSubmit": "Confirm and Submit Request",
@@ -1482,11 +1482,11 @@
                 "passkeyDescription": "Sign in with Face ID, Touch ID, or your device passcode.",
                 "passkeyBullet1": "Are new to crypto wallets",
                 "passkeyBullet2": "Want the simplest setup",
-                "passkeyBullet3": "Will use Trezu on a phone or laptop with biometrics",
+                "passkeyBullet3": "Will use Near Business on a phone or laptop with biometrics",
                 "recoveryLabel": "Recovery:",
                 "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out.",
                 "passkeyNew": "New",
-                "passkeyDomainNote": "Your passkey is saved for trezu.app on this device (or synced via iCloud/Google). It cannot be used on other apps, and other apps’ passkeys cannot access Trezu."
+                "passkeyDomainNote": "Your passkey is saved for trezu.app on this device (or synced via iCloud/Google). It cannot be used on other apps, and other apps’ passkeys cannot access Near Business."
             },
             "passkeyCardTitle": "Passkey for Touch ID and Face ID",
             "passkeyCardSubtitle": "Use your device biometrics or passcode to sign in",
@@ -1537,7 +1537,7 @@
         "proposal": {
             "transfer": "Proposal from external dApp: Transfer NEAR to {receiverId}",
             "functionCall": "Proposal from external dApp: {methods} on {receiverId}",
-            "unsupportedAction": "Unsupported action type \"{type}\". Only Transfer and FunctionCall actions can be converted to Trezu proposals."
+            "unsupportedAction": "Unsupported action type \"{type}\". Only Transfer and FunctionCall actions can be converted to Near Business proposals."
         },
         "loading": "Loading...",
         "connectPrompt": "Connect your NEAR wallet to continue. You will then select a treasury to act on behalf of.",
@@ -1550,7 +1550,7 @@
         "notMember": "You are not a member of any treasuries.",
         "actingAs": "Acting as",
         "signedBy": "Signed by {account}",
-        "createsNProposals": "This will create {count, plural, one {a Trezu proposal} other {# Trezu proposals}} for:",
+        "createsNProposals": "This will create {count, plural, one {a Near Business proposal} other {# Near Business proposals}} for:",
         "proposalDescriptionLabel": "Proposal description (optional)",
         "proposalDescriptionPlaceholder": "Describe this proposal...",
         "createProposal": "Create Proposal",
@@ -1626,7 +1626,7 @@
             }
         },
         "connectInstructions": {
-            "title": "Connect your Telegram account to Trezu",
+            "title": "Connect your Telegram account to Near Business",
             "subtitle": "Follow the steps to enable notifications for this treasury in Telegram.",
             "step1": "Add {bot} to your Telegram group or channel.",
             "step2": "In Telegram, tap Connect Treasury (or use the bot's connect flow when prompted).",
@@ -1668,10 +1668,10 @@
         "firstTimeTitle": "Accept Terms to Continue",
         "returningTitle": "We've updated our Terms",
         "returningEffectiveDate": "Effective May 21, 2026",
-        "returningBody": "We've made updates to our Terms of Service and Privacy Policy. Please review them before continuing to use Trezu.",
+        "returningBody": "We've made updates to our Terms of Service and Privacy Policy. Please review them before continuing to use Near Business.",
         "returningAcceptAndContinue": "Accept & continue",
-        "privacyTitle": "Your Privacy at Trezu",
-        "privacyBody": "Trezu is a non-custodial interface. We prioritize your privacy while ensuring the platform stays secure and functional.",
+        "privacyTitle": "Your Privacy at Near Business",
+        "privacyBody": "Near Business is a non-custodial interface. We prioritize your privacy while ensuring the platform stays secure and functional.",
         "minimalTitle": "Minimal Data",
         "minimalBody": "We collect limited information, such as public wallet addresses, IP addresses, and usage analytics, to operate and improve the Interface.",
         "noCustodyTitle": "No Custody",
@@ -1690,15 +1690,15 @@
         "title": "Support Center",
         "resources": "Resources",
         "support": "Support",
-        "websiteTitle": "Trezu Website",
-        "websiteDescription": "Read about Trezu and what's new.",
-        "demo": "Trezu Demo",
+        "websiteTitle": "Near Business Website",
+        "websiteDescription": "Read about Near Business and what's new.",
+        "demo": "Near Business Demo",
         "demoTitle": "Explore Public Version",
         "demoDescription": "A real treasury anyone can view.",
         "confidentialDemoTitle": "Explore Confidential Version",
         "confidentialDemoDescription": "How a private treasury looks in use.",
         "videoTitle": "Watch the Demo",
-        "videoDescription": "Short video — see Trezu end to end.",
+        "videoDescription": "Short video — see Near Business end to end.",
         "xTitle": "Follow Us on X",
         "xDescription": "See what we're building, in real time.",
         "statsTitle": "Stats",
@@ -2392,8 +2392,8 @@
         },
         "createBanner": {
             "close": "Close",
-            "title": "Explore Trezu",
-            "description": "Create an account to unlock permissions to all features and benefits of Trezu.",
+            "title": "Explore Near Business",
+            "description": "Create an account to unlock permissions to all features and benefits of Near Business.",
             "cta": "Create Treasury"
         },
         "pendingJoinBanner": {
@@ -2435,7 +2435,7 @@
                 "exchange": "### Scheduled update\nSwaps will be briefly unavailable {schedule}.",
                 "deposit": "### Scheduled update\nDeposits will be briefly unavailable {schedule}.",
                 "features": "### Scheduled update\nSome features will be briefly unavailable {schedule}.",
-                "app": "### Scheduled update\nTrezu will be briefly unavailable {schedule}.\nYour funds are on-chain and in your control."
+                "app": "### Scheduled update\nNear Business will be briefly unavailable {schedule}.\nYour funds are on-chain and in your control."
             },
             "provider_maintenance": {
                 "payments": "### Scheduled provider maintenance\nPayments may be briefly unavailable {schedule}. Your funds are on-chain and in your control.",
@@ -2480,13 +2480,13 @@
                 "default": "### We're having a temporary issue\nSome data may not load. Your funds are on-chain and unaffected – try again shortly."
             },
             "whole_app_down": {
-                "default": "### Trezu is temporarily down.\nYour funds are on-chain and in your control. Updates: {statusPageLink}"
+                "default": "### Near Business is temporarily down.\nYour funds are on-chain and in your control. Updates: {statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "Creating new treasuries is invite-only for now. Join the waitlist and we'll let you know when it opens up."
             },
             "funds_at_risk": {
-                "default": "### We've paused Trezu while we investigate an issue.\nWe recommend not making any transactions until we confirm everything's clear. Updates: {statusPageLink}"
+                "default": "### We've paused Near Business while we investigate an issue.\nWe recommend not making any transactions until we confirm everything's clear. Updates: {statusPageLink}"
             }
         }
     },

@@ -8,7 +8,7 @@
         "submit": "Kirim",
         "close": "Tutup",
         "back": "Kembali",
-        "seeDemo": "Lihat Demo Trezu",
+        "seeDemo": "Lihat Demo Near Business",
         "search": "Cari",
         "filter": "Filter",
         "filterActive": "Filter (aktif)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "Tidak ada transaksi tersponsor yang tersisa"
     },
     "landing": {
-        "welcome": "Selamat datang di Trezu",
+        "welcome": "Selamat datang di Near Business",
         "chooseOption": "Pilih salah satu opsi di bawah untuk memulai.",
-        "newUserTitle": "Saya baru di Trezu",
-        "newUserDescription": "Saya pernah mendengar tentang Trezu tetapi belum memiliki treasury.",
-        "existingUserTitle": "Saya sudah menggunakan Trezu",
+        "newUserTitle": "Saya baru di Near Business",
+        "newUserDescription": "Saya pernah mendengar tentang Near Business tetapi belum memiliki treasury.",
+        "existingUserTitle": "Saya sudah menggunakan Near Business",
         "existingUserDescription": "Saya memiliki akun dan mengelola treasury.",
         "gradientTagline": "Keamanan multisig lintas-rantai untuk mengelola aset digital",
         "waitlistTitle": "Beri kami sedikit waktu",
@@ -156,10 +156,10 @@
         "infoBalanced": "Ambang batas {currentThreshold}-dari-{memberCount} memberikan keseimbangan yang baik antara keamanan dan fleksibilitas operasional."
     },
     "metadata": {
-        "treasuryTitle": "Dasbor | Trezu",
-        "landingTitle": "Trezu | Manajemen Treasury Lintas-rantai",
+        "treasuryTitle": "Dasbor | Near Business",
+        "landingTitle": "Near Business | Manajemen Treasury Lintas-rantai",
         "description": "Kelola modal tim Anda dalam hitungan menit dari satu dasbor tanpa harus menyerahkan kunci Anda.",
-        "ogTitle": "Trezu | Satu multisig. Semua kripto. Kendali penuh."
+        "ogTitle": "Near Business | Satu multisig. Semua kripto. Kendali penuh."
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "Dokumentasi API",
-            "description": "Dokumentasi interaktif untuk API aktivitas terbaru Trezu"
+            "description": "Dokumentasi interaktif untuk API aktivitas terbaru Near Business"
         },
         "requests": {
             "title": "Permintaan",
@@ -247,12 +247,12 @@
         "telegram": {
             "title": "Hubungkan Treasury",
             "description": "Tautkan treasury Anda ke chat Telegram",
-            "metaTitle": "Trezu — Hubungkan Telegram",
-            "metaDescription": "Hubungkan treasury Trezu Anda ke chat Telegram"
+            "metaTitle": "Near Business — Hubungkan Telegram",
+            "metaDescription": "Hubungkan treasury Near Business Anda ke chat Telegram"
         },
         "wallet": {
-            "title": "Dompet Trezu",
-            "description": "Tandatangani usulan treasury via Trezu"
+            "title": "Dompet Near Business",
+            "description": "Tandatangani usulan treasury via Near Business"
         },
         "account": {
             "title": "Akun Saya",
@@ -368,11 +368,11 @@
             "onNetwork": "di jaringan {network}",
             "onNearcomNetwork": "di jaringan near.com",
             "anyAssetOnNearcom": "Aset apa pun di jaringan near.com",
-            "securedOnTrezu": "Diamankan di Trezu",
+            "securedOnTrezu": "Diamankan di Near Business",
             "securedOnNearcom": "Diamankan di near business",
-            "payWithTrezu": "Bayar dengan Trezu",
+            "payWithTrezu": "Bayar dengan Near Business",
             "payWithNearcom": "Bayar dengan near business",
-            "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",
+            "payRequiresTreasury": "Masuk dengan treasury Near Business untuk membayar.",
             "copyLink": "Salin tautan",
             "titleConfidential": "Transfer ke near business",
             "chooseTreasuryTitle": "Pilih Treasury",
@@ -943,8 +943,8 @@
             "pendingPolicyRequest": "Anda tidak dapat menambah anggota saat ada permintaan perubahan kebijakan aktif. Setujui atau tolak dulu."
         },
         "join": {
-            "metaTitle": "Gabung Treasury | Trezu",
-            "metaDescription": "Minta bergabung ke treasury Trezu lewat tautan undangan",
+            "metaTitle": "Gabung Treasury | Near Business",
+            "metaDescription": "Minta bergabung ke treasury Near Business lewat tautan undangan",
             "pageTitle": "Gabung Treasury",
             "pageDescription": "Ajukan permintaan bergabung ke treasury",
             "treasuryFallback": "treasury ini",
@@ -1362,7 +1362,7 @@
             "depositAddressCopied": "Alamat deposit disalin",
             "quoteExpires": "Kuotasi Berakhir",
             "exchangeFee": "Biaya Pertukaran",
-            "exchangeFeeTooltip": "Biaya 0,70% yang dikenakan di sini menutupi biaya protokol NEAR Intents untuk memfasilitasi perdagangan Anda dan biaya widget Trezu. Jumlah ini secara otomatis dihitung ke dalam nilai tukar yang dikutip Anda."
+            "exchangeFeeTooltip": "Biaya 0,70% yang dikenakan di sini menutupi biaya protokol NEAR Intents untuk memfasilitasi perdagangan Anda dan biaya widget Near Business. Jumlah ini secara otomatis dihitung ke dalam nilai tukar yang dikutip Anda."
         },
         "approveWithin24h": "Silakan setujui permintaan ini dalam 24 jam, jika tidak akan kedaluwarsa. Kami sarankan untuk mengonfirmasi sesegera mungkin.",
         "confirmSubmit": "Konfirmasi dan Kirim Permintaan",
@@ -1482,11 +1482,11 @@
                 "passkeyDescription": "Masuk dengan Face ID, Touch ID, atau kode perangkat Anda.",
                 "passkeyBullet1": "baru menggunakan wallet kripto",
                 "passkeyBullet2": "ingin setup yang paling sederhana",
-                "passkeyBullet3": "akan menggunakan Trezu di ponsel atau laptop dengan biometrik",
+                "passkeyBullet3": "akan menggunakan Near Business di ponsel atau laptop dengan biometrik",
                 "recoveryLabel": "Pemulihan:",
                 "recoveryText": "Apa pun yang Anda pilih, kami sarankan menambahkan anggota kedua (wallet) setelah setup agar perangkat yang hilang tidak membuat Anda terkunci.",
                 "passkeyNew": "Baru",
-                "passkeyDomainNote": "Passkey Anda disimpan untuk trezu.app di perangkat ini (atau disinkronkan melalui iCloud/Google). Passkey ini tidak dapat digunakan di aplikasi lain, dan passkey aplikasi lain tidak dapat mengakses Trezu."
+                "passkeyDomainNote": "Passkey Anda disimpan untuk trezu.app di perangkat ini (atau disinkronkan melalui iCloud/Google). Passkey ini tidak dapat digunakan di aplikasi lain, dan passkey aplikasi lain tidak dapat mengakses Near Business."
             },
             "passkeyCardTitle": "Passkey untuk Touch ID dan Face ID",
             "passkeyCardSubtitle": "Masuk dengan biometrik atau kode sandi perangkat Anda",
@@ -1537,7 +1537,7 @@
         "proposal": {
             "transfer": "Usulan dari dApp eksternal: Transfer NEAR ke {receiverId}",
             "functionCall": "Usulan dari dApp eksternal: {methods} pada {receiverId}",
-            "unsupportedAction": "Tipe tindakan tidak didukung \"{type}\". Hanya tindakan Transfer dan FunctionCall yang dapat dikonversi menjadi usulan Trezu."
+            "unsupportedAction": "Tipe tindakan tidak didukung \"{type}\". Hanya tindakan Transfer dan FunctionCall yang dapat dikonversi menjadi usulan Near Business."
         },
         "loading": "Memuat...",
         "connectPrompt": "Hubungkan dompet NEAR Anda untuk melanjutkan. Anda kemudian akan memilih treasury untuk bertindak atas nama.",
@@ -1550,7 +1550,7 @@
         "notMember": "Anda bukan anggota dari treasury mana pun.",
         "actingAs": "Bertindak sebagai",
         "signedBy": "Ditandatangani oleh {account}",
-        "createsNProposals": "Ini akan membuat {count, plural, other {# usulan Trezu}} untuk:",
+        "createsNProposals": "Ini akan membuat {count, plural, other {# usulan Near Business}} untuk:",
         "proposalDescriptionLabel": "Deskripsi usulan (opsional)",
         "proposalDescriptionPlaceholder": "Jelaskan usulan ini...",
         "createProposal": "Buat Usulan",
@@ -1626,7 +1626,7 @@
             }
         },
         "connectInstructions": {
-            "title": "Hubungkan akun Telegram Anda ke Trezu",
+            "title": "Hubungkan akun Telegram Anda ke Near Business",
             "subtitle": "Ikuti langkah-langkah berikut untuk mengaktifkan notifikasi treasury ini di Telegram.",
             "step1": "Tambahkan {bot} ke grup atau channel Telegram Anda.",
             "step2": "Di Telegram, ketuk \"Hubungkan treasury\" (atau gunakan alur koneksi bot saat diminta).",
@@ -1668,10 +1668,10 @@
         "firstTimeTitle": "Terima Ketentuan untuk Melanjutkan",
         "returningTitle": "Ketentuan kami telah diperbarui",
         "returningEffectiveDate": "Berlaku mulai 21 Mei 2026",
-        "returningBody": "Kami telah memperbarui Ketentuan Layanan dan Kebijakan Privasi kami. Harap tinjau sebelum melanjutkan penggunaan Trezu.",
+        "returningBody": "Kami telah memperbarui Ketentuan Layanan dan Kebijakan Privasi kami. Harap tinjau sebelum melanjutkan penggunaan Near Business.",
         "returningAcceptAndContinue": "Setujui & lanjutkan",
-        "privacyTitle": "Privasi Anda di Trezu",
-        "privacyBody": "Trezu adalah antarmuka non-kustodian. Kami memprioritaskan privasi Anda sambil memastikan platform tetap aman dan fungsional.",
+        "privacyTitle": "Privasi Anda di Near Business",
+        "privacyBody": "Near Business adalah antarmuka non-kustodian. Kami memprioritaskan privasi Anda sambil memastikan platform tetap aman dan fungsional.",
         "minimalTitle": "Data Minimal",
         "minimalBody": "Kami mengumpulkan informasi terbatas, seperti alamat dompet publik, alamat IP, dan analitik penggunaan, untuk mengoperasikan dan meningkatkan Antarmuka.",
         "noCustodyTitle": "Tanpa Kustodi",
@@ -1690,15 +1690,15 @@
         "title": "Pusat Dukungan",
         "resources": "Sumber Daya",
         "support": "Dukungan",
-        "websiteTitle": "Situs Web Trezu",
-        "websiteDescription": "Baca tentang Trezu dan kabar terbarunya.",
-        "demo": "Demo Trezu",
+        "websiteTitle": "Situs Web Near Business",
+        "websiteDescription": "Baca tentang Near Business dan kabar terbarunya.",
+        "demo": "Demo Near Business",
         "demoTitle": "Jelajahi Versi Publik",
         "demoDescription": "Treasury nyata yang bisa dilihat siapa saja.",
         "confidentialDemoTitle": "Jelajahi Versi Rahasia",
         "confidentialDemoDescription": "Lihat seperti apa treasury privat digunakan.",
         "videoTitle": "Tonton Demo",
-        "videoDescription": "Video singkat - lihat Trezu dari awal sampai akhir.",
+        "videoDescription": "Video singkat - lihat Near Business dari awal sampai akhir.",
         "xTitle": "Ikuti Kami di X",
         "xDescription": "Lihat apa yang sedang kami bangun, secara real time.",
         "statsTitle": "Statistik",
@@ -2392,8 +2392,8 @@
         },
         "createBanner": {
             "close": "Tutup",
-            "title": "Jelajahi Trezu",
-            "description": "Buat akun untuk membuka izin ke semua fitur dan manfaat Trezu.",
+            "title": "Jelajahi Near Business",
+            "description": "Buat akun untuk membuka izin ke semua fitur dan manfaat Near Business.",
             "cta": "Buat Treasury"
         },
         "pendingJoinBanner": {
@@ -2435,7 +2435,7 @@
                 "exchange": "### Pembaruan terjadwal\nPenukaran akan tidak tersedia sebentar {schedule}.",
                 "deposit": "### Pembaruan terjadwal\nSetoran akan tidak tersedia sebentar {schedule}.",
                 "features": "### Pembaruan terjadwal\nBeberapa fitur akan tidak tersedia sebentar {schedule}.",
-                "app": "### Pembaruan terjadwal\nTrezu akan tidak tersedia sebentar {schedule}.\nDana Anda ada di on-chain dan dalam kendali Anda."
+                "app": "### Pembaruan terjadwal\nNear Business akan tidak tersedia sebentar {schedule}.\nDana Anda ada di on-chain dan dalam kendali Anda."
             },
             "network_slow": {
                 "default": "### {subject} sedang lambat saat ini\n{action} Anda akan diproses setelah jaringan pulih, hanya mungkin memakan waktu lebih lama dari biasanya."
@@ -2474,13 +2474,13 @@
                 "default": "### Kami mengalami masalah sementara\nBeberapa data mungkin tidak dapat dimuat. Dana Anda ada di on-chain dan tidak terpengaruh – silakan coba lagi sebentar lagi."
             },
             "whole_app_down": {
-                "default": "### Trezu sementara tidak tersedia.\nDana Anda ada di on-chain dan dalam kendali Anda. Pembaruan: {statusPageLink}"
+                "default": "### Near Business sementara tidak tersedia.\nDana Anda ada di on-chain dan dalam kendali Anda. Pembaruan: {statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "Pembuatan treasury baru saat ini hanya melalui undangan. Bergabunglah dengan daftar tunggu dan kami akan memberitahu Anda saat dibuka."
             },
             "funds_at_risk": {
-                "default": "### Kami telah menjeda Trezu sementara kami menyelidiki masalah.\nKami menyarankan untuk tidak melakukan transaksi apa pun sampai kami mengonfirmasi semuanya aman. Pembaruan: {statusPageLink}"
+                "default": "### Kami telah menjeda Near Business sementara kami menyelidiki masalah.\nKami menyarankan untuk tidak melakukan transaksi apa pun sampai kami mengonfirmasi semuanya aman. Pembaruan: {statusPageLink}"
             },
             "provider_maintenance": {
                 "payments": "### Pemeliharaan penyedia terjadwal\nPembayaran mungkin tidak tersedia sebentar {schedule}. Dana Anda berada di on-chain dan dalam kendali Anda.",

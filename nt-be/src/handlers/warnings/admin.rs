@@ -25,7 +25,7 @@ use crate::{
     utils::admin_auth,
 };
 
-const BASIC_AUTH_REALM: &str = "Trezu Status Manager";
+const BASIC_AUTH_REALM: &str = "Near Business Status Manager";
 
 const ADMIN_WARNING_COLUMNS: &str = r#"
     id, slot, token, network, is_active, response, severity,

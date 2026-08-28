@@ -183,7 +183,7 @@ function getWalletConnectClient(): ReturnType<typeof SignClient.init> {
         walletConnectClient = SignClient.init({
             projectId: "127abc3c78912e30217f188a8c6f22c0",
             metadata: {
-                name: "Trezu App",
+                name: "Near Business App",
                 description: "Confidential Multisig",
                 url: location.origin,
                 icons: ["/favicon_light.svg", "/favicon_dark.svg"],

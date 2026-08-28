@@ -291,7 +291,7 @@ function ReceiptLayout({
                         href={LANDING_PAGE}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label="Open Trezu landing page"
+                        aria-label="Open Near Business landing page"
                     >
                         <QRCode size={66} value={LANDING_PAGE} />
                     </a>

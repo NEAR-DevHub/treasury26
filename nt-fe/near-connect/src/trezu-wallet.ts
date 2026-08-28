@@ -165,7 +165,7 @@ class TrezuWalletConnector {
         if (!id) {
             await window.selector.ui.whenApprove({
                 title: "Request action",
-                button: "Open Trezu Wallet",
+                button: "Open Near Business Wallet",
             });
             return await this.handlePopup(url, callback);
         }

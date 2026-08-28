@@ -59,7 +59,7 @@ export default function Logo({
         return (
             <Image
                 src={lightSrc}
-                alt="Trezu"
+                alt="Near Business"
                 height={0}
                 width={0}
                 className={className}
@@ -71,7 +71,7 @@ export default function Logo({
         return (
             <Image
                 src={darkSrc}
-                alt="Trezu"
+                alt="Near Business"
                 height={0}
                 width={0}
                 className={className}
@@ -83,14 +83,14 @@ export default function Logo({
         <>
             <Image
                 src={darkSrc}
-                alt="Trezu"
+                alt="Near Business"
                 height={0}
                 width={0}
                 className={cn(className, "dark:block hidden")}
             />
             <Image
                 src={lightSrc}
-                alt="Trezu"
+                alt="Near Business"
                 height={0}
                 width={0}
                 className={cn(className, "dark:hidden")}

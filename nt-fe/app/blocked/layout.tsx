@@ -7,7 +7,7 @@ import "../globals.css";
 export async function generateMetadata(): Promise<Metadata> {
     const t = await getTranslations("blocked");
     return {
-        title: `${t("title")} | Trezu`,
+        title: `${t("title")} | Near Business`,
         description: t("description"),
         robots: "noindex, nofollow",
     };
