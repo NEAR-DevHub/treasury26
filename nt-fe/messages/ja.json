@@ -633,6 +633,7 @@
             "loadingMembers": "メンバーを読み込み中...",
             "noMembersFound": "メンバーが見つかりません。Enterキーで「{query}」を追加します",
             "noMembersAvailable": "利用可能なメンバーはいません",
+            "editOnDesktop": "デスクトップで編集",
             "reset": "リセット",
             "clear": "クリア",
             "addFilter": "フィルターを追加"

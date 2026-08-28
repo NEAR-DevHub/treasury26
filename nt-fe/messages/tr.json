@@ -633,6 +633,7 @@
             "loadingMembers": "Üyeler yükleniyor...",
             "noMembersFound": "Üye bulunamadı. \"{query}\" eklemek için Enter tuşuna basın",
             "noMembersAvailable": "Kullanılabilir üye yok",
+            "editOnDesktop": "Masaüstünde düzenle",
             "reset": "Sıfırla",
             "clear": "Temizle",
             "addFilter": "Filtre Ekle"

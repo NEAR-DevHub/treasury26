@@ -633,6 +633,7 @@
             "loadingMembers": "Đang tải thành viên...",
             "noMembersFound": "Không tìm thấy thành viên. Nhấn Enter để thêm \"{query}\"",
             "noMembersAvailable": "Không có thành viên khả dụng",
+            "editOnDesktop": "Chỉnh sửa trên máy tính",
             "reset": "Đặt lại",
             "clear": "Xóa",
             "addFilter": "Thêm bộ lọc"

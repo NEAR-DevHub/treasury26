@@ -37,8 +37,9 @@ const SEARCH_ICON_CLASS = "left-2 size-5 text-general-muted-foreground";
 
 /**
  * Filters this sheet knows how to edit. The desktop pills cover more (proposal
- * types, my vote, …); rows for those are dropped rather than opening an empty
- * editor, so adding one here is all a new mobile surface needs.
+ * types, my vote, …); those only appear once applied, as read-only rows, so
+ * they can still be seen and reset here. Adding an id here is all a new mobile
+ * editor needs.
  */
 const EDITABLE_FILTER_IDS = ["created_date", "token", "from", "to"] as const;
 type EditableFilterId = (typeof EDITABLE_FILTER_IDS)[number];
@@ -137,30 +138,55 @@ export function MobileFilterSheet({
                                 : tCommon("filters")}
                         </DialogTitle>
                         <div className="flex flex-col pb-2 pl-2">
-                            {editableOptions.map((option) => (
-                                <button
-                                    key={option.id}
-                                    type="button"
-                                    onClick={() => setActiveId(option.id)}
-                                    className={cn(
-                                        "flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-left font-semibold text-sm transition-colors active:bg-general-secondary",
-                                        // A filter that's narrowing results
-                                        // reads at full contrast; the rest stay
-                                        // muted so the set ones stand out.
-                                        setOptionIds.includes(option.id)
-                                            ? "text-general-foreground"
-                                            : "text-general-secondary-foreground",
-                                    )}
-                                >
-                                    <span className="min-w-0 flex-1 truncate">
-                                        {option.label}
-                                    </span>
-                                    <Icon
-                                        icon={ArrowRight01Icon}
-                                        className="shrink-0 text-general-muted-foreground"
-                                    />
-                                </button>
-                            ))}
+                            {filterOptions.map((option) => {
+                                const isSet = setOptionIds.includes(option.id);
+
+                                // Filters without a mobile editor are still
+                                // listed once applied, so "Reset" isn't the
+                                // user's only clue that they're narrowing the
+                                // table.
+                                if (!isEditable(option)) {
+                                    return isSet ? (
+                                        <div
+                                            key={option.id}
+                                            className="flex h-10 shrink-0 items-center gap-2 px-3 font-semibold text-general-foreground text-sm"
+                                        >
+                                            <span className="min-w-0 flex-1 truncate">
+                                                {option.label}
+                                            </span>
+                                            <span className="shrink-0 font-medium text-general-muted-foreground text-xs">
+                                                {tF("editOnDesktop")}
+                                            </span>
+                                        </div>
+                                    ) : null;
+                                }
+
+                                return (
+                                    <button
+                                        key={option.id}
+                                        type="button"
+                                        onClick={() => setActiveId(option.id)}
+                                        className={cn(
+                                            "flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-left font-semibold text-sm transition-colors active:bg-general-secondary",
+                                            // A filter that's narrowing results
+                                            // reads at full contrast; the rest
+                                            // stay muted so the set ones stand
+                                            // out.
+                                            isSet
+                                                ? "text-general-foreground"
+                                                : "text-general-secondary-foreground",
+                                        )}
+                                    >
+                                        <span className="min-w-0 flex-1 truncate">
+                                            {option.label}
+                                        </span>
+                                        <Icon
+                                            icon={ArrowRight01Icon}
+                                            className="shrink-0 text-general-muted-foreground"
+                                        />
+                                    </button>
+                                );
+                            })}
                             {setOptionIds.length > 0 && (
                                 <div className="p-3">
                                     <Button

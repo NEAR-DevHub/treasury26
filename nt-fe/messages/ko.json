@@ -633,6 +633,7 @@
             "loadingMembers": "멤버 로딩 중...",
             "noMembersFound": "멤버를 찾을 수 없습니다. \"{query}\"을(를) 추가하려면 Enter를 누르세요",
             "noMembersAvailable": "이용 가능한 멤버가 없습니다",
+            "editOnDesktop": "데스크톱에서 편집",
             "reset": "재설정",
             "clear": "지우기",
             "addFilter": "필터 추가"

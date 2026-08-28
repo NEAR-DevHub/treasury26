@@ -633,6 +633,7 @@
             "loadingMembers": "Chargement des membres...",
             "noMembersFound": "Aucun membre trouvé. Appuyez sur Entrée pour ajouter « {query} »",
             "noMembersAvailable": "Aucun membre disponible",
+            "editOnDesktop": "Modifier sur ordinateur",
             "reset": "Réinitialiser",
             "clear": "Effacer",
             "addFilter": "Ajouter un filtre"

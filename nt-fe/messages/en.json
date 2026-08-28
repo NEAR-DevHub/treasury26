@@ -633,6 +633,7 @@
             "loadingMembers": "Loading members...",
             "noMembersFound": "No members found. Press Enter to add \"{query}\"",
             "noMembersAvailable": "No members available",
+            "editOnDesktop": "Edit on desktop",
             "reset": "Reset",
             "clear": "Clear",
             "addFilter": "Add Filter"

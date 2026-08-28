@@ -633,6 +633,7 @@
             "loadingMembers": "Завантаження учасників...",
             "noMembersFound": "Учасників не знайдено. Натисніть Enter, щоб додати \"{query}\"",
             "noMembersAvailable": "Немає доступних учасників",
+            "editOnDesktop": "Редагувати на комп'ютері",
             "reset": "Скинути",
             "clear": "Очистити",
             "addFilter": "Додати фільтр"

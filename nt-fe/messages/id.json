@@ -633,6 +633,7 @@
             "loadingMembers": "Memuat anggota...",
             "noMembersFound": "Tidak ada anggota ditemukan. Tekan Enter untuk menambahkan \"{query}\"",
             "noMembersAvailable": "Tidak ada anggota yang tersedia",
+            "editOnDesktop": "Edit di desktop",
             "reset": "Atur Ulang",
             "clear": "Bersihkan",
             "addFilter": "Tambah Filter"
