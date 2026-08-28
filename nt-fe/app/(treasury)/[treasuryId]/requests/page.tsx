@@ -75,6 +75,47 @@ function useProposalFilterOptions(): FilterOption[] {
     );
 }
 
+/**
+ * The URL params the filter panel writes. The tab and the search box narrow the
+ * table too, but neither is edited through the panel, so they're reported
+ * separately rather than folded into the count.
+ */
+const FILTER_PARAM_IDS = [
+    "proposers",
+    "approvers",
+    "recipients",
+    "proposal_types",
+    "token",
+    "created_date",
+    "my_vote",
+] as const;
+
+/**
+ * One reading of "is this list filtered?" for the toolbar and the table alike:
+ * `activeFilterCount` labels the Filters button, `isNarrowed` decides whether
+ * an empty table means "nothing here" or "nothing matched".
+ */
+function useActiveFilters(status?: ProposalStatus) {
+    const searchParams = useSearchParams();
+
+    return useMemo(() => {
+        // A filter that has been added but has no value picked yet isn't
+        // narrowing anything, so it isn't counted.
+        const activeFilterCount = FILTER_PARAM_IDS.filter((param) =>
+            hasFilterValue(searchParams.get(param)),
+        ).length;
+
+        return {
+            activeFilterCount,
+            hasActiveFilters: activeFilterCount > 0,
+            isNarrowed:
+                activeFilterCount > 0 ||
+                Boolean(searchParams.get("search")?.trim()) ||
+                (status !== undefined && status !== "InProgress"),
+        };
+    }, [searchParams, status]);
+}
+
 function ProposalsList({
     status,
     onSelectionChange,
@@ -90,24 +131,7 @@ function ProposalsList({
     const queryClient = useQueryClient();
     const { accountId } = useNear();
 
-    const hasActiveFilters = useMemo(() => {
-        const filterParams = [
-            "proposers",
-            "approvers",
-            "recipients",
-            "proposal_types",
-            "token",
-            "created_date",
-            "my_vote",
-        ];
-        return (
-            filterParams.some((param) =>
-                hasFilterValue(searchParams.get(param)),
-            ) ||
-            Boolean(searchParams.get("search")?.trim()) ||
-            (status !== "InProgress" && status !== undefined)
-        );
-    }, [searchParams]);
+    const { isNarrowed } = useActiveFilters(status);
 
     const page = parseInt(searchParams.get("page") || "0", 10);
     const pageSize = 15;
@@ -179,7 +203,7 @@ function ProposalsList({
                     proposals={data?.proposals ?? []}
                     policy={policy}
                     config={config}
-                    withFilters={hasActiveFilters}
+                    withFilters={isNarrowed}
                     searchQuery={searchParams.get("search") || ""}
                     pageIndex={page}
                     pageSize={pageSize}
@@ -286,24 +310,7 @@ export default function RequestsPage() {
         setSearchValue(urlSearch);
     }, [searchParams]);
 
-    // Count active filters — the Filters button labels itself with the total.
-    // A filter that has been added but has no value picked yet is not counted,
-    // since it isn't narrowing anything.
-    const activeFilterCount = useMemo(() => {
-        const filterParams = [
-            "proposers",
-            "approvers",
-            "recipients",
-            "proposal_types",
-            "token",
-            "created_date",
-            "my_vote",
-        ];
-        return filterParams.filter((param) =>
-            hasFilterValue(searchParams.get(param)),
-        ).length;
-    }, [searchParams]);
-    const hasActiveFilters = activeFilterCount > 0;
+    const { activeFilterCount, hasActiveFilters } = useActiveFilters();
 
     const isSearchActive = useMemo(() => {
         return searchParams.has("search");
