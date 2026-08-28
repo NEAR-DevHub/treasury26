@@ -154,15 +154,17 @@ async fn get_confidential_deposit_address(
                         )
                     })?;
 
-                // Quote depositAddress is what the user funds; no Bridge remap.
-                let _ = chain;
-                return Ok(DepositAddressResult {
-                    address: quote_deposit_address.clone(),
-                    min_amount: Some(min_amount),
-                    memo,
-                    expires_at: Some(deadline.clone()),
-                    quote_deposit_address: Some(quote_deposit_address),
-                });
+                // The quote address lives inside intents.near (INTENTS deposit type);
+                // funding it requires the Bridge origin-chain address that forwards to it.
+                let mut bridge_result =
+                    fetch_bridge_deposit_address(state, &quote_deposit_address, chain).await?;
+                bridge_result.min_amount = Some(min_amount);
+                if bridge_result.memo.is_none() {
+                    bridge_result.memo = memo;
+                }
+                bridge_result.expires_at = Some(deadline.clone());
+                bridge_result.quote_deposit_address = Some(quote_deposit_address);
+                return Ok(bridge_result);
             }
             Err((status, msg)) => {
                 last_error = msg.clone();
@@ -234,7 +236,7 @@ async fn fetch_bridge_deposit_address(
 /// the address is stable for that treasury+chain (same as near.com).
 /// **Confidential** treasuries mint a rotating 1Click wet quote (`tokenId`
 /// should be the 1Click `quoteAssetId`, which may be `1cs_v1:…`) and return
-/// that quote's `depositAddress` / `minAmountIn` directly.
+/// that quote's Bridge origin-chain deposit address plus `minAmountIn`.
 ///
 /// Guests and non-members may generate addresses — depositing funds into a
 /// treasury is not a member-only action. Confidential quotes use the app API
