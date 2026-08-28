@@ -28,6 +28,11 @@ export function TableSheet({
  * Borders and corner radii for one body cell of the sheet. The table must use
  * `border-separate` — with collapsed borders the radius on the outer cells
  * would be dropped.
+ *
+ * @param isLastRow whether this cell closes the sheet, which is not always the
+ * last data row: a table with expandable rows should pass
+ * `isLastRow && !isExpanded`, so the rounded bottom corners land on the
+ * expansion row underneath rather than on the row that opened it.
  */
 export function sheetCellClassName({
     isFirstRow,
