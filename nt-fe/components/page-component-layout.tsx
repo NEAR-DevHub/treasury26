@@ -46,9 +46,8 @@ interface PageComponentLayoutProps {
     /** Drops the header entirely, so the page owns the full viewport height. */
     hideHeader?: boolean;
     /**
-     * Pins the page to the viewport height on every breakpoint, so the document
-     * never scrolls. The content area still scrolls on its own when a short
-     * viewport can't fit it.
+     * Pins the page to the viewport height on every breakpoint. A short viewport
+     * that can't fit the content scrolls the whole page, header included.
      */
     fitViewport?: boolean;
     logo?: ReactNode;
@@ -93,7 +92,7 @@ export function PageComponentLayout({
         <div
             className={cn(
                 "flex h-full flex-col gap-2 sm:gap-0",
-                fitViewport && "h-dvh overflow-hidden",
+                fitViewport && "h-dvh overflow-y-auto",
                 hideHeaderContent && "bg-general-bg-tertiary",
             )}
         >
@@ -234,10 +233,9 @@ export function PageComponentLayout({
             <main
                 className={cn(
                     "flex-1 px-4 pb-6 md:px-6 md:pb-8",
-                    "overflow-y-auto",
-                    // Without this the content area grows past the pinned
-                    // viewport instead of scrolling inside it.
-                    fitViewport && "min-h-0",
+                    // A pinned page scrolls as a whole, so the content area must
+                    // keep its natural height instead of scrolling on its own.
+                    !fitViewport && "overflow-y-auto",
                     // Inside the shell the floating panel owns the surface, so
                     // the content area must not paint over it.
                     hasSidebarRail
