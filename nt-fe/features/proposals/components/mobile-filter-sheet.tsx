@@ -74,9 +74,10 @@ export function MobileFilterSheet({
     const activeOption =
         editableOptions.find((option) => option.id === activeId) ?? null;
 
-    // Only the filters this sheet owns are counted, so the heading always
-    // matches what "Reset" would actually clear.
-    const setOptionIds = editableOptions
+    // Every applied filter counts, editable here or not, so the heading matches
+    // the toolbar's "Filters (N)" and "Reset" clears everything it counted —
+    // otherwise a filter set on desktop would be stuck on the phone.
+    const setOptionIds = filterOptions
         .filter((option) => hasFilterValue(searchParams.get(option.id)))
         .map((option) => option.id);
 
