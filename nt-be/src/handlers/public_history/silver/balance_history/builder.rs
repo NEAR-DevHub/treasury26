@@ -12,7 +12,7 @@ use super::models::{BalanceLedgerEntry, BalanceSeedRow, LedgerBuildResult, Ledge
 use super::ownership::{native_movement_affects_user_balance, one_yocto_attachment_yoctos};
 use crate::handlers::public_history::bronze::store::PublicHistorySource;
 use crate::handlers::public_history::silver::models::{
-    BronzePublicHistoryRow, PublicAmount, PublicAsset,
+    BronzePublicHistoryRow, PublicAmount, PublicAsset, PublicTokenStandard, decimal_denominator,
 };
 use crate::handlers::public_history::silver::normalize::canonical_nep245_token_id;
 
@@ -213,7 +213,9 @@ impl<'a> BalanceLedgerBuilder<'a> {
         }
 
         order_movements(&mut movements);
-        result.entries = self.assign_running_balances(movements);
+        let (entries, sponsor_clamped_entries) = self.assign_running_balances(movements);
+        result.entries = entries;
+        result.sponsor_clamped_entries = sponsor_clamped_entries;
         result
     }
 
@@ -347,19 +349,13 @@ impl<'a> BalanceLedgerBuilder<'a> {
     fn assign_running_balances(
         &mut self,
         movements: Vec<LedgerMovement>,
-    ) -> Vec<BalanceLedgerEntry> {
+    ) -> (Vec<BalanceLedgerEntry>, u64) {
         let mut entries = Vec::with_capacity(movements.len());
         let mut current_block = None;
         let mut intra_block_seq = 0;
+        let mut sponsor_clamped_entries = 0u64;
 
         for movement in movements {
-            if current_block != Some(movement.block_height) {
-                current_block = Some(movement.block_height);
-                intra_block_seq = 0;
-            } else {
-                intra_block_seq += 1;
-            }
-
             let amount = PublicAmount::from_raw(movement.delta_raw.clone(), movement.decimals);
             let running = self
                 .running_balances
@@ -369,44 +365,178 @@ impl<'a> BalanceLedgerBuilder<'a> {
                     chain: BigDecimal::zero(),
                     user: BigDecimal::zero(),
                 });
-            let balance_before = running.chain.clone();
-            let balance_after = &balance_before + &amount.amount;
-            let user_balance_after = if movement.affects_user_balance {
-                &running.user + &amount.amount
-            } else {
-                running.user.clone()
-            };
+
+            let token_standard = movement.asset.token_standard();
+            let affects_user_balance = movement.affects_user_balance;
+            let (pieces, clamped) = clamp_user_outflow(
+                movement.entry_key,
+                amount.amount,
+                affects_user_balance,
+                &running.user,
+                token_standard,
+            );
+            if clamped {
+                sponsor_clamped_entries += 1;
+            }
+
+            let mut chain_running = running.chain.clone();
+            let mut user_running = running.user.clone();
+
+            for piece in pieces.into_iter().flatten() {
+                if current_block != Some(movement.block_height) {
+                    current_block = Some(movement.block_height);
+                    intra_block_seq = 0;
+                } else {
+                    intra_block_seq += 1;
+                }
+
+                let balance_before = chain_running.clone();
+                let balance_after = &balance_before + &piece.delta;
+                let user_balance_after = if piece.affects_user_balance {
+                    &user_running + &piece.delta
+                } else {
+                    user_running.clone()
+                };
+                chain_running = balance_after.clone();
+                user_running = user_balance_after.clone();
+
+                entries.push(BalanceLedgerEntry {
+                    account_id: self.account_id.to_string(),
+                    asset: movement.asset.clone(),
+                    entry_key: piece.entry_key,
+                    source: movement.source,
+                    source_event_id: movement.source_event_id,
+                    receipt_id: movement.receipt_id.clone(),
+                    transaction_hash: movement.transaction_hash.clone(),
+                    counterparty: movement.counterparty.clone(),
+                    block_height: movement.block_height,
+                    block_time: movement.block_time,
+                    intra_block_seq,
+                    delta_raw: &piece.delta * decimal_denominator(movement.decimals),
+                    delta: piece.delta,
+                    decimals: movement.decimals,
+                    balance_before,
+                    balance_after,
+                    affects_user_balance: piece.affects_user_balance,
+                    user_balance_after,
+                    is_sponsor_clamp: piece.is_sponsor_clamp,
+                });
+            }
+
             self.running_balances.insert(
                 movement.asset.token_id().to_string(),
                 RunningBalance {
-                    chain: balance_after.clone(),
-                    user: user_balance_after.clone(),
+                    chain: chain_running,
+                    user: user_running,
                 },
             );
-
-            entries.push(BalanceLedgerEntry {
-                account_id: self.account_id.to_string(),
-                asset: movement.asset,
-                entry_key: movement.entry_key,
-                source: movement.source,
-                source_event_id: movement.source_event_id,
-                receipt_id: movement.receipt_id,
-                transaction_hash: movement.transaction_hash,
-                counterparty: movement.counterparty,
-                block_height: movement.block_height,
-                block_time: movement.block_time,
-                intra_block_seq,
-                delta_raw: movement.delta_raw,
-                delta: amount.amount,
-                decimals: movement.decimals,
-                balance_before,
-                balance_after,
-                affects_user_balance: movement.affects_user_balance,
-                user_balance_after,
-            });
         }
-        entries
+        (entries, sponsor_clamped_entries)
     }
+}
+
+/// The 1-2 physical accounting entries one bronze movement decomposes into.
+/// Almost always one; two only when a user-tagged outflow would otherwise
+/// spend more user-owned NEAR than the account actually has — the excess
+/// must be coming from non-user (sponsor-gifted) NEAR already commingled in
+/// the same chain balance. Debits the user series down to exactly zero and
+/// books the rest as sponsor-funded spend; the chain series (their sum) is
+/// untouched, so a genuine phantom-outflow bug still fails on chain drift.
+struct ClampedMovement {
+    entry_key: String,
+    delta: BigDecimal,
+    affects_user_balance: bool,
+    /// Persisted as `silver_balance_history.is_sponsor_clamp` — the
+    /// authoritative way to find these rows again (verification's
+    /// `sponsor_absorbed` aggregate). Never inferred from `entry_key`'s
+    /// `:sponsor-clamp` suffix, which exists only to keep the key unique
+    /// against its sibling piece and is not a queryable field.
+    is_sponsor_clamp: bool,
+}
+
+/// Returns the decomposed pieces (as a fixed 2-slot array — a movement never
+/// produces more than one extra piece, so this avoids a heap allocation on
+/// the hot path for the overwhelming majority of movements that need no
+/// reclassification at all) plus whether any reclassification happened (the
+/// caller uses this to count clamped movements — a movement can end up as a
+/// single, fully-reclassified non-user entry, not just a 2-way split).
+///
+/// Native only. FT/MT movements are always user-owned by design (see
+/// `token_movement`'s "FT/MT legs are user-owned even when the sponsor
+/// sends them") — there's no sponsor-commingled-balance concept for tokens,
+/// so a negative running total there is a genuine data/chain-drift issue,
+/// not something to reclassify. Reclassifying it would also rename the
+/// entry_key, which for FT/MT must stay byte-identical to the silver leg's
+/// leg_key — gold's `BalanceStamps::for_leg` looks FT/MT legs up by that
+/// exact string, and a renamed key means "no balance ledger entry for leg
+/// ...", a hard projection error, not a bug native movements share (their
+/// gold lookup keys on receipt_id instead).
+fn clamp_user_outflow(
+    entry_key: String,
+    amount: BigDecimal,
+    affects_user_balance: bool,
+    available_user: &BigDecimal,
+    token_standard: PublicTokenStandard,
+) -> ([Option<ClampedMovement>; 2], bool) {
+    let single = |entry_key, delta, affects_user_balance, is_sponsor_clamp| {
+        [
+            Some(ClampedMovement {
+                entry_key,
+                delta,
+                affects_user_balance,
+                is_sponsor_clamp,
+            }),
+            None,
+        ]
+    };
+    if token_standard != PublicTokenStandard::Native
+        || !affects_user_balance
+        || !amount.is_negative()
+    {
+        return (
+            single(entry_key, amount, affects_user_balance, false),
+            false,
+        );
+    }
+
+    if !available_user.is_positive() {
+        // No user-owned NEAR to debit at all — the whole outflow is
+        // sponsor-funded spend.
+        return (
+            single(format!("{entry_key}:sponsor-clamp"), amount, false, true),
+            true,
+        );
+    }
+
+    let magnitude = -&amount;
+    if magnitude <= *available_user {
+        return (
+            single(entry_key, amount, affects_user_balance, false),
+            false,
+        );
+    }
+
+    // Partial: debit the user series down to exactly zero, book the rest as
+    // sponsor-funded spend. The two deltas sum back to `amount` exactly.
+    let sponsor_key = format!("{entry_key}:sponsor-clamp");
+    let sponsor_delta = &amount + available_user;
+    (
+        [
+            Some(ClampedMovement {
+                entry_key,
+                delta: -available_user.clone(),
+                affects_user_balance: true,
+                is_sponsor_clamp: false,
+            }),
+            Some(ClampedMovement {
+                entry_key: sponsor_key,
+                delta: sponsor_delta,
+                affects_user_balance: false,
+                is_sponsor_clamp: true,
+            }),
+        ],
+        true,
+    )
 }
 
 /// Deterministic ledger order: by block, credits before debits within a
@@ -1075,5 +1205,117 @@ mod tests {
                 .collect::<Vec<_>>()
         };
         assert_eq!(keys(&forward.entries), keys(&backward.entries));
+    }
+
+    #[test]
+    fn user_outflow_beyond_available_user_balance_splits_at_zero() {
+        // Sponsor gives 1000 (non-user), then the DAO spends 700 out. There's
+        // no user-owned NEAR at all, so the whole outflow must be sponsor-
+        // funded spend, not a user debit into negative territory.
+        let rows = vec![
+            receipt_row(1, "r1", 0, 100, DAO, Some(RELAYER), Some("1000"), None),
+            receipt_row(2, "r2", 0, 101, "bob.near", Some(DAO), Some("700"), None),
+        ];
+
+        let result = build(&rows);
+
+        assert_eq!(result.sponsor_clamped_entries, 1);
+        assert_eq!(result.entries.len(), 2);
+        let sent = &result.entries[1];
+        assert_eq!(sent.entry_key, "native:dao.near:r2:sponsor-clamp");
+        assert!(!sent.affects_user_balance);
+        assert!(sent.is_sponsor_clamp);
+        assert_eq!(sent.delta_raw, BigDecimal::from(-700));
+        assert_eq!(sent.user_balance_after, BigDecimal::zero());
+        assert_eq!(
+            sent.balance_after,
+            BigDecimal::from(300) / decimal_denominator(NATIVE_DECIMALS)
+        );
+    }
+
+    #[test]
+    fn user_outflow_partially_exceeding_available_user_balance_splits_in_two() {
+        // A real user deposit of 400 (user-owned), then a sponsor top-up of
+        // 1000 (non-user, chain balance 1400 total), then an outflow of 900:
+        // 400 is legitimately the user's own money, the remaining 500 must
+        // be sponsor-funded.
+        let rows = vec![
+            receipt_row(1, "r1", 0, 100, DAO, Some("alice.near"), Some("400"), None),
+            receipt_row(2, "r2", 0, 101, DAO, Some(RELAYER), Some("1000"), None),
+            receipt_row(3, "r3", 0, 102, "bob.near", Some(DAO), Some("900"), None),
+        ];
+
+        let result = build(&rows);
+
+        assert_eq!(result.sponsor_clamped_entries, 1);
+        assert_eq!(result.entries.len(), 4);
+        let user_piece = &result.entries[2];
+        let sponsor_piece = &result.entries[3];
+
+        assert_eq!(user_piece.entry_key, "native:dao.near:r3");
+        assert!(user_piece.affects_user_balance);
+        assert!(!user_piece.is_sponsor_clamp);
+        assert_eq!(user_piece.delta_raw, BigDecimal::from(-400));
+        assert_eq!(user_piece.user_balance_after, BigDecimal::zero());
+
+        assert_eq!(sponsor_piece.entry_key, "native:dao.near:r3:sponsor-clamp");
+        assert!(!sponsor_piece.affects_user_balance);
+        assert!(sponsor_piece.is_sponsor_clamp);
+        assert_eq!(sponsor_piece.delta_raw, BigDecimal::from(-500));
+        assert_eq!(sponsor_piece.user_balance_after, BigDecimal::zero());
+
+        // Chain series is untouched by the split: total outflow is still 900,
+        // ending at 1400 - 900 = 500.
+        assert_eq!(
+            sponsor_piece.balance_after,
+            BigDecimal::from(500) / decimal_denominator(NATIVE_DECIMALS)
+        );
+
+        // Same-block pieces get distinct intra_block_seq values.
+        assert_eq!(user_piece.block_height, sponsor_piece.block_height);
+        assert_ne!(user_piece.intra_block_seq, sponsor_piece.intra_block_seq);
+    }
+
+    #[test]
+    fn user_outflow_within_available_user_balance_is_not_clamped() {
+        let rows = vec![
+            receipt_row(1, "r1", 0, 100, DAO, Some("alice.near"), Some("1000"), None),
+            receipt_row(2, "r2", 0, 101, "bob.near", Some(DAO), Some("300"), None),
+        ];
+
+        let result = build(&rows);
+
+        assert_eq!(result.sponsor_clamped_entries, 0);
+        assert_eq!(result.entries.len(), 2);
+        let sent = &result.entries[1];
+        assert_eq!(sent.entry_key, "native:dao.near:r2");
+        assert!(sent.affects_user_balance);
+        assert!(!sent.is_sponsor_clamp);
+        assert_eq!(
+            sent.user_balance_after,
+            BigDecimal::from(700) / decimal_denominator(NATIVE_DECIMALS)
+        );
+    }
+
+    #[test]
+    fn ft_outflow_beyond_available_balance_is_never_clamped() {
+        // FT/MT is always user-owned (token_movement hardcodes
+        // affects_user_balance: true) — there's no sponsor-commingled
+        // concept for tokens, so an outflow bigger than what's on hand must
+        // stay as-is (going negative, same as before this fix existed), not
+        // get reclassified. Reclassifying would also rename entry_key,
+        // which for FT/MT must stay identical to the silver leg's leg_key.
+        let rows = vec![ft_row(1, 100, "5"), ft_row(2, 101, "-10")];
+
+        let result = build(&rows);
+
+        assert_eq!(result.sponsor_clamped_entries, 0);
+        assert_eq!(result.entries.len(), 2);
+        let outflow = &result.entries[1];
+        assert_eq!(outflow.entry_key, "nearblocks_ft:ft-2");
+        assert!(!outflow.entry_key.contains("sponsor-clamp"));
+        assert!(outflow.affects_user_balance);
+        assert!(!outflow.is_sponsor_clamp);
+        assert!(outflow.user_balance_after.is_negative());
     }
 }

@@ -9,8 +9,8 @@ use super::models::{SilverProjectionCycleStats, SilverProjectionResult};
 use super::normalize::normalize_bronze_row;
 use super::repository::{
     clear_projection_errors, delete_stale_silver_rows, earliest_bronze_time, has_silver_before,
-    load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
-    upsert_projection_errors, upsert_silver_legs,
+    load_bronze_suffix, load_capped_at_time, load_dirty_accounts,
+    mark_gold_dirty_for_silver_change, upsert_projection_errors, upsert_silver_legs,
 };
 use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
 const PUBLIC_SILVER_WORKERS: usize = 2;
@@ -71,7 +71,20 @@ pub async fn project_public_silver_for_account(
     };
 
     let mut recompute_from = cursor_recompute_from.unwrap_or(earliest);
-    if earliest < recompute_from && !has_silver_before(&mut tx, account_id, recompute_from).await? {
+    let capped_at_time = load_capped_at_time(&mut tx, account_id).await?;
+    if let Some(capped_at_time) = capped_at_time {
+        // The clamp's own anchor (in silver_balance_history, not
+        // silver_public_transfer_legs) is the trust boundary here — bronze
+        // from before it is unreconciled and must never be turned into
+        // movements. has_silver_before's "no prior coverage, expand to a
+        // full recompute" fallback below doesn't apply: this account was
+        // deliberately never given prior silver coverage by design, not by
+        // gap. Nudge past the anchor's own instant so seed_balances_before's
+        // strict `<` picks it up.
+        recompute_from = recompute_from.max(capped_at_time + chrono::Duration::microseconds(1));
+    } else if earliest < recompute_from
+        && !has_silver_before(&mut tx, account_id, recompute_from).await?
+    {
         recompute_from = earliest;
     }
 
@@ -106,6 +119,13 @@ pub async fn project_public_silver_for_account(
     // same transaction, so legs and ledger can never be observed inconsistent.
     let ledger_seeds = seed_balances_before(&mut tx, account_id, recompute_from).await?;
     let ledger = BalanceLedgerBuilder::new(account_id, relayer_account, ledger_seeds).build(&rows);
+    if ledger.sponsor_clamped_entries > 0 {
+        tracing::info!(
+            account_id,
+            sponsor_clamped_entries = ledger.sponsor_clamped_entries,
+            "user-owned outflow exceeded available user balance; excess booked as sponsor-funded spend"
+        );
+    }
     let mut error_source_event_ids: HashSet<i64> =
         projection_errors.iter().map(|(id, _, _)| *id).collect();
     for error in ledger.errors {

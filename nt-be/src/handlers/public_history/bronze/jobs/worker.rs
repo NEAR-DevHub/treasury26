@@ -508,7 +508,7 @@ async fn drain_source_to_watermark(
 /// covers all three sources; each drains to its watermark, and the coverage
 /// stamps the verifier trusts publish only after every drain succeeded, so a
 /// partial refresh can never certify coverage the account does not have.
-async fn run_readiness_refresh(
+pub(super) async fn run_readiness_refresh(
     state: &AppState,
     account_id: &str,
 ) -> HandlerResult<(u64, u64, u64)> {

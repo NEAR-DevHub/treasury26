@@ -1888,6 +1888,7 @@
         "Batch Payment Request": "בקשת תשלום באצווה",
         "Payment Request": "בקשת תשלום",
         "Confidential Request": "בקשה חסויה",
+        "Move to Confidential": "העברה לסודי",
         "Exchange": "החלפה",
         "Function Call": "קריאת פונקציה",
         "Change Policy": "שינוי מדיניות",
@@ -2664,5 +2665,40 @@
         "signInRequired": "חבר את הארנק כדי לנהל את החשבון שלך.",
         "avatarUploaded": "תמונת הפרופיל הועלתה בהצלחה",
         "uploadError": "אירעה שגיאה בהעלאת התמונה, נסה שוב."
+    },
+    "moveAssets": {
+        "title": "העברת נכסים",
+        "description": "העבר נכסים מהרשת הציבורית לאוצר הסודי שלך.",
+        "submitted": "בקשת ההעברה נשלחה",
+        "banner": {
+            "title": "<amount></amount> הגיעו ליתרה הציבורית שלך",
+            "description": "מישהו שלח אותם ברשת הלא נכונה. העבר אותם לכאן כדי להפוך אותם לסודיים.",
+            "moveAssets": "העברת נכסים",
+            "viewRequest": "צפייה בבקשה"
+        },
+        "list": {
+            "title": "הכספים שצריך להעביר",
+            "token": "טוקן",
+            "moveAssets": "העברת נכסים",
+            "emptyTitle": "אין מה להעביר",
+            "emptyDescription": "היתרה הציבורית שלך ריקה. כספים שנשלחו לחשבון הציבורי יופיעו כאן.",
+            "viewRequest": "צפייה בבקשה"
+        },
+        "form": {
+            "title": "לסודי",
+            "review": "סקירת ההעברה",
+            "reviewDisabled": "הזן סכום"
+        },
+        "review": {
+            "title": "סקור את ההעברה שלך",
+            "youMove": "אתה מעביר"
+        },
+        "errors": {
+            "invalid": "הזן סכום תקין",
+            "zero": "הסכום חייב להיות גדול מאפס",
+            "tooManyDecimals": "יותר מדי ספרות עשרוניות לטוקן זה",
+            "exceedsBalance": "הסכום עולה על היתרה הציבורית",
+            "failed": "לא ניתן להכין את בקשת ההעברה. נסה שוב."
+        }
     }
 }

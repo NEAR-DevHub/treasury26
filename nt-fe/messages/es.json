@@ -1888,6 +1888,7 @@
         "Batch Payment Request": "Solicitud de pago por lotes",
         "Payment Request": "Solicitud de pago",
         "Confidential Request": "Solicitud confidencial",
+        "Move to Confidential": "Mover a Confidencial",
         "Exchange": "Intercambio",
         "Function Call": "Llamada a función",
         "Change Policy": "Cambiar política",
@@ -2664,5 +2665,40 @@
         "signInRequired": "Conecta tu billetera para administrar tu cuenta.",
         "avatarUploaded": "Avatar subido correctamente",
         "uploadError": "Error al subir la imagen. Inténtalo de nuevo."
+    },
+    "moveAssets": {
+        "title": "Mover activos",
+        "description": "Mueve activos de la cadena pública a tu tesorería confidencial.",
+        "submitted": "Solicitud de traslado enviada",
+        "banner": {
+            "title": "<amount></amount> llegaron a tu saldo público",
+            "description": "Alguien los envió por la red equivocada. Muévelos aquí para hacerlos confidenciales.",
+            "moveAssets": "Mover activos",
+            "viewRequest": "Ver solicitud"
+        },
+        "list": {
+            "title": "Fondos que deben moverse",
+            "token": "Token",
+            "moveAssets": "Mover activos",
+            "emptyTitle": "Nada que mover",
+            "emptyDescription": "Tu saldo público está vacío. Los fondos enviados a la cuenta pública aparecerán aquí.",
+            "viewRequest": "Ver solicitud"
+        },
+        "form": {
+            "title": "A Confidencial",
+            "review": "Revisar traslado",
+            "reviewDisabled": "Introduce el importe"
+        },
+        "review": {
+            "title": "Revisa tu traslado",
+            "youMove": "Mueves"
+        },
+        "errors": {
+            "invalid": "Introduce un importe válido",
+            "zero": "El importe debe ser mayor que cero",
+            "tooManyDecimals": "Demasiados decimales para este token",
+            "exceedsBalance": "El importe supera el saldo público",
+            "failed": "No se pudo preparar la solicitud de traslado. Inténtalo de nuevo."
+        }
     }
 }

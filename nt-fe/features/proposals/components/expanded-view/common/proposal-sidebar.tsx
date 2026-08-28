@@ -288,7 +288,11 @@ export function ProposalSidebar({
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isExchangeProposal = proposalType === "Exchange";
-    const isPaymentProposal = proposalType === "Payment Request";
+    const isMoveToConfidential = proposalType === "Move to Confidential";
+    // A move to confidential is a payment-shaped Intents transfer: same
+    // deposit-address settlement tracking and receipt gating as payments.
+    const isPaymentProposal =
+        proposalType === "Payment Request" || isMoveToConfidential;
     const isConfidentialRequest = proposalType === "Confidential Request";
     const isBatchPaymentProposal = proposalType === "Batch Payment Request";
     const isConfidentialRequestProposal =
@@ -354,8 +358,13 @@ export function ProposalSidebar({
     // Whether this proposal used the Intents protocol (has a deposit address)
     const hasDepositAddress = !!depositAddress;
     const shouldUseTransactionDate = isExecuted;
+    // Confidential quotes only expose the quote time, not the settlement time —
+    // the executed date/link come from the on-chain transaction instead.
     const shouldUseSwapDate =
-        isExecuted && hasDepositAddress && !isConfidentialRequestProposal;
+        isExecuted &&
+        hasDepositAddress &&
+        !isConfidentialRequestProposal &&
+        !isMoveToConfidential;
 
     // Fetch transaction data for non-intents proposals, or for statuses
     // whose resolved date/link should come from the chain transaction.
@@ -414,7 +423,9 @@ export function ProposalSidebar({
         isConfidentialPayment &&
         isNearComPaymentRoute(confidentialPaymentData ?? {});
     const useNearblocksLink =
-        !hasDepositAddress || isConfidentialNearComPayment;
+        !hasDepositAddress ||
+        isConfidentialNearComPayment ||
+        isMoveToConfidential;
     const transactionExplorerLink = getTransactionExplorerLink({
         depositAddress: useNearblocksLink ? null : depositAddress,
         isConfidential: isConfidentialRequestProposal,

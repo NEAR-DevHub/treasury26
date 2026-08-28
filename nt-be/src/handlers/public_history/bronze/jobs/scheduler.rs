@@ -92,6 +92,7 @@ async fn load_monitored_accounts(pool: &PgPool) -> Result<HashSet<String>, sqlx:
         SELECT account_id
         FROM monitored_accounts
         WHERE enabled = true
+          AND history_ingestion_paused_at IS NULL
           AND COALESCE(is_confidential_account, false) = false
         "#,
     )
@@ -555,6 +556,7 @@ async fn seed_backfill_jobs(state: &AppState) -> Result<usize, sqlx::Error> {
           ON c.account_id = ma.account_id
          AND c.source = requested.source::public_history_source
         WHERE ma.enabled = true
+          AND ma.history_ingestion_paused_at IS NULL
           AND COALESCE(ma.is_confidential_account, false) = false
           AND COALESCE(c.backfill_done, false) = false
         ORDER BY c.updated_at ASC NULLS FIRST, ma.account_id ASC
@@ -744,6 +746,7 @@ async fn load_readiness_candidates(pool: &PgPool, limit: i64) -> Result<Vec<Stri
         LEFT JOIN silver_public_history_cursors silver
           ON silver.account_id = ma.account_id
         WHERE ma.enabled = true
+          AND ma.history_ingestion_paused_at IS NULL
           AND COALESCE(ma.is_confidential_account, false) = false
           AND (
               verification.account_id IS NULL

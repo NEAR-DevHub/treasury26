@@ -17,9 +17,9 @@ use super::models::{
     VerificationStatus, VerificationWatermark,
 };
 use super::repository::{
-    insert_rebase_entry, load_asset_ledger_heads, load_gate_candidates, load_head_check_candidates,
-    load_native_ledger_head, load_native_ledger_head_tx, load_watermark, record_check_results,
-    set_gate_status, set_head_check_result,
+    insert_rebase_entry, load_asset_ledger_heads, load_asset_ledger_heads_tx, load_gate_candidates,
+    load_head_check_candidates, load_native_ledger_head, load_native_ledger_head_tx,
+    load_watermark, record_check_results, set_gate_status, set_head_check_result,
 };
 use crate::handlers::public_history::gold::unified::sync_hidden_ledger_rows;
 use crate::services::public_balance_reader::{
@@ -341,10 +341,74 @@ impl<'a> BalanceVerifier<'a> {
         };
 
         let heads = load_asset_ledger_heads(self.pool, account_id).await?;
-        let outcomes = self.check_assets(account_id, &heads, &watermark).await?;
-        let all_passed = outcomes.iter().all(|outcome| outcome.passed);
+        let mut outcomes = self.check_assets(account_id, &heads, &watermark).await?;
 
         let mut tx = self.pool.begin().await?;
+
+        // An account whose current drift is fine but that's blocked only by
+        // an old negative running-minimum can never pass otherwise: the only
+        // path that writes a reconciliation anchor requires already passing.
+        // Seed one now, at the live chain-verified balance. Unlike
+        // rebase_within_tolerance below, this runs even when drift is
+        // exactly zero: the point isn't correcting drift, it's establishing
+        // the anchor Fix 5 needs to scope the running-minimum check from.
+        //
+        // head.user_balance_after is carried forward as-is (not reset to
+        // chain_balance) deliberately: it's the ledger's own current
+        // user-owned figure, which may legitimately differ from the chain
+        // total (sponsor money is part of chain_balance but never user_balance).
+        // Whether THAT figure is itself still negative right now (not just
+        // historically) is exactly what the fresh re-query below checks —
+        // this insert doesn't assume success, it only makes success
+        // checkable.
+        let mut bootstrapped = 0u64;
+        for outcome in outcomes.iter() {
+            if !outcome.blocked_by_history_only {
+                continue;
+            }
+            let Some(head) = heads.iter().find(|head| head.asset == outcome.asset) else {
+                continue;
+            };
+            bootstrapped += insert_rebase_entry(
+                &mut tx,
+                account_id,
+                &outcome.asset,
+                &head.token_standard,
+                watermark.cutoff_block_height,
+                head.decimals,
+                &outcome.ledger_balance,
+                &outcome.chain_balance,
+                &head.user_balance_after,
+            )
+            .await?;
+        }
+        if bootstrapped > 0 {
+            // Re-read heads inside this same transaction rather than
+            // assuming the anchor fixed things: the anchor's own value
+            // (head.user_balance_after, carried forward as-is) could itself
+            // still be negative if the account is currently, not just
+            // historically, broken — only a fresh read proves it, the same
+            // proof any other passing outcome needs.
+            let fresh_heads = load_asset_ledger_heads_tx(&mut tx, account_id).await?;
+            for outcome in outcomes.iter_mut() {
+                if !outcome.blocked_by_history_only {
+                    continue;
+                }
+                let Some(fresh) = fresh_heads.iter().find(|head| head.asset == outcome.asset)
+                else {
+                    continue;
+                };
+                outcome.min_running_balance = fresh.min_balance_after.clone();
+                outcome.min_user_running_balance = fresh.min_user_balance_after.clone();
+                outcome.passed = !fresh.min_balance_after.is_negative()
+                    && !fresh.min_user_balance_after.is_negative();
+            }
+            sync_hidden_ledger_rows(&mut tx, account_id, DateTime::<Utc>::UNIX_EPOCH).await?;
+            stats.rebases_written += bootstrapped;
+        }
+
+        let all_passed = outcomes.iter().all(|outcome| outcome.passed);
+
         record_check_results(
             &mut tx,
             account_id,
@@ -386,6 +450,8 @@ impl<'a> BalanceVerifier<'a> {
                     chain_balance = %outcome.chain_balance,
                     drift = %outcome.drift,
                     min_running_balance = %outcome.min_running_balance,
+                    min_user_running_balance = %outcome.min_user_running_balance,
+                    sponsor_absorbed = %outcome.sponsor_absorbed,
                     "public balance verification FAILED; chart stays unavailable"
                 );
             }
@@ -600,15 +666,18 @@ impl<'a> BalanceVerifier<'a> {
             } else {
                 drift.is_zero()
             };
-            let passed = drift_ok
-                && !head.min_balance_after.is_negative()
-                && !head.min_user_balance_after.is_negative();
+            let history_ok =
+                !head.min_balance_after.is_negative() && !head.min_user_balance_after.is_negative();
+            let passed = drift_ok && history_ok;
             outcomes.push(AssetCheckOutcome {
                 asset: head.asset.clone(),
                 ledger_balance: head.balance_after.clone(),
                 chain_balance,
                 drift,
                 min_running_balance: head.min_balance_after.clone(),
+                min_user_running_balance: head.min_user_balance_after.clone(),
+                sponsor_absorbed: head.sponsor_absorbed.clone(),
+                blocked_by_history_only: drift_ok && !history_ok,
                 passed,
             });
         }

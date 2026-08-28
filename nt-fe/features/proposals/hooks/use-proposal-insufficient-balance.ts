@@ -2,12 +2,14 @@
 
 import { useMemo } from "react";
 import { useAmountFormat } from "@/hooks/use-amount-format";
+import { usePublicAssets } from "@/features/confidential/hooks/use-public-assets";
 import { useAssets } from "@/hooks/use-assets";
 import type { Proposal } from "@/lib/proposals-api";
 import {
     getProposalFundingAvailability,
     isFundingInsufficient,
 } from "../utils/proposal-funding";
+import { getProposalUIKind } from "../utils/proposal-utils";
 
 export interface InsufficientBalanceInfo {
     hasInsufficientBalance: boolean;
@@ -33,6 +35,10 @@ export function useProposalInsufficientBalance(
     isLoading: boolean;
 } {
     const { data: assets, isLoading: isAssetsLoading } = useAssets(treasuryId);
+    const isMoveProposal =
+        !!proposal && getProposalUIKind(proposal) === "Move to Confidential";
+    const { data: publicAssets } = usePublicAssets({ enabled: isMoveProposal });
+    const publicTokens = publicAssets?.tokens;
     const amountFormat = useAmountFormat();
 
     const insufficientBalanceInfo = useMemo((): InsufficientBalanceInfo => {
@@ -44,6 +50,7 @@ export function useProposalInsufficientBalance(
             proposal,
             assets.tokens,
             treasuryId ?? undefined,
+            publicTokens,
         );
         if (!funding || !isFundingInsufficient(funding)) {
             return { hasInsufficientBalance: false };
@@ -79,7 +86,7 @@ export function useProposalInsufficientBalance(
             // Unstake/withdraw shortfalls can't be fixed by depositing.
             showDeposit: type === "balance",
         };
-    }, [proposal, assets, treasuryId, amountFormat]);
+    }, [proposal, assets, publicTokens, treasuryId, amountFormat]);
 
     return {
         data: insufficientBalanceInfo,

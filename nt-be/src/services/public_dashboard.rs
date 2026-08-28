@@ -14,7 +14,7 @@ use sqlx::{FromRow, PgPool};
 
 use crate::{
     AppState,
-    handlers::user::assets::{SimplifiedToken, compute_user_assets},
+    handlers::user::assets::{AssetsScope, SimplifiedToken, compute_user_assets},
 };
 
 const TOP_TOKENS_LIMIT: usize = 20;
@@ -560,7 +560,7 @@ async fn refresh_public_dashboard_snapshot_for_date(
                 .await
                 .expect("semaphore should not close");
             // TODO: we need to decide whether confidential treasuries should be included in the public dashboard
-            let result = compute_user_assets(&state, &account_id, false).await;
+            let result = compute_user_assets(&state, &account_id, AssetsScope::Public).await;
             (account_id, is_trezu, result)
         });
     }

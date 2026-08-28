@@ -54,6 +54,9 @@ pub struct AssetLedgerHead {
     pub decimals: i32,
     pub event_count: i64,
     pub has_anchor: bool,
+    /// User-tagged spend the builder's clamp redirected to sponsor-funded
+    /// since the anchor. Observability only — never gates pass/fail.
+    pub sponsor_absorbed: BigDecimal,
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +66,14 @@ pub struct AssetCheckOutcome {
     pub chain_balance: BigDecimal,
     pub drift: BigDecimal,
     pub min_running_balance: BigDecimal,
+    pub min_user_running_balance: BigDecimal,
+    pub sponsor_absorbed: BigDecimal,
+    /// Current drift is within tolerance, but blocked only by an old
+    /// negative running-minimum from before any reconciliation anchor
+    /// exists — the only way an anchor gets written today requires already
+    /// passing, so without this the account could never pass. Bootstraps a
+    /// first anchor at the live chain-verified balance instead.
+    pub blocked_by_history_only: bool,
     pub passed: bool,
 }
 

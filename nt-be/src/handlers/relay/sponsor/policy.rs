@@ -61,8 +61,13 @@ fn cutoff() -> DateTime<Utc> {
 
 /// NEAR the relayer fronts to compensate the DAO contract for the storage an
 /// `add_proposal` occupies (`storage_bytes` of new on-chain proposal state).
+///
+/// `storage_bytes` is server-derived from the actual proposal; it is clamped to
+/// [`MAX_PROPOSAL_STORAGE_BYTES`] here so the sponsor never fronts more than the cap,
+/// regardless of proposal size.
 pub fn proposal_storage_cost(storage_bytes: u128) -> NearToken {
-    STORAGE_COST_PER_BYTE.saturating_mul(storage_bytes)
+    let bounded = storage_bytes.min(MAX_PROPOSAL_STORAGE_BYTES);
+    STORAGE_COST_PER_BYTE.saturating_mul(bounded)
 }
 
 /// NEAR the relayer fronts for a relay, broken down for `paid_near` accounting.
@@ -130,23 +135,15 @@ pub async fn enforce_deposit_limit(
 /// Top up the DAO contract's balance to cover the storage a NEW proposal occupies,
 /// before the `add_proposal` executes. Only call this for relays that add a proposal
 /// — `act_proposal` does not grow DAO storage.
+///
+/// `proposal_storage_cost` is already derived server-side and clamped to the cap by
+/// [`proposal_storage_cost`], so there is no client value to validate here.
 #[tracing::instrument(level = "info", skip_all, fields(treasury_id = %treasury_id))]
 pub async fn top_up_proposal_storage(
     state: &Arc<AppState>,
     treasury_id: &AccountId,
-    storage_bytes: u128,
     proposal_storage_cost: NearToken,
 ) -> Result<(), RelayError> {
-    if storage_bytes > MAX_PROPOSAL_STORAGE_BYTES {
-        return Err(error_response(
-            StatusCode::BAD_REQUEST,
-            format!(
-                "Storage bytes must be less than {} bytes",
-                MAX_PROPOSAL_STORAGE_BYTES
-            ),
-        ));
-    }
-
     Sponsor::from_state(state)
         .transfer_once(treasury_id, proposal_storage_cost)
         .await

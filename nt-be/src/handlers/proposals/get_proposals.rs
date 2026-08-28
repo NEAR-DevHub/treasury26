@@ -8,13 +8,15 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::handlers::intents::confidential::types::accounts_equal;
 use crate::handlers::proposals::{
     filters::{ProposalFilters, SortBy},
     scraper::{
-        Policy, Proposal, extract_from_description, extract_payload_hash_from_kind, fetch_policy,
-        fetch_proposal, fetch_proposals,
+        Policy, Proposal, PublicToConfidentialCall, extract_from_description,
+        extract_payload_hash_from_kind, fetch_policy, fetch_proposal, fetch_proposals,
     },
 };
+use crate::handlers::public_history::quotes::quote_asset_matches_token;
 use crate::{
     AppState,
     auth::OptionalAuthUser,
@@ -161,6 +163,8 @@ pub async fn get_proposals(
     let mut proposals = proposals;
     if matches!(confidentiality_check, Ok(true)) {
         enrich_confidential_proposals(&mut proposals, &state.db_pool, dao_id.as_ref()).await;
+        enrich_public_to_confidential_proposals(&mut proposals, &state.db_pool, dao_id.as_ref())
+            .await;
     }
 
     // Apply filters
@@ -238,6 +242,12 @@ pub async fn get_proposal(
         .await;
     if matches!(confidentiality_check, Ok(true)) {
         enrich_confidential_proposals(
+            std::slice::from_mut(&mut proposal),
+            &state.db_pool,
+            dao_id.as_ref(),
+        )
+        .await;
+        enrich_public_to_confidential_proposals(
             std::slice::from_mut(&mut proposal),
             &state.db_pool,
             dao_id.as_ref(),
@@ -578,6 +588,131 @@ async fn enrich_confidential_proposals(proposals: &mut [Proposal], pool: &PgPool
             }
             proposals[*idx].confidential_metadata = Some(merged);
         }
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct PublicMoveQuoteRow {
+    deposit_address: String,
+    status: String,
+    deposit_type: String,
+    recipient_type: Option<String>,
+    recipient: Option<String>,
+    origin_asset: Option<String>,
+    created_at_external: chrono::DateTime<chrono::Utc>,
+    amount_in_formatted: Option<String>,
+}
+
+/// Bind public-to-confidential move proposals to a 1Click quote from this
+/// DAO's own confidential history (bronze, fetched with the DAO JWT). The
+/// description marker is proposer-controlled; a proposal is only
+/// `verified` when its decoded call pays the deposit address of a quote
+/// whose recipient is this DAO's confidential balance and whose origin
+/// asset matches the transferred token. Unverified proposals render as
+/// plain function calls on the frontend.
+async fn enrich_public_to_confidential_proposals(
+    proposals: &mut [Proposal],
+    pool: &PgPool,
+    dao_id: &str,
+) {
+    let candidates: Vec<(usize, PublicToConfidentialCall)> = proposals
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| PublicToConfidentialCall::is_marked(p))
+        .filter_map(|(i, p)| match PublicToConfidentialCall::from_kind(&p.kind) {
+            Some(call) => Some((i, call)),
+            None => {
+                // Marked but not one of the builder shapes: stays a plain
+                // function call. Logged so a new builder shape (or a forged
+                // marker) is visible instead of silently unlabelled.
+                tracing::warn!(
+                    "proposal {} of {} carries the public-to-confidential marker but not a move call shape",
+                    p.id,
+                    dao_id
+                );
+                None
+            }
+        })
+        .collect();
+    if candidates.is_empty() {
+        return;
+    }
+
+    let addresses: Vec<&str> = candidates
+        .iter()
+        .map(|(_, call)| call.deposit_address.as_str())
+        .collect();
+    let rows = sqlx::query_as::<_, PublicMoveQuoteRow>(
+        r#"
+        SELECT DISTINCT ON (deposit_address)
+            deposit_address,
+            status,
+            deposit_type,
+            recipient_type,
+            recipient,
+            origin_asset,
+            created_at_external,
+            raw_payload->>'amountInFormatted' AS amount_in_formatted
+        FROM bronze_confidential_history_events
+        WHERE account_id = $1 AND deposit_address = ANY($2)
+        ORDER BY deposit_address, created_at_external DESC
+        "#,
+    )
+    .bind(dao_id)
+    .bind(&addresses)
+    .fetch_all(pool)
+    .await;
+    let rows = match rows {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::warn!("Failed to fetch public-to-confidential quotes: {}", e);
+            return;
+        }
+    };
+    let quotes: HashMap<&str, &PublicMoveQuoteRow> = rows
+        .iter()
+        .map(|row| (row.deposit_address.as_str(), row))
+        .collect();
+
+    for (index, call) in candidates {
+        let quote = quotes.get(call.deposit_address.as_str()).copied();
+        let verified = quote.is_some_and(|quote| {
+            quote
+                .recipient_type
+                .as_deref()
+                .is_some_and(|t| t.eq_ignore_ascii_case("CONFIDENTIAL_INTENTS"))
+                && quote
+                    .recipient
+                    .as_deref()
+                    .is_some_and(|recipient| accounts_equal(recipient, dao_id))
+                && ["ORIGIN_CHAIN", "INTENTS"]
+                    .iter()
+                    .any(|t| quote.deposit_type.eq_ignore_ascii_case(t))
+                // Tolerant id match (`nep141:` prefix, wrap/near forms,
+                // `intents.near:` prefix) — 1Click's stored id and the
+                // builder's id must not have to agree byte-for-byte.
+                && quote
+                    .origin_asset
+                    .as_deref()
+                    .is_some_and(|origin| quote_asset_matches_token(origin, &call.origin_asset))
+        });
+        let public_move = serde_json::json!({
+            "verified": verified,
+            "deposit_address": call.deposit_address,
+            "origin_asset": call.origin_asset,
+            "amount_raw": call.amount_raw.to_string(),
+            "status": quote.map(|q| q.status.clone()),
+            "quote_created_at": quote.map(|q| q.created_at_external),
+            "amount_in_formatted": quote.and_then(|q| q.amount_in_formatted.clone()),
+        });
+        let mut merged = proposals[index]
+            .confidential_metadata
+            .take()
+            .unwrap_or_else(|| serde_json::json!({}));
+        if let serde_json::Value::Object(ref mut map) = merged {
+            map.insert("public_move".into(), public_move);
+        }
+        proposals[index].confidential_metadata = Some(merged);
     }
 }
 

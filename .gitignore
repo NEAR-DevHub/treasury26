@@ -19,4 +19,10 @@ nt-be/scripts/verify_confidential_deposits.sh
 nt-be/scripts/import_staging_balance_changes.sh
 nt-be/examples/sentry_drill.rs
 .gstack/
+
+# local-only DAO history stop/clamp operator script
+nt-be/examples/dao_history_control.rs
+
+# local-only verification re-check diagnostic script
+nt-be/examples/verify_check_local.rs
 ERROR_OBSERVABILITY_AUDIT.md
