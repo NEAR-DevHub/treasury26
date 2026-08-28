@@ -217,7 +217,7 @@ async function authenticate(keyPair, accountId) {
   const authorization = signNep413(
     keyPair,
     nonce,
-    'PROVE_OWNERSHIP@Trezu App',
+    'PROVE_OWNERSHIP@Near Business App',
     challengePayload,
   );
 

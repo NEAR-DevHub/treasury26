@@ -15,7 +15,7 @@ use std::sync::Arc;
 const AUTH_PURPOSE: &str = "PROVE_OWNERSHIP";
 /// Bare recipient bound into the authorization. Must match the value the
 /// frontend passes to `wallet.resolveAuth(...)`.
-const AUTH_RECIPIENT: &str = "Trezu App";
+const AUTH_RECIPIENT: &str = "Near Business App";
 
 /// Response body for challenge creation.
 ///

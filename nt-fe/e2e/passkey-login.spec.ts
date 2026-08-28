@@ -272,7 +272,7 @@ test("Passkey login flow (create + NEP-641 resolveAuth)", async ({
         expect(body.accountId).toMatch(/^0s[0-9a-f]{40}$/);
         const authorization = JSON.parse(body.authorization);
         expect(authorization.message.purpose).toBe("PROVE_OWNERSHIP");
-        expect(authorization.message.recipient).toBe("Trezu App");
+        expect(authorization.message.recipient).toBe("Near Business App");
         expect(authorization.proof).toBeTruthy();
 
         resolvedAccountId = body.accountId;

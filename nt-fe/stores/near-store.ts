@@ -181,7 +181,7 @@ interface Vote {
 // NEP-641 authorization purpose + bare recipient. Must match the backend's
 // AUTH_PURPOSE / AUTH_RECIPIENT (nt-be/src/auth/handlers.rs).
 const LOGIN_PURPOSE = "PROVE_OWNERSHIP" as const;
-const LOGIN_RECIPIENT = "Trezu App";
+const LOGIN_RECIPIENT = "Near Business App";
 // localStorage key @hot-labs/near-connect uses to remember the chosen wallet
 // (so `connector.wallet()` resolves it on later calls and after reload).
 // Our own copy of the forced direct-trigger wallet id (Ledger / EIP-712).
