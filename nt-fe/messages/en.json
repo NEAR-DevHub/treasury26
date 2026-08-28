@@ -662,10 +662,10 @@
         "table": {
             "selectAll": "Select all",
             "selectRow": "Select row",
-            "request": "Request",
+            "request": "Requests",
             "transaction": "Transaction",
             "requester": "Requester",
-            "voting": "Voting",
+            "voting": "Approvals",
             "votingTooltip": "First number shows approvals received. Second number shows approvals required to execute.",
             "status": "Status",
             "notPending": "Proposal is not pending.",

@@ -6,7 +6,7 @@ import {
     ArrowLeftRightIcon,
     ArrowRight01Icon,
     Cancel01Icon,
-    InformationCircleIcon,
+    HelpCircleIcon,
     SearchMinusIcon,
     SentIcon,
     CheckIcon,
@@ -38,6 +38,7 @@ import { useProposalKindLabel } from "../hooks/use-proposal-kind-label";
 import { extractConfidentialRequestData } from "../utils/proposal-extractors";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Pagination } from "@/components/pagination";
+import { TableSheet, sheetCellClassName } from "@/components/table-sheet";
 import { ProposalStatusPill } from "./proposal-status-pill";
 import { useNear } from "@/stores/near-store";
 import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
@@ -76,6 +77,20 @@ import { cn } from "@/lib/utils";
 import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
 
 const columnHelper = createColumnHelper<Proposal>();
+
+/** Width and padding per column, from the design. Shared by header and body. */
+const COLUMN_CLASS: Record<string, string> = {
+    select: "w-10 px-3",
+    id: "px-3",
+    transaction: "px-4",
+    proposer: "px-3",
+    voting: "w-[200px] px-3",
+    status: "w-[132px] px-3",
+    expand: "w-[60px] px-3",
+};
+
+const HEAD_CLASS =
+    "h-10 text-sm font-semibold normal-case leading-[1.5] text-general-secondary-foreground";
 
 interface ProposalsTableProps {
     proposals: Proposal[];
@@ -272,11 +287,7 @@ export function ProposalsTable({
                 enableHiding: false,
             }),
             columnHelper.accessor("id", {
-                header: () => (
-                    <span className="text-xs font-medium uppercase text-muted-foreground">
-                        {tT("request")}
-                    </span>
-                ),
+                header: () => tT("request"),
                 cell: (info) => {
                     const proposal = info.row.original;
                     const kind = getProposalUIKind(proposal);
@@ -288,8 +299,10 @@ export function ProposalsTable({
                               ).title
                             : getProposalKindLabel(kind);
                     return (
-                        <div className="flex items-center gap-5 max-w-[400px] truncate">
-                            <span className="text-sm text-muted-foreground w-6 shrink-0 font-semibold">
+                        // `min-w-0` lets the title/date column shrink; without it
+                        // the fixed-width cell overflows into `Transaction`.
+                        <div className="flex min-w-0 items-center gap-2">
+                            <span className="shrink-0 text-sm font-medium text-general-secondary-foreground">
                                 #
                                 <HighlightedText
                                     text={String(proposal.id)}
@@ -300,18 +313,16 @@ export function ProposalsTable({
                                 proposal={proposal}
                                 treasuryId={treasuryId}
                             />
-                            <div className="flex flex-col items-start">
-                                <div className="flex items-center gap-2">
-                                    <HighlightedText
-                                        text={title}
-                                        query={searchQuery}
-                                        className="text-sm font-medium"
-                                    />
-                                </div>
+                            <div className="flex min-w-0 flex-col items-start">
+                                <HighlightedText
+                                    text={title}
+                                    query={searchQuery}
+                                    className="max-w-full truncate text-sm font-semibold"
+                                />
                                 <ProposalTimelineDate
                                     proposal={proposal}
                                     policy={policy}
-                                    className="text-xs text-muted-foreground"
+                                    className="truncate text-sm font-medium text-general-secondary-foreground"
                                 />
                             </div>
                         </div>
@@ -320,23 +331,15 @@ export function ProposalsTable({
             }),
             columnHelper.display({
                 id: "transaction",
-                header: () => (
-                    <span className="text-xs font-medium uppercase text-muted-foreground">
-                        {tT("transaction")}
-                    </span>
-                ),
+                header: () => tT("transaction"),
                 cell: ({ row }) => (
-                    <div className="max-w-[300px] truncate">
+                    <div className="min-w-0">
                         <TransactionCell proposal={row.original} />
                     </div>
                 ),
             }),
             columnHelper.accessor("proposer", {
-                header: () => (
-                    <span className="text-xs font-medium uppercase text-muted-foreground">
-                        {tT("requester")}
-                    </span>
-                ),
+                header: () => tT("requester"),
                 cell: (info) => {
                     const value = info.getValue();
                     return (
@@ -344,7 +347,10 @@ export function ProposalsTable({
                             accountId={value}
                             triggerProps={{ asChild: false }}
                         >
-                            <Address address={value} />
+                            <Address
+                                address={value}
+                                className="min-w-0 truncate text-sm font-semibold"
+                            />
                         </TooltipUser>
                     );
                 },
@@ -352,28 +358,22 @@ export function ProposalsTable({
             columnHelper.display({
                 id: "voting",
                 header: () => (
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-medium uppercase text-muted-foreground">
-                            {tT("voting")}
-                        </span>
+                    <span className="flex items-center gap-2">
+                        {tT("voting")}
                         <Tooltip content={tT("votingTooltip")}>
                             <Icon
-                                icon={InformationCircleIcon}
-                                className="text-muted-foreground"
+                                icon={HelpCircleIcon}
+                                className="size-4 text-general-muted-foreground"
                             />
                         </Tooltip>
-                    </div>
+                    </span>
                 ),
                 cell: ({ row }) => (
                     <VotingIndicator proposal={row.original} policy={policy} />
                 ),
             }),
             columnHelper.accessor("status", {
-                header: () => (
-                    <span className="text-xs font-medium uppercase text-muted-foreground">
-                        {tT("status")}
-                    </span>
-                ),
+                header: () => tT("status"),
                 cell: (info) => (
                     <ProposalStatusPill
                         proposal={info.row.original}
@@ -396,7 +396,7 @@ export function ProposalsTable({
                                 row.toggleExpanded();
                             }
                         }}
-                        className="h-8 w-8 p-0"
+                        className="size-9 rounded-xl p-0"
                     >
                         {!isMobile && row.getIsExpanded() ? (
                             <Icon
@@ -474,7 +474,7 @@ export function ProposalsTable({
     }>({ vote: "Approve", proposals: [] });
 
     // Notify parent when selection changes
-    let selectedRows = table.getFilteredSelectedRowModel().rows;
+    const selectedRows = table.getFilteredSelectedRowModel().rows;
     useEffect(() => {
         const selectedCount = selectedRows.length;
         onSelectionChange?.(selectedCount);
@@ -487,13 +487,15 @@ export function ProposalsTable({
 
     if ((proposals.length === 0 && pageIndex === 0) || total === 0) {
         return withFilters ? (
-            <div className="flex flex-col items-center justify-center py-8 gap-4">
-                <EmptyState
-                    icon={SearchMinusIcon}
-                    title=""
-                    description={tT("noResults")}
-                />
-            </div>
+            <TableSheet>
+                <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-general-border bg-card py-8">
+                    <EmptyState
+                        icon={SearchMinusIcon}
+                        title=""
+                        description={tT("noResults")}
+                    />
+                </div>
+            </TableSheet>
         ) : (
             <div className="flex flex-col items-center justify-center py-8 gap-4">
                 <EmptyState
@@ -526,12 +528,6 @@ export function ProposalsTable({
 
     const totalPages = Math.ceil(total / pageSize);
     const tableRows = table.getRowModel().rows;
-    const lastRowId =
-        tableRows.length > 0 ? tableRows[tableRows.length - 1].id : null;
-    const isLastRowExpanded =
-        tableRows.length > 0 && tableRows[tableRows.length - 1].getIsExpanded();
-    const shouldApplyContainerBottomPadding =
-        totalPages > 1 && (Boolean(onPageChange) || !isLastRowExpanded);
     const selectedCount = table.getFilteredSelectedRowModel().rows.length;
     const selectedProposals = table
         .getFilteredSelectedRowModel()
@@ -558,14 +554,9 @@ export function ProposalsTable({
 
     return (
         <>
-            <div
-                className={cn(
-                    "flex flex-col",
-                    shouldApplyContainerBottomPadding && "pb-3",
-                )}
-            >
+            <div className="flex flex-col gap-2">
                 {selectedCount > 0 && (
-                    <div className="flex md:text-base text-sm items-center justify-between py-3.5 px-5 border-b">
+                    <div className="flex items-center justify-between rounded-xl border border-general-border bg-card px-4 py-3 text-sm md:text-base">
                         <span className="font-semibold">
                             {tT("requestsSelected", { count: selectedCount })}
                         </span>
@@ -601,129 +592,175 @@ export function ProposalsTable({
                     </div>
                 )}
 
-                <ScrollArea className="grid">
-                    <Table>
-                        <TableHeader>
-                            {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow
-                                    key={headerGroup.id}
-                                    className="hover:bg-transparent"
-                                >
-                                    {headerGroup.headers.map((header) => (
-                                        <TableHead key={header.id}>
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                      header.column.columnDef
-                                                          .header,
-                                                      header.getContext(),
-                                                  )}
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableHeader>
-                        <TableBody>
-                            {tableRows.map((row) => (
-                                <Fragment key={row.id}>
+                <TableSheet>
+                    <ScrollArea className="grid">
+                        <Table className="border-separate border-spacing-0 md:table-fixed">
+                            <TableHeader className="border-0 bg-transparent">
+                                {table.getHeaderGroups().map((headerGroup) => (
                                     <TableRow
-                                        data-state={
-                                            row.getIsSelected() && "selected"
-                                        }
-                                        onClick={(e) => {
-                                            const target =
-                                                e.target as HTMLElement;
-                                            if (
-                                                target.closest("button") ||
-                                                target.closest(
-                                                    '[role="checkbox"]',
-                                                ) ||
-                                                target.tagName === "INPUT"
-                                            ) {
-                                                return;
-                                            }
-                                            if (isMobile) {
-                                                router.push(
-                                                    `/${treasuryId}/requests/${row.original.id}`,
-                                                );
-                                            } else {
-                                                row.toggleExpanded();
-                                            }
-                                        }}
-                                        className="cursor-pointer"
+                                        key={headerGroup.id}
+                                        className="border-0 hover:bg-transparent"
                                     >
-                                        {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id}>
-                                                {flexRender(
-                                                    cell.column.columnDef.cell,
-                                                    cell.getContext(),
-                                                )}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                    {row.getIsExpanded() && (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={
-                                                    row.getVisibleCells().length
-                                                }
+                                        {headerGroup.headers.map((header) => (
+                                            <TableHead
+                                                key={header.id}
                                                 className={cn(
-                                                    "p-4 bg-general-tertiary",
-                                                    !shouldApplyContainerBottomPadding &&
-                                                        row.id === lastRowId &&
-                                                        "rounded-b-xl",
+                                                    HEAD_CLASS,
+                                                    COLUMN_CLASS[
+                                                        header.column.id
+                                                    ],
                                                 )}
                                             >
-                                                <ExpandedView
-                                                    proposal={row.original}
-                                                    policy={policy}
-                                                    onVote={(vote) => {
-                                                        setVoteInfo({
-                                                            vote,
-                                                            proposals: [
-                                                                row.original,
-                                                            ],
-                                                        });
-                                                        setIsVoteModalOpen(
-                                                            true,
-                                                        );
-                                                    }}
-                                                    onDeposit={(
-                                                        tokenSymbol,
-                                                        tokenNetwork,
-                                                    ) => {
+                                                {header.isPlaceholder
+                                                    ? null
+                                                    : flexRender(
+                                                          header.column
+                                                              .columnDef.header,
+                                                          header.getContext(),
+                                                      )}
+                                            </TableHead>
+                                        ))}
+                                    </TableRow>
+                                ))}
+                            </TableHeader>
+                            <TableBody>
+                                {tableRows.map((row, rowIndex) => {
+                                    const isFirstRow = rowIndex === 0;
+                                    const isLastRow =
+                                        rowIndex === tableRows.length - 1;
+                                    const isExpanded = row.getIsExpanded();
+                                    const cells = row.getVisibleCells();
+                                    return (
+                                        <Fragment key={row.id}>
+                                            <TableRow
+                                                data-state={
+                                                    row.getIsSelected() &&
+                                                    "selected"
+                                                }
+                                                onClick={(e) => {
+                                                    const target =
+                                                        e.target as HTMLElement;
+                                                    if (
+                                                        target.closest(
+                                                            "button",
+                                                        ) ||
+                                                        target.closest(
+                                                            '[role="checkbox"]',
+                                                        ) ||
+                                                        target.tagName ===
+                                                            "INPUT"
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    if (isMobile) {
                                                         router.push(
-                                                            buildDepositDeepLink(
-                                                                treasuryId!,
-                                                                isConfidential
-                                                                    ? null
-                                                                    : {
-                                                                          token: tokenSymbol,
-                                                                          network:
-                                                                              tokenNetwork,
-                                                                      },
-                                                            ),
+                                                            `/${treasuryId}/requests/${row.original.id}`,
                                                         );
-                                                    }}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </Fragment>
-                            ))}
-                        </TableBody>
-                    </Table>
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
+                                                    } else {
+                                                        row.toggleExpanded();
+                                                    }
+                                                }}
+                                                className="group cursor-pointer border-0 hover:bg-transparent"
+                                            >
+                                                {cells.map(
+                                                    (cell, columnIndex) => (
+                                                        <TableCell
+                                                            key={cell.id}
+                                                            className={cn(
+                                                                "h-[66px] group-data-[state=selected]:bg-general-tertiary",
+                                                                sheetCellClassName(
+                                                                    {
+                                                                        isFirstRow,
+                                                                        isLastRow:
+                                                                            isLastRow &&
+                                                                            !isExpanded,
+                                                                        isFirstColumn:
+                                                                            columnIndex ===
+                                                                            0,
+                                                                        isLastColumn:
+                                                                            columnIndex ===
+                                                                            cells.length -
+                                                                                1,
+                                                                    },
+                                                                ),
+                                                                COLUMN_CLASS[
+                                                                    cell.column
+                                                                        .id
+                                                                ],
+                                                            )}
+                                                        >
+                                                            {flexRender(
+                                                                cell.column
+                                                                    .columnDef
+                                                                    .cell,
+                                                                cell.getContext(),
+                                                            )}
+                                                        </TableCell>
+                                                    ),
+                                                )}
+                                            </TableRow>
+                                            {isExpanded && (
+                                                <TableRow className="border-0 hover:bg-transparent">
+                                                    <TableCell
+                                                        colSpan={cells.length}
+                                                        className={cn(
+                                                            "border-general-border border-r border-b border-l bg-general-tertiary p-4",
+                                                            isLastRow &&
+                                                                "rounded-b-xl",
+                                                        )}
+                                                    >
+                                                        <ExpandedView
+                                                            proposal={
+                                                                row.original
+                                                            }
+                                                            policy={policy}
+                                                            onVote={(vote) => {
+                                                                setVoteInfo({
+                                                                    vote,
+                                                                    proposals: [
+                                                                        row.original,
+                                                                    ],
+                                                                });
+                                                                setIsVoteModalOpen(
+                                                                    true,
+                                                                );
+                                                            }}
+                                                            onDeposit={(
+                                                                tokenSymbol,
+                                                                tokenNetwork,
+                                                            ) => {
+                                                                router.push(
+                                                                    buildDepositDeepLink(
+                                                                        treasuryId!,
+                                                                        isConfidential
+                                                                            ? null
+                                                                            : {
+                                                                                  token: tokenSymbol,
+                                                                                  network:
+                                                                                      tokenNetwork,
+                                                                              },
+                                                                    ),
+                                                                );
+                                                            }}
+                                                        />
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                        <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                </TableSheet>
 
                 {onPageChange && totalPages > 1 && (
-                    <div className="p-3 pb-0">
-                        <Pagination
-                            pageIndex={pageIndex}
-                            totalPages={totalPages}
-                            onPageChange={onPageChange}
-                        />
-                    </div>
+                    <Pagination
+                        pageIndex={pageIndex}
+                        totalPages={totalPages}
+                        onPageChange={onPageChange}
+                    />
                 )}
             </div>
             <VoteModal

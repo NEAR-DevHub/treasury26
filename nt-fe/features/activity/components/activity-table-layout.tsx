@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { sheetCellClassName } from "@/components/table-sheet";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,37 +21,22 @@ export const HEAD_CLASS =
 /** The transaction hash column is fixed so the four data columns can flex. */
 export const HASH_COLUMN_CLASS = "w-[278px]";
 
-/**
- * The table paints a white sheet floating on the card's tertiary surface: the
- * header sits on the surface itself while the rows form a rounded, bordered
- * block. `border-separate` keeps that block's corners round — with collapsed
- * borders the radius on the outer cells would be dropped.
- */
+/** Geometry for one body cell of the white row sheet. */
 export function bodyCellClassName(
     columnIndex: number,
     isFirstRow: boolean,
     isLastRow: boolean,
 ) {
     return cn(
-        "h-[66px] bg-card border-b border-general-border align-middle transition-colors group-hover:bg-general-tertiary",
+        "h-[66px]",
+        sheetCellClassName({
+            isFirstRow,
+            isLastRow,
+            isFirstColumn: columnIndex === 0,
+            isLastColumn: columnIndex === CELL_PADDING.length - 1,
+        }),
         CELL_PADDING[columnIndex],
-        isFirstRow && "border-t",
-        columnIndex === 0 && "border-l",
-        columnIndex === CELL_PADDING.length - 1 && "border-r",
-        isFirstRow && columnIndex === 0 && "rounded-tl-xl",
-        isFirstRow &&
-            columnIndex === CELL_PADDING.length - 1 &&
-            "rounded-tr-xl",
-        isLastRow && columnIndex === 0 && "rounded-bl-xl",
-        isLastRow && columnIndex === CELL_PADDING.length - 1 && "rounded-br-xl",
     );
 }
 
-/** The tertiary frame the white row sheet floats inside. */
-export function TableSheet({ children }: { children: ReactNode }) {
-    return (
-        <div className="rounded-2xl border border-general-border bg-general-tertiary p-1">
-            {children}
-        </div>
-    );
-}
+export { TableSheet } from "@/components/table-sheet";
