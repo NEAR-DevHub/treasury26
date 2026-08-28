@@ -8,7 +8,7 @@
         "submit": "Gửi",
         "close": "Đóng",
         "back": "Quay lại",
-        "seeDemo": "Xem Demo Trezu",
+        "seeDemo": "Xem Demo Near Business",
         "search": "Tìm kiếm",
         "filter": "Lọc",
         "filterActive": "Lọc (đang hoạt động)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "Không còn giao dịch được tài trợ"
     },
     "landing": {
-        "welcome": "Chào mừng đến với Trezu",
+        "welcome": "Chào mừng đến với Near Business",
         "chooseOption": "Chọn một tùy chọn bên dưới để bắt đầu.",
-        "newUserTitle": "Tôi mới biết đến Trezu",
-        "newUserDescription": "Tôi đã nghe về Trezu nhưng chưa có ngân quỹ.",
-        "existingUserTitle": "Tôi đã sử dụng Trezu",
+        "newUserTitle": "Tôi mới biết đến Near Business",
+        "newUserDescription": "Tôi đã nghe về Near Business nhưng chưa có ngân quỹ.",
+        "existingUserTitle": "Tôi đã sử dụng Near Business",
         "existingUserDescription": "Tôi đã có tài khoản và đang quản lý một ngân quỹ.",
         "gradientTagline": "Bảo mật multisig liên chuỗi để quản lý tài sản số",
         "waitlistTitle": "Cho chúng tôi thêm một chút thời gian",
@@ -156,10 +156,10 @@
         "infoBalanced": "Ngưỡng {currentThreshold}-trên-{memberCount} mang lại sự cân bằng tốt giữa bảo mật và linh hoạt vận hành."
     },
     "metadata": {
-        "treasuryTitle": "Bảng điều khiển | Trezu",
-        "landingTitle": "Trezu | Quản lý ngân quỹ liên chuỗi",
+        "treasuryTitle": "Bảng điều khiển | Near Business",
+        "landingTitle": "Near Business | Quản lý ngân quỹ liên chuỗi",
         "description": "Quản lý vốn của đội bạn trong vài phút từ một bảng điều khiển duy nhất mà không cần từ bỏ khóa của mình.",
-        "ogTitle": "Trezu | Một multisig. Mọi loại crypto. Toàn quyền kiểm soát."
+        "ogTitle": "Near Business | Một multisig. Mọi loại crypto. Toàn quyền kiểm soát."
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "Tài liệu API",
-            "description": "Tài liệu tương tác cho API hoạt động gần đây của Trezu"
+            "description": "Tài liệu tương tác cho API hoạt động gần đây của Near Business"
         },
         "requests": {
             "title": "Yêu cầu",
@@ -247,12 +247,12 @@
         "telegram": {
             "title": "Kết nối Ngân quỹ",
             "description": "Liên kết ngân quỹ của bạn với một cuộc trò chuyện Telegram",
-            "metaTitle": "Trezu — Kết nối Telegram",
-            "metaDescription": "Kết nối ngân quỹ Trezu của bạn với một cuộc trò chuyện Telegram"
+            "metaTitle": "Near Business — Kết nối Telegram",
+            "metaDescription": "Kết nối ngân quỹ Near Business của bạn với một cuộc trò chuyện Telegram"
         },
         "wallet": {
-            "title": "Ví Trezu",
-            "description": "Ký các đề xuất ngân quỹ thông qua Trezu"
+            "title": "Ví Near Business",
+            "description": "Ký các đề xuất ngân quỹ thông qua Near Business"
         },
         "account": {
             "title": "Tài khoản của tôi",
@@ -368,11 +368,11 @@
             "onNetwork": "trên mạng {network}",
             "onNearcomNetwork": "trên mạng near.com",
             "anyAssetOnNearcom": "Bất kỳ tài sản nào trên mạng near.com",
-            "securedOnTrezu": "Được bảo vệ trên Trezu",
+            "securedOnTrezu": "Được bảo vệ trên Near Business",
             "securedOnNearcom": "Được bảo mật trên near business",
-            "payWithTrezu": "Thanh toán bằng Trezu",
+            "payWithTrezu": "Thanh toán bằng Near Business",
             "payWithNearcom": "Thanh toán bằng near business",
-            "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",
+            "payRequiresTreasury": "Đăng nhập bằng treasury Near Business để thanh toán.",
             "copyLink": "Sao chép liên kết",
             "titleConfidential": "Chuyển tới near business",
             "chooseTreasuryTitle": "Chọn một Treasury",
@@ -943,8 +943,8 @@
             "pendingPolicyRequest": "Bạn không thể thêm thành viên khi còn yêu cầu thay đổi chính sách đang hoạt động. Hãy phê duyệt hoặc từ chối trước."
         },
         "join": {
-            "metaTitle": "Tham gia Treasury | Trezu",
-            "metaDescription": "Yêu cầu tham gia treasury Trezu qua liên kết mời",
+            "metaTitle": "Tham gia Treasury | Near Business",
+            "metaDescription": "Yêu cầu tham gia treasury Near Business qua liên kết mời",
             "pageTitle": "Tham gia Treasury",
             "pageDescription": "Yêu cầu tham gia một treasury",
             "treasuryFallback": "treasury này",
@@ -1345,7 +1345,7 @@
             "depositAddressCopied": "Đã sao chép địa chỉ nạp tiền",
             "quoteExpires": "Hết hạn báo giá",
             "exchangeFee": "Phí trao đổi",
-            "exchangeFeeTooltip": "Phí 0.70% phát sinh ở đây bao gồm chi phí giao thức NEAR Intents để hỗ trợ giao dịch của bạn và phí widget Trezu. Số tiền này được tự động tính vào tỷ giá đã báo của bạn."
+            "exchangeFeeTooltip": "Phí 0.70% phát sinh ở đây bao gồm chi phí giao thức NEAR Intents để hỗ trợ giao dịch của bạn và phí widget Near Business. Số tiền này được tự động tính vào tỷ giá đã báo của bạn."
         },
         "approveWithin24h": "Vui lòng phê duyệt yêu cầu này trong vòng 24 giờ, nếu không nó sẽ hết hạn. Chúng tôi khuyên bạn xác nhận càng sớm càng tốt.",
         "confirmSubmit": "Xác nhận và gửi yêu cầu",
@@ -1465,11 +1465,11 @@
                 "passkeyDescription": "Đăng nhập bằng Face ID, Touch ID hoặc mã thiết bị của bạn.",
                 "passkeyBullet1": "mới dùng ví tiền mã hóa",
                 "passkeyBullet2": "muốn thiết lập đơn giản nhất",
-                "passkeyBullet3": "sẽ dùng Trezu trên điện thoại hoặc laptop có sinh trắc học",
+                "passkeyBullet3": "sẽ dùng Near Business trên điện thoại hoặc laptop có sinh trắc học",
                 "recoveryLabel": "Khôi phục:",
                 "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập.",
                 "passkeyNew": "Mới",
-                "passkeyDomainNote": "Passkey của bạn được lưu cho trezu.app trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Trezu."
+                "passkeyDomainNote": "Passkey của bạn được lưu cho trezu.app trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Near Business."
             },
             "passkeyCardTitle": "Passkey cho Touch ID và Face ID",
             "passkeyCardSubtitle": "Đăng nhập bằng sinh trắc học hoặc mật mã của thiết bị",
@@ -1520,7 +1520,7 @@
         "proposal": {
             "transfer": "Đề xuất từ dApp bên ngoài: Chuyển NEAR cho {receiverId}",
             "functionCall": "Đề xuất từ dApp bên ngoài: {methods} trên {receiverId}",
-            "unsupportedAction": "Loại hành động không được hỗ trợ \"{type}\". Chỉ có thể chuyển đổi hành động Transfer và FunctionCall thành đề xuất Trezu."
+            "unsupportedAction": "Loại hành động không được hỗ trợ \"{type}\". Chỉ có thể chuyển đổi hành động Transfer và FunctionCall thành đề xuất Near Business."
         },
         "loading": "Đang tải...",
         "connectPrompt": "Kết nối ví NEAR của bạn để tiếp tục. Sau đó bạn sẽ chọn một ngân quỹ để hành động thay mặt.",
@@ -1533,7 +1533,7 @@
         "notMember": "Bạn không phải là thành viên của ngân quỹ nào.",
         "actingAs": "Đang hành động với tư cách",
         "signedBy": "Được ký bởi {account}",
-        "createsNProposals": "Việc này sẽ tạo {count, plural, other {# đề xuất Trezu}} cho:",
+        "createsNProposals": "Việc này sẽ tạo {count, plural, other {# đề xuất Near Business}} cho:",
         "proposalDescriptionLabel": "Mô tả đề xuất (tùy chọn)",
         "proposalDescriptionPlaceholder": "Mô tả đề xuất này...",
         "createProposal": "Tạo đề xuất",
@@ -1609,7 +1609,7 @@
             }
         },
         "connectInstructions": {
-            "title": "Kết nối tài khoản Telegram của bạn với Trezu",
+            "title": "Kết nối tài khoản Telegram của bạn với Near Business",
             "subtitle": "Làm theo các bước sau để bật thông báo cho kho quỹ này trên Telegram.",
             "step1": "Thêm {bot} vào nhóm hoặc kênh Telegram của bạn.",
             "step2": "Trong Telegram, nhấn \"Kết nối quỹ\" (hoặc dùng luồng kết nối của bot khi được nhắc).",
@@ -1651,10 +1651,10 @@
         "firstTimeTitle": "Chấp nhận điều khoản để tiếp tục",
         "returningTitle": "Chúng tôi đã cập nhật Điều khoản",
         "returningEffectiveDate": "Có hiệu lực từ ngày 21 tháng 5 năm 2026",
-        "returningBody": "Chúng tôi đã cập nhật Điều khoản dịch vụ và Chính sách quyền riêng tư. Vui lòng xem lại trước khi tiếp tục sử dụng Trezu.",
+        "returningBody": "Chúng tôi đã cập nhật Điều khoản dịch vụ và Chính sách quyền riêng tư. Vui lòng xem lại trước khi tiếp tục sử dụng Near Business.",
         "returningAcceptAndContinue": "Chấp nhận và tiếp tục",
-        "privacyTitle": "Quyền riêng tư của bạn tại Trezu",
-        "privacyBody": "Trezu là giao diện không lưu ký. Chúng tôi ưu tiên quyền riêng tư của bạn đồng thời đảm bảo nền tảng vẫn an toàn và hoạt động tốt.",
+        "privacyTitle": "Quyền riêng tư của bạn tại Near Business",
+        "privacyBody": "Near Business là giao diện không lưu ký. Chúng tôi ưu tiên quyền riêng tư của bạn đồng thời đảm bảo nền tảng vẫn an toàn và hoạt động tốt.",
         "minimalTitle": "Dữ liệu tối thiểu",
         "minimalBody": "Chúng tôi thu thập thông tin hạn chế, như địa chỉ ví công khai, địa chỉ IP và phân tích sử dụng, để vận hành và cải thiện Giao diện.",
         "noCustodyTitle": "Không lưu ký",
@@ -1673,15 +1673,15 @@
         "title": "Trung tâm hỗ trợ",
         "resources": "Tài nguyên",
         "support": "Hỗ trợ",
-        "websiteTitle": "Trang web Trezu",
-        "websiteDescription": "Đọc về Trezu và những cập nhật mới nhất.",
-        "demo": "Demo Trezu",
+        "websiteTitle": "Trang web Near Business",
+        "websiteDescription": "Đọc về Near Business và những cập nhật mới nhất.",
+        "demo": "Demo Near Business",
         "demoTitle": "Khám phá phiên bản công khai",
         "demoDescription": "Một treasury thực mà ai cũng có thể xem.",
         "confidentialDemoTitle": "Khám phá phiên bản bảo mật",
         "confidentialDemoDescription": "Cách một treasury riêng tư được dùng trong thực tế.",
         "videoTitle": "Xem demo",
-        "videoDescription": "Video ngắn - xem Trezu từ đầu đến cuối.",
+        "videoDescription": "Video ngắn - xem Near Business từ đầu đến cuối.",
         "xTitle": "Theo dõi chúng tôi trên X",
         "xDescription": "Xem chúng tôi đang xây dựng gì, theo thời gian thực.",
         "statsTitle": "Thống kê",
@@ -2375,8 +2375,8 @@
         },
         "createBanner": {
             "close": "Đóng",
-            "title": "Khám phá Trezu",
-            "description": "Tạo một tài khoản để mở khóa quyền truy cập tất cả các tính năng và lợi ích của Trezu.",
+            "title": "Khám phá Near Business",
+            "description": "Tạo một tài khoản để mở khóa quyền truy cập tất cả các tính năng và lợi ích của Near Business.",
             "cta": "Tạo Ngân quỹ"
         },
         "pendingJoinBanner": {
@@ -2418,7 +2418,7 @@
                 "exchange": "### Cập nhật theo lịch\nGiao dịch hoán đổi sẽ tạm thời không khả dụng {schedule}.",
                 "deposit": "### Cập nhật theo lịch\nNạp tiền sẽ tạm thời không khả dụng {schedule}.",
                 "features": "### Cập nhật theo lịch\nMột số tính năng sẽ tạm thời không khả dụng {schedule}.",
-                "app": "### Cập nhật theo lịch\nTrezu sẽ tạm thời không khả dụng {schedule}.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn."
+                "app": "### Cập nhật theo lịch\nNear Business sẽ tạm thời không khả dụng {schedule}.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn."
             },
             "network_slow": {
                 "default": "### {subject} đang chậm lúc này\n{action} của bạn sẽ được xử lý khi mạng phục hồi, chỉ có thể mất nhiều thời gian hơn bình thường."
@@ -2457,13 +2457,13 @@
                 "default": "### Chúng tôi đang gặp sự cố tạm thời\nMột số dữ liệu có thể không tải được. Tài sản của bạn nằm on-chain và không bị ảnh hưởng – vui lòng thử lại sau ít phút."
             },
             "whole_app_down": {
-                "default": "### Trezu tạm thời ngừng hoạt động.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn. Cập nhật: {statusPageLink}"
+                "default": "### Near Business tạm thời ngừng hoạt động.\nTài sản của bạn nằm on-chain và thuộc quyền kiểm soát của bạn. Cập nhật: {statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "Tạo kho bạc mới hiện chỉ dành cho người được mời. Tham gia danh sách chờ và chúng tôi sẽ thông báo khi mở đăng ký."
             },
             "funds_at_risk": {
-                "default": "### Chúng tôi đã tạm dừng Trezu trong khi điều tra sự cố.\nChúng tôi khuyến nghị không thực hiện giao dịch cho đến khi xác nhận mọi thứ an toàn. Cập nhật: {statusPageLink}"
+                "default": "### Chúng tôi đã tạm dừng Near Business trong khi điều tra sự cố.\nChúng tôi khuyến nghị không thực hiện giao dịch cho đến khi xác nhận mọi thứ an toàn. Cập nhật: {statusPageLink}"
             },
             "provider_maintenance": {
                 "payments": "### Bảo trì nhà cung cấp theo lịch\nThanh toán có thể tạm thời không khả dụng {schedule}. Tiền của bạn đang ở trên chuỗi và trong tầm kiểm soát của bạn.",

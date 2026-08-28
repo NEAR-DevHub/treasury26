@@ -563,7 +563,7 @@ export function TreasuryOnboardingPage({
     };
 
     const headerLogo = !isReturnToFlow ? (
-        <Link href={LANDING_PAGE} aria-label="Trezu home">
+        <Link href={LANDING_PAGE} aria-label="Near Business home">
             <Logo size="md" />
         </Link>
     ) : undefined;

@@ -43,14 +43,14 @@ export default function CustomTemplatePage() {
     const templateTitle = parsed?.success ? parsed.data.title : null;
 
     // The section layout titles the tab "Request Templates"; on a specific template show its own
-    // name instead (the layout's "%s | Trezu" template doesn't apply to a client-set document.title,
+    // name instead (the layout's "%s | Near Business" template doesn't apply to a client-set document.title,
     // so add the suffix here). Restore the previous title on unmount, like the receipt page.
     useEffect(() => {
         if (typeof document === "undefined" || !templateTitle) {
             return;
         }
         const previousTitle = document.title;
-        document.title = `${templateTitle} | Trezu`;
+        document.title = `${templateTitle} | Near Business`;
         return () => {
             document.title = previousTitle;
         };

@@ -8,7 +8,7 @@
         "submit": "שליחה",
         "close": "סגירה",
         "back": "חזרה",
-        "seeDemo": "צפה ב-Trezu לדוגמה",
+        "seeDemo": "צפה ב-Near Business לדוגמה",
         "search": "חיפוש",
         "filter": "סינון",
         "filterActive": "סינון (פעיל)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "לא נותרו עסקאות במימון"
     },
     "landing": {
-        "welcome": "ברוכים הבאים ל-Trezu",
+        "welcome": "ברוכים הבאים ל-Near Business",
         "chooseOption": "בחר אפשרות למטה כדי להתחיל.",
-        "newUserTitle": "אני חדש ב-Trezu",
-        "newUserDescription": "שמעתי על Trezu אבל עדיין אין לי אוצר.",
-        "existingUserTitle": "אני כבר משתמש ב-Trezu",
+        "newUserTitle": "אני חדש ב-Near Business",
+        "newUserDescription": "שמעתי על Near Business אבל עדיין אין לי אוצר.",
+        "existingUserTitle": "אני כבר משתמש ב-Near Business",
         "existingUserDescription": "יש לי חשבון ואני מנהל אוצר.",
         "gradientTagline": "אבטחת מולטיסיג חוצת-רשתות לניהול נכסים דיגיטליים",
         "waitlistTitle": "תנו לנו עוד קצת זמן",
@@ -156,10 +156,10 @@
         "infoBalanced": "סף של {currentThreshold} מתוך {memberCount} מספק איזון טוב בין אבטחה לגמישות תפעולית."
     },
     "metadata": {
-        "treasuryTitle": "לוח בקרה | Trezu",
-        "landingTitle": "Trezu | ניהול אוצר חוצה-רשתות",
+        "treasuryTitle": "לוח בקרה | Near Business",
+        "landingTitle": "Near Business | ניהול אוצר חוצה-רשתות",
         "description": "נהל את ההון של הצוות שלך בתוך דקות מלוח בקרה אחד מבלי לוותר על המפתחות.",
-        "ogTitle": "Trezu | מולטיסיג אחד. כל קריפטו. שליטה מלאה."
+        "ogTitle": "Near Business | מולטיסיג אחד. כל קריפטו. שליטה מלאה."
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "תיעוד API",
-            "description": "תיעוד אינטראקטיבי ל-API הפעילות האחרונה של Trezu"
+            "description": "תיעוד אינטראקטיבי ל-API הפעילות האחרונה של Near Business"
         },
         "requests": {
             "title": "בקשות",
@@ -247,12 +247,12 @@
         "telegram": {
             "title": "חיבור אוצר",
             "description": "קשר את האוצרות שלך לצ'אט Telegram",
-            "metaTitle": "Trezu — חיבור Telegram",
-            "metaDescription": "חבר את אוצר Trezu שלך לצ'אט Telegram"
+            "metaTitle": "Near Business — חיבור Telegram",
+            "metaDescription": "חבר את אוצר Near Business שלך לצ'אט Telegram"
         },
         "wallet": {
-            "title": "ארנק Trezu",
-            "description": "חתום על הצעות אוצר באמצעות Trezu"
+            "title": "ארנק Near Business",
+            "description": "חתום על הצעות אוצר באמצעות Near Business"
         },
         "account": {
             "title": "החשבון שלי",
@@ -368,11 +368,11 @@
             "onNetwork": "ברשת {network}",
             "onNearcomNetwork": "ברשת near.com",
             "anyAssetOnNearcom": "כל נכס ברשת near.com",
-            "securedOnTrezu": "מאובטח ב-Trezu",
+            "securedOnTrezu": "מאובטח ב-Near Business",
             "securedOnNearcom": "מאובטח ב-near business",
-            "payWithTrezu": "שלם עם Trezu",
+            "payWithTrezu": "שלם עם Near Business",
             "payWithNearcom": "שלם עם near business",
-            "payRequiresTreasury": "התחבר עם treasury של Trezu כדי לשלם.",
+            "payRequiresTreasury": "התחבר עם treasury של Near Business כדי לשלם.",
             "copyLink": "העתק קישור",
             "titleConfidential": "העברה ל-near business",
             "chooseTreasuryTitle": "בחר Treasury",
@@ -943,8 +943,8 @@
             "pendingPolicyRequest": "לא ניתן להוסיף חברים בזמן שיש בקשת שינוי מדיניות פעילה. אשרו או דחו אותה קודם."
         },
         "join": {
-            "metaTitle": "הצטרפות לאוצר | Trezu",
-            "metaDescription": "בקשו להצטרף לאוצר Trezu באמצעות קישור הזמנה",
+            "metaTitle": "הצטרפות לאוצר | Near Business",
+            "metaDescription": "בקשו להצטרף לאוצר Near Business באמצעות קישור הזמנה",
             "pageTitle": "הצטרפות לאוצר",
             "pageDescription": "בקשה להצטרף לאוצר",
             "treasuryFallback": "האוצר הזה",
@@ -1362,7 +1362,7 @@
             "depositAddressCopied": "כתובת ההפקדה הועתקה",
             "quoteExpires": "הציטוט פג ב-",
             "exchangeFee": "עמלת החלפה",
-            "exchangeFeeTooltip": "עמלת 0.70% הנגבית כאן מכסה את עלויות פרוטוקול NEAR Intents כדי לאפשר את המסחר שלך ואת עמלת הווידג'ט של Trezu. סכום זה מחושב אוטומטית בתוך השער המצוטט שלך."
+            "exchangeFeeTooltip": "עמלת 0.70% הנגבית כאן מכסה את עלויות פרוטוקול NEAR Intents כדי לאפשר את המסחר שלך ואת עמלת הווידג'ט של Near Business. סכום זה מחושב אוטומטית בתוך השער המצוטט שלך."
         },
         "approveWithin24h": "אנא אשר בקשה זו בתוך 24 שעות, אחרת היא תפוג. אנו ממליצים לאשר בהקדם האפשרי.",
         "confirmSubmit": "אשר ושלח בקשה",
@@ -1482,11 +1482,11 @@
                 "passkeyDescription": "התחבר עם Face ID, Touch ID או קוד המכשיר שלך.",
                 "passkeyBullet1": "חדש בארנקי קריפטו",
                 "passkeyBullet2": "רוצה את ההגדרה הפשוטה ביותר",
-                "passkeyBullet3": "תשתמש ב-Trezu בטלפון או מחשב עם ביומטריה",
+                "passkeyBullet3": "תשתמש ב-Near Business בטלפון או מחשב עם ביומטריה",
                 "recoveryLabel": "שחזור:",
                 "recoveryText": "לא משנה במה תבחר, אנו ממליצים להוסיף חבר שני (ארנק) לאחר ההגדרה כדי שאובדן מכשיר לא ינעל אותך בחוץ.",
                 "passkeyNew": "חדש",
-                "passkeyDomainNote": "מפתח הגישה שלך נשמר עבור trezu.app במכשיר זה (או מסונכרן דרך iCloud/Google). לא ניתן להשתמש בו באפליקציות אחרות, ומפתחות של אפליקציות אחרות לא יכולים לגשת ל‑Trezu."
+                "passkeyDomainNote": "מפתח הגישה שלך נשמר עבור trezu.app במכשיר זה (או מסונכרן דרך iCloud/Google). לא ניתן להשתמש בו באפליקציות אחרות, ומפתחות של אפליקציות אחרות לא יכולים לגשת ל‑Near Business."
             },
             "passkeyCardTitle": "Passkey עבור Touch ID ו-Face ID",
             "passkeyCardSubtitle": "היכנסו באמצעות זיהוי ביומטרי או קוד המכשיר",
@@ -1537,7 +1537,7 @@
         "proposal": {
             "transfer": "הצעה מ-dApp חיצוני: העבר NEAR ל-{receiverId}",
             "functionCall": "הצעה מ-dApp חיצוני: {methods} על {receiverId}",
-            "unsupportedAction": "סוג פעולה לא נתמך \"{type}\". רק פעולות Transfer ו-FunctionCall יכולות להמיר להצעות Trezu."
+            "unsupportedAction": "סוג פעולה לא נתמך \"{type}\". רק פעולות Transfer ו-FunctionCall יכולות להמיר להצעות Near Business."
         },
         "loading": "טוען...",
         "connectPrompt": "חבר את ארנק NEAR שלך כדי להמשיך. לאחר מכן תבחר אוצר לפעול בשמו.",
@@ -1550,7 +1550,7 @@
         "notMember": "אינך חבר באף אוצר.",
         "actingAs": "פועל בשם",
         "signedBy": "נחתם על ידי {account}",
-        "createsNProposals": "זה ייצור {count, plural, one {הצעת Trezu} two {# הצעות Trezu} many {# הצעות Trezu} other {# הצעות Trezu}} עבור:",
+        "createsNProposals": "זה ייצור {count, plural, one {הצעת Near Business} two {# הצעות Near Business} many {# הצעות Near Business} other {# הצעות Near Business}} עבור:",
         "proposalDescriptionLabel": "תיאור הצעה (אופציונלי)",
         "proposalDescriptionPlaceholder": "תאר הצעה זו...",
         "createProposal": "צור הצעה",
@@ -1626,7 +1626,7 @@
             }
         },
         "connectInstructions": {
-            "title": "חברו את חשבון ה-Telegram שלכם ל-Trezu",
+            "title": "חברו את חשבון ה-Telegram שלכם ל-Near Business",
             "subtitle": "בצעו את השלבים הבאים כדי להפעיל התראות עבור האוצר הזה ב-Telegram.",
             "step1": "הוסיפו את {bot} לקבוצה או לערוץ שלכם ב-Telegram.",
             "step2": "ב-Telegram לחצו על \"חבר אוצר\" (או השתמשו בתהליך החיבור של הבוט כאשר תתבקשו).",
@@ -1668,10 +1668,10 @@
         "firstTimeTitle": "קבל תנאים כדי להמשיך",
         "returningTitle": "התנאים שלנו עודכנו",
         "returningEffectiveDate": "בתוקף מ-21 במאי 2026",
-        "returningBody": "עדכנו את תנאי השימוש ומדיניות הפרטיות שלנו. אנא עיינו בהם לפני שתמשיכו להשתמש ב-Trezu.",
+        "returningBody": "עדכנו את תנאי השימוש ומדיניות הפרטיות שלנו. אנא עיינו בהם לפני שתמשיכו להשתמש ב-Near Business.",
         "returningAcceptAndContinue": "אישור והמשך",
-        "privacyTitle": "הפרטיות שלך ב-Trezu",
-        "privacyBody": "Trezu היא ממשק לא-משמורתי. אנו נותנים עדיפות לפרטיות שלך תוך הבטחה שהפלטפורמה תישאר מאובטחת ופונקציונלית.",
+        "privacyTitle": "הפרטיות שלך ב-Near Business",
+        "privacyBody": "Near Business היא ממשק לא-משמורתי. אנו נותנים עדיפות לפרטיות שלך תוך הבטחה שהפלטפורמה תישאר מאובטחת ופונקציונלית.",
         "minimalTitle": "נתונים מינימליים",
         "minimalBody": "אנו אוספים מידע מוגבל, כגון כתובות ארנק ציבוריות, כתובות IP ואנליטיקת שימוש, כדי להפעיל ולשפר את הממשק.",
         "noCustodyTitle": "ללא משמורת",
@@ -1690,15 +1690,15 @@
         "title": "מרכז תמיכה",
         "resources": "משאבים",
         "support": "תמיכה",
-        "websiteTitle": "אתר Trezu",
-        "websiteDescription": "קראו על Trezu ומה חדש.",
-        "demo": "Trezu דמו",
+        "websiteTitle": "אתר Near Business",
+        "websiteDescription": "קראו על Near Business ומה חדש.",
+        "demo": "Near Business דמו",
         "demoTitle": "גלה את הגרסה הציבורית",
         "demoDescription": "אוצר אמיתי שכל אחד יכול לצפות בו.",
         "confidentialDemoTitle": "גלה את הגרסה החסויה",
         "confidentialDemoDescription": "כך נראה אוצר פרטי בשימוש.",
         "videoTitle": "צפה בדמו",
-        "videoDescription": "סרטון קצר - רואים את Trezu מקצה לקצה.",
+        "videoDescription": "סרטון קצר - רואים את Near Business מקצה לקצה.",
         "xTitle": "עקוב אחרינו ב-X",
         "xDescription": "ראו מה אנחנו בונים, בזמן אמת.",
         "statsTitle": "סטטיסטיקה",
@@ -2392,8 +2392,8 @@
         },
         "createBanner": {
             "close": "סגירה",
-            "title": "גלה את Trezu",
-            "description": "צור חשבון כדי לפתוח הרשאות לכל התכונות והיתרונות של Trezu.",
+            "title": "גלה את Near Business",
+            "description": "צור חשבון כדי לפתוח הרשאות לכל התכונות והיתרונות של Near Business.",
             "cta": "יצירת אוצר"
         },
         "pendingJoinBanner": {
@@ -2435,7 +2435,7 @@
                 "exchange": "### עדכון מתוכנן\nהמרות לא יהיו זמינות לזמן קצר {schedule}.",
                 "deposit": "### עדכון מתוכנן\nהפקדות לא יהיו זמינות לזמן קצר {schedule}.",
                 "features": "### עדכון מתוכנן\nחלק מהתכונות לא יהיו זמינות לזמן קצר {schedule}.",
-                "app": "### עדכון מתוכנן\nTrezu לא יהיה זמין לזמן קצר {schedule}.\nהכספים שלך נמצאים on-chain ובשליטתך."
+                "app": "### עדכון מתוכנן\nNear Business לא יהיה זמין לזמן קצר {schedule}.\nהכספים שלך נמצאים on-chain ובשליטתך."
             },
             "network_slow": {
                 "default": "### {subject} פועל לאט כרגע\nה{action} שלך תבוצע ברגע שהרשת תתאושש, ייתכן שזה ייקח קצת יותר זמן מהרגיל."
@@ -2474,13 +2474,13 @@
                 "default": "### אנחנו חווים בעיה זמנית\nחלק מהנתונים עשויים לא להיטען. הכספים שלך נמצאים on-chain ולא מושפעים – נסה שוב בקרוב."
             },
             "whole_app_down": {
-                "default": "### Trezu אינו זמין זמנית.\nהכספים שלך נמצאים on-chain ובשליטתך. עדכונים: {statusPageLink}"
+                "default": "### Near Business אינו זמין זמנית.\nהכספים שלך נמצאים on-chain ובשליטתך. עדכונים: {statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "יצירת טרז׳רי חדש היא בהזמנה בלבד כרגע. הצטרף לרשימת ההמתנה ונודיע לך כשזה ייפתח."
             },
             "funds_at_risk": {
-                "default": "### השהינו את Trezu בזמן שאנו חוקרים בעיה.\nאנו ממליצים שלא לבצע עסקאות עד שנאשר שהכל תקין. עדכונים: {statusPageLink}"
+                "default": "### השהינו את Near Business בזמן שאנו חוקרים בעיה.\nאנו ממליצים שלא לבצע עסקאות עד שנאשר שהכל תקין. עדכונים: {statusPageLink}"
             },
             "provider_maintenance": {
                 "payments": "### תחזוקת ספק מתוכננת\nתשלומים עשויים להיות לא זמינים לזמן קצר {schedule}. הכספים שלכם נמצאים on-chain ותחת שליטתכם.",

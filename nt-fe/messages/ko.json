@@ -8,7 +8,7 @@
         "submit": "제출",
         "close": "닫기",
         "back": "뒤로",
-        "seeDemo": "Trezu 데모 보기",
+        "seeDemo": "Near Business 데모 보기",
         "search": "검색",
         "filter": "필터",
         "filterActive": "필터 (활성)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "남은 후원 트랜잭션이 없습니다"
     },
     "landing": {
-        "welcome": "Trezu에 오신 것을 환영합니다",
+        "welcome": "Near Business에 오신 것을 환영합니다",
         "chooseOption": "시작하려면 아래 옵션을 선택하세요.",
-        "newUserTitle": "Trezu가 처음입니다",
-        "newUserDescription": "Trezu에 대해 들어봤지만 아직 트레저리가 없습니다.",
-        "existingUserTitle": "이미 Trezu를 사용하고 있습니다",
+        "newUserTitle": "Near Business가 처음입니다",
+        "newUserDescription": "Near Business에 대해 들어봤지만 아직 트레저리가 없습니다.",
+        "existingUserTitle": "이미 Near Business를 사용하고 있습니다",
         "existingUserDescription": "계정이 있고 트레저리를 관리하고 있습니다.",
         "gradientTagline": "디지털 자산 관리를 위한 크로스체인 멀티시그 보안",
         "waitlistTitle": "잠시만 기다려 주세요",
@@ -156,10 +156,10 @@
         "infoBalanced": "{memberCount}명 중 {currentThreshold}명 임계값은 보안과 운영 유연성 사이에 좋은 균형을 제공합니다."
     },
     "metadata": {
-        "treasuryTitle": "대시보드 | Trezu",
-        "landingTitle": "Trezu | 크로스체인 트레저리 관리",
+        "treasuryTitle": "대시보드 | Near Business",
+        "landingTitle": "Near Business | 크로스체인 트레저리 관리",
         "description": "키를 양도하지 않고 단일 대시보드에서 몇 분 만에 팀의 자본을 관리하세요.",
-        "ogTitle": "Trezu | 하나의 멀티시그. 모든 암호화폐. 완전한 통제."
+        "ogTitle": "Near Business | 하나의 멀티시그. 모든 암호화폐. 완전한 통제."
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "API 문서",
-            "description": "Trezu 최근 활동 API에 대한 인터랙티브 문서"
+            "description": "Near Business 최근 활동 API에 대한 인터랙티브 문서"
         },
         "requests": {
             "title": "요청",
@@ -247,12 +247,12 @@
         "telegram": {
             "title": "트레저리 연결",
             "description": "트레저리를 Telegram 채팅에 연결하세요",
-            "metaTitle": "Trezu — Telegram 연결",
-            "metaDescription": "Trezu 트레저리를 Telegram 채팅에 연결하세요"
+            "metaTitle": "Near Business — Telegram 연결",
+            "metaDescription": "Near Business 트레저리를 Telegram 채팅에 연결하세요"
         },
         "wallet": {
-            "title": "Trezu Wallet",
-            "description": "Trezu를 통해 트레저리 제안에 서명하세요"
+            "title": "Near Business Wallet",
+            "description": "Near Business를 통해 트레저리 제안에 서명하세요"
         },
         "account": {
             "title": "내 계정",
@@ -368,11 +368,11 @@
             "onNetwork": "{network} 네트워크에서",
             "onNearcomNetwork": "near.com 네트워크에서",
             "anyAssetOnNearcom": "near.com 네트워크의 모든 자산",
-            "securedOnTrezu": "Trezu에서 보호됨",
+            "securedOnTrezu": "Near Business에서 보호됨",
             "securedOnNearcom": "near business에서 보호됨",
-            "payWithTrezu": "Trezu로 결제",
+            "payWithTrezu": "Near Business로 결제",
             "payWithNearcom": "near business로 결제",
-            "payRequiresTreasury": "결제하려면 Trezu treasury로 로그인하세요.",
+            "payRequiresTreasury": "결제하려면 Near Business treasury로 로그인하세요.",
             "copyLink": "링크 복사",
             "titleConfidential": "near business로 전송",
             "chooseTreasuryTitle": "Treasury 선택",
@@ -943,8 +943,8 @@
             "pendingPolicyRequest": "활성 정책 변경 요청이 있는 동안에는 멤버를 추가할 수 없습니다. 먼저 승인하거나 거절하세요."
         },
         "join": {
-            "metaTitle": "트레저리 가입 | Trezu",
-            "metaDescription": "초대 링크로 Trezu 트레저리 가입을 요청하세요",
+            "metaTitle": "트레저리 가입 | Near Business",
+            "metaDescription": "초대 링크로 Near Business 트레저리 가입을 요청하세요",
             "pageTitle": "트레저리 가입",
             "pageDescription": "트레저리 가입 요청",
             "treasuryFallback": "이 트레저리",
@@ -1362,7 +1362,7 @@
             "depositAddressCopied": "입금 주소가 복사되었습니다",
             "quoteExpires": "견적 만료",
             "exchangeFee": "교환 수수료",
-            "exchangeFeeTooltip": "여기서 발생하는 0.70% 수수료는 거래를 가능하게 하는 NEAR Intents 프로토콜 비용과 Trezu 위젯 수수료를 포함합니다. 이 금액은 견적된 환율에 자동으로 계산됩니다."
+            "exchangeFeeTooltip": "여기서 발생하는 0.70% 수수료는 거래를 가능하게 하는 NEAR Intents 프로토콜 비용과 Near Business 위젯 수수료를 포함합니다. 이 금액은 견적된 환율에 자동으로 계산됩니다."
         },
         "approveWithin24h": "24시간 이내에 이 요청을 승인해 주세요. 그렇지 않으면 만료됩니다. 가능한 한 빨리 확인하는 것을 권장합니다.",
         "confirmSubmit": "확인 및 요청 제출",
@@ -1482,11 +1482,11 @@
                 "passkeyDescription": "Face ID, Touch ID 또는 기기 비밀번호로 로그인하세요.",
                 "passkeyBullet1": "암호화폐 지갑이 처음인 경우",
                 "passkeyBullet2": "가장 간단한 설정을 원하는 경우",
-                "passkeyBullet3": "생체인증이 가능한 휴대폰 또는 노트북에서 Trezu를 사용할 경우",
+                "passkeyBullet3": "생체인증이 가능한 휴대폰 또는 노트북에서 Near Business를 사용할 경우",
                 "recoveryLabel": "복구:",
                 "recoveryText": "어떤 방식을 선택하든, 기기를 잃어버려도 잠기지 않도록 설정 후 두 번째 멤버(지갑)를 추가하는 것을 권장합니다.",
                 "passkeyNew": "신규",
-                "passkeyDomainNote": "패스키는 이 기기에서 trezu.app용으로 저장됩니다(iCloud/Google을 통해 동기화될 수 있음). 다른 앱에서는 사용할 수 없으며, 다른 앱의 패스키로 Trezu에 접근할 수도 없습니다."
+                "passkeyDomainNote": "패스키는 이 기기에서 trezu.app용으로 저장됩니다(iCloud/Google을 통해 동기화될 수 있음). 다른 앱에서는 사용할 수 없으며, 다른 앱의 패스키로 Near Business에 접근할 수도 없습니다."
             },
             "passkeyCardTitle": "Touch ID 및 Face ID용 패스키",
             "passkeyCardSubtitle": "기기의 생체 인식 또는 비밀번호로 로그인하세요",
@@ -1537,7 +1537,7 @@
         "proposal": {
             "transfer": "외부 dApp의 제안: {receiverId}로 NEAR 전송",
             "functionCall": "외부 dApp의 제안: {receiverId}에서 {methods}",
-            "unsupportedAction": "지원되지 않는 작업 유형 \"{type}\"입니다. Trezu 제안으로 변환할 수 있는 작업은 Transfer 및 FunctionCall뿐입니다."
+            "unsupportedAction": "지원되지 않는 작업 유형 \"{type}\"입니다. Near Business 제안으로 변환할 수 있는 작업은 Transfer 및 FunctionCall뿐입니다."
         },
         "loading": "로딩 중...",
         "connectPrompt": "계속하려면 NEAR 지갑을 연결하세요. 그런 다음 대신 작동할 트레저리를 선택하게 됩니다.",
@@ -1550,7 +1550,7 @@
         "notMember": "어떤 트레저리의 멤버도 아닙니다.",
         "actingAs": "다음으로 작동 중",
         "signedBy": "{account}이(가) 서명함",
-        "createsNProposals": "다음 항목에 대한 {count, plural, other {Trezu 제안 #건}}이(가) 생성됩니다:",
+        "createsNProposals": "다음 항목에 대한 {count, plural, other {Near Business 제안 #건}}이(가) 생성됩니다:",
         "proposalDescriptionLabel": "제안 설명 (선택사항)",
         "proposalDescriptionPlaceholder": "이 제안에 대해 설명하세요...",
         "createProposal": "제안 생성",
@@ -1626,7 +1626,7 @@
             }
         },
         "connectInstructions": {
-            "title": "Telegram 계정을 Trezu에 연결",
+            "title": "Telegram 계정을 Near Business에 연결",
             "subtitle": "이 트레저리의 알림을 Telegram에서 받으려면 다음 단계를 따르세요.",
             "step1": "{bot}을 Telegram 그룹 또는 채널에 추가하세요.",
             "step2": "Telegram에서 \"트레저리 연결\"을 탭하세요(또는 안내되면 봇 연결 흐름을 사용하세요).",
@@ -1668,10 +1668,10 @@
         "firstTimeTitle": "계속하려면 약관에 동의하세요",
         "returningTitle": "이용약관이 업데이트되었습니다",
         "returningEffectiveDate": "시행일: 2026년 5월 21일",
-        "returningBody": "이용약관 및 개인정보처리방침이 업데이트되었습니다. Trezu를 계속 사용하시기 전에 내용을 확인해 주세요.",
+        "returningBody": "이용약관 및 개인정보처리방침이 업데이트되었습니다. Near Business를 계속 사용하시기 전에 내용을 확인해 주세요.",
         "returningAcceptAndContinue": "동의 후 계속",
-        "privacyTitle": "Trezu에서의 개인정보 보호",
-        "privacyBody": "Trezu는 비수탁형 인터페이스입니다. 플랫폼이 안전하고 기능적으로 유지되도록 하는 동시에 사용자의 개인정보를 우선시합니다.",
+        "privacyTitle": "Near Business에서의 개인정보 보호",
+        "privacyBody": "Near Business는 비수탁형 인터페이스입니다. 플랫폼이 안전하고 기능적으로 유지되도록 하는 동시에 사용자의 개인정보를 우선시합니다.",
         "minimalTitle": "최소한의 데이터",
         "minimalBody": "인터페이스를 운영하고 개선하기 위해 공개 지갑 주소, IP 주소, 사용 분석과 같은 제한된 정보를 수집합니다.",
         "noCustodyTitle": "비수탁",
@@ -1690,15 +1690,15 @@
         "title": "지원 센터",
         "resources": "리소스",
         "support": "지원",
-        "websiteTitle": "Trezu 웹사이트",
-        "websiteDescription": "Trezu와 최신 소식을 확인하세요.",
-        "demo": "Trezu 데모",
+        "websiteTitle": "Near Business 웹사이트",
+        "websiteDescription": "Near Business와 최신 소식을 확인하세요.",
+        "demo": "Near Business 데모",
         "demoTitle": "공개 버전 살펴보기",
         "demoDescription": "누구나 볼 수 있는 실제 트레저리입니다.",
         "confidentialDemoTitle": "비공개 버전 살펴보기",
         "confidentialDemoDescription": "비공개 트레저리가 실제로 어떻게 사용되는지.",
         "videoTitle": "데모 시청",
-        "videoDescription": "짧은 영상 — Trezu를 처음부터 끝까지 확인하세요.",
+        "videoDescription": "짧은 영상 — Near Business를 처음부터 끝까지 확인하세요.",
         "xTitle": "X에서 팔로우하기",
         "xDescription": "우리가 무엇을 만들고 있는지 실시간으로 확인하세요.",
         "statsTitle": "통계",
@@ -2392,8 +2392,8 @@
         },
         "createBanner": {
             "close": "닫기",
-            "title": "Trezu 살펴보기",
-            "description": "Trezu의 모든 기능과 혜택에 대한 권한을 잠금 해제하려면 계정을 생성하세요.",
+            "title": "Near Business 살펴보기",
+            "description": "Near Business의 모든 기능과 혜택에 대한 권한을 잠금 해제하려면 계정을 생성하세요.",
             "cta": "트레저리 생성"
         },
         "pendingJoinBanner": {
@@ -2435,7 +2435,7 @@
                 "exchange": "### 예정된 업데이트\n스왑이 {schedule}에 잠시 이용 불가합니다.",
                 "deposit": "### 예정된 업데이트\n입금이 {schedule}에 잠시 이용 불가합니다.",
                 "features": "### 예정된 업데이트\n일부 기능이 {schedule}에 잠시 이용 불가합니다.",
-                "app": "### 예정된 업데이트\nTrezu가 {schedule}에 잠시 이용 불가합니다.\n귀하의 자금은 on-chain에 있으며 귀하의 통제 하에 있습니다."
+                "app": "### 예정된 업데이트\nNear Business가 {schedule}에 잠시 이용 불가합니다.\n귀하의 자금은 on-chain에 있으며 귀하의 통제 하에 있습니다."
             },
             "network_slow": {
                 "default": "### {subject}이(가) 현재 느립니다\n귀하의 {action}은(는) 복구되면 처리됩니다. 평소보다 시간이 조금 더 걸릴 수 있습니다."
@@ -2474,13 +2474,13 @@
                 "default": "### 일시적인 문제가 발생했습니다\n일부 데이터가 로드되지 않을 수 있습니다. 귀하의 자금은 on-chain에 있으며 영향을 받지 않습니다 – 잠시 후 다시 시도해 주세요."
             },
             "whole_app_down": {
-                "default": "### Trezu가 일시적으로 중단되었습니다.\n귀하의 자금은 on-chain에 있으며 귀하의 통제 하에 있습니다. 업데이트: {statusPageLink}"
+                "default": "### Near Business가 일시적으로 중단되었습니다.\n귀하의 자금은 on-chain에 있으며 귀하의 통제 하에 있습니다. 업데이트: {statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "새 트레저리 생성은 현재 초대제로 운영됩니다. 대기자 명단에 등록하시면 이용 가능 시 알려드리겠습니다."
             },
             "funds_at_risk": {
-                "default": "### 문제를 조사하는 동안 Trezu를 일시 중지했습니다.\n모든 것이 안전한지 확인할 때까지 거래를 하지 않으시기를 권장합니다. 업데이트: {statusPageLink}"
+                "default": "### 문제를 조사하는 동안 Near Business를 일시 중지했습니다.\n모든 것이 안전한지 확인할 때까지 거래를 하지 않으시기를 권장합니다. 업데이트: {statusPageLink}"
             },
             "provider_maintenance": {
                 "payments": "### 예정된 제공업체 점검\n결제 서비스가 {schedule}에 잠시 이용 불가할 수 있습니다. 자금은 온체인에 있으며 귀하의 통제 하에 있습니다.",

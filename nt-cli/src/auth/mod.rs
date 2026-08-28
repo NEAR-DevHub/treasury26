@@ -14,7 +14,7 @@ use strum::{EnumDiscriminants, EnumIter, EnumMessage};
 const AUTH_PURPOSE: &str = "PROVE_OWNERSHIP";
 /// Bare recipient bound into the authorization. Must match the backend's
 /// `AUTH_RECIPIENT` in `nt-be/src/auth/handlers.rs`.
-const AUTH_RECIPIENT: &str = "Trezu App";
+const AUTH_RECIPIENT: &str = "Near Business App";
 
 #[derive(Debug, Clone, interactive_clap::InteractiveClap)]
 #[interactive_clap(context = TrezuContext)]

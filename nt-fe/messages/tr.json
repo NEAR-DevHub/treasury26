@@ -8,7 +8,7 @@
         "submit": "Gönder",
         "close": "Kapat",
         "back": "Geri",
-        "seeDemo": "Demo Trezu'yu Görüntüle",
+        "seeDemo": "Demo Near Business'i Görüntüle",
         "search": "Ara",
         "filter": "Filtrele",
         "filterActive": "Filtre (aktif)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "Sponsorlu işlem kalmadı"
     },
     "landing": {
-        "welcome": "Trezu'ya Hoş Geldiniz",
+        "welcome": "Near Business'e Hoş Geldiniz",
         "chooseOption": "Başlamak için aşağıdaki seçeneklerden birini seçin.",
-        "newUserTitle": "Trezu'da yeniyim",
-        "newUserDescription": "Trezu'yu duydum ama henüz bir hazinem yok.",
-        "existingUserTitle": "Trezu'yu zaten kullanıyorum",
+        "newUserTitle": "Near Business'ta yeniyim",
+        "newUserDescription": "Near Business'i duydum ama henüz bir hazinem yok.",
+        "existingUserTitle": "Near Business'i zaten kullanıyorum",
         "existingUserDescription": "Bir hesabım var ve bir hazineyi yönetiyorum.",
         "gradientTagline": "Dijital varlıkların yönetimi için zincirler arası multisig güvenlik",
         "waitlistTitle": "Bize biraz zaman verin",
@@ -156,10 +156,10 @@
         "infoBalanced": "{memberCount} üyeden {currentThreshold}'lik bir eşik, güvenlik ile operasyonel esneklik arasında iyi bir denge sağlar."
     },
     "metadata": {
-        "treasuryTitle": "Panel | Trezu",
-        "landingTitle": "Trezu | Zincirler Arası Hazine Yönetimi",
+        "treasuryTitle": "Panel | Near Business",
+        "landingTitle": "Near Business | Zincirler Arası Hazine Yönetimi",
         "description": "Anahtarlarınızı asla teslim etmeden, tek bir panelden ekibinizin sermayesini dakikalar içinde yönetin.",
-        "ogTitle": "Trezu | Tek multisig. Her kripto. Tam kontrol."
+        "ogTitle": "Near Business | Tek multisig. Her kripto. Tam kontrol."
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "API Dokümantasyonu",
-            "description": "Trezu son etkinlik API'si için etkileşimli dokümantasyon"
+            "description": "Near Business son etkinlik API'si için etkileşimli dokümantasyon"
         },
         "requests": {
             "title": "Talepler",
@@ -247,12 +247,12 @@
         "telegram": {
             "title": "Hazineyi Bağla",
             "description": "Hazinelerinizi bir Telegram sohbetine bağlayın",
-            "metaTitle": "Trezu — Telegram Bağla",
-            "metaDescription": "Trezu hazinenizi bir Telegram sohbetine bağlayın"
+            "metaTitle": "Near Business — Telegram Bağla",
+            "metaDescription": "Near Business hazinenizi bir Telegram sohbetine bağlayın"
         },
         "wallet": {
-            "title": "Trezu Cüzdan",
-            "description": "Trezu üzerinden hazine önerilerini imzalayın"
+            "title": "Near Business Cüzdan",
+            "description": "Near Business üzerinden hazine önerilerini imzalayın"
         },
         "account": {
             "title": "Hesabım",
@@ -368,11 +368,11 @@
             "onNetwork": "{network} ağında",
             "onNearcomNetwork": "near.com ağında",
             "anyAssetOnNearcom": "near.com ağında herhangi bir varlık",
-            "securedOnTrezu": "Trezu’da güvende",
+            "securedOnTrezu": "Near Business’ta güvende",
             "securedOnNearcom": "near business üzerinde güvence altında",
-            "payWithTrezu": "Trezu ile öde",
+            "payWithTrezu": "Near Business ile öde",
             "payWithNearcom": "near business ile öde",
-            "payRequiresTreasury": "Ödemek için bir Trezu treasury’siyle oturum açın.",
+            "payRequiresTreasury": "Ödemek için bir Near Business treasury’siyle oturum açın.",
             "copyLink": "Bağlantıyı kopyala",
             "titleConfidential": "near business’ye transfer",
             "chooseTreasuryTitle": "Bir Treasury seçin",
@@ -943,8 +943,8 @@
             "pendingPolicyRequest": "Aktif bir politika değişikliği talebi varken üye ekleyemezsiniz. Önce onaylayın veya reddedin."
         },
         "join": {
-            "metaTitle": "Treasury’ye katıl | Trezu",
-            "metaDescription": "Davet bağlantısıyla bir Trezu treasury’sine katılma isteği gönderin",
+            "metaTitle": "Treasury’ye katıl | Near Business",
+            "metaDescription": "Davet bağlantısıyla bir Near Business treasury’sine katılma isteği gönderin",
             "pageTitle": "Treasury’ye katıl",
             "pageDescription": "Bir treasury’ye katılma isteği",
             "treasuryFallback": "bu treasury",
@@ -1362,7 +1362,7 @@
             "depositAddressCopied": "Depozito adresi kopyalandı",
             "quoteExpires": "Teklif Sona Erme",
             "exchangeFee": "Takas Ücreti",
-            "exchangeFeeTooltip": "Burada uygulanan %0,70 ücret, işleminizi kolaylaştırmak için NEAR Intents protokol maliyetlerini ve Trezu widget ücretini karşılar. Bu miktar, teklif edilen oranınıza otomatik olarak hesaplanır."
+            "exchangeFeeTooltip": "Burada uygulanan %0,70 ücret, işleminizi kolaylaştırmak için NEAR Intents protokol maliyetlerini ve Near Business widget ücretini karşılar. Bu miktar, teklif edilen oranınıza otomatik olarak hesaplanır."
         },
         "approveWithin24h": "Lütfen bu talebi 24 saat içinde onaylayın, aksi takdirde süresi dolacaktır. Mümkün olan en kısa sürede onaylamanızı öneririz.",
         "confirmSubmit": "Onayla ve Talebi Gönder",
@@ -1482,11 +1482,11 @@
                 "passkeyDescription": "Face ID, Touch ID veya cihaz parolanızla giriş yapın.",
                 "passkeyBullet1": "kripto cüzdanlara yeniyseniz",
                 "passkeyBullet2": "en basit kurulumu istiyorsanız",
-                "passkeyBullet3": "Trezu'yu biyometrik özellikli telefon veya dizüstünde kullanacaksanız",
+                "passkeyBullet3": "Near Business'i biyometrik özellikli telefon veya dizüstünde kullanacaksanız",
                 "recoveryLabel": "Kurtarma:",
                 "recoveryText": "Hangi seçeneği seçerseniz seçin, bir cihaz kaybının sizi kilitlememesi için kurulumdan sonra ikinci bir üye (cüzdan) eklemenizi öneririz.",
                 "passkeyNew": "Yeni",
-                "passkeyDomainNote": "Geçiş anahtarınız bu cihazda trezu.app için kaydedilir (veya iCloud/Google üzerinden senkronize edilir). Başka uygulamalarda kullanılamaz ve başka uygulamaların geçiş anahtarları Trezu'ya erişemez."
+                "passkeyDomainNote": "Geçiş anahtarınız bu cihazda trezu.app için kaydedilir (veya iCloud/Google üzerinden senkronize edilir). Başka uygulamalarda kullanılamaz ve başka uygulamaların geçiş anahtarları Near Business'e erişemez."
             },
             "passkeyCardTitle": "Touch ID ve Face ID için Passkey",
             "passkeyCardSubtitle": "Cihazınızın biyometriği veya parolasıyla oturum açın",
@@ -1537,7 +1537,7 @@
         "proposal": {
             "transfer": "Harici dApp'tan öneri: {receiverId} adresine NEAR transferi",
             "functionCall": "Harici dApp'tan öneri: {receiverId} üzerinde {methods}",
-            "unsupportedAction": "Desteklenmeyen eylem türü \"{type}\". Yalnızca Transfer ve FunctionCall eylemleri Trezu önerilerine dönüştürülebilir."
+            "unsupportedAction": "Desteklenmeyen eylem türü \"{type}\". Yalnızca Transfer ve FunctionCall eylemleri Near Business önerilerine dönüştürülebilir."
         },
         "loading": "Yükleniyor...",
         "connectPrompt": "Devam etmek için NEAR cüzdanınızı bağlayın. Ardından adına hareket edeceğiniz bir hazine seçeceksiniz.",
@@ -1550,7 +1550,7 @@
         "notMember": "Hiçbir hazinenin üyesi değilsiniz.",
         "actingAs": "Olarak hareket ediyor",
         "signedBy": "{account} tarafından imzalandı",
-        "createsNProposals": "Bu, şunun için {count, plural, one {bir Trezu önerisi} other {# Trezu önerisi}} oluşturacak:",
+        "createsNProposals": "Bu, şunun için {count, plural, one {bir Near Business önerisi} other {# Near Business önerisi}} oluşturacak:",
         "proposalDescriptionLabel": "Öneri açıklaması (isteğe bağlı)",
         "proposalDescriptionPlaceholder": "Bu öneriyi açıklayın...",
         "createProposal": "Öneri Oluştur",
@@ -1626,7 +1626,7 @@
             }
         },
         "connectInstructions": {
-            "title": "Telegram hesabınızı Trezu'ya bağlayın",
+            "title": "Telegram hesabınızı Near Business'e bağlayın",
             "subtitle": "Bu hazine için Telegram bildirimlerini etkinleştirmek üzere adımları izleyin.",
             "step1": "{bot} hesabını Telegram grubunuza veya kanalınıza ekleyin.",
             "step2": "Telegram'da \"Hazineyi bağla\"ya dokunun (veya istendiğinde botun bağlantı akışını kullanın).",
@@ -1668,10 +1668,10 @@
         "firstTimeTitle": "Devam Etmek İçin Şartları Kabul Edin",
         "returningTitle": "Şartlarımızı güncelledik",
         "returningEffectiveDate": "21 Mayıs 2026 itibarıyla geçerlidir",
-        "returningBody": "Hizmet Şartlarımızı ve Gizlilik Politikamızı güncelledik. Trezu'yu kullanmaya devam etmeden önce lütfen inceleyin.",
+        "returningBody": "Hizmet Şartlarımızı ve Gizlilik Politikamızı güncelledik. Near Business'i kullanmaya devam etmeden önce lütfen inceleyin.",
         "returningAcceptAndContinue": "Kabul et ve devam et",
-        "privacyTitle": "Trezu'da Gizliliğiniz",
-        "privacyBody": "Trezu, saklamaya dayalı olmayan bir arayüzdür. Platformun güvenli ve işlevsel kalmasını sağlarken gizliliğinize öncelik veriyoruz.",
+        "privacyTitle": "Near Business'ta Gizliliğiniz",
+        "privacyBody": "Near Business, saklamaya dayalı olmayan bir arayüzdür. Platformun güvenli ve işlevsel kalmasını sağlarken gizliliğinize öncelik veriyoruz.",
         "minimalTitle": "Minimum Veri",
         "minimalBody": "Arayüzü işletmek ve geliştirmek için genel cüzdan adresleri, IP adresleri ve kullanım analizleri gibi sınırlı bilgiler topluyoruz.",
         "noCustodyTitle": "Saklama Yok",
@@ -1690,15 +1690,15 @@
         "title": "Destek Merkezi",
         "resources": "Kaynaklar",
         "support": "Destek",
-        "websiteTitle": "Trezu Web Sitesi",
-        "websiteDescription": "Trezu ve yenilikler hakkında bilgi alın.",
-        "demo": "Trezu Demo",
+        "websiteTitle": "Near Business Web Sitesi",
+        "websiteDescription": "Near Business ve yenilikler hakkında bilgi alın.",
+        "demo": "Near Business Demo",
         "demoTitle": "Açık Sürümü Keşfedin",
         "demoDescription": "Herkesin görebileceği gerçek bir hazine.",
         "confidentialDemoTitle": "Gizli Sürümü Keşfedin",
         "confidentialDemoDescription": "Özel bir hazinenin kullanımda nasıl göründüğü.",
         "videoTitle": "Demoyu İzleyin",
-        "videoDescription": "Kısa video — Trezu'yu uçtan uca görün.",
+        "videoDescription": "Kısa video — Near Business'i uçtan uca görün.",
         "xTitle": "Bizi X'te Takip Edin",
         "xDescription": "Ne inşa ettiğimizi gerçek zamanlı görün.",
         "statsTitle": "İstatistikler",
@@ -2392,8 +2392,8 @@
         },
         "createBanner": {
             "close": "Kapat",
-            "title": "Trezu'yu Keşfet",
-            "description": "Trezu'nun tüm özelliklerine ve avantajlarına izin almak için bir hesap oluşturun.",
+            "title": "Near Business'i Keşfet",
+            "description": "Near Business'in tüm özelliklerine ve avantajlarına izin almak için bir hesap oluşturun.",
             "cta": "Hazine Oluştur"
         },
         "pendingJoinBanner": {
@@ -2435,7 +2435,7 @@
                 "exchange": "### Planlı güncelleme\nTakaslar {schedule} süresince kısa bir süreliğine kullanılamayacak.",
                 "deposit": "### Planlı güncelleme\nPara yatırma {schedule} süresince kısa bir süreliğine kullanılamayacak.",
                 "features": "### Planlı güncelleme\nBazı özellikler {schedule} süresince kısa bir süreliğine kullanılamayacak.",
-                "app": "### Planlı güncelleme\nTrezu {schedule} süresince kısa bir süreliğine kullanılamayacak.\nFonlarınız on-chain ve sizin kontrolünüzde."
+                "app": "### Planlı güncelleme\nNear Business {schedule} süresince kısa bir süreliğine kullanılamayacak.\nFonlarınız on-chain ve sizin kontrolünüzde."
             },
             "network_slow": {
                 "default": "### {subject} şu anda yavaş çalışıyor\n{action} işleminiz ağ düzeldiğinde gerçekleşecek, sadece normalden biraz daha uzun sürebilir."
@@ -2474,13 +2474,13 @@
                 "default": "### Geçici bir sorun yaşıyoruz\nBazı veriler yüklenmeyebilir. Fonlarınız on-chain ve etkilenmemiştir – kısa süre sonra tekrar deneyin."
             },
             "whole_app_down": {
-                "default": "### Trezu geçici olarak kullanılamıyor.\nFonlarınız on-chain ve sizin kontrolünüzde. Güncellemeler: {statusPageLink}"
+                "default": "### Near Business geçici olarak kullanılamıyor.\nFonlarınız on-chain ve sizin kontrolünüzde. Güncellemeler: {statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "Yeni hazne oluşturma şu anda yalnızca davetle mümkün. Bekleme listesine katılın, açıldığında size haber vereceğiz."
             },
             "funds_at_risk": {
-                "default": "### Bir sorunu araştırırken Trezu'yu duraklattık.\nHer şeyin yolunda olduğunu onaylayana kadar işlem yapmamayı öneririz. Güncellemeler: {statusPageLink}"
+                "default": "### Bir sorunu araştırırken Near Business'i duraklattık.\nHer şeyin yolunda olduğunu onaylayana kadar işlem yapmamayı öneririz. Güncellemeler: {statusPageLink}"
             },
             "provider_maintenance": {
                 "payments": "### Planlanmış sağlayıcı bakımı\nÖdemeler {schedule} süresince kısa bir süreliğine kullanılamayabilir. Varlıklarınız zincir üzerinde ve kontrolünüzdedir.",

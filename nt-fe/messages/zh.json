@@ -8,7 +8,7 @@
         "submit": "提交",
         "close": "关闭",
         "back": "返回",
-        "seeDemo": "查看 Trezu 演示",
+        "seeDemo": "查看 Near Business 演示",
         "search": "搜索",
         "filter": "筛选",
         "filterActive": "筛选(已启用)",
@@ -112,11 +112,11 @@
         "noSponsoredTransactions": "已用尽赞助交易额度"
     },
     "landing": {
-        "welcome": "欢迎使用 Trezu",
+        "welcome": "欢迎使用 Near Business",
         "chooseOption": "请选择下方选项以开始使用。",
-        "newUserTitle": "我是 Trezu 新用户",
-        "newUserDescription": "我听说过 Trezu,但还没有金库。",
-        "existingUserTitle": "我已在使用 Trezu",
+        "newUserTitle": "我是 Near Business 新用户",
+        "newUserDescription": "我听说过 Near Business,但还没有金库。",
+        "existingUserTitle": "我已在使用 Near Business",
         "existingUserDescription": "我已有账户并在管理金库。",
         "gradientTagline": "用于管理数字资产的跨链多签安全方案",
         "waitlistTitle": "请再给我们一点时间",
@@ -156,10 +156,10 @@
         "infoBalanced": "{currentThreshold}/{memberCount} 的阈值在安全性与运营灵活性之间取得了良好平衡。"
     },
     "metadata": {
-        "treasuryTitle": "仪表板 | Trezu",
-        "landingTitle": "Trezu | 跨链金库管理",
+        "treasuryTitle": "仪表板 | Near Business",
+        "landingTitle": "Near Business | 跨链金库管理",
         "description": "通过单一仪表板,几分钟内即可管理团队资金,而无需交出您的密钥。",
-        "ogTitle": "Trezu | 一个多签。任意加密货币。完全掌控。"
+        "ogTitle": "Near Business | 一个多签。任意加密货币。完全掌控。"
     },
     "pages": {
         "dashboard": {
@@ -174,7 +174,7 @@
         },
         "apiDocs": {
             "title": "API 文档",
-            "description": "Trezu 近期活动 API 的交互式文档"
+            "description": "Near Business 近期活动 API 的交互式文档"
         },
         "requests": {
             "title": "请求",
@@ -247,12 +247,12 @@
         "telegram": {
             "title": "连接金库",
             "description": "将您的金库链接到 Telegram 聊天",
-            "metaTitle": "Trezu — 连接 Telegram",
-            "metaDescription": "将您的 Trezu 金库连接到 Telegram 聊天"
+            "metaTitle": "Near Business — 连接 Telegram",
+            "metaDescription": "将您的 Near Business 金库连接到 Telegram 聊天"
         },
         "wallet": {
-            "title": "Trezu 钱包",
-            "description": "通过 Trezu 签署金库提案"
+            "title": "Near Business 钱包",
+            "description": "通过 Near Business 签署金库提案"
         },
         "account": {
             "title": "我的账户",
@@ -368,11 +368,11 @@
             "onNetwork": "在 {network} 网络",
             "onNearcomNetwork": "在 near.com 网络",
             "anyAssetOnNearcom": "near.com 网络上的任意资产",
-            "securedOnTrezu": "由 Trezu 保障安全",
+            "securedOnTrezu": "由 Near Business 保障安全",
             "securedOnNearcom": "受 near business 保护",
-            "payWithTrezu": "使用 Trezu 支付",
+            "payWithTrezu": "使用 Near Business 支付",
             "payWithNearcom": "使用 near business 支付",
-            "payRequiresTreasury": "请使用 Trezu treasury 登录以支付。",
+            "payRequiresTreasury": "请使用 Near Business treasury 登录以支付。",
             "copyLink": "复制链接",
             "titleConfidential": "转账至 near business",
             "chooseTreasuryTitle": "选择 Treasury",
@@ -943,8 +943,8 @@
             "pendingPolicyRequest": "存在进行中的策略变更请求时无法添加成员。请先批准或拒绝。"
         },
         "join": {
-            "metaTitle": "加入金库 | Trezu",
-            "metaDescription": "通过邀请链接申请加入 Trezu 金库",
+            "metaTitle": "加入金库 | Near Business",
+            "metaDescription": "通过邀请链接申请加入 Near Business 金库",
             "pageTitle": "加入金库",
             "pageDescription": "请求加入金库",
             "treasuryFallback": "此金库",
@@ -1345,7 +1345,7 @@
             "depositAddressCopied": "存款地址已复制",
             "quoteExpires": "报价过期时间",
             "exchangeFee": "兑换手续费",
-            "exchangeFeeTooltip": "此处产生的 0.70% 手续费用于支付 NEAR Intents 协议的交易处理成本及 Trezu 小部件费用。该金额已自动计入您的报价汇率中。"
+            "exchangeFeeTooltip": "此处产生的 0.70% 手续费用于支付 NEAR Intents 协议的交易处理成本及 Near Business 小部件费用。该金额已自动计入您的报价汇率中。"
         },
         "approveWithin24h": "请在 24 小时内批准此请求,否则它将过期。建议尽快确认。",
         "confirmSubmit": "确认并提交请求",
@@ -1465,11 +1465,11 @@
                 "passkeyDescription": "使用 Face ID、Touch ID 或设备密码登录。",
                 "passkeyBullet1": "你是加密钱包新手",
                 "passkeyBullet2": "你想要最简单的设置方式",
-                "passkeyBullet3": "你会在支持生物识别的手机或电脑上使用 Trezu",
+                "passkeyBullet3": "你会在支持生物识别的手机或电脑上使用 Near Business",
                 "recoveryLabel": "恢复：",
                 "recoveryText": "无论你选择哪种方式，我们建议你在设置完成后添加第二位成员（钱包），以防设备丢失导致无法访问。",
                 "passkeyNew": "新",
-                "passkeyDomainNote": "您的通行密钥保存在此设备上，仅用于 trezu.app（或通过 iCloud/Google 同步）。它无法在其他应用中使用，其他应用的通行密钥也无法访问 Trezu。"
+                "passkeyDomainNote": "您的通行密钥保存在此设备上，仅用于 trezu.app（或通过 iCloud/Google 同步）。它无法在其他应用中使用，其他应用的通行密钥也无法访问 Near Business。"
             },
             "passkeyCardTitle": "支持 Touch ID 和 Face ID 的通行密钥",
             "passkeyCardSubtitle": "使用设备的生物识别或密码登录",
@@ -1520,7 +1520,7 @@
         "proposal": {
             "transfer": "来自外部 dApp 的提案:向 {receiverId} 转账 NEAR",
             "functionCall": "来自外部 dApp 的提案:在 {receiverId} 上调用 {methods}",
-            "unsupportedAction": "不支持的操作类型 “{type}”。仅 Transfer 和 FunctionCall 操作可转换为 Trezu 提案。"
+            "unsupportedAction": "不支持的操作类型 “{type}”。仅 Transfer 和 FunctionCall 操作可转换为 Near Business 提案。"
         },
         "loading": "加载中...",
         "connectPrompt": "请连接您的 NEAR 钱包以继续。然后您将选择要代表其操作的金库。",
@@ -1533,7 +1533,7 @@
         "notMember": "您不是任何金库的成员。",
         "actingAs": "代表",
         "signedBy": "由 {account} 签署",
-        "createsNProposals": "这将为以下内容创建 {count, plural, other {# 个 Trezu 提案}}:",
+        "createsNProposals": "这将为以下内容创建 {count, plural, other {# 个 Near Business 提案}}:",
         "proposalDescriptionLabel": "提案描述(可选)",
         "proposalDescriptionPlaceholder": "描述此提案...",
         "createProposal": "创建提案",
@@ -1609,7 +1609,7 @@
             }
         },
         "connectInstructions": {
-            "title": "将您的 Telegram 账号连接到 Trezu",
+            "title": "将您的 Telegram 账号连接到 Near Business",
             "subtitle": "按照以下步骤在 Telegram 中为此金库启用通知。",
             "step1": "将 {bot} 添加到您的 Telegram 群组或频道。",
             "step2": "在 Telegram 中点击“连接金库”（或在提示时使用机器人的连接流程）。",
@@ -1651,10 +1651,10 @@
         "firstTimeTitle": "接受条款以继续",
         "returningTitle": "我们的条款已更新",
         "returningEffectiveDate": "生效日期：2026年5月21日",
-        "returningBody": "我们已更新《服务条款》和《隐私政策》。请在继续使用 Trezu 前先阅读。",
+        "returningBody": "我们已更新《服务条款》和《隐私政策》。请在继续使用 Near Business 前先阅读。",
         "returningAcceptAndContinue": "同意并继续",
-        "privacyTitle": "您在 Trezu 的隐私",
-        "privacyBody": "Trezu 是一个非托管界面。我们在确保平台安全和功能正常的同时,优先保护您的隐私。",
+        "privacyTitle": "您在 Near Business 的隐私",
+        "privacyBody": "Near Business 是一个非托管界面。我们在确保平台安全和功能正常的同时,优先保护您的隐私。",
         "minimalTitle": "最少数据",
         "minimalBody": "我们仅收集有限的信息,例如公开钱包地址、IP 地址和使用分析,以运营和改进本界面。",
         "noCustodyTitle": "非托管",
@@ -1673,15 +1673,15 @@
         "title": "支持中心",
         "resources": "资源",
         "support": "支持",
-        "websiteTitle": "Trezu 网站",
-        "websiteDescription": "了解 Trezu 及最新动态。",
-        "demo": "Trezu 演示",
+        "websiteTitle": "Near Business 网站",
+        "websiteDescription": "了解 Near Business 及最新动态。",
+        "demo": "Near Business 演示",
         "demoTitle": "探索公开版本",
         "demoDescription": "任何人都可查看的真实金库。",
         "confidentialDemoTitle": "探索机密版本",
         "confidentialDemoDescription": "私密金库在实际使用中的样子。",
         "videoTitle": "观看演示",
-        "videoDescription": "简短视频 — 端到端了解 Trezu。",
+        "videoDescription": "简短视频 — 端到端了解 Near Business。",
         "xTitle": "在 X 上关注我们",
         "xDescription": "实时查看我们正在构建的内容。",
         "statsTitle": "统计",
@@ -2375,8 +2375,8 @@
         },
         "createBanner": {
             "close": "关闭",
-            "title": "探索 Trezu",
-            "description": "创建账户以解锁 Trezu 所有功能与权益的访问权限。",
+            "title": "探索 Near Business",
+            "description": "创建账户以解锁 Near Business 所有功能与权益的访问权限。",
             "cta": "创建金库"
         },
         "pendingJoinBanner": {
@@ -2418,7 +2418,7 @@
                 "exchange": "### 计划更新\n兑换将在{schedule}期间短暂不可用。",
                 "deposit": "### 计划更新\n存款将在{schedule}期间短暂不可用。",
                 "features": "### 计划更新\n部分功能将在{schedule}期间短暂不可用。",
-                "app": "### 计划更新\nTrezu将在{schedule}期间短暂不可用。\n您的资金在链上（on-chain），由您自行掌控。"
+                "app": "### 计划更新\nNear Business将在{schedule}期间短暂不可用。\n您的资金在链上（on-chain），由您自行掌控。"
             },
             "network_slow": {
                 "default": "### {subject}目前运行缓慢\n您的{action}将在恢复后完成，只是可能比平时需要更长时间。"
@@ -2457,13 +2457,13 @@
                 "default": "### 我们遇到了临时问题\n部分数据可能无法加载。您的资金在链上（on-chain），不受影响——请稍后重试。"
             },
             "whole_app_down": {
-                "default": "### Trezu暂时不可用。\n您的资金在链上（on-chain），由您自行掌控。更新：{statusPageLink}"
+                "default": "### Near Business暂时不可用。\n您的资金在链上（on-chain），由您自行掌控。更新：{statusPageLink}"
             },
             "treasury_creation_unavailable": {
                 "default": "创建新金库目前仅限受邀用户。加入等候名单，开放后我们将通知您。"
             },
             "funds_at_risk": {
-                "default": "### 我们在调查问题期间已暂停Trezu。\n在我们确认一切安全之前，建议不要进行任何交易。更新：{statusPageLink}"
+                "default": "### 我们在调查问题期间已暂停Near Business。\n在我们确认一切安全之前，建议不要进行任何交易。更新：{statusPageLink}"
             },
             "provider_maintenance": {
                 "payments": "### 计划供应商维护\n支付可能在{schedule}期间短暂不可用。您的资金在链上，由您完全控制。",

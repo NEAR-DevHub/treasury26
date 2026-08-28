@@ -52,7 +52,7 @@ export default function LoginPage() {
 
     return (
         <PageComponentLayout
-            title="Trezu"
+            title="Near Business"
             hideLogin
             hideCollapseButton
             hideAppWarningBanner

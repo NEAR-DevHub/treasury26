@@ -15,7 +15,7 @@ use std::sync::Arc;
 const AUTH_PURPOSE: &str = "PROVE_OWNERSHIP";
 /// Bare recipient bound into the authorization. Must match the value the
 /// frontend passes to `wallet.resolveAuth(...)`.
-const AUTH_RECIPIENT: &str = "Trezu App";
+const AUTH_RECIPIENT: &str = "Near Business App";
 
 /// Response body for challenge creation.
 ///
@@ -67,7 +67,8 @@ pub async fn create_challenge(
     rand::rng().fill_bytes(&mut random);
     let request_id = base64::engine::general_purpose::STANDARD.encode(random);
     let issued_at = chrono::Utc::now().to_rfc3339();
-    let payload = format!("Login to Trezu initiated at {issued_at} with request ID: {request_id}");
+    let payload =
+        format!("Login to Near Business initiated at {issued_at} with request ID: {request_id}");
 
     // Store the challenge payload (its bytes) so login can match and consume it.
     sqlx::query!(

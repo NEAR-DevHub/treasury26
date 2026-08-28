@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
     return {
         title: {
             default: t("landingTitle"),
-            template: "%s | Trezu",
+            template: "%s | Near Business",
         },
         description: t("description"),
         openGraph: {

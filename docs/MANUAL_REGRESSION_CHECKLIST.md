@@ -1,4 +1,4 @@
-# Trezu — Manual Regression Checklist
+# Near Business — Manual Regression Checklist
 
 **Version:** 1.0 · **Date:** 2026-07-08 · **Owner:** QA
 **Companion to:** [TEST_STRATEGY.md](TEST_STRATEGY.md) (risk tiers, environments, ownership)
@@ -37,7 +37,7 @@
 
 | # | Tier | Check | Expected |
 |---|------|-------|----------|
-| AUTH-01 | S | Login with primary wallet (Meteor) from `/` | Challenge message is human-readable ("Login to Trezu initiated at…"); after signing, user lands authenticated; wallet shown in header |
+| AUTH-01 | S | Login with primary wallet (Meteor) from `/` | Challenge message is human-readable ("Login to Near Business initiated at…"); after signing, user lands authenticated; wallet shown in header |
 | AUTH-02 | R | Login from `/login?returnTo=…` deep link | After auth, redirected to the original `returnTo` target, UTM params preserved |
 | AUTH-03 | R | First-time terms acceptance | Terms modal blocks the app until accepted; links to Terms of Service and Privacy Policy open; after accept, modal never reappears for this account |
 | AUTH-04 | R | Returning-user terms re-acceptance (v1 → v2) | Account that accepted old terms sees the "returning user" variant of the modal |
@@ -244,7 +244,7 @@ Run on the Free-plan treasury with credits at/near zero. Verify UI state and ser
 | SET-04 | F | Developer tab hidden for guests | Guests cannot enable custom requests |
 | SET-05 | F | Earn page | External links (Rhea, Intear DEX, NEAR Staking) open correct targets in new tabs |
 | SET-06 | F | Vesting page (`/vesting`, direct URL) | Multi-step lockup proposal wizard completes; schedule visible in asset modal after execution |
-| SET-07 | F | Trezu Wallet popup (`/wallet`) **[auto]** | CI: `trezu-wallet.spec.ts` + `trezu-wallet-integration.spec.ts` |
+| SET-07 | F | Near Business Wallet popup (`/wallet`) **[auto]** | CI: `trezu-wallet.spec.ts` + `trezu-wallet-integration.spec.ts` |
 | SET-08 | F | Support center modal | Opens from sidebar; links functional |
 | SET-09 | F | Admin warning slots | An active warning (e.g. payments paused) shows the banner and disables the affected action; deleting the warning restores it |
 

@@ -1051,7 +1051,7 @@ pub async fn spawn_all(
     (queues, leadership_handle)
 }
 
-const BOARD_AUTH_REALM: &str = "Trezu Jobs Board";
+const BOARD_AUTH_REALM: &str = "Near Business Jobs Board";
 
 /// HTTP Basic Auth gate for the board, reusing the same admin credentials
 /// (`ADMIN_USERS`) and check as the warnings admin pages

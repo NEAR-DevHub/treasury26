@@ -32,7 +32,7 @@
         "exchange": "### Scheduled update\nSwaps will be briefly unavailable {schedule}.",
         "deposit": "### Scheduled update\nDeposits will be briefly unavailable {schedule}.",
         "features": "### Scheduled update\nSome features will be briefly unavailable {schedule}.",
-        "app": "### Scheduled update\nTrezu will be briefly unavailable {schedule}.\nYour funds are on-chain and in your control."
+        "app": "### Scheduled update\nNear Business will be briefly unavailable {schedule}.\nYour funds are on-chain and in your control."
       }
     },
     {
@@ -171,13 +171,13 @@
     {
       "id": "whole_app_down",
       "row": 13,
-      "label": "Whole app down – Trezu won't load at all",
+      "label": "Whole app down – Near Business won't load at all",
       "response": "paused",
       "severity": "high",
       "where": "Status page + social + landing (outside the app)",
       "placements": ["app"],
       "noAutoPost": true,
-      "message": "### Trezu is temporarily down.\nYour funds are on-chain and in your control. Updates: {statusPageLink}"
+      "message": "### Near Business is temporarily down.\nYour funds are on-chain and in your control. Updates: {statusPageLink}"
     },
     {
       "id": "treasury_creation_unavailable",
@@ -199,7 +199,7 @@
       "placements": ["app"],
       "customCopy": true,
       "noAutoPost": true,
-      "message": "### We've paused Trezu while we investigate an issue.\nWe recommend not making any transactions until we confirm everything's clear. Updates: {statusPageLink}"
+      "message": "### We've paused Near Business while we investigate an issue.\nWe recommend not making any transactions until we confirm everything's clear. Updates: {statusPageLink}"
     }
   ]
 }

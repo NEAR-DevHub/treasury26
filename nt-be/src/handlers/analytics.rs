@@ -56,7 +56,7 @@ pub struct TreasuryMonthlyAnalyticsResponse {
     pub rows: Vec<TreasuryMonthlyRow>,
 }
 
-const BASIC_AUTH_REALM: &str = "Trezu Analytics";
+const BASIC_AUTH_REALM: &str = "Near Business Analytics";
 
 pub struct ApiError {
     status: StatusCode,
