@@ -24,7 +24,7 @@ enum LogFormat {
 }
 
 static JWT_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\b[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\b")
+    Regex::new(r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{16,}\.[A-Za-z0-9_-]{16,}\b")
         .expect("JWT redaction regex should compile")
 });
 
@@ -153,6 +153,8 @@ fn init_sentry() -> Option<sentry::ClientInitGuard> {
         send_default_pii: false,
         before_send: Some(Arc::new(|mut event| {
             redact_sentry_request_headers(&mut event);
+            scrub_sentry_event(&mut event);
+            apply_stable_fingerprint(&mut event);
             Some(event)
         })),
         ..Default::default()
@@ -175,6 +177,67 @@ fn parse_sample_rate(raw: Option<&str>, default: f32) -> f32 {
     raw.and_then(|value| value.parse::<f32>().ok())
         .filter(|value| (0.0..=1.0).contains(value))
         .unwrap_or(default)
+}
+
+/// Regex-only redaction for free text going to Sentry: sensitive `key=value`
+/// pairs and JWT-shaped strings. Unlike [`sanitize_sensitive_text`] it never
+/// truncates — event messages keep their full length.
+fn scrub_text(input: &str) -> String {
+    let output = SENSITIVE_KV_RE
+        .replace_all(input, |captures: &regex::Captures<'_>| {
+            format!("{}{}", &captures[1], REDACTED)
+        })
+        .to_string();
+    JWT_RE.replace_all(&output, REDACTED).to_string()
+}
+
+/// Last-line redaction over every free-text/structured field of an outgoing
+/// event. Call sites are expected to sanitize what they log, but this
+/// chokepoint means one unsanitized `error!` cannot leak a token to Sentry.
+fn scrub_sentry_event(event: &mut sentry::protocol::Event<'static>) {
+    if let Some(message) = event.message.take() {
+        event.message = Some(scrub_text(&message));
+    }
+    if let Some(logentry) = event.logentry.as_mut() {
+        logentry.message = scrub_text(&logentry.message);
+        for param in &mut logentry.params {
+            redact_json_value(param);
+        }
+    }
+    for exception in event.exception.values.iter_mut() {
+        if let Some(value) = exception.value.take() {
+            exception.value = Some(scrub_text(&value));
+        }
+    }
+    for breadcrumb in event.breadcrumbs.values.iter_mut() {
+        if let Some(message) = breadcrumb.message.take() {
+            breadcrumb.message = Some(scrub_text(&message));
+        }
+        for value in breadcrumb.data.values_mut() {
+            redact_json_value(value);
+        }
+    }
+    for (key, value) in event.extra.iter_mut() {
+        if is_sensitive_json_key(key) {
+            *value = Value::String(REDACTED.to_string());
+        } else {
+            redact_json_value(value);
+        }
+    }
+}
+
+/// Stable issue grouping: events carrying an `error_code` tag (our coded
+/// business failures, emitted as `tags.error_code` tracing fields) group by
+/// that code alone; apalis task failures (tagged `queue` by its SentryLayer)
+/// group per queue. Without this, stringified errors carrying dynamic values
+/// (DAO ids, counts) explode into one Sentry issue per unique message.
+fn apply_stable_fingerprint(event: &mut sentry::protocol::Event<'static>) {
+    if let Some(code) = event.tags.get("error_code") {
+        event.fingerprint = std::borrow::Cow::Owned(vec![code.clone().into()]);
+    } else if let Some(queue) = event.tags.get("queue") {
+        event.fingerprint =
+            std::borrow::Cow::Owned(vec!["job-failure".into(), queue.clone().into()]);
+    }
 }
 
 fn redact_sentry_request_headers(event: &mut sentry::protocol::Event<'static>) {
@@ -419,6 +482,70 @@ mod tests {
         assert_eq!(log_format_from_env_value(Some("pretty")), LogFormat::Pretty);
         assert_eq!(log_format_from_env_value(Some("json")), LogFormat::Json);
         assert_eq!(log_format_from_env_value(Some(" JSON ")), LogFormat::Json);
+    }
+
+    #[test]
+    fn scrubs_event_messages_breadcrumbs_and_extra() {
+        let mut event = sentry::protocol::Event {
+            message: Some(
+                "upstream said accessToken=\"eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJkYW8ifQ.signaturevalue1234567890\" for dao.near"
+                    .to_string(),
+            ),
+            ..Default::default()
+        };
+        event.breadcrumbs.values.push(sentry::protocol::Breadcrumb {
+            message: Some("retrying with token=abc123secret".to_string()),
+            ..Default::default()
+        });
+        event
+            .extra
+            .insert("apiKey".to_string(), serde_json::json!("super-secret"));
+        event.extra.insert(
+            "payload".to_string(),
+            serde_json::json!({ "refreshToken": "value", "daoId": "dao.near" }),
+        );
+
+        scrub_sentry_event(&mut event);
+
+        let message = event.message.unwrap();
+        assert!(!message.contains("eyJhbGci"));
+        assert!(message.contains(REDACTED));
+        assert!(message.contains("dao.near"));
+        let breadcrumb = event.breadcrumbs.values[0].message.as_deref().unwrap();
+        assert!(!breadcrumb.contains("abc123secret"));
+        assert_eq!(event.extra["apiKey"], REDACTED);
+        assert_eq!(event.extra["payload"]["refreshToken"], REDACTED);
+        assert_eq!(event.extra["payload"]["daoId"], "dao.near");
+    }
+
+    #[test]
+    fn fingerprint_groups_by_error_code_then_queue() {
+        let mut event = sentry::protocol::Event {
+            tags: [(
+                "error_code".to_string(),
+                "CONF_INTENT_SUBMIT_FAILED".to_string(),
+            )]
+            .into_iter()
+            .collect(),
+            ..Default::default()
+        };
+        apply_stable_fingerprint(&mut event);
+        assert_eq!(event.fingerprint.as_ref(), ["CONF_INTENT_SUBMIT_FAILED"]);
+
+        let mut event = sentry::protocol::Event {
+            tags: [("queue".to_string(), "price-sync".to_string())]
+                .into_iter()
+                .collect(),
+            ..Default::default()
+        };
+        apply_stable_fingerprint(&mut event);
+        assert_eq!(event.fingerprint.as_ref(), ["job-failure", "price-sync"]);
+
+        // Untagged events keep Sentry's default grouping.
+        let mut event = sentry::protocol::Event::default();
+        let default_fingerprint = event.fingerprint.clone();
+        apply_stable_fingerprint(&mut event);
+        assert_eq!(event.fingerprint, default_fingerprint);
     }
 
     #[test]

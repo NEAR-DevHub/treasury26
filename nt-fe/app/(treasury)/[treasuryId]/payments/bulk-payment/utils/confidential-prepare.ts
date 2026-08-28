@@ -16,8 +16,8 @@ import type {
     BulkPaymentPrepareResponse,
 } from "@/lib/api";
 import Big from "@/lib/big";
-import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import { isEthImplicitNearAddress } from "@/lib/near-validation";
+import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 
 /** Same as public quote: bare account; eth-implicit 0x… lowercased for 1Click. */
 function normalizePrepareRecipient(recipient: string): string {

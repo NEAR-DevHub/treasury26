@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import { useTranslations } from "next-intl";
 import {
     createContext,
@@ -11,6 +10,7 @@ import {
     useMemo,
 } from "react";
 import { useFormatDate } from "@/components/formatted-date";
+import { networksMatchForWarningScope } from "@/components/token-display";
 import {
     getProposalRequiredFunds,
     getProposalUIKind,
@@ -20,8 +20,8 @@ import {
     type BridgeScope,
     resolveBridgeScope,
 } from "@/lib/bridge-asset-resolver";
+import { http as axios } from "@/lib/http";
 import type { Proposal } from "@/lib/proposals-api";
-import { networksMatchForWarningScope } from "@/components/token-display";
 import {
     actionKeyForSlot,
     fillStoredWarningMessage,

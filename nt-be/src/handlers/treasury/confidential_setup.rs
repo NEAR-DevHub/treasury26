@@ -897,10 +897,10 @@ async fn authenticate_with_1click(
             )
             .await
             .map_err(|e| {
-                tracing::error!(
-                    "Failed to persist confidential JWT for DAO {}: {}",
-                    treasury_id,
-                    e
+                crate::error_event!(
+                    crate::error_event::ErrorCode::ConfJwtPersistFailed,
+                    treasury_id = %treasury_id,
+                    error = %e
                 );
                 // Stale-generation fence rejection during a key rotation
                 // rollout is transient — retryable on an up-to-date pod.

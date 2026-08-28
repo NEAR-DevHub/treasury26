@@ -653,7 +653,10 @@ async fn send_health_recovery_telegram(state: &Arc<AppState>, service: &str, che
     }
 }
 
-pub async fn run_monitor_cycle(state: &Arc<AppState>) {
+/// Per-service check failures are the feature (they open incidents), so they
+/// never fail the cycle; only infrastructure failures (the fallback cleanup)
+/// propagate as a task error so the run shows Failed on the board.
+pub async fn run_monitor_cycle(state: &Arc<AppState>) -> Result<(), String> {
     futures::future::join_all(SUPPORTED_SERVICES.iter().map(|&service| {
         let state = Arc::clone(state);
         async move {
@@ -677,9 +680,8 @@ pub async fn run_monitor_cycle(state: &Arc<AppState>) {
                 );
                 send_recovery_telegram(state, &recovery).await;
             }
+            Ok(())
         }
-        Err(e) => {
-            tracing::error!("[status-monitor] Failed stale auto-fallback cleanup: {e}");
-        }
+        Err(e) => Err(format!("stale auto-fallback cleanup failed: {e}")),
     }
 }

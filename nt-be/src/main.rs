@@ -55,7 +55,18 @@ async fn async_main() {
         .env_vars
         .cors_allowed_origins
         .iter()
-        .filter_map(|s| s.parse().ok())
+        .filter_map(|s| match s.parse() {
+            Ok(origin) => Some(origin),
+            Err(e) => {
+                // A dropped origin silently blocks the whole frontend via CORS.
+                nt_be::error_event!(
+                    nt_be::error_event::ErrorCode::ConfigInvalidCorsOrigin,
+                    origin = s,
+                    error = %e
+                );
+                None
+            }
+        })
         .collect();
 
     let cors = CorsLayer::new()
@@ -74,6 +85,9 @@ async fn async_main() {
             header::ACCEPT,
             header::ORIGIN,
             header::COOKIE,
+            // Sentry's distributed-trace headers from the frontend SDK.
+            header::HeaderName::from_static("sentry-trace"),
+            header::HeaderName::from_static("baggage"),
         ])
         .allow_credentials(true);
 
