@@ -666,7 +666,7 @@
             "request": "Yêu cầu",
             "transaction": "Giao dịch",
             "requester": "Người yêu cầu",
-            "voting": "Bỏ phiếu",
+            "voting": "Phê duyệt",
             "votingTooltip": "Số đầu tiên cho biết số phê duyệt đã nhận. Số thứ hai cho biết số phê duyệt cần để thực thi.",
             "status": "Trạng thái",
             "notPending": "Đề xuất không ở trạng thái chờ.",

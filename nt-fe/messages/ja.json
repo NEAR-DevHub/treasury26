@@ -666,7 +666,7 @@
             "request": "リクエスト",
             "transaction": "トランザクション",
             "requester": "依頼者",
-            "voting": "投票",
+            "voting": "承認",
             "votingTooltip": "最初の数字は受け取った承認数を示し、2つ目の数字は実行に必要な承認数を示します。",
             "status": "ステータス",
             "notPending": "提案は保留中ではありません。",

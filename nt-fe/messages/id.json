@@ -666,7 +666,7 @@
             "request": "Permintaan",
             "transaction": "Transaksi",
             "requester": "Pemohon",
-            "voting": "Pemungutan Suara",
+            "voting": "Persetujuan",
             "votingTooltip": "Angka pertama menunjukkan persetujuan yang diterima. Angka kedua menunjukkan persetujuan yang diperlukan untuk mengeksekusi.",
             "status": "Status",
             "notPending": "Usulan tidak tertunda.",

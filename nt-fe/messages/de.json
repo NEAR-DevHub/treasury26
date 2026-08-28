@@ -663,10 +663,10 @@
         "table": {
             "selectAll": "Alle auswählen",
             "selectRow": "Zeile auswählen",
-            "request": "Anfrage",
+            "request": "Anfragen",
             "transaction": "Transaktion",
             "requester": "Antragsteller",
-            "voting": "Abstimmung",
+            "voting": "Genehmigungen",
             "votingTooltip": "Die erste Zahl zeigt erhaltene Genehmigungen. Die zweite Zahl zeigt zur Ausführung erforderliche Genehmigungen.",
             "status": "Status",
             "notPending": "Vorschlag ist nicht ausstehend.",

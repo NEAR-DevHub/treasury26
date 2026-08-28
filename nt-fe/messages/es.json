@@ -663,10 +663,10 @@
         "table": {
             "selectAll": "Seleccionar todo",
             "selectRow": "Seleccionar fila",
-            "request": "Solicitud",
+            "request": "Solicitudes",
             "transaction": "Transacción",
             "requester": "Solicitante",
-            "voting": "Votación",
+            "voting": "Aprobaciones",
             "votingTooltip": "El primer número muestra las aprobaciones recibidas. El segundo muestra las aprobaciones requeridas para ejecutar.",
             "status": "Estado",
             "notPending": "La propuesta no está pendiente.",

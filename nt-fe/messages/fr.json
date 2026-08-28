@@ -663,10 +663,10 @@
         "table": {
             "selectAll": "Tout sélectionner",
             "selectRow": "Sélectionner la ligne",
-            "request": "Demande",
+            "request": "Demandes",
             "transaction": "Transaction",
             "requester": "Demandeur",
-            "voting": "Vote",
+            "voting": "Approbations",
             "votingTooltip": "Le premier nombre indique les approbations reçues. Le second indique les approbations requises pour exécuter.",
             "status": "Statut",
             "notPending": "La proposition n'est pas en attente.",

@@ -663,10 +663,10 @@
         "table": {
             "selectAll": "בחר הכל",
             "selectRow": "בחר שורה",
-            "request": "בקשה",
+            "request": "בקשות",
             "transaction": "עסקה",
             "requester": "מבקש",
-            "voting": "הצבעה",
+            "voting": "אישורים",
             "votingTooltip": "המספר הראשון מציג אישורים שהתקבלו. המספר השני מציג אישורים הנדרשים לביצוע.",
             "status": "סטטוס",
             "notPending": "ההצעה אינה ממתינה.",
