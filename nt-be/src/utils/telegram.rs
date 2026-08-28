@@ -6,12 +6,14 @@ use teloxide::{
 };
 use url::Url;
 
-/// A failed send on an ops/alert channel means the alerting path itself is
-/// broken — captured as a coded Sentry event so it pages via the connector.
+/// A failed send on an ops/alert channel means the legacy direct-Telegram path
+/// is degraded — captured as a Sentry-only (p2) coded event. The incident that
+/// triggered the send already pages through its own coded event via the Sentry
+/// alert rules, so this must not page the same incident a second time.
 fn report_ops_send_failure(method: &str, error: &teloxide::RequestError) {
     tracing::error!(
         tags.error_code = "ALERT_TELEGRAM_SEND_FAILED",
-        tags.alert_priority = "p1",
+        tags.alert_priority = "p2",
         method,
         error = %error,
         "ops Telegram send failed"

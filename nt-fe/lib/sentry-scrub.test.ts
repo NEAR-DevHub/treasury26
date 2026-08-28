@@ -19,6 +19,15 @@ describe("scrubSentryEvent", () => {
         );
     });
 
+    it("leaves non-JWT dotted strings alone", () => {
+        const event = scrubSentryEvent({
+            message:
+                "failed to resolve bulk-payment-factory.testnet-sandbox.subaccount-name.registrar-contract",
+        } as Event);
+
+        expect(event.message).not.toContain("[REDACTED]");
+    });
+
     it("redacts sensitive keys in extra and breadcrumb data, keeps the rest", () => {
         const event = scrubSentryEvent({
             breadcrumbs: [

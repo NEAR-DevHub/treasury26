@@ -726,10 +726,12 @@ impl ConfidentialCredentialStore {
                     // Still serve the newer pair.
                     Err(e) => {
                         tracing::error!(
+                            tags.error_code = "CONF_ENVELOPE_HEAL_FAILED",
+                            tags.alert_priority = "p2",
                             account_id,
                             scope = scope.as_str(),
-                            "failed to heal envelope from plaintext: {}",
-                            e
+                            error = %e,
+                            "failed to heal envelope from plaintext"
                         );
                     }
                 }
@@ -1043,10 +1045,12 @@ impl ConfidentialCredentialStore {
                 if let Err(e) = row_result {
                     report.failed += 1;
                     tracing::error!(
+                        tags.error_code = "CONF_CREDENTIAL_RECONCILE_FAILED",
+                        tags.alert_priority = "p2",
                         account_id,
                         scope = scope.as_str(),
-                        "credential reconcile failed for row: {}",
-                        e
+                        error = %e,
+                        "credential reconcile failed for row"
                     );
                 }
             }

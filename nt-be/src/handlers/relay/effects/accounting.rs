@@ -139,7 +139,13 @@ pub fn spawn_refund_gas_credit(
 
         match result {
             Ok(_) => tracing::info!("Refunded gas credit for treasury {}", treasury_id),
-            Err(e) => tracing::error!("Failed to refund gas credit for {}: {}", treasury_id, e),
+            Err(e) => tracing::error!(
+                tags.error_code = "RELAY_CREDIT_REFUND_FAILED",
+                tags.alert_priority = "p2",
+                treasury_id = %treasury_id,
+                error = %e,
+                "failed to refund gas credit"
+            ),
         }
     });
 }

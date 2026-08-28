@@ -515,11 +515,13 @@ pub async fn try_auto_submit_intent(
                     resp_body.get("refreshToken").and_then(|v| v.as_str()),
                 ) else {
                     tracing::error!(
-                        "1Click {} response missing tokens for {} (hash={}): {:?}",
+                        tags.error_code = "CONF_AUTH_TOKENS_MISSING",
+                        tags.alert_priority = "p1",
                         intent_type,
                         treasury_id,
                         payload_hash,
-                        sanitized_resp_body
+                        response = ?sanitized_resp_body,
+                        "1Click response missing tokens; intent marked failed"
                     );
                     let _ = sqlx::query!(
                         "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
@@ -576,10 +578,12 @@ pub async fn try_auto_submit_intent(
                 };
                 if let Err(e) = persisted {
                     tracing::error!(
-                        "Failed to persist {} JWT for DAO {}: {}",
+                        tags.error_code = "CONF_JWT_PERSIST_FAILED",
+                        tags.alert_priority = "p2",
                         intent_type,
                         treasury_id,
-                        e
+                        error = %e,
+                        "failed to persist JWT credentials; intent marked failed"
                     );
                     let _ = sqlx::query!(
                         "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",

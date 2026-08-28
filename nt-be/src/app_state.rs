@@ -449,7 +449,12 @@ impl AppStateBuilder {
             None => match TokenKeyring::from_env() {
                 Ok(keyring) => keyring.map(Arc::new),
                 Err(e) => {
-                    tracing::error!("confidential keyring rejected: {}", e);
+                    tracing::error!(
+                        tags.error_code = "CONF_KEYRING_REJECTED",
+                        tags.alert_priority = "p0",
+                        error = %e,
+                        "confidential keyring rejected"
+                    );
                     return Err(e.into());
                 }
             },
@@ -642,7 +647,12 @@ impl AppState {
         if state.confidential_keyring.is_some() {
             let store = state.confidential_credentials();
             if let Err(e) = store.ensure_key_state().await {
-                tracing::error!("confidential keyring rejected by key-state fence: {}", e);
+                tracing::error!(
+                    tags.error_code = "CONF_KEYRING_REJECTED",
+                    tags.alert_priority = "p0",
+                    error = %e,
+                    "confidential keyring rejected by key-state fence"
+                );
                 let _ = state
                     .telegram_client
                     .send_ops_alert_html(&format!(
@@ -688,7 +698,12 @@ impl AppState {
                     }
                 }
                 Err(e) => {
-                    tracing::error!("confidential credential reconcile failed: {}", e);
+                    tracing::error!(
+                        tags.error_code = "CONF_CREDENTIAL_RECONCILE_FAILED",
+                        tags.alert_priority = "p2",
+                        error = %e,
+                        "confidential credential reconcile failed"
+                    );
                     let _ = state
                         .telegram_client
                         .send_ops_alert_html(&format!(

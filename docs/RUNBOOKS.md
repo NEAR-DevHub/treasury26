@@ -35,14 +35,15 @@ Environments: rules below apply to `environment:production` only. Staging events
 | `EXCHANGE_TERMINAL_FAILED` / `PAYMENT_TERMINAL_FAILED` | A 1Click exchange / cross-chain payment ended FAILED / REFUNDED / INCOMPLETE_DEPOSIT | Look up the proposal (`dao`/`proposal_id` in event context). REFUNDED: funds returned, inform user if they ask. INCOMPLETE_DEPOSIT: sent amount below quote — usually user error, but a pattern means a quoting bug. |
 | `VERIFICATION_GATE_FAILED` | DAO's ledger failed on-chain verification — its chart is unavailable/stale | Per-DAO. Check drift values in the event; known causes catalogued 2026-08 (system-refund phantom inflows, sponsor deposit under-booking, dust tolerance). Gate retries after 6 h cool-off or on ledger rebuild. |
 | `TREASURY_CREATE_GAVE_UP` | Creation sweeper exhausted retries; user's treasury half-created | `incomplete_treasury_creations` row has the last error. Fix cause, reset the row to `pending` to re-drive, or contact the user. |
-| `ALERT_TELEGRAM_SEND_FAILED` | The legacy direct-Telegram path is failing | Check bot token validity and chat ids. Sentry routing is unaffected (this event proves it). |
 | `CONFIG_INVALID_CORS_ORIGIN` | An allowed origin failed to parse at boot — that frontend origin is blocked | Fix `CORS_ALLOWED_ORIGINS` and redeploy. |
 | `FE_WALLET_SIGN_FAILED` | Wallet returned a non-rejection error during signing (e.g. the Meteor parse-error class) | Check wallet-type tag for a pattern; usually a wallet-side regression after a protocol change. |
 | `JOB_STALE` (p2, but systemic patterns matter) | One queue not progressing | Board (`/` behind admin auth) → queue → last error. One stale queue is p2; many at once escalates to `FLEET_STALLED`. |
 
 ### p2 (Sentry inbox, no page)
 
-`PROPOSAL_EXECUTION_FAILED`, `BULK_PAYOUT_FAILED`, `BULK_PAYOUT_STATE_WRITE_FAILED`, `DEPOSIT_ADDRESS_FAILED`, `RELAY_SPEND_RECORD_FAILED`, `VERIFICATION_HEAD_DRIFT`, `FE_API_FAILED`, `FE_QUERY_FAILED`, `FE_MUTATION_FAILED`, `FE_WALLET_AUTH_FAILED` — review during triage; frequency rules 3–4 above page on the two that can stall money.
+`PROPOSAL_EXECUTION_FAILED`, `BULK_PAYOUT_FAILED`, `BULK_PAYOUT_STATE_WRITE_FAILED`, `DEPOSIT_ADDRESS_FAILED`, `RELAY_SPEND_RECORD_FAILED`, `VERIFICATION_HEAD_DRIFT`, `ALERT_TELEGRAM_SEND_FAILED`, `FE_API_FAILED`, `FE_QUERY_FAILED`, `FE_MUTATION_FAILED`, `FE_WALLET_AUTH_FAILED` — review during triage; frequency rules 3–4 above page on the two that can stall money.
+
+`ALERT_TELEGRAM_SEND_FAILED` is deliberately Sentry-only: every legacy direct send accompanies an incident that already pages through its own coded event, so a failed send must not page the same incident twice. During triage, check bot token validity and chat ids — Sentry routing is unaffected (this event arriving proves it).
 
 ## Staging failure-injection drill
 
