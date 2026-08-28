@@ -1,13 +1,13 @@
-# Trezu — Test Strategy
+# Near Business — Test Strategy
 
 **Version:** 1.0 · **Date:** 2026-07-08 · **Owner:** QA
-**Scope:** Trezu platform — `nt-be` (Rust/Axum backend), `nt-fe` (Next.js frontend), `contracts/` (NEAR WASM), `nt-cli`, sandbox and CI.
+**Scope:** Near Business platform — `nt-be` (Rust/Axum backend), `nt-fe` (Next.js frontend), `contracts/` (NEAR WASM), `nt-cli`, sandbox and CI.
 
 ---
 
 ## 1. Product Context & Risk Profile
 
-Trezu is a treasury management platform for NEAR Sputnik DAO multisigs. Users authenticate with NEAR wallets, create and vote on on-chain proposals, execute single and bulk payments, swap tokens cross-chain via NEAR Intents, track historical balances, and export financial reports.
+Near Business is a treasury management platform for NEAR Sputnik DAO multisigs. Users authenticate with NEAR wallets, create and vote on on-chain proposals, execute single and bulk payments, swap tokens cross-chain via NEAR Intents, track historical balances, and export financial reports.
 
 **Why this product demands a risk-based strategy:** it moves real money on an immutable blockchain. A relayed transaction cannot be rolled back, the backend holds hot signing keys (`SIGNER_KEY`, `BULK_PAYMENT_SIGNER`), and financial reports (exports, balance history) are used for accounting and compliance. The cost of a defect is not "a bug ticket" — it is lost funds, a broken audit trail, or a compliance violation.
 
