@@ -634,6 +634,7 @@
             "noMembersAvailable": "利用可能なメンバーはいません",
             "editOnDesktop": "デスクトップで編集",
             "reset": "リセット",
+            "resetAll": "すべてリセット",
             "clear": "クリア",
             "addFilter": "フィルターを追加"
         },

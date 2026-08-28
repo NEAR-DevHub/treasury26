@@ -92,6 +92,8 @@ export function MobileFilterSheet({
         closeSheet();
     };
 
+    // Clearing reaches the desktop-only filters too — the button says "Reset
+    // all" and the heading counts them, so nothing disappears unannounced.
     const resetFilters = () => {
         setFilters(Object.fromEntries(setOptionIds.map((id) => [id, null])));
         closeSheet();
@@ -194,7 +196,7 @@ export function MobileFilterSheet({
                                         className="h-10 w-full rounded-xl font-bold text-general-secondary-foreground text-sm"
                                         onClick={resetFilters}
                                     >
-                                        {tF("reset")}
+                                        {tF("resetAll")}
                                     </Button>
                                 </div>
                             )}

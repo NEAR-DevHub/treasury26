@@ -634,6 +634,7 @@
             "noMembersAvailable": "Aucun membre disponible",
             "editOnDesktop": "Modifier sur ordinateur",
             "reset": "Réinitialiser",
+            "resetAll": "Tout réinitialiser",
             "clear": "Effacer",
             "addFilter": "Ajouter un filtre"
         },

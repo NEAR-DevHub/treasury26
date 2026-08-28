@@ -634,6 +634,7 @@
             "noMembersAvailable": "이용 가능한 멤버가 없습니다",
             "editOnDesktop": "데스크톱에서 편집",
             "reset": "재설정",
+            "resetAll": "모두 재설정",
             "clear": "지우기",
             "addFilter": "필터 추가"
         },
