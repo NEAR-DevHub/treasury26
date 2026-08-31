@@ -668,7 +668,7 @@
             "transaction": "İşlem",
             "requester": "Talep Eden",
             "voting": "Onaylar",
-            "votingTooltip": "İlk sayı alınan onayları gösterir. İkinci sayı yürütme için gereken onayları gösterir.",
+            "votingTooltip": "İlk sayı alınan toplam oyu (onaylar ve retler) gösterir. İkinci sayı yürütme için gereken onayları gösterir.",
             "status": "Durum",
             "notPending": "Öneri beklemede değil.",
             "noPermissionVote": "Bu talep için oy kullanma izniniz yok.",

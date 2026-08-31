@@ -668,7 +668,7 @@
             "transaction": "Transaction",
             "requester": "Requester",
             "voting": "Approvals",
-            "votingTooltip": "First number shows approvals received. Second number shows approvals required to execute.",
+            "votingTooltip": "First number shows total votes received (approvals and rejections). Second number shows approvals required to execute.",
             "status": "Status",
             "notPending": "Proposal is not pending.",
             "noPermissionVote": "You don't have permission to vote on this request.",
