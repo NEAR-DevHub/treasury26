@@ -27,7 +27,8 @@ import {
 import { NumberBadge } from "@/components/number-badge";
 import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
 import type { QuoteFees } from "../utils/confidential-prepare";
-import { cn, formatBalance, formatTokenDisplayAmount } from "@/lib/utils";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import { cn, formatTokenDisplayAmount } from "@/lib/utils";
 import { validateAccountsAndStorage } from "../utils";
 import { useBulkParsingLabels } from "../utils/use-parsing-labels";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
@@ -289,11 +290,10 @@ export function ReviewPaymentsStep({
     if (balance) {
         try {
             const balanceBig = Big(balance);
-            const balanceFormattedString = formatBalance(
-                balanceBig.toString(),
+            const balanceFormattedBig = decimalFromBaseUnits(
+                balanceBig,
                 selectedToken.decimals,
             );
-            const balanceFormattedBig = Big(balanceFormattedString);
 
             // When total already includes fees (header quote or typed+fee),
             // do not pass networkFee again — that double-counts.

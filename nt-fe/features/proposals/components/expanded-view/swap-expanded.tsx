@@ -72,15 +72,15 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
         data.amountOutUsd != null
             ? String(data.amountOutUsd)
             : quoteByDepositAddress?.amountOutUsd;
-    const sourceAmountUsdOverride =
-        sourceAmountUsdRaw && !Number.isNaN(Number(sourceAmountUsdRaw)) ? (
-            <FormattedAmount kind="fiat" value={sourceAmountUsdRaw} />
-        ) : null;
-    const destinationAmountUsdOverride =
+    const sourceAmountUsd =
+        sourceAmountUsdRaw && !Number.isNaN(Number(sourceAmountUsdRaw))
+            ? Number(sourceAmountUsdRaw)
+            : undefined;
+    const destinationAmountUsd =
         destinationAmountUsdRaw &&
-        !Number.isNaN(Number(destinationAmountUsdRaw)) ? (
-            <FormattedAmount kind="fiat" value={destinationAmountUsdRaw} />
-        ) : null;
+        !Number.isNaN(Number(destinationAmountUsdRaw))
+            ? Number(destinationAmountUsdRaw)
+            : undefined;
     const { data: tokenInData, isLoading: isTokenInLoading } =
         useToken(finalTokenInId);
 
@@ -105,10 +105,9 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
                 <Amount
                     amount={data.amountIn}
                     showUSDValue={data.amountInUsd !== null}
-                    usdValue={data.amountInUsd ?? undefined}
+                    usdValue={sourceAmountUsd}
                     showNetworkTooltip
                     tokenId={finalTokenInId}
-                    usdTextOverride={sourceAmountUsdOverride}
                 />
             ),
         },
@@ -118,10 +117,9 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
                 <Amount
                     amountWithDecimals={data.amountOut}
                     showUSDValue={data.amountOutUsd !== null}
-                    usdValue={data.amountOutUsd ?? undefined}
+                    usdValue={destinationAmountUsd}
                     showNetworkTooltip
                     tokenId={finalTokenOutId}
-                    usdTextOverride={destinationAmountUsdOverride}
                 />
             ),
         },
@@ -169,7 +167,6 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
                 amountWithDecimals={minimumReceived?.toString()}
                 showNetworkTooltip
                 tokenId={finalTokenOutId}
-                rounding="down"
             />
         ),
         info: t("minReceiveTooltip"),
@@ -300,7 +297,6 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
                 amountWithDecimals={data.amountOut}
                 showNetworkTooltip
                 tokenId={data.tokenOut}
-                rounding="down"
             />
         ),
         info: t("minReceiveTooltip"),

@@ -161,7 +161,9 @@ test("Signed in + no treasuries + creation disabled => waitlist is shown", async
         .getByRole("textbox", { name: "Treasury name" })
         .fill("testing-by-playwright");
 
-    const createButton = page.getByRole("button", { name: /create a treasury/i });
+    const createButton = page.getByRole("button", {
+        name: /create a treasury/i,
+    });
     await expect(createButton).toBeEnabled();
     await createButton.click();
 

@@ -19,7 +19,8 @@ import {
 } from "@/components/modal";
 import { TreasuryAsset } from "@/lib/api";
 import Big from "@/lib/big";
-import { formatBalance, formatSmartAmount, formatUserDate } from "@/lib/utils";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import { formatSmartAmount, formatUserDate } from "@/lib/utils";
 import { useTreasuryLockup } from "@/hooks/use-lockup";
 import {
     Collapsible,
@@ -190,11 +191,9 @@ export function LockupDetailsModal({
         const roundsDone = asset.ftLockupSchedule?.roundsCompleted ?? 0;
         const roundsTotal = asset.ftLockupSchedule?.roundsTotal ?? 0;
 
-        total = Big(formatBalance(totalRaw, asset.decimals, asset.decimals));
-        unlocked = Big(
-            formatBalance(unlockedRaw, asset.decimals, asset.decimals),
-        );
-        locked = Big(formatBalance(lockedRaw, asset.decimals, asset.decimals));
+        total = decimalFromBaseUnits(totalRaw, asset.decimals);
+        unlocked = decimalFromBaseUnits(unlockedRaw, asset.decimals);
+        locked = decimalFromBaseUnits(lockedRaw, asset.decimals);
         summaryTotal = total;
 
         progressPct = total.gt(0) ? unlocked.div(total).mul(100).toNumber() : 0;
@@ -214,28 +213,18 @@ export function LockupDetailsModal({
         const unlockedRaw = allocatedRaw.sub(lockedRaw);
         lockupStaked = asset.balance.lockup.staked;
         allocatedForProgress = allocatedRaw;
-        allocatedFromContract = Big(
-            formatBalance(
-                allocatedRawForBreakdown,
-                asset.decimals,
-                asset.decimals,
-            ),
+        allocatedFromContract = decimalFromBaseUnits(
+            allocatedRawForBreakdown,
+            asset.decimals,
         );
 
-        total = Big(
-            formatBalance(allocatedRaw, asset.decimals, asset.decimals),
+        total = decimalFromBaseUnits(allocatedRaw, asset.decimals);
+        summaryTotal = decimalFromBaseUnits(
+            asset.balance.lockup.total,
+            asset.decimals,
         );
-        summaryTotal = Big(
-            formatBalance(
-                asset.balance.lockup.total,
-                asset.decimals,
-                asset.decimals,
-            ),
-        );
-        locked = Big(formatBalance(lockedRaw, asset.decimals, asset.decimals));
-        unlocked = Big(
-            formatBalance(unlockedRaw, asset.decimals, asset.decimals),
-        );
+        locked = decimalFromBaseUnits(lockedRaw, asset.decimals);
+        unlocked = decimalFromBaseUnits(unlockedRaw, asset.decimals);
         progressPct = total.gt(0) ? unlocked.div(total).mul(100).toNumber() : 0;
         // Avoid showing 100% while a non-zero locked balance still exists.
         if (locked.gt(0)) {
@@ -243,8 +232,9 @@ export function LockupDetailsModal({
         } else {
             progressLabel = "100%";
         }
-        reservedStorage = Big(
-            formatBalance(asset.balance.lockup.storageLocked, asset.decimals),
+        reservedStorage = decimalFromBaseUnits(
+            asset.balance.lockup.storageLocked,
+            asset.decimals,
         );
     }
 
@@ -296,7 +286,7 @@ export function LockupDetailsModal({
     );
     const hasLockupStakingNotice = isNearLockup && lockupStaked.gt(0);
     const lockupStakedDisplay = formatSmartAmount(
-        Big(formatBalance(lockupStaked, asset.decimals)),
+        decimalFromBaseUnits(lockupStaked, asset.decimals),
     );
     const isFullLockupStaked =
         allocatedForProgress.gt(0) && lockupStaked.gte(allocatedForProgress);

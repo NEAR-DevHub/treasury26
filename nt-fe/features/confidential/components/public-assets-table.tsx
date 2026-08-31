@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowRight, Coins } from "lucide-react";
+import { Coins02Icon } from "@hugeicons/core-free-icons";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
@@ -50,7 +51,7 @@ export function PublicAssetsTable({
         if (tokens.length === 0) {
             return (
                 <EmptyState
-                    icon={Coins}
+                    icon={Coins02Icon}
                     title={t("emptyTitle")}
                     description={t("emptyDescription")}
                 />

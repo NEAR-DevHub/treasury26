@@ -55,12 +55,12 @@ function StepStatusIcon({ status }: { status: CreationStep["status"] }) {
                 <div
                     className={cn(
                         stepBadgeClassName,
-                        "border-green-100 bg-general-success-background-faded",
+                        "border-general-success-border bg-general-success-background-faded",
                     )}
                 >
                     <Icon
                         icon={CheckIcon}
-                        className="size-2.5 text-green-700"
+                        className="size-2.5 text-general-success-foreground"
                     />
                 </div>
             );

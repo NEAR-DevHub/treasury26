@@ -42,6 +42,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useBalanceChart } from "@/hooks/use-treasury-queries";
 import { trackEvent } from "@/lib/analytics";
 import type { ChartInterval, TreasuryAsset } from "@/lib/api";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import { availableBalance, totalBalance } from "@/lib/balance";
 import { getBalanceHistoryTokenIds } from "@/lib/balance-history-token-ids";
 import Big from "@/lib/big";
@@ -50,7 +51,7 @@ import {
     getDashboardBreakdownItems,
     getDashboardBucketVisibility,
 } from "@/lib/dashboard-balance-view";
-import { cn, formatBalance, formatCurrencyWithSubCent } from "@/lib/utils";
+import { cn, formatCurrencyWithSubCent } from "@/lib/utils";
 import BalanceChart from "./chart";
 import { FundAccountEmpty } from "./fund-account-empty";
 
@@ -190,11 +191,9 @@ export default function BalanceWithGraph({
                 existing.tokens.push(token);
                 existing.totalBalanceUSD += token.balanceUSD;
                 existing.totalBalance = existing.totalBalance.add(
-                    Big(
-                        formatBalance(
-                            totalBalance(token.balance),
-                            token.decimals,
-                        ),
+                    decimalFromBaseUnits(
+                        totalBalance(token.balance),
+                        token.decimals,
                     ),
                 );
                 // Add all token IDs, deduplicating
@@ -208,11 +207,9 @@ export default function BalanceWithGraph({
                     symbol: token.symbol,
                     tokens: [token],
                     totalBalanceUSD: token.balanceUSD,
-                    totalBalance: Big(
-                        formatBalance(
-                            totalBalance(token.balance),
-                            token.decimals,
-                        ),
+                    totalBalance: decimalFromBaseUnits(
+                        totalBalance(token.balance),
+                        token.decimals,
                     ),
                     icon: token.icon,
                     tokenIds: tokenIdsForHistory,
@@ -456,17 +453,18 @@ export default function BalanceWithGraph({
                 const nowUSD = hasHistoricalPrices
                     ? nonLockupTokens.reduce((sum, t) => sum + t.balanceUSD, 0)
                     : undefined;
-                const nowBalance = nonLockupTokens.reduce(
-                    (sum, t) =>
-                        sum +
-                        Big(
-                            formatBalance(
-                                availableBalance(t.balance),
-                                t.decimals,
+                const nowBalance = nonLockupTokens
+                    .reduce(
+                        (sum, t) =>
+                            sum.add(
+                                decimalFromBaseUnits(
+                                    availableBalance(t.balance),
+                                    t.decimals,
+                                ),
                             ),
-                        ).toNumber(),
-                    0,
-                );
+                        Big(0),
+                    )
+                    .toNumber();
                 data.push({
                     name: t("chartNow"),
                     fullDate: undefined,

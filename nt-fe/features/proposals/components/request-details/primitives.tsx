@@ -116,7 +116,7 @@ export function RequestParty({
         <TooltipUser
             accountId={accountId}
             chainName={chainName}
-            useAddressBook
+            preferAddressBook
             triggerProps={{ asChild: false }}
         >
             <div className={cn("flex items-center gap-1.5", className)}>
