@@ -892,7 +892,7 @@ export function extractConfidentialRequestData(
                 notes: meta.notes,
             },
         };
-        title = "Confidential Bulk Payment";
+        title = "Bulk send";
 
         return {
             correlationId,
@@ -932,7 +932,7 @@ export function extractConfidentialRequestData(
                     quoteDeadline: quoteRequest.deadline,
                 } as SwapRequestData,
             };
-            title = "Confidential Exchange";
+            title = "Swap";
         } else {
             const destinationAsset = quoteRequest.destinationAsset;
             const recipient = quoteRequest.recipient ?? "";
@@ -961,7 +961,7 @@ export function extractConfidentialRequestData(
                     destinationAssetId,
                 } as PaymentRequestData,
             };
-            title = "Confidential Payment";
+            title = "Send";
         }
     }
 
