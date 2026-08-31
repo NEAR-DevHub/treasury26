@@ -70,7 +70,8 @@
         "receiveNetwork": "수신 네트워크",
         "receiveAmountUsd": "수신 금액 (USD)",
         "paymentConfirmation": "결제 확인",
-        "exchangeConfirmation": "환전 확인"
+        "exchangeConfirmation": "환전 확인",
+        "pdfReceipt": "PDF 영수증"
     },
     "languageSwitcher": {
         "label": "언어",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, other {#일}}",
             "factoryId": "팩토리 ID",
             "autoUpdate": "자동 업데이트",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "세부 정보",
+            "approvalWorkflow": "승인 절차",
+            "approvals": "승인",
+            "note": "메모"
         },
         "insufficientBalance": {
             "noAsset": "필요한 토큰이 트레저리에 없으므로 이 요청을 승인할 수 없습니다.",

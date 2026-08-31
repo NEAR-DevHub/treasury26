@@ -70,7 +70,8 @@
         "receiveNetwork": "Мережа отримання",
         "receiveAmountUsd": "Отримана сума (USD)",
         "paymentConfirmation": "Підтвердження платежу",
-        "exchangeConfirmation": "Підтвердження обміну"
+        "exchangeConfirmation": "Підтвердження обміну",
+        "pdfReceipt": "PDF-квитанція"
     },
     "languageSwitcher": {
         "label": "Мова",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, one {# день} few {# дні} many {# днів} other {# дня}}",
             "factoryId": "ID фабрики",
             "autoUpdate": "Автооновлення",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "Деталі",
+            "approvalWorkflow": "Процес погодження",
+            "approvals": "Погодження",
+            "note": "Примітка"
         },
         "insufficientBalance": {
             "noAsset": "Цей запит не можна схвалити, бо потрібного токена немає у скарбниці.",

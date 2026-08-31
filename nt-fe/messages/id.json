@@ -70,7 +70,8 @@
         "receiveNetwork": "Jaringan Penerima",
         "receiveAmountUsd": "Jumlah Diterima (USD)",
         "paymentConfirmation": "Konfirmasi Pembayaran",
-        "exchangeConfirmation": "Konfirmasi Penukaran"
+        "exchangeConfirmation": "Konfirmasi Penukaran",
+        "pdfReceipt": "Tanda terima PDF"
     },
     "languageSwitcher": {
         "label": "Bahasa",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, other {# hari}}",
             "factoryId": "ID Factory",
             "autoUpdate": "Pembaruan Otomatis",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "Detail",
+            "approvalWorkflow": "Alur persetujuan",
+            "approvals": "Persetujuan",
+            "note": "Catatan"
         },
         "insufficientBalance": {
             "noAsset": "Permintaan ini tidak dapat disetujui karena token yang diperlukan tidak tersedia di treasury.",

@@ -70,7 +70,8 @@
         "receiveNetwork": "Receive Network",
         "receiveAmountUsd": "Receive Amount (USD)",
         "paymentConfirmation": "Payment Confirmation",
-        "exchangeConfirmation": "Exchange Confirmation"
+        "exchangeConfirmation": "Exchange Confirmation",
+        "pdfReceipt": "PDF receipt"
     },
     "languageSwitcher": {
         "label": "Language",
@@ -709,10 +710,10 @@
             "failedPlain": "The request failed to complete. Check the transaction details here."
         },
         "voteModal": {
-            "confirmTitle": "Confirm Your Vote",
+            "confirmTitle": "Confirm your vote",
             "removeTitle": "Remove Request",
-            "bulkBody": "You are about to {action} multiple requests. Once submitted, this decision cannot be changed.",
-            "singleBody": "You are about to {action} this request. Once confirmed, this action cannot be undone.",
+            "bulkBody": "You are about to vote to {action} multiple requests. Once submitted, this decision cannot be changed.",
+            "singleBody": "You are about to vote to {action} this request. Once submitted, this decision cannot be changed.",
             "actionApprove": "approve",
             "actionReject": "reject",
             "actionRemove": "remove",
@@ -724,7 +725,7 @@
         "expanded": {
             "recipient": "Recipient",
             "amount": "Amount",
-            "networkFee": "Network Fee",
+            "networkFee": "Network fee",
             "notes": "Notes",
             "sent": "Sent",
             "received": "Received",
@@ -804,7 +805,7 @@
             "quoteDeadlineTooltip": "Time when the deposit address becomes inactive and funds may be lost.",
             "status": "Status",
             "transactionLink": "Transaction Link",
-            "viewTransaction": "View Transaction",
+            "viewTransaction": "View transaction",
             "recipientNumber": "Recipient {number}",
             "oopsTitle": "Oops! Something went wrong",
             "oopsDescription": "We couldn't find any data to show here.",
@@ -853,11 +854,11 @@
             "today": "Today",
             "uponApproval": "Upon approval",
             "yesContinue": "Yes, Continue",
-            "transactionCreated": "Transaction Created",
+            "transactionCreated": "Transaction created",
             "voting": "Voting",
             "approvalsReceived": "{received}/{required} approvals received",
-            "expiresAt": "Expires At",
-            "expiredAt": "Expired At",
+            "expiresAt": "Expires at",
+            "expiredAt": "Expired at",
             "exchangingTokens": "Exchanging Tokens",
             "exchangingTokensBody": "This request has been approved by the team. Token exchange is now in progress and may take some time.",
             "requestFailed": "Request Failed",
@@ -866,7 +867,7 @@
             "votingPeriod24hBody": "This exchange request has a 24-hour voting duration. Approve this request within this time, or the request will expire.",
             "reject": "Reject",
             "approve": "Approve",
-            "destinationNetwork": "Destination Network",
+            "destinationNetwork": "Destination network",
             "processingPayment": "Processing Payment",
             "processingPaymentBody": "This payment has been approved by the team and is now being processed. It may take some time to complete.",
             "addMember": "Add Member",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, one {# day} other {# days}}",
             "factoryId": "Factory ID",
             "autoUpdate": "Auto Update",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "Details",
+            "approvalWorkflow": "Approval workflow",
+            "approvals": "Approvals",
+            "note": "Note"
         },
         "insufficientBalance": {
             "noAsset": "This request can't be approved because the required token is not available in the treasury.",

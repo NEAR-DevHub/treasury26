@@ -2,7 +2,6 @@
 
 import { Icon } from "@/components/icon";
 import {
-    ArrowDown01Icon,
     ArrowLeftRightIcon,
     ArrowRight01Icon,
     Cancel01Icon,
@@ -12,7 +11,7 @@ import {
     CheckIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Proposal } from "@/lib/proposals-api";
 import {
     Table,
@@ -24,7 +23,7 @@ import {
 } from "@/components/table";
 import { Button } from "@/components/button";
 import { TransactionCell } from "./transaction-cell";
-import { ExpandedView } from "./expanded-view";
+import { RequestDetailsSheet } from "./request-details/request-details-sheet";
 import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
@@ -54,9 +53,7 @@ import {
     flexRender,
     getCoreRowModel,
     useReactTable,
-    getExpandedRowModel,
     createColumnHelper,
-    ExpandedState,
     getPaginationRowModel,
 } from "@tanstack/react-table";
 import { VoteModal } from "./vote-modal";
@@ -195,11 +192,41 @@ export function ProposalsTable({
     const tCommon = useTranslations("common");
     const getProposalKindLabel = useProposalKindLabel();
     const [rowSelection, setRowSelection] = useState({});
-    const [expanded, setExpanded] = useState<ExpandedState>({});
+    // The request whose details sheet is open, held by id so the sheet keeps
+    // reading the freshest copy after a vote invalidates the list. Mobile has
+    // no room for the sheet and drills into the request page instead.
+    const [openProposalId, setOpenProposalId] = useState<number | null>(null);
     const { accountId } = useNear();
     const { treasuryId, isConfidential } = useTreasury();
     const { isMobile } = useResponsiveSidebar();
     const router = useRouter();
+
+    // A 448px sheet has nowhere to go on a phone, so mobile drills into the
+    // full request page instead of opening it.
+    const openRequest = useCallback(
+        (proposal: Proposal) => {
+            if (isMobile) {
+                router.push(`/${treasuryId}/requests/${proposal.id}`);
+            } else {
+                setOpenProposalId(proposal.id);
+            }
+        },
+        [isMobile, router, treasuryId],
+    );
+
+    const handleDeposit = useCallback(
+        (tokenSymbol?: string, tokenNetwork?: string) => {
+            router.push(
+                buildDepositDeepLink(
+                    treasuryId!,
+                    isConfidential
+                        ? null
+                        : { token: tokenSymbol, network: tokenNetwork },
+                ),
+            );
+        },
+        [router, treasuryId, isConfidential],
+    );
     // Global action.approve / action.reject pause all requests — disable bulk
     // CTAs instead of opening the vote modal only to show the warning.
     const { approve: approveSlot, reject: rejectSlot } = useVoteActionSlots();
@@ -387,28 +414,13 @@ export function ProposalsTable({
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                            if (isMobile) {
-                                router.push(
-                                    `/${treasuryId}/requests/${row.original.id}`,
-                                );
-                            } else {
-                                row.toggleExpanded();
-                            }
-                        }}
+                        onClick={() => openRequest(row.original)}
                         className="size-9 rounded-xl p-0"
                     >
-                        {!isMobile && row.getIsExpanded() ? (
-                            <Icon
-                                icon={ArrowDown01Icon}
-                                className="text-muted-foreground"
-                            />
-                        ) : (
-                            <Icon
-                                icon={ArrowRight01Icon}
-                                className="text-muted-foreground"
-                            />
-                        )}
+                        <Icon
+                            icon={ArrowRight01Icon}
+                            className="text-muted-foreground"
+                        />
                     </Button>
                 ),
             }),
@@ -417,8 +429,7 @@ export function ProposalsTable({
             policy,
             accountId,
             treasuryId,
-            isMobile,
-            router,
+            openRequest,
             searchQuery,
             getProposalKindLabel,
             tT,
@@ -430,7 +441,6 @@ export function ProposalsTable({
         columns,
         state: {
             rowSelection,
-            expanded,
             pagination: {
                 pageIndex,
                 pageSize,
@@ -438,9 +448,7 @@ export function ProposalsTable({
         },
         getPaginationRowModel: getPaginationRowModel(),
         onRowSelectionChange: setRowSelection,
-        onExpandedChange: setExpanded,
         getCoreRowModel: getCoreRowModel(),
-        getExpandedRowModel: getExpandedRowModel(),
         getRowId: (row) => row.id.toString(),
         manualPagination: true,
         enableRowSelection: (row) => {
@@ -628,125 +636,59 @@ export function ProposalsTable({
                                     const isFirstRow = rowIndex === 0;
                                     const isLastRow =
                                         rowIndex === tableRows.length - 1;
-                                    const isExpanded = row.getIsExpanded();
                                     const cells = row.getVisibleCells();
                                     return (
-                                        <Fragment key={row.id}>
-                                            <TableRow
-                                                data-state={
-                                                    row.getIsSelected() &&
-                                                    "selected"
+                                        <TableRow
+                                            key={row.id}
+                                            data-state={
+                                                row.getIsSelected() &&
+                                                "selected"
+                                            }
+                                            onClick={(e) => {
+                                                const target =
+                                                    e.target as HTMLElement;
+                                                if (
+                                                    target.closest("button") ||
+                                                    target.closest(
+                                                        '[role="checkbox"]',
+                                                    ) ||
+                                                    target.tagName === "INPUT"
+                                                ) {
+                                                    return;
                                                 }
-                                                onClick={(e) => {
-                                                    const target =
-                                                        e.target as HTMLElement;
-                                                    if (
-                                                        target.closest(
-                                                            "button",
-                                                        ) ||
-                                                        target.closest(
-                                                            '[role="checkbox"]',
-                                                        ) ||
-                                                        target.tagName ===
-                                                            "INPUT"
-                                                    ) {
-                                                        return;
-                                                    }
-                                                    if (isMobile) {
-                                                        router.push(
-                                                            `/${treasuryId}/requests/${row.original.id}`,
-                                                        );
-                                                    } else {
-                                                        row.toggleExpanded();
-                                                    }
-                                                }}
-                                                className="group cursor-pointer border-0 hover:bg-transparent"
-                                            >
-                                                {cells.map(
-                                                    (cell, columnIndex) => (
-                                                        <TableCell
-                                                            key={cell.id}
-                                                            className={cn(
-                                                                "h-[66px] group-data-[state=selected]:bg-general-tertiary",
-                                                                sheetCellClassName(
-                                                                    {
-                                                                        isFirstRow,
-                                                                        isLastRow:
-                                                                            isLastRow &&
-                                                                            !isExpanded,
-                                                                        isFirstColumn:
-                                                                            columnIndex ===
-                                                                            0,
-                                                                        isLastColumn:
-                                                                            columnIndex ===
-                                                                            cells.length -
-                                                                                1,
-                                                                    },
-                                                                ),
-                                                                COLUMN_CLASS[
-                                                                    cell.column
-                                                                        .id
-                                                                ],
-                                                            )}
-                                                        >
-                                                            {flexRender(
-                                                                cell.column
-                                                                    .columnDef
-                                                                    .cell,
-                                                                cell.getContext(),
-                                                            )}
-                                                        </TableCell>
-                                                    ),
-                                                )}
-                                            </TableRow>
-                                            {isExpanded && (
-                                                <TableRow className="border-0 hover:bg-transparent">
-                                                    <TableCell
-                                                        colSpan={cells.length}
-                                                        className={cn(
-                                                            "border-general-border border-r border-b border-l bg-general-tertiary p-4",
-                                                            isLastRow &&
-                                                                "rounded-b-xl",
-                                                        )}
-                                                    >
-                                                        <ExpandedView
-                                                            proposal={
-                                                                row.original
-                                                            }
-                                                            policy={policy}
-                                                            onVote={(vote) => {
-                                                                setVoteInfo({
-                                                                    vote,
-                                                                    proposals: [
-                                                                        row.original,
-                                                                    ],
-                                                                });
-                                                                setIsVoteModalOpen(
-                                                                    true,
-                                                                );
-                                                            }}
-                                                            onDeposit={(
-                                                                tokenSymbol,
-                                                                tokenNetwork,
-                                                            ) => {
-                                                                router.push(
-                                                                    buildDepositDeepLink(
-                                                                        treasuryId!,
-                                                                        isConfidential
-                                                                            ? null
-                                                                            : {
-                                                                                  token: tokenSymbol,
-                                                                                  network:
-                                                                                      tokenNetwork,
-                                                                              },
-                                                                    ),
-                                                                );
-                                                            }}
-                                                        />
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </Fragment>
+                                                openRequest(row.original);
+                                            }}
+                                            className="group cursor-pointer border-0 hover:bg-transparent"
+                                        >
+                                            {cells.map((cell, columnIndex) => (
+                                                <TableCell
+                                                    key={cell.id}
+                                                    className={cn(
+                                                        "h-[66px] group-data-[state=selected]:bg-general-tertiary",
+                                                        sheetCellClassName({
+                                                            isFirstRow,
+                                                            isLastRow,
+                                                            isFirstColumn:
+                                                                columnIndex ===
+                                                                0,
+                                                            isLastColumn:
+                                                                columnIndex ===
+                                                                cells.length -
+                                                                    1,
+                                                        }),
+                                                        COLUMN_CLASS[
+                                                            cell.column.id
+                                                        ],
+                                                    )}
+                                                >
+                                                    {flexRender(
+                                                        cell.column.columnDef
+                                                            .cell,
+                                                        cell.getContext(),
+                                                    )}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
                                     );
                                 })}
                             </TableBody>
@@ -763,6 +705,18 @@ export function ProposalsTable({
                     />
                 )}
             </div>
+            <RequestDetailsSheet
+                proposal={
+                    proposals.find((p) => p.id === openProposalId) ?? null
+                }
+                policy={policy}
+                onOpenChange={(open) => !open && setOpenProposalId(null)}
+                onVote={(proposal, vote) => {
+                    setVoteInfo({ vote, proposals: [proposal] });
+                    setIsVoteModalOpen(true);
+                }}
+                onDeposit={handleDeposit}
+            />
             <VoteModal
                 isOpen={isVoteModalOpen}
                 onClose={() => setIsVoteModalOpen(false)}

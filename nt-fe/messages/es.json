@@ -70,7 +70,8 @@
         "receiveNetwork": "Red de recepción",
         "receiveAmountUsd": "Monto recibido (USD)",
         "paymentConfirmation": "Confirmación de pago",
-        "exchangeConfirmation": "Confirmación de cambio"
+        "exchangeConfirmation": "Confirmación de cambio",
+        "pdfReceipt": "Recibo PDF"
     },
     "languageSwitcher": {
         "label": "Idioma",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, one {# día} other {# días}}",
             "factoryId": "ID de factory",
             "autoUpdate": "Actualización automática",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "Detalles",
+            "approvalWorkflow": "Flujo de aprobación",
+            "approvals": "Aprobaciones",
+            "note": "Nota"
         },
         "insufficientBalance": {
             "noAsset": "Esta solicitud no se puede aprobar porque el token requerido no está disponible en la tesorería.",

@@ -30,7 +30,7 @@ type UserSize = keyof typeof sizeClasses;
 type UserProfile = ReturnType<typeof useProfile>["data"];
 
 /** Explicit override first, then the profile, then the raw account id. */
-function resolveUserName({
+export function resolveUserName({
     accountId,
     name,
     profile,

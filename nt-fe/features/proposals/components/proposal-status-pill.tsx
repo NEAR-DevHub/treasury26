@@ -60,16 +60,22 @@ function statusKey(status: PillStatus): string {
     }
 }
 
+/** The pill's shape plus the tint for a status — shared with vote badges. */
+export function statusPillClassName(
+    status: PillStatus,
+    className?: string,
+): string {
+    return cn(
+        "inline-flex min-h-6 items-center rounded-lg border px-2 py-[3px] text-xs font-semibold",
+        getStatusColor(status),
+        className,
+    );
+}
+
 export function StatusPill({ status, className }: StatusPillProps) {
     const t = useTranslations("proposals.status");
     return (
-        <span
-            className={cn(
-                "inline-flex min-h-6 items-center rounded-lg border px-2 py-[3px] text-xs font-semibold",
-                getStatusColor(status),
-                className,
-            )}
-        >
+        <span className={statusPillClassName(status, className)}>
             {t(statusKey(status))}
         </span>
     );

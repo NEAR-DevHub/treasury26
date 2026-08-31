@@ -70,7 +70,8 @@
         "receiveNetwork": "受取ネットワーク",
         "receiveAmountUsd": "受取金額（USD）",
         "paymentConfirmation": "支払い確認",
-        "exchangeConfirmation": "交換確認"
+        "exchangeConfirmation": "交換確認",
+        "pdfReceipt": "PDF領収書"
     },
     "languageSwitcher": {
         "label": "言語",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, other {# 日}}",
             "factoryId": "ファクトリーID",
             "autoUpdate": "自動更新",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "詳細",
+            "approvalWorkflow": "承認フロー",
+            "approvals": "承認",
+            "note": "メモ"
         },
         "insufficientBalance": {
             "noAsset": "必要なトークンがトレジャリーにないため、このリクエストは承認できません。",

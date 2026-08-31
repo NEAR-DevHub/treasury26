@@ -70,7 +70,8 @@
         "receiveNetwork": "Mạng nhận",
         "receiveAmountUsd": "Số tiền nhận (USD)",
         "paymentConfirmation": "Xác nhận thanh toán",
-        "exchangeConfirmation": "Xác nhận đổi tiền"
+        "exchangeConfirmation": "Xác nhận đổi tiền",
+        "pdfReceipt": "Biên nhận PDF"
     },
     "languageSwitcher": {
         "label": "Ngôn ngữ",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, other {# ngày}}",
             "factoryId": "ID factory",
             "autoUpdate": "Tự động cập nhật",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "Chi tiết",
+            "approvalWorkflow": "Quy trình phê duyệt",
+            "approvals": "Phê duyệt",
+            "note": "Ghi chú"
         },
         "insufficientBalance": {
             "noAsset": "Yêu cầu này không thể được phê duyệt vì token cần thiết không có sẵn trong ngân quỹ.",

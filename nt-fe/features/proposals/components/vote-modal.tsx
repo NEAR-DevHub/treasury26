@@ -108,15 +108,20 @@ export function VoteModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                </DialogHeader>
-                <DialogDescription>
-                    {isBulk
-                        ? t("bulkBody", { action })
-                        : t("singleBody", { action })}
-                </DialogDescription>
+            <DialogContent className="gap-4 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-[448px]!">
+                {/* The design leaves the title bar to the close button alone
+                    and centres the heading underneath it. */}
+                <DialogHeader className="mx-0 border-0 px-0 pb-0" />
+                <div className="flex flex-col items-center gap-1 text-center">
+                    <DialogTitle className="text-xl font-bold leading-[1.2] tracking-[-0.4px]">
+                        {title}
+                    </DialogTitle>
+                    <DialogDescription className="text-sm font-medium text-general-secondary-foreground">
+                        {isBulk
+                            ? t("bulkBody", { action })
+                            : t("singleBody", { action })}
+                    </DialogDescription>
+                </div>
                 <SlotWarning slot={voteSlot} />
                 {approveBlocked && (
                     <div className="flex flex-col gap-2">
@@ -155,7 +160,7 @@ export function VoteModal({
                         }
                     />
                 )}
-                <DialogFooter>
+                <DialogFooter className="mx-0 px-0 pt-0">
                     <Tooltip
                         content={stripMessageForTooltip(voteSlotMessage)}
                         disabled={!voteBlockIsAppLevel || !voteSlotMessage}
@@ -163,7 +168,8 @@ export function VoteModal({
                     >
                         <span className="inline-block w-full">
                             <Button
-                                className="w-full"
+                                className="w-full rounded-xl"
+                                size="xl"
                                 variant={
                                     vote === "Remove"
                                         ? "destructive"

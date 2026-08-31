@@ -57,7 +57,12 @@ interface InternalExpandedViewProps {
     treasuryId?: string;
 }
 
-function ExpandedViewInternal({
+/**
+ * The type-specific body of a request: the rows that describe what it does.
+ * Exported so the details sheet can host it while each type is renovated.
+ * Must be rendered inside a `RequestDisplayProvider`.
+ */
+export function ExpandedViewInternal({
     proposal,
     policy,
     treasuryId,

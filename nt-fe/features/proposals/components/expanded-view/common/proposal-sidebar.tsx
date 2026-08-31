@@ -9,7 +9,6 @@ import {
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
 import {
     AuthButtonWithProposal,
     useNoVoteMessage,
@@ -22,38 +21,17 @@ import { StepIcon } from "@/components/step-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from "@/components/user";
 import { SlotWarning } from "@/components/warning-message";
-import type { PaymentRequestData } from "@/features/proposals/types/index";
+import { useProposalDetails } from "@/features/proposals/hooks/use-proposal-details";
+import { useVotingDurationCheck } from "@/features/proposals/hooks/use-voting-duration-check";
 import { useProposalInsufficientBalance } from "@/features/proposals/hooks/use-proposal-insufficient-balance";
-import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
 import {
-    getEffectiveExpiryMs,
     getProposalStatus,
-    getProposalStatusDateInfo,
-    getProposalUIKind,
-    isQuoteDeadlineBeforeVotingPeriod,
     type UIProposalStatus,
 } from "@/features/proposals/utils/proposal-utils";
-import {
-    extractReceiptProposalData,
-    isReceiptEligibleProposalKind,
-    resolveExecutionTimestamp,
-} from "@/features/proposals/utils/receipt-utils";
-import {
-    useProposals,
-    useProposalTransaction,
-    useSwapStatus,
-} from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock } from "@/hooks/use-warnings";
-import { isNearComPaymentRoute } from "@/lib/intents-network";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
-import {
-    cn,
-    decodeProposalDescription,
-    getIntentsExplorerUrl,
-    nanosToMs,
-} from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
 import { NotEnoughBalance } from "../../not-enough-balance";
@@ -66,13 +44,6 @@ interface ProposalSidebarProps {
     policy: Policy;
     onVote: (vote: "Approve" | "Reject" | "Remove") => void;
     onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
-}
-
-function parseOptionalDate(value?: string | null) {
-    if (!value) return undefined;
-
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function TransactionCreated({
@@ -251,33 +222,30 @@ export function ProposalSidebar({
     const tReceipt = useTranslations("receiptPage");
     const noVoteMessage = useNoVoteMessage();
     const { accountId } = useNear();
-    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
+    const { treasuryId } = useTreasury();
     const { data: insufficientBalanceInfo } = useProposalInsufficientBalance(
         proposal,
         treasuryId,
     );
 
-    const [showVotingDurationModal, setShowVotingDurationModal] =
-        useState(false);
-    const [isCheckingVotingDurationImpact, setIsCheckingVotingDurationImpact] =
-        useState(false);
+    const {
+        status,
+        isPending,
+        isExecuted,
+        createdAt,
+        timestamp,
+        expiresAt,
+        isDateLoading,
+        shortQuoteDeadline,
+        hasDepositAddress,
+        swapStatus,
+        transactionUrl,
+        hideTransactionLink,
+        canShowReceipt,
+        receiptHref,
+        isPaymentLikeProposal,
+    } = useProposalDetails(proposal, policy);
 
-    // Check if this is a voting duration change proposal
-    const isVotingDurationChange =
-        "ChangePolicyUpdateParameters" in proposal.kind;
-
-    // Fetch active proposals only when needed for voting duration impact check
-    const { data: allProposalsData, isLoading: isLoadingProposals } =
-        useProposals(
-            treasuryId,
-            {
-                statuses: ["InProgress", "Expired"],
-                page_size: 100,
-            },
-            isVotingDurationChange,
-        );
-    const status = getProposalStatus(proposal, policy);
-    const proposalType = getProposalUIKind(proposal);
     const isUserVoter = !!proposal.votes[accountId ?? ""];
 
     // Approving payment/exchange proposals is blocked while that feature has a
@@ -290,178 +258,6 @@ export function ProposalSidebar({
         reject: rejectSlot,
         voteBannerSlot,
     } = useVoteActionSlots();
-    const isPending = status === "Pending";
-    const isExecuted = status === "Executed";
-    const isExchangeProposal = proposalType === "Exchange";
-    const isPaymentProposal = proposalType === "Payment Request";
-    const isConfidentialRequest = proposalType === "Confidential Request";
-    const isBatchPaymentProposal = proposalType === "Batch Payment Request";
-    const isConfidentialRequestProposal =
-        proposalType === "Confidential Request";
-    const isReceiptEligibleKind = isReceiptEligibleProposalKind(proposalType);
-    const receiptProposalData = extractReceiptProposalData(
-        proposal,
-        treasuryId,
-    );
-
-    let newVotingDurationDays = 0;
-    if (isVotingDurationChange) {
-        const params = (proposal.kind as any).ChangePolicyUpdateParameters
-            ?.parameters;
-        if (params?.proposal_period) {
-            newVotingDurationDays = Math.floor(
-                nanosToMs(params.proposal_period) / (24 * 60 * 60 * 1000),
-            );
-        }
-    }
-
-    // Extract intents details for exchange/payment/confidential requests.
-    // Confidential metadata is backend-enriched and nested under mapped.data.
-    let depositAddress: string | undefined;
-    let isConfidentialPayment = false;
-    let confidentialPaymentData: PaymentRequestData | undefined;
-    let confidentialProposalCreatedAt: Date | undefined;
-    let confidentialExecutedAt: Date | undefined;
-    let publicProposalCreatedAt: Date | undefined;
-    let publicExecutedAt: Date | undefined;
-    if (isExchangeProposal || isPaymentProposal || isConfidentialRequest) {
-        try {
-            const { data } = extractProposalData(proposal, treasuryId);
-            if (isConfidentialRequest) {
-                const confidentialData = data as any;
-                confidentialProposalCreatedAt = parseOptionalDate(
-                    confidentialData?.proposalCreatedAt,
-                );
-                confidentialExecutedAt = parseOptionalDate(
-                    confidentialData?.executedAt,
-                );
-                const mapped = confidentialData?.mapped;
-                isConfidentialPayment = mapped?.type === "payment";
-                if (isConfidentialPayment) {
-                    confidentialPaymentData =
-                        mapped?.data as PaymentRequestData;
-                }
-                depositAddress = mapped?.data?.depositAddress;
-            } else {
-                depositAddress = (data as any)?.depositAddress;
-                publicProposalCreatedAt = parseOptionalDate(
-                    proposal.public_metadata?.proposal_created_at,
-                );
-                publicExecutedAt =
-                    parseOptionalDate(
-                        proposal.public_metadata?.proposal_executed_at,
-                    ) ?? publicProposalCreatedAt;
-            }
-        } catch (e) {}
-    }
-    const isPaymentLikeProposal = isPaymentProposal || isConfidentialPayment;
-
-    // Whether this proposal used the Intents protocol (has a deposit address)
-    const hasDepositAddress = !!depositAddress;
-    const shouldUseTransactionDate = isExecuted;
-    const shouldUseSwapDate =
-        isExecuted && hasDepositAddress && !isConfidentialRequestProposal;
-
-    // Fetch transaction data for non-intents proposals, or for statuses
-    // whose resolved date/link should come from the chain transaction.
-    const {
-        data: transaction,
-        isLoading: isLoadingTransaction,
-        isAwaitingTransaction,
-    } = useProposalTransaction(
-        treasuryId,
-        proposal,
-        policy,
-        shouldUseTransactionDate && (!hasDepositAddress || !shouldUseSwapDate),
-    );
-
-    // Fetch swap status for executed intents proposals (exchange or payment).
-    const shouldFetchSwapStatus = isExecuted && hasDepositAddress;
-    const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
-        depositAddress || null,
-        undefined,
-        shouldFetchSwapStatus,
-        treasuryId,
-    );
-    // Any intents-routed proposal (including confidential requests) must have a
-    // SUCCESS swap status before a receipt can be generated — a pending/failed/
-    // refunded swap has no finalized transaction to receipt.
-    const shouldRequireSwapSuccess = hasDepositAddress;
-    // Public treasury receipts should remain accessible for logged-out users
-    // and non-members from the requests page.
-    const isPublicTreasuryGuestViewer = !isConfidential && isGuestTreasury;
-    const isSwapSuccessReady = shouldRequireSwapSuccess
-        ? isPublicTreasuryGuestViewer || swapStatus?.status === "SUCCESS"
-        : true;
-    const { executedDate, isDateLoading: resolvedDateLoading } =
-        resolveExecutionTimestamp({
-            swapStatus,
-            transaction,
-            shouldUseSwapDate,
-            isLoadingSwapStatus,
-            isLoadingTransaction,
-            isAwaitingTransaction,
-            fallbackDate: confidentialExecutedAt ?? publicExecutedAt,
-        });
-    const isResolvedDateLoading = isExecuted && resolvedDateLoading;
-    const isHidden = isConfidential && isGuestTreasury;
-
-    // Confidential exchange (a confidential request that is not a payment).
-    const isConfidentialExchange =
-        isConfidentialRequestProposal && !isConfidentialPayment;
-    // Swap is still settling (no finalized transaction yet).
-    const isSwapProcessing = swapStatus?.status === "PROCESSING";
-    // Hide the transaction link for confidential requests while the swap is
-    // still processing — there is no finalized transaction to link to yet.
-    const hideTransactionLink =
-        isConfidentialRequestProposal && isSwapProcessing;
-    // Confidential exchanges and near.com confidential payments link to NEAR
-    // Blocks; other intents-routed proposals use the NEAR Intents explorer
-    // (masked for confidential).
-    const isConfidentialNearComPayment =
-        isConfidentialPayment &&
-        isNearComPaymentRoute(confidentialPaymentData ?? {});
-    const useNearblocksLink =
-        !hasDepositAddress ||
-        isConfidentialExchange ||
-        isConfidentialNearComPayment;
-    // Receipt button visibility rules:
-    // - Proposal must be executed and of a receipt-eligible kind.
-    // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
-    // - Public batch receipts are hidden on confidential treasuries; confidential
-    //   bulk uses Confidential Request kind and is allowed.
-    // - Hidden (guest) confidential treasuries cannot generate receipts.
-    const canShowReceiptButton =
-        isExecuted &&
-        !isHidden &&
-        isReceiptEligibleKind &&
-        isSwapSuccessReady &&
-        (isBatchPaymentProposal
-            ? !isConfidential
-            : isConfidentialRequestProposal || receiptProposalData !== null);
-
-    const expiresAt = new Date(getEffectiveExpiryMs(proposal, policy));
-    const statusDateInfo = getProposalStatusDateInfo(proposal, policy);
-    const shortQuoteDeadline = isQuoteDeadlineBeforeVotingPeriod(
-        proposal,
-        policy,
-    );
-
-    let timestamp;
-    switch (status) {
-        case "Expired":
-        case "Pending":
-            timestamp = statusDateInfo.date;
-            break;
-
-        default:
-            timestamp = executedDate ?? undefined;
-            break;
-    }
-    const createdAt =
-        confidentialProposalCreatedAt ??
-        publicProposalCreatedAt ??
-        new Date(nanosToMs(proposal.submission_time));
 
     const isLastApprovingVote = () => {
         const currentApprovals = Object.values(proposal.votes).filter(
@@ -476,49 +272,15 @@ export function ProposalSidebar({
         return requiredVotes !== null && currentApprovals + 1 >= requiredVotes;
     };
 
-    // When proposals finish loading after user clicked Approve, open the modal
-    useEffect(() => {
-        if (isCheckingVotingDurationImpact && !isLoadingProposals) {
-            setIsCheckingVotingDurationImpact(false);
-            setShowVotingDurationModal(true);
-        }
-    }, [isCheckingVotingDurationImpact, isLoadingProposals]);
-
-    // Handle approve with voting duration check
-    const handleApprove = () => {
-        if (
-            isVotingDurationChange &&
-            newVotingDurationDays > 0 &&
-            isLastApprovingVote()
-        ) {
-            setIsCheckingVotingDurationImpact(true);
-            if (isLoadingProposals) {
-                return;
-            } else {
-                setIsCheckingVotingDurationImpact(false);
-                setShowVotingDurationModal(true);
-            }
-        } else {
-            onVote("Approve");
-        }
-    };
-
-    const handleVotingDurationApprove = () => {
-        setShowVotingDurationModal(false);
-        setIsCheckingVotingDurationImpact(false);
-        onVote("Approve");
-    };
-
-    const handleVotingDurationClose = () => {
-        setShowVotingDurationModal(false);
-        setIsCheckingVotingDurationImpact(false);
-    };
-
-    // Impact proposals: exclude current proposal and contract-expired items
-    const activeProposals =
-        allProposalsData?.proposals?.filter(
-            (p: Proposal) => p.id !== proposal.id && p.status === "InProgress",
-        ) ?? [];
+    const {
+        handleApprove,
+        isChecking: isCheckingVotingDurationImpact,
+        modalProps: votingDurationModalProps,
+    } = useVotingDurationCheck({
+        proposal,
+        isLastApprovingVote,
+        onApprove: () => onVote("Approve"),
+    });
 
     return (
         <PageCard className="relative w-full">
@@ -536,7 +298,7 @@ export function ProposalSidebar({
                     status={status}
                     date={timestamp}
                     expiresAt={expiresAt}
-                    isDateLoading={isResolvedDateLoading}
+                    isDateLoading={isDateLoading}
                 />
                 <div className="absolute left-[11px] top-1 bottom-2 w-px bg-muted-foreground/20" />
             </div>
@@ -544,10 +306,10 @@ export function ProposalSidebar({
             {/* Transaction Links */}
             {isExecuted && (
                 <div className="flex flex-col gap-2">
-                    {canShowReceiptButton && (
+                    {canShowReceipt && (
                         <Button asChild variant="secondary" className="w-full">
                             <Link
-                                href={`/${treasuryId}/requests/${proposal.id}/receipt`}
+                                href={receiptHref}
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
@@ -556,31 +318,9 @@ export function ProposalSidebar({
                             </Link>
                         </Button>
                     )}
-                    {/* Transaction link. Hidden for confidential requests while
-                        the swap is still processing. Confidential exchanges and
-                        near.com confidential payments link to NEAR Blocks; other
-                        intents-routed proposals use the NEAR Intents explorer
-                        (masked for confidential). */}
-                    {hideTransactionLink ? null : useNearblocksLink ? (
-                        transaction && (
-                            <Link
-                                href={transaction.nearblocks_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
-                            >
-                                <Icon icon={LinkSquare02Icon} />
-                                {t("viewTransaction")}
-                            </Link>
-                        )
-                    ) : (
+                    {!hideTransactionLink && transactionUrl && (
                         <Link
-                            href={
-                                getIntentsExplorerUrl(
-                                    depositAddress,
-                                    isConfidentialRequestProposal,
-                                ) ?? "#"
-                            }
+                            href={transactionUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
@@ -745,17 +485,10 @@ export function ProposalSidebar({
                 </div>
             )}
 
-            {/* Voting Duration Impact Modal */}
-            {isVotingDurationChange && (
+            {votingDurationModalProps && (
                 <VotingDurationImpactModal
-                    isOpen={showVotingDurationModal}
-                    onClose={handleVotingDurationClose}
-                    onConfirm={handleVotingDurationApprove}
-                    onNoImpactedProposals={handleVotingDurationApprove}
-                    newDurationDays={newVotingDurationDays}
+                    {...votingDurationModalProps}
                     currentPolicy={policy}
-                    activeProposals={activeProposals}
-                    isLoadingProposals={isLoadingProposals}
                 />
             )}
         </PageCard>
