@@ -25,7 +25,7 @@ import {
     isNearComRecipientAddress,
     parseNearComAddress,
 } from "@/lib/nearcom-address";
-import { isValidNearAddressFormat } from "@/lib/near-validation";
+import { isValidNearAddressFormat } from "@/lib/near-address-format";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { cn } from "@/lib/utils";
 

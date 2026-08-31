@@ -1,5 +1,5 @@
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { isValidNearAddressFormat } from "@/lib/near-validation";
+import { isValidNearAddressFormat } from "@/lib/near-address-format";
 
 /** Prefix for near.com payment / deposit recipients (public + confidential). */
 export const NEAR_COM_ADDRESS_PREFIX = "nearcom:";

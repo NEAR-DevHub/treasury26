@@ -1,6 +1,6 @@
 import { getBlockchainType } from "@/lib/blockchain-utils";
 import { getAddressPattern } from "@/lib/address-validation";
-import { isValidNearAddressFormat } from "@/lib/near-validation";
+import { isValidNearAddressFormat } from "@/lib/near-address-format";
 import {
     isNearComRecipientAddress,
     parseNearComAddress,

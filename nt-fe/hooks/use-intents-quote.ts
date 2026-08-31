@@ -16,7 +16,7 @@ import { isNearComNetwork } from "@/lib/intents-network";
 import {
     isEthImplicitNearAddress,
     isValidNearAddressFormat,
-} from "@/lib/near-validation";
+} from "@/lib/near-address-format";
 import {
     hasNearComAddressPrefix,
     stripNearComAddressPrefix,

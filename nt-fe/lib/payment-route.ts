@@ -8,7 +8,7 @@ import { isNearComNetwork } from "@/lib/intents-network";
 import {
     isEthImplicitNearAddress,
     isValidNearAddressFormat,
-} from "@/lib/near-validation";
+} from "@/lib/near-address-format";
 import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import { formatAssetForIntentsAPI } from "@/lib/oneclick-asset-routing";
 
