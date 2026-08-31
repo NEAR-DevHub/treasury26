@@ -5,7 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { UIProposalStatus, getProposalStatus } from "../utils/proposal-utils";
 import { Tooltip } from "@/components/tooltip";
-import { Proposal } from "@/lib/proposals-api";
+import { Proposal, Vote } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import { useProposalTransaction } from "@/hooks/use-proposals";
@@ -79,6 +79,37 @@ export function StatusPill({ status, className }: StatusPillProps) {
             {t(statusKey(status))}
         </span>
     );
+}
+
+/** The vote an account cast, tinted like the status it moves the request towards. */
+export function VoteBadge({
+    vote,
+    className,
+}: {
+    vote: Vote;
+    className?: string;
+}) {
+    const t = useTranslations("proposals.status");
+    switch (vote) {
+        case "Approve":
+            return (
+                <span className={statusPillClassName("Approved", className)}>
+                    {t("approved")}
+                </span>
+            );
+        case "Reject":
+            return (
+                <span className={statusPillClassName("Rejected", className)}>
+                    {t("rejected")}
+                </span>
+            );
+        case "Remove":
+            return (
+                <span className={statusPillClassName("Removed", className)}>
+                    {t("removed")}
+                </span>
+            );
+    }
 }
 
 interface ProposalStatusPillProps {
