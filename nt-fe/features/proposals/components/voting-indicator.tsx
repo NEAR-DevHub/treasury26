@@ -116,7 +116,8 @@ export function VotingIndicator({ proposal, policy }: VotingIndicatorProps) {
         false,
     );
     const status = getProposalStatus(proposal, policy);
-    // Every vote counts towards the threshold, whichever way it was cast.
+    // Every vote fills a bar, whichever way it was cast. `requiredVotes` is
+    // only the approval threshold, so a split vote can push the count past it.
     const votes = Object.entries(proposal.votes);
     const indicators = Array.from({ length: requiredVotes }, (_, index) => ({
         id: `vote-${index}`,
