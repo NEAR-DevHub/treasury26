@@ -27,8 +27,10 @@ export {
 } from "./hooks/use-address-book-mutations";
 
 export {
+    addressBookEntryMatchesNetwork,
     findAddressBookEntry,
     formatAddressBookDisplayAddress,
+    persistAddressBookAddress,
 } from "./utils/find-entry";
 
 // Components

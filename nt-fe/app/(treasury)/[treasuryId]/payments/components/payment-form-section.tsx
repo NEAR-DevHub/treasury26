@@ -20,10 +20,11 @@ import {
     type PermissionRequirement,
 } from "@/components/create-request-button";
 import { InfoAlert } from "@/components/info-alert";
-import { getBlockchainType, type BlockchainType } from "@/lib/blockchain-utils";
+import { getBlockchainType } from "@/lib/blockchain-utils";
 import {
     useAddressBook,
     AddressBookEntry,
+    addressBookEntryMatchesNetwork,
     findAddressBookEntry,
     formatAddressBookDisplayAddress,
 } from "@/features/address-book";
@@ -39,24 +40,8 @@ import {
     type RecipientNetworkRuleOption,
 } from "./recipient-network-select";
 import { cn } from "@/lib/utils";
-import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
-
-function addressBookEntryMatchesNetwork(
-    entry: AddressBookEntry,
-    selectedNetworkName: string,
-    blockchainType: BlockchainType,
-): boolean {
-    if (entry.networks.length === 0) return true;
-    if (selectedNetworkName.trim().toLowerCase() === NEAR_COM_NETWORK_ID) {
-        return entry.networks.includes(NEAR_COM_NETWORK_ID);
-    }
-    return entry.networks.some(
-        (key) =>
-            key !== NEAR_COM_NETWORK_ID &&
-            getBlockchainType(key) === blockchainType,
-    );
-}
 
 interface PaymentFormSectionProps<
     TFieldValues extends FieldValues = FieldValues,
@@ -280,7 +265,7 @@ export function PaymentFormSection<
     useEffect(() => {
         if (selectedContact) {
             setRecipientValue(
-                selectedContact.address as PathValue<
+                formatAddressBookDisplayAddress(selectedContact) as PathValue<
                     TFieldValues,
                     Path<TFieldValues>
                 >,
