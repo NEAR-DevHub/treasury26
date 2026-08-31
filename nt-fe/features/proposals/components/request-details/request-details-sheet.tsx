@@ -48,6 +48,7 @@ import type {
     ConfidentialRequestData,
     PaymentRequestData,
     ProposalUIKind,
+    SwapRequestData,
 } from "../../types/index";
 import { extractProposalData } from "../../utils/proposal-extractors";
 import { ExpandedViewInternal } from "../expanded-view";
@@ -58,6 +59,7 @@ import { ApprovalWorkflow } from "./approval-workflow";
 import { BulkDetails } from "./bulk-details";
 import { DetailsCard } from "./primitives";
 import { SendDetails } from "./send-details";
+import { SwapDetails } from "./swap-details";
 
 /** 28px ghost squares, the tray of actions the design gives the title bar. */
 const HEADER_ACTION_CLASS =
@@ -125,7 +127,7 @@ function RequestDetails({
     const { status, isPending, isExecuted } = details;
 
     const { type, data } = extractProposalData(proposal, treasuryId);
-    const send = resolveSendPayload(type, data);
+    const body = resolveBodyPayload(type, data);
     const isOwnPendingProposal = proposal.proposer === accountId && isPending;
     const hasVoted = !!proposal.votes[accountId ?? ""];
     const requestUrl = `/${treasuryId}/requests/${proposal.id}`;
@@ -185,11 +187,13 @@ function RequestDetails({
                         isExecuted,
                     }}
                 >
-                    {send.kind === "send" ? (
-                        <SendDetails data={send.data} />
-                    ) : send.kind === "bulk" ? (
-                        <BulkDetails data={send.data} />
-                    ) : send.kind === "confidential-hidden" ? (
+                    {body.kind === "send" ? (
+                        <SendDetails data={body.data} />
+                    ) : body.kind === "swap" ? (
+                        <SwapDetails data={body.data} />
+                    ) : body.kind === "bulk" ? (
+                        <BulkDetails data={body.data} />
+                    ) : body.kind === "confidential-hidden" ? (
                         <HiddenSendDetails />
                     ) : (
                         // Request types not yet renovated keep their existing
@@ -225,24 +229,29 @@ function RequestDetails({
 }
 
 /**
- * What the Send layout can be handed. A plain payment carries its payload
- * directly; a confidential one carries it wrapped — as a single transfer or as
- * a bulk one split across recipients — and only once the quote has been
- * decrypted for a member. Until then there is nothing to draw but the veil.
- * Anything else falls through to the request's existing rows.
+ * Which renovated layout the sheet's body gets. A plain payment or exchange
+ * carries its payload directly; a confidential one carries it wrapped — as a
+ * single transfer, an exchange, or a bulk payment split across recipients —
+ * and only once the quote has been decrypted for a member. Until then there is
+ * nothing to draw but the veil. Anything else falls through to the request's
+ * existing rows.
  */
-type SendPayload =
+type BodyPayload =
     | { kind: "send"; data: PaymentRequestData }
+    | { kind: "swap"; data: SwapRequestData }
     | { kind: "bulk"; data: ConfidentialBulkData }
     | { kind: "confidential-hidden" }
     | { kind: "other" };
 
-function resolveSendPayload(
+function resolveBodyPayload(
     type: ProposalUIKind,
     data: AnyProposalData,
-): SendPayload {
+): BodyPayload {
     if (type === "Payment Request") {
         return { kind: "send", data: data as PaymentRequestData };
+    }
+    if (type === "Exchange") {
+        return { kind: "swap", data: data as SwapRequestData };
     }
     if (type !== "Confidential Request") return { kind: "other" };
 
@@ -251,6 +260,8 @@ function resolveSendPayload(
     switch (mapped.type) {
         case "payment":
             return { kind: "send", data: mapped.data };
+        case "swap":
+            return { kind: "swap", data: mapped.data };
         case "bulk":
             return { kind: "bulk", data: mapped.data };
         default:
