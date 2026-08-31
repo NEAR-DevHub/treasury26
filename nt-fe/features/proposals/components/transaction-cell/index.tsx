@@ -41,6 +41,8 @@ interface TransactionCellProps {
     textOnly?: boolean;
     withDate?: boolean;
     subtitleSuffix?: React.ReactNode;
+    /** Swaps only: put both legs on one arrowed line instead of stacking them. */
+    inlineSwap?: boolean;
 }
 
 /**
@@ -51,6 +53,7 @@ export function TransactionCell({
     subtitleSuffix,
     withDate,
     textOnly = false,
+    inlineSwap = false,
 }: TransactionCellProps) {
     return (
         <SubtitleSuffixContext.Provider value={subtitleSuffix}>
@@ -58,6 +61,7 @@ export function TransactionCell({
                 proposal={proposal}
                 withDate={withDate}
                 textOnly={textOnly}
+                inlineSwap={inlineSwap}
             />
         </SubtitleSuffixContext.Provider>
     );
@@ -67,6 +71,7 @@ function TransactionCellSwitch({
     proposal,
     withDate,
     textOnly = false,
+    inlineSwap = false,
 }: Omit<TransactionCellProps, "subtitleSuffix">) {
     const t = useTranslations("proposals.expanded");
     const { treasuryId } = useTreasury();
@@ -91,6 +96,7 @@ function TransactionCellSwitch({
                     data={confidentialData}
                     timestamp={timestamp}
                     textOnly={textOnly}
+                    inlineSwap={inlineSwap}
                 />
             );
         }
@@ -162,6 +168,7 @@ function TransactionCellSwitch({
                     data={swapData}
                     timestamp={timestamp}
                     textOnly={textOnly}
+                    inline={inlineSwap}
                 />
             );
         }

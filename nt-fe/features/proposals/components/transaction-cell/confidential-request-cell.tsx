@@ -8,12 +8,15 @@ interface ConfidentialTransferCellProps {
     data: ConfidentialRequestData;
     timestamp?: string;
     textOnly?: boolean;
+    /** Swaps only — see `SwapCell`. */
+    inlineSwap?: boolean;
 }
 
 export function ConfidentialRequestCell({
     data,
     timestamp,
     textOnly = false,
+    inlineSwap = false,
 }: ConfidentialTransferCellProps) {
     const mapped = data.mapped;
 
@@ -27,6 +30,7 @@ export function ConfidentialRequestCell({
                 data={mapped.data}
                 timestamp={timestamp}
                 textOnly={textOnly}
+                inline={inlineSwap}
             />
         );
     } else if (mapped.type === "bulk") {

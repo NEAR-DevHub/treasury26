@@ -86,7 +86,7 @@ export function ResponsiveTabs({
                             className={cn(
                                 "border-0 h-auto gap-1.5 font-medium text-sm focus:ring-0 w-auto",
                                 isPlain &&
-                                    "h-10 gap-2 rounded-xl bg-general-bg-secondary px-4 font-bold text-general-secondary-foreground shadow-none [&_svg]:size-[13.25px] [&_svg]:opacity-100",
+                                    "h-10 gap-2 rounded-lg bg-general-bg-secondary px-4 font-bold text-general-secondary-foreground shadow-none [&_svg]:size-[13.25px] [&_svg]:opacity-100",
                             )}
                         >
                             <span className="flex items-center gap-1.5">
