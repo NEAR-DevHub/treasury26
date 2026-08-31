@@ -26,10 +26,10 @@ export function getStatusColor(status: PillStatus): string {
         case "Paid":
             return "border-general-success-border bg-general-success-background-faded text-general-success-foreground";
         case "Failed":
-            return "border-general-warning-border bg-general-warning-background-faded text-general-warning-foreground";
+            return "border-general-amber-border bg-general-amber-background-faded text-general-amber-foreground";
         case "Rejected":
         case "Removed":
-            return "border-general-destructive-border bg-general-destructive-background-faded text-general-destructive-foreground";
+            return "border-general-rose-border bg-general-rose-background-faded text-general-rose-foreground";
         case "Pending":
             return "border-general-orange-border bg-general-orange-background-faded text-general-orange-foreground";
         case "Expired":
@@ -60,13 +60,16 @@ function statusKey(status: PillStatus): string {
     }
 }
 
-/** The pill's shape plus the tint for a status — shared with vote badges. */
+/**
+ * The pill's shape plus the tint for a status — shared with vote badges.
+ * `rounded-sm` is the theme's 8px radius (--radius is 12px).
+ */
 export function statusPillClassName(
     status: PillStatus,
     className?: string,
 ): string {
     return cn(
-        "inline-flex min-h-6 items-center rounded-lg border px-2 py-[3px] text-xs font-semibold",
+        "inline-flex min-h-6 items-center rounded-sm border px-2 py-[3px] text-xs/[14px] font-semibold",
         getStatusColor(status),
         className,
     );
