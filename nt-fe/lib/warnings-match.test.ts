@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import type { Warning } from "@/hooks/use-warnings";
 import { warningMatchesQuery } from "@/hooks/use-warnings";
-import { networksMatchForWarningScope } from "@/components/token-display";
+import { networksMatchAliased } from "@/components/token-display";
 
 function scopedWarning(
     overrides: Partial<Warning> & Pick<Warning, "token" | "network">,
@@ -20,30 +20,28 @@ function scopedWarning(
     };
 }
 
-describe("networksMatchForWarningScope", () => {
+describe("networksMatchAliased", () => {
     it("matches exact names case-insensitively", () => {
-        expect(networksMatchForWarningScope("eth", "ETH")).toBe(true);
-        expect(networksMatchForWarningScope("arbitrum", "Arbitrum")).toBe(true);
+        expect(networksMatchAliased("eth", "ETH")).toBe(true);
+        expect(networksMatchAliased("arbitrum", "Arbitrum")).toBe(true);
     });
 
     it("matches short and long aliases that share a display name", () => {
-        expect(networksMatchForWarningScope("arb", "arbitrum")).toBe(true);
-        expect(networksMatchForWarningScope("eth", "ethereum")).toBe(true);
-        expect(networksMatchForWarningScope("sol", "solana")).toBe(true);
-        expect(networksMatchForWarningScope("pol", "polygon")).toBe(true);
+        expect(networksMatchAliased("arb", "arbitrum")).toBe(true);
+        expect(networksMatchAliased("eth", "ethereum")).toBe(true);
+        expect(networksMatchAliased("sol", "solana")).toBe(true);
+        expect(networksMatchAliased("pol", "polygon")).toBe(true);
     });
 
     it("does not match unrelated chains", () => {
-        expect(networksMatchForWarningScope("arb", "eth")).toBe(false);
-        expect(networksMatchForWarningScope("base", "arbitrum")).toBe(false);
-        expect(networksMatchForWarningScope("ethereum", "arbitrum")).toBe(
-            false,
-        );
+        expect(networksMatchAliased("arb", "eth")).toBe(false);
+        expect(networksMatchAliased("base", "arbitrum")).toBe(false);
+        expect(networksMatchAliased("ethereum", "arbitrum")).toBe(false);
     });
 
     it("rejects missing values", () => {
-        expect(networksMatchForWarningScope("arb", null)).toBe(false);
-        expect(networksMatchForWarningScope(undefined, "arbitrum")).toBe(false);
+        expect(networksMatchAliased("arb", null)).toBe(false);
+        expect(networksMatchAliased(undefined, "arbitrum")).toBe(false);
     });
 });
 

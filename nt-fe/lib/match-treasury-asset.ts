@@ -1,4 +1,5 @@
 import type { TreasuryAsset } from "@/lib/api";
+import { networksMatchAliased } from "@/lib/intents-network";
 import { canonicalizeTokenIdForMatch } from "@/lib/utils";
 
 /**
@@ -30,7 +31,7 @@ export function findMatchingTreasuryAsset(
             const networkMatch =
                 !tokenNetwork ||
                 !asset.network ||
-                asset.network.trim().toLowerCase() === tokenNetwork;
+                networksMatchAliased(asset.network, tokenNetwork);
             const residencyMatch =
                 !tokenResidency ||
                 !asset.residency ||

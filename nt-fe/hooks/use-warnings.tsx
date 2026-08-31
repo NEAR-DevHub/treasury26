@@ -10,7 +10,7 @@ import {
     useMemo,
 } from "react";
 import { useFormatDate } from "@/components/formatted-date";
-import { networksMatchForWarningScope } from "@/components/token-display";
+import { networksMatchAliased } from "@/components/token-display";
 import {
     getProposalRequiredFunds,
     getProposalUIKind,
@@ -144,7 +144,7 @@ export function warningMatchesQuery(
     // Network aliases only within the same chain; missing query network fails.
     if (
         warningNetwork &&
-        !networksMatchForWarningScope(warningNetwork, normalizedNetwork)
+        !networksMatchAliased(warningNetwork, normalizedNetwork)
     ) {
         return false;
     }
