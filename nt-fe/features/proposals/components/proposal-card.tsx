@@ -86,6 +86,9 @@ export function ProposalCard({
 
             <span className="h-px w-full bg-general-border" />
 
+            {/* `relative` is load-bearing: it lifts the footer above the
+                chevron's overlay so the approvals popover and the status pill
+                take their own taps instead of opening the request. */}
             <div className="relative flex w-full items-center justify-between py-4">
                 <VotingIndicator proposal={proposal} policy={policy} />
                 <ProposalStatusPill proposal={proposal} policy={policy} />
