@@ -1,5 +1,7 @@
+import { ArrowRight02Icon } from "@hugeicons/core-free-icons";
 import type { ReactNode } from "react";
 import { BALANCE_MASK, useIsBalanceMasked } from "@/components/balance-mask";
+import { Icon } from "@/components/icon";
 import { SwapTokenPair } from "@/components/token-pair";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import { useSearchIntentsTokens, useToken } from "@/hooks/use-treasury-queries";
@@ -11,6 +13,11 @@ interface SwapCellProps {
     data: SwapRequestData;
     timestamp?: string;
     textOnly?: boolean;
+    /**
+     * Puts both legs on one line, separated by an arrow. The stacked default
+     * needs a second line the table has room for but a phone card does not.
+     */
+    inline?: boolean;
 }
 
 /**
@@ -40,35 +47,56 @@ function useSwapLeg(leg: { tokenId: string } & SwapLegAmount) {
 
 /**
  * Sent amount on a muted first line, received amount emphasised below — the
- * swap reads as one movement rather than two independent amounts.
+ * swap reads as one movement rather than two independent amounts. `inline`
+ * flattens the same pair onto one arrowed line for callers with a single row
+ * to spend.
  */
 function SwapAmounts({
     sent,
     received,
     textOnly,
+    inline,
 }: {
     sent: ReturnType<typeof useSwapLeg>;
     received: ReturnType<typeof useSwapLeg>;
     textOnly: boolean;
+    inline: boolean;
 }) {
     return (
         <div className="flex min-w-0 items-center gap-2">
             {!textOnly && (
                 <SwapTokenPair sent={sent.token} received={received.token} />
             )}
-            <div className="flex min-w-0 flex-col">
-                <span className="truncate text-xs font-medium text-general-secondary-foreground">
-                    {sent.label}
-                </span>
-                <span className="truncate text-sm font-semibold">
-                    {received.label}
-                </span>
-            </div>
+            {inline ? (
+                <div className="flex min-w-0 items-center gap-1">
+                    <span className="truncate font-semibold">{sent.label}</span>
+                    <Icon
+                        icon={ArrowRight02Icon}
+                        className="size-4 shrink-0 text-general-secondary-foreground"
+                    />
+                    <span className="truncate font-semibold">
+                        {received.label}
+                    </span>
+                </div>
+            ) : (
+                <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-xs font-medium text-general-secondary-foreground">
+                        {sent.label}
+                    </span>
+                    <span className="truncate text-sm font-semibold">
+                        {received.label}
+                    </span>
+                </div>
+            )}
         </div>
     );
 }
 
-function IntentsSwapCell({ data, textOnly = false }: SwapCellProps) {
+function IntentsSwapCell({
+    data,
+    textOnly = false,
+    inline = false,
+}: SwapCellProps) {
     // For new proposals with addresses, we don't need the search hook
     const hasAddresses = !!(data.tokenInAddress && data.tokenOutAddress);
 
@@ -99,10 +127,21 @@ function IntentsSwapCell({ data, textOnly = false }: SwapCellProps) {
         amountWithDecimals: data.amountOut,
     });
 
-    return <SwapAmounts sent={sent} received={received} textOnly={textOnly} />;
+    return (
+        <SwapAmounts
+            sent={sent}
+            received={received}
+            textOnly={textOnly}
+            inline={inline}
+        />
+    );
 }
 
-function NearWrapSwapCell({ data, textOnly = false }: SwapCellProps) {
+function NearWrapSwapCell({
+    data,
+    textOnly = false,
+    inline = false,
+}: SwapCellProps) {
     const sent = useSwapLeg({
         tokenId: data.tokenIn,
         amountWithDecimals: data.amountIn,
@@ -112,7 +151,14 @@ function NearWrapSwapCell({ data, textOnly = false }: SwapCellProps) {
         amountWithDecimals: data.amountOut,
     });
 
-    return <SwapAmounts sent={sent} received={received} textOnly={textOnly} />;
+    return (
+        <SwapAmounts
+            sent={sent}
+            received={received}
+            textOnly={textOnly}
+            inline={inline}
+        />
+    );
 }
 
 export function SwapCell(props: SwapCellProps) {

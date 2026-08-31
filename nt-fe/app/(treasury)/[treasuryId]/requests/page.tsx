@@ -27,6 +27,7 @@ import { TableSkeleton } from "@/components/table-skeleton";
 import { TabsContent } from "@/components/underline-tabs";
 import { ProposalsTable } from "@/features/proposals";
 import { MobileFilterSheet } from "@/features/proposals/components/mobile-filter-sheet";
+import { ProposalCardSkeleton } from "@/features/proposals/components/proposal-card";
 import {
     type FilterOption,
     ProposalFilters as ProposalFiltersComponent,
@@ -44,6 +45,8 @@ import { useResponsiveSidebar } from "@/stores/sidebar-store";
 // Constants
 const SEARCH_DEBOUNCE_MS = 300;
 const FILTER_PANEL_MAX_HEIGHT = "500px";
+/** How many card placeholders the phone list shows while a page loads. */
+const SKELETON_CARDS = ["a", "b", "c", "d", "e", "f"];
 /** The 40px #F2F2F2, 12px-radius square the design gives the toolbar controls. */
 const ICON_BUTTON_CLASS =
     "size-10 rounded-lg bg-general-bg-secondary hover:bg-general-bg-secondary/80";
@@ -188,11 +191,18 @@ function ProposalsList({
 
     if (isLoading) {
         return (
-            <TableSkeleton
-                rows={12}
-                columns={7}
-                className="rounded-2xl border-general-border"
-            />
+            <>
+                <div className="flex flex-col gap-3 lg:hidden">
+                    {SKELETON_CARDS.map((key) => (
+                        <ProposalCardSkeleton key={key} />
+                    ))}
+                </div>
+                <TableSkeleton
+                    rows={12}
+                    columns={7}
+                    className="hidden rounded-2xl border-general-border lg:block"
+                />
+            </>
         );
     }
 
@@ -346,6 +356,9 @@ export default function RequestsPage() {
     ) {
         return (
             <PageComponentLayout title={t("title")}>
+                <h1 className="mt-3 mb-5 text-xl font-semibold leading-[1.2] tracking-tight lg:hidden">
+                    {t("title")}
+                </h1>
                 <NoRequestsFound />
             </PageComponentLayout>
         );
@@ -424,6 +437,11 @@ export default function RequestsPage() {
 
     return (
         <PageComponentLayout title={t("title")}>
+            {/* The shell header shows the treasury on a phone, not the page,
+                so the page names itself above the toolbar. */}
+            <h1 className="mt-3 mb-5 text-xl font-semibold leading-[1.2] tracking-tight lg:hidden">
+                {t("title")}
+            </h1>
             <ResponsiveTabs
                 tabs={tabs}
                 value={currentTab}
@@ -431,7 +449,7 @@ export default function RequestsPage() {
                 actions={actions}
                 hideHeader={selectedCount > 0}
                 variant="plain"
-                className="md:gap-4"
+                className="gap-5 md:gap-4"
             >
                 {filterPanel}
                 {tabContents}
