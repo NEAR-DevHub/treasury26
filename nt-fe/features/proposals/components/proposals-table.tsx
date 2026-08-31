@@ -28,7 +28,6 @@ import { ProposalTypeIcon } from "./proposal-type-icon";
 import { VotingIndicator } from "./voting-indicator";
 import { Policy } from "@/types/policy";
 import { TreasuryConfig } from "@/lib/api";
-import { FormattedDate } from "@/components/formatted-date";
 
 import { TooltipUser } from "@/components/user";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,7 +37,9 @@ import { extractConfidentialRequestData } from "../utils/proposal-extractors";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Pagination } from "@/components/pagination";
 import { TableSheet, sheetCellClassName } from "@/components/table-sheet";
+import { ProposalCard } from "./proposal-card";
 import { ProposalStatusPill } from "./proposal-status-pill";
+import { ProposalTimelineDate } from "./proposal-timeline-date";
 import { useNear } from "@/stores/near-store";
 import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -63,12 +64,6 @@ import { AuthButton } from "@/components/auth-button";
 import { useRouter } from "next/navigation";
 import { Tooltip } from "@/components/tooltip";
 import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insufficient-balance";
-import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
-import {
-    extractReceiptProposalData,
-    resolveExecutionTimestamp,
-} from "@/features/proposals/utils/receipt-utils";
-import { Skeleton } from "@/components/ui/skeleton";
 import { HighlightedText } from "@/components/highlighted-text";
 import { cn } from "@/lib/utils";
 import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
@@ -101,85 +96,6 @@ interface ProposalsTableProps {
     total?: number;
     onPageChange?: (page: number) => void;
     onSelectionChange?: (count: number) => void;
-}
-
-// Prefer resolved timestamp only for executed proposals, then fall back
-// to the standard status-based date.
-function ProposalTimelineDate({
-    proposal,
-    policy,
-    className,
-}: {
-    proposal: Proposal;
-    policy: Policy;
-    className?: string;
-}) {
-    const { treasuryId } = useTreasury();
-    const status = getProposalStatus(proposal, policy);
-    const isProposalExecuted = status === "Executed";
-    const depositAddress = extractReceiptProposalData(
-        proposal,
-        treasuryId,
-    )?.depositAddress;
-    // Moves to confidential settle via a confidential quote whose status only
-    // carries the quote time — keep the on-chain execution date for those.
-    const shouldUseSwapDate =
-        isProposalExecuted &&
-        !!depositAddress &&
-        getProposalUIKind(proposal) !== "Move to Confidential";
-
-    const {
-        data: transaction,
-        isLoading: isLoadingTransaction,
-        isAwaitingTransaction,
-    } = useProposalTransaction(
-        treasuryId,
-        proposal,
-        policy,
-        isProposalExecuted && !shouldUseSwapDate,
-    );
-    const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
-        depositAddress || null,
-        undefined,
-        shouldUseSwapDate,
-        treasuryId,
-    );
-
-    if (!isProposalExecuted) {
-        return (
-            <FormattedDate
-                proposal={proposal}
-                policy={policy}
-                relative
-                className={className}
-            />
-        );
-    }
-
-    const { executedDate, isDateLoading } = resolveExecutionTimestamp({
-        swapStatus,
-        transaction,
-        shouldUseSwapDate,
-        isLoadingSwapStatus,
-        isLoadingTransaction,
-        isAwaitingTransaction,
-    });
-    if (isDateLoading) {
-        return <Skeleton className="h-3.5 w-24" />;
-    }
-
-    if (!executedDate) {
-        return (
-            <FormattedDate
-                proposal={proposal}
-                policy={policy}
-                relative
-                className={className}
-            />
-        );
-    }
-
-    return <FormattedDate date={executedDate} relative className={className} />;
 }
 
 export function ProposalsTable({
@@ -605,7 +521,20 @@ export function ProposalsTable({
                     </div>
                 )}
 
-                <TableSheet>
+                {/* Mobile: the seven columns restack into one card per request. */}
+                <div className="flex flex-col gap-3 lg:hidden">
+                    {tableRows.map((row) => (
+                        <ProposalCard
+                            key={row.id}
+                            proposal={row.original}
+                            policy={policy}
+                            searchQuery={searchQuery}
+                            onOpen={openRequest}
+                        />
+                    ))}
+                </div>
+
+                <TableSheet className="hidden lg:block">
                     <ScrollArea className="grid">
                         <Table className="border-separate border-spacing-0 md:table-fixed">
                             <TableHeader className="border-0 bg-transparent">

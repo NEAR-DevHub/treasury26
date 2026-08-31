@@ -5,7 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { UIProposalStatus, getProposalStatus } from "../utils/proposal-utils";
 import { Tooltip } from "@/components/tooltip";
-import { Proposal } from "@/lib/proposals-api";
+import { Proposal, Vote } from "@/lib/proposals-api";
 import { Policy } from "@/types/policy";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import { useProposalTransaction } from "@/hooks/use-proposals";
@@ -26,10 +26,10 @@ export function getStatusColor(status: PillStatus): string {
         case "Paid":
             return "border-general-success-border bg-general-success-background-faded text-general-success-foreground";
         case "Failed":
-            return "border-general-warning-border bg-general-warning-background-faded text-general-warning-foreground";
+            return "border-general-amber-border bg-general-amber-background-faded text-general-amber-foreground";
         case "Rejected":
         case "Removed":
-            return "border-general-destructive-border bg-general-destructive-background-faded text-general-destructive-foreground";
+            return "border-general-rose-border bg-general-rose-background-faded text-general-rose-foreground";
         case "Pending":
             return "border-general-orange-border bg-general-orange-background-faded text-general-orange-foreground";
         case "Expired":
@@ -60,13 +60,16 @@ function statusKey(status: PillStatus): string {
     }
 }
 
-/** The pill's shape plus the tint for a status — shared with vote badges. */
+/**
+ * The pill's shape plus the tint for a status — shared with vote badges.
+ * `rounded-sm` is the theme's 8px radius (--radius is 12px).
+ */
 export function statusPillClassName(
     status: PillStatus,
     className?: string,
 ): string {
     return cn(
-        "inline-flex min-h-6 items-center rounded-lg border px-2 py-[3px] text-xs font-semibold",
+        "inline-flex min-h-6 items-center rounded-sm border px-2 py-[3px] text-xs/[14px] font-semibold",
         getStatusColor(status),
         className,
     );
@@ -79,6 +82,37 @@ export function StatusPill({ status, className }: StatusPillProps) {
             {t(statusKey(status))}
         </span>
     );
+}
+
+/** The vote an account cast, tinted like the status it moves the request towards. */
+export function VoteBadge({
+    vote,
+    className,
+}: {
+    vote: Vote;
+    className?: string;
+}) {
+    const t = useTranslations("proposals.status");
+    switch (vote) {
+        case "Approve":
+            return (
+                <span className={statusPillClassName("Approved", className)}>
+                    {t("approved")}
+                </span>
+            );
+        case "Reject":
+            return (
+                <span className={statusPillClassName("Rejected", className)}>
+                    {t("rejected")}
+                </span>
+            );
+        case "Remove":
+            return (
+                <span className={statusPillClassName("Removed", className)}>
+                    {t("removed")}
+                </span>
+            );
+    }
 }
 
 interface ProposalStatusPillProps {

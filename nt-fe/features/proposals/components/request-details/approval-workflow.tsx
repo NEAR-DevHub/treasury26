@@ -5,15 +5,12 @@ import type { ReactNode } from "react";
 import { useFormatDate } from "@/components/formatted-date";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getApproversAndThreshold } from "@/lib/config-utils";
-import type { Proposal, Vote } from "@/lib/proposals-api";
+import type { Proposal } from "@/lib/proposals-api";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
 import type { useProposalDetails } from "../../hooks/use-proposal-details";
-import {
-    ProposalStatusPill,
-    statusPillClassName,
-} from "../proposal-status-pill";
+import { ProposalStatusPill, VoteBadge } from "../proposal-status-pill";
 import { DetailsCard, RequestParty } from "./primitives";
 
 /** How far along the workflow a marker is — the rail is tinted to match. */
@@ -119,30 +116,6 @@ function Party({
             </div>
         </div>
     );
-}
-
-function VoteBadge({ vote }: { vote: Vote }) {
-    const t = useTranslations("proposals.status");
-    switch (vote) {
-        case "Approve":
-            return (
-                <span className={statusPillClassName("Approved")}>
-                    {t("approved")}
-                </span>
-            );
-        case "Reject":
-            return (
-                <span className={statusPillClassName("Rejected")}>
-                    {t("rejected")}
-                </span>
-            );
-        case "Remove":
-            return (
-                <span className={statusPillClassName("Removed")}>
-                    {t("removed")}
-                </span>
-            );
-    }
 }
 
 interface ApprovalWorkflowProps {

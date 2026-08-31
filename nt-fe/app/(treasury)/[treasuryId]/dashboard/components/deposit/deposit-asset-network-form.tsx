@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
 import { InputBlock } from "@/components/input-block";
 import { getNetworkDisplayName } from "@/components/token-display";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
@@ -213,7 +214,10 @@ export function DepositAssetNetworkForm({
                                                     {t("selectAsset")}
                                                 </span>
                                             )}
-                                            <ChevronDown className="h-5 w-5 shrink-0" />
+                                            <Icon
+                                                icon={ArrowDown01Icon}
+                                                className="size-5 shrink-0"
+                                            />
                                         </div>
                                     </Button>
                                 </InputBlock>
@@ -335,7 +339,10 @@ export function DepositAssetNetworkForm({
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <ChevronDown className="h-5 w-5 shrink-0" />
+                                                    <Icon
+                                                        icon={ArrowDown01Icon}
+                                                        className="size-5 shrink-0"
+                                                    />
                                                 </div>
                                             ) : (
                                                 <div className="flex w-full items-center justify-between gap-3">
@@ -354,7 +361,10 @@ export function DepositAssetNetworkForm({
                                                             {t("selectNetwork")}
                                                         </span>
                                                     </span>
-                                                    <ChevronDown className="h-5 w-5 shrink-0" />
+                                                    <Icon
+                                                        icon={ArrowDown01Icon}
+                                                        className="size-5 shrink-0"
+                                                    />
                                                 </div>
                                             )}
                                         </div>
