@@ -20,8 +20,13 @@ import {
     type PermissionRequirement,
 } from "@/components/create-request-button";
 import { InfoAlert } from "@/components/info-alert";
-import { getBlockchainType } from "@/lib/blockchain-utils";
-import { useAddressBook, AddressBookEntry } from "@/features/address-book";
+import { getBlockchainType, type BlockchainType } from "@/lib/blockchain-utils";
+import {
+    useAddressBook,
+    AddressBookEntry,
+    findAddressBookEntry,
+    formatAddressBookDisplayAddress,
+} from "@/features/address-book";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { useChains, ChainInfo } from "@/features/address-book/chains";
 import { NetworkList } from "@/components/network-list";
@@ -34,8 +39,24 @@ import {
     type RecipientNetworkRuleOption,
 } from "./recipient-network-select";
 import { cn } from "@/lib/utils";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
+
+function addressBookEntryMatchesNetwork(
+    entry: AddressBookEntry,
+    selectedNetworkName: string,
+    blockchainType: BlockchainType,
+): boolean {
+    if (entry.networks.length === 0) return true;
+    if (selectedNetworkName.trim().toLowerCase() === NEAR_COM_NETWORK_ID) {
+        return entry.networks.includes(NEAR_COM_NETWORK_ID);
+    }
+    return entry.networks.some(
+        (key) =>
+            key !== NEAR_COM_NETWORK_ID &&
+            getBlockchainType(key) === blockchainType,
+    );
+}
 
 interface PaymentFormSectionProps<
     TFieldValues extends FieldValues = FieldValues,
@@ -277,11 +298,11 @@ export function PaymentFormSection<
     useEffect(() => {
         if (!hideRecipientNetwork) return;
         if (!selectedContact) return;
-        const isCompatible =
-            selectedContact.networks.length === 0 ||
-            selectedContact.networks.some(
-                (key) => getBlockchainType(key) === blockchainType,
-            );
+        const isCompatible = addressBookEntryMatchesNetwork(
+            selectedContact,
+            selectedNetworkName,
+            blockchainType,
+        );
         if (!isCompatible) {
             setSelectedContact(null);
             setRecipientValue(
@@ -292,6 +313,7 @@ export function PaymentFormSection<
     }, [
         hideRecipientNetwork,
         blockchainType,
+        selectedNetworkName,
         selectedContact,
         setRecipientValue,
     ]);
@@ -299,25 +321,27 @@ export function PaymentFormSection<
     const filteredAddressBook = useMemo(
         () =>
             hideRecipientNetwork
-                ? addressBook.filter(
-                      (entry) =>
-                          entry.networks.length === 0 ||
-                          entry.networks.some(
-                              (key) =>
-                                  getBlockchainType(key) === blockchainType,
-                          ),
+                ? addressBook.filter((entry) =>
+                      addressBookEntryMatchesNetwork(
+                          entry,
+                          selectedNetworkName,
+                          blockchainType,
+                      ),
                   )
                 : addressBook,
-        [addressBook, blockchainType, hideRecipientNetwork],
+        [
+            addressBook,
+            blockchainType,
+            hideRecipientNetwork,
+            selectedNetworkName,
+        ],
     );
 
     // When recipient is pre-filled (e.g. stepping back from review), check if it matches an address book entry
     useEffect(() => {
         if (!recipient || selectedContact || filteredAddressBook.length === 0)
             return;
-        const match = filteredAddressBook.find(
-            (e) => e.address.toLowerCase() === recipient.toLowerCase(),
-        );
+        const match = findAddressBookEntry(filteredAddressBook, recipient);
         if (match) setSelectedContact(match);
     }, [recipient, filteredAddressBook, selectedContact]);
 
@@ -402,6 +426,9 @@ export function PaymentFormSection<
                         <div className="flex flex-col gap-1 min-w-0">
                             <User
                                 accountId={selectedContact.address}
+                                displayAddress={formatAddressBookDisplayAddress(
+                                    selectedContact,
+                                )}
                                 name={selectedContact.name}
                                 size="md"
                                 withLink={false}
@@ -563,6 +590,9 @@ export function PaymentFormSection<
                         <div className="flex items-center justify-between w-full gap-2">
                             <User
                                 accountId={entry.address}
+                                displayAddress={formatAddressBookDisplayAddress(
+                                    entry,
+                                )}
                                 name={entry.name}
                                 size="sm"
                                 withLink={false}

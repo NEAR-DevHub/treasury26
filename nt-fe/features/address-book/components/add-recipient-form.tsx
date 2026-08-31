@@ -27,7 +27,10 @@ import { NumberBadge } from "@/components/number-badge";
 import { Address } from "@/components/address";
 import { Pill } from "@/components/pill";
 import { buildRecipientSchema, RECIPIENT_NAME_MAX_LENGTH } from "../types";
+import { formatAddressBookDisplayAddress } from "../utils/find-entry";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { hasNearComAddressPrefix } from "@/lib/nearcom-address";
 
 // ─── Form schema ───────────────────────────────────────────────────────────────
 
@@ -190,7 +193,11 @@ export function RecipientRow({
                                         {name}
                                     </p>
                                     <div className="text-xxs text-muted-foreground">
-                                        <Address address={address} />
+                                        <Address
+                                            address={formatAddressBookDisplayAddress(
+                                                { address, networks },
+                                            )}
+                                        />
                                     </div>
                                 </div>
                                 {nameBadge}
@@ -428,7 +435,11 @@ export function AddRecipientInput({
                                 interactive
                             >
                                 <AccountInput
-                                    blockchain="unknown"
+                                    blockchain={
+                                        hasNearComAddressPrefix(activeAddress)
+                                            ? NEAR_NETWORK_ID
+                                            : "unknown"
+                                    }
                                     value={activeAddress}
                                     setValue={field.onChange}
                                     setIsValid={handleAddressValid}

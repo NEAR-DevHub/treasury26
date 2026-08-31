@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
     formatRecipientForNearComDestination,
     hasNearComAddressPrefix,
+    isNearComRecipientAddress,
     parseNearComAddress,
     stripNearComAddressPrefix,
     withNearComAddressPrefix,
@@ -25,6 +26,14 @@ describe("nearcom-address", () => {
         expect(withNearComAddressPrefix("nearcom:alice.near")).toBe(
             "nearcom:alice.near",
         );
+    });
+
+    it("requires prefix plus a valid NEAR account", () => {
+        expect(isNearComRecipientAddress("nearcom:alice.near")).toBe(true);
+        expect(isNearComRecipientAddress("NEARCOM:alice.near")).toBe(true);
+        expect(isNearComRecipientAddress("alice.near")).toBe(false);
+        expect(isNearComRecipientAddress("nearcom:")).toBe(false);
+        expect(isNearComRecipientAddress("nearcom:not valid")).toBe(false);
     });
 
     it("parses prefix + account", () => {
