@@ -17,6 +17,7 @@ import {
 import { Icon } from "@/components/icon";
 import { TreasuryTypeIcon } from "@/components/icons/shield";
 import type { Proposal } from "@/lib/proposals-api";
+import { cn } from "@/lib/utils";
 import { extractConfidentialRequestData } from "../utils/proposal-extractors";
 import { getProposalUIKind } from "../utils/proposal-utils";
 
@@ -26,12 +27,21 @@ interface ProposalTypeIconProps {
     className?: string;
 }
 
+/** The circle every request type shares — only the tint differs. */
+const TYPE_ICON_CLASS =
+    "flex size-9 shrink-0 items-center justify-center rounded-full border";
+
 function PaymentIcon() {
     return (
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full dark:bg-blue-500/10 bg-blue-100">
+        <div
+            className={cn(
+                TYPE_ICON_CLASS,
+                "border-general-blue-border bg-general-blue-background-faded",
+            )}
+        >
             <Icon
                 icon={SentIcon}
-                className="shrink-0 dark:text-blue-300 text-blue-800"
+                className="size-4 shrink-0 text-general-blue-foreground"
             />
         </div>
     );
@@ -39,10 +49,15 @@ function PaymentIcon() {
 
 function ExchangeIcon() {
     return (
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full dark:bg-pink-500/10 bg-pink-100">
+        <div
+            className={cn(
+                TYPE_ICON_CLASS,
+                "border-general-pink-border bg-general-pink-background-faded",
+            )}
+        >
             <Icon
                 icon={ArrowDataTransferHorizontalIcon}
-                className="shrink-0 dark:text-pink-300 text-pink-800"
+                className="size-4 shrink-0 text-general-pink-foreground"
             />
         </div>
     );
@@ -84,10 +99,15 @@ export function ProposalTypeIcon({
             );
         case "Change Policy":
             return (
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-full dark:bg-amber-500/10 bg-amber-100">
+                <div
+                    className={cn(
+                        TYPE_ICON_CLASS,
+                        "border-general-orange-border bg-general-orange-background-faded",
+                    )}
+                >
                     <Icon
                         icon={Shield01Icon}
-                        className="shrink-0 dark:text-amber-300 text-amber-800"
+                        className="size-4 shrink-0 text-general-orange-foreground"
                     />
                 </div>
             );
