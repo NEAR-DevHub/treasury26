@@ -4,7 +4,27 @@ type TokenQueryShape = {
     id?: string;
     balanceAssetId?: string;
     quoteAssetId?: string;
+    minWithdrawalAmount?: string;
+    minDepositAmount?: string;
+    balance?: string;
+    price?: number;
 };
+
+/**
+ * Per-asset fields that must never cross from the fallback onto a different
+ * asset (#1463): routing ids, min amounts, balance, price. Present in the
+ * result only when the link itself carries them.
+ */
+type PerAssetKeys =
+    | "balanceAssetId"
+    | "quoteAssetId"
+    | "minWithdrawalAmount"
+    | "minDepositAmount"
+    | "balance"
+    | "price";
+
+type ParsedTokenQueryParam<T extends TokenQueryShape> = Omit<T, PerAssetKeys> &
+    Pick<TokenQueryShape, PerAssetKeys> & { address: string };
 
 export function buildTokenQueryParam(token: {
     symbol: string;
@@ -40,7 +60,7 @@ export function buildTokenQueryParam(token: {
 export function parseTokenQueryParam<T extends TokenQueryShape>(
     param: string | null,
     fallback: T,
-): T {
+): ParsedTokenQueryParam<T> {
     if (!param) return fallback;
 
     try {
@@ -57,12 +77,13 @@ export function parseTokenQueryParam<T extends TokenQueryShape>(
 
         if (!address) return fallback;
 
-        // Routing ids identify the asset sent to 1Click. The fallback's must
-        // never leak onto a different asset (#1463), so only the link's own
-        // values are kept; consumers fall back to `address` when absent.
         const {
             balanceAssetId: _balanceAssetId,
             quoteAssetId: _quoteAssetId,
+            minWithdrawalAmount: _minWithdrawalAmount,
+            minDepositAmount: _minDepositAmount,
+            balance: _balance,
+            price: _price,
             ...fallbackDefaults
         } = fallback;
 
@@ -70,7 +91,7 @@ export function parseTokenQueryParam<T extends TokenQueryShape>(
             ...fallbackDefaults,
             ...(parsed as Partial<T>),
             address,
-        } as T;
+        } as ParsedTokenQueryParam<T>;
     } catch {
         return fallback;
     }

@@ -11,13 +11,13 @@ import {
     getLocalizedNetworkDisplayName,
     getNetworkDisplayCaseClass,
     getNetworkDisplayName,
-    networksMatchForWarningScope,
+    networksMatchAliased,
 } from "@/lib/intents-network";
 import { cn } from "@/lib/utils";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
 
 // Re-export network label helpers so existing `@/components/token-display` imports keep working.
-export { getNetworkDisplayName, networksMatchForWarningScope };
+export { getNetworkDisplayName, networksMatchAliased };
 
 interface NetworkIconDisplayProps {
     chainIcons: ChainIcons | null;
