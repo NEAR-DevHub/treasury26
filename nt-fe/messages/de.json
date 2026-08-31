@@ -668,7 +668,7 @@
             "transaction": "Transaktion",
             "requester": "Antragsteller",
             "voting": "Genehmigungen",
-            "votingTooltip": "Die erste Zahl zeigt erhaltene Genehmigungen. Die zweite Zahl zeigt zur Ausführung erforderliche Genehmigungen.",
+            "votingTooltip": "Die erste Zahl zeigt die insgesamt abgegebenen Stimmen (Genehmigungen und Ablehnungen). Die zweite Zahl zeigt zur Ausführung erforderliche Genehmigungen.",
             "status": "Status",
             "notPending": "Vorschlag ist nicht ausstehend.",
             "noPermissionVote": "Sie haben keine Berechtigung, über diese Anfrage abzustimmen.",

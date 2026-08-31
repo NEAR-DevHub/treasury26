@@ -668,7 +668,7 @@
             "transaction": "트랜잭션",
             "requester": "요청자",
             "voting": "승인",
-            "votingTooltip": "첫 번째 숫자는 받은 승인 수입니다. 두 번째 숫자는 실행에 필요한 승인 수입니다.",
+            "votingTooltip": "첫 번째 숫자는 받은 총 투표 수(승인 및 거부)입니다. 두 번째 숫자는 실행에 필요한 승인 수입니다.",
             "status": "상태",
             "notPending": "제안이 대기 상태가 아닙니다.",
             "noPermissionVote": "이 요청에 투표할 권한이 없습니다.",

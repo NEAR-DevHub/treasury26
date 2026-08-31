@@ -668,7 +668,7 @@
             "transaction": "交易",
             "requester": "请求者",
             "voting": "批准",
-            "votingTooltip": "第一个数字显示已收到的批准数。第二个数字显示执行所需的批准数。",
+            "votingTooltip": "第一个数字显示已收到的总投票数（批准和拒绝）。第二个数字显示执行所需的批准数。",
             "status": "状态",
             "notPending": "提案不处于待处理状态。",
             "noPermissionVote": "您没有对此请求投票的权限。",
