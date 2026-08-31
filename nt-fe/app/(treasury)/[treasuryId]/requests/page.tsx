@@ -13,7 +13,13 @@ import {
     useSearchParams,
 } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    type ReactNode,
+    useCallback,
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
 import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
@@ -226,6 +232,18 @@ function ProposalsList({
     );
 }
 
+/**
+ * The shell header shows the treasury on a phone, not the page, so the page
+ * names itself above its content.
+ */
+function MobilePageHeading({ children }: { children: ReactNode }) {
+    return (
+        <h1 className="mt-3 mb-5 text-xl font-semibold leading-[1.2] tracking-tight lg:hidden">
+            {children}
+        </h1>
+    );
+}
+
 function NoRequestsFound() {
     const tEmpty = useTranslations("requests.empty");
     const { treasuryId } = useTreasury();
@@ -356,9 +374,7 @@ export default function RequestsPage() {
     ) {
         return (
             <PageComponentLayout title={t("title")}>
-                <h1 className="mt-3 mb-5 text-xl font-semibold leading-[1.2] tracking-tight lg:hidden">
-                    {t("title")}
-                </h1>
+                <MobilePageHeading>{t("title")}</MobilePageHeading>
                 <NoRequestsFound />
             </PageComponentLayout>
         );
@@ -437,11 +453,7 @@ export default function RequestsPage() {
 
     return (
         <PageComponentLayout title={t("title")}>
-            {/* The shell header shows the treasury on a phone, not the page,
-                so the page names itself above the toolbar. */}
-            <h1 className="mt-3 mb-5 text-xl font-semibold leading-[1.2] tracking-tight lg:hidden">
-                {t("title")}
-            </h1>
+            <MobilePageHeading>{t("title")}</MobilePageHeading>
             <ResponsiveTabs
                 tabs={tabs}
                 value={currentTab}
