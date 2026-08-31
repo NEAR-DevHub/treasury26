@@ -225,6 +225,11 @@ export function getBlockchainType(chainName: string): BlockchainType {
         return "aleo";
     }
 
+    // UI-only intra-Intents ids — not a chain address format.
+    if (chainLower === "near.com" || chainLower === "near.com:direct") {
+        return "unknown";
+    }
+
     console.log(
         `⚠️  UNKNOWN BLOCKCHAIN: "${chainName}" - No validation available!`,
     );

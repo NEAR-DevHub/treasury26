@@ -26,5 +26,12 @@ export {
     useExportAddressBook,
 } from "./hooks/use-address-book-mutations";
 
+export {
+    addressBookEntryMatchesNetwork,
+    findAddressBookEntry,
+    formatAddressBookDisplayAddress,
+    persistAddressBookAddress,
+} from "./utils/find-entry";
+
 // Components
 export { ImportUploadStep } from "./components/import-recipients-flow";

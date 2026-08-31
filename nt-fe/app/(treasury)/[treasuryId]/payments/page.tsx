@@ -36,7 +36,7 @@ import { Form, FormField } from "@/components/ui/form";
 import { SlotWarning } from "@/components/warning-message";
 import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { default_near_token, default_usdc_near_token } from "@/constants/token";
-import { useAddressBook } from "@/features/address-book";
+import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import {
     PAGE_TOUR_NAMES,
     PAGE_TOUR_STORAGE_KEYS,
@@ -75,11 +75,7 @@ import {
     buildNativeNearIntentsKind,
     buildNearFtIntentsKind,
 } from "@/lib/near-proposal-builders";
-import { isValidNearAddressFormat } from "@/lib/near-validation";
-import {
-    hasNearComAddressPrefix,
-    stripNearComAddressPrefix,
-} from "@/lib/nearcom-address";
+import { isNearComRecipientAddress } from "@/lib/nearcom-address";
 import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import {
     classifyPaymentToken,
@@ -346,9 +342,7 @@ function Step2({
         return undefined;
     }, [bridgeAssets, destinationNetwork]);
     const { data: addressBook = [] } = useAddressBook();
-    const contactName = addressBook.find(
-        (e) => e.address.toLowerCase() === address?.toLowerCase(),
-    )?.name;
+    const contactName = findAddressBookEntry(addressBook, address)?.name;
 
     const {
         totalAmountWithFees,
@@ -999,12 +993,8 @@ export default function PaymentsPage() {
         if (!watchedToken) return null;
 
         const rawAddress = (watchedAddress ?? "").trim();
-        const bareRecipient = stripNearComAddressPrefix(rawAddress);
         // nearcom: + any valid NEAR format (incl. eth-implicit 0x…).
-        const isNearComRecipient =
-            hasNearComAddressPrefix(rawAddress) &&
-            !!bareRecipient &&
-            isValidNearAddressFormat(bareRecipient);
+        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
 
         // Only auto-destination: nearcom:<near> → near.com (public + confidential).
         // Plain NEAR / eth / etc. keep the original picker compatibility path
@@ -1143,11 +1133,7 @@ export default function PaymentsPage() {
 
     useEffect(() => {
         const rawAddress = (watchedAddress ?? "").trim();
-        const bareRecipient = stripNearComAddressPrefix(rawAddress);
-        const isNearComRecipient =
-            hasNearComAddressPrefix(rawAddress) &&
-            !!bareRecipient &&
-            isValidNearAddressFormat(bareRecipient);
+        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
 
         // Drop stale near.com when the address is no longer nearcom:<near>.
         if (

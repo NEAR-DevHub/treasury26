@@ -25,6 +25,7 @@ import { Pagination } from "@/components/pagination";
 import { Button } from "@/components/button";
 import { useChains } from "../chains";
 import type { AddressBookEntry } from "../types";
+import { formatAddressBookDisplayAddress } from "../utils/find-entry";
 
 interface AddressBookTableProps {
     entries: AddressBookEntry[];
@@ -161,6 +162,9 @@ export function AddressBookTable({
                                     <TableCell>
                                         <User
                                             accountId={entry.address}
+                                            displayAddress={formatAddressBookDisplayAddress(
+                                                entry,
+                                            )}
                                             name={entry.name}
                                             withLink={false}
                                             size="md"
