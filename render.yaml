@@ -1,15 +1,15 @@
 services:
   # Backend Service (Rust/Axum)
   - type: web
-    name: near-treasury-backend
+    name: near-business-backend
     runtime: rust
     plan: standard
     rootDir: nt-be
-    branch: release-1.24.0
+    branch: nearcom_redesign
     buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be && cargo build --release --example mark_testing_daos
     startCommand: ./target/release/nt-be
     domains:
-      - api.trezu.app
+      - api.business.near.com
     envVars:
       - key: FASTNEAR_API_KEY
         sync: false
@@ -33,7 +33,7 @@ services:
         sync: false
       - key: DATABASE_URL
         fromDatabase:
-          name: database
+          name: near-business-db
           property: connectionString
       - key: TESTING_SPUTNIK_DAO_IDS
         sync: false
@@ -48,27 +48,26 @@ services:
 
   # Frontend Service (Next.js)
   - type: web
-    name: near-treasury-frontend
+    name: near-business-frontend
     runtime: node
     plan: starter
     rootDir: nt-fe
-    branch: release-1.24.0
+    branch: nearcom_redesign
     buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
     startCommand: node .next/standalone/server.js
     domains:
-      - trezu.app
-      - www.trezu.app
+      - business.near.com
     envVars:
       - key: NODE_ENV
         value: production
       - key: MAXMIND_LICENSE_KEY
         sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE
-        value: https://api.trezu.app
+        value: https://api.business.near.com
     healthCheckPath: /
 
   - type: web
-    name: nt-nocodb
+    name: near-business-nocodb
     runtime: image
     plan: starter
     image:
@@ -77,9 +76,6 @@ services:
       name: nocodb-disk
       mountPath: /usr/app/data/
       sizeGB: 1
-    domains:
-      - nocodb.trezu.app
-      - www.nocodb.trezu.app
     envVars:
       - key: NC_CONNECTION_ENCRYPT_KEY
         generateValue: true
@@ -95,11 +91,11 @@ services:
 
   # Staging Backend Service (Rust/Axum)
   - type: web
-    name: near-treasury-backend-staging
+    name: near-business-backend-staging
     runtime: rust
     plan: starter
     rootDir: nt-be
-    branch: main
+    branch: nearcom_redesign
     buildCommand: unset DATABASE_URL && cargo build --release --bin nt-be && cargo build --release --example mark_testing_daos
     startCommand: ./target/release/nt-be
     envVars:
@@ -125,7 +121,7 @@ services:
         sync: false
       - key: DATABASE_URL
         fromDatabase:
-          name: database-staging
+          name: near-business-db-staging
           property: connectionString
       - key: TESTING_SPUTNIK_DAO_IDS
         sync: false
@@ -140,24 +136,7 @@ services:
 
   # Staging Frontend Service (Next.js)
   - type: web
-    name: near-treasury-frontend-staging
-    runtime: node
-    plan: starter
-    rootDir: nt-fe
-    branch: main
-    buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
-    startCommand: node .next/standalone/server.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: MAXMIND_LICENSE_KEY
-        sync: false
-      - key: NEXT_PUBLIC_BACKEND_API_BASE
-        sync: false
-    healthCheckPath: /
-
-  - type: web
-    name: near-treasury-frontend-staging-redesign
+    name: near-business-frontend-staging
     runtime: node
     plan: starter
     rootDir: nt-fe
@@ -174,10 +153,10 @@ services:
     healthCheckPath: /
 
 databases:
-  - name: database
+  - name: near-business-db
     plan: basic-1gb
-    diskSizeGB: 10
+    diskSizeGB: 5
 
-  - name: database-staging
+  - name: near-business-db-staging
     plan: basic-1gb
     diskSizeGB: 5
