@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock } from "lucide-react";
+import { Clock01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import {
     useParams,
@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/button";
 import { CopyButton } from "@/components/copy-button";
+import { Icon } from "@/components/icon";
 import Logo from "@/components/icons/logo";
 import { NearBusinessLogo } from "@/components/icons/near-business-logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -423,7 +424,10 @@ export default function PaySharePage() {
                                     {pageTitle}
                                 </h1>
                                 <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full border border-solid border-general-orange-border bg-general-orange-background-faded px-2.5 py-1 text-xs font-medium text-general-orange-foreground">
-                                    <Clock className="size-3.5" />
+                                    <Icon
+                                        icon={Clock01Icon}
+                                        className="size-3.5"
+                                    />
                                     {t("transfer.waitingForPayment")}
                                 </span>
                             </div>
