@@ -32,6 +32,7 @@ import {
     useExportAddressBook,
     type RecipientDraft,
     type AddressBookEntry,
+    persistAddressBookAddress,
 } from "@/features/address-book";
 import { useChains } from "@/features/address-book/chains";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -217,7 +218,10 @@ function RecipientFlow({
                                     return {
                                         name: recipient.name,
                                         networks: recipient.networks,
-                                        address: recipient.address,
+                                        address:
+                                            persistAddressBookAddress(
+                                                recipient,
+                                            ),
                                         note: notes[index] || undefined,
                                     };
                                 }),

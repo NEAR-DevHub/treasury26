@@ -1,5 +1,5 @@
 import type { ChainInfo } from "../chains";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 
 /**
  * Build a case-insensitive lookup map from various network name aliases to chain keys.
@@ -15,6 +15,7 @@ export function buildNetworkLookup(chains: ChainInfo[]): Map<string, string> {
     // Common aliases not covered by key/name
     const aliases: Record<string, string> = {
         "near protocol": NEAR_NETWORK_ID,
+        nearcom: NEAR_COM_NETWORK_ID,
         ethereum: "eth",
         ether: "eth",
         bnb: "bsc",

@@ -19,7 +19,10 @@ import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { isValidAddress } from "@/lib/address-validation";
 import { getBlockchainType } from "@/lib/blockchain-utils";
-import { parseNearComAddress } from "@/lib/nearcom-address";
+import {
+    isNearComRecipientAddress,
+    parseNearComAddress,
+} from "@/lib/nearcom-address";
 import { isValidNearAddressFormat } from "@/lib/near-validation";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
@@ -80,7 +83,7 @@ function isAddressCompatibleWithNetwork(
 
     // near.com only for nearcom:<validNear>. Never compatible otherwise.
     if (optionId === NEAR_COM_NETWORK_ID) {
-        return hasPrefix && !!accountId && isValidNearAddressFormat(accountId);
+        return isNearComRecipientAddress(address);
     }
 
     // Original per-chain format checks (ignore nearcom: — that route is above).
@@ -225,9 +228,7 @@ export function RecipientNetworkSelect({
     }, [bridgeAssetMatch, isConfidential, t, token]);
 
     const availableOptions = useMemo(() => {
-        const { hasPrefix, accountId } = parseNearComAddress(recipient);
-        const isNearComRecipient =
-            hasPrefix && !!accountId && isValidNearAddressFormat(accountId);
+        const isNearComRecipient = isNearComRecipientAddress(recipient);
 
         // nearcom:<validNear> → near.com only (public + confidential).
         // Never listed as a free option — only when the recipient uses the prefix.

@@ -13,9 +13,14 @@ import { CopyButton } from "./copy-button";
 import { Address } from "./address";
 import { HighlightedText } from "./highlighted-text";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
-import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
+import {
+    isNearComRecipientAddress,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { findAddressBookEntry } from "@/features/address-book/utils/find-entry";
+import { useAddressBook } from "@/features/address-book/hooks/use-address-book";
 
 // ─── Shared types ─────────────────────────────────────────────────────────────
 
@@ -374,23 +379,35 @@ export function TooltipUser({
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading: isProfileLoading } =
         useProfile(bareAccountId);
+    const { data: addressBook = [] } = useAddressBook();
     const treasuryName = resolveSelfTreasuryName(
         bareAccountId,
         treasuryId,
         config?.name,
     );
-    const isSavedInAddressBook = profile?.isInAddressBook ?? false;
+    const addressBookLookup = displayAddress ?? accountId;
+    const addressBookEntry = findAddressBookEntry(
+        addressBook,
+        addressBookLookup,
+    );
+    const isSavedInAddressBook = !!addressBookEntry;
     const addressBookParams = new URLSearchParams({
         name: resolveUserDisplayName({
             accountId: bareAccountId,
             name,
             profileName: profile?.name ?? treasuryName,
-            addressBookName: profile?.addressBookName,
+            addressBookName: addressBookEntry?.name,
             preferAddressBook,
         }),
-        address: bareAccountId,
+        address: isNearComRecipientAddress(addressBookLookup)
+            ? addressBookLookup
+            : bareAccountId,
     });
-    addressBookParams.set("network", chainName);
+    if (isNearComRecipientAddress(addressBookLookup)) {
+        addressBookParams.set("networks", NEAR_COM_NETWORK_ID);
+    } else {
+        addressBookParams.set("network", chainName);
+    }
     const copyText = displayAddress ?? bareAccountId;
 
     const addToAddressBookUrl = treasuryId
@@ -484,12 +501,17 @@ export function User({
 }: UserProps) {
     const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading } = useProfile(bareAccountId);
+    const { data: addressBook = [] } = useAddressBook();
     const { treasuryId, config } = useTreasury();
     const treasuryName = resolveSelfTreasuryName(
         bareAccountId,
         treasuryId,
         config?.name,
     );
+    const addressBookName = findAddressBookEntry(
+        addressBook,
+        displayAddress ?? accountId,
+    )?.name;
 
     if (
         isLoading &&
@@ -503,7 +525,7 @@ export function User({
         accountId: bareAccountId,
         name: nameProp,
         profileName: profile?.name ?? treasuryName,
-        addressBookName: profile?.addressBookName,
+        addressBookName,
         preferAddressBook,
     });
 

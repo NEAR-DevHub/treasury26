@@ -24,7 +24,7 @@ import { ReviewStep, type StepProps } from "@/components/step-wizard";
 import { Textarea } from "@/components/textarea";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
-import { useAddressBook } from "@/features/address-book";
+import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
@@ -36,7 +36,6 @@ import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
 import {
     formatRecipientForNearComDestination,
     hasNearComAddressPrefix,
-    stripNearComAddressPrefix,
 } from "@/lib/nearcom-address";
 import { cn } from "@/lib/utils";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
@@ -447,14 +446,9 @@ export function ReviewPaymentsStep({
                                                     <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
                                                         {(() => {
                                                             const contact =
-                                                                addressBook.find(
-                                                                    (e) =>
-                                                                        e.address.toLowerCase() ===
-                                                                            payment.recipient.toLowerCase() ||
-                                                                        e.address.toLowerCase() ===
-                                                                            stripNearComAddressPrefix(
-                                                                                payment.recipient,
-                                                                            ).toLowerCase(),
+                                                                findAddressBookEntry(
+                                                                    addressBook,
+                                                                    payment.recipient,
                                                                 );
                                                             return (
                                                                 <>
