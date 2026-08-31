@@ -30,15 +30,19 @@ const server = http.createServer((req, res) => {
     // Get the origin from the request
     const origin = req.headers.origin || "http://localhost:3000";
 
-    // Handle CORS preflight
+    // Handle CORS preflight. Echo the requested headers: the frontend adds
+    // tracing headers (sentry-trace, baggage) that a fixed allowlist rejects.
     if (req.method === "OPTIONS") {
-        res.writeHead(200, {
+        res.writeHead(204, {
             "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Methods":
                 "GET, POST, PUT, DELETE, PATCH, OPTIONS",
             "Access-Control-Allow-Headers":
+                req.headers["access-control-request-headers"] ||
                 "Content-Type, Authorization, Cookie",
             "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "600",
+            Vary: "Origin, Access-Control-Request-Headers",
         });
         res.end();
         return;

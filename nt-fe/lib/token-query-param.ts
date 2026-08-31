@@ -2,6 +2,8 @@ type TokenQueryShape = {
     address: string;
     contractId?: string;
     id?: string;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
 };
 
 export function buildTokenQueryParam(token: {
@@ -14,6 +16,8 @@ export function buildTokenQueryParam(token: {
     chainIcons?: unknown;
     contractId?: string;
     id?: string;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
 }): string {
     const address = token.contractId ?? token.id;
 
@@ -27,6 +31,8 @@ export function buildTokenQueryParam(token: {
             icon: token.icon,
             name: token.name,
             chainIcons: token.chainIcons,
+            balanceAssetId: token.balanceAssetId,
+            quoteAssetId: token.quoteAssetId,
         }),
     );
 }
@@ -51,11 +57,20 @@ export function parseTokenQueryParam<T extends TokenQueryShape>(
 
         if (!address) return fallback;
 
+        // Routing ids identify the asset sent to 1Click. The fallback's must
+        // never leak onto a different asset (#1463), so only the link's own
+        // values are kept; consumers fall back to `address` when absent.
+        const {
+            balanceAssetId: _balanceAssetId,
+            quoteAssetId: _quoteAssetId,
+            ...fallbackDefaults
+        } = fallback;
+
         return {
-            ...fallback,
+            ...fallbackDefaults,
             ...(parsed as Partial<T>),
             address,
-        };
+        } as T;
     } catch {
         return fallback;
     }
