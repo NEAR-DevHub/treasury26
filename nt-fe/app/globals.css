@@ -271,6 +271,12 @@
     --general-rose-background-faded: rgb(255, 241, 242);
     --general-rose-border: rgb(255, 228, 230);
     --general-rose-foreground: rgb(236, 0, 63);
+    --general-blue-background-faded: rgb(239, 246, 255);
+    --general-blue-border: rgb(219, 234, 254);
+    --general-blue-foreground: rgb(20, 71, 230);
+    --general-pink-background-faded: rgb(253, 242, 248);
+    --general-pink-border: rgb(252, 231, 243);
+    --general-pink-foreground: rgb(190, 24, 93);
     --general-tertiary: rgb(250, 250, 250);
     --general-bg-tertiary: rgb(250, 250, 250);
     --chart-area-fill: rgb(2, 7, 6);
@@ -394,6 +400,12 @@
     --general-rose-background-faded: rgb(69, 10, 10);
     --general-rose-border: rgb(127, 29, 29);
     --general-rose-foreground: rgb(220, 38, 38);
+    --general-blue-background-faded: rgb(23, 37, 84);
+    --general-blue-border: rgb(30, 58, 138);
+    --general-blue-foreground: rgb(147, 197, 253);
+    --general-pink-background-faded: rgb(80, 7, 36);
+    --general-pink-border: rgb(131, 24, 67);
+    --general-pink-foreground: rgb(249, 168, 212);
     --general-tertiary: rgb(31, 31, 31);
     --general-bg-tertiary: rgb(31, 31, 31);
     --general-unofficial-border: rgba(64, 64, 64);
@@ -527,6 +539,12 @@
     --color-general-rose-background-faded: var(--general-rose-background-faded);
     --color-general-rose-border: var(--general-rose-border);
     --color-general-rose-foreground: var(--general-rose-foreground);
+    --color-general-blue-background-faded: var(--general-blue-background-faded);
+    --color-general-blue-border: var(--general-blue-border);
+    --color-general-blue-foreground: var(--general-blue-foreground);
+    --color-general-pink-background-faded: var(--general-pink-background-faded);
+    --color-general-pink-border: var(--general-pink-border);
+    --color-general-pink-foreground: var(--general-pink-foreground);
     --color-general-tertiary: var(--general-tertiary);
     --color-general-bg-tertiary: var(--general-bg-tertiary);
     --color-general-unofficial-border: var(--general-unofficial-border);
