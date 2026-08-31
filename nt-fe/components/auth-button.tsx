@@ -245,7 +245,10 @@ export function AuthButtonWithProposal({
                     <span className="w-full">
                         <Button
                             {...props}
-                            className="w-full"
+                            // The tooltip's span owns the width, so the button
+                            // fills it — without discarding the call site's
+                            // own classes.
+                            className={cn(props.className, "w-full")}
                             disabled={disabled}
                             onClick={onClick}
                         >

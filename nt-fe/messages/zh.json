@@ -70,7 +70,8 @@
         "receiveNetwork": "接收网络",
         "receiveAmountUsd": "接收金额（美元）",
         "paymentConfirmation": "付款确认",
-        "exchangeConfirmation": "兑换确认"
+        "exchangeConfirmation": "兑换确认",
+        "pdfReceipt": "PDF 收据"
     },
     "languageSwitcher": {
         "label": "语言",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, other {# 天}}",
             "factoryId": "工厂 ID",
             "autoUpdate": "自动更新",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "详情",
+            "approvalWorkflow": "审批流程",
+            "approvals": "审批",
+            "note": "备注"
         },
         "insufficientBalance": {
             "noAsset": "由于金库中没有所需代币,此请求无法被批准。",

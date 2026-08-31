@@ -26,6 +26,8 @@ interface TokenDisplayProps {
     icon: string;
     chainIcons?: ChainIcons;
     iconSize?: TokenIconSize;
+    /** Overrides the icon geometry when a call site needs an off-scale size. */
+    className?: string;
 }
 
 export const TokenDisplay = ({
@@ -33,6 +35,7 @@ export const TokenDisplay = ({
     icon,
     chainIcons,
     iconSize = "md",
+    className,
 }: TokenDisplayProps) => {
     const networkIcon = chainIcons?.icon ?? null;
     const isImageIcon =
@@ -47,6 +50,7 @@ export const TokenDisplay = ({
                     className={cn(
                         "rounded-full shrink-0",
                         iconSizeClasses[iconSize],
+                        className,
                     )}
                 />
             ) : (
@@ -54,6 +58,7 @@ export const TokenDisplay = ({
                     className={cn(
                         "rounded-full bg-brand-blue flex items-center justify-center text-xs text-white font-normal shrink-0",
                         iconSizeClasses[iconSize],
+                        className,
                     )}
                 >
                     {icon || symbol.charAt(0).toUpperCase()}

@@ -70,7 +70,8 @@
         "receiveNetwork": "Empfängernetzwerk",
         "receiveAmountUsd": "Empfangener Betrag (USD)",
         "paymentConfirmation": "Zahlungsbestätigung",
-        "exchangeConfirmation": "Tauschbestätigung"
+        "exchangeConfirmation": "Tauschbestätigung",
+        "pdfReceipt": "PDF-Beleg"
     },
     "languageSwitcher": {
         "label": "Sprache",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, one {# Tag} other {# Tage}}",
             "factoryId": "Factory-ID",
             "autoUpdate": "Automatische Aktualisierung",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "Details",
+            "approvalWorkflow": "Genehmigungsablauf",
+            "approvals": "Genehmigungen",
+            "note": "Notiz"
         },
         "insufficientBalance": {
             "noAsset": "Diese Anfrage kann nicht genehmigt werden, da das erforderliche Token in der Treasury nicht verfügbar ist.",

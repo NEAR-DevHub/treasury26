@@ -70,7 +70,8 @@
         "receiveNetwork": "רשת קבלה",
         "receiveAmountUsd": "סכום שהתקבל (USD)",
         "paymentConfirmation": "אישור תשלום",
-        "exchangeConfirmation": "אישור המרה"
+        "exchangeConfirmation": "אישור המרה",
+        "pdfReceipt": "קבלה ב-PDF"
     },
     "languageSwitcher": {
         "label": "שפה",
@@ -886,7 +887,11 @@
             "daysCount": "{count, plural, one {יום אחד} other {# ימים}}",
             "factoryId": "מזהה Factory",
             "autoUpdate": "עדכון אוטומטי",
-            "memberRoleSubtitle": "{member} • {role}"
+            "memberRoleSubtitle": "{member} • {role}",
+            "details": "פרטים",
+            "approvalWorkflow": "תהליך אישור",
+            "approvals": "אישורים",
+            "note": "הערה"
         },
         "insufficientBalance": {
             "noAsset": "לא ניתן לאשר בקשה זו מכיוון שהטוקן הנדרש אינו זמין באוצר.",

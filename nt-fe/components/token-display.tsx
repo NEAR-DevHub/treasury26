@@ -79,6 +79,7 @@ export const NetworkIconDisplay = ({
     networkNameClassName,
     expandNearComLabel = false,
     className,
+    iconClassName,
 }: {
     chainIcons: ChainIcons | null;
     networkName: string;
@@ -86,6 +87,7 @@ export const NetworkIconDisplay = ({
     networkNameClassName?: string;
     expandNearComLabel?: boolean;
     className?: string;
+    iconClassName?: string;
 }) => {
     const getResidencyLabel = useResidencyLabel();
     const tAddressBookTable = useTranslations("addressBookTable");
@@ -106,10 +108,18 @@ export const NetworkIconDisplay = ({
                 <img
                     src={iconUrl}
                     alt={`${networkName} network`}
-                    className="size-6 rounded-full object-cover"
+                    className={cn(
+                        "size-6 rounded-full object-cover",
+                        iconClassName,
+                    )}
                 />
             ) : (
-                <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
+                <div
+                    className={cn(
+                        "size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal",
+                        iconClassName,
+                    )}
+                >
                     {networkName.charAt(0)}
                 </div>
             )}
