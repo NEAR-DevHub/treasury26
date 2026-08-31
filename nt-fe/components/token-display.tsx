@@ -7,7 +7,7 @@ import {
     getNetworkDisplayCaseClass,
     getLocalizedNetworkDisplayName,
     getNetworkDisplayName,
-    networksMatchForWarningScope,
+    networksMatchAliased,
 } from "@/lib/intents-network";
 import Big from "@/lib/big";
 import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
@@ -16,7 +16,7 @@ import { MaskedBalance } from "./balance-mask";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
 
 // Re-export network label helpers so existing `@/components/token-display` imports keep working.
-export { getNetworkDisplayName, networksMatchForWarningScope };
+export { getNetworkDisplayName, networksMatchAliased };
 
 interface NetworkIconDisplayProps {
     chainIcons: ChainIcons | null;

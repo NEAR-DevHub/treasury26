@@ -18,7 +18,8 @@ const btcFallback = {
     quoteAssetId: "1cs_v1:btc:native:coin",
 };
 
-// Mirrors the NetworkAsset row the dashboard passes to buildTokenQueryParam.
+// Dashboard NetworkAsset rows carry no routing ids today; this fixture adds
+// them to pin the builder contract for producers that do.
 const solNetwork = {
     id: "nep141:sol.omft.near",
     contractId: "nep141:sol.omft.near",
@@ -66,6 +67,25 @@ describe("parseTokenQueryParam", () => {
         expect(parsed.address).toBe("nep141:sol.omft.near");
         expect(parsed.balanceAssetId).toBeUndefined();
         expect(parsed.quoteAssetId).toBeUndefined();
+    });
+
+    it("drops the fallback's per-asset amounts for a different asset", () => {
+        const usdcFallback = {
+            ...btcFallback,
+            minWithdrawalAmount: "1",
+            minDepositAmount: "1",
+            balance: "1000000",
+            price: 1,
+        };
+        const parsed = parseTokenQueryParam(
+            buildTokenQueryParam(solNetwork),
+            usdcFallback,
+        );
+
+        expect(parsed.minWithdrawalAmount).toBeUndefined();
+        expect(parsed.minDepositAmount).toBeUndefined();
+        expect(parsed.balance).toBeUndefined();
+        expect(parsed.price).toBeUndefined();
     });
 
     it("keeps routing ids that the link carries for the fallback asset", () => {

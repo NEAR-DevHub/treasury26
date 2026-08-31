@@ -80,11 +80,12 @@ export function getNetworkDisplayName(name: string): string {
 }
 
 /**
- * Warning admin + bridge metadata sometimes disagree on short vs long chain
- * ids (`arb` vs `arbitrum`, `eth` vs `ethereum`). Treat them as the same when
- * they share a display name (or match exactly, case-insensitive).
+ * Data sources disagree on short vs long chain ids (`arb` vs `arbitrum`,
+ * `eth` vs `ethereum`): the token catalog uses canonical names while
+ * 1Click-derived treasury assets use short codes. Treat them as the same
+ * chain when they share a display name (or match exactly, case-insensitive).
  */
-export function networksMatchForWarningScope(
+export function networksMatchAliased(
     a?: string | null,
     b?: string | null,
 ): boolean {
