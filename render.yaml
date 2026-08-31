@@ -186,7 +186,7 @@ services:
 databases:
   - name: database
     plan: basic-1gb
-    diskSizeGB: 10
+    diskSizeGB: 15
 
   - name: database-staging
     plan: basic-1gb
