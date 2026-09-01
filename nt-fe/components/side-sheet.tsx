@@ -2,6 +2,7 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useRef } from "react";
+import { SheetHandle } from "@/components/mobile-shell/sheet-handle";
 import { Dialog } from "@/components/modal";
 import {
     DialogClose,
@@ -79,6 +80,11 @@ function SideSheetContent({
                     className,
                 )}
             >
+                {/* Every bottom-sheet in the app leads with the drag handle;
+                    the desktop panel slides in from the side, so it drops. */}
+                <div className="shrink-0 pt-4 lg:hidden">
+                    <SheetHandle />
+                </div>
                 {children}
             </DialogPrimitive.Content>
         </DialogPortal>
