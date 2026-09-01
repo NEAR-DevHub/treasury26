@@ -323,10 +323,12 @@ function FilterSheetFrame({
                 ) : (
                     title
                 )}
+                {/* The same button dismisses the comparison list when it is
+                    open, and leaves the editor otherwise. */}
                 <button
                     type="button"
                     onClick={() => (picker.active ? picker.close() : onBack())}
-                    aria-label={tCommon("back")}
+                    aria-label={tCommon(picker.active ? "close" : "back")}
                     className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-sm text-general-muted-foreground transition-colors active:bg-general-secondary"
                 >
                     <Icon icon={Cancel01Icon} className="size-[13.25px]" />
