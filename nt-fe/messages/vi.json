@@ -635,7 +635,6 @@
             "noMembersAvailable": "Không có thành viên khả dụng",
             "editOnDesktop": "Chỉnh sửa trên máy tính",
             "reset": "Đặt lại",
-            "resetAll": "Đặt lại tất cả",
             "clear": "Xóa",
             "addFilter": "Thêm bộ lọc"
         },
@@ -1988,7 +1987,8 @@
         "last6Months": "6 tháng qua"
     },
     "input": {
-        "openSearch": "Mở tìm kiếm"
+        "openSearch": "Mở tìm kiếm",
+        "closeSearch": "Đóng tìm kiếm"
     },
     "pagination": {
         "previous": "Trước",

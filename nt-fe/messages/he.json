@@ -635,7 +635,6 @@
             "noMembersAvailable": "אין חברים זמינים",
             "editOnDesktop": "עריכה במחשב",
             "reset": "איפוס",
-            "resetAll": "אפס הכל",
             "clear": "נקה",
             "addFilter": "הוסף מסנן"
         },
@@ -2005,7 +2004,8 @@
         "last6Months": "6 חודשים אחרונים"
     },
     "input": {
-        "openSearch": "פתח חיפוש"
+        "openSearch": "פתח חיפוש",
+        "closeSearch": "סגור חיפוש"
     },
     "pagination": {
         "previous": "הקודם",

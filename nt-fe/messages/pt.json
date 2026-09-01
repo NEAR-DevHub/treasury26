@@ -635,7 +635,6 @@
             "noMembersAvailable": "Nenhum membro disponível",
             "editOnDesktop": "Editar no computador",
             "reset": "Redefinir",
-            "resetAll": "Redefinir tudo",
             "clear": "Limpar",
             "addFilter": "Adicionar filtro"
         },
@@ -2005,7 +2004,8 @@
         "last6Months": "Últimos 6 meses"
     },
     "input": {
-        "openSearch": "Abrir busca"
+        "openSearch": "Abrir busca",
+        "closeSearch": "Fechar busca"
     },
     "pagination": {
         "previous": "Anterior",

@@ -72,11 +72,11 @@ function useProposalFilterOptions(): FilterOption[] {
             // Recipient and token are hidden data for confidential guests
             ...(isConfidentialGuest
                 ? []
-                : [
-                      { id: "recipients", label: tFilters("recipient") },
-                      { id: "token", label: tFilters("token") },
-                  ]),
+                : [{ id: "recipients", label: tFilters("recipient") }]),
             { id: "proposers", label: tFilters("requester") },
+            ...(isConfidentialGuest
+                ? []
+                : [{ id: "token", label: tFilters("token") }]),
             { id: "approvers", label: tFilters("approver") },
             { id: "my_vote", label: tFilters("myVoteStatus") },
         ],
@@ -300,6 +300,9 @@ export default function RequestsPage() {
     const { isMobile } = useResponsiveSidebar();
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+    // An open search owns the whole phone toolbar, so the tab picker and the
+    // filters button step aside for it.
+    const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
     const { data: allProposals } = useProposals(treasuryId, {});
     const [searchValue, setSearchValue] = useState(
         searchParams.get("search") || "",
@@ -394,15 +397,18 @@ export default function RequestsPage() {
         : tCommon("filters");
 
     const actions = (
-        <div className="flex items-center justify-end gap-2">
+        // Full width on a phone so the expanded search can take over the row.
+        <div className="flex w-full items-center justify-end gap-2 md:w-auto">
             <ResponsiveInput
                 type="text"
                 placeholder={tReq("searchPlaceholder")}
                 mobilePlaceholder={tReq("searchPlaceholderShort")}
-                className="md:h-10 md:w-[290px] md:shrink-0"
+                className="h-10 md:w-[290px] md:shrink-0"
                 buttonClassName={ICON_BUTTON_CLASS}
-                inputClassName="md:rounded-lg md:border md:border-general-border md:bg-card! md:hover:bg-card! md:pl-9 md:placeholder:font-medium md:placeholder:text-general-muted-foreground dark:md:placeholder:text-muted-foreground focus-visible:border-general-border focus-visible:ring-0"
-                searchIconClassName="md:left-2 md:size-5 md:text-general-muted-foreground dark:md:text-muted-foreground"
+                mobileCloseButton
+                onSearchActiveChange={setIsMobileSearchOpen}
+                inputClassName="rounded-lg border border-general-border bg-card! hover:bg-card! pl-9 text-sm placeholder:font-medium placeholder:text-sm placeholder:text-general-muted-foreground dark:placeholder:text-muted-foreground focus-visible:border-general-border focus-visible:ring-0"
+                searchIconClassName="left-2 size-5 text-general-muted-foreground dark:text-muted-foreground"
                 search
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
@@ -416,6 +422,7 @@ export default function RequestsPage() {
                 className={cn(
                     ICON_BUTTON_CLASS,
                     "md:h-10 md:w-auto md:gap-2 md:px-4 md:text-sm",
+                    isMobileSearchOpen && "hidden md:inline-flex",
                     // Active state is the design's gray-900 (#171717) surface.
                     hasActiveFilters
                         ? "bg-general-foreground text-background hover:bg-general-foreground/90"
@@ -459,6 +466,7 @@ export default function RequestsPage() {
                 value={currentTab}
                 onValueChange={handleTabChange}
                 actions={actions}
+                hideTabSelect={isMobileSearchOpen}
                 hideHeader={selectedCount > 0}
                 variant="plain"
                 className="gap-5 md:gap-4"

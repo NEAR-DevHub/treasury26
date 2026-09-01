@@ -41,7 +41,7 @@ const PROPOSAL_TYPE_OPTIONS = [
     "Function Call",
     "Change Policy",
     "Settings",
-];
+] as const;
 
 // When a treasury is confidential and the viewer is not a member, the subtype
 // of confidential proposals (payment vs exchange) cannot be revealed. Collapse
@@ -53,13 +53,14 @@ const CONFIDENTIAL_GUEST_PROPOSAL_TYPE_OPTIONS = [
     "Function Call",
     "Change Policy",
     "Settings",
-];
+] as const;
 
-const MY_VOTE_OPTIONS = ["Approved", "Rejected", "No Voted"];
+const MY_VOTE_OPTIONS = ["Approved", "Rejected", "No Voted"] as const;
 const MY_VOTE_OPERATIONS = ["Is"];
 
 const TOKEN_OPERATIONS = ["Is", "Is Not"];
-const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
+/** How a token filter's amount bound reads; only offered once "Is" is picked. */
+export const AMOUNT_OPERATIONS = ["Between", "Equal", "More Than", "Less Than"];
 
 const PROPOSAL_TYPE_OPERATIONS = ["Is", "Is Not"];
 const DATE_OPERATIONS = ["Is"];
@@ -74,6 +75,55 @@ export const CREATED_DATE_PRESETS: readonly DatePresetKey[] = [
 ];
 const USER_OPERATIONS = ["Is", "Is Not"];
 const FROM_OPERATIONS = ["Is", "Is Not"];
+
+/**
+ * The comparisons each filter supports, keyed by the URL parameter it writes.
+ * Only what `convertUrlParamsToApiFilters` can actually translate belongs here:
+ * a comparison listed but unhandled would silently widen the result set.
+ *
+ * Doubles as the roster of filters the mobile sheet can edit — a filter absent
+ * from this map has no phone-sized editor and stays desktop-only.
+ */
+export const FILTER_OPERATIONS = {
+    proposal_types: PROPOSAL_TYPE_OPERATIONS,
+    created_date: DATE_OPERATIONS,
+    recipients: USER_OPERATIONS,
+    proposers: USER_OPERATIONS,
+    approvers: USER_OPERATIONS,
+    token: TOKEN_OPERATIONS,
+    my_vote: MY_VOTE_OPERATIONS,
+    from: FROM_OPERATIONS,
+    to: FROM_OPERATIONS,
+} as const satisfies Record<string, readonly string[]>;
+
+/**
+ * The request types a treasury can filter by. A confidential treasury hides the
+ * subtype of its proposals from guests, so payments and exchanges collapse into
+ * a single "Confidential" entry for them.
+ */
+export function useProposalTypeOptions() {
+    const tF = useTranslations("requests.filters");
+    const { isConfidential, isGuestTreasury } = useTreasury();
+    const types =
+        isConfidential && isGuestTreasury
+            ? CONFIDENTIAL_GUEST_PROPOSAL_TYPE_OPTIONS
+            : PROPOSAL_TYPE_OPTIONS;
+
+    return types.map((type) => ({
+        value: type,
+        label: tF(`proposalTypes.${type}`),
+    }));
+}
+
+/** The vote states the viewer can filter their own requests by. */
+export function useMyVoteOptions() {
+    const tF = useTranslations("requests.filters");
+
+    return MY_VOTE_OPTIONS.map((vote) => ({
+        value: vote,
+        label: tF(`voteStatus.${vote}`),
+    }));
+}
 
 /** Shared chrome for the filter row's buttons (Reset, the active filter pills,
  * Add filter): 12px radius, and a label that darkens on hover. */
@@ -699,6 +749,7 @@ function MyVoteFilterContent({
     onRemove: () => void;
 }) {
     const tF = useTranslations("requests.filters");
+    const options = useMyVoteOptions();
     return (
         <CheckboxFilterContent
             value={value}
@@ -707,15 +758,7 @@ function MyVoteFilterContent({
             onRemove={onRemove}
             filterLabel={tF("myVoteStatus")}
             operations={MY_VOTE_OPERATIONS}
-            options={MY_VOTE_OPTIONS.map((vote) => ({
-                value: vote,
-                label: tF(
-                    `voteStatus.${vote}` as
-                        | "voteStatus.Approved"
-                        | "voteStatus.Rejected"
-                        | "voteStatus.No Voted",
-                ),
-            }))}
+            options={options}
         />
     );
 }
@@ -733,11 +776,7 @@ function ProposalTypeFilterContent({
     onRemove: () => void;
 }) {
     const tF = useTranslations("requests.filters");
-    const { isConfidential, isGuestTreasury } = useTreasury();
-    const options =
-        isConfidential && isGuestTreasury
-            ? CONFIDENTIAL_GUEST_PROPOSAL_TYPE_OPTIONS
-            : PROPOSAL_TYPE_OPTIONS;
+    const options = useProposalTypeOptions();
     return (
         <CheckboxFilterContent
             value={value}
@@ -746,20 +785,7 @@ function ProposalTypeFilterContent({
             onRemove={onRemove}
             filterLabel={tF("requestsType")}
             operations={PROPOSAL_TYPE_OPERATIONS}
-            options={options.map((type) => ({
-                value: type,
-                label: tF(
-                    `proposalTypes.${type}` as
-                        | "proposalTypes.Payments"
-                        | "proposalTypes.Exchange"
-                        | "proposalTypes.Earn"
-                        | "proposalTypes.Vesting"
-                        | "proposalTypes.Function Call"
-                        | "proposalTypes.Change Policy"
-                        | "proposalTypes.Settings"
-                        | "proposalTypes.Confidential",
-                ),
-            }))}
+            options={options}
         />
     );
 }

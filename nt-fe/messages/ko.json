@@ -635,7 +635,6 @@
             "noMembersAvailable": "이용 가능한 멤버가 없습니다",
             "editOnDesktop": "데스크톱에서 편집",
             "reset": "재설정",
-            "resetAll": "모두 재설정",
             "clear": "지우기",
             "addFilter": "필터 추가"
         },
@@ -2005,7 +2004,8 @@
         "last6Months": "최근 6개월"
     },
     "input": {
-        "openSearch": "검색 열기"
+        "openSearch": "검색 열기",
+        "closeSearch": "검색 닫기"
     },
     "pagination": {
         "previous": "이전",

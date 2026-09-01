@@ -635,7 +635,6 @@
             "noMembersAvailable": "Tidak ada anggota yang tersedia",
             "editOnDesktop": "Edit di desktop",
             "reset": "Atur Ulang",
-            "resetAll": "Atur ulang semua",
             "clear": "Bersihkan",
             "addFilter": "Tambah Filter"
         },
@@ -2005,7 +2004,8 @@
         "last6Months": "6 bulan terakhir"
     },
     "input": {
-        "openSearch": "Buka pencarian"
+        "openSearch": "Buka pencarian",
+        "closeSearch": "Tutup pencarian"
     },
     "pagination": {
         "previous": "Sebelumnya",

@@ -635,7 +635,6 @@
             "noMembersAvailable": "Немає доступних учасників",
             "editOnDesktop": "Редагувати на комп'ютері",
             "reset": "Скинути",
-            "resetAll": "Скинути все",
             "clear": "Очистити",
             "addFilter": "Додати фільтр"
         },
@@ -1988,7 +1987,8 @@
         "last6Months": "Останні 6 місяців"
     },
     "input": {
-        "openSearch": "Відкрити пошук"
+        "openSearch": "Відкрити пошук",
+        "closeSearch": "Закрити пошук"
     },
     "pagination": {
         "previous": "Попередня",

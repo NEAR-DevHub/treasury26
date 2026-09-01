@@ -1,10 +1,10 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
-import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
 import {
     Popover,
     PopoverContent,
@@ -33,18 +33,28 @@ const OPERATION_TRANSLATION_KEYS: Record<string, string> = {
     Contains: "contains",
 };
 
+/**
+ * Translates a filter operation ("Is Not") into the viewer's language. Shared
+ * with the mobile filter sheet, which spells the operation out in its heading
+ * instead of hiding it behind a popover.
+ */
+export function useOperationLabel() {
+    const t = useTranslations("filterOperations");
+
+    return (operation: Operation) => {
+        const key = OPERATION_TRANSLATION_KEYS[operation];
+        return key ? t(key) : operation;
+    };
+}
+
 export function OperationSelect({
     operations,
     selectedOperation,
     onOperationChange,
     className,
 }: OperationSelectProps) {
-    const t = useTranslations("filterOperations");
+    const labelFor = useOperationLabel();
     const [isOpen, setIsOpen] = useState(false);
-    const labelFor = (operation: Operation) => {
-        const key = OPERATION_TRANSLATION_KEYS[operation];
-        return key ? t(key) : operation;
-    };
     if (operations.length <= 1) {
         return null;
     }
