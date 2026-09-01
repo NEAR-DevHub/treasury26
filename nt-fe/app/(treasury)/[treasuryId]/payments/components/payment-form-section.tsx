@@ -34,7 +34,7 @@ import { type Token, TokenInput } from "@/components/token-input";
 import TokenSelect, { type SelectedTokenData } from "@/components/token-select";
 import { FormField } from "@/components/ui/form";
 import { User } from "@/components/user";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import {
     type AddressBookEntry,
     addressBookEntryMatchesNetwork,
@@ -215,6 +215,12 @@ export function PaymentFormSection<
         "") as string;
     const requireNearComPrefix =
         requireNearComPrefixProp || isNearComNetwork(destinationNetworkId);
+    // Picker stores the chain name (`near`) separately from the option id
+    // (`near.com`). Address-book matching must use the option id or near.com
+    // contacts are filtered as bare NEAR.
+    const addressBookNetworkName = requireNearComPrefix
+        ? NEAR_COM_NETWORK_ID
+        : selectedNetworkName;
     const amountValue = useWatch({
         control,
         name: amountName,
@@ -330,7 +336,7 @@ export function PaymentFormSection<
         if (!selectedContact) return;
         const isCompatible = addressBookEntryMatchesNetwork(
             selectedContact,
-            selectedNetworkName,
+            addressBookNetworkName,
             blockchainType,
         );
         if (!isCompatible) {
@@ -343,7 +349,7 @@ export function PaymentFormSection<
     }, [
         hideRecipientNetwork,
         blockchainType,
-        selectedNetworkName,
+        addressBookNetworkName,
         selectedContact,
         setRecipientValue,
     ]);
@@ -354,16 +360,16 @@ export function PaymentFormSection<
                 ? addressBook.filter((entry) =>
                       addressBookEntryMatchesNetwork(
                           entry,
-                          selectedNetworkName,
+                          addressBookNetworkName,
                           blockchainType,
                       ),
                   )
                 : addressBook,
         [
             addressBook,
+            addressBookNetworkName,
             blockchainType,
             hideRecipientNetwork,
-            selectedNetworkName,
         ],
     );
 

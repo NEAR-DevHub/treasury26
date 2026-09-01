@@ -228,6 +228,9 @@ export function TokenInput<
      * quote, a reset), so the draft is stale and has to be recomputed.
      */
     const usdDerivedAmountRef = useRef<string | null>(null);
+    const claimUsdDerived = (tokenAmount: string | null) => {
+        usdDerivedAmountRef.current = tokenAmount;
+    };
 
     // Shared DEFAULT_ASSETS_QUERY so we hit the same cache as useMergedTokens.
     const { data: assetsData, isPending: isAssetsPending } = useAssets(
@@ -303,7 +306,7 @@ export function TokenInput<
 
         const current = amount == null ? "" : String(amount);
         if (current === usdDerivedAmountRef.current) return;
-        usdDerivedAmountRef.current = current;
+        claimUsdDerived(current);
 
         // Priced from the amount rather than `usdValueOverride`: a quote always
         // trails the amount, so it still describes the superseded one.
@@ -339,7 +342,7 @@ export function TokenInput<
                               );
                     // Claim the amount so the resync effect leaves the typed
                     // draft alone.
-                    usdDerivedAmountRef.current = tokenAmount;
+                    claimUsdDerived(tokenAmount);
                     applyTokenAmount(tokenAmount);
                 };
 
@@ -436,13 +439,12 @@ export function TokenInput<
                                 ? quoteUsd.toFixed(2)
                                 : tokenToUsdDraft(amount, tokenPrice),
                         );
-                        usdDerivedAmountRef.current =
-                            amount == null ? "" : String(amount);
+                        claimUsdDerived(amount == null ? "" : String(amount));
                         setInputMode("usd");
                     } else {
                         setInputMode("token");
                         setUsdDraft("");
-                        usdDerivedAmountRef.current = null;
+                        claimUsdDerived(null);
                     }
                 };
 

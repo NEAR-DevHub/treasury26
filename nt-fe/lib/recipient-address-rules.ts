@@ -1,3 +1,12 @@
+/**
+ * Destination vs recipient address rules.
+ *
+ * - `checkRecipientAddressFormat` — authority for the address field (prefix +
+ *   account / chain format). Use this to show input errors.
+ * - `canAddressUseDestination` — authority for the network picker only. For
+ *   near.com it accepts a valid prefix even when the account is still incomplete
+ *   so the option does not vanish while the user types.
+ */
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { isValidAddress } from "@/lib/address-validation";
 import { type BlockchainType, getBlockchainType } from "@/lib/blockchain-utils";

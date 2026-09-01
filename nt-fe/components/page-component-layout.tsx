@@ -155,27 +155,27 @@ export function PageComponentLayout({
 
     const titleBlock = !hideHeaderContent
         ? (logo ?? (
-                  <div
-                      className={cn(
-                          "items-baseline gap-2",
-                          stackedInnerHeader
-                              ? "hidden lg:flex"
-                              : hideMobileShellControls
-                                ? "flex"
-                                : "hidden lg:flex",
-                      )}
-                  >
-                      <h1 className="text-xl font-semibold leading-tight tracking-tight">
-                          {title}
-                      </h1>
-                      {description && (
-                          <span className="hidden lg:inline text-xs text-muted-foreground">
-                              {description}
-                          </span>
-                      )}
-                  </div>
-              ))
-            : null;
+              <div
+                  className={cn(
+                      "items-baseline gap-2",
+                      stackedInnerHeader
+                          ? "hidden lg:flex"
+                          : hideMobileShellControls
+                            ? "flex"
+                            : "hidden lg:flex",
+                  )}
+              >
+                  <h1 className="text-xl font-semibold leading-tight tracking-tight">
+                      {title}
+                  </h1>
+                  {description && (
+                      <span className="hidden lg:inline text-xs text-muted-foreground">
+                          {description}
+                      </span>
+                  )}
+              </div>
+          ))
+        : null;
 
     return (
         <div
