@@ -6,7 +6,9 @@ import {
     type ChangeEvent,
     type ClipboardEvent,
     type KeyboardEvent,
+    useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
 import {
@@ -211,6 +213,12 @@ export function TokenInput<
     const token = useWatch({ control, name: tokenName }) as Token | null;
     const [inputMode, setInputMode] = useState<"token" | "usd">("token");
     const [usdDraft, setUsdDraft] = useState("");
+    /**
+     * The token amount this input last derived from `usdDraft`. Anything else
+     * arriving on the form came from outside (Use max, a token flip, a fresh
+     * quote, a reset), so the draft is stale and has to be recomputed.
+     */
+    const usdDerivedAmountRef = useRef<string | null>(null);
 
     // Shared DEFAULT_ASSETS_QUERY so we hit the same cache as useMergedTokens.
     const { data: assetsData, isPending: isAssetsPending } = useAssets(
@@ -280,6 +288,21 @@ export function TokenInput<
             : null;
     }, [amount, tokenPrice, usdValueOverride]);
 
+    // Keep the USD field honest when the token amount is changed for the user.
+    useEffect(() => {
+        if (!enableUsdToggle || inputMode !== "usd") return;
+
+        const current = amount == null ? "" : String(amount);
+        if (current === usdDerivedAmountRef.current) return;
+        usdDerivedAmountRef.current = current;
+
+        // Priced from the amount rather than `usdValueOverride`: a quote always
+        // trails the amount, so it still describes the superseded one.
+        setUsdDraft(
+            current && tokenPrice ? tokenToUsdDraft(current, tokenPrice) : "",
+        );
+    }, [amount, enableUsdToggle, inputMode, tokenPrice]);
+
     return (
         <FormField
             control={control}
@@ -295,17 +318,20 @@ export function TokenInput<
                 const applyUsdAmount = (raw: string) => {
                     const sanitized = sanitizeAmountInput(raw);
                     setUsdDraft(sanitized);
-                    if (!tokenPrice || !sanitized) {
-                        applyTokenAmount(sanitized ? "0" : "");
-                        return;
-                    }
-                    applyTokenAmount(
-                        usdToTokenAmount(
-                            sanitized,
-                            tokenPrice,
-                            tokenDecimals ?? 24,
-                        ),
-                    );
+                    const tokenAmount =
+                        !tokenPrice || !sanitized
+                            ? sanitized
+                                ? "0"
+                                : ""
+                            : usdToTokenAmount(
+                                  sanitized,
+                                  tokenPrice,
+                                  tokenDecimals ?? 24,
+                              );
+                    // Claim the amount so the resync effect leaves the typed
+                    // draft alone.
+                    usdDerivedAmountRef.current = tokenAmount;
+                    applyTokenAmount(tokenAmount);
                 };
 
                 const handleMaxClick = () => {
@@ -331,11 +357,6 @@ export function TokenInput<
                         { shouldDirty: true, shouldValidate: true },
                     );
                     field.onChange(maxAmount);
-                    if (enableUsdToggle && inputMode === "usd" && tokenPrice) {
-                        // Derived from the new amount, not `usdValueOverride`:
-                        // that quote still describes the amount being replaced.
-                        setUsdDraft(tokenToUsdDraft(maxAmount, tokenPrice));
-                    }
                     onMaxSet?.(maxAmount);
                 };
 
@@ -398,16 +419,21 @@ export function TokenInput<
                 const handleToggleCurrency = () => {
                     if (!enableUsdToggle || !tokenPrice) return;
                     if (inputMode === "token") {
+                        // Switching modes leaves the amount alone, so the quote
+                        // still prices it — and does so better than the price.
                         const quoteUsd = parseUsdOverride(usdValueOverride);
                         setUsdDraft(
                             quoteUsd != null
                                 ? quoteUsd.toFixed(2)
                                 : tokenToUsdDraft(amount, tokenPrice),
                         );
+                        usdDerivedAmountRef.current =
+                            amount == null ? "" : String(amount);
                         setInputMode("usd");
                     } else {
                         setInputMode("token");
                         setUsdDraft("");
+                        usdDerivedAmountRef.current = null;
                     }
                 };
 
@@ -788,7 +814,7 @@ export function TokenInput<
                                     value={displayPrimary}
                                     placeholder="0"
                                     className={cn(
-                                        "h-10 text-center text-muted-foreground",
+                                        "h-10 text-center text-foreground",
                                         readOnly && "text-muted-foreground",
                                     )}
                                     readOnly={readOnly}

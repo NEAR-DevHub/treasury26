@@ -5,31 +5,8 @@ import { useTranslations } from "next-intl";
 import { Icon } from "@/components/icon";
 import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/button";
+import { extractAddressFromQrPayload } from "@/lib/qr-address";
 import { cn } from "@/lib/utils";
-
-/** Pull a bare wallet address out of common QR URI / plain-text payloads. */
-export function extractAddressFromQrPayload(raw: string): string {
-    const trimmed = raw.trim().replace(/\s/g, "");
-    if (!trimmed) return "";
-
-    // ethereum:0xabc@1?… | solana:… | near:… | bitcoin:…
-    const schemeMatch = trimmed.match(
-        /^[a-zA-Z][a-zA-Z0-9+.-]*:(?:\/\/)?([^/?#@]+)/,
-    );
-    if (schemeMatch?.[1]) {
-        return schemeMatch[1];
-    }
-
-    try {
-        const url = new URL(trimmed);
-        const pathPart = url.pathname.replace(/^\//, "").split("/")[0];
-        if (pathPart) return pathPart;
-    } catch {
-        /* not a URL */
-    }
-
-    return trimmed;
-}
 
 type BarcodeDetectorLike = {
     detect: (

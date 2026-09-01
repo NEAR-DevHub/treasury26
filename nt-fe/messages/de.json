@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "Erstellung des 1Click-Transfer-Angebots fehlgeschlagen",
         "paymentSubmitted": "Anfrage zum Senden der Zahlung übermittelt",
         "confidentialTooltip": "Empfaengerdaten und der angeforderte Betrag sind vollstaendig vertraulich.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
+        "bulkPaymentsTooltip": "Senden Sie mehrere Zahlungen in einer Anfrage – Sie müssen sie nicht einzeln genehmigen.",
+        "destinationNetwork": "Zielnetzwerk",
+        "selectRecipientPlaceholder": "Empfänger auswählen",
         "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "recipientLabel": "Empfänger"
     },
     "bulkPayment": {
         "title": "Sammelversand",
@@ -1908,18 +1908,18 @@
     "paymentFormSection": {
         "selectRecipient": "Empfänger auswählen",
         "searchByNameOrAddress": "Nach Name oder Adresse suchen",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "Sie haben keine Kontakte für das Netzwerk {network} erstellt.",
+        "noContacts": "Sie haben noch keine Kontakte.",
+        "contacts": "Kontakte",
+        "invalidAddress": "Bitte geben Sie eine gültige Adresse ein",
+        "scanQrCode": "QR-Code scannen",
+        "scanQrCodeDescription": "Adresse des Empfängers per Kamera ausfüllen",
+        "qrScanTitle": "QR-Code scannen",
+        "qrScanHint": "Richten Sie die Kamera auf den QR-Code des Empfängers.",
+        "qrBackToRecipientList": "Zurück zur Empfängerliste",
+        "qrCameraPermissionDenied": "Für das Scannen eines QR-Codes ist Kamerazugriff erforderlich. Aktivieren Sie ihn in den Browsereinstellungen und versuchen Sie es erneut.",
+        "qrCameraUnsupported": "Dieser Browser kann für das QR-Scannen nicht auf die Kamera zugreifen.",
+        "qrCameraStarting": "Kamera wird gestartet…",
         "restrictedRecipientTitle": "Transaktion nicht erlaubt",
         "restrictedRecipientMessage": "Diese Adresse ist derzeit aufgrund von Sicherheitsprüfungen eingeschränkt. Wenn Sie der Meinung sind, dass diese Adresse zugelassen werden sollte, können Sie <link>eine Whitelist-Aufnahme beantragen</link>.",
         "send": "Senden",
@@ -1940,7 +1940,7 @@
         "forMembersOnly": "Nur für Mitglieder",
         "nearComDescription": "Netzwerk für Near Business und near.com",
         "nearDescription": "Netzwerk für öffentliche Auszahlungen",
-        "internalTag": "Internal"
+        "internalTag": "Intern"
     },
     "addressBookTable": {
         "emptyTitle": "Noch keine Empfänger",
@@ -1984,7 +1984,7 @@
     "selectModal": {
         "searchByName": "Nach Namen suchen",
         "noResults": "Keine Ergebnisse gefunden",
-        "back": "Back"
+        "back": "Zurück"
     },
     "selectList": {
         "noResults": "Keine Ergebnisse gefunden"
@@ -2211,12 +2211,12 @@
         "votesSubmitted": "Ihre Stimmen wurden übermittelt"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "Max. verwenden",
         "max": "MAX",
         "insufficientTokens": "Unzureichendes Guthaben. Vor der Genehmigung aufladen.",
         "insufficientTokensForFee": "Unzureichende Token, um die Netzwerkgebühr ({fee} {symbol}) zu decken. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
         "balance": "Guthaben: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "Guthaben"
     },
     "createRequestButton": {
         "idle": "Anfrage erstellen",

@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "Gagal membuat kuotasi transfer 1Click",
         "paymentSubmitted": "Permintaan untuk mengirim pembayaran telah dikirim",
         "confidentialTooltip": "Detail penerima dan jumlah yang diminta sepenuhnya rahasia.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
+        "bulkPaymentsTooltip": "Kirim beberapa pembayaran dalam satu permintaan - tidak perlu menyetujuinya satu per satu.",
+        "destinationNetwork": "Jaringan tujuan",
+        "selectRecipientPlaceholder": "Pilih penerima",
         "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "recipientLabel": "Penerima"
     },
     "bulkPayment": {
         "title": "Kirim massal",
@@ -1908,18 +1908,18 @@
     "paymentFormSection": {
         "selectRecipient": "Pilih Penerima",
         "searchByNameOrAddress": "Cari berdasarkan nama atau alamat",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "Anda belum membuat kontak untuk jaringan {network}.",
+        "noContacts": "Anda belum memiliki kontak.",
+        "contacts": "Kontak",
+        "invalidAddress": "Silakan masukkan alamat yang valid",
+        "scanQrCode": "Pindai kode QR",
+        "scanQrCodeDescription": "Gunakan kamera untuk mengisi alamat penerima",
+        "qrScanTitle": "Pindai kode QR",
+        "qrScanHint": "Arahkan kamera Anda ke kode QR penerima.",
+        "qrBackToRecipientList": "Kembali ke daftar penerima",
+        "qrCameraPermissionDenied": "Akses kamera diperlukan untuk memindai kode QR. Aktifkan di pengaturan browser Anda dan coba lagi.",
+        "qrCameraUnsupported": "Browser ini tidak dapat mengakses kamera untuk pemindaian QR.",
+        "qrCameraStarting": "Memulai kamera…",
         "restrictedRecipientTitle": "Transaksi tidak diizinkan",
         "restrictedRecipientMessage": "Alamat ini saat ini dibatasi karena pemeriksaan keamanan. Jika Anda yakin alamat ini harus diizinkan, Anda dapat <link>meminta untuk memasukkannya ke daftar putih</link>.",
         "send": "Kirim",
@@ -1984,7 +1984,7 @@
     "selectModal": {
         "searchByName": "Cari berdasarkan nama",
         "noResults": "Tidak ada hasil ditemukan",
-        "back": "Back"
+        "back": "Kembali"
     },
     "selectList": {
         "noResults": "Tidak ada hasil ditemukan"
@@ -2211,12 +2211,12 @@
         "votesSubmitted": "Suara Anda telah dikirim"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "Gunakan maks",
         "max": "MAX",
         "insufficientTokens": "Saldo tidak mencukupi. Isi saldo sebelum persetujuan.",
         "insufficientTokensForFee": "Token tidak cukup untuk menutupi biaya jaringan ({fee} {symbol}). Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
         "balance": "Saldo: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "Saldo"
     },
     "createRequestButton": {
         "idle": "Buat Permintaan",

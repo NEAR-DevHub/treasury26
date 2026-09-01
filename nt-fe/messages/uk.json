@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "Не вдалось створити котирування 1Click",
         "paymentSubmitted": "Запит на надсилання платежу подано",
         "confidentialTooltip": "Дані отримувача та запитана сума повністю конфіденційні.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
-        "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "bulkPaymentsTooltip": "Надсилайте кілька платежів одним запитом — не потрібно затверджувати їх по одному.",
+        "destinationNetwork": "Мережа призначення",
+        "selectRecipientPlaceholder": "Оберіть отримувача",
+        "tokenLabel": "Токен",
+        "recipientLabel": "Отримувач"
     },
     "bulkPayment": {
         "title": "Масове надсилання",
@@ -1891,18 +1891,18 @@
     "paymentFormSection": {
         "selectRecipient": "Обрати одержувача",
         "searchByNameOrAddress": "Пошук за назвою або адресою",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "У вас немає контактів для мережі {network}.",
+        "noContacts": "У вас ще немає контактів.",
+        "contacts": "Контакти",
+        "invalidAddress": "Введіть коректну адресу",
+        "scanQrCode": "Сканувати QR-код",
+        "scanQrCodeDescription": "Скористайтеся камерою, щоб заповнити адресу отримувача",
+        "qrScanTitle": "Сканувати QR-код",
+        "qrScanHint": "Наведіть камеру на QR-код отримувача.",
+        "qrBackToRecipientList": "Назад до списку отримувачів",
+        "qrCameraPermissionDenied": "Для сканування QR-коду потрібен доступ до камери. Увімкніть його в налаштуваннях браузера та спробуйте ще раз.",
+        "qrCameraUnsupported": "Цей браузер не може отримати доступ до камери для сканування QR-коду.",
+        "qrCameraStarting": "Запуск камери…",
         "restrictedRecipientTitle": "Транзакцію не дозволено",
         "restrictedRecipientMessage": "Ця адреса зараз обмежена через перевірки безпеки. Якщо ви вважаєте, що цю адресу слід дозволити, ви можете <link>подати запит на whitelist</link>.",
         "send": "Надіслати",
@@ -1923,7 +1923,7 @@
         "forMembersOnly": "Лише для учасників",
         "nearComDescription": "Мережа для Near Business і near.com",
         "nearDescription": "Мережа для публічного виведення",
-        "internalTag": "Internal"
+        "internalTag": "Внутрішня"
     },
     "addressBookTable": {
         "emptyTitle": "Ще немає одержувачів",
@@ -1967,7 +1967,7 @@
     "selectModal": {
         "searchByName": "Пошук за назвою",
         "noResults": "Результатів не знайдено",
-        "back": "Back"
+        "back": "Назад"
     },
     "selectList": {
         "noResults": "Результатів не знайдено"
@@ -2194,12 +2194,12 @@
         "votesSubmitted": "Ваші голоси надіслано"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "Використати макс.",
         "max": "МАКС",
         "insufficientTokens": "Недостатній баланс. Поповніть перед затвердженням.",
         "insufficientTokensForFee": "Недостатньо токенів для покриття комісії мережі ({fee} {symbol}). Можете надіслати запит і поповнити перед затвердженням.",
         "balance": "Баланс: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "Баланс"
     },
     "createRequestButton": {
         "idle": "Створити запит",

@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "1Click transfer teklifi oluşturulamadı",
         "paymentSubmitted": "Ödeme gönderme talebi gönderildi",
         "confidentialTooltip": "Alici bilgileri ve talep edilen tutar tamamen gizlidir.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
+        "bulkPaymentsTooltip": "Birden fazla ödemeyi tek bir istekte gönderin - tek tek onaylamanız gerekmez.",
+        "destinationNetwork": "Hedef ağ",
+        "selectRecipientPlaceholder": "Alıcı seç",
         "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "recipientLabel": "Alıcı"
     },
     "bulkPayment": {
         "title": "Toplu gönderim",
@@ -1908,18 +1908,18 @@
     "paymentFormSection": {
         "selectRecipient": "Alıcı Seç",
         "searchByNameOrAddress": "Ad veya adrese göre ara",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "{network} ağı için oluşturulmuş kişiniz yok.",
+        "noContacts": "Henüz kişiniz yok.",
+        "contacts": "Kişiler",
+        "invalidAddress": "Lütfen geçerli bir adres girin",
+        "scanQrCode": "QR kodu tara",
+        "scanQrCodeDescription": "Alıcı adresini doldurmak için kameranızı kullanın",
+        "qrScanTitle": "QR kodu tara",
+        "qrScanHint": "Kameranızı alıcının QR koduna doğrultun.",
+        "qrBackToRecipientList": "Alıcı listesine geri dön",
+        "qrCameraPermissionDenied": "QR kodu taramak için kamera erişimi gerekir. Tarayıcı ayarlarınızdan etkinleştirip yeniden deneyin.",
+        "qrCameraUnsupported": "Bu tarayıcı QR taraması için kameraya erişemiyor.",
+        "qrCameraStarting": "Kamera başlatılıyor…",
         "restrictedRecipientTitle": "İşleme izin verilmiyor",
         "restrictedRecipientMessage": "Bu adres güvenlik kontrolleri nedeniyle şu anda kısıtlanmış. Bu adrese izin verilmesi gerektiğine inanıyorsanız, <link>beyaz listeye eklenmesini talep edebilirsiniz</link>.",
         "send": "Gönder",
@@ -1940,7 +1940,7 @@
         "forMembersOnly": "Yalnızca Üyelere Özel",
         "nearComDescription": "Near Business ve near.com için ağ",
         "nearDescription": "Açık çekim için ağ",
-        "internalTag": "Internal"
+        "internalTag": "Dahili"
     },
     "addressBookTable": {
         "emptyTitle": "Henüz alıcı yok",
@@ -1984,7 +1984,7 @@
     "selectModal": {
         "searchByName": "İsme göre ara",
         "noResults": "Sonuç bulunamadı",
-        "back": "Back"
+        "back": "Geri"
     },
     "selectList": {
         "noResults": "Sonuç bulunamadı"
@@ -2211,12 +2211,12 @@
         "votesSubmitted": "Oylarınız gönderildi"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "Maks. kullan",
         "max": "MAX",
         "insufficientTokens": "Yetersiz bakiye. Onaydan önce yükleyin.",
         "insufficientTokensForFee": "Ağ ücretini ({fee} {symbol}) karşılamak için yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
         "balance": "Bakiye: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "Bakiye"
     },
     "createRequestButton": {
         "idle": "Talep Oluştur",

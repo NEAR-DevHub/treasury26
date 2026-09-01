@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "1Click送金見積りの作成に失敗しました",
         "paymentSubmitted": "支払い送信のリクエストを送信しました",
         "confidentialTooltip": "受取人の詳細と要求金額は完全に機密です。",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
-        "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "bulkPaymentsTooltip": "複数の支払いを1つのリクエストで送信できます。1件ずつ承認する必要はありません。",
+        "destinationNetwork": "送信先ネットワーク",
+        "selectRecipientPlaceholder": "受取人を選択",
+        "tokenLabel": "トークン",
+        "recipientLabel": "受取人"
     },
     "bulkPayment": {
         "title": "一括送金",
@@ -1908,18 +1908,18 @@
     "paymentFormSection": {
         "selectRecipient": "受取人を選択",
         "searchByNameOrAddress": "名前またはアドレスで検索",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "{network} ネットワーク用の連絡先が作成されていません。",
+        "noContacts": "連絡先がまだありません。",
+        "contacts": "連絡先",
+        "invalidAddress": "有効なアドレスを入力してください",
+        "scanQrCode": "QRコードをスキャン",
+        "scanQrCodeDescription": "カメラで受取人のアドレスを入力します",
+        "qrScanTitle": "QRコードをスキャン",
+        "qrScanHint": "受取人のQRコードにカメラを向けてください。",
+        "qrBackToRecipientList": "受取人リストに戻る",
+        "qrCameraPermissionDenied": "QRコードをスキャンするにはカメラへのアクセスが必要です。ブラウザの設定で有効にして、もう一度お試しください。",
+        "qrCameraUnsupported": "このブラウザではQRスキャン用のカメラにアクセスできません。",
+        "qrCameraStarting": "カメラを起動中…",
         "restrictedRecipientTitle": "トランザクションは許可されていません",
         "restrictedRecipientMessage": "このアドレスは現在、セキュリティチェックにより制限されています。このアドレスを許可すべきだとお考えの場合は、<link>ホワイトリスト追加をリクエスト</link>できます。",
         "send": "送金",
@@ -1940,7 +1940,7 @@
         "forMembersOnly": "メンバー限定",
         "nearComDescription": "Near Business と near.com 用ネットワーク",
         "nearDescription": "公開出金用ネットワーク",
-        "internalTag": "Internal"
+        "internalTag": "内部"
     },
     "addressBookTable": {
         "emptyTitle": "受取人はまだいません",
@@ -1984,7 +1984,7 @@
     "selectModal": {
         "searchByName": "名前で検索",
         "noResults": "結果が見つかりません",
-        "back": "Back"
+        "back": "戻る"
     },
     "selectList": {
         "noResults": "結果が見つかりません"
@@ -2211,12 +2211,12 @@
         "votesSubmitted": "投票を送信しました"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "最大を使用",
         "max": "MAX",
         "insufficientTokens": "残高が不足しています。承認前に補充してください。",
         "insufficientTokensForFee": "ネットワーク手数料({fee} {symbol})をカバーするトークンが不足しています。リクエストを送信してから承認前に補充できます。",
         "balance": "残高: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "残高"
     },
     "createRequestButton": {
         "idle": "リクエストを作成",

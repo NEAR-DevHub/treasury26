@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "Không thể tạo báo giá chuyển 1Click",
         "paymentSubmitted": "Đã gửi yêu cầu thanh toán",
         "confidentialTooltip": "Thong tin nguoi nhan va so tien yeu cau duoc bao mat hoan toan.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
+        "bulkPaymentsTooltip": "Gửi nhiều khoản thanh toán trong một yêu cầu - không cần phê duyệt từng khoản.",
+        "destinationNetwork": "Mạng đích",
+        "selectRecipientPlaceholder": "Chọn người nhận",
         "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "recipientLabel": "Người nhận"
     },
     "bulkPayment": {
         "title": "Gửi hàng loạt",
@@ -1891,18 +1891,18 @@
     "paymentFormSection": {
         "selectRecipient": "Chọn người nhận",
         "searchByNameOrAddress": "Tìm theo tên hoặc địa chỉ",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "Bạn chưa tạo liên hệ nào cho mạng {network}.",
+        "noContacts": "Bạn chưa có liên hệ nào.",
+        "contacts": "Danh bạ",
+        "invalidAddress": "Vui lòng nhập một địa chỉ hợp lệ",
+        "scanQrCode": "Quét mã QR",
+        "scanQrCodeDescription": "Dùng camera để điền địa chỉ người nhận",
+        "qrScanTitle": "Quét mã QR",
+        "qrScanHint": "Hướng camera vào mã QR của người nhận.",
+        "qrBackToRecipientList": "Quay lại danh sách người nhận",
+        "qrCameraPermissionDenied": "Cần quyền truy cập camera để quét mã QR. Hãy bật quyền này trong cài đặt trình duyệt và thử lại.",
+        "qrCameraUnsupported": "Trình duyệt này không thể truy cập camera để quét mã QR.",
+        "qrCameraStarting": "Đang khởi động camera…",
         "restrictedRecipientTitle": "Giao dịch không được phép",
         "restrictedRecipientMessage": "Địa chỉ này hiện đang bị hạn chế do các kiểm tra bảo mật. Nếu bạn cho rằng địa chỉ này nên được phép, bạn có thể <link>yêu cầu đưa vào danh sách trắng</link>.",
         "send": "Gửi",
@@ -1923,7 +1923,7 @@
         "forMembersOnly": "Chỉ dành cho thành viên",
         "nearComDescription": "Mạng cho Near Business và near.com",
         "nearDescription": "Mạng cho rút tiền công khai",
-        "internalTag": "Internal"
+        "internalTag": "Nội bộ"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",
@@ -1967,7 +1967,7 @@
     "selectModal": {
         "searchByName": "Tìm theo tên",
         "noResults": "Không tìm thấy kết quả",
-        "back": "Back"
+        "back": "Quay lại"
     },
     "selectList": {
         "noResults": "Không tìm thấy kết quả"
@@ -2194,12 +2194,12 @@
         "votesSubmitted": "Các phiếu của bạn đã được gửi"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "Dùng tối đa",
         "max": "MAX",
         "insufficientTokens": "Số dư không đủ. Nạp thêm trước khi phê duyệt.",
         "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
         "balance": "Số dư: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "Số dư"
     },
     "createRequestButton": {
         "idle": "Tạo yêu cầu",

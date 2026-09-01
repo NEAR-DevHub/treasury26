@@ -17,7 +17,6 @@ import { Address } from "@/components/address";
 import { AmountSummary } from "@/components/amount-summary";
 import { Button } from "@/components/button";
 import { CreateRequestButton } from "@/components/create-request-button";
-import { FittingFormattedAmount } from "@/components/fitting-text";
 import { FormattedAmount } from "@/components/formatted-amount";
 import { Input } from "@/components/input";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -406,30 +405,27 @@ function Step2({
                                 className="text-sm font-semibold leading-normal text-general-foreground"
                             />
                         </div>
-                        <div className="flex min-w-0 max-w-[55%] flex-1 flex-col items-end gap-0.5">
-                            <div className="flex w-full min-w-0 items-center justify-end gap-1.5">
+                        <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                            <div className="flex items-center gap-1.5">
                                 <TokenDisplay
                                     icon={token.icon}
                                     symbol={token.symbol}
-                                    chainIcons={
-                                        destinationChainIcons ??
-                                        token.chainIcons
-                                    }
                                     iconSize="md"
                                     className="shrink-0"
                                 />
-                                <FittingFormattedAmount
-                                    value={recipientAmount}
-                                    symbol={token.symbol}
-                                    tokenDecimals={token.decimals}
-                                    unitPriceUsd={tokenData?.price}
-                                    maxPx={14}
-                                    minPx={14}
-                                    className="text-right font-semibold leading-normal text-general-foreground"
-                                />
+                                <span className="text-sm font-semibold leading-normal text-general-foreground">
+                                    <FormattedAmount
+                                        kind="token"
+                                        value={recipientAmount}
+                                        symbol={token.symbol}
+                                        tokenDecimals={token.decimals}
+                                        unitPriceUsd={tokenData?.price}
+                                        profile="standard"
+                                    />
+                                </span>
                             </div>
                             {recipientEstimatedUSDValue ? (
-                                <p className="break-all text-center text-xs font-normal leading-4 text-general-secondary-foreground">
+                                <p className="whitespace-nowrap text-xs font-normal leading-4 text-general-secondary-foreground">
                                     ≈{" "}
                                     <FormattedAmount
                                         kind="fiat"
@@ -450,7 +446,7 @@ function Step2({
                                     <img
                                         src={destinationChainIcons.icon}
                                         alt=""
-                                        className="size-3.5 rounded-full object-cover"
+                                        className="size-3.5 overflow-hidden rounded-full object-cover"
                                     />
                                 ) : null}
                                 <span

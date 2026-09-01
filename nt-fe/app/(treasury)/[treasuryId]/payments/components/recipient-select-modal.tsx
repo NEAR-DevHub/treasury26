@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
     Cancel01Icon,
     IdCardIcon,
@@ -9,16 +8,12 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Dialog, DialogHeader, DialogTitle } from "@/components/modal";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/modal";
 import { NetworkList } from "@/components/network-list";
 import { PaymentSelectModalContent } from "@/components/payment-select-modal-content";
-import { getBlockchainType } from "@/lib/blockchain-utils";
-import { isValidAddress } from "@/lib/address-validation";
-import {
-    isValidNearAddressFormat,
-    validateNearAddress,
-} from "@/lib/near-validation";
+import { paymentSelectModalListClassName } from "@/components/selector-field";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import type { AddressBookEntry } from "@/features/address-book";
 import {
@@ -26,12 +21,14 @@ import {
     isNearComAddressBookEntry,
 } from "@/features/address-book";
 import type { ChainInfo } from "@/features/address-book/chains";
+import { getBlockchainType } from "@/lib/blockchain-utils";
 import { isNearComNetwork } from "@/lib/intents-network";
+import { validateNearAddress } from "@/lib/near-validation";
+import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import {
-    isNearComRecipientAddress,
-    stripNearComAddressPrefix,
-} from "@/lib/nearcom-address";
-import { paymentSelectModalListClassName } from "@/components/selector-field";
+    checkRecipientAddressFormat,
+    resolveRecipientBlockchain,
+} from "@/lib/recipient-address-rules";
 import { cn } from "@/lib/utils";
 import { RecipientQrScanner } from "./recipient-qr-scanner";
 
@@ -84,10 +81,10 @@ export function RecipientSelectModal({
     const [showInvalid, setShowInvalid] = useState(false);
     const validationSeq = useRef(0);
 
-    const blockchain = useMemo(() => {
-        if (!networkName) return "unknown" as const;
-        return getBlockchainType(networkName);
-    }, [networkName]);
+    const blockchain = useMemo(
+        () => resolveRecipientBlockchain(networkName),
+        [networkName],
+    );
 
     useEffect(() => {
         if (!isOpen) {
@@ -111,36 +108,32 @@ export function RecipientSelectModal({
                 return;
             }
 
+            const issue = checkRecipientAddressFormat({
+                address: trimmed,
+                network: networkName,
+            });
+
             // No destination network yet — don't claim the string is a valid
             // chain address (length>=2 was incorrectly accepting contact names).
-            if (blockchain === "unknown") {
+            if (issue === "unknownDestination") {
                 setIsValid(false);
                 setShowInvalid(false);
                 setIsValidating(false);
                 return;
             }
 
-            if (isNearComNetwork(networkName)) {
-                if (!isNearComRecipientAddress(trimmed)) {
-                    if (seq !== validationSeq.current) return;
-                    setIsValid(false);
-                    setShowInvalid(true);
-                    setIsValidating(false);
-                    return;
-                }
+            if (issue) {
+                setIsValid(false);
+                setShowInvalid(true);
+                setIsValidating(false);
+                return;
             }
 
             if (blockchain === NEAR_NETWORK_ID) {
-                const accountId = stripNearComAddressPrefix(trimmed);
-                if (!isValidNearAddressFormat(accountId)) {
-                    if (seq !== validationSeq.current) return;
-                    setIsValid(false);
-                    setShowInvalid(true);
-                    setIsValidating(false);
-                    return;
-                }
                 setIsValidating(true);
-                const result = await validateNearAddress(accountId);
+                const result = await validateNearAddress(
+                    stripNearComAddressPrefix(trimmed),
+                );
                 if (seq !== validationSeq.current) return;
                 const ok = result === null;
                 setIsValidating(false);
@@ -149,10 +142,9 @@ export function RecipientSelectModal({
                 return;
             }
 
-            const ok = isValidAddress(trimmed, blockchain);
             if (seq !== validationSeq.current) return;
-            setIsValid(ok);
-            setShowInvalid(!ok);
+            setIsValid(true);
+            setShowInvalid(false);
             setIsValidating(false);
         },
         [blockchain, networkName],

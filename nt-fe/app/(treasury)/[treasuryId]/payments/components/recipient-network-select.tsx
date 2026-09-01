@@ -1,11 +1,11 @@
 "use client";
-import { Icon } from "@/components/icon";
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
 import { HighlightedText } from "@/components/highlighted-text";
+import { Icon } from "@/components/icon";
 import { InputBlock } from "@/components/input-block";
 import {
     EmptySelectorIcon,
@@ -17,8 +17,8 @@ import { WarningMessage } from "@/components/warning-message";
 import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { NEAR_CHAIN_ICONS, NEAR_COM_ICON } from "@/constants/token";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
+import { useMergedTokens } from "@/hooks/use-merged-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
-import { isValidAddress } from "@/lib/address-validation";
 import { getBlockchainType } from "@/lib/blockchain-utils";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
 import {
@@ -26,13 +26,8 @@ import {
     getNetworkDisplayCaseClass,
     isNearComNetwork,
 } from "@/lib/intents-network";
-import { useMergedTokens } from "@/hooks/use-merged-tokens";
-import {
-    hasNearComAddressPrefix,
-    parseNearComAddress,
-} from "@/lib/nearcom-address";
-import { isValidNearAddressFormat } from "@/lib/near-address-format";
 import { pickDefaultDestinationNetwork } from "@/lib/pick-default-destination-network";
+import { canAddressUseDestination } from "@/lib/recipient-address-rules";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { cn } from "@/lib/utils";
 
@@ -99,24 +94,12 @@ function isAddressCompatibleWithNetwork(
     networkName: string,
     optionId?: string,
 ): boolean {
-    if (!address) return true;
-    const { hasPrefix, accountId } = parseNearComAddress(address);
-
-    if (optionId === NEAR_COM_NETWORK_ID) {
-        return hasPrefix;
-    }
-
-    if (hasPrefix) return false;
-
-    const blockchain = getBlockchainType(networkName);
-    if (blockchain === "unknown") {
-        return false;
-    }
-    if (blockchain === NEAR_NETWORK_ID) {
-        // NEAR full check is async; sync format check is enough for sectioning.
-        return isValidNearAddressFormat(accountId);
-    }
-    return isValidAddress(accountId, blockchain);
+    // NEAR full check is async; the shared sync rules are enough for sectioning.
+    return canAddressUseDestination({
+        address,
+        network: networkName,
+        isNearComDestination: optionId === NEAR_COM_NETWORK_ID,
+    });
 }
 
 function NetworkRow({
@@ -138,7 +121,7 @@ function NetworkRow({
             <img
                 src={option.icon}
                 alt={`${option.name} network`}
-                className="size-6 md:size-8 shrink-0 rounded-full object-cover"
+                className="size-6 md:size-8 shrink-0 overflow-hidden rounded-full object-cover"
             />
             <div className="flex flex-col items-start text-left min-w-0">
                 <HighlightedText
@@ -437,7 +420,7 @@ export function RecipientNetworkSelect({
                     <img
                         src={selectedOption.icon}
                         alt=""
-                        className="size-10 shrink-0 rounded-full object-cover"
+                        className="size-10 shrink-0 overflow-hidden rounded-full object-cover"
                     />
                 ) : (
                     <EmptySelectorIcon />
@@ -464,7 +447,7 @@ export function RecipientNetworkSelect({
                         <img
                             src={NEAR_COM_ICON}
                             alt=""
-                            className="size-3.5 rounded-full"
+                            className="size-3.5 overflow-hidden rounded-full object-cover"
                         />
                         <span className="text-xs font-semibold text-[#00EC97]">
                             {t("internalTag")}

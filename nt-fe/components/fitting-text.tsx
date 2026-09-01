@@ -20,7 +20,7 @@ interface FittingTextProps {
 }
 
 /** Shrinks to `minPx` (default 14). If it still overflows, ellipsizes and shows a tooltip. */
-export function FittingText({
+function FittingText({
     text,
     className,
     containerClassName,

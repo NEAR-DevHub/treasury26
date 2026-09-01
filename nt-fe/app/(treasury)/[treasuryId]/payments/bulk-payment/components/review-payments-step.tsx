@@ -4,9 +4,9 @@ import { Icon } from "@/components/icon";
 import {
     Delete01Icon,
     Edit03Icon,
-    InformationCircleIcon,
+    HelpCircleIcon,
 } from "@hugeicons/core-free-icons";
-import { useState, useEffect, useMemo } from "react";
+import { type ReactNode, useState, useEffect, useMemo } from "react";
 import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
@@ -35,7 +35,6 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import { AmountSummary } from "@/components/amount-summary";
-import { FittingFormattedAmount } from "@/components/fitting-text";
 import { FormattedAmount } from "@/components/formatted-amount";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { trackEvent } from "@/lib/analytics";
@@ -52,6 +51,33 @@ import {
     formatRecipientForNearComDestination,
     hasNearComAddressPrefix,
 } from "@/lib/nearcom-address";
+
+const helpTooltipTriggerClass =
+    "inline-flex text-card [&_circle]:fill-general-muted-foreground [&_circle]:stroke-general-muted-foreground hover:[&_circle]:fill-general-secondary-foreground hover:[&_circle]:stroke-general-secondary-foreground";
+
+function HelpTooltip({
+    content,
+    label,
+}: {
+    content: ReactNode;
+    label: string;
+}) {
+    return (
+        <Tooltip
+            content={content}
+            side="top"
+            contentProps={{ className: "max-w-72" }}
+        >
+            <button
+                type="button"
+                className={helpTooltipTriggerClass}
+                aria-label={label}
+            >
+                <Icon icon={HelpCircleIcon} className="size-3.5" />
+            </button>
+        </Tooltip>
+    );
+}
 
 interface ReviewPaymentsStepProps extends StepProps {
     initialPaymentData: BulkPaymentData[];
@@ -475,7 +501,7 @@ export function ReviewPaymentsStep({
                                                   </div>
                                               );
                                           })()}
-                                          <div className="flex min-w-0 max-w-[55%] flex-1 items-center justify-end gap-1.5">
+                                          <div className="flex shrink-0 items-center gap-1.5">
                                               <TokenDisplay
                                                   symbol={selectedToken.symbol}
                                                   icon={
@@ -484,27 +510,33 @@ export function ReviewPaymentsStep({
                                                   iconSize="lg"
                                                   className="shrink-0"
                                               />
-                                              <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5">
-                                                  <div className="flex w-full min-w-0 items-center justify-end gap-1.5">
-                                                      <FittingFormattedAmount
-                                                          value={
-                                                              recipientAmount
-                                                          }
-                                                          symbol={
-                                                              selectedToken.symbol
-                                                          }
-                                                          tokenDecimals={
-                                                              selectedToken.decimals
-                                                          }
-                                                          unitPriceUsd={
-                                                              selectedTokenData?.price
-                                                          }
-                                                          maxPx={14}
-                                                          minPx={14}
-                                                          className="text-right font-semibold leading-normal text-general-foreground"
-                                                      />
+                                              <div className="flex flex-col items-end gap-0.5 text-right">
+                                                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold leading-normal text-general-foreground">
+                                                      {recipientAmount ? (
+                                                          <FormattedAmount
+                                                              kind="token"
+                                                              value={
+                                                                  recipientAmount
+                                                              }
+                                                              symbol={
+                                                                  selectedToken.symbol
+                                                              }
+                                                              tokenDecimals={
+                                                                  selectedToken.decimals
+                                                              }
+                                                              unitPriceUsd={
+                                                                  selectedTokenData?.price
+                                                              }
+                                                              profile="standard"
+                                                          />
+                                                      ) : (
+                                                          "—"
+                                                      )}
                                                       {recipientFee ? (
-                                                          <Tooltip
+                                                          <HelpTooltip
+                                                              label={tPay(
+                                                                  "networkFeeInfo",
+                                                              )}
                                                               content={
                                                                   <div className="text-left">
                                                                       <p>
@@ -550,20 +582,9 @@ export function ReviewPaymentsStep({
                                                                       </p>
                                                                   </div>
                                                               }
-                                                              side="right"
-                                                          >
-                                                              <Icon
-                                                                  icon={
-                                                                      InformationCircleIcon
-                                                                  }
-                                                                  className="shrink-0 text-muted-foreground"
-                                                                  aria-label={tPay(
-                                                                      "networkFeeInfo",
-                                                                  )}
-                                                              />
-                                                          </Tooltip>
+                                                          />
                                                       ) : null}
-                                                  </div>
+                                                  </span>
                                                   {estimatedUSDValue ? (
                                                       <p className="whitespace-nowrap text-xs font-normal leading-4 tracking-[0.01125rem] text-general-secondary-foreground">
                                                           ≈{" "}
@@ -597,7 +618,7 @@ export function ReviewPaymentsStep({
                                     <img
                                         src={destinationChainIcons.icon}
                                         alt=""
-                                        className="size-5 shrink-0 rounded-full object-cover aspect-square"
+                                        className="size-5 shrink-0 overflow-hidden rounded-full object-cover aspect-square"
                                     />
                                 ) : null}
                                 <span
@@ -617,19 +638,13 @@ export function ReviewPaymentsStep({
                     {!isValidatingAccounts &&
                         confidentialPrepare?.status === "loading" && (
                             <div className="flex items-center justify-between gap-2 text-sm">
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                    <p>{tPay("networkFee")}</p>
-                                    <Tooltip
+                                <span className="inline-flex items-center gap-1 text-sm font-medium leading-[1.3125rem] text-general-secondary-foreground">
+                                    {tPay("networkFee")}
+                                    <HelpTooltip
                                         content={tIntents("networkFeeTooltip")}
-                                        side="top"
-                                    >
-                                        <Icon
-                                            icon={InformationCircleIcon}
-                                            className="shrink-0"
-                                            aria-label={tPay("networkFeeInfo")}
-                                        />
-                                    </Tooltip>
-                                </div>
+                                        label={tPay("networkFeeInfo")}
+                                    />
+                                </span>
                                 <div className="h-5 w-24 bg-general-unofficial-accent-0 animate-pulse rounded" />
                             </div>
                         )}
@@ -664,19 +679,13 @@ export function ReviewPaymentsStep({
 
                     {!isValidatingAccounts && totalNetworkFee && (
                         <div className="flex items-center justify-between gap-2 text-sm">
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                                <p>{tPay("networkFee")}</p>
-                                <Tooltip
+                            <span className="inline-flex items-center gap-1 text-sm font-medium leading-[1.3125rem] text-general-secondary-foreground">
+                                {tPay("networkFee")}
+                                <HelpTooltip
                                     content={tIntents("networkFeeTooltip")}
-                                    side="top"
-                                >
-                                    <Icon
-                                        icon={InformationCircleIcon}
-                                        className="shrink-0"
-                                        aria-label={tPay("networkFeeInfo")}
-                                    />
-                                </Tooltip>
-                            </div>
+                                    label={tPay("networkFeeInfo")}
+                                />
+                            </span>
                             <p>
                                 <FormattedAmount
                                     kind="token"

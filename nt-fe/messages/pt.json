@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "Falha ao criar cotação de transferência 1Click",
         "paymentSubmitted": "Solicitação de envio de pagamento enviada",
         "confidentialTooltip": "Os dados do destinatário e o valor solicitado são totalmente confidenciais.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
+        "bulkPaymentsTooltip": "Envie vários pagamentos em uma única solicitação - sem precisar aprová-los um por um.",
+        "destinationNetwork": "Rede de destino",
+        "selectRecipientPlaceholder": "Selecionar destinatário",
         "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "recipientLabel": "Destinatário"
     },
     "bulkPayment": {
         "title": "Envio em massa",
@@ -1908,18 +1908,18 @@
     "paymentFormSection": {
         "selectRecipient": "Selecionar destinatário",
         "searchByNameOrAddress": "Buscar por nome ou endereço",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "Você não tem contatos criados para a rede {network}.",
+        "noContacts": "Você ainda não tem contatos.",
+        "contacts": "Contatos",
+        "invalidAddress": "Por favor, insira um endereço válido",
+        "scanQrCode": "Escanear código QR",
+        "scanQrCodeDescription": "Use a câmera para preencher o endereço do destinatário",
+        "qrScanTitle": "Escanear código QR",
+        "qrScanHint": "Aponte a câmera para o código QR do destinatário.",
+        "qrBackToRecipientList": "Voltar à lista de destinatários",
+        "qrCameraPermissionDenied": "É necessário acesso à câmera para escanear um código QR. Ative-o nas configurações do navegador e tente novamente.",
+        "qrCameraUnsupported": "Este navegador não pode acessar a câmera para escanear códigos QR.",
+        "qrCameraStarting": "Iniciando a câmera…",
         "restrictedRecipientTitle": "Transação não permitida",
         "restrictedRecipientMessage": "Este endereço está atualmente restrito devido a verificações de segurança. Se você acredita que este endereço deve ser permitido, pode <link>solicitar a inclusão na lista de permissões</link>.",
         "send": "Enviar",
@@ -1940,7 +1940,7 @@
         "forMembersOnly": "Apenas para membros",
         "nearComDescription": "Rede para Near Business e near.com",
         "nearDescription": "Rede para saque público",
-        "internalTag": "Internal"
+        "internalTag": "Interno"
     },
     "addressBookTable": {
         "emptyTitle": "Nenhum destinatário ainda",
@@ -1984,7 +1984,7 @@
     "selectModal": {
         "searchByName": "Buscar por nome",
         "noResults": "Nenhum resultado encontrado",
-        "back": "Back"
+        "back": "Voltar"
     },
     "selectList": {
         "noResults": "Nenhum resultado encontrado"
@@ -2211,12 +2211,12 @@
         "votesSubmitted": "Seus votos foram enviados"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "Usar máx.",
         "max": "MAX",
         "insufficientTokens": "Saldo insuficiente. Complete o saldo antes da aprovação.",
         "insufficientTokensForFee": "Tokens insuficientes para cobrir a taxa de rede ({fee} {symbol}). Você pode enviar a solicitação e completar o saldo antes da aprovação.",
         "balance": "Saldo: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "Saldo"
     },
     "createRequestButton": {
         "idle": "Criar solicitação",

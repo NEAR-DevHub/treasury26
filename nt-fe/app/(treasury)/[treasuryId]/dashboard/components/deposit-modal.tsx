@@ -1106,7 +1106,6 @@ export function DepositModal({
             )}
 
             <TokenSelectModal
-                mode="options"
                 isOpen={modalType === "asset"}
                 onClose={() => setModalType(null)}
                 onSelectOption={(option) => {
@@ -1120,7 +1119,6 @@ export function DepositModal({
                 isLoading={isLoadingAssets}
                 selectedId={selectedAsset?.id}
                 showBalance
-                balanceLayout="tokenPrimary"
                 balancesById={assetBalanceMap}
             />
 

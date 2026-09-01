@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "创建 1Click 转账报价失败",
         "paymentSubmitted": "发送付款的请求已提交",
         "confidentialTooltip": "收款人信息和请求金额完全保密。",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
-        "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "bulkPaymentsTooltip": "在一个请求中发送多笔付款，无需逐笔审批。",
+        "destinationNetwork": "目标网络",
+        "selectRecipientPlaceholder": "选择收款人",
+        "tokenLabel": "代币",
+        "recipientLabel": "收款人"
     },
     "bulkPayment": {
         "title": "批量发送",
@@ -1891,18 +1891,18 @@
     "paymentFormSection": {
         "selectRecipient": "选择收款人",
         "searchByNameOrAddress": "按名称或地址搜索",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "您还没有为 {network} 网络创建联系人。",
+        "noContacts": "您还没有联系人。",
+        "contacts": "联系人",
+        "invalidAddress": "请输入有效的地址",
+        "scanQrCode": "扫描二维码",
+        "scanQrCodeDescription": "使用相机填写收款人地址",
+        "qrScanTitle": "扫描二维码",
+        "qrScanHint": "将相机对准收款人的二维码。",
+        "qrBackToRecipientList": "返回收款人列表",
+        "qrCameraPermissionDenied": "扫描二维码需要相机权限。请在浏览器设置中启用后重试。",
+        "qrCameraUnsupported": "此浏览器无法访问相机以扫描二维码。",
+        "qrCameraStarting": "正在启动相机…",
         "restrictedRecipientTitle": "不允许此交易",
         "restrictedRecipientMessage": "由于安全检查,该地址当前受到限制。如果您认为该地址应被允许,可<link>申请将其加入白名单</link>。",
         "send": "发送",
@@ -1923,7 +1923,7 @@
         "forMembersOnly": "仅限成员",
         "nearComDescription": "Near Business 和 near.com 网络",
         "nearDescription": "公开提现网络",
-        "internalTag": "Internal"
+        "internalTag": "内部"
     },
     "addressBookTable": {
         "emptyTitle": "暂无收款人",
@@ -1967,7 +1967,7 @@
     "selectModal": {
         "searchByName": "按名称搜索",
         "noResults": "未找到结果",
-        "back": "Back"
+        "back": "返回"
     },
     "selectList": {
         "noResults": "未找到结果"
@@ -2194,12 +2194,12 @@
         "votesSubmitted": "您的投票已提交"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "使用最大值",
         "max": "MAX",
         "insufficientTokens": "余额不足。请在批准前充值。",
         "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
         "balance": "余额:{amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "余额"
     },
     "createRequestButton": {
         "idle": "创建请求",

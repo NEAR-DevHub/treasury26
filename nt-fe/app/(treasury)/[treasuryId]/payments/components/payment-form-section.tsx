@@ -1,58 +1,58 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
     Cancel01Icon,
     Contact01Icon,
     Wallet03Icon,
 } from "@hugeicons/core-free-icons";
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useTranslations } from "next-intl";
 import Gleap from "gleap";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    Control,
-    FieldValues,
-    Path,
-    PathValue,
+    type Control,
+    type FieldValues,
+    type Path,
+    type PathValue,
     useFormContext,
     useWatch,
 } from "react-hook-form";
-import { InputBlock } from "@/components/input-block";
-import { TokenInput, Token } from "@/components/token-input";
-import TokenSelect, { type SelectedTokenData } from "@/components/token-select";
+import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import AccountInput from "@/components/account-input";
+import { Button } from "@/components/button";
 import {
     CreateRequestButton,
     type PermissionRequirement,
 } from "@/components/create-request-button";
+import { Icon } from "@/components/icon";
 import { InfoAlert } from "@/components/info-alert";
-import { getBlockchainType } from "@/lib/blockchain-utils";
+import { InputBlock } from "@/components/input-block";
+import { NetworkList } from "@/components/network-list";
+import { selectorTriggerClassName } from "@/components/selector-field";
+import { getNetworkDisplayName } from "@/components/token-display";
+import { type Token, TokenInput } from "@/components/token-input";
+import TokenSelect, { type SelectedTokenData } from "@/components/token-select";
+import { FormField } from "@/components/ui/form";
+import { User } from "@/components/user";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import {
-    useAddressBook,
-    AddressBookEntry,
+    type AddressBookEntry,
     addressBookEntryMatchesNetwork,
     findAddressBookEntry,
     formatAddressBookDisplayAddress,
+    useAddressBook,
 } from "@/features/address-book";
-import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
-import { useChains, ChainInfo } from "@/features/address-book/chains";
-import { NetworkList } from "@/components/network-list";
-import { Button } from "@/components/button";
-import { User } from "@/components/user";
-import { FormField } from "@/components/ui/form";
-import { selectorTriggerClassName } from "@/components/selector-field";
-import { type SectionRule } from "@/lib/section-rules";
+import { type ChainInfo, useChains } from "@/features/address-book/chains";
+import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
+import { isNearComNetwork } from "@/lib/intents-network";
+import { resolveRecipientBlockchain } from "@/lib/recipient-address-rules";
+import type { SectionRule } from "@/lib/section-rules";
+import { cn } from "@/lib/utils";
 import {
-    RecipientNetworkSelect,
     type RecipientNetworkRuleOption,
+    RecipientNetworkSelect,
 } from "./recipient-network-select";
 import { RecipientSelectModal } from "./recipient-select-modal";
-import { cn } from "@/lib/utils";
-import { getNetworkDisplayName } from "@/components/token-display";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { isNearComNetwork } from "@/lib/intents-network";
-import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 
 interface PaymentFormSectionProps<
     TFieldValues extends FieldValues = FieldValues,
@@ -276,11 +276,11 @@ export function PaymentFormSection<
     // Confidential: validate against the selected destination network.
     const blockchainType = useMemo(() => {
         if (confidentialAggregated && selectedNetworkName) {
-            return getBlockchainType(selectedNetworkName);
+            return resolveRecipientBlockchain(selectedNetworkName);
         }
         if (!hideRecipientNetwork) return "unknown";
         if (!selectedNetworkName) return NEAR_NETWORK_ID;
-        return getBlockchainType(selectedNetworkName);
+        return resolveRecipientBlockchain(selectedNetworkName);
     }, [confidentialAggregated, hideRecipientNetwork, selectedNetworkName]);
 
     const hasSelectedNetwork = !!selectedNetworkName;

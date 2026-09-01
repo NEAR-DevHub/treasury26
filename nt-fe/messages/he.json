@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "יצירת ציטוט העברה של 1Click נכשלה",
         "paymentSubmitted": "בקשה לשליחת תשלום נשלחה",
         "confidentialTooltip": "פרטי הנמען והסכום המבוקש חסויים לחלוטין.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
-        "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "bulkPaymentsTooltip": "שלחו מספר תשלומים בבקשה אחת – אין צורך לאשר אותם אחד אחד.",
+        "destinationNetwork": "רשת יעד",
+        "selectRecipientPlaceholder": "בחר נמען",
+        "tokenLabel": "טוקן",
+        "recipientLabel": "נמען"
     },
     "bulkPayment": {
         "title": "שליחה מרוכזת",
@@ -1908,18 +1908,18 @@
     "paymentFormSection": {
         "selectRecipient": "בחר נמען",
         "searchByNameOrAddress": "חיפוש לפי שם או כתובת",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "לא יצרת אנשי קשר עבור רשת {network}.",
+        "noContacts": "אין לך עדיין אנשי קשר.",
+        "contacts": "אנשי קשר",
+        "invalidAddress": "אנא הזן כתובת תקינה",
+        "scanQrCode": "סרוק קוד QR",
+        "scanQrCodeDescription": "השתמש במצלמה כדי למלא את כתובת הנמען",
+        "qrScanTitle": "סרוק קוד QR",
+        "qrScanHint": "כוונו את המצלמה לקוד QR של הנמען.",
+        "qrBackToRecipientList": "חזרה לרשימת הנמענים",
+        "qrCameraPermissionDenied": "נדרשת גישה למצלמה כדי לסרוק קוד QR. אפשרו אותה בהגדרות הדפדפן ונסו שוב.",
+        "qrCameraUnsupported": "דפדפן זה אינו יכול לגשת למצלמה לסריקת QR.",
+        "qrCameraStarting": "מפעיל את המצלמה…",
         "restrictedRecipientTitle": "עסקה אסורה",
         "restrictedRecipientMessage": "כתובת זו מוגבלת כעת עקב בדיקות אבטחה. אם אתה מאמין שכתובת זו צריכה להיות מותרת, תוכל <link>לבקש להוסיפה לרשימה הלבנה</link>.",
         "send": "שליחה",
@@ -1940,7 +1940,7 @@
         "forMembersOnly": "לחברים בלבד",
         "nearComDescription": "רשת עבור Near Business ו-near.com",
         "nearDescription": "רשת למשיכה ציבורית",
-        "internalTag": "Internal"
+        "internalTag": "פנימי"
     },
     "addressBookTable": {
         "emptyTitle": "אין נמענים עדיין",
@@ -1984,7 +1984,7 @@
     "selectModal": {
         "searchByName": "חיפוש לפי שם",
         "noResults": "לא נמצאו תוצאות",
-        "back": "Back"
+        "back": "חזרה"
     },
     "selectList": {
         "noResults": "לא נמצאו תוצאות"
@@ -2211,12 +2211,12 @@
         "votesSubmitted": "ההצבעות שלך נשלחו"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "השתמש במקסימום",
         "max": "MAX",
         "insufficientTokens": "יתרה לא מספקת. הטען לפני האישור.",
         "insufficientTokensForFee": "אין מספיק טוקנים לכיסוי עמלת הרשת ({fee} {symbol}). ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
         "balance": "יתרה: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "יתרה"
     },
     "createRequestButton": {
         "idle": "צור בקשה",

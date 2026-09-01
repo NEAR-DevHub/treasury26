@@ -1235,11 +1235,11 @@
         "failed1ClickQuote": "1Click 전송 견적 생성에 실패했습니다",
         "paymentSubmitted": "결제 송금 요청이 제출되었습니다",
         "confidentialTooltip": "수취인 정보와 요청 금액은 완전히 기밀입니다.",
-        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
-        "destinationNetwork": "Destination network",
-        "selectRecipientPlaceholder": "Select recipient",
-        "tokenLabel": "Token",
-        "recipientLabel": "Recipient"
+        "bulkPaymentsTooltip": "여러 결제를 하나의 요청으로 전송하세요. 하나씩 승인할 필요가 없습니다.",
+        "destinationNetwork": "대상 네트워크",
+        "selectRecipientPlaceholder": "수신자 선택",
+        "tokenLabel": "토큰",
+        "recipientLabel": "수신자"
     },
     "bulkPayment": {
         "title": "일괄 송금",
@@ -1908,18 +1908,18 @@
     "paymentFormSection": {
         "selectRecipient": "수신자 선택",
         "searchByNameOrAddress": "이름 또는 주소로 검색",
-        "noContactsForNetwork": "You have no contacts created for the {network} network.",
-        "noContacts": "You have no contacts yet.",
-        "contacts": "Contacts",
-        "invalidAddress": "Please enter a valid address",
-        "scanQrCode": "Scan QR code",
-        "scanQrCodeDescription": "Use your camera to fill recipient address",
-        "qrScanTitle": "Scan QR code",
-        "qrScanHint": "Point your camera at a recipient QR code.",
-        "qrBackToRecipientList": "Back to recipient list",
-        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
-        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
-        "qrCameraStarting": "Starting camera…",
+        "noContactsForNetwork": "{network} 네트워크에 대한 연락처가 없습니다.",
+        "noContacts": "아직 연락처가 없습니다.",
+        "contacts": "연락처",
+        "invalidAddress": "유효한 주소를 입력해 주세요",
+        "scanQrCode": "QR 코드 스캔",
+        "scanQrCodeDescription": "카메라로 수신자 주소를 입력하세요",
+        "qrScanTitle": "QR 코드 스캔",
+        "qrScanHint": "수신자의 QR 코드에 카메라를 비추세요.",
+        "qrBackToRecipientList": "수신자 목록으로 돌아가기",
+        "qrCameraPermissionDenied": "QR 코드를 스캔하려면 카메라 접근 권한이 필요합니다. 브라우저 설정에서 허용한 후 다시 시도해 주세요.",
+        "qrCameraUnsupported": "이 브라우저에서는 QR 스캔용 카메라에 접근할 수 없습니다.",
+        "qrCameraStarting": "카메라를 시작하는 중…",
         "restrictedRecipientTitle": "트랜잭션이 허용되지 않음",
         "restrictedRecipientMessage": "이 주소는 보안 점검으로 인해 현재 제한되어 있습니다. 이 주소가 허용되어야 한다고 생각되시면 <link>화이트리스트 등록을 요청</link>할 수 있습니다.",
         "send": "보내기",
@@ -1940,7 +1940,7 @@
         "forMembersOnly": "회원 전용",
         "nearComDescription": "Near Business 및 near.com용 네트워크",
         "nearDescription": "공개 출금용 네트워크",
-        "internalTag": "Internal"
+        "internalTag": "내부"
     },
     "addressBookTable": {
         "emptyTitle": "아직 수신자가 없습니다",
@@ -1984,7 +1984,7 @@
     "selectModal": {
         "searchByName": "이름으로 검색",
         "noResults": "결과를 찾을 수 없습니다",
-        "back": "Back"
+        "back": "뒤로"
     },
     "selectList": {
         "noResults": "결과를 찾을 수 없습니다"
@@ -2211,12 +2211,12 @@
         "votesSubmitted": "투표가 제출되었습니다"
     },
     "tokenInput": {
-        "useMax": "Use max",
+        "useMax": "최대 사용",
         "max": "MAX",
         "insufficientTokens": "잔액이 부족합니다. 승인 전에 충전하세요.",
         "insufficientTokensForFee": "네트워크 수수료({fee} {symbol})를 충당할 토큰이 부족합니다. 요청을 제출하고 승인 전에 충전할 수 있습니다.",
         "balance": "잔액: {amount} {symbol}",
-        "balanceLabel": "Balance"
+        "balanceLabel": "잔액"
     },
     "createRequestButton": {
         "idle": "요청 생성",
