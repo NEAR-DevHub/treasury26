@@ -38,6 +38,11 @@ interface ResponsiveTabsProps {
      * to the tab baseline.
      */
     variant?: "card" | "plain";
+    /**
+     * Drops the phone-sized tab picker while something else owns the row — the
+     * expanded search field takes the toolbar's full width in the design.
+     */
+    hideTabSelect?: boolean;
     className?: string;
 
     alignSelect?: "start" | "end";
@@ -56,6 +61,7 @@ export function ResponsiveTabs({
     actions,
     hideHeader,
     variant = "card",
+    hideTabSelect,
     className,
 }: ResponsiveTabsProps) {
     const isPlain = variant === "plain";
@@ -80,7 +86,12 @@ export function ResponsiveTabs({
                 )}
             >
                 {/* Mobile: Select dropdown */}
-                <div className="flex md:hidden shrink-0">
+                <div
+                    className={cn(
+                        "flex md:hidden shrink-0",
+                        hideTabSelect && "hidden",
+                    )}
+                >
                     <Select value={value} onValueChange={onValueChange}>
                         <SelectTrigger
                             className={cn(
@@ -93,9 +104,25 @@ export function ResponsiveTabs({
                                 {currentLabel}
                             </span>
                         </SelectTrigger>
-                        <SelectContent align="start">
+                        <SelectContent
+                            align="start"
+                            className={cn(
+                                isPlain &&
+                                    "min-w-[146px] rounded-2xl border-general-border p-1.5",
+                            )}
+                            viewportClassName={cn(
+                                isPlain && "flex flex-col gap-0.5 p-0",
+                            )}
+                        >
                             {tabs.map((tab) => (
-                                <SelectItem key={tab.value} value={tab.value}>
+                                <SelectItem
+                                    key={tab.value}
+                                    value={tab.value}
+                                    className={cn(
+                                        isPlain &&
+                                            "h-8 rounded-lg py-2 pr-10 pl-4 font-semibold text-general-secondary-foreground [&>span:first-child]:right-4 [&>span:first-child]:size-5",
+                                    )}
+                                >
                                     <span className="flex items-center gap-1.5">
                                         {tab.selectLabel ?? tab.label}
                                         {tab.value !== value && tab.trigger}

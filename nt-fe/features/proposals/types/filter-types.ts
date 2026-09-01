@@ -1,10 +1,15 @@
 // Shared type definitions for proposal filters
 
+/**
+ * The token shape the pickers hand over and the URL carries. Mirrors what
+ * `useBridgeTokenOptions` produces: the icon is a URL, a data URI, or the
+ * single letter it falls back to, and may be missing entirely.
+ */
 export interface TokenOption {
     id: string;
     name: string;
-    symbol: string;
-    icon: string;
+    icon?: string;
+    gradient?: string;
 }
 
 // Base filter data structure

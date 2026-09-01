@@ -1,13 +1,13 @@
 "use client";
 
-import { type IconSvgElement } from "@hugeicons/react";
-import { Icon } from "@/components/icon";
 import { Cancel01Icon, Search01Icon } from "@hugeicons/core-free-icons";
-import { cn } from "@/lib/utils";
-import { Input as ShadcnInput } from "./ui/input";
+import type { IconSvgElement } from "@hugeicons/react";
 import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/icon";
+import { cn } from "@/lib/utils";
 import { Button } from "./button";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Input as ShadcnInput } from "./ui/input";
 
 interface InputProps extends React.ComponentProps<typeof ShadcnInput> {
     clearable?: boolean;
@@ -95,8 +95,14 @@ interface ResponsiveInputProps extends InputProps {
     mobilePlaceholder?: string;
     /** Called when the mobile search input expands/collapses. */
     onSearchActiveChange?: (active: boolean) => void;
-    /** Applied to the collapsed mobile icon button. */
+    /** Applied to the collapsed mobile icon button, and to the close button. */
     buttonClassName?: string;
+    /**
+     * Closes the expanded mobile search from a button *beside* the field rather
+     * than a clear affordance inside it — the shape the requests toolbar uses,
+     * where the search takes over the whole row while it's open.
+     */
+    mobileCloseButton?: boolean;
 }
 
 /**
@@ -115,6 +121,7 @@ export function ResponsiveInput({
     icon = Search01Icon,
     onSearchActiveChange,
     buttonClassName,
+    mobileCloseButton,
     ...props
 }: ResponsiveInputProps) {
     const t = useTranslations("input");
@@ -123,7 +130,9 @@ export function ResponsiveInput({
 
     // Open if there's already a value
     useEffect(() => {
-        if (value) setIsOpen(true);
+        if (!value) return;
+        setIsOpen(true);
+        onSearchActiveChange?.(true);
     }, []);
 
     const handleChange = useCallback(
@@ -185,22 +194,37 @@ export function ResponsiveInput({
                 </Button>
             )}
 
-            {/* Mobile: expanded input inline — X inside the input closes it */}
+            {/* Mobile: expanded input inline — closed by the X, inside the
+                field by default or beside it when `mobileCloseButton` is set */}
             {isOpen && (
-                <Input
-                    value={value}
-                    onChange={handleChange}
-                    placeholder={mobilePlaceholder ?? placeholder}
-                    className={cn(
-                        "flex md:hidden flex-1 min-w-0 animate-in fade-in slide-in-from-right-4 duration-200 w-full placeholder:text-xs",
-                        className,
+                <div className="flex md:hidden min-w-0 flex-1 items-center gap-2">
+                    <Input
+                        value={value}
+                        onChange={handleChange}
+                        placeholder={mobilePlaceholder ?? placeholder}
+                        className={cn(
+                            "flex-1 min-w-0 animate-in fade-in slide-in-from-right-4 duration-200 placeholder:text-xs",
+                            className,
+                        )}
+                        search={isSearchIcon}
+                        clearable={!mobileCloseButton}
+                        showAlwaysClear={!mobileCloseButton}
+                        onClear={handleClose}
+                        autoFocus
+                        {...props}
+                    />
+                    {mobileCloseButton && (
+                        <Button
+                            variant="secondary"
+                            size="icon"
+                            aria-label={t("closeSearch")}
+                            className={cn("shrink-0", buttonClassName)}
+                            onClick={handleClose}
+                        >
+                            <Icon icon={Cancel01Icon} />
+                        </Button>
                     )}
-                    search={isSearchIcon}
-                    showAlwaysClear
-                    onClear={handleClose}
-                    autoFocus
-                    {...props}
-                />
+                </div>
             )}
         </>
     );

@@ -635,7 +635,6 @@
             "noMembersAvailable": "No members available",
             "editOnDesktop": "Edit on desktop",
             "reset": "Reset",
-            "resetAll": "Reset all",
             "clear": "Clear",
             "addFilter": "Add Filter"
         },
@@ -1980,7 +1979,8 @@
         "last6Months": "Last 6 months"
     },
     "input": {
-        "openSearch": "Open search"
+        "openSearch": "Open search",
+        "closeSearch": "Close search"
     },
     "pagination": {
         "previous": "Previous",

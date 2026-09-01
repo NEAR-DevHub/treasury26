@@ -635,7 +635,6 @@
             "noMembersAvailable": "无可用成员",
             "editOnDesktop": "在桌面端编辑",
             "reset": "重置",
-            "resetAll": "全部重置",
             "clear": "清除",
             "addFilter": "添加筛选"
         },
@@ -1963,7 +1962,8 @@
         "last6Months": "过去 6 个月"
     },
     "input": {
-        "openSearch": "打开搜索"
+        "openSearch": "打开搜索",
+        "closeSearch": "关闭搜索"
     },
     "pagination": {
         "previous": "上一页",
