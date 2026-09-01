@@ -43,7 +43,6 @@ import { ProposalTimelineDate } from "./proposal-timeline-date";
 import { useNear } from "@/stores/near-store";
 import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import {
     getApproversAndThreshold,
     getKindFromProposal,
@@ -114,26 +113,17 @@ export function ProposalsTable({
     const getProposalKindLabel = useProposalKindLabel();
     const [rowSelection, setRowSelection] = useState({});
     // The request whose details sheet is open, held by id so the sheet keeps
-    // reading the freshest copy after a vote invalidates the list. Mobile has
-    // no room for the sheet and drills into the request page instead.
+    // reading the freshest copy after a vote invalidates the list.
     const [openProposalId, setOpenProposalId] = useState<number | null>(null);
     const { accountId } = useNear();
     const { treasuryId, isConfidential } = useTreasury();
-    const { isMobile } = useResponsiveSidebar();
     const router = useRouter();
 
-    // A 448px sheet has nowhere to go on a phone, so mobile drills into the
-    // full request page instead of opening it.
-    const openRequest = useCallback(
-        (proposal: Proposal) => {
-            if (isMobile) {
-                router.push(`/${treasuryId}/requests/${proposal.id}`);
-            } else {
-                setOpenProposalId(proposal.id);
-            }
-        },
-        [isMobile, router, treasuryId],
-    );
+    // The sheet serves both layouts — a panel on the right on desktop, a sheet
+    // rising from the bottom edge on a phone — so a row opens it either way.
+    const openRequest = useCallback((proposal: Proposal) => {
+        setOpenProposalId(proposal.id);
+    }, []);
 
     const handleDeposit = useCallback(
         (tokenSymbol?: string, tokenNetwork?: string) => {
