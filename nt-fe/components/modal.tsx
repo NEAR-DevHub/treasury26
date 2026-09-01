@@ -13,6 +13,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useHasSidebarRail } from "@/components/app-shell-context";
+import { useSidebarStore } from "@/stores/sidebar-store";
 import { useUiStore } from "@/stores/ui-store";
 
 // @hot-labs/near-connect mounts its wallet popup on document.body with class
@@ -116,7 +118,7 @@ function DialogHeader({
         <BaseDialogHeader
             {...props}
             className={cn(
-                "border-b border-border -mx-4 px-4 pb-3.5 flex flex-row items-center justify-between text-center gap-4 sticky top-0 z-10 bg-card sm:static",
+                "border-b border-border -mx-4 px-4 flex flex-row items-center justify-between text-center gap-2 sticky top-0 z-10 bg-card sm:static",
                 className,
             )}
         >
@@ -163,6 +165,8 @@ function DialogContent({
     const pushOverlay = useUiStore((s) => s.pushOverlay);
     const popOverlay = useUiStore((s) => s.popOverlay);
     const pushed = useRef(false);
+    const hasSidebarRail = useHasSidebarRail();
+    const isSidebarOpen = useSidebarStore((s) => s.isSidebarOpen);
 
     // Track open/close via the `data-state` attribute change on the content element.
     // We use onAnimationStart which fires when the open animation begins.
@@ -175,6 +179,13 @@ function DialogContent({
             popOverlay();
         }
     }
+
+    // Only on large screens (sidebar rail). Mobile stays full-width bottom sheet.
+    const contentCenterClass = hasSidebarRail
+        ? isSidebarOpen
+            ? "lg:left-[calc(50%+9.25rem)]!"
+            : "lg:left-[calc(50%+2.5rem)]!"
+        : undefined;
 
     return (
         <BaseDialogContent
@@ -192,7 +203,7 @@ function DialogContent({
                 "bg-card flex flex-col",
                 // Mobile: bottom drawer with a consistent inset
                 "max-w-none! w-full inset-x-0 left-0 right-0 bottom-0 top-auto translate-x-0 translate-y-0 max-h-[80vh] rounded-t-3xl rounded-b-none",
-                "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:gap-0",
+                "p-4 pb-[max(1rem,env(safe-area-inset-bottom))] max-sm:gap-0 sm:gap-4",
                 "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
                 "data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100",
                 // Desktop: centered modal
@@ -201,6 +212,7 @@ function DialogContent({
                 "sm:data-[state=closed]:slide-out-to-bottom-0 sm:data-[state=open]:slide-in-from-bottom-0",
                 "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
                 "overflow-y-auto scrollbar-hide",
+                contentCenterClass,
                 className,
             )}
         >

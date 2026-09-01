@@ -2,8 +2,9 @@
 
 import { Icon } from "@/components/icon";
 import { CheckIcon } from "@hugeicons/core-free-icons";
-import { Toaster as SonnerToaster, toast } from "sonner";
-import { useTheme } from "next-themes";
+import { Toaster as SonnerToaster } from "sonner";
+import { useMediaQuery } from "@/hooks/use-media-query";
+
 const ErrorIcon = () => (
     <svg
         width="16"
@@ -34,29 +35,30 @@ const ErrorIcon = () => (
 );
 
 export function Toaster() {
-    const { resolvedTheme } = useTheme();
-    const theme = resolvedTheme === "dark" ? "dark" : "light";
+    const isMobile = useMediaQuery("(max-width: 1023px)");
 
     return (
         <SonnerToaster
-            theme={theme}
-            position="bottom-center"
+            theme="dark"
+            position={isMobile ? "top-center" : "top-right"}
             richColors={false}
             toastOptions={{
                 unstyled: false,
                 classNames: {
-                    toast: "bg-card text-card-foreground border border-border shadow-lg",
-                    title: "text-card-foreground font-medium text-sm",
-                    description: "text-muted-foreground",
-                    success: "bg-card text-card-foreground",
-                    error: "bg-card text-card-foreground",
+                    toast: "bg-zinc-900 text-white border-0 shadow-lg rounded-2xl",
+                    title: "text-white font-medium text-sm",
+                    description: "text-white/80",
+                    success: "bg-zinc-900 text-white",
+                    error: "bg-zinc-900 text-white",
+                    actionButton:
+                        "bg-transparent text-white hover:bg-transparent border-0 shadow-none",
                 },
             }}
             icons={{
                 success: (
                     <Icon
                         icon={CheckIcon}
-                        className="p-0.5 bg-general-success-foreground rounded-full stroke-3 text-white shrink-0"
+                        className="p-0.5 bg-general-success-foreground rounded-full stroke-3 text-zinc-950 shrink-0"
                     />
                 ),
                 error: <ErrorIcon />,

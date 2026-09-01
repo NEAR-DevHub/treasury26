@@ -1,18 +1,13 @@
 "use client";
 
 import { Icon } from "@/components/icon";
-import { CheckIcon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, CheckIcon } from "@hugeicons/core-free-icons";
 import { useState, useMemo, useCallback, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/input";
-import { SheetHandle } from "@/components/mobile-shell/sheet-handle";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/modal";
+import { Dialog, DialogHeader, DialogTitle } from "@/components/modal";
 import { Button } from "@/components/button";
+import { PaymentSelectModalContent } from "@/components/payment-select-modal-content";
 import {
     getSelectOptionLabels,
     SelectListIcon,
@@ -20,6 +15,10 @@ import {
     SelectListSkeleton,
 } from "@/components/select-list";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+    paymentSelectModalListClassName,
+    paymentSelectModalSearchInputClassName,
+} from "@/components/selector-field";
 import { cn } from "@/lib/utils";
 import { HighlightedText } from "@/components/highlighted-text";
 
@@ -36,6 +35,7 @@ interface SelectModalPropsBase {
     options: SelectOption[];
     searchPlaceholder?: string;
     isLoading?: boolean;
+    onBack?: () => void;
     renderIcon?: (
         item: SelectOption,
         context: SelectModalRenderContext,
@@ -80,6 +80,7 @@ export function SelectModal({
     isOpen,
     onClose,
     onSelect,
+    onBack,
     title,
     options,
     searchPlaceholder,
@@ -213,33 +214,43 @@ export function SelectModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="max-h-[90vh] gap-0 overflow-hidden p-4 sm:max-w-md sm:gap-4">
-                <div className="-mb-2 sm:hidden">
-                    <SheetHandle />
-                </div>
+            <PaymentSelectModalContent>
                 <DialogHeader
                     centerTitle={false}
-                    closeButton={false}
-                    className="border-0 px-0 pb-0 text-left -mx-0 sticky top-0 sm:border-b sm:border-border sm:-mx-4 sm:px-4 sm:pb-3.5"
+                    className="sticky top-0 border-0 pb-0 text-left"
                 >
-                    <DialogTitle className="text-left text-lg font-semibold">
-                        {title}
-                    </DialogTitle>
+                    <div className="flex items-center gap-2">
+                        {onBack && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onBack}
+                                className="h-8 w-8 shrink-0"
+                                aria-label={t("back")}
+                            >
+                                <Icon icon={ArrowLeft01Icon} />
+                            </Button>
+                        )}
+                        <DialogTitle className="text-left text-lg font-semibold flex-1">
+                            {title}
+                        </DialogTitle>
+                    </div>
                 </DialogHeader>
 
-                <div className="mt-4 space-y-4 min-h-0 flex-1 flex flex-col sm:mt-0">
+                <div className="mt-4 flex min-h-0 flex-1 flex-col space-y-4 sm:mt-0">
                     <Input
                         type="text"
                         search
                         placeholder={effectiveSearchPlaceholder}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
+                        inputClassName={paymentSelectModalSearchInputClassName}
                     />
 
                     {isLoading ? (
                         <SelectListSkeleton />
                     ) : (
-                        <ScrollArea className="h-[min(560px,calc(90vh-11rem))]">
+                        <ScrollArea className={paymentSelectModalListClassName}>
                             {sections?.length ? (
                                 filteredSections.length > 0 ? (
                                     filteredSections.map((section) => {
@@ -334,7 +345,7 @@ export function SelectModal({
                         </ScrollArea>
                     )}
                 </div>
-            </DialogContent>
+            </PaymentSelectModalContent>
         </Dialog>
     );
 }

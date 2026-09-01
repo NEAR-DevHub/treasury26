@@ -1,11 +1,13 @@
 "use client";
 
+import { ArrowUpDownIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import {
     type ChangeEvent,
     type ClipboardEvent,
     type KeyboardEvent,
     useMemo,
+    useState,
 } from "react";
 import {
     type Control,
@@ -24,15 +26,21 @@ import {
     decimalFromBaseUnitsOrNull,
     decimalOrNull,
 } from "@/lib/amount-format";
+import {
+    parseUsdOverride,
+    tokenToUsdDraft,
+    usdToTokenAmount,
+} from "@/lib/amount-usd";
 import { availableBalance } from "@/lib/balance";
-import Big from "@/lib/big";
 import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import { findMatchingTreasuryAsset } from "@/lib/match-treasury-asset";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { FormattedAmount } from "./formatted-amount";
+import { Icon } from "./icon";
 import { InputBlock } from "./input-block";
 import { LargeInput } from "./large-input";
+import { TokenDisplay } from "./token-display-with-network";
 import TokenSelect, { type SelectedTokenData } from "./token-select";
 import { FormField } from "./ui/form";
 import { WarningMessage } from "./warning-message";
@@ -139,6 +147,27 @@ interface TokenInputProps<
      * which must not be matched against confidential assets).
      */
     balanceFromToken?: boolean;
+    /** Override raw balance (smallest units) for Balance / Use max / warnings. */
+    balanceOverrideRaw?: string | null;
+    /**
+     * Enable USD ↔ token amount toggle. In USD mode the user types USD; we
+     * convert to tokens via `tokenPrice` and store the token amount on the form.
+     * Pass quote `amountUsd` as `usdValueOverride` to confirm the USD display
+     * against the live route quote.
+     */
+    enableUsdToggle?: boolean;
+    /**
+     * `default`: amount + token picker side-by-side.
+     * `amountCard`: centered amount card (token selected elsewhere); balance + Use max footer.
+     */
+    variant?: "default" | "amountCard";
+    /** Forwarded to TokenSelect (card trigger / balance layout). */
+    tokenSelectExtras?: {
+        balanceLayout?: "usdPrimary" | "tokenPrimary";
+        hideNetworkSubtitle?: boolean;
+        appearance?: "default" | "card";
+        triggerLabel?: string;
+    };
 }
 
 export function TokenInput<
@@ -164,7 +193,12 @@ export function TokenInput<
     onTokenChange,
     usdValueOverride,
     balanceFromToken = false,
+    balanceOverrideRaw = null,
+    enableUsdToggle = false,
+    variant = "default",
+    tokenSelectExtras,
 }: TokenInputProps<TFieldValues, TTokenPath>) {
+    const isAmountCard = variant === "amountCard";
     const t = useTranslations("tokenInput");
     const amountFormat = useAmountFormat();
     const { treasuryId } = useTreasury();
@@ -172,6 +206,8 @@ export function TokenInput<
     const amount = useWatch({ control, name: amountName });
     // Null while payments waits for assets to seed a default token.
     const token = useWatch({ control, name: tokenName }) as Token | null;
+    const [inputMode, setInputMode] = useState<"token" | "usd">("token");
+    const [usdDraft, setUsdDraft] = useState("");
 
     // Shared DEFAULT_ASSETS_QUERY so we hit the same cache as useMergedTokens.
     const { data: assetsData, isPending: isAssetsPending } = useAssets(
@@ -189,12 +225,17 @@ export function TokenInput<
 
     // Prefer live assets balance; fall back to the form token's balance.
     // Never invent "0" while assets are still loading (avoids Balance: 0 flash).
-    const tokenBalance = matchedAsset
-        ? availableBalance(matchedAsset.balance).toFixed(0)
-        : (token?.balance ??
-          (isAssetsPending && !balanceFromToken ? null : "0"));
+    const tokenBalance =
+        balanceOverrideRaw ??
+        (matchedAsset
+            ? availableBalance(matchedAsset.balance).toFixed(0)
+            : (token?.balance ??
+              (isAssetsPending && !balanceFromToken ? null : "0")));
     const tokenPrice = matchedAsset?.price ?? token?.price;
-    const tokenDecimals = matchedAsset?.decimals ?? token?.decimals;
+    const tokenDecimals =
+        balanceOverrideRaw != null
+            ? (token?.decimals ?? matchedAsset?.decimals)
+            : (matchedAsset?.decimals ?? token?.decimals);
 
     const balanceWarning = useMemo(() => {
         if (!showInsufficientBalance || !token || tokenBalance == null) {
@@ -227,9 +268,8 @@ export function TokenInput<
     ]);
 
     const estimatedUSDValue = useMemo(() => {
-        if (usdValueOverride !== undefined && usdValueOverride !== null) {
-            return decimalOrNull(usdValueOverride);
-        }
+        const quoteUsd = parseUsdOverride(usdValueOverride);
+        if (quoteUsd != null) return decimalOrNull(quoteUsd);
         const price = decimalOrNull(tokenPrice);
         const parsedAmount = decimalOrNull(amount);
         return price?.gt(0) && parsedAmount?.gt(0)
@@ -245,19 +285,57 @@ export function TokenInput<
                 const displayError =
                     errorMessage || fieldState.error?.message || null;
 
+                const applyTokenAmount = (tokenAmount: string) => {
+                    field.onChange(tokenAmount);
+                };
+
+                const applyUsdAmount = (raw: string) => {
+                    const sanitized = sanitizeAmountInput(raw);
+                    setUsdDraft(sanitized);
+                    if (!tokenPrice || !sanitized) {
+                        applyTokenAmount(sanitized ? "0" : "");
+                        return;
+                    }
+                    applyTokenAmount(
+                        usdToTokenAmount(
+                            sanitized,
+                            tokenPrice,
+                            tokenDecimals ?? 24,
+                        ),
+                    );
+                };
+
                 const handleMaxClick = () => {
-                    if (!tokenBalance || !tokenDecimals) return;
-                    const maxAmount = decimalFromBaseUnits(
-                        tokenBalance,
-                        tokenDecimals,
-                    ).toFixed();
+                    if (tokenBalance == null || tokenBalance === "") return;
+                    const decimals = tokenDecimals ?? token?.decimals;
+                    if (!decimals) return;
+                    let maxAmount: string;
+                    try {
+                        maxAmount = decimalFromBaseUnits(
+                            tokenBalance,
+                            decimals,
+                        ).toFixed();
+                    } catch {
+                        return;
+                    }
+                    if (!maxAmount || maxAmount === "0") return;
                     setValue(
                         amountName,
                         maxAmount as PathValue<
                             TFieldValues,
                             Path<TFieldValues>
                         >,
+                        { shouldDirty: true, shouldValidate: true },
                     );
+                    field.onChange(maxAmount);
+                    if (enableUsdToggle && inputMode === "usd" && tokenPrice) {
+                        const quoteUsd = parseUsdOverride(usdValueOverride);
+                        setUsdDraft(
+                            quoteUsd != null
+                                ? quoteUsd.toFixed(2)
+                                : tokenToUsdDraft(maxAmount, tokenPrice),
+                        );
+                    }
                     onMaxSet?.(maxAmount);
                 };
 
@@ -281,7 +359,12 @@ export function TokenInput<
 
                     e.preventDefault();
                     onAmountInput?.();
-                    field.onChange(nextValue || ".");
+                    const next = nextValue || ".";
+                    if (enableUsdToggle && inputMode === "usd") {
+                        applyUsdAmount(next);
+                    } else {
+                        field.onChange(next);
+                    }
                 };
 
                 const handleAmountPaste = (
@@ -291,38 +374,108 @@ export function TokenInput<
 
                     e.preventDefault();
                     onAmountInput?.();
-                    field.onChange(
-                        sanitizeAmountInput(e.clipboardData.getData("text")),
+                    const pasted = sanitizeAmountInput(
+                        e.clipboardData.getData("text"),
                     );
+                    if (enableUsdToggle && inputMode === "usd") {
+                        applyUsdAmount(pasted);
+                    } else {
+                        field.onChange(pasted);
+                    }
                 };
 
                 const handleAmountChange = (
                     e: ChangeEvent<HTMLInputElement>,
                 ) => {
                     onAmountInput?.();
+                    if (enableUsdToggle && inputMode === "usd") {
+                        applyUsdAmount(e.target.value);
+                        return;
+                    }
                     field.onChange(sanitizeAmountInput(e.target.value));
                 };
 
-                const inputValue = loading
-                    ? "..."
-                    : customValue !== undefined
-                      ? customValue
-                      : field.value.toString();
+                const handleToggleCurrency = () => {
+                    if (!enableUsdToggle || !tokenPrice) return;
+                    if (inputMode === "token") {
+                        const quoteUsd = parseUsdOverride(usdValueOverride);
+                        setUsdDraft(
+                            quoteUsd != null
+                                ? quoteUsd.toFixed(2)
+                                : tokenToUsdDraft(amount, tokenPrice),
+                        );
+                        setInputMode("usd");
+                    } else {
+                        setInputMode("token");
+                        setUsdDraft("");
+                    }
+                };
 
-                return (
-                    <InputBlock
-                        interactive={!readOnly}
-                        title={title}
-                        invalid={!!displayError}
-                        topRightContent={
-                            <div className="flex items-center gap-2">
-                                {token &&
-                                    tokenBalance != null &&
-                                    tokenDecimals != null && (
+                const displayPrimary =
+                    enableUsdToggle && inputMode === "usd"
+                        ? usdDraft
+                        : loading
+                          ? "..."
+                          : customValue !== undefined
+                            ? customValue
+                            : field.value.toString();
+
+                const secondaryTokenAmount =
+                    enableUsdToggle &&
+                    inputMode === "usd" &&
+                    token &&
+                    field.value
+                        ? `${field.value} ${token.symbol}`
+                        : null;
+
+                const primarySuffix =
+                    enableUsdToggle && inputMode === "usd"
+                        ? "USD"
+                        : isAmountCard
+                          ? token?.symbol
+                          : undefined;
+
+                const secondaryLine = (() => {
+                    if (enableUsdToggle && secondaryTokenAmount) {
+                        return secondaryTokenAmount;
+                    }
+                    if (estimatedUSDValue?.gt(0)) {
+                        return amountFormat.fiat(estimatedUSDValue).display;
+                    }
+                    if (enableUsdToggle || isAmountCard) {
+                        return amountFormat.fiat(0).display;
+                    }
+                    return null;
+                })();
+
+                const canToggle = enableUsdToggle && !!tokenPrice && !readOnly;
+
+                const balanceFooter =
+                    token && tokenBalance != null && tokenDecimals != null ? (
+                        <div
+                            className={cn(
+                                "flex w-full items-center justify-between gap-3",
+                                isAmountCard && "mt-auto pt-3",
+                            )}
+                        >
+                            <div className="flex items-center gap-2 min-w-0">
+                                {isAmountCard ? (
+                                    <TokenDisplay
+                                        symbol={token.symbol}
+                                        icon={token.icon}
+                                        chainIcons={token.chainIcons}
+                                        iconSize="2xl"
+                                    />
+                                ) : null}
+                                <div className="flex flex-col min-w-0 text-left">
+                                    {isAmountCard ? (
                                         <>
-                                            <p className="text-xs text-muted-foreground">
-                                                {t("balance", {
-                                                    amount: amountFormat.rawToken(
+                                            <span className="text-sm font-medium leading-normal text-general-secondary-foreground">
+                                                {t("balanceLabel")}
+                                            </span>
+                                            <span className="truncate text-base font-semibold leading-tight text-foreground">
+                                                {
+                                                    amountFormat.rawToken(
                                                         tokenBalance,
                                                         tokenDecimals,
                                                         {
@@ -331,25 +484,170 @@ export function TokenInput<
                                                                 tokenPrice,
                                                             rounding: "down",
                                                         },
-                                                    ).display,
-                                                    symbol: token.symbol.toUpperCase(),
-                                                })}
-                                            </p>
-                                            {!readOnly && (
-                                                <Button
-                                                    type="button"
-                                                    variant="secondary"
-                                                    className="bg-muted-foreground/10 hover:bg-muted-foreground/20"
-                                                    size="sm"
-                                                    onClick={handleMaxClick}
-                                                >
-                                                    {t("max")}
-                                                </Button>
-                                            )}
+                                                    ).display
+                                                }{" "}
+                                                {token.symbol.toUpperCase()}
+                                            </span>
                                         </>
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                            {t("balance", {
+                                                amount: amountFormat.rawToken(
+                                                    tokenBalance,
+                                                    tokenDecimals,
+                                                    {
+                                                        profile: "compact",
+                                                        unitPriceUsd:
+                                                            tokenPrice,
+                                                        rounding: "down",
+                                                    },
+                                                ).display,
+                                                symbol: token.symbol.toUpperCase(),
+                                            })}
+                                        </p>
                                     )}
+                                </div>
                             </div>
-                        }
+                            {!readOnly && (
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="shrink-0 bg-muted-foreground/10 px-3 text-sm font-bold leading-3.5 text-general-secondary-foreground hover:bg-muted-foreground/20"
+                                    size="sm"
+                                    onClick={handleMaxClick}
+                                >
+                                    {t("useMax")}
+                                </Button>
+                            )}
+                        </div>
+                    ) : null;
+
+                const amountMessages = displayError ? (
+                    <p
+                        className={cn(
+                            "text-destructive text-sm font-semibold",
+                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                        )}
+                    >
+                        {String(displayError)}
+                    </p>
+                ) : balanceWarning ? (
+                    <p
+                        className={cn(
+                            "text-general-info-foreground text-sm font-semibold leading-normal",
+                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                        )}
+                    >
+                        {balanceWarning.type === "fee_not_covered"
+                            ? t("insufficientTokensForFee", {
+                                  fee: balanceWarning.formattedFee ?? "",
+                                  symbol: balanceWarning.symbol ?? "",
+                              })
+                            : t("insufficientTokens")}
+                    </p>
+                ) : warningMessage ? (
+                    <WarningMessage
+                        variant="inline"
+                        message={warningMessage}
+                        className={cn(
+                            "text-sm font-semibold",
+                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                        )}
+                    />
+                ) : infoMessage ? (
+                    <p
+                        className={cn(
+                            "text-general-info-foreground text-sm font-semibold leading-normal",
+                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                        )}
+                    >
+                        {infoMessage}
+                    </p>
+                ) : !isAmountCard ? (
+                    <p className="text-muted-foreground text-xs invisible">
+                        Invisible
+                    </p>
+                ) : null;
+
+                if (isAmountCard) {
+                    return (
+                        <div
+                            className={cn(
+                                "flex h-60 w-full flex-col items-stretch self-stretch rounded-3xl border border-general-border bg-card p-4",
+                                displayError && "border-destructive",
+                            )}
+                        >
+                            <div className="flex w-full max-w-full flex-1 flex-col items-center justify-center gap-1 px-1">
+                                <LargeInput
+                                    type="text"
+                                    inputMode="decimal"
+                                    borderless
+                                    dynamicFontSize
+                                    dynamicFontScale="hero"
+                                    containerClassName="w-full max-w-full"
+                                    textSizeClassName="font-semibold tracking-tighter"
+                                    suffix={primarySuffix}
+                                    suffixClassName="font-semibold tracking-tight"
+                                    onKeyDown={
+                                        readOnly
+                                            ? undefined
+                                            : handleAmountKeyDown
+                                    }
+                                    onPaste={
+                                        readOnly ? undefined : handleAmountPaste
+                                    }
+                                    onChange={
+                                        readOnly
+                                            ? undefined
+                                            : handleAmountChange
+                                    }
+                                    onBlur={readOnly ? undefined : field.onBlur}
+                                    value={displayPrimary}
+                                    placeholder="0"
+                                    className={cn(
+                                        "h-10 text-center text-muted-foreground",
+                                        readOnly && "text-muted-foreground",
+                                    )}
+                                    readOnly={readOnly}
+                                />
+                                {secondaryLine ? (
+                                    <button
+                                        type="button"
+                                        className={cn(
+                                            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-center text-base font-semibold leading-tight text-general-secondary-foreground",
+                                            canToggle
+                                                ? "cursor-pointer hover:bg-general-bg-secondary"
+                                                : "cursor-default",
+                                        )}
+                                        onClick={
+                                            canToggle
+                                                ? handleToggleCurrency
+                                                : undefined
+                                        }
+                                        disabled={!canToggle}
+                                    >
+                                        <span>{secondaryLine}</span>
+                                        {canToggle ? (
+                                            <Icon
+                                                icon={ArrowUpDownIcon}
+                                                className="size-3.5"
+                                            />
+                                        ) : null}
+                                    </button>
+                                ) : null}
+                                {amountMessages}
+                            </div>
+                            {balanceFooter}
+                        </div>
+                    );
+                }
+
+                return (
+                    <InputBlock
+                        interactive={!readOnly}
+                        title={title}
+                        invalid={!!displayError}
+                        topRightContent={balanceFooter}
                     >
                         <>
                             <div className="flex justify-between items-center">
@@ -378,12 +676,18 @@ export function TokenInput<
                                         onBlur={
                                             readOnly ? undefined : field.onBlur
                                         }
-                                        value={inputValue}
+                                        value={displayPrimary}
                                         placeholder="0"
                                         className={cn(
                                             readOnly && "text-muted-foreground",
                                         )}
                                         readOnly={readOnly}
+                                        suffix={
+                                            enableUsdToggle &&
+                                            inputMode === "usd"
+                                                ? "USD"
+                                                : undefined
+                                        }
                                     />
                                 </div>
                                 <FormField
@@ -421,51 +725,71 @@ export function TokenInput<
                                                 autoSelect={
                                                     tokenSelect?.autoSelect
                                                 }
+                                                balanceLayout={
+                                                    tokenSelectExtras?.balanceLayout
+                                                }
+                                                hideNetworkSubtitle={
+                                                    tokenSelectExtras?.hideNetworkSubtitle
+                                                }
+                                                triggerLabel={
+                                                    tokenSelectExtras?.triggerLabel
+                                                }
+                                                appearance={
+                                                    tokenSelectExtras?.appearance
+                                                }
                                             />
                                         );
                                     }}
                                 />
                             </div>
-                            {estimatedUSDValue?.gt(0) && (
-                                <p className="text-muted-foreground text-xs truncate">
-                                    ≈{" "}
-                                    <FormattedAmount
-                                        kind="fiat"
-                                        value={estimatedUSDValue}
+                            {enableUsdToggle && secondaryTokenAmount ? (
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-muted-foreground text-xs mt-1 hover:bg-general-bg-secondary"
+                                    onClick={handleToggleCurrency}
+                                >
+                                    <span>{secondaryTokenAmount}</span>
+                                    <Icon
+                                        icon={ArrowUpDownIcon}
+                                        className="size-3.5"
                                     />
-                                </p>
-                            )}
-                            {displayError ? (
-                                <p className="text-destructive text-sm mt-2">
-                                    {String(displayError)}
-                                </p>
-                            ) : balanceWarning ? (
-                                <p className="text-general-info-foreground text-sm mt-2">
-                                    {balanceWarning.type === "fee_not_covered"
-                                        ? t("insufficientTokensForFee", {
-                                              fee:
-                                                  balanceWarning.formattedFee ??
-                                                  "",
-                                              symbol:
-                                                  balanceWarning.symbol ?? "",
-                                          })
-                                        : t("insufficientTokens")}
-                                </p>
-                            ) : warningMessage ? (
-                                <WarningMessage
-                                    variant="inline"
-                                    message={warningMessage}
-                                    className="text-sm mt-2"
-                                />
-                            ) : infoMessage ? (
-                                <p className="text-general-info-foreground text-sm mt-2">
-                                    {infoMessage}
-                                </p>
-                            ) : (
-                                <p className="text-muted-foreground text-xs invisible">
-                                    Invisible
-                                </p>
-                            )}
+                                </button>
+                            ) : estimatedUSDValue?.gt(0) ? (
+                                <button
+                                    type="button"
+                                    className={cn(
+                                        "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-muted-foreground text-xs truncate mt-1",
+                                        enableUsdToggle &&
+                                            tokenPrice &&
+                                            "cursor-pointer hover:bg-general-bg-secondary",
+                                    )}
+                                    onClick={
+                                        enableUsdToggle && tokenPrice
+                                            ? handleToggleCurrency
+                                            : undefined
+                                    }
+                                    disabled={
+                                        !enableUsdToggle ||
+                                        !tokenPrice ||
+                                        readOnly
+                                    }
+                                >
+                                    <span>
+                                        ≈{" "}
+                                        <FormattedAmount
+                                            kind="fiat"
+                                            value={estimatedUSDValue}
+                                        />
+                                    </span>
+                                    {enableUsdToggle && tokenPrice ? (
+                                        <Icon
+                                            icon={ArrowUpDownIcon}
+                                            className="size-3.5"
+                                        />
+                                    ) : null}
+                                </button>
+                            ) : null}
+                            {amountMessages}
                         </>
                     </InputBlock>
                 );

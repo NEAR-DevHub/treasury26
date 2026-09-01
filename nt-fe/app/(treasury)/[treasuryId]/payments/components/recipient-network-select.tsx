@@ -1,12 +1,16 @@
 "use client";
 import { Icon } from "@/components/icon";
-import { ArrowDown01Icon, CircleIcon } from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
 import { HighlightedText } from "@/components/highlighted-text";
 import { InputBlock } from "@/components/input-block";
+import {
+    EmptySelectorIcon,
+    selectorTriggerClassName,
+} from "@/components/selector-field";
 import { getNetworkDisplayName } from "@/components/token-display";
 import type { Token } from "@/components/token-input";
 import { WarningMessage } from "@/components/warning-message";
@@ -20,6 +24,7 @@ import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
 import {
     getLocalizedNetworkDisplayName,
     getNetworkDisplayCaseClass,
+    isNearComNetwork,
 } from "@/lib/intents-network";
 import {
     isNearComRecipientAddress,
@@ -345,56 +350,64 @@ export function RecipientNetworkSelect({
 
     const selectorButton =
         appearance === "card" ? (
-            <div
+            <Button
+                type="button"
+                variant="unstyled"
+                onClick={() => setOpen(true)}
+                disabled={isDisabled}
                 className={cn(
-                    "flex h-[72px] items-center rounded-3xl border border-general-border bg-card px-4",
+                    selectorTriggerClassName,
                     invalid && "border-destructive bg-destructive/5",
+                    isDisabled && "opacity-100",
                 )}
             >
-                <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setOpen(true)}
-                    disabled={isDisabled}
-                    className="h-full w-full justify-start gap-3 px-0! hover:bg-transparent focus-visible:bg-transparent disabled:opacity-100 dark:hover:bg-transparent dark:focus-visible:bg-transparent"
-                >
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
-                        {selectedOption && !isDisabled ? (
-                            <img
-                                src={selectedOption.icon}
-                                alt=""
-                                className="size-5 rounded-full object-cover"
-                            />
-                        ) : (
-                            <Icon
-                                icon={CircleIcon}
-                                className="text-muted-foreground"
-                            />
-                        )}
-                    </span>
-                    <span className="flex min-w-0 flex-1 flex-col items-start gap-px text-left">
-                        <span className="text-sm font-medium leading-5 text-muted-foreground">
-                            {label ?? t("label")}
-                        </span>
-                        <span
-                            className={cn(
-                                "max-w-full truncate text-base font-semibold leading-[1.2]",
-                                isDisabled || !selectedOption
-                                    ? "text-muted-foreground"
-                                    : "text-foreground",
-                            )}
-                        >
-                            {selectedOption && !isDisabled
-                                ? selectedOption.name
-                                : placeholderText}
-                        </span>
-                    </span>
-                    <Icon
-                        icon={ArrowDown01Icon}
-                        className="ml-auto size-6 shrink-0 text-muted-foreground"
+                {selectedOption && !isDisabled ? (
+                    <img
+                        src={selectedOption.icon}
+                        alt=""
+                        className="size-10 shrink-0 rounded-full object-cover"
                     />
-                </Button>
-            </div>
+                ) : (
+                    <EmptySelectorIcon />
+                )}
+                <span className="flex min-w-0 flex-1 flex-col items-start gap-px text-left">
+                    <span className="text-sm font-medium leading-normal text-muted-foreground">
+                        {label ?? t("label")}
+                    </span>
+                    <span
+                        className={cn(
+                            "max-w-full truncate text-base font-semibold leading-tight",
+                            isDisabled || !selectedOption
+                                ? "text-muted-foreground"
+                                : "text-foreground",
+                            selectedOption &&
+                                getNetworkDisplayCaseClass(selectedOption.id),
+                        )}
+                    >
+                        {selectedOption && !isDisabled
+                            ? selectedOption.name
+                            : placeholderText}
+                    </span>
+                </span>
+                {selectedOption &&
+                    !isDisabled &&
+                    isNearComNetwork(selectedOption.id) && (
+                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-sm bg-foreground px-2.5 py-1.5">
+                            <img
+                                src={NEAR_COM_ICON}
+                                alt=""
+                                className="size-3.5 rounded-full"
+                            />
+                            <span className="text-xs font-semibold text-[#00EC97]">
+                                {t("internalTag")}
+                            </span>
+                        </span>
+                    )}
+                <Icon
+                    icon={ArrowDown01Icon}
+                    className="ml-auto size-4 shrink-0 text-muted-foreground"
+                />
+            </Button>
         ) : (
             <InputBlock
                 title={label ?? t("label")}

@@ -466,6 +466,7 @@
             "rate": "Курс",
             "detailsTitle": "Деталі",
             "linkedRequest": "Пов'язаний запит",
+            "swapFee": "Комісія свопу",
             "sendTransaction": "Транзакція надсилання",
             "bulkTitle": "Деталі масового переказу",
             "toRecipients": "До {count} отримувачів",
@@ -1233,10 +1234,15 @@
         "useDifferentAddress": "Використайте іншу адресу",
         "failed1ClickQuote": "Не вдалось створити котирування 1Click",
         "paymentSubmitted": "Запит на надсилання платежу подано",
-        "confidentialTooltip": "Дані отримувача та запитана сума повністю конфіденційні."
+        "confidentialTooltip": "Дані отримувача та запитана сума повністю конфіденційні.",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
+        "destinationNetwork": "Destination network",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "Масовий платіж",
+        "title": "Масове надсилання",
         "comingSoonToast": "Масові платежі незабаром!",
         "submittingList": "Надсилання списку масових платежів",
         "submittingProposal": "Надсилання пропозиції",
@@ -1264,7 +1270,6 @@
             "token": "Токен",
             "destinationNetwork": "Мережа призначення",
             "uploadFileFirst": "Спочатку завантажте файл",
-            "exchangeAddressWarning": "Я розумію, що надсилання безпосередньо на адресу біржі може призвести до втрати коштів або інших проблем.",
             "removeFile": "Видалити файл",
             "maxFileSize": "не більше 1 файлу до 1.5 МБ, лише CSV",
             "noFilePrompt": "Немає файлу для завантаження?",
@@ -1443,7 +1448,7 @@
         "financialThreshold": "Фінансовий поріг",
         "governanceThreshold": "Поріг управління",
         "noDeploymentFee": "🎉 Без комісії за розгортання",
-        "noDeploymentFeeDescription": "Щоб підтримати нові проєкти, TREZU покриває всі одноразові комісії за розгортання та мережеве сховище.",
+        "noDeploymentFeeDescription": "Щоб підтримати нові проєкти, Near Business покриває всі одноразові комісії за розгортання та мережеве сховище.",
         "connectWalletCreate": "Підключіть гаманець для створення скарбниці",
         "walletNotSupportedTitle": "{wallet} ще не підтримується",
         "walletNotSupportedDescription": "Ми додамо це пізніше. Поки що увійдіть через NEAR, Ledger або EVM-гаманці — залежно від того, що у вас вже є.",
@@ -1479,7 +1484,7 @@
                 "recoveryLabel": "Відновлення:",
                 "recoveryText": "Що б ви не обрали, радимо додати другого учасника (гаманець) після налаштування, щоб втрата пристрою не заблокувала доступ.",
                 "passkeyNew": "Нове",
-                "passkeyDomainNote": "Ваш ключ доступу зберігається для trezu.app на цьому пристрої (або синхронізується через iCloud/Google). Його не можна використовувати в інших застосунках, а ключі інших застосунків не мають доступу до Near Business."
+                "passkeyDomainNote": "Ваш ключ доступу зберігається для Near Business на цьому пристрої (або синхронізується через iCloud/Google). Його не можна використовувати в інших застосунках, а ключі інших застосунків не мають доступу до Near Business."
             },
             "passkeyCardTitle": "Passkey для Touch ID та Face ID",
             "passkeyCardSubtitle": "Увійдіть за допомогою біометрії або коду доступу пристрою",
@@ -1652,7 +1657,7 @@
         "available": "{count} доступно",
         "used": "{count} використано",
         "exhaustedBody": "Ваша команда досягла місячного ліміту спонсорованих дій. Ви зможете продовжити після {date} або зв'яжіться з нами",
-        "almostBody": "TREZU зараз покриває витрати на сховище для всіх дій команди, зокрема створення запитів і голосування. Ваша команда наближається до місячного спонсорованого ліміту.",
+        "almostBody": "Near Business зараз покриває витрати на сховище для всіх дій команди, зокрема створення запитів і голосування. Ваша команда наближається до місячного спонсорованого ліміту.",
         "contactUs": "Зв'язатися з нами",
         "nextMonthlyReset": "наступного щомісячного оновлення",
         "sidebarBody": "Ваша команда досягла місячного ліміту спонсорованих дій. Ви зможете продовжити після {date} або ⬇️"
@@ -1881,6 +1886,18 @@
     "paymentFormSection": {
         "selectRecipient": "Обрати одержувача",
         "searchByNameOrAddress": "Пошук за назвою або адресою",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "Транзакцію не дозволено",
         "restrictedRecipientMessage": "Ця адреса зараз обмежена через перевірки безпеки. Якщо ви вважаєте, що цю адресу слід дозволити, ви можете <link>подати запит на whitelist</link>.",
         "send": "Надіслати",
@@ -1899,9 +1916,10 @@
         "incompatible": "Несумісні",
         "comingSoon": "Скоро",
         "forMembersOnly": "Лише для учасників",
-        "nearComDescription": "Мережа для конфіденційного trezu",
+        "nearComDescription": "Мережа для конфіденційного Near Business",
         "nearComDescriptionPublic": "Мережа для near.com",
-        "nearDescription": "Мережа для публічного виведення"
+        "nearDescription": "Мережа для публічного виведення та гаманця near.com",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "Ще немає одержувачів",
@@ -1944,7 +1962,8 @@
     },
     "selectModal": {
         "searchByName": "Пошук за назвою",
-        "noResults": "Результатів не знайдено"
+        "noResults": "Результатів не знайдено",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "Результатів не знайдено"
@@ -2096,7 +2115,7 @@
     "tokenSelectDialog": {
         "selectToken": "Обрати токен",
         "selectAsset": "Обрати актив",
-        "selectNetworkFor": "Обрати мережу для {asset}",
+        "selectNetworkFor": "Обрати мережу для {token}",
         "searchByName": "Пошук за назвою",
         "noTokensWithBalance": "Токенів з балансом не знайдено",
         "noTokensFound": "Токени не знайдено",
@@ -2170,10 +2189,12 @@
         "votesSubmitted": "Ваші голоси надіслано"
     },
     "tokenInput": {
+        "useMax": "Use max",
         "max": "МАКС",
         "insufficientTokens": "Недостатньо токенів. Можете надіслати запит і поповнити перед затвердженням.",
         "insufficientTokensForFee": "Недостатньо токенів для покриття комісії мережі ({fee} {symbol}). Можете надіслати запит і поповнити перед затвердженням.",
-        "balance": "Баланс: {amount} {symbol}"
+        "balance": "Баланс: {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "Створити запит",

@@ -626,7 +626,14 @@ export default function MembersPage() {
     };
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
+        <PageComponentLayout
+            title={t("title")}
+            description={t("description")}
+            hideHeaderOnMobile
+        >
+            <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
+                {t("title")}
+            </h1>
             {!isInfoSectionDismissed && canAddMember && (
                 <PageCard className="py-4 px-6 gap-3 bg-general-tertiary mb-4">
                     <div className="flex items-start justify-between gap-3">

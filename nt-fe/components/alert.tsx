@@ -21,11 +21,11 @@ export function Alert({
     switch (variant) {
         case "info":
             className =
-                "bg-general-info-background-faded text-general-info-foreground [&>svg]:text-general-info-foreground";
+                "border border-general-info-border bg-general-info-background-faded text-general-info-foreground [&>svg]:text-general-info-foreground";
             break;
         case "warning":
             className =
-                "bg-general-warning-background-faded text-general-warning-foreground [&>svg]:text-general-warning-foreground";
+                "border border-general-warning-border bg-general-warning-background-faded text-general-warning-foreground [&>svg]:text-general-warning-foreground";
             break;
         case "destructive":
             className =
@@ -41,7 +41,8 @@ export function Alert({
                     : variant
             }
             className={cn(
-                "inline-flex text-wrap border-none",
+                "inline-flex text-wrap",
+                variant === "default" || !variant ? "border-none" : null,
                 className,
                 classNameOverride,
             )}

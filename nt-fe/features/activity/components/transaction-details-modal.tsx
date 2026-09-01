@@ -11,6 +11,7 @@ import { type ReactNode, useState } from "react";
 import { Address } from "@/components/address";
 import { MaskedBalance } from "@/components/balance-mask";
 import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { FormattedDate } from "@/components/formatted-date";
 import { Icon } from "@/components/icon";
 import { InfoDisplay, type InfoItem } from "@/components/info-display";
@@ -29,6 +30,7 @@ import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useBulkPaymentTransactionHash } from "@/hooks/use-bulk-payment-transactions";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
+import { decimalOrNull } from "@/lib/amount-format";
 import type { RecentActivity, SwapInfo, TokenMetadataInfo } from "@/lib/api";
 import Big from "@/lib/big";
 import { calculateExchangeFeeAmount } from "@/lib/exchange-fee";
@@ -38,7 +40,6 @@ import {
     formatCurrency,
     formatCurrencyWithSubCent,
     formatSmartAmount,
-    formatTokenDisplayAmount,
 } from "@/lib/utils";
 import {
     type BulkTransferRecipient,
@@ -153,15 +154,22 @@ function swapUnitUsdPrice(
 
 // Same calculation as the request page (lib/exchange-fee), denominated in
 // the sent token.
-function exchangeFeeLabel(swap: SwapInfo): string | null {
+function swapFeeValue(swap: SwapInfo): ReactNode | null {
     if (!swap.sentAmount || !swap.sentTokenMetadata) return null;
-    try {
-        if (Big(swap.sentAmount).lte(0)) return null;
-        const fee = calculateExchangeFeeAmount(swap.sentAmount);
-        return `${formatTokenDisplayAmount(fee)} ${swap.sentTokenMetadata.symbol}`;
-    } catch {
-        return null;
-    }
+    const sentAmount = decimalOrNull(swap.sentAmount);
+    if (!sentAmount || sentAmount.lte(0)) return null;
+
+    return (
+        <FormattedAmount
+            kind="token"
+            value={calculateExchangeFeeAmount(swap.sentAmount)}
+            symbol={swap.sentTokenMetadata.symbol}
+            tokenDecimals={swap.sentTokenMetadata.decimals}
+            unitPriceUsd={swap.sentTokenMetadata.price}
+            profile="standard"
+            rounding="up"
+        />
+    );
 }
 
 function exchangeRateDetails(swap: SwapInfo): ExchangeRateDetails | null {
@@ -415,7 +423,6 @@ function useDetailItems(
     variant: ActivityDetailsVariant,
 ): InfoItem[] {
     const t = useTranslations("activity.details");
-    const tExchange = useTranslations("exchange");
     const { isConfidential } = useTreasury();
 
     const items: InfoItem[] = [
@@ -425,10 +432,10 @@ function useDetailItems(
         },
     ];
     if (variant === "exchange" && activity.swap) {
-        const fee = exchangeFeeLabel(activity.swap);
+        const fee = swapFeeValue(activity.swap);
         if (fee) {
             items.push({
-                label: tExchange("info.exchangeFee"),
+                label: t("swapFee"),
                 value: fee,
             });
         }

@@ -466,6 +466,7 @@
             "rate": "Tỷ giá",
             "detailsTitle": "Chi tiết",
             "linkedRequest": "Yêu cầu liên kết",
+            "swapFee": "Phí swap",
             "sendTransaction": "Giao dịch gửi",
             "bulkTitle": "Chi tiết chuyển hàng loạt",
             "toRecipients": "Đến {count} người nhận",
@@ -1233,10 +1234,15 @@
         "useDifferentAddress": "Dùng một địa chỉ khác",
         "failed1ClickQuote": "Không thể tạo báo giá chuyển 1Click",
         "paymentSubmitted": "Đã gửi yêu cầu thanh toán",
-        "confidentialTooltip": "Thong tin nguoi nhan va so tien yeu cau duoc bao mat hoan toan."
+        "confidentialTooltip": "Thong tin nguoi nhan va so tien yeu cau duoc bao mat hoan toan.",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
+        "destinationNetwork": "Destination network",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "Thanh toán hàng loạt",
+        "title": "Gửi hàng loạt",
         "comingSoonToast": "Thanh toán hàng loạt sắp ra mắt!",
         "submittingList": "Đang gửi danh sách thanh toán hàng loạt",
         "submittingProposal": "Đang gửi đề xuất",
@@ -1264,7 +1270,6 @@
             "token": "Token",
             "destinationNetwork": "Mạng đích",
             "uploadFileFirst": "Hãy tải tệp lên trước",
-            "exchangeAddressWarning": "Tôi hiểu rằng gửi trực tiếp đến địa chỉ sàn giao dịch có thể dẫn đến mất tiền hoặc các vấn đề khác.",
             "removeFile": "Xóa tệp",
             "maxFileSize": "tối đa 1 tệp lên đến 1.5 MB, chỉ chấp nhận tệp CSV",
             "noFilePrompt": "Không có tệp để tải lên?",
@@ -1443,7 +1448,7 @@
         "financialThreshold": "Ngưỡng tài chính",
         "governanceThreshold": "Ngưỡng quản trị",
         "noDeploymentFee": "🎉 Không phí triển khai",
-        "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, TREZU bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
+        "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, Near Business bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
         "connectWalletCreate": "Kết nối ví để tạo ngân quỹ",
         "walletNotSupportedTitle": "{wallet} chưa được hỗ trợ",
         "walletNotSupportedDescription": "Chúng tôi sẽ bổ sung sau. Trong lúc này, hãy đăng nhập bằng NEAR, Ledger hoặc ví EVM mà bạn đang có.",
@@ -1479,7 +1484,7 @@
                 "recoveryLabel": "Khôi phục:",
                 "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập.",
                 "passkeyNew": "Mới",
-                "passkeyDomainNote": "Passkey của bạn được lưu cho trezu.app trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Near Business."
+                "passkeyDomainNote": "Passkey của bạn được lưu cho Near Business trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Near Business."
             },
             "passkeyCardTitle": "Passkey cho Touch ID và Face ID",
             "passkeyCardSubtitle": "Đăng nhập bằng sinh trắc học hoặc mật mã của thiết bị",
@@ -1652,7 +1657,7 @@
         "available": "{count} khả dụng",
         "used": "Đã dùng {count}",
         "exhaustedBody": "Đội của bạn đã đạt số hành động được tài trợ trong tháng. Bạn có thể tiếp tục sau {date} hoặc liên hệ với chúng tôi",
-        "almostBody": "TREZU hiện tài trợ chi phí lưu trữ cho tất cả các hành động của đội, như tạo yêu cầu và bỏ phiếu cho chúng. Đội của bạn sắp đạt giới hạn được tài trợ trong tháng.",
+        "almostBody": "Near Business hiện tài trợ chi phí lưu trữ cho tất cả các hành động của đội, như tạo yêu cầu và bỏ phiếu cho chúng. Đội của bạn sắp đạt giới hạn được tài trợ trong tháng.",
         "contactUs": "Liên hệ với chúng tôi",
         "nextMonthlyReset": "lần đặt lại hàng tháng tiếp theo của bạn",
         "sidebarBody": "Đội của bạn đã đạt số hành động được tài trợ trong tháng. Bạn có thể tiếp tục sau {date} hoặc ⬇️"
@@ -1881,6 +1886,18 @@
     "paymentFormSection": {
         "selectRecipient": "Chọn người nhận",
         "searchByNameOrAddress": "Tìm theo tên hoặc địa chỉ",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "Giao dịch không được phép",
         "restrictedRecipientMessage": "Địa chỉ này hiện đang bị hạn chế do các kiểm tra bảo mật. Nếu bạn cho rằng địa chỉ này nên được phép, bạn có thể <link>yêu cầu đưa vào danh sách trắng</link>.",
         "send": "Gửi",
@@ -1899,9 +1916,10 @@
         "incompatible": "Không tương thích",
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
-        "nearComDescription": "Mạng cho trezu bí mật",
+        "nearComDescription": "Mạng cho Near Business bí mật",
         "nearComDescriptionPublic": "Mạng cho near.com",
-        "nearDescription": "Mạng cho rút tiền công khai"
+        "nearDescription": "Mạng cho rút tiền công khai và ví near.com",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",
@@ -1944,7 +1962,8 @@
     },
     "selectModal": {
         "searchByName": "Tìm theo tên",
-        "noResults": "Không tìm thấy kết quả"
+        "noResults": "Không tìm thấy kết quả",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "Không tìm thấy kết quả"
@@ -2096,7 +2115,7 @@
     "tokenSelectDialog": {
         "selectToken": "Chọn token",
         "selectAsset": "Chọn tài sản",
-        "selectNetworkFor": "Chọn mạng cho {asset}",
+        "selectNetworkFor": "Chọn mạng cho {token}",
         "searchByName": "Tìm theo tên",
         "noTokensWithBalance": "Không tìm thấy token có số dư",
         "noTokensFound": "Không tìm thấy token",
@@ -2170,10 +2189,12 @@
         "votesSubmitted": "Các phiếu của bạn đã được gửi"
     },
     "tokenInput": {
+        "useMax": "Use max",
         "max": "MAX",
         "insufficientTokens": "Không đủ token. Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
         "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
-        "balance": "Số dư: {amount} {symbol}"
+        "balance": "Số dư: {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "Tạo yêu cầu",

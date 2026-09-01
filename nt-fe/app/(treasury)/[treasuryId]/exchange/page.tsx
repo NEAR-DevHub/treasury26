@@ -193,7 +193,14 @@ export default function ExchangePage() {
     };
 
     return (
-        <PageComponentLayout title={pageTitle} description={t("description")}>
+        <PageComponentLayout
+            title={pageTitle}
+            description={t("description")}
+            hideHeaderOnMobile
+        >
+            <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
+                {pageTitle}
+            </h1>
             <Form {...form}>
                 <form
                     onSubmit={(e) => {
@@ -204,7 +211,7 @@ export default function ExchangePage() {
                         }
                         form.handleSubmit(onSubmit)(e);
                     }}
-                    className="flex flex-col gap-4 max-w-[600px] mx-auto"
+                    className="flex flex-col gap-4 max-w-xl mx-auto"
                 >
                     <StepWizard
                         step={step}

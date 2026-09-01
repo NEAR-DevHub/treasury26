@@ -46,6 +46,11 @@ interface PageComponentLayoutProps {
     /** Drops the header entirely, so the page owns the full viewport height. */
     hideHeader?: boolean;
     /**
+     * Hides the header below `lg` (e.g. Menu destinations that own an in-page
+     * title row instead of the treasury/user shell bar).
+     */
+    hideHeaderOnMobile?: boolean;
+    /**
      * Pins the page to the viewport height on every breakpoint. A short viewport
      * that can't fit the content scrolls the whole page, header included.
      */
@@ -68,6 +73,7 @@ export function PageComponentLayout({
     hideMobileShellControls = false,
     headerActions,
     hideHeader = false,
+    hideHeaderOnMobile = false,
     fitViewport = false,
     logo,
     mainClassName,
@@ -100,6 +106,7 @@ export function PageComponentLayout({
                 <header
                     className={cn(
                         "flex shrink-0 items-center min-h-16 justify-between px-3 md:px-6",
+                        hideHeaderOnMobile && "hidden lg:flex",
                         // Onboarding / stacked mobile headers collapse the empty bar.
                         hideHeaderContent &&
                             !backButton &&
@@ -126,10 +133,7 @@ export function PageComponentLayout({
                                 className="hidden size-10 text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
                                 aria-label={tHeader("toggleSidebar")}
                             >
-                                <Icon
-                                    icon={PanelLeftIcon}
-                                    className="size-[16.25px]"
-                                />
+                                <Icon icon={PanelLeftIcon} className="size-4" />
                             </Button>
                         )}
                         {hasSidebarRail && !hideMobileShellControls && (
@@ -168,7 +172,7 @@ export function PageComponentLayout({
                             {!hideHeaderContent &&
                                 (logo ?? (
                                     <div className="hidden items-baseline gap-2 lg:flex">
-                                        <h1 className="text-xl font-semibold leading-[1.2] tracking-tight">
+                                        <h1 className="text-xl font-semibold leading-tight tracking-tight">
                                             {title}
                                         </h1>
                                         {description && (

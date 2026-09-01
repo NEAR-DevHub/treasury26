@@ -76,7 +76,7 @@ export function DepositPayTreasuryModal({
                         </Button>
                     </div>
                 ) : (
-                    <ScrollArea className="max-h-[min(360px,50vh)] -mx-1 px-1">
+                    <ScrollArea className="max-h-90 -mx-1 px-1">
                         <div className="space-y-2">
                             {memberTreasuries.map((treasury) => (
                                 <button

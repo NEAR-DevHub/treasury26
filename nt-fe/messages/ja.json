@@ -466,6 +466,7 @@
             "rate": "レート",
             "detailsTitle": "詳細",
             "linkedRequest": "リンクされたリクエスト",
+            "swapFee": "スワップ手数料",
             "sendTransaction": "送信トランザクション",
             "bulkTitle": "一括送金の詳細",
             "toRecipients": "{count} 件の受取人へ",
@@ -1233,10 +1234,15 @@
         "useDifferentAddress": "別のアドレスを使用",
         "failed1ClickQuote": "1Click送金見積りの作成に失敗しました",
         "paymentSubmitted": "支払い送信のリクエストを送信しました",
-        "confidentialTooltip": "受取人の詳細と要求金額は完全に機密です。"
+        "confidentialTooltip": "受取人の詳細と要求金額は完全に機密です。",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
+        "destinationNetwork": "Destination network",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "一括支払い",
+        "title": "一括送金",
         "comingSoonToast": "一括支払いは近日公開予定です!",
         "submittingList": "一括支払いリストを送信中",
         "submittingProposal": "提案を送信中",
@@ -1264,7 +1270,6 @@
             "token": "トークン",
             "destinationNetwork": "送信先ネットワーク",
             "uploadFileFirst": "先にファイルをアップロードしてください",
-            "exchangeAddressWarning": "取引所のアドレスに直接送信すると、資金の損失やその他の問題が発生する可能性があることを理解しています。",
             "removeFile": "ファイルを削除",
             "maxFileSize": "最大1ファイル、1.5MBまで、CSVファイルのみ",
             "noFilePrompt": "アップロードするファイルがない場合は?",
@@ -1460,7 +1465,7 @@
         "financialThreshold": "Financialしきい値",
         "governanceThreshold": "Governanceしきい値",
         "noDeploymentFee": "🎉 デプロイ手数料無料",
-        "noDeploymentFeeDescription": "新しいプロジェクトを支援するため、TREZUは1回限りのデプロイとネットワークストレージ手数料をすべて負担します。",
+        "noDeploymentFeeDescription": "新しいプロジェクトを支援するため、Near Businessは1回限りのデプロイとネットワークストレージ手数料をすべて負担します。",
         "connectWalletCreate": "トレジャリー作成のためにウォレットを接続",
         "walletNotSupportedTitle": "{wallet} はまだサポートされていません",
         "walletNotSupportedDescription": "今後対応予定です。今は、すでにお持ちの NEAR、Ledger、または EVM ウォレットでサインインしてください。",
@@ -1496,7 +1501,7 @@
                 "recoveryLabel": "復旧：",
                 "recoveryText": "どちらを選んでも、デバイス紛失時にアクセス不能にならないよう、セットアップ後に2人目のメンバー（ウォレット）を追加することをおすすめします。",
                 "passkeyNew": "新着",
-                "passkeyDomainNote": "パスキーはこのデバイス上で trezu.app 用に保存されます（iCloud/Google 経由で同期される場合もあります）。他のアプリでは使用できず、他のアプリのパスキーから Near Business にアクセスすることもできません。"
+                "passkeyDomainNote": "パスキーはこのデバイス上で Near Business 用に保存されます（iCloud/Google 経由で同期される場合もあります）。他のアプリでは使用できず、他のアプリのパスキーから Near Business にアクセスすることもできません。"
             },
             "passkeyCardTitle": "Touch ID・Face ID対応のパスキー",
             "passkeyCardSubtitle": "デバイスの生体認証またはパスコードでサインイン",
@@ -1669,7 +1674,7 @@
         "available": "{count} 利用可能",
         "used": "{count} 使用済み",
         "exhaustedBody": "チームは月のスポンサー付きアクション上限に達しました。{date}以降に再開できますが、お問い合わせも可能です",
-        "almostBody": "TREZUは現在、リクエスト作成や投票などすべてのチームアクションのストレージコストをスポンサーしています。チームは月間スポンサー上限に近づいています。",
+        "almostBody": "Near Businessは現在、リクエスト作成や投票などすべてのチームアクションのストレージコストをスポンサーしています。チームは月間スポンサー上限に近づいています。",
         "contactUs": "お問い合わせ",
         "nextMonthlyReset": "次の月次リセット",
         "sidebarBody": "チームは月のスポンサー付きアクション上限に達しました。{date}以降に再開できます ⬇️"
@@ -1898,6 +1903,18 @@
     "paymentFormSection": {
         "selectRecipient": "受取人を選択",
         "searchByNameOrAddress": "名前またはアドレスで検索",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "トランザクションは許可されていません",
         "restrictedRecipientMessage": "このアドレスは現在、セキュリティチェックにより制限されています。このアドレスを許可すべきだとお考えの場合は、<link>ホワイトリスト追加をリクエスト</link>できます。",
         "send": "送金",
@@ -1916,9 +1933,10 @@
         "incompatible": "非互換",
         "comingSoon": "近日公開",
         "forMembersOnly": "メンバー限定",
-        "nearComDescription": "機密trezu用ネットワーク",
+        "nearComDescription": "機密 Near Business 用ネットワーク",
         "nearComDescriptionPublic": "near.com用ネットワーク",
-        "nearDescription": "公開出金用ネットワーク"
+        "nearDescription": "公開出金およびnear.comウォレット用ネットワーク",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "受取人はまだいません",
@@ -1961,7 +1979,8 @@
     },
     "selectModal": {
         "searchByName": "名前で検索",
-        "noResults": "結果が見つかりません"
+        "noResults": "結果が見つかりません",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "結果が見つかりません"
@@ -2113,7 +2132,7 @@
     "tokenSelectDialog": {
         "selectToken": "トークンを選択",
         "selectAsset": "資産を選択",
-        "selectNetworkFor": "{asset}のネットワークを選択",
+        "selectNetworkFor": "{token}のネットワークを選択",
         "searchByName": "名前で検索",
         "noTokensWithBalance": "残高のあるトークンが見つかりません",
         "noTokensFound": "トークンが見つかりません",
@@ -2187,10 +2206,12 @@
         "votesSubmitted": "投票を送信しました"
     },
     "tokenInput": {
+        "useMax": "Use max",
         "max": "MAX",
         "insufficientTokens": "トークンが不足しています。リクエストを送信してから承認前に補充できます。",
         "insufficientTokensForFee": "ネットワーク手数料({fee} {symbol})をカバーするトークンが不足しています。リクエストを送信してから承認前に補充できます。",
-        "balance": "残高: {amount} {symbol}"
+        "balance": "残高: {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "リクエストを作成",

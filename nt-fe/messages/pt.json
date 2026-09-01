@@ -466,6 +466,7 @@
             "rate": "Taxa",
             "detailsTitle": "Detalhes",
             "linkedRequest": "Solicitação vinculada",
+            "swapFee": "Taxa de swap",
             "sendTransaction": "Transação de envio",
             "bulkTitle": "Detalhes da transferência em massa",
             "toRecipients": "Para {count} destinatários",
@@ -1233,10 +1234,15 @@
         "useDifferentAddress": "Usar um endereço diferente",
         "failed1ClickQuote": "Falha ao criar cotação de transferência 1Click",
         "paymentSubmitted": "Solicitação de envio de pagamento enviada",
-        "confidentialTooltip": "Os dados do destinatário e o valor solicitado são totalmente confidenciais."
+        "confidentialTooltip": "Os dados do destinatário e o valor solicitado são totalmente confidenciais.",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
+        "destinationNetwork": "Destination network",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "Pagamento em massa",
+        "title": "Envio em massa",
         "comingSoonToast": "Pagamentos em massa estão chegando em breve!",
         "submittingList": "Enviando lista de pagamentos em massa",
         "submittingProposal": "Enviando proposta",
@@ -1264,7 +1270,6 @@
             "token": "Token",
             "destinationNetwork": "Rede de destino",
             "uploadFileFirst": "Primeiro, carregue um arquivo",
-            "exchangeAddressWarning": "Entendo que enviar diretamente para um endereço de exchange pode resultar na perda de fundos ou em outros problemas.",
             "removeFile": "Remover arquivo",
             "maxFileSize": "máx. 1 arquivo de até 1,5 MB, somente arquivo CSV",
             "noFilePrompt": "Não tem um arquivo para enviar?",
@@ -1460,7 +1465,7 @@
         "financialThreshold": "Limite financeiro",
         "governanceThreshold": "Limite de governança",
         "noDeploymentFee": "🎉 Sem taxa de implantação",
-        "noDeploymentFeeDescription": "Para apoiar novos projetos, a TREZU cobre todas as taxas únicas de implantação e armazenamento de rede.",
+        "noDeploymentFeeDescription": "Para apoiar novos projetos, Near Business cobre todas as taxas únicas de implantação e armazenamento de rede.",
         "connectWalletCreate": "Conecte a carteira para criar a tesouraria",
         "walletNotSupportedTitle": "{wallet} ainda não é suportada",
         "walletNotSupportedDescription": "Vamos adicionar isso depois. Enquanto isso, faça login com NEAR, Ledger ou carteiras EVM, a que você já tiver.",
@@ -1496,7 +1501,7 @@
                 "recoveryLabel": "Recuperação:",
                 "recoveryText": "Independentemente da sua escolha, recomendamos adicionar um segundo membro (carteira) após a configuração para que a perda de um dispositivo não bloqueie seu acesso.",
                 "passkeyNew": "Novo",
-                "passkeyDomainNote": "Sua chave de acesso é salva para trezu.app neste dispositivo (ou sincronizada via iCloud/Google). Ela não pode ser usada em outros aplicativos, e chaves de outros aplicativos não podem acessar o Near Business."
+                "passkeyDomainNote": "Sua chave de acesso é salva para Near Business neste dispositivo (ou sincronizada via iCloud/Google). Ela não pode ser usada em outros aplicativos, e chaves de outros aplicativos não podem acessar o Near Business."
             },
             "passkeyCardTitle": "Passkey para Touch ID e Face ID",
             "passkeyCardSubtitle": "Entre com a biometria ou o código do seu dispositivo",
@@ -1669,7 +1674,7 @@
         "available": "{count} disponíveis",
         "used": "{count} usadas",
         "exhaustedBody": "Sua equipe atingiu o limite mensal de ações patrocinadas. Você pode continuar após {date} ou entre em contato conosco",
-        "almostBody": "A TREZU atualmente patrocina os custos de armazenamento de todas as ações da equipe, como criar solicitações e votar nelas. Sua equipe está perto de atingir o limite mensal patrocinado.",
+        "almostBody": "Near Business atualmente patrocina os custos de armazenamento de todas as ações da equipe, como criar solicitações e votar nelas. Sua equipe está perto de atingir o limite mensal patrocinado.",
         "contactUs": "Fale conosco",
         "nextMonthlyReset": "sua próxima redefinição mensal",
         "sidebarBody": "Sua equipe atingiu o limite mensal de ações patrocinadas. Você pode continuar após {date} ou ⬇️"
@@ -1898,6 +1903,18 @@
     "paymentFormSection": {
         "selectRecipient": "Selecionar destinatário",
         "searchByNameOrAddress": "Buscar por nome ou endereço",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "Transação não permitida",
         "restrictedRecipientMessage": "Este endereço está atualmente restrito devido a verificações de segurança. Se você acredita que este endereço deve ser permitido, pode <link>solicitar a inclusão na lista de permissões</link>.",
         "send": "Enviar",
@@ -1916,9 +1933,10 @@
         "incompatible": "Incompatível",
         "comingSoon": "Em breve",
         "forMembersOnly": "Apenas para membros",
-        "nearComDescription": "Rede para trezu confidencial",
+        "nearComDescription": "Rede para Near Business confidencial",
         "nearComDescriptionPublic": "Rede para near.com",
-        "nearDescription": "Rede para saque público"
+        "nearDescription": "Rede para saque público e carteira near.com",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "Nenhum destinatário ainda",
@@ -1961,7 +1979,8 @@
     },
     "selectModal": {
         "searchByName": "Buscar por nome",
-        "noResults": "Nenhum resultado encontrado"
+        "noResults": "Nenhum resultado encontrado",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "Nenhum resultado encontrado"
@@ -2113,7 +2132,7 @@
     "tokenSelectDialog": {
         "selectToken": "Selecionar token",
         "selectAsset": "Selecionar ativo",
-        "selectNetworkFor": "Selecionar rede para {asset}",
+        "selectNetworkFor": "Selecionar rede para {token}",
         "searchByName": "Buscar por nome",
         "noTokensWithBalance": "Nenhum token com saldo encontrado",
         "noTokensFound": "Nenhum token encontrado",
@@ -2187,10 +2206,12 @@
         "votesSubmitted": "Seus votos foram enviados"
     },
     "tokenInput": {
+        "useMax": "Use max",
         "max": "MAX",
         "insufficientTokens": "Tokens insuficientes. Você pode enviar a solicitação e completar o saldo antes da aprovação.",
         "insufficientTokensForFee": "Tokens insuficientes para cobrir a taxa de rede ({fee} {symbol}). Você pode enviar a solicitação e completar o saldo antes da aprovação.",
-        "balance": "Saldo: {amount} {symbol}"
+        "balance": "Saldo: {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "Criar solicitação",

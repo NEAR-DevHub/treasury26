@@ -12,6 +12,7 @@ import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { cn } from "@/lib/utils";
+import { EmptySelectorIcon } from "@/components/selector-field";
 import { DepositOptionIcon } from "./deposit-option-icon";
 
 type DepositAssetNetworkFormValues = {
@@ -33,32 +34,6 @@ type DepositAssetNetworkFormValues = {
         chainId?: string;
     } | null;
 };
-
-function EmptyNetworkIcon() {
-    return (
-        <span
-            aria-hidden="true"
-            className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted"
-        >
-            <svg
-                viewBox="0 0 16 16"
-                className="size-5 text-muted-foreground"
-                fill="none"
-                aria-hidden="true"
-            >
-                <circle
-                    cx="8"
-                    cy="8"
-                    r="5.25"
-                    stroke="currentColor"
-                    strokeWidth="1.25"
-                    strokeDasharray="2 2.5"
-                    strokeLinecap="round"
-                />
-            </svg>
-        </span>
-    );
-}
 
 export function DepositAssetNetworkForm({
     form,
@@ -102,7 +77,7 @@ export function DepositAssetNetworkForm({
                     showTopBorder && "border-t border-general-border pt-6",
                 )}
             >
-                <p className="text-xl font-semibold leading-7 tracking-[-0.03125rem] text-foreground">
+                <p className="text-xl font-semibold leading-7 tracking-tight text-foreground">
                     {t("subtitle")}
                 </p>
             </div>
@@ -126,7 +101,7 @@ export function DepositAssetNetworkForm({
                                     invalid={!!fieldState.error}
                                     className={
                                         separateFields
-                                            ? "h-16 rounded-3xl border border-general-border bg-card p-0 [&>div:first-child]:hidden"
+                                            ? "h-18 rounded-3xl border border-general-border bg-card p-0 [&>div:first-child]:hidden"
                                             : "rounded-none border-0 bg-transparent"
                                     }
                                 >
@@ -142,7 +117,7 @@ export function DepositAssetNetworkForm({
                                         className={cn(
                                             "w-full cursor-pointer justify-start text-left hover:opacity-80",
                                             separateFields
-                                                ? "h-full gap-3 rounded-3xl py-[0.59375rem] pl-3 pr-4"
+                                                ? "h-full gap-3 rounded-3xl py-2.5 px-4"
                                                 : "mt-1 h-auto p-0!",
                                         )}
                                     >
@@ -194,10 +169,10 @@ export function DepositAssetNetworkForm({
                                                     />
                                                     {separateFields ? (
                                                         <div className="flex min-w-0 flex-col">
-                                                            <span className="text-sm font-medium leading-[150%] text-muted-foreground">
+                                                            <span className="text-sm font-medium leading-normal text-muted-foreground">
                                                                 {assetLabel}
                                                             </span>
-                                                            <span className="text-base font-semibold leading-[120%] text-foreground">
+                                                            <span className="text-base font-semibold leading-tight text-foreground">
                                                                 {
                                                                     selectedAssetLabel
                                                                 }
@@ -243,7 +218,7 @@ export function DepositAssetNetworkForm({
                                     invalid={!!fieldState.error}
                                     className={
                                         separateFields
-                                            ? "h-16 rounded-3xl border border-general-border bg-card p-0 [&>div:first-child]:hidden"
+                                            ? "h-18 rounded-3xl border border-general-border bg-card p-0 [&>div:first-child]:hidden"
                                             : "rounded-none border-0 bg-transparent"
                                     }
                                 >
@@ -256,7 +231,7 @@ export function DepositAssetNetworkForm({
                                         className={cn(
                                             "w-full cursor-pointer justify-start text-left hover:opacity-80",
                                             separateFields
-                                                ? "h-full gap-3 rounded-3xl py-[0.59375rem] pl-3 pr-4"
+                                                ? "h-full gap-3 rounded-3xl py-2.5 px-4"
                                                 : "mt-1 h-auto p-0!",
                                         )}
                                     >
@@ -297,14 +272,14 @@ export function DepositAssetNetworkForm({
                                                         />
                                                         {separateFields ? (
                                                             <div className="flex min-w-0 flex-col">
-                                                                <span className="text-sm font-medium leading-[150%] text-muted-foreground">
+                                                                <span className="text-sm font-medium leading-normal text-muted-foreground">
                                                                     {
                                                                         networkLabel
                                                                     }
                                                                 </span>
                                                                 <span
                                                                     className={cn(
-                                                                        "text-base font-semibold leading-[120%] text-foreground",
+                                                                        "text-base font-semibold leading-tight text-foreground",
                                                                         getNetworkDisplayCaseClass(
                                                                             selectedNetwork.name,
                                                                         ),
@@ -355,9 +330,9 @@ export function DepositAssetNetworkForm({
                                                         )}
                                                     >
                                                         {separateFields ? (
-                                                            <EmptyNetworkIcon />
+                                                            <EmptySelectorIcon />
                                                         ) : null}
-                                                        <span className="text-base font-semibold leading-[120%] text-muted-foreground">
+                                                        <span className="text-base font-semibold leading-tight text-muted-foreground">
                                                             {t("selectNetwork")}
                                                         </span>
                                                     </span>

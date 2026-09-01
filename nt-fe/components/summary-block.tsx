@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { InputBlock } from "./input-block";
 
 interface SummaryBlockProps {
     title?: string;
@@ -9,8 +8,8 @@ interface SummaryBlockProps {
     children?: React.ReactNode;
     className?: string;
     /**
-     * When true, wraps content in an InputBlock
-     * When false, renders a standalone bordered card
+     * When true, wraps content in a bordered summary card
+     * When false, renders a compact standalone card
      * Default: true
      */
     useInputBlock?: boolean;
@@ -25,36 +24,41 @@ export function SummaryBlock({
     className,
     useInputBlock = true,
 }: SummaryBlockProps) {
-    const content = (
-        <div
-            className={cn(
-                "flex flex-col gap-2 p-2 text-xs text-muted-foreground text-center justify-center items-center",
-                className,
-            )}
-        >
-            {title && <p className="font-medium text-xs">{title}</p>}
-            {icon}
-            {secondRow && (
-                <div className="flex flex-col gap-0.5 max-w-full">
-                    {secondRow}
-                    {subRow}
-                </div>
-            )}
-            {children && <div>{children}</div>}
-        </div>
-    );
-
     if (!useInputBlock) {
         return (
-            <div className="w-full max-w-[280px] rounded-lg border bg-muted h-[180px] flex items-center justify-center">
-                {content}
+            <div className="flex h-44 w-full max-w-72 items-center justify-center rounded-lg border bg-muted">
+                <div
+                    className={cn(
+                        "flex flex-col items-center justify-center gap-2.5 text-center text-muted-foreground",
+                        className,
+                    )}
+                >
+                    {title && <p className="text-xs font-medium">{title}</p>}
+                    {icon}
+                    {secondRow && (
+                        <div className="flex max-w-full flex-col gap-0.5">
+                            {secondRow}
+                            {subRow}
+                        </div>
+                    )}
+                    {children && <div>{children}</div>}
+                </div>
             </div>
         );
     }
 
     return (
-        <InputBlock title="" invalid={false}>
-            {content}
-        </InputBlock>
+        <div
+            className={cn(
+                "mx-auto flex h-44 w-full max-w-lg flex-col items-center justify-center gap-2.5 self-center rounded-3xl border border-general-border bg-card text-center text-muted-foreground",
+                className,
+            )}
+        >
+            {title && <p className="text-xs font-medium">{title}</p>}
+            {icon}
+            {secondRow}
+            {subRow}
+            {children}
+        </div>
     );
 }

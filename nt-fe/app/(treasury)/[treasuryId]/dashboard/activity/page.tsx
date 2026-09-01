@@ -1,6 +1,6 @@
 "use client";
 
-import { FilterIcon } from "@hugeicons/core-free-icons";
+import { ArrowLeft01Icon, FilterIcon } from "@hugeicons/core-free-icons";
 import { subMonths } from "date-fns";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -439,6 +439,7 @@ export default function ActivityPage() {
                 // unwinding history.
                 backButton={`/${treasuryId}`}
                 hideMobileShellControls
+                hideHeaderOnMobile
                 headerActions={
                     <HistoryRefreshButton className={ICON_BUTTON_CLASS} />
                 }
@@ -446,9 +447,27 @@ export default function ActivityPage() {
                 {/* The shell header only carries the page title from `lg` up, so on
                 phones the page states its own heading above the controls. */}
                 <div className="flex flex-col gap-1 pb-4 lg:hidden">
-                    <h1 className="font-semibold text-2xl leading-[1.2] tracking-[-0.48px]">
-                        {t("title")}
-                    </h1>
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => router.push(`/${treasuryId}`)}
+                                className="size-10 shrink-0 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground"
+                                aria-label={tCommon("back")}
+                            >
+                                <Icon
+                                    icon={ArrowLeft01Icon}
+                                    className="stroke-2"
+                                />
+                            </Button>
+                            <h1 className="text-2xl font-semibold leading-tight tracking-tight text-general-foreground">
+                                {t("title")}
+                            </h1>
+                        </div>
+                        <HistoryRefreshButton className={ICON_BUTTON_CLASS} />
+                    </div>
                     <p className="text-base text-general-secondary-foreground leading-[1.5]">
                         {tActivity("recentSubtitle")}
                     </p>

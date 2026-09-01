@@ -28,7 +28,7 @@ export function DepositNoticeList({
             {notices.map((notice) => (
                 <div
                     key={notice.id}
-                    className="flex gap-2 items-start text-sm font-medium leading-[150%] text-muted-foreground"
+                    className="flex gap-2 items-start text-sm font-medium leading-normal text-muted-foreground"
                 >
                     <DepositNoticeIcon tone={notice.tone} />
                     <span>{notice.content}</span>
@@ -41,7 +41,7 @@ export function DepositNoticeList({
 
 export function DepositNoticeInfoRow({ children }: { children: ReactNode }) {
     return (
-        <div className="flex gap-2 items-start text-sm font-medium leading-[150%] text-muted-foreground">
+        <div className="flex gap-2 items-start text-sm font-medium leading-normal text-muted-foreground">
             <DepositNoticeIcon tone="info" />
             <span>{children}</span>
         </div>

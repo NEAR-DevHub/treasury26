@@ -466,6 +466,7 @@
             "rate": "Kurs",
             "detailsTitle": "Detail",
             "linkedRequest": "Permintaan tertaut",
+            "swapFee": "Biaya swap",
             "sendTransaction": "Transaksi Kirim",
             "bulkTitle": "Detail Transfer Massal",
             "toRecipients": "Ke {count} penerima",
@@ -1233,10 +1234,15 @@
         "useDifferentAddress": "Gunakan alamat berbeda",
         "failed1ClickQuote": "Gagal membuat kuotasi transfer 1Click",
         "paymentSubmitted": "Permintaan untuk mengirim pembayaran telah dikirim",
-        "confidentialTooltip": "Detail penerima dan jumlah yang diminta sepenuhnya rahasia."
+        "confidentialTooltip": "Detail penerima dan jumlah yang diminta sepenuhnya rahasia.",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
+        "destinationNetwork": "Destination network",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "Pembayaran Massal",
+        "title": "Kirim massal",
         "comingSoonToast": "Pembayaran massal akan segera hadir!",
         "submittingList": "Mengirim daftar pembayaran massal",
         "submittingProposal": "Mengirim usulan",
@@ -1264,7 +1270,6 @@
             "token": "Token",
             "destinationNetwork": "Jaringan tujuan",
             "uploadFileFirst": "Unggah file terlebih dahulu",
-            "exchangeAddressWarning": "Saya memahami bahwa mengirim langsung ke alamat bursa dapat mengakibatkan kehilangan dana atau masalah lainnya.",
             "removeFile": "Hapus file",
             "maxFileSize": "maks 1 file hingga 1.5 MB, hanya file CSV",
             "noFilePrompt": "Tidak punya file untuk diunggah?",
@@ -1460,7 +1465,7 @@
         "financialThreshold": "Ambang Finansial",
         "governanceThreshold": "Ambang Governance",
         "noDeploymentFee": "🎉 Tanpa biaya deployment",
-        "noDeploymentFeeDescription": "Untuk mendukung proyek baru, TREZU menanggung semua biaya deployment dan penyimpanan jaringan satu kali.",
+        "noDeploymentFeeDescription": "Untuk mendukung proyek baru, Near Business menanggung semua biaya deployment dan penyimpanan jaringan satu kali.",
         "connectWalletCreate": "Hubungkan Dompet Untuk Membuat Treasury",
         "walletNotSupportedTitle": "{wallet} belum didukung",
         "walletNotSupportedDescription": "Kami akan menambahkannya nanti. Sementara itu, masuklah dengan NEAR, Ledger, atau dompet EVM yang sudah Anda miliki.",
@@ -1496,7 +1501,7 @@
                 "recoveryLabel": "Pemulihan:",
                 "recoveryText": "Apa pun yang Anda pilih, kami sarankan menambahkan anggota kedua (wallet) setelah setup agar perangkat yang hilang tidak membuat Anda terkunci.",
                 "passkeyNew": "Baru",
-                "passkeyDomainNote": "Passkey Anda disimpan untuk trezu.app di perangkat ini (atau disinkronkan melalui iCloud/Google). Passkey ini tidak dapat digunakan di aplikasi lain, dan passkey aplikasi lain tidak dapat mengakses Near Business."
+                "passkeyDomainNote": "Passkey Anda disimpan untuk Near Business di perangkat ini (atau disinkronkan melalui iCloud/Google). Passkey ini tidak dapat digunakan di aplikasi lain, dan passkey aplikasi lain tidak dapat mengakses Near Business."
             },
             "passkeyCardTitle": "Passkey untuk Touch ID dan Face ID",
             "passkeyCardSubtitle": "Masuk dengan biometrik atau kode sandi perangkat Anda",
@@ -1669,7 +1674,7 @@
         "available": "{count} Tersedia",
         "used": "{count} Terpakai",
         "exhaustedBody": "Tim Anda telah mencapai tindakan tersponsor bulanan. Anda dapat melanjutkan setelah {date} atau hubungi kami",
-        "almostBody": "TREZU saat ini mensponsori biaya penyimpanan untuk semua tindakan tim, seperti membuat permintaan dan memilih atasnya. Tim Anda hampir mencapai batas tersponsor bulanan.",
+        "almostBody": "Near Business saat ini mensponsori biaya penyimpanan untuk semua tindakan tim, seperti membuat permintaan dan memilih atasnya. Tim Anda hampir mencapai batas tersponsor bulanan.",
         "contactUs": "Hubungi Kami",
         "nextMonthlyReset": "pengaturan ulang bulanan berikutnya",
         "sidebarBody": "Tim Anda telah mencapai tindakan tersponsor bulanan. Anda dapat melanjutkan setelah {date} atau ⬇️"
@@ -1898,6 +1903,18 @@
     "paymentFormSection": {
         "selectRecipient": "Pilih Penerima",
         "searchByNameOrAddress": "Cari berdasarkan nama atau alamat",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "Transaksi tidak diizinkan",
         "restrictedRecipientMessage": "Alamat ini saat ini dibatasi karena pemeriksaan keamanan. Jika Anda yakin alamat ini harus diizinkan, Anda dapat <link>meminta untuk memasukkannya ke daftar putih</link>.",
         "send": "Kirim",
@@ -1916,9 +1933,10 @@
         "incompatible": "Tidak Kompatibel",
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
-        "nearComDescription": "Jaringan untuk trezu rahasia",
+        "nearComDescription": "Jaringan untuk Near Business rahasia",
         "nearComDescriptionPublic": "Jaringan untuk near.com",
-        "nearDescription": "Jaringan untuk penarikan publik"
+        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",
@@ -1961,7 +1979,8 @@
     },
     "selectModal": {
         "searchByName": "Cari berdasarkan nama",
-        "noResults": "Tidak ada hasil ditemukan"
+        "noResults": "Tidak ada hasil ditemukan",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "Tidak ada hasil ditemukan"
@@ -2113,7 +2132,7 @@
     "tokenSelectDialog": {
         "selectToken": "Pilih token",
         "selectAsset": "Pilih Aset",
-        "selectNetworkFor": "Pilih jaringan untuk {asset}",
+        "selectNetworkFor": "Pilih jaringan untuk {token}",
         "searchByName": "Cari berdasarkan nama",
         "noTokensWithBalance": "Tidak ada token dengan saldo ditemukan",
         "noTokensFound": "Tidak ada token ditemukan",
@@ -2187,10 +2206,12 @@
         "votesSubmitted": "Suara Anda telah dikirim"
     },
     "tokenInput": {
+        "useMax": "Use max",
         "max": "MAX",
         "insufficientTokens": "Token tidak mencukupi. Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
         "insufficientTokensForFee": "Token tidak cukup untuk menutupi biaya jaringan ({fee} {symbol}). Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
-        "balance": "Saldo: {amount} {symbol}"
+        "balance": "Saldo: {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "Buat Permintaan",

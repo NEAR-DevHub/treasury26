@@ -80,7 +80,11 @@ export default function InviteMemberPage() {
     const isGenerating = createInvite.isPending;
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
+        <PageComponentLayout
+            title={t("title")}
+            description={t("description")}
+            hideHeaderOnMobile
+        >
             <div className="max-w-xl mx-auto w-full">
                 <PageCard>
                     <StepperHeader

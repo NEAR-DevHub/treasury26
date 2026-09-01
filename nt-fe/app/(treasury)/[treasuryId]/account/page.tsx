@@ -183,8 +183,12 @@ export default function AccountPage() {
             <PageComponentLayout
                 title={tPages("title")}
                 description={tPages("description")}
+                hideHeaderOnMobile
             >
-                <div className="w-full max-w-[600px] mx-auto">
+                <div className="mx-auto w-full max-w-[600px]">
+                    <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
+                        {tPages("title")}
+                    </h1>
                     <PageCard>
                         <p className="text-sm text-muted-foreground">
                             {t("signInRequired")}
@@ -199,8 +203,12 @@ export default function AccountPage() {
         <PageComponentLayout
             title={tPages("title")}
             description={tPages("description")}
+            hideHeaderOnMobile
         >
-            <div className="w-full max-w-[600px] mx-auto">
+            <div className="mx-auto w-full max-w-[600px]">
+                <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
+                    {tPages("title")}
+                </h1>
                 {isLoadingProfile ? (
                     <PageCard className="space-y-6">
                         <Skeleton className="h-6 w-40" />

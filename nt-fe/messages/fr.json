@@ -466,6 +466,7 @@
             "rate": "Taux",
             "detailsTitle": "Détails",
             "linkedRequest": "Demande liée",
+            "swapFee": "Frais de swap",
             "sendTransaction": "Transaction d'envoi",
             "bulkTitle": "Détails du transfert groupé",
             "toRecipients": "À {count} destinataires",
@@ -1233,10 +1234,15 @@
         "useDifferentAddress": "Utiliser une adresse différente",
         "failed1ClickQuote": "Échec de la création du devis de transfert 1Click",
         "paymentSubmitted": "Demande d'envoi de paiement soumise",
-        "confidentialTooltip": "Les informations du destinataire et le montant demande sont entierement confidentiels."
+        "confidentialTooltip": "Les informations du destinataire et le montant demande sont entierement confidentiels.",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
+        "destinationNetwork": "Destination network",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "Paiement groupé",
+        "title": "Envoi groupé",
         "comingSoonToast": "Les paiements groupés arrivent bientôt !",
         "submittingList": "Soumission de la liste de paiements groupés",
         "submittingProposal": "Soumission de la proposition",
@@ -1264,7 +1270,6 @@
             "token": "Jeton",
             "destinationNetwork": "Réseau de destination",
             "uploadFileFirst": "Importez d’abord un fichier",
-            "exchangeAddressWarning": "Je comprends qu’un envoi direct vers une adresse de plateforme d’échange peut entraîner une perte de fonds ou d’autres problèmes.",
             "removeFile": "Supprimer le fichier",
             "maxFileSize": "max 1 fichier jusqu'à 1,5 Mo, fichier CSV uniquement",
             "noFilePrompt": "Vous n'avez pas de fichier à télécharger ?",
@@ -1460,7 +1465,7 @@
         "financialThreshold": "Seuil financier",
         "governanceThreshold": "Seuil de gouvernance",
         "noDeploymentFee": "🎉 Aucun frais de déploiement",
-        "noDeploymentFeeDescription": "Pour soutenir les nouveaux projets, TREZU couvre tous les frais ponctuels de déploiement et de stockage réseau.",
+        "noDeploymentFeeDescription": "Pour soutenir les nouveaux projets, Near Business couvre tous les frais ponctuels de déploiement et de stockage réseau.",
         "connectWalletCreate": "Connecter le portefeuille pour créer la trésorerie",
         "walletNotSupportedTitle": "{wallet} n'est pas encore pris en charge",
         "walletNotSupportedDescription": "Nous l'ajouterons plus tard. En attendant, connectez-vous avec NEAR, Ledger ou des wallets EVM, selon ce que vous avez deja.",
@@ -1496,7 +1501,7 @@
                 "recoveryLabel": "Récupération :",
                 "recoveryText": "Quel que soit votre choix, nous vous recommandons d'ajouter un deuxième membre (wallet) après la configuration afin qu'un appareil perdu ne vous bloque pas.",
                 "passkeyNew": "Nouveau",
-                "passkeyDomainNote": "Votre clé d’accès est enregistrée pour trezu.app sur cet appareil (ou synchronisée via iCloud/Google). Elle ne peut pas être utilisée sur d’autres applications, et les clés d’autres applications ne peuvent pas accéder à Near Business."
+                "passkeyDomainNote": "Votre clé d’accès est enregistrée pour Near Business sur cet appareil (ou synchronisée via iCloud/Google). Elle ne peut pas être utilisée sur d’autres applications, et les clés d’autres applications ne peuvent pas accéder à Near Business."
             },
             "passkeyCardTitle": "Passkey pour Touch ID et Face ID",
             "passkeyCardSubtitle": "Connectez-vous avec la biométrie ou le code de votre appareil",
@@ -1669,7 +1674,7 @@
         "available": "{count} disponibles",
         "used": "{count} utilisées",
         "exhaustedBody": "Votre équipe a atteint les actions sponsorisées mensuelles. Vous pouvez continuer après {date} ou nous contacter",
-        "almostBody": "TREZU sponsorise actuellement les coûts de stockage pour toutes les actions de l'équipe, telles que la création de demandes et le vote. Votre équipe est proche d'atteindre la limite mensuelle sponsorisée.",
+        "almostBody": "Near Business sponsorise actuellement les coûts de stockage pour toutes les actions de l'équipe, telles que la création de demandes et le vote. Votre équipe est proche d'atteindre la limite mensuelle sponsorisée.",
         "contactUs": "Contactez-nous",
         "nextMonthlyReset": "votre prochaine réinitialisation mensuelle",
         "sidebarBody": "Votre équipe a atteint les actions sponsorisées mensuelles. Vous pouvez continuer après {date} ou ⬇️"
@@ -1898,6 +1903,18 @@
     "paymentFormSection": {
         "selectRecipient": "Sélectionner un destinataire",
         "searchByNameOrAddress": "Rechercher par nom ou adresse",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "Transaction non autorisée",
         "restrictedRecipientMessage": "Cette adresse est actuellement restreinte en raison de contrôles de sécurité. Si vous pensez que cette adresse devrait être autorisée, vous pouvez <link>demander à l'ajouter à la liste blanche</link>.",
         "send": "Envoyer",
@@ -1916,9 +1933,10 @@
         "incompatible": "Incompatible",
         "comingSoon": "Bientôt disponible",
         "forMembersOnly": "Réservé aux membres",
-        "nearComDescription": "Réseau pour trezu confidentiel",
+        "nearComDescription": "Réseau pour Near Business confidentiel",
         "nearComDescriptionPublic": "Réseau pour near.com",
-        "nearDescription": "Réseau pour retrait public"
+        "nearDescription": "Réseau pour retrait public et portefeuille near.com",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "Aucun destinataire pour l'instant",
@@ -1961,7 +1979,8 @@
     },
     "selectModal": {
         "searchByName": "Rechercher par nom",
-        "noResults": "Aucun résultat trouvé"
+        "noResults": "Aucun résultat trouvé",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "Aucun résultat trouvé"
@@ -2113,7 +2132,7 @@
     "tokenSelectDialog": {
         "selectToken": "Sélectionner un token",
         "selectAsset": "Sélectionner un actif",
-        "selectNetworkFor": "Sélectionner le réseau pour {asset}",
+        "selectNetworkFor": "Sélectionner le réseau pour {token}",
         "searchByName": "Rechercher par nom",
         "noTokensWithBalance": "Aucun token avec solde trouvé",
         "noTokensFound": "Aucun token trouvé",
@@ -2187,10 +2206,12 @@
         "votesSubmitted": "Vos votes ont été soumis"
     },
     "tokenInput": {
+        "useMax": "Use max",
         "max": "MAX",
         "insufficientTokens": "Tokens insuffisants. Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
         "insufficientTokensForFee": "Tokens insuffisants pour couvrir les frais de réseau ({fee} {symbol}). Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
-        "balance": "Solde : {amount} {symbol}"
+        "balance": "Solde : {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "Créer une demande",

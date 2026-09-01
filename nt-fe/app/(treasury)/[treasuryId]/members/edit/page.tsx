@@ -275,7 +275,11 @@ export default function EditMemberPage() {
     );
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
+        <PageComponentLayout
+            title={t("title")}
+            description={t("description")}
+            hideHeaderOnMobile
+        >
             <div className="max-w-xl mx-auto w-full">
                 <FormProvider {...form}>
                     {!membersReady ? (

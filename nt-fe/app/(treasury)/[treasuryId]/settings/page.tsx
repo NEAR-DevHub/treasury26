@@ -76,9 +76,16 @@ function SettingsPageContent() {
     ];
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
-            <div className="w-full max-w-4xl mx-auto">
-                <div className="flex mb-6">
+        <PageComponentLayout
+            title={t("title")}
+            description={t("description")}
+            hideHeaderOnMobile
+        >
+            <div className="mx-auto w-full max-w-4xl">
+                <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
+                    {t("title")}
+                </h1>
+                <div className="mb-6 flex">
                     <TabGroup
                         tabs={tabs}
                         activeTab={activeTab}
@@ -107,8 +114,9 @@ export default function SettingsPage() {
                 <PageComponentLayout
                     title={t("title")}
                     description={t("description")}
+                    hideHeaderOnMobile
                 >
-                    <div className="w-full max-w-4xl mx-auto min-h-48" />
+                    <div className="mx-auto min-h-48 w-full max-w-4xl" />
                 </PageComponentLayout>
             }
         >

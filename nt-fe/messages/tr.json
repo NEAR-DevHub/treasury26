@@ -466,6 +466,7 @@
             "rate": "Kur",
             "detailsTitle": "Detaylar",
             "linkedRequest": "Bağlantılı talep",
+            "swapFee": "Swap ücreti",
             "sendTransaction": "Gönderme İşlemi",
             "bulkTitle": "Toplu Transfer Ayrıntıları",
             "toRecipients": "{count} alıcıya",
@@ -1233,10 +1234,15 @@
         "useDifferentAddress": "Farklı bir adres kullan",
         "failed1ClickQuote": "1Click transfer teklifi oluşturulamadı",
         "paymentSubmitted": "Ödeme gönderme talebi gönderildi",
-        "confidentialTooltip": "Alici bilgileri ve talep edilen tutar tamamen gizlidir."
+        "confidentialTooltip": "Alici bilgileri ve talep edilen tutar tamamen gizlidir.",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
+        "destinationNetwork": "Destination network",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "Toplu Ödeme",
+        "title": "Toplu gönderim",
         "comingSoonToast": "Toplu ödemeler yakında geliyor!",
         "submittingList": "Toplu ödeme listesi gönderiliyor",
         "submittingProposal": "Öneri gönderiliyor",
@@ -1264,7 +1270,6 @@
             "token": "Token",
             "destinationNetwork": "Hedef ağ",
             "uploadFileFirst": "Önce bir dosya yükleyin",
-            "exchangeAddressWarning": "Doğrudan bir borsa adresine göndermenin fon kaybına veya başka sorunlara yol açabileceğini anlıyorum.",
             "removeFile": "Dosyayı kaldır",
             "maxFileSize": "en fazla 1 dosya, 1.5 MB'a kadar, yalnızca CSV dosyası",
             "noFilePrompt": "Yüklenecek dosyanız yok mu?",
@@ -1460,7 +1465,7 @@
         "financialThreshold": "Finansal Eşik",
         "governanceThreshold": "Yönetişim Eşiği",
         "noDeploymentFee": "🎉 Dağıtım ücreti yok",
-        "noDeploymentFeeDescription": "Yeni projeleri desteklemek için TREZU, tüm tek seferlik dağıtım ve ağ depolama ücretlerini karşılar.",
+        "noDeploymentFeeDescription": "Yeni projeleri desteklemek için Near Business, tüm tek seferlik dağıtım ve ağ depolama ücretlerini karşılar.",
         "connectWalletCreate": "Hazine Oluşturmak İçin Cüzdan Bağla",
         "walletNotSupportedTitle": "{wallet} henüz desteklenmiyor",
         "walletNotSupportedDescription": "Bunu daha sonra ekleyeceğiz. Bu arada, elinizde hangisi varsa NEAR, Ledger veya EVM Cüzdanları ile giriş yapabilirsiniz.",
@@ -1496,7 +1501,7 @@
                 "recoveryLabel": "Kurtarma:",
                 "recoveryText": "Hangi seçeneği seçerseniz seçin, bir cihaz kaybının sizi kilitlememesi için kurulumdan sonra ikinci bir üye (cüzdan) eklemenizi öneririz.",
                 "passkeyNew": "Yeni",
-                "passkeyDomainNote": "Geçiş anahtarınız bu cihazda trezu.app için kaydedilir (veya iCloud/Google üzerinden senkronize edilir). Başka uygulamalarda kullanılamaz ve başka uygulamaların geçiş anahtarları Near Business'e erişemez."
+                "passkeyDomainNote": "Geçiş anahtarınız bu cihazda Near Business için kaydedilir (veya iCloud/Google üzerinden senkronize edilir). Başka uygulamalarda kullanılamaz ve başka uygulamaların geçiş anahtarları Near Business'e erişemez."
             },
             "passkeyCardTitle": "Touch ID ve Face ID için Passkey",
             "passkeyCardSubtitle": "Cihazınızın biyometriği veya parolasıyla oturum açın",
@@ -1669,7 +1674,7 @@
         "available": "{count} Kullanılabilir",
         "used": "{count} Kullanıldı",
         "exhaustedBody": "Ekibiniz aylık sponsorlu eylemlere ulaştı. {date} tarihinden sonra devam edebilir veya bizimle iletişime geçebilirsiniz",
-        "almostBody": "TREZU şu anda talep oluşturma ve oy kullanma gibi tüm ekip eylemleri için depolama maliyetlerini sponsor oluyor. Ekibiniz aylık sponsorlu limite ulaşmaya yakın.",
+        "almostBody": "Near Business şu anda talep oluşturma ve oy kullanma gibi tüm ekip eylemleri için depolama maliyetlerini sponsor oluyor. Ekibiniz aylık sponsorlu limite ulaşmaya yakın.",
         "contactUs": "Bize Ulaşın",
         "nextMonthlyReset": "bir sonraki aylık sıfırlamanız",
         "sidebarBody": "Ekibiniz aylık sponsorlu eylemlere ulaştı. {date} tarihinden sonra devam edebilirsiniz veya ⬇️"
@@ -1898,6 +1903,18 @@
     "paymentFormSection": {
         "selectRecipient": "Alıcı Seç",
         "searchByNameOrAddress": "Ad veya adrese göre ara",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "İşleme izin verilmiyor",
         "restrictedRecipientMessage": "Bu adres güvenlik kontrolleri nedeniyle şu anda kısıtlanmış. Bu adrese izin verilmesi gerektiğine inanıyorsanız, <link>beyaz listeye eklenmesini talep edebilirsiniz</link>.",
         "send": "Gönder",
@@ -1916,9 +1933,10 @@
         "incompatible": "Uyumsuz",
         "comingSoon": "Yakında",
         "forMembersOnly": "Yalnızca Üyelere Özel",
-        "nearComDescription": "Gizli trezu için ağ",
+        "nearComDescription": "Gizli Near Business için ağ",
         "nearComDescriptionPublic": "near.com için ağ",
-        "nearDescription": "Açık çekim için ağ"
+        "nearDescription": "Açık çekim ve near.com cüzdanı için ağ",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "Henüz alıcı yok",
@@ -1961,7 +1979,8 @@
     },
     "selectModal": {
         "searchByName": "İsme göre ara",
-        "noResults": "Sonuç bulunamadı"
+        "noResults": "Sonuç bulunamadı",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "Sonuç bulunamadı"
@@ -2113,7 +2132,7 @@
     "tokenSelectDialog": {
         "selectToken": "Token seç",
         "selectAsset": "Varlık Seç",
-        "selectNetworkFor": "{asset} için ağ seçin",
+        "selectNetworkFor": "{token} için ağ seçin",
         "searchByName": "İsme göre ara",
         "noTokensWithBalance": "Bakiyesi olan token bulunamadı",
         "noTokensFound": "Token bulunamadı",
@@ -2187,10 +2206,12 @@
         "votesSubmitted": "Oylarınız gönderildi"
     },
     "tokenInput": {
+        "useMax": "Use max",
         "max": "MAX",
         "insufficientTokens": "Yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
         "insufficientTokensForFee": "Ağ ücretini ({fee} {symbol}) karşılamak için yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
-        "balance": "Bakiye: {amount} {symbol}"
+        "balance": "Bakiye: {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "Talep Oluştur",
