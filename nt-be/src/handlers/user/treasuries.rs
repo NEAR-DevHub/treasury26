@@ -1,6 +1,6 @@
 use crate::auth::AuthUser;
 use crate::handlers::treasury::config::{TreasuryConfig, fetch_treasury_config};
-use crate::services::register_new_dao;
+use crate::services::{NOT_MANAGED_TREASURY_MESSAGE, is_managed_treasury, register_new_dao};
 use axum::{
     Json,
     extract::{Query, State},
@@ -53,6 +53,80 @@ pub struct RemoveUserTreasuryRequest {
     pub dao_id: AccountId,
 }
 
+#[derive(Debug, sqlx::FromRow)]
+struct UserTreasuryRow {
+    dao_id: String,
+    is_member: bool,
+    is_saved: bool,
+    is_hidden: bool,
+    is_confidential: bool,
+}
+
+/// DAOs the user is a policy member of or has saved. Hidden entries are
+/// included only when `include_hidden` is set. With `managed_only`
+/// (`MANAGED_TREASURIES_ONLY`) only DAOs tracked in `monitored_accounts` are
+/// returned, so a stray `dao_members` row can never surface an untracked DAO.
+async fn fetch_user_treasury_rows(
+    pool: &sqlx::PgPool,
+    account_id: &str,
+    include_hidden: bool,
+    managed_only: bool,
+) -> sqlx::Result<Vec<UserTreasuryRow>> {
+    sqlx::query_as::<_, UserTreasuryRow>(
+        r#"
+        SELECT
+            dm.dao_id,
+            dm.is_policy_member AS is_member,
+            dm.is_saved,
+            dm.is_hidden,
+            COALESCE(ma.is_confidential_account, false) AS is_confidential
+        FROM dao_members dm
+        LEFT JOIN monitored_accounts ma ON ma.account_id = dm.dao_id
+        WHERE dm.account_id = $1
+          AND (dm.is_policy_member = true OR dm.is_saved = true)
+          AND ($2::bool = true OR dm.is_hidden = false)
+          AND ($3::bool = false OR ma.account_id IS NOT NULL)
+        ORDER BY dm.dao_id
+        "#,
+    )
+    .bind(account_id)
+    .bind(include_hidden)
+    .bind(managed_only)
+    .fetch_all(pool)
+    .await
+}
+
+/// Under `MANAGED_TREASURIES_ONLY`, user actions may only touch treasuries
+/// already tracked in `monitored_accounts`; otherwise `register_new_dao` would
+/// pull arbitrary DAOs into the policy sync loop.
+async fn ensure_managed_treasury(
+    state: &AppState,
+    dao_id: &AccountId,
+) -> Result<(), (StatusCode, String)> {
+    if !state.env_vars.managed_treasuries_only {
+        return Ok(());
+    }
+
+    let managed = is_managed_treasury(&state.db_pool, dao_id.as_str())
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check whether {} is managed: {}", dao_id, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to check treasury".to_string(),
+            )
+        })?;
+
+    if managed {
+        Ok(())
+    } else {
+        Err((
+            StatusCode::NOT_FOUND,
+            NOT_MANAGED_TREASURY_MESSAGE.to_string(),
+        ))
+    }
+}
+
 pub async fn get_user_treasuries(
     State(state): State<Arc<AppState>>,
     Query(params): Query<UserTreasuriesQuery>,
@@ -67,27 +141,12 @@ pub async fn get_user_treasuries(
         ));
     }
 
-    // Query local database for user's DAO memberships and saved treasuries.
-    // Hidden entries are included only when include_hidden=true.
-    let rows = sqlx::query!(
-        r#"
-        SELECT
-            dao_id,
-            is_policy_member AS "is_member!",
-            is_saved AS "is_saved!",
-            is_hidden AS "is_hidden!",
-            COALESCE(ma.is_confidential_account, false) AS "is_confidential!"
-        FROM dao_members dm
-        LEFT JOIN monitored_accounts ma ON ma.account_id = dm.dao_id
-        WHERE dm.account_id = $1
-          AND (is_policy_member = true OR is_saved = true)
-          AND ($2::bool = true OR dm.is_hidden = false)
-        ORDER BY dao_id
-        "#,
+    let rows = fetch_user_treasury_rows(
+        &state.db_pool,
         &account_id,
-        include_hidden
+        include_hidden,
+        state.env_vars.managed_treasuries_only,
     )
-    .fetch_all(&state.db_pool)
     .await
     .map_err(|e| {
         tracing::error!("Error fetching user DAOs from database: {}", e);
@@ -174,6 +233,8 @@ pub async fn save_user_treasury(
         ));
     }
 
+    ensure_managed_treasury(&state, &payload.dao_id).await?;
+
     save_user_treasury_in_db(
         &state.db_pool,
         payload.account_id.as_str(),
@@ -209,6 +270,8 @@ pub async fn hide_user_treasury(
     }
 
     let hidden = payload.hidden.unwrap_or(true);
+
+    ensure_managed_treasury(&state, &payload.dao_id).await?;
 
     set_user_treasury_hidden_in_db(
         &state.db_pool,
@@ -357,7 +420,135 @@ async fn remove_user_treasury_in_db(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::routes::create_routes;
+    use crate::utils::test_utils::{build_test_state, issue_auth_cookie, seed_policy_member, send};
+    use serde_json::json;
     use sqlx::PgPool;
+
+    const USER: &str = "alice.near";
+    const MANAGED_DAO: &str = "managed.sputnik-dao.near";
+    const UNMANAGED_DAO: &str = "public.sputnik-dao.near";
+
+    fn managed_only_state(pool: PgPool) -> Arc<AppState> {
+        let mut state = build_test_state(pool);
+        state.env_vars.managed_treasuries_only = true;
+        Arc::new(state)
+    }
+
+    /// A DAO known only from the factory mirror: `daos` + `dao_members`, no `monitored_accounts`.
+    async fn seed_unmanaged_member(pool: &PgPool, dao_id: &str, account_id: &str) {
+        sqlx::query("INSERT INTO daos (dao_id, is_dirty, source) VALUES ($1, false, 'factory')")
+            .bind(dao_id)
+            .execute(pool)
+            .await
+            .expect("seed factory dao");
+        sqlx::query(
+            "INSERT INTO dao_members (dao_id, account_id, is_policy_member) VALUES ($1, $2, true)",
+        )
+        .bind(dao_id)
+        .bind(account_id)
+        .execute(pool)
+        .await
+        .expect("seed dao member");
+    }
+
+    async fn dao_exists(pool: &PgPool, dao_id: &str) -> bool {
+        sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM daos WHERE dao_id = $1)")
+            .bind(dao_id)
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    #[sqlx::test]
+    async fn managed_only_rows_exclude_untracked_daos(pool: PgPool) {
+        seed_unmanaged_member(&pool, UNMANAGED_DAO, USER).await;
+        seed_policy_member(&pool, MANAGED_DAO, USER).await;
+
+        let all = fetch_user_treasury_rows(&pool, USER, false, false)
+            .await
+            .unwrap();
+        assert_eq!(
+            all.iter().map(|r| r.dao_id.as_str()).collect::<Vec<_>>(),
+            vec![MANAGED_DAO, UNMANAGED_DAO],
+            "default mode lists every membership"
+        );
+
+        let managed = fetch_user_treasury_rows(&pool, USER, false, true)
+            .await
+            .unwrap();
+        assert_eq!(
+            managed
+                .iter()
+                .map(|r| r.dao_id.as_str())
+                .collect::<Vec<_>>(),
+            vec![MANAGED_DAO],
+            "managed-only mode drops DAOs without a monitored_accounts row"
+        );
+        assert!(managed[0].is_member);
+        assert!(!managed[0].is_confidential);
+    }
+
+    #[sqlx::test]
+    async fn managed_only_save_rejects_untracked_dao_without_registering_it(pool: PgPool) {
+        let state = managed_only_state(pool.clone());
+        let cookie = issue_auth_cookie(&pool, &state, USER).await;
+        let app = create_routes(state);
+
+        let (status, body) = send(
+            app,
+            "POST",
+            "/api/user/treasuries/save".to_string(),
+            &cookie,
+            Some(json!({ "accountId": USER, "daoId": UNMANAGED_DAO })),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::NOT_FOUND, "unexpected body: {body}");
+        assert!(
+            !dao_exists(&pool, UNMANAGED_DAO).await,
+            "rejected save must not register the DAO for policy sync"
+        );
+    }
+
+    #[sqlx::test]
+    async fn managed_only_save_and_hide_work_for_tracked_dao(pool: PgPool) {
+        sqlx::query("INSERT INTO monitored_accounts (account_id) VALUES ($1)")
+            .bind(MANAGED_DAO)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let state = managed_only_state(pool.clone());
+        let cookie = issue_auth_cookie(&pool, &state, USER).await;
+        let app = create_routes(state);
+
+        let (status, body) = send(
+            app.clone(),
+            "POST",
+            "/api/user/treasuries/save".to_string(),
+            &cookie,
+            Some(json!({ "accountId": USER, "daoId": MANAGED_DAO })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "unexpected body: {body}");
+
+        let (status, body) = send(
+            app,
+            "POST",
+            "/api/user/treasuries/hide".to_string(),
+            &cookie,
+            Some(json!({ "accountId": USER, "daoId": MANAGED_DAO, "hidden": true })),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK, "unexpected body: {body}");
+
+        let rows = fetch_user_treasury_rows(&pool, USER, true, true)
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert!(rows[0].is_saved);
+        assert!(rows[0].is_hidden);
+    }
 
     #[sqlx::test]
     async fn test_save_user_treasury_creates_saved_visible_row(pool: PgPool) -> sqlx::Result<()> {

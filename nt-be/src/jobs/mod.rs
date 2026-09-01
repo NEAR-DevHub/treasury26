@@ -811,15 +811,21 @@ fn configure_cron_runtime(
         handlers::sponsor_balance_monitor
     );
 
-    monitor = register_cron_worker!(
-        monitor,
-        queues,
-        state,
-        wake_hub,
-        "dao-list-sync",
-        schedule_every_secs(1800),
-        handlers::dao_list_sync
-    );
+    // The factory mirror pulls every sputnik DAO into `daos`; a managed-only
+    // deployment relies solely on DAOs registered through creation/save.
+    if !state.env_vars.managed_treasuries_only {
+        monitor = register_cron_worker!(
+            monitor,
+            queues,
+            state,
+            wake_hub,
+            "dao-list-sync",
+            schedule_every_secs(1800),
+            handlers::dao_list_sync
+        );
+    } else if preparing_queues {
+        tracing::warn!("dao-list-sync disabled: MANAGED_TREASURIES_ONLY is set");
+    }
 
     // Notify-only drift check vs near.com production.json; sync stays manual.
     // Default: twice per day (12h). Override with NEARCOM_CATALOG_WATCH_INTERVAL_SECONDS.

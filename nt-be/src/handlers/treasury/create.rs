@@ -18,8 +18,8 @@ use crate::{
     constants::TREASURY_FACTORY_CONTRACT_ID,
     handlers::balance_changes::utils::is_transport_error,
     services::{
-        mark_testing_if_needed, register_new_dao_and_wait, register_or_refresh_monitored_account,
-        should_mark_testing,
+        RegistrationMode, mark_testing_if_needed, register_new_dao_and_wait,
+        register_or_refresh_monitored_account, should_mark_testing,
     },
 };
 
@@ -674,11 +674,13 @@ async fn run_creation_inner(
 
     send_progress(tx, "creating_dao", "completed").await;
 
+    // Creation is the sanctioned entry point, so it may always create the row.
     if let Err(e) = register_or_refresh_monitored_account(
         &state.db_pool,
         state.goldsky_pool.as_ref(),
         &treasury,
         is_confidential,
+        RegistrationMode::RegisterOrRefresh,
     )
     .await
     {
