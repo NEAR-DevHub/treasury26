@@ -1,4 +1,5 @@
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { isValidNearAddressFormat } from "@/lib/near-address-format";
 
 /** Prefix for near.com payment / deposit recipients (public + confidential). */
 export const NEAR_COM_ADDRESS_PREFIX = "nearcom:";
@@ -11,6 +12,15 @@ export const NEAR_COM_SEND_URL = "https://near.com/send";
  * destinations (`nearcom:` recipients).
  */
 export const NEAR_COM_SEND_INTERNAL_NETWORK = "near_intents";
+
+export function hasNearComAddressPrefix(
+    address: string | null | undefined,
+): boolean {
+    return (address ?? "")
+        .trim()
+        .toLowerCase()
+        .startsWith(NEAR_COM_ADDRESS_PREFIX);
+}
 
 /** Strip a leading `nearcom:` (case-insensitive). */
 export function stripNearComAddressPrefix(address: string): string {
@@ -29,6 +39,32 @@ export function stripNearComAddressPrefix(address: string): string {
 export function withNearComAddressPrefix(address: string): string {
     const bare = stripNearComAddressPrefix(address);
     return `${NEAR_COM_ADDRESS_PREFIX}${bare}`;
+}
+
+export function parseNearComAddress(address: string): {
+    hasPrefix: boolean;
+    accountId: string;
+} {
+    const hasPrefix = hasNearComAddressPrefix(address);
+    return {
+        hasPrefix,
+        accountId: hasPrefix
+            ? stripNearComAddressPrefix(address)
+            : address.trim(),
+    };
+}
+
+/**
+ * Same gate as the payments network picker: `nearcom:` plus a valid NEAR
+ * account format (named, implicit, or eth-implicit). Prefix alone is not enough.
+ */
+export function isNearComRecipientAddress(
+    address: string | null | undefined,
+): boolean {
+    if (!address) return false;
+    const { hasPrefix, accountId } = parseNearComAddress(address);
+    if (!hasPrefix || !accountId) return false;
+    return isValidNearAddressFormat(accountId);
 }
 
 /**

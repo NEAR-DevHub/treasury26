@@ -20,7 +20,7 @@ import { FormattedDate } from "@/components/formatted-date";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
 import { useTreasuryLockup } from "@/hooks/use-lockup";
 import { availableBalance } from "@/lib/balance";
-import { formatBalance } from "@/lib/utils";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import {
     buildEarningOverviewItems,
     hasStakingActivity,
@@ -72,7 +72,7 @@ export function VestingDetailsModal({
 
     // Format balances
     const formatTokenBalance = (balance: Big) => {
-        return Big(formatBalance(balance, asset.decimals)).toString();
+        return decimalFromBaseUnits(balance, asset.decimals).toFixed();
     };
 
     // Vesting Period items
@@ -145,7 +145,6 @@ export function VestingDetailsModal({
               staked: lockup.staked,
               unstakedBalance: lockup.unstakedBalance,
               canWithdraw: lockup.canWithdraw,
-              symbol: asset.symbol,
               formatTokenBalance,
               labels: {
                   staked: tEarning("overview.staked"),

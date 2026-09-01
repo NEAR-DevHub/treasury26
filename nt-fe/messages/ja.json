@@ -1148,7 +1148,7 @@
         "review": {
             "header": "詳細を確認",
             "youAreAdding": "追加対象:",
-            "newRecipients": "{count, plural, other {# 人の新しい受取人}}",
+            "newRecipients": "{count, plural, =0 {新しい受取人はいません} other {# 人の新しい受取人}}",
             "onNetworks": "{count, plural, other {# 件のネットワーク}}上",
             "recipients": "受取人",
             "allDuplicates": "インポートされたすべての受取人はすでにアドレス帳に存在します。戻って別のリストをアップロードするか、このレビューから重複を削除してください。",
@@ -1878,6 +1878,7 @@
         "Batch Payment Request": "一括支払いリクエスト",
         "Payment Request": "支払いリクエスト",
         "Confidential Request": "機密リクエスト",
+        "Move to Confidential": "機密へ移動",
         "Exchange": "交換",
         "Function Call": "関数呼び出し",
         "Change Policy": "ポリシー変更",
@@ -1916,7 +1917,8 @@
         "comingSoon": "近日公開",
         "forMembersOnly": "メンバー限定",
         "nearComDescription": "機密trezu用ネットワーク",
-        "nearDescription": "公開出金およびnear.comウォレット用ネットワーク"
+        "nearComDescriptionPublic": "near.com用ネットワーク",
+        "nearDescription": "公開出金用ネットワーク"
     },
     "addressBookTable": {
         "emptyTitle": "受取人はまだいません",
@@ -2205,6 +2207,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# 名の受取人を追加しました}}",
+        "alreadyExistsToast": "この受取人はすでにアドレス帳にあります",
         "addedSingleToast": "受取人を追加しました",
         "addFailedToast": "受取人の追加に失敗しました",
         "addSingleFailedToast": "受取人の追加に失敗しました",
@@ -2663,5 +2666,40 @@
         "signInRequired": "アカウントを管理するにはウォレットを接続してください。",
         "avatarUploaded": "アバターをアップロードしました",
         "uploadError": "画像のアップロード中にエラーが発生しました。もう一度お試しください。"
+    },
+    "moveAssets": {
+        "title": "資産を移動",
+        "description": "パブリックチェーンから機密トレジャリーへ資産を移動します。",
+        "submitted": "移動リクエストを送信しました",
+        "banner": {
+            "title": "<amount></amount> がパブリック残高に着金しました",
+            "description": "誰かが誤ったネットワークで送金しました。ここに移動して機密化してください。",
+            "moveAssets": "資産を移動",
+            "viewRequest": "リクエストを表示"
+        },
+        "list": {
+            "title": "移動が必要な資金",
+            "token": "トークン",
+            "moveAssets": "資産を移動",
+            "emptyTitle": "移動するものはありません",
+            "emptyDescription": "パブリック残高は空です。パブリックアカウントに送られた資金はここに表示されます。",
+            "viewRequest": "リクエストを表示"
+        },
+        "form": {
+            "title": "機密へ",
+            "review": "移動内容を確認",
+            "reviewDisabled": "金額を入力"
+        },
+        "review": {
+            "title": "移動内容の確認",
+            "youMove": "移動する額"
+        },
+        "errors": {
+            "invalid": "有効な金額を入力してください",
+            "zero": "金額は0より大きい必要があります",
+            "tooManyDecimals": "このトークンには小数桁が多すぎます",
+            "exceedsBalance": "金額がパブリック残高を超えています",
+            "failed": "移動リクエストを準備できませんでした。もう一度お試しください。"
+        }
     }
 }

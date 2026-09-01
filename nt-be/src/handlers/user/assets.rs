@@ -4,7 +4,7 @@ use crate::{
         lockup::{LockupBalance, fetch_lockup_balance_of_account},
         staking::{StakingBalance, fetch_staking_balances},
     },
-    utils::cache::CacheTier,
+    utils::cache::{CacheKey, CacheTier},
 };
 use axum::{
     Json,
@@ -14,6 +14,7 @@ use axum::{
 use bigdecimal::{BigDecimal, ToPrimitive};
 use near_api::{AccountId, Contract, NearToken, Tokens, types::json::U128};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
@@ -126,6 +127,17 @@ pub struct SimplifiedToken {
     pub name: String,
     pub icon: Option<String>,
     pub chain_icons: Option<ChainIcons>,
+}
+
+impl SimplifiedToken {
+    /// Native NEAR, NEP-141 or public intents balance that can be transferred
+    /// right away (no lockup / staking / FT-lockup session rows).
+    pub fn is_liquid_public(&self) -> bool {
+        matches!(
+            self.residency,
+            TokenResidency::Near | TokenResidency::Ft | TokenResidency::Intents
+        ) && self.lockup_instance_id.is_none()
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -512,60 +524,134 @@ async fn load_confidential_ledger_balances(
 }
 
 /// Fetch NEAR balance for an account
+/// User-owned spendable NEAR: chain total minus whichever is larger of the
+/// storage lock and the sponsor-fronted NEAR (`monitored_accounts.paid_near`),
+/// floored to zero below the display minimum.
+pub fn spendable_near_balance(total: u128, storage_locked: u128, paid_near: u128) -> u128 {
+    let available_raw = total.saturating_sub(storage_locked.max(paid_near));
+    if available_raw < MIN_NEAR_DISPLAY_BALANCE.as_yoctonear() {
+        0
+    } else {
+        available_raw
+    }
+}
+
+/// Sponsor-fronted NEAR booked for the account (creation deposit + relay
+/// fronts). `None` when the account is not monitored.
+pub async fn load_paid_near(
+    pool: &PgPool,
+    account_id: &AccountId,
+) -> Result<Option<u128>, sqlx::Error> {
+    let paid_near = sqlx::query_scalar::<_, BigDecimal>(
+        "SELECT paid_near FROM monitored_accounts WHERE account_id = $1",
+    )
+    .bind(account_id.as_str())
+    .fetch_optional(pool)
+    .await?;
+    Ok(paid_near.and_then(|v| v.to_u128()))
+}
+
+async fn fetch_chain_near_balance(
+    state: &Arc<AppState>,
+    account_id: &AccountId,
+) -> Result<(u128, u128), (StatusCode, String)> {
+    let balance = Tokens::account(account_id.clone())
+        .near_balance()
+        .fetch_from(&state.network)
+        .await
+        .map_err(|e| {
+            eprintln!("Error fetching NEAR balance for {}: {}", account_id, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to fetch NEAR balance: {}", e),
+            )
+        })?;
+    Ok((
+        balance.total.as_yoctonear(),
+        balance.storage_locked.as_yoctonear(),
+    ))
+}
+
+fn near_balance_response(
+    account_id: &AccountId,
+    total: u128,
+    storage_locked: u128,
+    paid_near: u128,
+) -> TokenBalanceResponse {
+    TokenBalanceResponse {
+        account_id: account_id.to_string(),
+        token_id: "near".to_string(),
+        balance: spendable_near_balance(total, storage_locked, paid_near).into(),
+        locked_balance: Some(storage_locked.into()),
+        decimals: 24,
+    }
+}
+
+/// Sponsor-adjusted NEAR balance. A missing or unreadable `paid_near` is
+/// treated as zero (lenient — the `/api/user/assets` path).
 pub async fn fetch_near_balance(
     state: &Arc<AppState>,
     account_id: &AccountId,
 ) -> Result<TokenBalanceResponse, (StatusCode, String)> {
-    let balance_future = Tokens::account(account_id.clone())
-        .near_balance()
-        .fetch_from(&state.network);
+    let (balance_result, paid_near_result) = tokio::join!(
+        fetch_chain_near_balance(state, account_id),
+        load_paid_near(&state.db_pool, account_id)
+    );
+    let (total, storage_locked) = balance_result?;
+    let paid_near = paid_near_result.ok().flatten().unwrap_or(0);
+    Ok(near_balance_response(
+        account_id,
+        total,
+        storage_locked,
+        paid_near,
+    ))
+}
 
-    let paid_near_future = sqlx::query_scalar::<_, BigDecimal>(
-        "SELECT paid_near FROM monitored_accounts WHERE account_id = $1",
-    )
-    .bind(account_id.as_str())
-    .fetch_optional(&state.db_pool);
+/// Sponsor-adjusted NEAR balance with the caller-supplied `paid_near`
+/// (fail-closed path: the caller has already loaded the accounting).
+pub async fn fetch_near_balance_with_paid_near(
+    state: &Arc<AppState>,
+    account_id: &AccountId,
+    paid_near: u128,
+) -> Result<TokenBalanceResponse, (StatusCode, String)> {
+    let (total, storage_locked) = fetch_chain_near_balance(state, account_id).await?;
+    Ok(near_balance_response(
+        account_id,
+        total,
+        storage_locked,
+        paid_near,
+    ))
+}
 
-    let (balance_result, paid_near_result) = tokio::join!(balance_future, paid_near_future);
+/// Which balances `compute_user_assets` reads for an account.
+#[derive(Clone, Copy, Debug)]
+pub enum AssetsScope {
+    /// Confidential (1Click) balances only.
+    Confidential,
+    /// Public treasury view: on-chain FT/NEAR, public intents, lockups,
+    /// staking, FT lockups; verified public ledger overrides live reads.
+    Public,
+    /// Live, liquid public balances only (NEAR, NEP-141, public intents) with
+    /// caller-loaded sponsor accounting — no lockup/staking reads and no
+    /// ledger override, so an accidental deposit is never masked by stale
+    /// ledger heads.
+    PublicLiquidLive { paid_near: u128 },
+}
 
-    let balance = balance_result.map_err(|e| {
-        eprintln!("Error fetching NEAR balance for {}: {}", account_id, e);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to fetch NEAR balance: {}", e),
-        )
-    })?;
+impl AssetsScope {
+    fn is_confidential(self) -> bool {
+        matches!(self, Self::Confidential)
+    }
 
-    let paid_near_u128 = paid_near_result
-        .ok()
-        .flatten()
-        .and_then(|v: BigDecimal| v.to_u128())
-        .unwrap_or(0);
-
-    let storage_locked = balance.storage_locked.as_yoctonear();
-    let deduction = storage_locked.max(paid_near_u128);
-    let total = balance.total.as_yoctonear();
-    let available_raw = total.saturating_sub(deduction);
-    // Display zero if the available balance is below 0.001 NEAR (1 milliNEAR)
-    let available = if available_raw < MIN_NEAR_DISPLAY_BALANCE.as_yoctonear() {
-        0
-    } else {
-        available_raw
-    };
-
-    Ok(TokenBalanceResponse {
-        account_id: account_id.to_string(),
-        token_id: "near".to_string(),
-        balance: available.into(),
-        locked_balance: Some(storage_locked.into()),
-        decimals: 24,
-    })
+    fn liquid_only(self) -> bool {
+        matches!(self, Self::PublicLiquidLive { .. })
+    }
 }
 
 pub async fn compute_user_assets(
     state: &Arc<AppState>,
     account: &AccountId,
-    is_confidential: bool,
+    scope: AssetsScope,
 ) -> Result<Vec<SimplifiedToken>, (StatusCode, String)> {
     // ── Fetch raw balances ──────────────────────────────────────────────
     // Confidential treasuries: balances only from the private (1Click) intents API;
@@ -579,7 +665,7 @@ pub async fn compute_user_assets(
     let staking_balance: Option<StakingBalance>;
     let ft_lockup_positions;
 
-    if is_confidential {
+    if scope.is_confidential() {
         // The unified ledger is authoritative once rows exist — its heads were
         // verified against 1Click at projection time. Live 1Click reads remain
         // for DAOs with no ledger rows yet, and for the legacy path while
@@ -602,10 +688,35 @@ pub async fn compute_user_assets(
         let ref_data_future = async {
             let tokens_future = fetch_whitelisted_tokens(state);
             let balances_future = fetch_user_balances(state, account);
-            let near_balance = fetch_near_balance(state, account);
-            let lockup_balance = fetch_lockup_balance_of_account(state, account);
-            let staking_balance = fetch_staking_balances(state, account);
-            let ft_lockup_positions_future = fetch_ft_lockup_positions(state, account);
+            let near_balance = async {
+                match scope {
+                    AssetsScope::PublicLiquidLive { paid_near } => {
+                        fetch_near_balance_with_paid_near(state, account, paid_near).await
+                    }
+                    _ => fetch_near_balance(state, account).await,
+                }
+            };
+            let lockup_balance = async {
+                if scope.liquid_only() {
+                    Ok(None)
+                } else {
+                    fetch_lockup_balance_of_account(state, account).await
+                }
+            };
+            let staking_balance = async {
+                if scope.liquid_only() {
+                    Ok(None)
+                } else {
+                    fetch_staking_balances(state, account).await
+                }
+            };
+            let ft_lockup_positions_future = async {
+                if scope.liquid_only() {
+                    Ok(Vec::new())
+                } else {
+                    fetch_ft_lockup_positions(state, account).await
+                }
+            };
 
             let (
                 whitelist_set,
@@ -955,7 +1066,7 @@ pub async fn compute_user_assets(
     // Verified public treasuries serve the same user-owned balances the
     // chart's latest point shows; live reads stay only for never-verified
     // treasuries.
-    if !is_confidential {
+    if matches!(scope, AssetsScope::Public) {
         apply_ledger_balances(state, account, &mut all_simplified_tokens).await?;
     }
 
@@ -994,9 +1105,148 @@ pub async fn get_user_assets(
     let all_simplified_tokens = state
         .cache
         .cached(CacheTier::ShortTerm, cache_key, async move {
-            compute_user_assets(&state_clone, &account_clone, is_confidential).await
+            let scope = if is_confidential {
+                AssetsScope::Confidential
+            } else {
+                AssetsScope::Public
+            };
+            compute_user_assets(&state_clone, &account_clone, scope).await
         })
         .await?;
 
     Ok(Json(all_simplified_tokens))
+}
+
+/// Liquid public balances of a confidential treasury: funds that landed on
+/// the DAO account (NEAR / NEP-141) or its public intents balance instead of
+/// the confidential balance. Sponsor-fronted NEAR is excluded and the request
+/// fails when that accounting cannot be loaded (never falls back to gross).
+pub async fn get_confidential_public_assets(
+    State(state): State<Arc<AppState>>,
+    auth: crate::auth::OptionalAuthUser,
+    Query(params): Query<UserAssetsQuery>,
+) -> Result<Json<Vec<SimplifiedToken>>, (StatusCode, String)> {
+    let account = params.account_id.clone();
+    let is_confidential = auth
+        .verify_member_if_confidential(&state.db_pool, &account)
+        .await?;
+    if !is_confidential {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Public assets are only available for confidential treasuries".to_string(),
+        ));
+    }
+
+    let paid_near = load_paid_near(&state.db_pool, &account)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Failed to load sponsor accounting: {}", e),
+            )
+        })?
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Sponsor accounting is missing for this treasury".to_string(),
+            )
+        })?;
+
+    let cache_key = CacheKey::new("confidential:public-assets")
+        .with(account.as_str())
+        .build();
+    let state_clone = state.clone();
+    let account_clone = account.clone();
+
+    let tokens = state
+        .cache
+        .cached(CacheTier::ShortTerm, cache_key, async move {
+            let tokens = compute_user_assets(
+                &state_clone,
+                &account_clone,
+                AssetsScope::PublicLiquidLive { paid_near },
+            )
+            .await?;
+            Ok::<_, (StatusCode, String)>(
+                tokens
+                    .into_iter()
+                    .filter(SimplifiedToken::is_liquid_public)
+                    .collect::<Vec<_>>(),
+            )
+        })
+        .await?;
+
+    Ok(Json(tokens))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const NEAR: u128 = 1_000_000_000_000_000_000_000_000;
+
+    fn token(residency: TokenResidency, lockup_instance_id: Option<&str>) -> SimplifiedToken {
+        SimplifiedToken {
+            id: "t".to_string(),
+            contract_id: None,
+            lockup_instance_id: lockup_instance_id.map(str::to_string),
+            ft_lockup_schedule: None,
+            residency,
+            network: "near".to_string(),
+            chain_name: "Near Protocol".to_string(),
+            symbol: "T".to_string(),
+            balance: Balance::Standard {
+                total: "1".to_string(),
+                locked: "0".to_string(),
+            },
+            decimals: 24,
+            price: "0".to_string(),
+            name: "T".to_string(),
+            icon: None,
+            chain_icons: None,
+        }
+    }
+
+    #[test]
+    fn sponsor_only_near_is_not_spendable() {
+        // Creation deposit fully sponsored: total == paid_near.
+        assert_eq!(spendable_near_balance(3 * NEAR, NEAR / 2, 3 * NEAR), 0);
+    }
+
+    #[test]
+    fn user_deposit_is_spendable_after_sponsor_deduction() {
+        assert_eq!(
+            spendable_near_balance(13 * NEAR, NEAR / 2, 3 * NEAR),
+            10 * NEAR
+        );
+    }
+
+    #[test]
+    fn later_sponsor_topups_stay_excluded() {
+        // Sponsor fronted another 2 NEAR after the user's 10 NEAR deposit.
+        assert_eq!(
+            spendable_near_balance(15 * NEAR, NEAR / 2, 5 * NEAR),
+            10 * NEAR
+        );
+    }
+
+    #[test]
+    fn storage_lock_wins_when_larger_than_paid_near() {
+        assert_eq!(spendable_near_balance(10 * NEAR, 4 * NEAR, NEAR), 6 * NEAR);
+    }
+
+    #[test]
+    fn dust_below_display_minimum_is_zero() {
+        assert_eq!(spendable_near_balance(3 * NEAR + 1_000, NEAR, 3 * NEAR), 0);
+    }
+
+    #[test]
+    fn liquid_public_filter_keeps_near_ft_intents_only() {
+        assert!(token(TokenResidency::Near, None).is_liquid_public());
+        assert!(token(TokenResidency::Ft, None).is_liquid_public());
+        assert!(token(TokenResidency::Intents, None).is_liquid_public());
+        assert!(!token(TokenResidency::Lockup, None).is_liquid_public());
+        assert!(!token(TokenResidency::Staked, None).is_liquid_public());
+        assert!(!token(TokenResidency::Ft, Some("ft-lockup.near")).is_liquid_public());
+    }
 }

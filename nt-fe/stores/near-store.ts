@@ -29,24 +29,26 @@ import {
     getKindFromProposal,
     type ProposalPermissionKind,
 } from "@/lib/config-utils";
+import { ensurePasskeyWallet } from "@/lib/passkey-wallet";
 import {
     getLastProposalId,
     type Proposal,
     type Vote as ProposalVote,
 } from "@/lib/proposals-api";
-import { ensurePasskeyWallet } from "@/lib/passkey-wallet";
+import { reportError } from "@/lib/report-error";
 import { clearSessionQueries } from "@/lib/session-query-cleanup";
 import {
     estimateProposalStorage,
     estimateVoteStorage,
 } from "@/lib/sputnik-storage";
 import { cn } from "@/lib/utils";
+import { isUserRejection } from "@/lib/wallet-errors";
 import {
     DIRECT_TRIGGER_WALLET_IDS,
+    isDirectTriggerWallet,
     SELECTED_WALLET_STORAGE_KEY,
     TARGET_WALLET_STORAGE_KEY,
     WALLET_IDS,
-    isDirectTriggerWallet,
 } from "@/lib/wallets";
 
 /**
@@ -463,7 +465,13 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 });
             }
         } catch (error) {
-            console.error("Authentication failed:", error);
+            if (!isUserRejection(error)) {
+                reportError(error, "Authentication failed", {
+                    code: "FE_WALLET_AUTH_FAILED",
+                });
+            } else {
+                console.error("Authentication failed:", error);
+            }
             set({
                 isAuthenticating: false,
                 authError:
@@ -718,7 +726,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 params.addressBookPayment,
             );
         } catch (error) {
-            console.error("Failed to create proposal:", error);
+            if (!isUserRejection(error)) {
+                reportError(error, "Failed to create proposal", {
+                    code: "FE_WALLET_SIGN_FAILED",
+                    priority: "p1",
+                });
+            } else {
+                console.error("Failed to create proposal:", error);
+            }
             toast.error(getNearStoreMessages().transactionNotApproved);
             throw error;
         }
@@ -792,7 +807,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 treasury_id: treasuryId,
             });
         } catch (error) {
-            console.error("Failed to vote proposals:", error);
+            if (!isUserRejection(error)) {
+                reportError(error, "Failed to vote proposals", {
+                    code: "FE_WALLET_SIGN_FAILED",
+                    priority: "p1",
+                });
+            } else {
+                console.error("Failed to vote proposals:", error);
+            }
             toast.error(
                 votes.length > 1
                     ? getNearStoreMessages().failedSubmitVotes

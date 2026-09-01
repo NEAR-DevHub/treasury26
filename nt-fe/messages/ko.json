@@ -1148,7 +1148,7 @@
         "review": {
             "header": "세부정보 검토",
             "youAreAdding": "추가 중",
-            "newRecipients": "{count, plural, other {신규 수신자 #명}}",
+            "newRecipients": "{count, plural, =0 {새 수신자 없음} other {신규 수신자 #명}}",
             "onNetworks": "{count, plural, other {#개의 네트워크}}",
             "recipients": "수신자",
             "allDuplicates": "가져온 모든 수신자가 이미 주소록에 있습니다. 다른 목록을 업로드하려면 뒤로 가거나 이 검토에서 중복을 제거하세요.",
@@ -1878,6 +1878,7 @@
         "Batch Payment Request": "일괄 결제 요청",
         "Payment Request": "결제 요청",
         "Confidential Request": "비공개 요청",
+        "Move to Confidential": "기밀로 이동",
         "Exchange": "교환",
         "Function Call": "함수 호출",
         "Change Policy": "정책 변경",
@@ -1916,7 +1917,8 @@
         "comingSoon": "곧 제공",
         "forMembersOnly": "회원 전용",
         "nearComDescription": "기밀 trezu용 네트워크",
-        "nearDescription": "공개 출금 및 near.com 지갑용 네트워크"
+        "nearComDescriptionPublic": "near.com용 네트워크",
+        "nearDescription": "공개 출금용 네트워크"
     },
     "addressBookTable": {
         "emptyTitle": "아직 수신자가 없습니다",
@@ -2205,6 +2207,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {수신자 #명 추가됨}}",
+        "alreadyExistsToast": "수신자가 이미 주소록에 있습니다",
         "addedSingleToast": "수신자가 추가되었습니다",
         "addFailedToast": "수신자 추가에 실패했습니다",
         "addSingleFailedToast": "수신자 추가에 실패했습니다",
@@ -2663,5 +2666,40 @@
         "signInRequired": "계정을 관리하려면 지갑을 연결하세요.",
         "avatarUploaded": "아바타가 업로드되었습니다",
         "uploadError": "이미지 업로드 중 오류가 발생했습니다. 다시 시도하세요."
+    },
+    "moveAssets": {
+        "title": "자산 이동",
+        "description": "퍼블릭 체인의 자산을 기밀 트레저리로 이동합니다.",
+        "submitted": "이동 요청이 제출되었습니다",
+        "banner": {
+            "title": "<amount></amount>이(가) 퍼블릭 잔액에 입금되었습니다",
+            "description": "누군가 잘못된 네트워크로 보냈습니다. 여기로 이동하여 기밀로 전환하세요.",
+            "moveAssets": "자산 이동",
+            "viewRequest": "요청 보기"
+        },
+        "list": {
+            "title": "이동해야 할 자금",
+            "token": "토큰",
+            "moveAssets": "자산 이동",
+            "emptyTitle": "이동할 자산 없음",
+            "emptyDescription": "퍼블릭 잔액이 비어 있습니다. 퍼블릭 계정으로 보낸 자금이 여기에 표시됩니다.",
+            "viewRequest": "요청 보기"
+        },
+        "form": {
+            "title": "기밀로",
+            "review": "이동 검토",
+            "reviewDisabled": "금액 입력"
+        },
+        "review": {
+            "title": "이동 내용 검토",
+            "youMove": "이동 금액"
+        },
+        "errors": {
+            "invalid": "유효한 금액을 입력하세요",
+            "zero": "금액은 0보다 커야 합니다",
+            "tooManyDecimals": "이 토큰에 비해 소수 자릿수가 너무 많습니다",
+            "exceedsBalance": "금액이 퍼블릭 잔액을 초과합니다",
+            "failed": "이동 요청을 준비할 수 없습니다. 다시 시도하세요."
+        }
     }
 }

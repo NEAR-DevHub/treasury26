@@ -4,7 +4,6 @@ import { useToken } from "@/hooks/use-treasury-queries";
 import type { ChainIcons } from "@/lib/api";
 import {
     getNearComChainIcons,
-    isNearComNetwork,
     isNearComPaymentRoute,
 } from "@/lib/intents-network";
 
@@ -22,26 +21,15 @@ export function useDestinationNetworkMeta({
     originTokenId,
     originNetwork,
     originChainIcons,
-    nearComRoute,
 }: {
     destinationAssetId?: string;
     /** Send/origin asset id — used for amount-row token when destination is near.com. */
     originTokenId: string;
     originNetwork: string;
     originChainIcons?: ChainIcons | null;
-    /** When set, use full payment-route near.com detection (single payments). */
-    nearComRoute?: {
-        depositAddress?: string;
-        quoteSignature?: string;
-        networkFee?: string;
-    };
 }) {
-    const isNearComDestination = nearComRoute
-        ? isNearComPaymentRoute({
-              destinationAssetId,
-              ...nearComRoute,
-          })
-        : isNearComNetwork(destinationAssetId);
+    // Exact `near.com` only — not `near.com:direct`, not inferred from quotes.
+    const isNearComDestination = isNearComPaymentRoute(destinationAssetId);
 
     const shouldFetchDestinationToken =
         !!destinationAssetId && !isNearComDestination;

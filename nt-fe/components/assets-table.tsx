@@ -24,14 +24,10 @@ import type { AggregatedAsset } from "@/hooks/use-assets";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { buildAssetRowActionHrefs } from "@/lib/asset-row-actions";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import { availableBalance } from "@/lib/balance";
 import Big from "@/lib/big";
-import {
-    cn,
-    formatBalance,
-    formatCurrencyWithSubCent,
-    formatSmartAmount,
-} from "@/lib/utils";
+import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 import { BalanceCell } from "./token-display";
 
 type SortDirection = "asc" | "desc";
@@ -101,7 +97,7 @@ function getAssetMetrics(asset: AggregatedAsset): AssetMetrics {
 }
 
 function displayAmount(rawAmount: Big.Big, decimals: number): Big.Big {
-    return Big(formatBalance(rawAmount, decimals, decimals));
+    return decimalFromBaseUnits(rawAmount, decimals);
 }
 
 function sumTokenAmountsByNetwork(

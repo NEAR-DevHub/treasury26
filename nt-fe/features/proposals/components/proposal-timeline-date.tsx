@@ -6,7 +6,7 @@ import { useProposalTransaction, useSwapStatus } from "@/hooks/use-proposals";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { Proposal } from "@/lib/proposals-api";
 import type { Policy } from "@/types/policy";
-import { getProposalStatus } from "../utils/proposal-utils";
+import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
 import {
     extractReceiptProposalData,
     resolveExecutionTimestamp,
@@ -33,7 +33,12 @@ export function ProposalTimelineDate({
         proposal,
         treasuryId,
     )?.depositAddress;
-    const shouldUseSwapDate = isProposalExecuted && !!depositAddress;
+    // Moves to confidential settle via a confidential quote whose status only
+    // carries the quote time — keep the on-chain execution date for those.
+    const shouldUseSwapDate =
+        isProposalExecuted &&
+        !!depositAddress &&
+        getProposalUIKind(proposal) !== "Move to Confidential";
 
     const {
         data: transaction,

@@ -39,6 +39,7 @@ import {
     useExportAddressBook,
     type RecipientDraft,
     type AddressBookEntry,
+    persistAddressBookAddress,
 } from "@/features/address-book";
 import { useChains } from "@/features/address-book/chains";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -209,7 +210,13 @@ function RecipientFlow({
                             mode === "import" ? importNotes : undefined
                         }
                         onSubmit={async (notes, includedIndexes) => {
-                            if (!treasuryId) return;
+                            // Empty indexes is unreachable while ReviewRecipients
+                            // disables submit when canSubmit is false (all duplicates
+                            // + skip). Keep the guard; toast lives on mutateAsync [].
+                            if (!treasuryId || includedIndexes.length === 0) {
+                                onDone();
+                                return;
+                            }
                             await createEntries.mutateAsync({
                                 daoId: treasuryId,
                                 entries: includedIndexes.map((index) => {
@@ -218,7 +225,10 @@ function RecipientFlow({
                                     return {
                                         name: recipient.name,
                                         networks: recipient.networks,
-                                        address: recipient.address,
+                                        address:
+                                            persistAddressBookAddress(
+                                                recipient,
+                                            ),
                                         note: notes[index] || undefined,
                                     };
                                 }),
@@ -250,7 +260,8 @@ function RecipientsView({
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { data: entries = [], isLoading } = useAddressBook();
+    const { data: entries, isLoading } = useAddressBook();
+    const recipientEntries = entries ?? [];
     const deleteEntries = useDeleteAddressBookEntries(treasuryId);
     const exportEntries = useExportAddressBook(treasuryId);
     const [search, setSearch] = useState("");
@@ -308,7 +319,7 @@ function RecipientsView({
     }, []);
 
     const filtered = debouncedSearch
-        ? entries.filter(
+        ? recipientEntries.filter(
               (e) =>
                   e.name
                       .toLowerCase()
@@ -317,7 +328,7 @@ function RecipientsView({
                       .toLowerCase()
                       .includes(debouncedSearch.toLowerCase()),
           )
-        : entries;
+        : recipientEntries;
     const totalPages = Math.ceil(filtered.length / ADDRESS_BOOK_PAGE_SIZE);
     const pageIndex =
         totalPages === 0 ? 0 : Math.min(page, Math.max(totalPages - 1, 0));
@@ -436,9 +447,9 @@ function RecipientsView({
                                 <StepperHeader
                                     title={tAb("recipientsHeading")}
                                 />
-                                {entries.length > 0 && (
+                                {recipientEntries.length > 0 && (
                                     <NumberBadge
-                                        number={entries.length}
+                                        number={recipientEntries.length}
                                         variant="secondary"
                                     />
                                 )}
@@ -525,7 +536,7 @@ function RecipientsView({
             </div>
 
             {/* Table */}
-            {isLoading ? (
+            {isLoading && !entries ? (
                 <TableSkeleton rows={6} columns={7} />
             ) : (
                 <AddressBookTable

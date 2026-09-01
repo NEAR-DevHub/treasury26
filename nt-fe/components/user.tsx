@@ -3,10 +3,16 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { findAddressBookEntry } from "@/features/address-book/utils/find-entry";
+import { useAddressBook } from "@/features/address-book/hooks/use-address-book";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
+import {
+    isNearComRecipientAddress,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { cn } from "@/lib/utils";
 import { Address } from "./address";
@@ -29,7 +35,7 @@ type UserSize = keyof typeof sizeClasses;
 
 type UserProfile = ReturnType<typeof useProfile>["data"];
 
-/** Explicit override first, then the profile, then the raw account id. */
+/** Explicit override first, then address-book / profile, then the raw account id. */
 export function resolveUserName({
     accountId,
     name,
@@ -41,13 +47,13 @@ export function resolveUserName({
     profile: UserProfile;
     useAddressBook: boolean;
 }) {
-    return (
-        name ??
-        (useAddressBook
-            ? (profile?.addressBookName ?? profile?.name)
-            : profile?.name) ??
-        accountId
-    );
+    return resolveUserDisplayName({
+        accountId,
+        name,
+        profileName: profile?.name,
+        addressBookName: profile?.addressBookName,
+        preferAddressBook: useAddressBook,
+    });
 }
 
 /** How to render the user row. */
@@ -65,8 +71,60 @@ const avatarTextSizeClasses = {
     lg: "text-sm",
 } as const;
 
+/** Trim and drop empty / whitespace-only display names. */
+export function normalizeDisplayName(
+    name: string | null | undefined,
+): string | undefined {
+    const trimmed = name?.trim();
+    return trimmed ? trimmed : undefined;
+}
+
+/**
+ * Resolve the label to show for an account.
+ * Default: override → profile/DB (includes treasury branding) → account id.
+ * With `preferAddressBook`: override → address-book → profile/DB → account id.
+ */
+export function resolveUserDisplayName({
+    accountId,
+    name,
+    profileName,
+    addressBookName,
+    preferAddressBook = false,
+}: {
+    accountId: string;
+    name?: string | null;
+    profileName?: string | null;
+    addressBookName?: string | null;
+    /** When true (request details only), prefer address-book name over profile. */
+    preferAddressBook?: boolean;
+}): string {
+    return (
+        normalizeDisplayName(name) ??
+        (preferAddressBook
+            ? normalizeDisplayName(addressBookName)
+            : undefined) ??
+        normalizeDisplayName(profileName) ??
+        accountId
+    );
+}
+
+/** Settings name when this account is the open treasury (Activity self-counterparty). */
+function resolveSelfTreasuryName(
+    accountId: string | undefined,
+    treasuryId: string | undefined,
+    configName: string | null | undefined,
+): string | undefined {
+    return accountId && treasuryId && accountId === treasuryId
+        ? normalizeDisplayName(configName)
+        : undefined;
+}
+
+function isSameAccountLabel(name: string, address: string): boolean {
+    return name.trim().toLowerCase() === address.trim().toLowerCase();
+}
+
 function getUserAvatarInitial(name: string, address: string): string {
-    if (name && name !== address) {
+    if (name && !isSameAccountLabel(name, address)) {
         return name.charAt(0).toUpperCase();
     }
     return address.charAt(0).toLowerCase();
@@ -179,85 +237,118 @@ export function UserSkeleton({
 interface UserWithDataProps {
     name: string;
     address: string;
+    /**
+     * Visual override (e.g. `nearcom:alice.near`). Explorer / profile keep
+     * using the bare `address`.
+     */
+    displayAddress?: string;
     imageUrl?: string;
     variant?: UserVariant;
-    truncatePrimaryAddress?: boolean;
     size?: UserSize;
     withLink?: boolean;
     withHoverCard?: boolean;
     chainName?: string;
-    useAddressBook?: boolean;
     /** When set, matching substrings in name/address are highlighted. */
     highlightQuery?: string;
+    /** When false, show the full address (no middle ellipsis). Default true. */
+    truncateAddress?: boolean;
 }
 
 export function UserWithData({
     name,
     address,
+    displayAddress,
     imageUrl,
     size = "sm",
     variant = "full",
-    truncatePrimaryAddress = false,
     withLink = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
-    useAddressBook = false,
     highlightQuery,
+    truncateAddress = true,
 }: UserWithDataProps) {
-    const explorerUrl = getExplorerAddressUrl(chainName, address);
+    const bareAddress = stripNearComAddressPrefix(address);
+    const visibleAddress = displayAddress ?? address;
+    const explorerUrl = getExplorerAddressUrl(chainName, bareAddress);
     const showAvatar = variant !== "details";
     const showDetails = variant !== "avatar";
 
-    const nameIsAddress = name === address;
+    // When there is no distinct display name, show the address once (never twice).
+    // Treat bare account and nearcom:-prefixed display as the same label so the
+    // prefixed form is shown instead of hiding behind the bare id.
+    const nameIsAddress =
+        isSameAccountLabel(name, address) ||
+        isSameAccountLabel(name, visibleAddress) ||
+        isSameAccountLabel(name, bareAddress);
+    const primaryText = nameIsAddress ? visibleAddress : name;
+
+    const addressNode = truncateAddress ? (
+        highlightQuery ? (
+            <HighlightedText
+                text={nameIsAddress ? primaryText : visibleAddress}
+                query={highlightQuery}
+                className={cn(
+                    "max-w-full",
+                    nameIsAddress
+                        ? "font-medium text-sm truncate"
+                        : "text-xs text-muted-foreground truncate",
+                )}
+            />
+        ) : (
+            <Address
+                address={nameIsAddress ? primaryText : visibleAddress}
+                className={cn(
+                    "max-w-full",
+                    nameIsAddress
+                        ? "font-medium text-sm"
+                        : "text-xs text-muted-foreground",
+                )}
+            />
+        )
+    ) : (
+        <span
+            className={cn(
+                "max-w-full break-all",
+                nameIsAddress
+                    ? "font-medium text-sm"
+                    : "text-xs text-muted-foreground",
+            )}
+        >
+            {nameIsAddress ? primaryText : visibleAddress}
+        </span>
+    );
 
     const content = (
         <>
             {showAvatar && (
                 <UserAvatar
                     name={name}
-                    address={address}
+                    address={visibleAddress}
                     imageUrl={imageUrl}
                     size={size}
                 />
             )}
             {showDetails && (
-                <div className="flex flex-col items-start min-w-0 max-w-[min(100%,15rem)] md:max-w-[min(100%,20rem)]">
-                    {truncatePrimaryAddress && nameIsAddress ? (
-                        highlightQuery ? (
-                            <HighlightedText
-                                text={address}
-                                query={highlightQuery}
-                                className="font-medium max-w-full text-sm truncate"
-                            />
-                        ) : (
-                            <Address
-                                address={address}
-                                prefixLength={6}
-                                suffixLength={4}
-                                className="font-medium max-w-full text-sm"
-                            />
-                        )
-                    ) : (
-                        <HighlightedText
-                            text={name}
-                            query={highlightQuery}
-                            className="font-medium truncate max-w-full text-sm"
-                        />
+                <div
+                    className={cn(
+                        "flex flex-col items-start min-w-0",
+                        truncateAddress
+                            ? "max-w-[min(100%,15rem)] md:max-w-[min(100%,20rem)]"
+                            : "max-w-full",
                     )}
-                    {/* Avoid duplicating the wallet when there is no display name */}
-                    {!nameIsAddress &&
-                        (highlightQuery ? (
+                >
+                    {nameIsAddress ? (
+                        addressNode
+                    ) : (
+                        <>
                             <HighlightedText
-                                text={address}
+                                text={name}
                                 query={highlightQuery}
-                                className="text-xs text-muted-foreground truncate max-w-full"
+                                className="font-medium truncate max-w-full text-sm"
                             />
-                        ) : (
-                            <Address
-                                address={address}
-                                className="text-xs text-muted-foreground max-w-full"
-                            />
-                        ))}
+                            {addressNode}
+                        </>
+                    )}
                 </div>
             )}
         </>
@@ -279,10 +370,10 @@ export function UserWithData({
     if (withHoverCard) {
         return (
             <TooltipUser
-                accountId={address}
+                accountId={bareAddress}
                 name={name}
+                displayAddress={displayAddress}
                 chainName={chainName}
-                useAddressBook={useAddressBook}
                 triggerProps={{ asChild: false }}
             >
                 {userElement}
@@ -307,8 +398,11 @@ const TOOLTIP_ACTION_ICON_CLASS = "size-[13.25px]";
 interface TooltipUserProps {
     accountId: string;
     name?: string;
+    /** Copied / shown in the card when set (e.g. nearcom: prefix). */
+    displayAddress?: string;
     chainName?: string;
-    useAddressBook?: boolean;
+    /** Prefer address-book name in the tooltip User (request details). */
+    preferAddressBook?: boolean;
     children: React.ReactNode;
     triggerProps?: TooltipProps["triggerProps"];
 }
@@ -316,27 +410,54 @@ interface TooltipUserProps {
 export function TooltipUser({
     accountId,
     name,
+    displayAddress,
     chainName = NEAR_NETWORK_ID,
-    useAddressBook = false,
+    preferAddressBook = false,
     children,
     triggerProps,
 }: TooltipUserProps) {
     const t = useTranslations("user");
-    const { treasuryId, isGuestTreasury } = useTreasury();
+    const { treasuryId, isGuestTreasury, config } = useTreasury();
+    const bareAccountId = stripNearComAddressPrefix(accountId);
     const { data: profile, isLoading: isProfileLoading } =
-        useProfile(accountId);
-    const isSavedInAddressBook = profile?.isInAddressBook ?? false;
-    const resolvedName = resolveUserName({
+        useProfile(bareAccountId);
+    const { data: addressBook = [] } = useAddressBook();
+    const treasuryName = resolveSelfTreasuryName(
+        bareAccountId,
+        treasuryId,
+        config?.name,
+    );
+    const addressBookLookup = displayAddress ?? accountId;
+    const addressBookEntry = findAddressBookEntry(
+        addressBook,
+        addressBookLookup,
+    );
+    const isSavedInAddressBook = !!addressBookEntry;
+    const resolvedName = resolveUserDisplayName({
         accountId,
         name,
-        profile,
-        useAddressBook,
+        profileName: profile?.name,
+        addressBookName: addressBookEntry?.name ?? profile?.addressBookName,
+        preferAddressBook,
     });
     const addressBookParams = new URLSearchParams({
-        name: resolvedName,
-        address: accountId,
+        name: resolveUserDisplayName({
+            accountId: bareAccountId,
+            name,
+            profileName: profile?.name ?? treasuryName,
+            addressBookName: addressBookEntry?.name,
+            preferAddressBook,
+        }),
+        address: isNearComRecipientAddress(addressBookLookup)
+            ? addressBookLookup
+            : bareAccountId,
     });
-    addressBookParams.set("network", chainName);
+    if (isNearComRecipientAddress(addressBookLookup)) {
+        addressBookParams.set("networks", NEAR_COM_NETWORK_ID);
+    } else {
+        addressBookParams.set("network", chainName);
+    }
+    const copyText = displayAddress ?? bareAccountId;
 
     const addToAddressBookUrl = treasuryId
         ? `/${treasuryId}/address-book?${addressBookParams.toString()}`
@@ -402,7 +523,7 @@ export function TooltipUser({
                                 </Button>
                             )}
                         <CopyButton
-                            text={accountId}
+                            text={copyText}
                             variant="ghost"
                             className={TOOLTIP_ACTION_CLASS}
                             iconClassName={TOOLTIP_ACTION_ICON_CLASS}
@@ -429,57 +550,83 @@ interface UserProps {
     accountId: string;
     /** Override the display name instead of fetching from profile */
     name?: string;
-    /** Prefer treasury address-book name when available */
-    useAddressBook?: boolean;
+    /**
+     * Visual address override (e.g. `nearcom:…`). Does not affect profile
+     * lookup or explorer links.
+     */
+    displayAddress?: string;
     variant?: UserVariant;
-    /** Use address-style truncation for the primary line when name equals address */
-    truncatePrimaryAddress?: boolean;
     size?: UserSize;
     withLink?: boolean;
     withHoverCard?: boolean;
     chainName?: string;
+    /**
+     * Prefer treasury address-book name over profile/Social.
+     * Use only in request (proposal) details.
+     */
+    preferAddressBook?: boolean;
     /** When set, matching substrings in name/address are highlighted. */
     highlightQuery?: string;
+    /** When false, show the full address (no middle ellipsis). Default true. */
+    truncateAddress?: boolean;
 }
 
 export function User({
     accountId,
     name: nameProp,
-    useAddressBook = false,
+    displayAddress,
     variant = "full",
-    truncatePrimaryAddress = false,
     size = "sm",
     withLink = true,
     withHoverCard = false,
     chainName = NEAR_NETWORK_ID,
+    preferAddressBook = false,
     highlightQuery,
+    truncateAddress = true,
 }: UserProps) {
-    const { data: profile, isLoading } = useProfile(accountId);
+    const bareAccountId = stripNearComAddressPrefix(accountId);
+    const { data: profile, isLoading } = useProfile(bareAccountId);
+    const { data: addressBook = [] } = useAddressBook();
+    const { treasuryId, config } = useTreasury();
+    const treasuryName = resolveSelfTreasuryName(
+        bareAccountId,
+        treasuryId,
+        config?.name,
+    );
+    const addressBookName = findAddressBookEntry(
+        addressBook,
+        displayAddress ?? accountId,
+    )?.name;
 
-    if (isLoading && !nameProp) {
+    if (
+        isLoading &&
+        !normalizeDisplayName(nameProp) &&
+        !normalizeDisplayName(treasuryName)
+    ) {
         return <UserSkeleton variant={variant} size={size} />;
     }
 
-    const resolvedName = resolveUserName({
-        accountId,
+    const resolvedName = resolveUserDisplayName({
+        accountId: bareAccountId,
         name: nameProp,
-        profile,
-        useAddressBook,
+        profileName: profile?.name ?? treasuryName,
+        addressBookName,
+        preferAddressBook,
     });
 
     return (
         <UserWithData
             name={resolvedName}
-            address={accountId}
+            address={bareAccountId}
+            displayAddress={displayAddress}
             imageUrl={resolveProfileImageUrl(profile?.image)}
-            useAddressBook={useAddressBook}
             size={size}
             variant={variant}
-            truncatePrimaryAddress={truncatePrimaryAddress}
             withLink={withLink}
             withHoverCard={withHoverCard}
             chainName={chainName}
             highlightQuery={highlightQuery}
+            truncateAddress={truncateAddress}
         />
     );
 }

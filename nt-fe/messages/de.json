@@ -1148,7 +1148,7 @@
         "review": {
             "header": "Details prüfen",
             "youAreAdding": "Sie fügen hinzu",
-            "newRecipients": "{count, plural, one {# neuen Empfänger} other {# neue Empfänger}}",
+            "newRecipients": "{count, plural, =0 {Keine neuen Empfänger} one {# neuen Empfänger} other {# neue Empfänger}}",
             "onNetworks": "auf {count, plural, one {# Netzwerk} other {# Netzwerken}}",
             "recipients": "Empfänger",
             "allDuplicates": "Alle importierten Empfänger existieren bereits in Ihrem Adressbuch. Gehen Sie zurück, um eine andere Liste hochzuladen, oder entfernen Sie Duplikate aus dieser Prüfung.",
@@ -1878,6 +1878,7 @@
         "Batch Payment Request": "Stapel-Zahlungsanfrage",
         "Payment Request": "Zahlungsanfrage",
         "Confidential Request": "Vertrauliche Anfrage",
+        "Move to Confidential": "In Vertraulich verschieben",
         "Exchange": "Tauschen",
         "Function Call": "Funktionsaufruf",
         "Change Policy": "Richtlinie ändern",
@@ -1916,7 +1917,8 @@
         "comingSoon": "Demnächst verfügbar",
         "forMembersOnly": "Nur für Mitglieder",
         "nearComDescription": "Netzwerk für vertrauliches Near Business",
-        "nearDescription": "Netzwerk für öffentliche Auszahlungen und near.com-Wallet"
+        "nearComDescriptionPublic": "Netzwerk für near.com",
+        "nearDescription": "Netzwerk für öffentliche Auszahlungen"
     },
     "addressBookTable": {
         "emptyTitle": "Noch keine Empfänger",
@@ -2205,6 +2207,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Empfänger hinzugefügt} other {# Empfänger hinzugefügt}}",
+        "alreadyExistsToast": "Empfänger ist bereits im Adressbuch",
         "addedSingleToast": "Empfänger hinzugefügt",
         "addFailedToast": "Hinzufügen der Empfänger fehlgeschlagen",
         "addSingleFailedToast": "Hinzufügen des Empfängers fehlgeschlagen",
@@ -2663,5 +2666,40 @@
         "signInRequired": "Verbinde dein Wallet, um dein Konto zu verwalten.",
         "avatarUploaded": "Avatar erfolgreich hochgeladen",
         "uploadError": "Fehler beim Hochladen des Bildes. Bitte erneut versuchen."
+    },
+    "moveAssets": {
+        "title": "Assets verschieben",
+        "description": "Assets von der öffentlichen Chain in Ihre vertrauliche Treasury verschieben.",
+        "submitted": "Verschiebungsanfrage eingereicht",
+        "banner": {
+            "title": "<amount></amount> ist auf Ihrem öffentlichen Guthaben eingegangen",
+            "description": "Jemand hat es über das falsche Netzwerk gesendet. Verschieben Sie es hierher, um es vertraulich zu machen.",
+            "moveAssets": "Assets verschieben",
+            "viewRequest": "Anfrage ansehen"
+        },
+        "list": {
+            "title": "Zu verschiebende Mittel",
+            "token": "Token",
+            "moveAssets": "Assets verschieben",
+            "emptyTitle": "Nichts zu verschieben",
+            "emptyDescription": "Ihr öffentliches Guthaben ist leer. An das öffentliche Konto gesendete Mittel erscheinen hier.",
+            "viewRequest": "Anfrage ansehen"
+        },
+        "form": {
+            "title": "Zu Vertraulich",
+            "review": "Verschiebung prüfen",
+            "reviewDisabled": "Betrag eingeben"
+        },
+        "review": {
+            "title": "Verschiebung prüfen",
+            "youMove": "Sie verschieben"
+        },
+        "errors": {
+            "invalid": "Gültigen Betrag eingeben",
+            "zero": "Betrag muss größer als null sein",
+            "tooManyDecimals": "Zu viele Dezimalstellen für diesen Token",
+            "exceedsBalance": "Betrag übersteigt das öffentliche Guthaben",
+            "failed": "Verschiebungsanfrage konnte nicht vorbereitet werden. Bitte erneut versuchen."
+        }
     }
 }

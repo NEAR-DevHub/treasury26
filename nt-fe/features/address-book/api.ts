@@ -1,4 +1,4 @@
-import axios from "axios";
+import { http as axios } from "@/lib/http";
 import type {
     AddressBookEntry,
     AddressBookEntryInput,
@@ -28,16 +28,16 @@ export async function createAddressBookEntries(
     return response.data;
 }
 
-/** Convenience wrapper for creating a single entry */
+/** Convenience wrapper for creating a single entry. Null when the entry already exists. */
 export async function createAddressBookEntry(
     daoId: string,
     entry: AddressBookEntryInput,
-): Promise<AddressBookEntry> {
-    const [created] = await createAddressBookEntries({
+): Promise<AddressBookEntry | null> {
+    const created = await createAddressBookEntries({
         daoId,
         entries: [entry],
     });
-    return created;
+    return created[0] ?? null;
 }
 
 export async function deleteAddressBookEntries(ids: string[]): Promise<void> {

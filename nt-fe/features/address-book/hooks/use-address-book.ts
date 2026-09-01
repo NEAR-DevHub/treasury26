@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAddressBook } from "../api";
-import { useNear } from "@/stores/near-store";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useNear } from "@/stores/near-store";
+import { getAddressBook } from "../api";
 
 export function useAddressBook() {
     const { accountId } = useNear();

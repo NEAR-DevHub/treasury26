@@ -697,6 +697,7 @@ impl LegRow {
             actions: None,
             usd_value: self.usd_value.clone(),
             proposal_id: self.proposal_id,
+            quote_deposit_address: None,
         }
     }
 

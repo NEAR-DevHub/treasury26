@@ -251,7 +251,7 @@ export function SignIn() {
                             accountId={signedAccountId}
                             withLink={false}
                             size="md"
-                            truncatePrimaryAddress
+                            truncateAddress
                         />
                     </div>
                     <div className="flex md:hidden">

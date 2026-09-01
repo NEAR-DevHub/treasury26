@@ -1,4 +1,7 @@
-import { getNetworkDisplayName } from "@/components/token-display";
+import {
+    getNetworkDisplayName,
+    networksMatchAliased,
+} from "@/components/token-display";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import type { AggregatedAsset } from "@/hooks/use-assets";
@@ -60,15 +63,18 @@ export function matchNetworkPrefill(
     );
     if (byChainId) return byChainId;
 
-    const byExactName = networks.filter(
-        (network) => network.name.toLowerCase() === normalized,
+    // Same alias rules as warning scope (`arb`/`arbitrum`, `eth`/`ethereum`).
+    const byExactName = networks.filter((network) =>
+        networksMatchAliased(network.name, normalized),
     );
     if (byExactName.length === 1) return byExactName[0];
     if (byExactName.length > 1) return null;
 
-    const byIncludes = networks.filter((network) =>
-        network.name.toLowerCase().includes(normalized),
-    );
+    const byIncludes = networks.filter((network) => {
+        const canonical = network.name.toLowerCase();
+        const display = getNetworkDisplayName(network.name).toLowerCase();
+        return canonical.includes(normalized) || display.includes(normalized);
+    });
     if (byIncludes.length === 1) return byIncludes[0];
     return null;
 }
@@ -147,7 +153,7 @@ function buildOtherAsset(otherAssetName: string): SelectOption {
         networks: [
             {
                 id: "other:near",
-                name: "Near",
+                name: "NEAR",
                 symbol: "Other",
                 chainIcons: NEAR_CHAIN_ICONS,
                 chainId: "near:mainnet",
@@ -199,26 +205,36 @@ export function buildDepositAssetCatalog(params: {
     const otherAssets: SelectOption[] = [];
 
     for (const asset of bridgeAssets) {
-        const networks = asset.networks.map(toNetworkOption);
+        // Public deposits need Bridge/POA chain support; confidential uses 1Click.
+        const depositNetworks = isConfidential
+            ? asset.networks
+            : asset.networks.filter(
+                  (network) => network.publicDepositSupported !== false,
+              );
+        if (depositNetworks.length === 0) {
+            continue;
+        }
+        const networks = depositNetworks.map(toNetworkOption);
         newAssetNetworksMap.set(asset.id, networks);
         networkBalancesByAssetId.set(
             asset.id,
             buildNetworkBalanceMap(
                 asset.id,
-                asset.networks,
+                depositNetworks,
                 ownedTreasuryAssetsById,
             ),
         );
 
         const normalizedId = asset.id.toLowerCase();
         const ownedAsset = ownedTreasuryAssetsById.get(normalizedId);
+        // near.com / SelectModal: ticker (`symbol`) primary, full `name` secondary.
         const selectOption: SelectOption = {
             id: asset.id,
+            symbol: asset.symbol,
             name: asset.name,
-            symbol: asset.networks[0]?.symbol,
             icon: asset.icon,
             gradient: "bg-brand-blue",
-            networks: asset.networks,
+            networks: depositNetworks,
         };
 
         if (ownedAsset) {
@@ -405,11 +421,7 @@ export function resolvePrefillSelection(params: {
         };
     }
 
-    const availableNetworks = assetNetworksMap.get(targetAsset.id) || [];
-    const filteredNetworks = availableNetworks.map((n) => ({
-        ...n,
-        name: getNetworkDisplayName(n.name),
-    }));
+    const filteredNetworks = assetNetworksMap.get(targetAsset.id) || [];
     const selectedNetworkBalances =
         networkBalancesByAsset.get(targetAsset.id) || new Map();
 
@@ -419,7 +431,7 @@ export function resolvePrefillSelection(params: {
     let networkToSelect: SelectOption | null = networkFromTokenPrefill;
     if (prefillNetworkId) {
         networkToSelect =
-            matchNetworkPrefill(availableNetworks, prefillNetworkId) ??
+            matchNetworkPrefill(filteredNetworks, prefillNetworkId) ??
             networkFromTokenPrefill;
     }
 

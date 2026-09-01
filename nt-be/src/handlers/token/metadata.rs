@@ -113,13 +113,6 @@ impl TokenMetadata {
     }
 }
 
-const CHAINDEFUSER_TOKENS_URL: &str = "https://api-mng-console.chaindefuser.com/api/tokens";
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-struct ChaindefuserTokensResponse {
-    items: Vec<ChaindefuserToken>,
-}
-
 #[derive(Debug, Deserialize, Serialize, Clone)]
 struct ChaindefuserToken {
     defuse_asset_id: String,
@@ -158,41 +151,22 @@ struct NearBlocksToken {
 
 async fn fetch_chaindefuser_tokens(
     state: &Arc<AppState>,
-) -> Result<ChaindefuserTokensResponse, (StatusCode, String)> {
-    let cache_key = "chaindefuser:tokens".to_string();
-    let state_clone = state.clone();
-    state
-        .cache
-        .cached(CacheTier::LongTerm, cache_key, async move {
-            let response = state_clone
-                .http_client
-                .get(CHAINDEFUSER_TOKENS_URL)
-                .header("accept", "application/json")
-                .send()
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to fetch Chaindefuser tokens: {e}"),
-                    )
-                })?;
-            if !response.status().is_success() {
-                return Err((
-                    StatusCode::BAD_GATEWAY,
-                    format!("Chaindefuser tokens API error: {}", response.status()),
-                ));
-            }
-            response
-                .json::<ChaindefuserTokensResponse>()
-                .await
-                .map_err(|e| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        format!("Failed to parse Chaindefuser tokens response: {e}"),
-                    )
-                })
+) -> Result<Vec<ChaindefuserToken>, (StatusCode, String)> {
+    // Prefer 1Click `/v0/tokens` (same feed as price ingest); map into the
+    // historical ChaindefuserToken shape used by metadata enrichment.
+    let tokens = crate::services::oneclick_tokens::fetch_oneclick_tokens(state).await?;
+    Ok(tokens
+        .into_iter()
+        .map(|t| ChaindefuserToken {
+            defuse_asset_id: t.asset_id,
+            decimals: t.decimals.max(0) as u8,
+            blockchain: t.blockchain,
+            symbol: t.symbol,
+            price: t.price,
+            price_updated_at: t.price_updated_at.map(|ts| ts.to_rfc3339()),
+            contract_address: t.contract_address,
         })
-        .await
+        .collect())
 }
 
 /// Fetches FT metadata from NearBlocks API
@@ -452,7 +426,10 @@ fn build_metadata_lookup_candidates(token_id: &str) -> MetadataLookupCandidates 
     } else if stripped.eq_ignore_ascii_case("wrap.near") {
         push_unique(&mut all, "wrap.near".to_string());
         push_unique(&mut all, "nep141:wrap.near".to_string());
-    } else if stripped.starts_with("nep141:") || stripped.starts_with("nep245:") {
+    } else if stripped.starts_with("nep141:")
+        || stripped.starts_with("nep245:")
+        || stripped.starts_with("1cs_v1:")
+    {
         push_unique(&mut all, stripped.to_string());
     } else {
         push_unique(&mut all, format!("nep141:{stripped}"));
@@ -461,7 +438,10 @@ fn build_metadata_lookup_candidates(token_id: &str) -> MetadataLookupCandidates 
     let mut defuse = Vec::new();
     let mut contract = Vec::new();
     for candidate in &all {
-        if candidate.starts_with("nep141:") || candidate.starts_with("nep245:") {
+        if candidate.starts_with("nep141:")
+            || candidate.starts_with("nep245:")
+            || candidate.starts_with("1cs_v1:")
+        {
             push_unique(&mut defuse, candidate.clone());
         }
         if let Some(rest) = candidate.strip_prefix("nep141:") {
@@ -490,7 +470,10 @@ fn apply_unified_display_override(meta: &mut TokenMetadata) {
         .token_id
         .strip_prefix("intents.near:")
         .unwrap_or(meta.token_id.as_str());
-    let with_nep141 = if stripped.starts_with("nep141:") || stripped.starts_with("nep245:") {
+    let with_nep141 = if stripped.starts_with("nep141:")
+        || stripped.starts_with("nep245:")
+        || stripped.starts_with("1cs_v1:")
+    {
         stripped.to_string()
     } else {
         format!("nep141:{stripped}")
@@ -711,7 +694,7 @@ pub async fn fetch_tokens_with_fallback(
             }
         };
         if let Some(response) = chaindefuser_response {
-            for item in response.items {
+            for item in response {
                 chaindefuser_by_defuse.insert(item.defuse_asset_id.to_lowercase(), item.clone());
                 if let Some(contract_address) = item.contract_address.clone() {
                     chaindefuser_by_contract.insert(contract_address.to_lowercase(), item);

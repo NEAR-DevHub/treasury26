@@ -1,11 +1,15 @@
 //! Services module for external integrations and business logic
 
 pub mod coingecko;
+pub mod confidential_credentials;
 pub mod dao_sync;
 pub mod defillama;
 pub mod ft_lockup_scheduler;
 pub mod goldsky_cursor;
 pub mod monitored_accounts;
+pub mod nearcom_catalog_watch;
+pub mod oneclick_asset_routing;
+pub mod oneclick_tokens;
 pub mod platform_metrics;
 pub mod price_lookup;
 pub mod price_provider;
@@ -18,6 +22,9 @@ pub mod token_prices;
 pub mod usd_value_backfill;
 
 pub use coingecko::CoinGeckoClient;
+pub use confidential_credentials::{
+    ConfidentialCredentialStore, CredentialScope, TokenBundle, TokenKeyring,
+};
 pub use dao_sync::{
     mark_dao_dirty, process_dirty_daos, process_stale_daos, register_new_dao,
     register_new_dao_and_wait, sync_dao_list,

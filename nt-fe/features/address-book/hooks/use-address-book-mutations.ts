@@ -41,6 +41,11 @@ export function useCreateAddressBookEntries(daoId: string | null | undefined) {
         mutationFn: (input: CreateAddressBookEntriesInput) =>
             createAddressBookEntries(input),
         onSuccess: async (created) => {
+            if (created.length === 0) {
+                toast.info(t("alreadyExistsToast"));
+                return;
+            }
+
             toast.success(t("addedToast", { count: created.length }));
             await Promise.all([
                 queryClient.invalidateQueries({
@@ -72,6 +77,11 @@ export function useCreateAddressBookEntry(daoId: string | null | undefined) {
             entry: AddressBookEntryInput;
         }) => createAddressBookEntry(inputDaoId, entry),
         onSuccess: async (created) => {
+            if (!created) {
+                toast.info(t("alreadyExistsToast"));
+                return;
+            }
+
             toast.success(t("addedSingleToast"));
             await Promise.all([
                 queryClient.invalidateQueries({

@@ -24,7 +24,7 @@ export function MembersExpanded({ data }: { data: MembersData }) {
         },
         {
             label: t("member"),
-            value: <User accountId={data.memberId} />,
+            value: <User accountId={data.memberId} preferAddressBook />,
         },
         {
             label: t("role"),
@@ -53,7 +53,7 @@ export function UpgradeExpanded({ data }: { data: UpgradeData }) {
         if (data.receiverId) {
             items.push({
                 label: t("receiverId"),
-                value: <User accountId={data.receiverId} />,
+                value: <User accountId={data.receiverId} preferAddressBook />,
             });
         }
         if (data.methodName) {
@@ -77,7 +77,7 @@ export function SetStakingContractExpanded({
     const items: InfoItem[] = [
         {
             label: t("stakingContract"),
-            value: <User accountId={data.stakingId} />,
+            value: <User accountId={data.stakingId} preferAddressBook />,
         },
     ];
 
@@ -143,7 +143,7 @@ export function BountyExpanded({ data }: { data: BountyData }) {
         if (data.receiverId) {
             items.push({
                 label: t("recipient"),
-                value: <User accountId={data.receiverId} />,
+                value: <User accountId={data.receiverId} preferAddressBook />,
             });
         }
     }
@@ -174,7 +174,7 @@ export function FactoryInfoUpdateExpanded({
     const items: InfoItem[] = [
         {
             label: t("factoryId"),
-            value: <User accountId={data.factoryId} />,
+            value: <User accountId={data.factoryId} preferAddressBook />,
         },
         {
             label: t("autoUpdate"),

@@ -1,10 +1,6 @@
 import Big from "@/lib/big";
 import { isNearChainFtToken, isNearChainNativeToken } from "@/lib/intents-fee";
-import {
-    NEAR_NETWORK_ID,
-    NEP141_WRAP_NEAR_ASSET_ID,
-    WRAP_NEAR_TOKEN_ID,
-} from "@/constants/network-ids";
+import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 
 /**
  * Checks if a token is native NEAR
@@ -72,18 +68,6 @@ export function isNEARWrapConversion(
         isNEARDeposit(sellToken, receiveToken) ||
         isNEARWithdraw(sellToken, receiveToken)
     );
-}
-
-/**
- * Formats an asset address for the 1Click Intents API
- * Native NEAR uses "wrap.near", other tokens use their address as-is
- */
-export function formatAssetForIntentsAPI(tokenAddress: string): string {
-    return tokenAddress.startsWith("nep")
-        ? tokenAddress
-        : tokenAddress === NEAR_NETWORK_ID
-          ? NEP141_WRAP_NEAR_ASSET_ID
-          : `nep141:${tokenAddress}`;
 }
 
 /**

@@ -12,11 +12,14 @@ use super::models::{
 const REBASE_INTRA_BLOCK_SEQ: i32 = 1_000_000;
 
 /// Accounts whose gold projection is ready but whose ledger has not passed
-/// on-chain verification. Failed accounts retry after the cool-off so a
-/// broken account cannot monopolize RPC.
+/// on-chain verification. Failed accounts retry after the cool-off — or as
+/// soon as their silver ledger was rebuilt after the failed check (new
+/// evidence), floored at a minimum interval so a busy account cannot burn
+/// RPC on every ledger write.
 pub async fn load_gate_candidates(
     pool: &PgPool,
     failed_retry_after_hours: i64,
+    failed_retry_min_minutes: i64,
 ) -> Result<Vec<String>, sqlx::Error> {
     sqlx::query_scalar(
         r#"
@@ -28,6 +31,8 @@ pub async fn load_gate_candidates(
          AND COALESCE(monitored.is_confidential_account, false) = false
         LEFT JOIN public_balance_verification_cursors verification
           ON verification.account_id = gold_cursor.account_id
+        LEFT JOIN silver_public_history_cursors silver
+          ON silver.account_id = gold_cursor.account_id
         WHERE gold_cursor.projection_ready_at IS NOT NULL
           AND (
               verification.account_id IS NULL
@@ -35,13 +40,19 @@ pub async fn load_gate_candidates(
               OR (
                   verification.status = 'failed'
                   AND verification.updated_at
-                        < NOW() - make_interval(hours => $1::integer)
+                        < NOW() - make_interval(mins => $2::integer)
+                  AND (
+                      verification.updated_at
+                            < NOW() - make_interval(hours => $1::integer)
+                      OR silver.updated_at > verification.updated_at
+                  )
               )
           )
         ORDER BY gold_cursor.account_id
         "#,
     )
     .bind(failed_retry_after_hours as i32)
+    .bind(failed_retry_min_minutes as i32)
     .fetch_all(pool)
     .await
 }
@@ -105,35 +116,145 @@ pub async fn load_watermark(
 
 /// One row per asset: the ledger head balance plus the running-minimum
 /// invariant, in a single scan.
+const LOAD_ASSET_LEDGER_HEADS_SQL: &str = r#"
+        WITH cap AS (
+            -- MAX, not MIN: clamp_account_to_head writes all 3 source
+            -- cursors atomically with the identical value, but nothing in
+            -- the schema enforces that. This asset is native, sourced
+            -- exclusively from nearblocks_receipt — MAX(all 3 sources'
+            -- caps) is guaranteed >= the receipt source's own cap, so it
+            -- can never admit receipt data that's still pre-cap. MIN would
+            -- do exactly that whenever receipt isn't the lowest of the
+            -- three — the unsafe direction, not the safe one.
+            SELECT MAX(capped_at_block_height) AS capped_at_block_height
+            FROM bronze_public_history_cursors
+            WHERE account_id = $1 AND backfill_capped = true
+        ),
+        ledger AS (
+            SELECT silver_balance_history.*
+            FROM silver_balance_history, cap
+            WHERE account_id = $1
+              -- Verification is native-NEAR only. Staking series ARE
+              -- authoritative RPC readings (observations), and FT/MT balances
+              -- can accrue without transfer events (venear.dao vote-escrow), so
+              -- an exact-drift chain check would fail ledgers that are correct.
+              AND token_standard = 'native'::public_token_standard
+              AND asset NOT LIKE 'staking:%'
+              -- A capped account's pre-clamp rows are unreconciled history
+              -- kept for display only; an old negative dip from before the
+              -- clamp must never sink the running-minimum invariant below.
+              AND block_height >= COALESCE(cap.capped_at_block_height, block_height)
+        ),
+        anchors AS (
+            SELECT asset, MAX(block_height) AS anchor_block
+            FROM ledger
+            WHERE entry_kind = 'reconciliation'
+            GROUP BY asset
+        ),
+        -- Single scalar derived from `anchors` (already computed) instead of
+        -- each of the two CTEs below re-deriving the same
+        -- MAX(block_height WHERE entry_kind = 'reconciliation') via its own
+        -- correlated subquery over `ledger` — same value, one scan instead
+        -- of three. Native-only verification means at most one asset here,
+        -- so collapsing per-asset anchors to a single scalar loses nothing.
+        recon_anchor AS (
+            SELECT COALESCE(MAX(anchor_block), -1) AS anchor_block
+            FROM anchors
+        ),
+        -- Gas rebates accrue per successful inbound receipt regardless of
+        -- whether it moves value — most don't, so counting ledger entries
+        -- (movements only) systematically under-budgets busy accounts. The
+        -- receipt itself, not its projection into the ledger, is the true
+        -- unit of gas-dust cost; ledger is already native-only and filtered
+        -- to this account, so the anchor window comes from it directly.
+        receipt_counts AS (
+            SELECT COUNT(DISTINCT bronze.receipt_id) AS inbound_receipt_count
+            FROM bronze_public_history_events bronze, cap, recon_anchor
+            WHERE bronze.account_id = $1
+              AND bronze.source = 'nearblocks_receipt'::public_history_source
+              AND bronze.affected_account_id = $1
+              AND bronze.outcome_status = true
+              -- Unlike ledger, this reads bronze directly, so a capped
+              -- account's pre-cap receipts need their own floor here — an
+              -- unbounded pre-cap history would otherwise inflate the count
+              -- into a gas-dust budget large enough to hide real post-cap
+              -- drift.
+              AND bronze.block_height >= COALESCE(cap.capped_at_block_height, bronze.block_height)
+              AND bronze.block_height > recon_anchor.anchor_block
+        ),
+        -- How much user-tagged spend the builder's clamp (assign_running_
+        -- balances) has redirected to sponsor-funded since the anchor —
+        -- the observable trace of a would-be negative user balance, not a
+        -- failure signal in itself. `is_sponsor_clamp` is the persisted
+        -- flag the builder stamps on that exact piece — not a pattern match
+        -- against entry_key, whose ':sponsor-clamp' suffix exists only to
+        -- keep it unique against its sibling piece.
+        sponsor_absorbed AS (
+            SELECT COALESCE(-SUM(delta), 0) AS sponsor_absorbed
+            FROM ledger, recon_anchor
+            WHERE ledger.is_sponsor_clamp
+              AND ledger.block_height > recon_anchor.anchor_block
+        )
+        SELECT DISTINCT ON (ledger.asset)
+            ledger.asset,
+            token_standard::text AS token_standard,
+            balance_after,
+            -- Scoped to after the reconciliation anchor, same as event_count
+            -- and sponsor_absorbed below: an old negative dip a rebase has
+            -- already accounted for must not keep failing the account
+            -- forever. Unanchored accounts fall back to the full history
+            -- (COALESCE(anchors.anchor_block, -1) — no real block height is
+            -- <= -1), matching pre-anchor behavior exactly. The outer
+            -- COALESCE covers the anchor-is-the-latest-row case, where the
+            -- FILTER matches nothing and the window MIN is NULL — the row's
+            -- own balance_after (the only/latest point, at or before the
+            -- anchor) is the correct minimum in that case.
+            COALESCE(
+                MIN(balance_after) FILTER (
+                    WHERE ledger.block_height > COALESCE(anchors.anchor_block, -1)
+                ) OVER (PARTITION BY ledger.asset),
+                balance_after
+            ) AS min_balance_after,
+            user_balance_after,
+            COALESCE(
+                MIN(user_balance_after) FILTER (
+                    WHERE ledger.block_height > COALESCE(anchors.anchor_block, -1)
+                ) OVER (PARTITION BY ledger.asset),
+                user_balance_after
+            ) AS min_user_balance_after,
+            block_height AS head_block_height,
+            decimals,
+            receipt_counts.inbound_receipt_count AS event_count,
+            anchors.anchor_block IS NOT NULL AS has_anchor,
+            sponsor_absorbed.sponsor_absorbed
+        FROM ledger
+        LEFT JOIN anchors ON anchors.asset = ledger.asset
+        CROSS JOIN receipt_counts
+        CROSS JOIN sponsor_absorbed
+        ORDER BY ledger.asset, block_time DESC, block_height DESC, intra_block_seq DESC
+"#;
+
 pub async fn load_asset_ledger_heads(
     pool: &PgPool,
     account_id: &str,
 ) -> Result<Vec<AssetLedgerHead>, sqlx::Error> {
-    sqlx::query_as::<_, AssetLedgerHead>(
-        r#"
-        SELECT DISTINCT ON (asset)
-            asset,
-            token_standard::text AS token_standard,
-            balance_after,
-            MIN(balance_after) OVER (PARTITION BY asset) AS min_balance_after,
-            user_balance_after,
-            MIN(user_balance_after) OVER (PARTITION BY asset) AS min_user_balance_after,
-            block_height AS head_block_height,
-            decimals
-        FROM silver_balance_history
-        WHERE account_id = $1
-          -- Verification is native-NEAR only. Staking series ARE
-          -- authoritative RPC readings (observations), and FT/MT balances
-          -- can accrue without transfer events (venear.dao vote-escrow), so
-          -- an exact-drift chain check would fail ledgers that are correct.
-          AND token_standard = 'native'::public_token_standard
-          AND asset NOT LIKE 'staking:%'
-        ORDER BY asset, block_time DESC, block_height DESC, intra_block_seq DESC
-        "#,
-    )
-    .bind(account_id)
-    .fetch_all(pool)
-    .await
+    sqlx::query_as::<_, AssetLedgerHead>(LOAD_ASSET_LEDGER_HEADS_SQL)
+        .bind(account_id)
+        .fetch_all(pool)
+        .await
+}
+
+/// Same query, inside an open transaction — for re-reading ledger heads
+/// after a write earlier in the same transaction (e.g. a just-inserted
+/// reconciliation anchor) that a separate pool connection wouldn't see yet.
+pub async fn load_asset_ledger_heads_tx(
+    tx: &mut Transaction<'_, Postgres>,
+    account_id: &str,
+) -> Result<Vec<AssetLedgerHead>, sqlx::Error> {
+    sqlx::query_as::<_, AssetLedgerHead>(LOAD_ASSET_LEDGER_HEADS_SQL)
+        .bind(account_id)
+        .fetch_all(&mut **tx)
+        .await
 }
 
 pub async fn record_check_results(
@@ -148,9 +269,10 @@ pub async fn record_check_results(
             r#"
             INSERT INTO public_balance_verification_results (
                 account_id, asset, check_kind, block_height,
-                ledger_balance, chain_balance, drift, min_running_balance, passed
+                ledger_balance, chain_balance, drift, min_running_balance,
+                min_user_running_balance, sponsor_absorbed, passed
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             "#,
         )
         .bind(account_id)
@@ -161,6 +283,8 @@ pub async fn record_check_results(
         .bind(&outcome.chain_balance)
         .bind(&outcome.drift)
         .bind(&outcome.min_running_balance)
+        .bind(&outcome.min_user_running_balance)
+        .bind(&outcome.sponsor_absorbed)
         .bind(outcome.passed)
         .execute(&mut **tx)
         .await?;
@@ -229,6 +353,17 @@ pub async fn set_head_check_result(
 /// the observed on-chain balance at the watermark block. The next silver
 /// recompute seeds from it; a full recompute drops it and the verifier simply
 /// re-derives the (bounded) drift.
+///
+/// `block_time` is stamped `NOW()`, not the watermark block's own on-chain
+/// timestamp — pre-existing on this function, shared by both callers
+/// (`rebase_within_tolerance`'s regular drift-absorption pass and
+/// `verify_account_gate`'s history-only bootstrap). `load_asset_ledger_heads`
+/// orders `DISTINCT ON` by `block_time DESC` first, so this is only safe
+/// because `NOW()` is called after live RPC confirms `block_height` is the
+/// account's current head — nothing at a higher block_height can exist yet
+/// to be mis-ordered against. A future caller that reconciles at a block
+/// height that ISN'T the confirmed current head would not have that
+/// guarantee and should not reuse this function as-is.
 #[allow(clippy::too_many_arguments)]
 pub async fn insert_rebase_entry(
     tx: &mut Transaction<'_, Postgres>,

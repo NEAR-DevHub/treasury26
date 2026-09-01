@@ -31,6 +31,8 @@ services:
         value: 300
       - key: JWT_SECRET
         sync: false
+      - key: CONFIDENTIAL_TOKEN_KEYRING_JSON
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: near-business-db
@@ -59,6 +61,8 @@ services:
       - business.near.com
     envVars:
       - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SENTRY_ENVIRONMENT
         value: production
       - key: MAXMIND_LICENSE_KEY
         sync: false
@@ -119,6 +123,8 @@ services:
         value: 300
       - key: JWT_SECRET
         sync: false
+      - key: CONFIDENTIAL_TOKEN_KEYRING_JSON
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: near-business-db-staging
@@ -146,6 +152,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_SENTRY_ENVIRONMENT
+        value: staging-redesign
       - key: MAXMIND_LICENSE_KEY
         sync: false
       - key: NEXT_PUBLIC_BACKEND_API_BASE

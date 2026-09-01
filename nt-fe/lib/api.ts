@@ -1,8 +1,8 @@
-import { Policy } from "@/types/policy";
-import axios from "axios";
-import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { Balance, BalanceRaw, transformBalance } from "./balance";
+import Big from "@/lib/big";
+import { http as axios } from "@/lib/http";
+import type { Policy } from "@/types/policy";
+import { type Balance, type BalanceRaw, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -146,55 +146,80 @@ export async function getTreasuryAssets(
             withCredentials: true,
         });
 
-        // Transform raw tokens with USD values
-        const tokensWithUSD = response.data.map((token) => {
-            const { balance, total } = transformBalance(token.balance);
-            const price = parseFloat(token.price);
-            const totalDecimalAdjusted = total.div(Big(10).pow(token.decimals));
-            const balanceUSD = totalDecimalAdjusted.mul(price).toNumber();
-
-            return {
-                id: token.id,
-                contractId: token.contractId,
-                lockupInstanceId: token.lockupInstanceId,
-                ftLockupSchedule: token.ftLockupSchedule,
-                residency: token.residency,
-                network: token.network,
-                symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
-                decimals: token.decimals,
-                balance,
-                chainName: token.chainName,
-                chainIcons: token.chainIcons,
-                balanceUSD,
-                price,
-                name: token.name,
-                icon: token.icon,
-                weight: 0,
-            };
-        });
-
-        // Calculate total USD value
-        const totalUSD = tokensWithUSD.reduce(
-            (sum, token) => sum.add(token.balanceUSD),
-            Big(0),
-        );
-
-        // Calculate weights
-        const tokens: TreasuryAsset[] = tokensWithUSD.map((token) => ({
-            ...token,
-            weight: totalUSD.gt(0)
-                ? Big(token.balanceUSD).div(totalUSD).mul(100).toNumber()
-                : 0,
-        }));
-
-        return {
-            tokens,
-            totalBalanceUSD: totalUSD,
-        };
+        return transformTreasuryAssets(response.data);
     } catch (error) {
         console.error("Error getting whitelist tokens", error);
         return { tokens: [], totalBalanceUSD: Big(0) };
     }
+}
+
+/**
+ * Liquid public balances (NEAR / NEP-141 on the DAO account + public intents)
+ * of a confidential treasury — funds that landed outside the confidential
+ * balance. Member-only; the backend rejects public treasuries.
+ */
+export async function getConfidentialPublicAssets(
+    treasuryId: string,
+): Promise<TreasuryAssets> {
+    if (!treasuryId) return { tokens: [], totalBalanceUSD: Big(0) };
+
+    const url = `${BACKEND_API_BASE}/confidential/public-assets`;
+    const response = await axios.get<TreasuryAssetRaw[]>(url, {
+        params: { accountId: treasuryId },
+        withCredentials: true,
+    });
+
+    return transformTreasuryAssets(response.data);
+}
+
+/** Raw backend tokens → USD-valued, weighted `TreasuryAssets`. */
+export function transformTreasuryAssets(
+    rawTokens: TreasuryAssetRaw[],
+): TreasuryAssets {
+    const tokensWithUSD = rawTokens.map((token) => {
+        const { balance, total } = transformBalance(token.balance);
+        const price = parseFloat(token.price);
+        const totalDecimalAdjusted = total.div(Big(10).pow(token.decimals));
+        const balanceUSD = totalDecimalAdjusted.mul(price).toNumber();
+
+        return {
+            id: token.id,
+            contractId: token.contractId,
+            lockupInstanceId: token.lockupInstanceId,
+            ftLockupSchedule: token.ftLockupSchedule,
+            residency: token.residency,
+            network: token.network,
+            symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
+            decimals: token.decimals,
+            balance,
+            chainName: token.chainName,
+            chainIcons: token.chainIcons,
+            balanceUSD,
+            price,
+            name: token.name,
+            icon: token.icon,
+            weight: 0,
+        };
+    });
+
+    // Calculate total USD value
+    const totalUSD = tokensWithUSD.reduce(
+        (sum, token) => sum.add(token.balanceUSD),
+        Big(0),
+    );
+
+    // Calculate weights
+    const tokens: TreasuryAsset[] = tokensWithUSD.map((token) => ({
+        ...token,
+        weight: totalUSD.gt(0)
+            ? Big(token.balanceUSD).div(totalUSD).mul(100).toNumber()
+            : 0,
+    }));
+
+    return {
+        tokens,
+        totalBalanceUSD: totalUSD,
+    };
 }
 
 export interface BalanceSnapshot {
@@ -304,6 +329,8 @@ export interface RecentActivity {
     receiptIds: string[];
     valueUsd?: number;
     proposalId?: number | null;
+    /** 1Click deposit address of the linked quote proposal; marks the row as intents-routed. */
+    quoteDepositAddress?: string | null;
     swap?: SwapInfo;
     actionKind?: string | null;
     methodName?: string | null;
@@ -663,6 +690,7 @@ export async function getTokenMetadata(
     const noPrefixNoNear =
         !token.startsWith("nep141:") &&
         !token.startsWith("nep245:") &&
+        !token.startsWith("1cs_v1:") &&
         token.toLowerCase() !== NEAR_NETWORK_ID;
 
     if (noPrefixNoNear && token.split(":").length === 2) {
@@ -978,6 +1006,8 @@ export async function createTreasuryStream(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
+        // Send the auth cookie: the backend requires a signed-in member.
+        credentials: "include",
     });
 
     if (!response.ok) {

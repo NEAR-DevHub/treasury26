@@ -1148,7 +1148,7 @@
         "review": {
             "header": "Revisar detalhes",
             "youAreAdding": "Você está adicionando",
-            "newRecipients": "{count, plural, one {# novo destinatário} other {# novos destinatários}}",
+            "newRecipients": "{count, plural, =0 {Nenhum destinatário novo} one {# novo destinatário} other {# novos destinatários}}",
             "onNetworks": "em {count, plural, one {# rede} other {# redes}}",
             "recipients": "Destinatários",
             "allDuplicates": "Todos os destinatários importados já existem no seu catálogo de endereços. Volte para enviar uma lista diferente ou remova duplicatas desta revisão.",
@@ -1878,6 +1878,7 @@
         "Batch Payment Request": "Solicitação de pagamento em lote",
         "Payment Request": "Solicitação de pagamento",
         "Confidential Request": "Solicitação confidencial",
+        "Move to Confidential": "Mover para Confidencial",
         "Exchange": "Troca",
         "Function Call": "Chamada de função",
         "Change Policy": "Alterar política",
@@ -1916,7 +1917,8 @@
         "comingSoon": "Em breve",
         "forMembersOnly": "Apenas para membros",
         "nearComDescription": "Rede para trezu confidencial",
-        "nearDescription": "Rede para saque público e carteira near.com"
+        "nearComDescriptionPublic": "Rede para near.com",
+        "nearDescription": "Rede para saque público"
     },
     "addressBookTable": {
         "emptyTitle": "Nenhum destinatário ainda",
@@ -2205,6 +2207,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Destinatário adicionado} other {# destinatários adicionados}}",
+        "alreadyExistsToast": "O destinatário já está no seu livro de endereços",
         "addedSingleToast": "Destinatário adicionado",
         "addFailedToast": "Falha ao adicionar destinatários",
         "addSingleFailedToast": "Falha ao adicionar destinatário",
@@ -2663,5 +2666,40 @@
         "signInRequired": "Conecte sua carteira para gerenciar sua conta.",
         "avatarUploaded": "Avatar enviado com sucesso",
         "uploadError": "Erro ao enviar a imagem. Tente novamente."
+    },
+    "moveAssets": {
+        "title": "Mover ativos",
+        "description": "Mova ativos da cadeia pública para a sua tesouraria confidencial.",
+        "submitted": "Pedido de movimentação enviado",
+        "banner": {
+            "title": "<amount></amount> chegaram ao seu saldo público",
+            "description": "Alguém enviou pela rede errada. Mova para cá para torná-los confidenciais.",
+            "moveAssets": "Mover ativos",
+            "viewRequest": "Ver solicitação"
+        },
+        "list": {
+            "title": "Fundos que precisam ser movidos",
+            "token": "Token",
+            "moveAssets": "Mover ativos",
+            "emptyTitle": "Nada para mover",
+            "emptyDescription": "Seu saldo público está vazio. Fundos enviados à conta pública aparecerão aqui.",
+            "viewRequest": "Ver solicitação"
+        },
+        "form": {
+            "title": "Para Confidencial",
+            "review": "Revisar movimentação",
+            "reviewDisabled": "Insira o valor"
+        },
+        "review": {
+            "title": "Revise sua movimentação",
+            "youMove": "Você move"
+        },
+        "errors": {
+            "invalid": "Insira um valor válido",
+            "zero": "O valor deve ser maior que zero",
+            "tooManyDecimals": "Casas decimais demais para este token",
+            "exceedsBalance": "O valor excede o saldo público",
+            "failed": "Não foi possível preparar o pedido de movimentação. Tente novamente."
+        }
     }
 }

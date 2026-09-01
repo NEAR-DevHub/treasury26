@@ -131,6 +131,10 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
             get(handlers::balance_changes::history::get_balance_chart),
         )
         .route(
+            "/api/confidential/public-assets",
+            get(handlers::user::assets::get_confidential_public_assets),
+        )
+        .route(
             "/api/confidential/balance-chart",
             get(handlers::intents::confidential::gold::snapshots::get_confidential_balance_chart),
         )
@@ -315,6 +319,14 @@ pub fn create_routes(state: Arc<AppState>) -> Router {
         .route(
             "/api/intents/confidential/deposit-address/status",
             get(handlers::intents::deposit_address::get_confidential_deposit_address_status),
+        )
+        .route(
+            "/api/intents/deposit-tokens",
+            get(handlers::intents::bridge_tokens::get_deposit_tokens),
+        )
+        .route(
+            "/api/intents/swap-tokens",
+            get(handlers::intents::bridge_tokens::get_swap_tokens),
         )
         .route(
             "/api/intents/bridge-tokens",

@@ -1148,7 +1148,7 @@
         "review": {
             "header": "Vérifier les détails",
             "youAreAdding": "Vous ajoutez",
-            "newRecipients": "{count, plural, one {# nouveau destinataire} other {# nouveaux destinataires}}",
+            "newRecipients": "{count, plural, =0 {Aucun nouveau destinataire} one {# nouveau destinataire} other {# nouveaux destinataires}}",
             "onNetworks": "sur {count, plural, one {# réseau} other {# réseaux}}",
             "recipients": "Destinataires",
             "allDuplicates": "Tous les destinataires importés existent déjà dans votre carnet d'adresses. Revenez en arrière pour télécharger une autre liste ou supprimez les doublons de cette vérification.",
@@ -1878,6 +1878,7 @@
         "Batch Payment Request": "Demande de paiement groupé",
         "Payment Request": "Demande de paiement",
         "Confidential Request": "Demande confidentielle",
+        "Move to Confidential": "Déplacer vers Confidentiel",
         "Exchange": "Échange",
         "Function Call": "Appel de fonction",
         "Change Policy": "Modification de politique",
@@ -1916,7 +1917,8 @@
         "comingSoon": "Bientôt disponible",
         "forMembersOnly": "Réservé aux membres",
         "nearComDescription": "Réseau pour trezu confidentiel",
-        "nearDescription": "Réseau pour retrait public et portefeuille near.com"
+        "nearComDescriptionPublic": "Réseau pour near.com",
+        "nearDescription": "Réseau pour retrait public"
     },
     "addressBookTable": {
         "emptyTitle": "Aucun destinataire pour l'instant",
@@ -2205,6 +2207,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Destinataire ajouté} other {# destinataires ajoutés}}",
+        "alreadyExistsToast": "Le destinataire est déjà dans votre carnet d'adresses",
         "addedSingleToast": "Destinataire ajouté",
         "addFailedToast": "Échec de l'ajout des destinataires",
         "addSingleFailedToast": "Échec de l'ajout du destinataire",
@@ -2663,5 +2666,40 @@
         "signInRequired": "Connectez votre portefeuille pour gérer votre compte.",
         "avatarUploaded": "Avatar téléversé avec succès",
         "uploadError": "Erreur lors du téléversement de l'image. Réessayez."
+    },
+    "moveAssets": {
+        "title": "Déplacer les actifs",
+        "description": "Déplacez des actifs de la chaîne publique vers votre trésorerie confidentielle.",
+        "submitted": "Demande de déplacement envoyée",
+        "banner": {
+            "title": "<amount></amount> sont arrivés sur votre solde public",
+            "description": "Quelqu'un les a envoyés sur le mauvais réseau. Déplacez-les ici pour les rendre confidentiels.",
+            "moveAssets": "Déplacer les actifs",
+            "viewRequest": "Voir la demande"
+        },
+        "list": {
+            "title": "Fonds à déplacer",
+            "token": "Jeton",
+            "moveAssets": "Déplacer les actifs",
+            "emptyTitle": "Rien à déplacer",
+            "emptyDescription": "Votre solde public est vide. Les fonds envoyés au compte public apparaîtront ici.",
+            "viewRequest": "Voir la demande"
+        },
+        "form": {
+            "title": "Vers Confidentiel",
+            "review": "Vérifier le déplacement",
+            "reviewDisabled": "Saisissez un montant"
+        },
+        "review": {
+            "title": "Vérifiez votre déplacement",
+            "youMove": "Vous déplacez"
+        },
+        "errors": {
+            "invalid": "Saisissez un montant valide",
+            "zero": "Le montant doit être supérieur à zéro",
+            "tooManyDecimals": "Trop de décimales pour ce jeton",
+            "exceedsBalance": "Le montant dépasse le solde public",
+            "failed": "Impossible de préparer la demande de déplacement. Veuillez réessayer."
+        }
     }
 }

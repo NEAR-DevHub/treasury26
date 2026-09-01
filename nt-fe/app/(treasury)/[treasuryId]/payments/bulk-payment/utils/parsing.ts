@@ -21,7 +21,12 @@ import {
 } from "@/lib/intents-fee";
 import type { BulkPaymentData } from "../schemas";
 import Big from "@/lib/big";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
+import {
+    formatRecipientForNearComDestination,
+    parseNearComAddress,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 
 export { parseCsv };
 
@@ -279,20 +284,47 @@ function validateRecipientAddress(
         | "invalidNearAddress"
         | "invalidChainAddress"
     >,
+    destinationNetworkId?: string,
 ): string | null {
     if (!address || address.trim() === "") {
         return labels.missingRecipientFirstColumn;
     }
 
-    // For NEAR blockchain, use NEAR-specific validation
-    if (blockchainType === NEAR_NETWORK_ID) {
-        if (!isValidNearAddressFormat(address)) {
+    const { hasPrefix, accountId } = parseNearComAddress(address);
+    const toNearCom =
+        destinationNetworkId?.trim().toLowerCase() === NEAR_COM_NETWORK_ID;
+
+    // Confidential near.com destination: require nearcom:<validNear>.
+    if (toNearCom) {
+        if (!hasPrefix || !isValidNearAddressFormat(accountId)) {
             return labels.invalidNearAddress(address);
         }
         return null;
     }
 
-    const result = validateAddress(address, blockchainType as any);
+    // Public (and other destinations): nearcom: is display/routing only.
+    // Strip for format checks — same as single public payment.
+    if (hasPrefix) {
+        if (
+            blockchainType === NEAR_NETWORK_ID &&
+            isValidNearAddressFormat(accountId)
+        ) {
+            return null;
+        }
+        return labels.invalidChainAddress(
+            address,
+            getBlockchainDisplayName(blockchainType as BlockchainType),
+        );
+    }
+
+    if (blockchainType === NEAR_NETWORK_ID) {
+        if (!isValidNearAddressFormat(accountId)) {
+            return labels.invalidNearAddress(address);
+        }
+        return null;
+    }
+
+    const result = validateAddress(accountId, blockchainType as any);
     if (result.error) {
         return labels.invalidChainAddress(
             address,
@@ -313,6 +345,8 @@ export function parsePaymentData(
     labels: BulkParsingLabels,
     blockchain: string = NEAR_NETWORK_ID,
     expectedTokenSymbol?: string,
+    /** When `near.com`, store recipients with a nearcom: display prefix. */
+    destinationNetworkId?: string,
 ): {
     payments: BulkPaymentData[];
     errors: Array<{ row: number; message: string }>;
@@ -455,6 +489,7 @@ export function parsePaymentData(
             recipient,
             blockchain,
             labels,
+            destinationNetworkId,
         );
         if (validationError) {
             errors.push({
@@ -464,9 +499,21 @@ export function parsePaymentData(
             continue;
         }
 
+        // near.com destination (confidential) or a typed nearcom: recipient
+        // (public): keep the prefix for FE display; strip for quote/backend.
+        const { hasPrefix } = parseNearComAddress(recipient);
+        const storedRecipient =
+            destinationNetworkId?.trim().toLowerCase() ===
+                NEAR_COM_NETWORK_ID || hasPrefix
+                ? formatRecipientForNearComDestination(
+                      recipient,
+                      NEAR_COM_NETWORK_ID,
+                  )
+                : stripNearComAddressPrefix(recipient);
+
         payments.push({
             row: actualRowNumber,
-            recipient,
+            recipient: storedRecipient,
             amount: parsedAmountStr, // Store as string to preserve precision
             validationError: validationError || undefined,
         });
@@ -528,6 +575,7 @@ function parseAndValidateData(
     labels: BulkParsingLabels,
     blockchain: string = NEAR_NETWORK_ID,
     expectedTokenSymbol?: string,
+    destinationNetworkId?: string,
 ): {
     payments: BulkPaymentData[];
     errors: Array<{ row: number; message: string }>;
@@ -576,6 +624,7 @@ function parseAndValidateData(
             labels,
             blockchain,
             expectedTokenSymbol,
+            destinationNetworkId,
         );
     } catch (error) {
         const errorMsg =
@@ -598,12 +647,14 @@ function parseAndValidateData(
  * `destinationNetwork` overrides the token's own network for address
  * validation — used by confidential bulk where the recipient chain is
  * decoupled from the source token's residency.
+ * `destinationNetworkId` of `near.com` stores recipients with a nearcom: prefix.
  */
 export function parseAndValidateCsv(
     csvData: string,
     labels: BulkParsingLabels,
     selectedToken?: { symbol?: string; network?: string; residency?: string },
     destinationNetwork?: string,
+    destinationNetworkId?: string,
 ): {
     payments: BulkPaymentData[];
     errors: Array<{ row: number; message: string }>;
@@ -619,6 +670,7 @@ export function parseAndValidateCsv(
         labels,
         blockchain,
         tokenSymbol,
+        destinationNetworkId,
     );
 }
 
@@ -630,6 +682,7 @@ export function parseAndValidatePasteData(
     labels: BulkParsingLabels,
     selectedToken?: { symbol?: string; network?: string; residency?: string },
     destinationNetwork?: string,
+    destinationNetworkId?: string,
 ): {
     payments: BulkPaymentData[];
     errors: Array<{ row: number; message: string }>;
@@ -647,6 +700,7 @@ export function parseAndValidatePasteData(
         labels,
         blockchain,
         tokenSymbol,
+        destinationNetworkId,
     );
 }
 
@@ -690,9 +744,11 @@ export async function validateAccountsAndStorage(
                 }
 
                 try {
-                    const validationErrorCode = await validateNearAddress(
+                    const bareRecipient = stripNearComAddressPrefix(
                         payment.recipient,
                     );
+                    const validationErrorCode =
+                        await validateNearAddress(bareRecipient);
                     const validationError = validationErrorCode
                         ? labels.nearValidationError(validationErrorCode)
                         : null;
@@ -731,7 +787,7 @@ export async function validateAccountsAndStorage(
         const tokenId = selectedToken.address;
 
         const storageRequests = validAccounts.map((payment) => ({
-            accountId: payment.recipient,
+            accountId: stripNearComAddressPrefix(payment.recipient),
             tokenId: tokenId,
         }));
 
@@ -751,7 +807,8 @@ export async function validateAccountsAndStorage(
                 return payment;
             }
 
-            const key = `${payment.recipient}-${tokenId}`;
+            const bareRecipient = stripNearComAddressPrefix(payment.recipient);
+            const key = `${bareRecipient}-${tokenId}`;
             const isRegistered = registrationMap.get(key) ?? false;
 
             return {
@@ -804,7 +861,9 @@ export async function validateIntentsFeeCoverage(
         return { payments, networkFee: null };
     }
 
-    const representativeAddress = representativePayment.recipient;
+    const representativeAddress = stripNearComAddressPrefix(
+        representativePayment.recipient,
+    );
     try {
         const { networkFee } = await estimateIntentsNetworkFee({
             token: {

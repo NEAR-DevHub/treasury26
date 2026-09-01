@@ -5,7 +5,8 @@ use sqlx::{PgPool, Postgres, Transaction};
 use crate::AppState;
 use crate::handlers::intents::swap_status::fetch_public_swap_status;
 use crate::handlers::public_history::quotes::{
-    merge_quote_status, quote_status_is_terminal, quote_status_value_from_metadata,
+    QuoteProposalType, merge_quote_status, proposal_quote_from_metadata, quote_status_is_failed,
+    quote_status_is_terminal, quote_status_text_from_metadata, quote_status_value_from_metadata,
 };
 use crate::handlers::public_history::silver::cursors::mark_silver_dirty_tx;
 
@@ -73,11 +74,13 @@ async fn claim_stale_quote_proposals(
     .await
 }
 
+/// Returns the merged metadata when a new status was written (`None` when the
+/// write was skipped), so the caller can see terminal-failure transitions.
 async fn apply_quote_status(
     tx: &mut Transaction<'_, Postgres>,
     proposal: &StaleQuoteProposal,
     status: Value,
-) -> Result<u64, sqlx::Error> {
+) -> Result<Option<Value>, sqlx::Error> {
     // The claim lock is released before the 1Click fetch, so the linker may
     // have merged newer metadata meanwhile; reload under lock and merge
     // against the current value, never regressing a terminal status.
@@ -97,10 +100,10 @@ async fn apply_quote_status(
     .flatten();
 
     if quote_status_is_terminal(current.as_ref()) {
-        return Ok(0);
+        return Ok(None);
     }
     if quote_status_value_from_metadata(current.as_ref()) == Some(&status) {
-        return Ok(0);
+        return Ok(None);
     }
 
     let merged = merge_quote_status(current.as_ref(), status);
@@ -130,9 +133,38 @@ async fn apply_quote_status(
                 .or(proposal.proposal_created_at),
         )
         .await?;
+        return Ok(Some(merged));
     }
 
-    Ok(updated)
+    Ok(None)
+}
+
+/// Report the transition into a terminal failed 1Click status — a user's
+/// exchange or cross-chain payment permanently failing. Edge-triggered:
+/// `apply_quote_status` never rewrites a terminal status, so this fires
+/// exactly once per proposal. Routed to Telegram by a Sentry alert rule on
+/// `alert_priority:p1`.
+fn report_terminal_failure(proposal: &StaleQuoteProposal, merged: &Value) {
+    if !quote_status_is_failed(Some(merged)) {
+        return;
+    }
+
+    let code = match proposal_quote_from_metadata(Some(merged)).map(|q| q.quote_type) {
+        Some(QuoteProposalType::PaymentTransfer) => {
+            crate::error_event::ErrorCode::PaymentTerminalFailed
+        }
+        _ => crate::error_event::ErrorCode::ExchangeTerminalFailed,
+    };
+    let status_text =
+        quote_status_text_from_metadata(Some(merged)).unwrap_or_else(|| "failed".to_string());
+
+    crate::error_event!(
+        code,
+        dao_id = proposal.dao_id,
+        proposal_id = proposal.proposal_id,
+        deposit_address = proposal.quote_deposit_address,
+        status = status_text
+    );
 }
 
 pub async fn refresh_public_quote_statuses(
@@ -160,8 +192,12 @@ pub async fn refresh_public_quote_statuses(
             Ok(response) => {
                 if let Ok(status) = serde_json::to_value(response) {
                     let mut tx = state.db_pool.begin().await?;
-                    stats.updated += apply_quote_status(&mut tx, &proposal, status).await?;
+                    let merged = apply_quote_status(&mut tx, &proposal, status).await?;
                     tx.commit().await?;
+                    if let Some(merged) = merged {
+                        stats.updated += 1;
+                        report_terminal_failure(&proposal, &merged);
+                    }
                 }
             }
             Err((status, reason)) => {

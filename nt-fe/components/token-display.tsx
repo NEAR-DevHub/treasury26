@@ -1,14 +1,22 @@
+"use client";
+
 import { useTranslations } from "next-intl";
+import { useImageLoadError } from "@/hooks/use-image-load-error";
 import { ChainIcons, TreasuryAsset } from "@/lib/api";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
-import Big from "@/lib/big";
 import {
     getNetworkDisplayCaseClass,
     getLocalizedNetworkDisplayName,
+    getNetworkDisplayName,
+    networksMatchAliased,
 } from "@/lib/intents-network";
+import Big from "@/lib/big";
+import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { MaskedBalance } from "./balance-mask";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
+
+// Re-export network label helpers so existing `@/components/token-display` imports keep working.
+export { getNetworkDisplayName, networksMatchAliased };
 
 interface NetworkIconDisplayProps {
     chainIcons: ChainIcons | null;
@@ -16,41 +24,9 @@ interface NetworkIconDisplayProps {
     residency?: string;
     networkNameClassName?: string;
     expandNearComLabel?: boolean;
+    className?: string;
+    iconClassName?: string;
 }
-
-const NETWORK_DISPLAY_NAMES: Record<string, string> = {
-    eth: "Ethereum",
-    ethereum: "Ethereum",
-    btc: "Bitcoin",
-    bitcoin: "Bitcoin",
-    sol: "Solana",
-    solana: "Solana",
-    arb: "Arbitrum",
-    arbitrum: "Arbitrum",
-    pol: "Polygon",
-    polygon: "Polygon",
-    bsc: "BNB Chain",
-    trx: "Tron",
-    tron: "Tron",
-    xlm: "Stellar",
-    stellar: "Stellar",
-    apt: "Aptos",
-    aptos: "Aptos",
-    ada: "Cardano",
-    cardano: "Cardano",
-    doge: "Dogecoin",
-    dogecoin: "Dogecoin",
-    zec: "Zcash",
-    zcash: "Zcash",
-    xrp: "XRP",
-    bera: "Berachain",
-    berachain: "Berachain",
-    near: "NEAR",
-};
-
-export const getNetworkDisplayName = (name: string): string => {
-    return NETWORK_DISPLAY_NAMES[name.toLowerCase()] ?? name;
-};
 
 const useResidencyLabel = () => {
     const t = useTranslations("residency");
@@ -80,19 +56,11 @@ export const NetworkIconDisplay = ({
     expandNearComLabel = false,
     className,
     iconClassName,
-}: {
-    chainIcons: ChainIcons | null;
-    networkName: string;
-    residency?: string;
-    networkNameClassName?: string;
-    expandNearComLabel?: boolean;
-    className?: string;
-    iconClassName?: string;
-}) => {
+}: NetworkIconDisplayProps) => {
     const getResidencyLabel = useResidencyLabel();
     const tAddressBookTable = useTranslations("addressBookTable");
-
     const iconUrl = chainIcons?.icon ?? null;
+    const { showImage, onError } = useImageLoadError(iconUrl);
 
     const isNEAR = networkName.toLowerCase() === NEAR_NETWORK_ID;
     const displayName = getLocalizedNetworkDisplayName({
@@ -104,14 +72,16 @@ export const NetworkIconDisplay = ({
 
     return (
         <div className={cn("flex items-center gap-3", className)}>
-            {iconUrl ? (
+            {showImage && iconUrl ? (
                 <img
+                    key={iconUrl}
                     src={iconUrl}
                     alt={`${networkName} network`}
                     className={cn(
                         "size-6 rounded-full object-cover",
                         iconClassName,
                     )}
+                    onError={onError}
                 />
             ) : (
                 <div
@@ -120,7 +90,7 @@ export const NetworkIconDisplay = ({
                         iconClassName,
                     )}
                 >
-                    {networkName.charAt(0)}
+                    {networkName.charAt(0).toUpperCase()}
                 </div>
             )}
             <div className="flex flex-col gap-0 items-baseline text-left">

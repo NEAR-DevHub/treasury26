@@ -198,6 +198,7 @@ pub fn build_test_state(db_pool: sqlx::PgPool) -> AppState {
         transfer_hint_service: transfer_hint_service.map(Arc::new),
         neardata_client: None,
         goldsky_pool: None,
+        confidential_keyring: None,
         event_tx,
         background_jobs_status: Arc::new(nt_be::jobs::leadership::BackgroundJobsStatus::new()),
         creation_sweep_notify: Arc::new(tokio::sync::Notify::new()),

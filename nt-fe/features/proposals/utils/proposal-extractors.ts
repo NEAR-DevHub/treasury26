@@ -1,46 +1,49 @@
-import { FunctionCallKind, Proposal } from "@/lib/proposals-api";
-import {
-    decodeArgs,
-    decodeProposalDescription,
-    formatBalance,
-} from "@/lib/utils";
 import { LOCKUP_NO_WHITELIST_ACCOUNT_ID } from "@/constants/config";
-import {
-    PaymentRequestData,
-    FunctionCallData,
-    ChangePolicyData,
-    ChangeConfigData,
-    StakingData,
-    VestingData,
-    SwapRequestData,
-    UnknownData,
-    VestingSchedule,
-    AnyProposalData,
-    BatchPaymentRequestData,
-    ConfidentialBulkRecipient,
-    ConfidentialRequestData,
-    MappedConfidentialRequest,
-    MembersData,
-    UpgradeData,
-    SetStakingContractData,
-    BountyData,
-    VoteData,
-    FactoryInfoUpdateData,
-} from "../types/index";
-import { getProposalUIKind } from "./proposal-utils";
-import { ProposalUIKind } from "../types/index";
-import { Policy } from "@/types/policy";
-import { getKindFromProposal } from "@/lib/config-utils";
-import { FunctionCallAction } from "@/lib/proposals-api";
-import { IntentsQuoteResponse } from "@/lib/api";
-import { extractConfidentialBulkDestinationAssetId } from "./confidential-bulk-utils";
 import {
     NEAR_COM_NETWORK_ID,
     NEAR_NETWORK_ID,
     WRAP_NEAR_TOKEN_ID,
 } from "@/constants/network-ids";
 import { NEAR_TOKEN_DECIMALS } from "@/constants/token";
+import {
+    decimalFromBaseUnitsOrNull,
+    legacyGroupedDecimalOrNull,
+} from "@/lib/amount-format";
+import type { IntentsQuoteResponse } from "@/lib/api";
+import { getKindFromProposal } from "@/lib/config-utils";
 import { computeQuoteNetworkFee } from "@/lib/intents-fee";
+import type {
+    FunctionCallAction,
+    FunctionCallKind,
+    Proposal,
+} from "@/lib/proposals-api";
+import { decodeArgs, decodeProposalDescription } from "@/lib/utils";
+import type { Policy } from "@/types/policy";
+import type {
+    AnyProposalData,
+    BatchPaymentRequestData,
+    BountyData,
+    ChangeConfigData,
+    ChangePolicyData,
+    ConfidentialBulkRecipient,
+    ConfidentialRequestData,
+    FactoryInfoUpdateData,
+    FunctionCallData,
+    MappedConfidentialRequest,
+    MembersData,
+    PaymentRequestData,
+    ProposalUIKind,
+    SetStakingContractData,
+    StakingData,
+    SwapRequestData,
+    UnknownData,
+    UpgradeData,
+    VestingData,
+    VestingSchedule,
+    VoteData,
+} from "../types/index";
+import { extractConfidentialBulkDestinationAssetId } from "./confidential-bulk-utils";
+import { getProposalUIKind } from "./proposal-utils";
 
 function normalizeTimeEstimateSeconds(value?: string): string | undefined {
     if (!value) return undefined;
@@ -223,10 +226,9 @@ export function extractPaymentRequestData(
         "signature",
         proposal.description,
     );
-    const networkFee = decodeProposalDescription(
-        "networkFee",
-        proposal.description,
-    );
+    const networkFee = legacyGroupedDecimalOrNull(
+        decodeProposalDescription("networkFee", proposal.description),
+    )?.toFixed();
     let destinationAssetId = decodeProposalDescription(
         "destinationNetwork",
         proposal.description,
@@ -259,6 +261,25 @@ export function extractPaymentRequestData(
         destinationAssetId,
         nearFt: isTransferKind || undefined,
         usdValue: goldAmountOutUsd,
+    };
+}
+
+/**
+ * Public-to-confidential move: a payment-shaped FunctionCall to a 1Click
+ * deposit address. The on-chain receiver is shown as-is — the description
+ * marker is proposer-controlled and must never relabel where funds go; the
+ * kind label ("Move to Confidential") carries the intent. The receiver is
+ * also exposed as `depositAddress` so settlement (swap status) tracking and
+ * receipt gating run like any other Intents-routed transfer.
+ */
+export function extractMoveToConfidentialData(
+    proposal: Proposal,
+): PaymentRequestData {
+    const data = extractPaymentRequestData(proposal);
+    return {
+        ...data,
+        depositAddress: data.receiver,
+        destinationAssetId: NEAR_COM_NETWORK_ID,
     };
 }
 
@@ -611,7 +632,9 @@ export function extractNearWrapSwapRequestData(
     }
     const isWrap = action.method_name === "near_deposit";
     const amountRaw = isWrap ? action.deposit || "0" : args.amount || "0";
-    const amountFormatted = formatBalance(amountRaw, NEAR_TOKEN_DECIMALS);
+    const amountFormatted =
+        decimalFromBaseUnitsOrNull(amountRaw, NEAR_TOKEN_DECIMALS)?.toFixed() ??
+        "";
 
     return {
         source: WRAP_NEAR_TOKEN_ID,
@@ -676,15 +699,23 @@ export function extractBatchPaymentRequestData(
         batchId = String(args.msg) || "";
     }
 
-    // Extract notes and URL from proposal description (same as single payments)
+    // Extract notes and destination from proposal description (same field as
+    // single payments). Public bulk writes `destinationNetwork: near.com` when
+    // recipients used nearcom:; confidential bulk usually gets destination
+    // from quote metadata instead.
     const notes = decodeProposalDescription("notes", proposal.description);
     const title = decodeProposalDescription("title", proposal.description);
+    const destinationAssetId = decodeProposalDescription(
+        "destinationNetwork",
+        proposal.description,
+    );
 
     return {
         tokenId,
         totalAmount,
         batchId,
         notes: title ? title : notes,
+        ...(destinationAssetId ? { destinationAssetId } : {}),
     };
 }
 
@@ -995,6 +1026,9 @@ export function extractProposalData(
             break;
         case "Confidential Request":
             data = extractConfidentialRequestData(proposal, treasuryId);
+            break;
+        case "Move to Confidential":
+            data = extractMoveToConfidentialData(proposal);
             break;
         case "Function Call":
             data = extractFunctionCallData(proposal);

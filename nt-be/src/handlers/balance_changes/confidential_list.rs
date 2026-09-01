@@ -54,6 +54,7 @@ struct ConfidentialBalanceChangeRow {
     event_time: DateTime<Utc>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
+    quote_deposit_address: Option<String>,
 }
 
 impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
@@ -91,6 +92,7 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for ConfidentialBalanceChangeRow {
             event_time: row.try_get("event_time")?,
             created_at: row.try_get("created_at")?,
             proposal_id: row.try_get("proposal_id")?,
+            quote_deposit_address: row.try_get("quote_deposit_address")?,
         })
     }
 }
@@ -182,6 +184,31 @@ fn build_filtered_legs_query(
                 proposal_execution_transaction_hash,
                 transaction_hash,
                 event_time, created_at, proposal_id,
+                COALESCE(
+                    (
+                        SELECT ci.deposit_address
+                        FROM confidential_intents ci
+                        WHERE ci.dao_id = gold_treasury_ledger_events.dao_id
+                          AND ci.proposal_id = gold_treasury_ledger_events.proposal_id
+                          AND ci.deposit_address IS NOT NULL
+                        ORDER BY ci.id DESC
+                        LIMIT 1
+                    ),
+                    (
+                        SELECT ci.deposit_address
+                        FROM confidential_intents ci
+                        WHERE ci.history_event_id = CASE
+                            WHEN gold_treasury_ledger_events.gold_event_key
+                                ~ '^confidential:[0-9]+$'
+                            THEN split_part(
+                                gold_treasury_ledger_events.gold_event_key, ':', 2
+                            )::bigint
+                        END
+                          AND ci.deposit_address IS NOT NULL
+                        ORDER BY ci.id DESC
+                        LIMIT 1
+                    )
+                ) AS quote_deposit_address,
                 COALESCE(proposal_executed_at, event_time) AS event_time_display,
                 CASE
                     WHEN transaction_type = 'sent' THEN token_out
@@ -231,6 +258,7 @@ fn build_filtered_legs_query(
                 proposal_execution_transaction_hash,
                 transaction_hash,
                 event_time, created_at, proposal_id,
+                quote_deposit_address,
                 event_time_display
             FROM legs
             WHERE 1 = 1
@@ -522,6 +550,7 @@ struct LegRow {
     transaction_hash: Option<String>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
+    quote_deposit_address: Option<String>,
     usd_value: Option<BigDecimal>,
     action_kind: String,
     swap_sent_token: Option<String>,
@@ -558,6 +587,7 @@ impl LegRow {
             event_time,
             created_at,
             proposal_id,
+            quote_deposit_address,
         } = row;
 
         let resolved_block_time = proposal_executed_at.unwrap_or(event_time);
@@ -585,6 +615,7 @@ impl LegRow {
                     transaction_hash: proposal_execution_transaction_hash,
                     created_at,
                     proposal_id,
+                    quote_deposit_address,
                     usd_value: amount_out_usd,
                     action_kind: "ConfidentialSend".to_string(),
                     swap_sent_token: None,
@@ -624,6 +655,7 @@ impl LegRow {
                     transaction_hash: resolved_tx_hash,
                     created_at,
                     proposal_id,
+                    quote_deposit_address,
                     usd_value: amount_in_usd,
                     action_kind: "ConfidentialDeposit".to_string(),
                     swap_sent_token: None,
@@ -659,6 +691,7 @@ impl LegRow {
                     transaction_hash: proposal_execution_transaction_hash,
                     created_at,
                     proposal_id,
+                    quote_deposit_address,
                     usd_value: amount_in_usd.clone(),
                     action_kind: "ConfidentialExchange".to_string(),
                     swap_sent_token: token_out.clone(),
@@ -705,6 +738,7 @@ impl LegRow {
             actions: None,
             usd_value: self.usd_value.clone(),
             proposal_id: self.proposal_id,
+            quote_deposit_address: self.quote_deposit_address.clone(),
         }
     }
 

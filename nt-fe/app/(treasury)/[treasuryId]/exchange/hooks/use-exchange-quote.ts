@@ -1,22 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import Big from "@/lib/big";
+import type { Token } from "@/components/token-input";
+import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import {
     getIntentsQuote,
-    IntentsQuoteResponse,
     getTokenMetadata,
+    type IntentsQuoteResponse,
 } from "@/lib/api";
-import { Token } from "@/components/token-input";
+import Big from "@/lib/big";
+import { formatAssetForIntentsAPI } from "@/lib/oneclick-asset-routing";
+import { nanosToMs } from "@/lib/utils";
+import { formatQuoteErrorMessage, isAbortError } from "../quote-errors";
 import {
-    formatAssetForIntentsAPI,
-    getRecipientType,
     getDepositAndRefundType,
+    getRecipientType,
     isNEARDeposit,
     isNEARWithdraw,
 } from "../utils";
-import { formatQuoteErrorMessage, isAbortError } from "../quote-errors";
-import { NEAR_NETWORK_ID, WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
-import { nanosToMs } from "@/lib/utils";
 
 export type ExchangeSwapType = "EXACT_INPUT" | "EXACT_OUTPUT";
 
@@ -88,9 +88,7 @@ export function useExchangeQuote({
                     const tokenMetadata =
                         await getTokenMetadata(WRAP_NEAR_TOKEN_ID);
                     const tokenPrice = tokenMetadata?.price || 0;
-                    const amountUsd = (
-                        parseFloat(amount) * tokenPrice
-                    ).toFixed();
+                    const amountUsd = Big(amount).mul(tokenPrice).toFixed();
 
                     return {
                         quote: {
@@ -134,9 +132,8 @@ export function useExchangeQuote({
                     .mul(Big(10).pow(amountToken.decimals))
                     .toFixed();
 
-                const originAsset = formatAssetForIntentsAPI(sellToken.address);
-                const destinationAsset = formatAssetForIntentsAPI(
-                    receiveToken.address,
+                const originAsset = formatAssetForIntentsAPI(
+                    sellToken.balanceAssetId || sellToken.address,
                 );
                 const depositAndRefundType = getDepositAndRefundType(
                     sellToken.residency || "",
@@ -145,6 +142,17 @@ export function useExchangeQuote({
                 const recipientType = getRecipientType(
                     receiveToken.residency || "",
                     isConfidential,
+                );
+                // INTENTS / CONFIDENTIAL_INTENTS: credit the holdable balance id.
+                // Never send a chain-specific 1cs_v1 destination — 1Click collapses
+                // it to the underlying nep141 and history matching breaks.
+                // DESTINATION_CHAIN (wrap/unwrap edge cases): may use quoteAssetId.
+                const destinationAsset = formatAssetForIntentsAPI(
+                    recipientType === "DESTINATION_CHAIN"
+                        ? receiveToken.quoteAssetId ||
+                              receiveToken.balanceAssetId ||
+                              receiveToken.address
+                        : receiveToken.balanceAssetId || receiveToken.address,
                 );
 
                 return await getIntentsQuote(

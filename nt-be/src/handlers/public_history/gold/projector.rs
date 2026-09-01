@@ -60,13 +60,15 @@ struct ParsedQuoteMetadata {
 
 impl ParsedQuoteStatus {
     fn fulfillment_hashes(&self) -> impl Iterator<Item = &String> {
-        self.near_tx_hashes
-            .iter()
-            .chain(self.destination_chain_tx_hashes.iter())
+        if self.destination_chain_tx_hashes.is_empty() {
+            self.near_tx_hashes.iter()
+        } else {
+            self.destination_chain_tx_hashes.iter()
+        }
     }
 
-    fn has_fulfillment_hashes(&self) -> bool {
-        !self.near_tx_hashes.is_empty() || !self.destination_chain_tx_hashes.is_empty()
+    fn has_destination_chain_tx_hashes(&self) -> bool {
+        !self.destination_chain_tx_hashes.is_empty()
     }
 
     fn is_failed_terminal(&self) -> bool {
@@ -507,11 +509,13 @@ fn plan_exchange_pairs(
             continue;
         }
 
-        // Prefer explicit fulfillment hashes from the quote payload; they avoid
-        // pairing a deposit with an unrelated incoming intents transfer.
-        if let Some(status) = quote.and_then(|quote| quote.status.as_ref())
-            && status.has_fulfillment_hashes()
-        {
+        // Prefer explicit destination-chain hashes from the quote payload; they
+        // avoid pairing a deposit with an unrelated incoming intents transfer.
+        // `nearTxHashes` may contain only intermediate solver transactions while
+        // a successful destination transfer is already indexed. Try those hashes
+        // when they identify the incoming leg, but do not let an unmatched
+        // intermediate hash suppress the unique on-chain fallback below.
+        if let Some(status) = quote.and_then(|quote| quote.status.as_ref()) {
             let matched_incoming = status.fulfillment_hashes().find_map(|tx_hash| {
                 incoming_by_tx_hash.get(tx_hash).and_then(|indices| {
                     indices.iter().find_map(|index| {
@@ -529,8 +533,19 @@ fn plan_exchange_pairs(
                 outgoing_to_incoming.insert(row.id, incoming_id);
                 incoming_to_outgoing.insert(incoming_id, row.id);
                 matched_incoming_ids.insert(incoming_id);
+                continue;
             }
-            continue;
+
+            // A destination-chain hash is authoritative. If it is present but
+            // not indexed yet (or points elsewhere), stay pending rather than
+            // guessing from an unrelated transfer with the same asset. Preserve
+            // that same conservative behavior for terminal failures carrying a
+            // NEAR transaction hash; the new fallback targets live exchanges.
+            if status.has_destination_chain_tx_hashes()
+                || (status.is_failed_terminal() && !status.near_tx_hashes.is_empty())
+            {
+                continue;
+            }
         }
 
         let candidates = rows
@@ -1626,6 +1641,47 @@ mod tests {
     }
 
     #[test]
+    fn native_receipt_stamp_prefers_higher_intra_block_seq_regardless_of_row_order() {
+        // A clamp-split (or 1-yocto-attachment split) native receipt writes
+        // two silver_balance_history rows sharing one receipt_id: the
+        // user-owned piece, then the sponsor/attachment piece at a higher
+        // intra_block_seq. The leg represents the receipt's whole effect,
+        // so its stamp must be the later piece — deterministically, not
+        // whichever row load_balance_stamps happened to scan first (that
+        // query has no ORDER BY).
+        let mut outgoing = leg("native", Some("bob.near"), "10");
+        outgoing.receipt_id = Some("r1".to_string());
+
+        let first_piece = BalanceStampRow {
+            entry_key: "native:dao.near:r1".to_string(),
+            token_standard: "native".to_string(),
+            receipt_id: Some("r1".to_string()),
+            user_balance_after: decimal("3"),
+            intra_block_seq: 0,
+        };
+        let second_piece = BalanceStampRow {
+            entry_key: "native:dao.near:r1:sponsor-clamp".to_string(),
+            token_standard: "native".to_string(),
+            receipt_id: Some("r1".to_string()),
+            user_balance_after: decimal("0"),
+            intra_block_seq: 1,
+        };
+
+        // Scan order shouldn't matter: try both orderings.
+        let forward = BalanceStamps::from_rows(vec![first_piece.clone(), second_piece.clone()]);
+        let backward = BalanceStamps::from_rows(vec![second_piece, first_piece]);
+
+        assert_eq!(
+            forward.for_leg(&outgoing).unwrap().user_balance_after,
+            decimal("0")
+        );
+        assert_eq!(
+            backward.for_leg(&outgoing).unwrap().user_balance_after,
+            decimal("0")
+        );
+    }
+
+    #[test]
     fn missing_stamp_on_real_leg_is_projection_error() {
         let incoming = leg("nep141", Some("alice.near"), "5");
         let stamps = BalanceStamps::default();
@@ -1702,6 +1758,117 @@ mod tests {
             widen_for_pending_exchange(recompute_from, Some(pending)),
             recompute_from
         );
+    }
+
+    fn quote_linked_exchange_rows(status: Value) -> (SilverTransferLegRow, SilverTransferLegRow) {
+        let mut outgoing = leg("nep141", Some("deposit-address"), "1");
+        outgoing.id = 1;
+        outgoing.leg_key = "outgoing".to_string();
+        outgoing.direction = "outgoing".to_string();
+        outgoing.proposal_ref = Some(7);
+        outgoing.quote_deposit_address = Some("deposit-address".to_string());
+        outgoing.transaction_hash = Some("proposal-tx".to_string());
+        outgoing.token_id = "usdc.near".to_string();
+        outgoing.amount_raw = decimal("1000000");
+        outgoing.amount = decimal("1");
+        outgoing.quote_metadata = Some(serde_json::json!({
+            "proposalQuote": {
+                "type": "asset_exchange",
+                "depositAddress": "deposit-address",
+                "recipient": null,
+                "originAsset": "nep141:usdc.near",
+                "originAmountRaw": "1000000",
+                "destinationAsset": "nep141:usdt.near",
+                "signature": "sig"
+            },
+            "status": status
+        }));
+
+        let mut incoming = leg("nep141", Some("intents.near"), "2");
+        incoming.id = 2;
+        incoming.leg_key = "incoming".to_string();
+        incoming.direction = "incoming".to_string();
+        incoming.transaction_hash = Some("fulfillment-tx".to_string());
+        incoming.token_id = "usdt.near".to_string();
+        incoming.amount_raw = decimal("2000000");
+        incoming.amount = decimal("2");
+
+        (outgoing, incoming)
+    }
+
+    #[test]
+    fn intermediate_near_hash_does_not_block_unique_fulfillment_fallback() {
+        let (outgoing, incoming) = quote_linked_exchange_rows(serde_json::json!({
+            "status": "PROCESSING",
+            "nearTxHashes": ["intermediate-tx"],
+            "swapDetails": { "amountOut": "2000000" }
+        }));
+
+        let pairs =
+            plan_exchange_pairs(&[outgoing.clone(), incoming.clone()], TEST_RELAYER_ACCOUNT)
+                .expect("exchange pair plan");
+
+        assert_eq!(
+            pairs.outgoing_to_incoming.get(&outgoing.id),
+            Some(&incoming.id)
+        );
+        assert_eq!(
+            pairs.incoming_to_outgoing.get(&incoming.id),
+            Some(&outgoing.id)
+        );
+    }
+
+    #[test]
+    fn unmatched_destination_hash_blocks_heuristic_fulfillment_fallback() {
+        let (outgoing, incoming) = quote_linked_exchange_rows(serde_json::json!({
+            "status": "SUCCESS",
+            // Even a matching NEAR hash must not override an explicit,
+            // authoritative destination-chain hash.
+            "nearTxHashes": ["fulfillment-tx"],
+            "destinationChainTxHashes": [{ "hash": "different-destination-tx" }],
+            "swapDetails": { "amountOut": "2000000" }
+        }));
+
+        let pairs = plan_exchange_pairs(&[outgoing, incoming], TEST_RELAYER_ACCOUNT)
+            .expect("exchange pair plan");
+
+        assert!(pairs.outgoing_to_incoming.is_empty());
+        assert!(pairs.incoming_to_outgoing.is_empty());
+    }
+
+    #[test]
+    fn intermediate_near_hash_does_not_guess_between_multiple_fulfillments() {
+        let (outgoing, incoming) = quote_linked_exchange_rows(serde_json::json!({
+            "status": "PROCESSING",
+            "nearTxHashes": ["intermediate-tx"],
+            "swapDetails": { "amountOut": "2000000" }
+        }));
+        let mut second_incoming = incoming.clone();
+        second_incoming.id = 3;
+        second_incoming.leg_key = "second-incoming".to_string();
+        second_incoming.transaction_hash = Some("second-fulfillment-tx".to_string());
+
+        let pairs =
+            plan_exchange_pairs(&[outgoing, incoming, second_incoming], TEST_RELAYER_ACCOUNT)
+                .expect("exchange pair plan");
+
+        assert!(pairs.outgoing_to_incoming.is_empty());
+        assert!(pairs.incoming_to_outgoing.is_empty());
+    }
+
+    #[test]
+    fn failed_status_with_unmatched_near_hash_does_not_use_fallback() {
+        let (outgoing, incoming) = quote_linked_exchange_rows(serde_json::json!({
+            "status": "REFUNDED",
+            "nearTxHashes": ["refund-tx"],
+            "swapDetails": { "amountOut": "2000000" }
+        }));
+
+        let pairs = plan_exchange_pairs(&[outgoing, incoming], TEST_RELAYER_ACCOUNT)
+            .expect("exchange pair plan");
+
+        assert!(pairs.outgoing_to_incoming.is_empty());
+        assert!(pairs.incoming_to_outgoing.is_empty());
     }
 
     #[test]

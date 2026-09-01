@@ -34,35 +34,25 @@ use serde::Serialize;
 use sqlx::PgPool;
 
 use crate::AppState;
-
-/// How a queue is fed, which decides how staleness is judged.
-#[derive(Debug, Clone, Copy)]
-pub enum QueueKind {
-    /// Cron-driven: a tick lands every `interval_secs`; the queue is stale
-    /// when no task has *succeeded* for well over that interval.
-    Cron { interval_secs: u64 },
-    /// Event-driven task queue: tasks arrive irregularly; the queue is stale
-    /// when waiting tasks sit unconsumed for too long (dead worker).
-    Queue,
-}
-
-/// One registered queue the watchdog knows about.
-#[derive(Debug, Clone)]
-pub struct JobSpec {
-    pub queue: &'static str,
-    pub kind: QueueKind,
-}
+pub use crate::jobs::platform::{QueueKind, QueueSpec};
 
 /// Registry installed once by `spawn_all` after all queues are registered.
 /// The instant is the boot baseline: before the first success of a job, its
 /// staleness is measured from here, so a job that never manages to run still
 /// alerts (instead of "no data, no alarm").
-static REGISTRY: OnceLock<(DateTime<Utc>, Vec<JobSpec>)> = OnceLock::new();
+static REGISTRY: OnceLock<(DateTime<Utc>, Vec<QueueSpec>)> = OnceLock::new();
 
-pub fn install(specs: Vec<JobSpec>) {
+pub fn install(specs: Vec<QueueSpec>) {
     if REGISTRY.set((Utc::now(), specs)).is_err() {
         tracing::warn!("job watchdog registry installed twice; keeping first");
     }
+}
+
+pub fn registered_specs() -> &'static [QueueSpec] {
+    REGISTRY
+        .get()
+        .map(|(_, specs)| specs.as_slice())
+        .unwrap_or_default()
 }
 
 /// Seconds between two consecutive fire times of `schedule`. All schedules
@@ -83,15 +73,31 @@ pub struct JobHealth {
     pub kind: &'static str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub interval_secs: Option<u64>,
+    pub concurrency: usize,
+    pub available_slots: usize,
     pub last_success_at: Option<DateTime<Utc>>,
     pub last_success_age_secs: Option<i64>,
     pub last_failure_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
     pub pending: i64,
+    pub queued: i64,
     pub running: i64,
-    /// Age of the oldest task that is due but not picked up.
+    pub failed: i64,
+    pub done: i64,
+    pub killed: i64,
+    pub retryable_failed: i64,
+    pub oldest_due_pending_secs: Option<i64>,
+    pub oldest_queued_secs: Option<i64>,
+    pub oldest_running_secs: Option<i64>,
+    /// Compatibility name for the oldest runnable Pending/Failed task.
     pub oldest_waiting_secs: Option<i64>,
+    pub start_latency_p50_secs: Option<f64>,
+    pub start_latency_p95_secs: Option<f64>,
+    pub start_latency_max_secs: Option<f64>,
+    pub reclaims_last_hour: i64,
     pub stale: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub failure_mode: Option<&'static str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
 }
@@ -102,8 +108,25 @@ struct QueueAgg {
     last_success_at: Option<DateTime<Utc>>,
     last_failure_at: Option<DateTime<Utc>>,
     pending: i64,
+    queued: i64,
     running: i64,
-    oldest_waiting_run_at: Option<DateTime<Utc>>,
+    failed: i64,
+    done: i64,
+    killed: i64,
+    retryable_failed: i64,
+    oldest_pending_run_at: Option<DateTime<Utc>>,
+    oldest_claimable_run_at: Option<DateTime<Utc>>,
+    oldest_queued_lock_at: Option<DateTime<Utc>>,
+    oldest_running_lock_at: Option<DateTime<Utc>>,
+    start_latency_p50_secs: Option<f64>,
+    start_latency_p95_secs: Option<f64>,
+    start_latency_max_secs: Option<f64>,
+}
+
+#[derive(sqlx::FromRow)]
+struct ReclaimAgg {
+    job_type: String,
+    reclaims_last_hour: i64,
 }
 
 /// A cron queue alerts when no success for `2 × interval + 10 min`: one
@@ -113,30 +136,55 @@ fn cron_staleness_threshold(interval_secs: u64) -> Duration {
     Duration::from_secs(interval_secs * 2 + 600)
 }
 
-/// A task queue alerts when a due task has been waiting this long with no
-/// worker picking it up. Generous enough to absorb backfill bursts.
-const QUEUE_WAITING_THRESHOLD: Duration = Duration::from_secs(1800);
-
 /// Builds the health snapshot for every registered queue from `apalis.jobs`.
 pub async fn evaluate(pool: &PgPool) -> Result<Vec<JobHealth>, sqlx::Error> {
     let Some((installed_at, specs)) = REGISTRY.get() else {
         return Ok(Vec::new());
     };
 
+    let job_types = specs
+        .iter()
+        .map(|spec| spec.queue.to_owned())
+        .collect::<Vec<_>>();
     let aggregates: Vec<QueueAgg> = sqlx::query_as(
         r#"
         SELECT
             job_type,
             max(done_at) FILTER (WHERE status = 'Done')                AS last_success_at,
             max(done_at) FILTER (WHERE status IN ('Failed', 'Killed')) AS last_failure_at,
-            count(*)     FILTER (WHERE status IN ('Pending', 'Queued')) AS pending,
+            count(*)     FILTER (WHERE status = 'Pending')             AS pending,
+            count(*)     FILTER (WHERE status = 'Queued')              AS queued,
             count(*)     FILTER (WHERE status = 'Running')             AS running,
-            min(run_at)  FILTER (WHERE status IN ('Pending', 'Queued')
-                                   AND run_at < now())                 AS oldest_waiting_run_at
+            count(*)     FILTER (WHERE status = 'Failed')              AS failed,
+            count(*)     FILTER (WHERE status = 'Done')                AS done,
+            count(*)     FILTER (WHERE status = 'Killed')              AS killed,
+            count(*)     FILTER (WHERE status = 'Failed'
+                                   AND attempts < max_attempts)        AS retryable_failed,
+            min(run_at)  FILTER (WHERE status = 'Pending'
+                                   AND run_at <= NOW())                AS oldest_pending_run_at,
+            min(run_at)  FILTER (WHERE (
+                                       status = 'Pending'
+                                       OR (status = 'Failed' AND attempts < max_attempts)
+                                   ) AND run_at <= NOW())              AS oldest_claimable_run_at,
+            min(lock_at) FILTER (WHERE status = 'Queued')             AS oldest_queued_lock_at,
+            min(lock_at) FILTER (WHERE status = 'Running')            AS oldest_running_lock_at,
+            percentile_cont(0.50) WITHIN GROUP (
+                ORDER BY EXTRACT(EPOCH FROM (lock_at - run_at))::double precision
+            ) FILTER (WHERE lock_at >= NOW() - INTERVAL '15 minutes'
+                        AND lock_at >= run_at)                         AS start_latency_p50_secs,
+            percentile_cont(0.95) WITHIN GROUP (
+                ORDER BY EXTRACT(EPOCH FROM (lock_at - run_at))::double precision
+            ) FILTER (WHERE lock_at >= NOW() - INTERVAL '15 minutes'
+                        AND lock_at >= run_at)                         AS start_latency_p95_secs,
+            max(EXTRACT(EPOCH FROM (lock_at - run_at))::double precision)
+                FILTER (WHERE lock_at >= NOW() - INTERVAL '15 minutes'
+                          AND lock_at >= run_at)                       AS start_latency_max_secs
         FROM apalis.jobs
+        WHERE job_type = ANY($1::text[])
         GROUP BY job_type
         "#,
     )
+    .bind(&job_types)
     .fetch_all(pool)
     .await?;
 
@@ -147,10 +195,26 @@ pub async fn evaluate(pool: &PgPool) -> Result<Vec<JobHealth>, sqlx::Error> {
         r#"
         SELECT DISTINCT ON (job_type) job_type, last_result->>'Err' AS last_error
         FROM apalis.jobs
-        WHERE status IN ('Failed', 'Killed') AND last_result->>'Err' IS NOT NULL
+        WHERE job_type = ANY($1::text[])
+          AND status IN ('Failed', 'Killed')
+          AND last_result->>'Err' IS NOT NULL
         ORDER BY job_type, done_at DESC NULLS LAST
         "#,
     )
+    .bind(&job_types)
+    .fetch_all(pool)
+    .await?;
+
+    let reclaim_aggregates: Vec<ReclaimAgg> = sqlx::query_as(
+        r#"
+        SELECT job_type, COUNT(*)::bigint AS reclaims_last_hour
+        FROM background_job_reclaims
+        WHERE job_type = ANY($1::text[])
+          AND reclaimed_at >= NOW() - INTERVAL '1 hour'
+        GROUP BY job_type
+        "#,
+    )
+    .bind(&job_types)
     .fetch_all(pool)
     .await?;
 
@@ -159,6 +223,11 @@ pub async fn evaluate(pool: &PgPool) -> Result<Vec<JobHealth>, sqlx::Error> {
         .map(|agg| (agg.job_type.clone(), agg))
         .collect();
     let mut errors_by_queue: HashMap<String, Option<String>> = last_errors.into_iter().collect();
+    let reclaims_by_queue: HashMap<String, i64> = reclaim_aggregates
+        .into_iter()
+        .map(|agg| (agg.job_type, agg.reclaims_last_hour))
+        .collect();
+    let reclaim_error_threshold = env_u64("JOB_RECLAIMS_ERROR_PER_HOUR", 10).max(1) as i64;
 
     let now = Utc::now();
     let report = specs
@@ -169,37 +238,97 @@ pub async fn evaluate(pool: &PgPool) -> Result<Vec<JobHealth>, sqlx::Error> {
             let last_success_age_secs = last_success_at.map(|t| (now - t).num_seconds());
             let oldest_waiting_secs = agg
                 .as_ref()
-                .and_then(|a| a.oldest_waiting_run_at)
+                .and_then(|a| a.oldest_claimable_run_at)
                 .map(|t| (now - t).num_seconds());
+            let oldest_due_pending_secs = agg
+                .as_ref()
+                .and_then(|a| a.oldest_pending_run_at)
+                .map(|t| (now - t).num_seconds());
+            let oldest_queued_secs = agg
+                .as_ref()
+                .and_then(|a| a.oldest_queued_lock_at)
+                .map(|t| (now - t).num_seconds());
+            let oldest_running_secs = agg
+                .as_ref()
+                .and_then(|a| a.oldest_running_lock_at)
+                .map(|t| (now - t).num_seconds());
+            let queued = agg.as_ref().map_or(0, |a| a.queued);
+            let running = agg.as_ref().map_or(0, |a| a.running);
+            let active = queued.saturating_add(running).max(0) as usize;
+            let available_slots = spec.concurrency.saturating_sub(active);
+            let reclaims_last_hour = *reclaims_by_queue.get(spec.queue).unwrap_or(&0);
 
-            let (stale, reason) = match spec.kind {
+            let progress_failure = match spec.kind {
                 QueueKind::Cron { interval_secs } => {
-                    // Baseline: last success, or boot for a job that has
-                    // never succeeded this process lifetime.
                     let baseline = last_success_at.unwrap_or(*installed_at).max(*installed_at);
                     let threshold = cron_staleness_threshold(interval_secs);
                     let age = (now - baseline).num_seconds();
-                    if age > threshold.as_secs() as i64 {
+                    (age > threshold.as_secs() as i64).then(|| {
                         (
-                            true,
-                            Some(format!(
+                            "progress",
+                            format!(
                                 "no successful run for {age}s (expected every {interval_secs}s)"
-                            )),
+                            ),
                         )
-                    } else {
-                        (false, None)
-                    }
+                    })
                 }
-                QueueKind::Queue => match oldest_waiting_secs {
-                    Some(waiting) if waiting > QUEUE_WAITING_THRESHOLD.as_secs() as i64 => (
-                        true,
-                        Some(format!(
-                            "oldest due task waiting {waiting}s; worker appears stalled"
-                        )),
-                    ),
-                    _ => (false, None),
-                },
+                QueueKind::Queue => None,
             };
+
+            let failure = if oldest_queued_secs
+                .is_some_and(|age| age > spec.reclaim.queued_after.as_secs() as i64)
+            {
+                Some((
+                    "claim_stuck",
+                    format!(
+                        "oldest Queued claim is {}s old",
+                        oldest_queued_secs.unwrap_or_default()
+                    ),
+                ))
+            } else if oldest_running_secs
+                .is_some_and(|age| age > spec.reclaim.running_after.as_secs() as i64)
+            {
+                Some((
+                    "execution_stuck",
+                    format!(
+                        "oldest Running claim is {}s old",
+                        oldest_running_secs.unwrap_or_default()
+                    ),
+                ))
+            } else if oldest_waiting_secs.is_some_and(|age| {
+                age > spec.claim_alert_after.as_secs() as i64 && available_slots > 0
+            }) {
+                Some((
+                    "wake",
+                    format!(
+                        "runnable work has waited {}s while {available_slots} worker slots are free",
+                        oldest_waiting_secs.unwrap_or_default()
+                    ),
+                ))
+            } else if oldest_waiting_secs.is_some_and(|age| {
+                age > spec.backlog_alert_after.as_secs() as i64 && available_slots == 0
+            }) {
+                Some((
+                    "capacity",
+                    format!(
+                        "runnable backlog is {}s old and all {} worker slots are occupied",
+                        oldest_waiting_secs.unwrap_or_default(),
+                        spec.concurrency
+                    ),
+                ))
+            } else if reclaims_last_hour >= reclaim_error_threshold {
+                Some((
+                    "reclaim_rate",
+                    format!(
+                        "{reclaims_last_hour} claims reclaimed in the last hour (threshold {reclaim_error_threshold})"
+                    ),
+                ))
+            } else {
+                progress_failure
+            };
+            let stale = failure.is_some();
+            let failure_mode = failure.as_ref().map(|(mode, _)| *mode);
+            let reason = failure.map(|(_, reason)| reason);
 
             JobHealth {
                 queue: spec.queue.to_string(),
@@ -211,14 +340,29 @@ pub async fn evaluate(pool: &PgPool) -> Result<Vec<JobHealth>, sqlx::Error> {
                     QueueKind::Cron { interval_secs } => Some(interval_secs),
                     QueueKind::Queue => None,
                 },
+                concurrency: spec.concurrency,
+                available_slots,
                 last_success_at,
                 last_success_age_secs,
                 last_failure_at: agg.as_ref().and_then(|a| a.last_failure_at),
                 last_error: errors_by_queue.remove(spec.queue).flatten(),
                 pending: agg.as_ref().map_or(0, |a| a.pending),
-                running: agg.as_ref().map_or(0, |a| a.running),
+                queued,
+                running,
+                failed: agg.as_ref().map_or(0, |a| a.failed),
+                done: agg.as_ref().map_or(0, |a| a.done),
+                killed: agg.as_ref().map_or(0, |a| a.killed),
+                retryable_failed: agg.as_ref().map_or(0, |a| a.retryable_failed),
+                oldest_due_pending_secs,
+                oldest_queued_secs,
+                oldest_running_secs,
                 oldest_waiting_secs,
+                start_latency_p50_secs: agg.as_ref().and_then(|a| a.start_latency_p50_secs),
+                start_latency_p95_secs: agg.as_ref().and_then(|a| a.start_latency_p95_secs),
+                start_latency_max_secs: agg.as_ref().and_then(|a| a.start_latency_max_secs),
+                reclaims_last_hour,
                 stale,
+                failure_mode,
                 reason,
             }
         })
@@ -252,14 +396,20 @@ pub async fn job_watchdog(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
                 last_alerted.insert(job.queue.clone(), Instant::now());
                 // ERROR on purpose: the tracing→Sentry bridge captures
                 // ERROR-level events, so this is the Sentry alert.
-                tracing::error!(
+                crate::error_event!(
+                    crate::error_event::ErrorCode::JobStale,
                     queue = %job.queue,
+                    failure_mode = job.failure_mode.unwrap_or("unknown"),
                     reason = job.reason.as_deref().unwrap_or(""),
                     last_success_at = ?job.last_success_at,
                     last_error = job.last_error.as_deref().unwrap_or(""),
                     pending = job.pending,
+                    queued = job.queued,
                     running = job.running,
-                    "background job stale: not making progress"
+                    available_slots = job.available_slots,
+                    oldest_waiting_secs = ?job.oldest_waiting_secs,
+                    start_latency_p95_secs = ?job.start_latency_p95_secs,
+                    reclaims_last_hour = job.reclaims_last_hour
                 );
             }
         } else if last_alerted.remove(&job.queue).is_some() {
@@ -275,6 +425,20 @@ pub async fn job_watchdog(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
 
 /// `GET /api/jobs/health` — admin Basic Auth; 503 while any queue is stale
 /// so an external uptime monitor can alert on the status code alone.
+const LEADER_HEALTH_MAX_AGE_SECS: i64 = 30;
+
+fn global_leader_health(
+    leader: Option<&crate::jobs::leadership::GlobalBackgroundJobsSnapshot>,
+    now: DateTime<Utc>,
+) -> (bool, Option<i64>) {
+    let heartbeat_age = leader.map(|leader| (now - leader.heartbeat_at).num_seconds().max(0));
+    let healthy = leader.is_some_and(|leader| {
+        leader.released_at.is_none()
+            && heartbeat_age.is_some_and(|age| age <= LEADER_HEALTH_MAX_AGE_SECS)
+    });
+    (healthy, heartbeat_age)
+}
+
 pub async fn jobs_health(State(state): State<Arc<AppState>>, headers: HeaderMap) -> Response {
     if let Err(denied) = crate::handlers::warnings::admin::require_admin(&headers, &state) {
         return denied.into_response();
@@ -292,7 +456,22 @@ pub async fn jobs_health(State(state): State<Arc<AppState>>, headers: HeaderMap)
         }
     };
 
-    let healthy = report.iter().all(|job| !job.stale);
+    let global_leader = match crate::jobs::leadership::global_snapshot(&state.db_pool).await {
+        Ok(snapshot) => snapshot,
+        Err(error) => {
+            tracing::error!(%error, "jobs health leader evaluation failed");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "leader health evaluation failed" })),
+            )
+                .into_response();
+        }
+    };
+    let generated_at = Utc::now();
+    let (leader_healthy, leader_heartbeat_age_secs) =
+        global_leader_health(global_leader.as_ref(), generated_at);
+    let queues_healthy = report.iter().all(|job| !job.stale);
+    let healthy = queues_healthy && leader_healthy;
     let status = if healthy {
         StatusCode::OK
     } else {
@@ -302,7 +481,13 @@ pub async fn jobs_health(State(state): State<Arc<AppState>>, headers: HeaderMap)
         status,
         Json(serde_json::json!({
             "healthy": healthy,
-            "generatedAt": Utc::now(),
+            "generatedAt": generated_at,
+            "globalLeader": {
+                "healthy": leader_healthy,
+                "heartbeatAgeSecs": leader_heartbeat_age_secs,
+                "maxHeartbeatAgeSecs": LEADER_HEALTH_MAX_AGE_SECS,
+                "snapshot": global_leader,
+            },
             "jobs": report,
         })),
     )
@@ -398,10 +583,10 @@ pub async fn run_liveness_monitor(pool: PgPool) {
                 if consecutive >= needed {
                     // ERROR → Sentry (this task is alive even when the fleet is
                     // not, so unlike the in-process watchdog this alert fires).
-                    tracing::error!(
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::FleetStalled,
                         reason = %reason,
-                        consecutive,
-                        "job fleet stalled; restarting process to recover"
+                        consecutive
                     );
                     // Give the log/Sentry a moment to flush before exit.
                     tokio::time::sleep(Duration::from_secs(2)).await;
@@ -450,5 +635,77 @@ mod tests {
             cron_staleness_threshold(86_400),
             Duration::from_secs(173_400)
         );
+    }
+
+    #[test]
+    fn leader_health_uses_thirty_second_external_threshold() {
+        let now = Utc::now();
+        let mut leader = crate::jobs::leadership::GlobalBackgroundJobsSnapshot {
+            instance_id: uuid::Uuid::new_v4(),
+            generation: 1,
+            acquired_at: now - chrono::Duration::minutes(1),
+            heartbeat_at: now - chrono::Duration::seconds(30),
+            released_at: None,
+            active: false,
+        };
+        assert_eq!(global_leader_health(Some(&leader), now), (true, Some(30)));
+        leader.heartbeat_at = now - chrono::Duration::seconds(31);
+        assert_eq!(global_leader_health(Some(&leader), now), (false, Some(31)));
+        leader.heartbeat_at = now;
+        leader.released_at = Some(now);
+        assert_eq!(global_leader_health(Some(&leader), now), (false, Some(0)));
+        assert_eq!(global_leader_health(None, now), (false, None));
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn health_query_distinguishes_capacity_from_wake_failure(
+        pool: PgPool,
+    ) -> Result<(), sqlx::Error> {
+        crate::jobs::setup_apalis(&pool).await?;
+        let spec = QueueSpec::queue("health-test", 1, Duration::from_secs(30))
+            .with_backlog_alert_after(Duration::from_secs(1));
+        assert!(
+            REGISTRY.set((Utc::now(), vec![spec])).is_ok(),
+            "test owns the process-wide registry"
+        );
+
+        sqlx::query(
+            r#"
+            INSERT INTO apalis.jobs (job, id, job_type, status, run_at, lock_at)
+            VALUES
+                (decode('7b7d', 'hex'), 'health-pending', 'health-test', 'Pending',
+                 NOW() - INTERVAL '20 seconds', NULL),
+                (decode('7b7d', 'hex'), 'health-running', 'health-test', 'Running',
+                 NOW() - INTERVAL '20 seconds', NOW())
+            "#,
+        )
+        .execute(&pool)
+        .await?;
+        sqlx::query(
+            r#"
+            INSERT INTO background_job_reclaims (
+                job_id, job_type, from_status, action, reason
+            ) VALUES ('old', 'health-test', 'Queued', 'requeued', 'test')
+            "#,
+        )
+        .execute(&pool)
+        .await?;
+
+        let report = evaluate(&pool).await?;
+        assert_eq!(report.len(), 1);
+        assert_eq!(report[0].failure_mode, Some("capacity"));
+        assert_eq!(report[0].available_slots, 0);
+        assert_eq!(report[0].reclaims_last_hour, 1);
+        assert!(report[0].start_latency_p95_secs.is_some());
+
+        sqlx::query(
+            "UPDATE apalis.jobs SET status = 'Done', done_at = NOW() WHERE id = 'health-running'",
+        )
+        .execute(&pool)
+        .await?;
+        let report = evaluate(&pool).await?;
+        assert_eq!(report[0].failure_mode, Some("wake"));
+        assert_eq!(report[0].available_slots, 1);
+        Ok(())
     }
 }

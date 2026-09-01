@@ -27,13 +27,14 @@ import {
 import { NumberBadge } from "@/components/number-badge";
 import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
 import type { QuoteFees } from "../utils/confidential-prepare";
-import { cn, formatBalance, formatTokenDisplayAmount } from "@/lib/utils";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import { cn, formatTokenDisplayAmount } from "@/lib/utils";
 import { validateAccountsAndStorage } from "../utils";
 import { useBulkParsingLabels } from "../utils/use-parsing-labels";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
-import { useAddressBook } from "@/features/address-book";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
+import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import { AmountSummary } from "@/components/amount-summary";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { trackEvent } from "@/lib/analytics";
@@ -41,6 +42,11 @@ import { Tooltip } from "@/components/tooltip";
 import { Address } from "@/components/address";
 import { toast } from "sonner";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import {
+    formatRecipientForNearComDestination,
+    hasNearComAddressPrefix,
+} from "@/lib/nearcom-address";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 
 interface ReviewPaymentsStepProps extends StepProps {
     initialPaymentData: BulkPaymentData[];
@@ -121,7 +127,7 @@ export function ReviewPaymentsStep({
 
     const { treasuryId } = useTreasury();
     const { data: addressBook = [] } = useAddressBook();
-    const { data: bridgeAssets = [] } = useBridgeTokens(true);
+    const { data: bridgeAssets = [] } = useTokenCatalog({ kind: "swap" });
     const { data: selectedTokenData } = useToken(selectedToken?.address || "");
     const { data: balance } = useTokenBalance(
         treasuryId,
@@ -283,11 +289,10 @@ export function ReviewPaymentsStep({
     if (balance) {
         try {
             const balanceBig = Big(balance);
-            const balanceFormattedString = formatBalance(
-                balanceBig.toString(),
+            const balanceFormattedBig = decimalFromBaseUnits(
+                balanceBig,
                 selectedToken.decimals,
             );
-            const balanceFormattedBig = Big(balanceFormattedString);
 
             // When total already includes fees (header quote or typed+fee),
             // do not pass networkFee again — that double-counts.
@@ -303,10 +308,17 @@ export function ReviewPaymentsStep({
                 symbol: selectedToken.symbol,
             });
 
-            // Calculate USD value only if price is available
-            if (selectedTokenData?.price && balanceFormattedBig.gt(0)) {
+            // USD follows payment amount × price; do not require a non-zero
+            // treasury balance (that only gates the insufficient-funds warning).
+            if (selectedTokenData?.price && totalAmount.gt(0)) {
                 totalUSDValue = totalAmount.mul(selectedTokenData.price);
             }
+        } catch (error) {
+            console.error("Error calculating total USD value:", error);
+        }
+    } else if (selectedTokenData?.price && totalAmount.gt(0)) {
+        try {
+            totalUSDValue = totalAmount.mul(selectedTokenData.price);
         } catch (error) {
             console.error("Error calculating total USD value:", error);
         }
@@ -394,18 +406,15 @@ export function ReviewPaymentsStep({
                                       )
                                     : Big(displayAmount || "0");
                                 let estimatedUSDValue = 0;
-                                if (selectedTokenData?.price && balance) {
+                                if (selectedTokenData?.price) {
                                     try {
-                                        const balanceBig = Big(balance);
-                                        const balanceFormatted = Number(
-                                            formatBalance(
-                                                balanceBig.toString(),
-                                                selectedToken.decimals,
-                                            ),
-                                        );
-                                        if (balanceFormatted > 0) {
+                                        const amountNum = Number(displayAmount);
+                                        if (
+                                            Number.isFinite(amountNum) &&
+                                            amountNum > 0
+                                        ) {
                                             estimatedUSDValue =
-                                                Number(displayAmount) *
+                                                amountNum *
                                                 selectedTokenData.price;
                                         }
                                     } catch (error) {
@@ -440,10 +449,9 @@ export function ReviewPaymentsStep({
                                                     <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
                                                         {(() => {
                                                             const contact =
-                                                                addressBook.find(
-                                                                    (e) =>
-                                                                        e.address.toLowerCase() ===
-                                                                        payment.recipient.toLowerCase(),
+                                                                findAddressBookEntry(
+                                                                    addressBook,
+                                                                    payment.recipient,
                                                                 );
                                                             return (
                                                                 <>
@@ -456,9 +464,16 @@ export function ReviewPaymentsStep({
                                                                     )}
 
                                                                     <Address
-                                                                        address={
-                                                                            payment.recipient
-                                                                        }
+                                                                        address={formatRecipientForNearComDestination(
+                                                                            payment.recipient,
+                                                                            // Public bulk has no network picker —
+                                                                            // keep nearcom: when the user typed it.
+                                                                            hasNearComAddressPrefix(
+                                                                                payment.recipient,
+                                                                            )
+                                                                                ? NEAR_COM_NETWORK_ID
+                                                                                : destinationNetworkId,
+                                                                        )}
                                                                         className={cn(
                                                                             "min-w-0",
                                                                             contact

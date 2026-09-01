@@ -17,7 +17,7 @@ import {
 } from "@/components/modal";
 import type { TreasuryAsset } from "@/lib/api";
 import Big from "@/lib/big";
-import { formatBalance } from "@/lib/utils";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import { AmountSummary } from "./amount-summary";
 import { useStakingValidator } from "@/hooks/use-staking-validator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -87,7 +87,7 @@ export function EarningPoolDetailsModal({
     const availableForWithdraw = canWithdraw ? unstakedBalance : Big(0);
 
     const formatTokenBalance = (balance: Big) =>
-        Big(formatBalance(balance, asset.decimals)).toString();
+        decimalFromBaseUnits(balance, asset.decimals).toFixed();
 
     const summaryUsd = poolTotal
         .div(Big(10).pow(asset.decimals))

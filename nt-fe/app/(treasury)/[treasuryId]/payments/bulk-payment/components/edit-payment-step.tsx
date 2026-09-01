@@ -13,6 +13,13 @@ import { buildEditPaymentSchema } from "../schemas";
 import type { SelectedTokenData } from "@/components/token-select";
 import { needsStorageDepositCheck } from "../utils";
 import { getBatchStorageDepositIsRegistered } from "@/lib/api";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import {
+    formatRecipientForNearComDestination,
+    hasNearComAddressPrefix,
+    stripNearComAddressPrefix,
+    withNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 
 interface EditPaymentStepProps extends StepProps {
     payment: BulkPaymentData;
@@ -24,6 +31,8 @@ interface EditPaymentStepProps extends StepProps {
      * validation and address-book filtering use this chain (not NEAR / send).
      */
     destinationNetwork?: string;
+    /** Network option id — `near.com` keeps nearcom: on the recipient field. */
+    destinationNetworkId?: string;
     onSave: (
         index: number,
         data: EditPaymentFormValues,
@@ -38,6 +47,7 @@ export function EditPaymentStep({
     selectedToken,
     networkFeePerRecipient,
     destinationNetwork,
+    destinationNetworkId,
     onSave,
     onCancel,
 }: EditPaymentStepProps) {
@@ -57,7 +67,12 @@ export function EditPaymentStep({
     const form = useForm<EditPaymentFormValues>({
         resolver: zodResolver(editPaymentSchema),
         defaultValues: {
-            recipient: payment.recipient,
+            recipient: hasNearComAddressPrefix(payment.recipient)
+                ? withNearComAddressPrefix(payment.recipient)
+                : formatRecipientForNearComDestination(
+                      payment.recipient,
+                      destinationNetworkId,
+                  ),
             amount: payment.amount,
             token: selectedToken,
         },
@@ -69,6 +84,13 @@ export function EditPaymentStep({
         setIsSaving(true);
         try {
             const data = form.getValues();
+            // Keep nearcom: for FE display when the user typed it (public has
+            // no network picker). Confidential near.com destination also keeps it.
+            const normalizedRecipient =
+                hasNearComAddressPrefix(data.recipient) ||
+                destinationNetworkId === NEAR_COM_NETWORK_ID
+                    ? withNearComAddressPrefix(data.recipient)
+                    : stripNearComAddressPrefix(data.recipient);
 
             let isRegistered = true;
             if (needsStorageDepositCheck(selectedToken)) {
@@ -76,7 +98,10 @@ export function EditPaymentStep({
                     const storageResult =
                         await getBatchStorageDepositIsRegistered([
                             {
-                                accountId: data.recipient,
+                                accountId:
+                                    stripNearComAddressPrefix(
+                                        normalizedRecipient,
+                                    ),
                                 tokenId: selectedToken.address,
                             },
                         ]);
@@ -88,7 +113,11 @@ export function EditPaymentStep({
                 }
             }
 
-            onSave(paymentIndex, data, isRegistered);
+            onSave(
+                paymentIndex,
+                { ...data, recipient: normalizedRecipient },
+                isRegistered,
+            );
         } finally {
             setIsSaving(false);
         }

@@ -167,14 +167,12 @@ pub async fn snapshot_confidential_dao_balances(state: &AppState, dao_id: &str) 
     skip_all,
     fields(job = "confidential_balance_snapshot")
 )]
-pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
-    let dao_ids = match load_confidential_history_accounts(&state.db_pool).await {
-        Ok(ids) => ids,
-        Err(e) => {
-            tracing::error!("account load failed: {}", e);
-            return;
-        }
-    };
+pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) -> Result<(), String> {
+    // Propagated as a task error so the cycle shows Failed on the board and
+    // the SentryLayer captures it, instead of a green run that did nothing.
+    let dao_ids = load_confidential_history_accounts(&state.db_pool)
+        .await
+        .map_err(|e| format!("account load failed: {e}"))?;
 
     let accounts_seen = dao_ids.len();
     if accounts_seen > 0 {
@@ -208,6 +206,7 @@ pub async fn tick_confidential_balance_snapshot_cron(state: &Arc<AppState>) {
             }
         })
         .await;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -235,22 +234,28 @@ mod tests {
     async fn seed_confidential_dao(pool: &PgPool) {
         sqlx::query(
             r#"
-            INSERT INTO monitored_accounts
-                (account_id, enabled, is_confidential_account,
-                 confidential_access_token, confidential_refresh_token,
-                 confidential_token_expires_at)
-            VALUES ($1, true, true, 'test-access', 'test-refresh', NOW() + INTERVAL '1 hour')
-            ON CONFLICT (account_id) DO UPDATE SET
-                is_confidential_account = true,
-                confidential_access_token = 'test-access',
-                confidential_refresh_token = 'test-refresh',
-                confidential_token_expires_at = NOW() + INTERVAL '1 hour'
+            INSERT INTO monitored_accounts (account_id, enabled, is_confidential_account)
+            VALUES ($1, true, true)
+            ON CONFLICT (account_id) DO UPDATE SET is_confidential_account = true
             "#,
         )
         .bind(DAO)
         .execute(pool)
         .await
         .expect("seed monitored account");
+
+        crate::services::ConfidentialCredentialStore::new(pool.clone(), None)
+            .store_new(
+                DAO,
+                crate::services::CredentialScope::Dao,
+                &crate::services::TokenBundle {
+                    access_token: "test-access".to_string(),
+                    refresh_token: "test-refresh".to_string(),
+                },
+                Utc::now() + chrono::Duration::hours(1),
+            )
+            .await
+            .expect("seed credentials");
     }
 
     async fn seed_snapshot(pool: &PgPool, asset: &str, balance: &str, at: chrono::DateTime<Utc>) {

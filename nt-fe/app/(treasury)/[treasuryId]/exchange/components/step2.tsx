@@ -6,6 +6,7 @@ import { useFormContext } from "react-hook-form";
 import { PageCard } from "@/components/card";
 import { CopyButton } from "@/components/copy-button";
 import { CreateRequestButton } from "@/components/create-request-button";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { useFormatDate } from "@/components/formatted-date";
 import { InfoDisplay } from "@/components/info-display";
 import { ReviewStep, type StepProps } from "@/components/step-wizard";
@@ -15,17 +16,12 @@ import {
     calculateExchangeFeeAmount,
     EXCHANGE_FEE_PERCENTAGE,
 } from "@/lib/exchange-fee";
-import {
-    formatBalance,
-    formatCurrencyWithSubCent,
-    formatDurationSeconds,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
+import { formatDurationSeconds } from "@/lib/utils";
 import { PROPOSAL_REFRESH_INTERVAL } from "../constants";
 import type { ExchangeFormValues } from "../exchange-form";
 import { useCountdownTimer } from "../hooks/use-countdown-timer";
 import { useExchangeAmountQuote } from "../hooks/use-exchange-amount-quote";
-import { useFormatQuoteAmount } from "../hooks/use-format-quote-amount";
+import { useQuoteDecimalAmount } from "../hooks/use-format-quote-amount";
 import { calculateMarketPriceDifference, isNEARWrapConversion } from "../utils";
 import { ExchangeSummaryCard } from "./exchange-summary-card";
 import { Rate } from "./rate";
@@ -52,12 +48,20 @@ export function Step2({ handleBack }: StepProps) {
         refetchInterval: PROPOSAL_REFRESH_INTERVAL,
     });
 
-    const formattedReceiveAmount = useFormatQuoteAmount(
+    const sellAmount = useQuoteDecimalAmount(
+        localLiveQuoteData?.quote
+            ? {
+                  amount: localLiveQuoteData.quote.amountIn,
+                  amountFormatted: localLiveQuoteData.quote.amountInFormatted,
+                  tokenDecimals: sellToken.decimals,
+              }
+            : null,
+    );
+    const receiveAmount = useQuoteDecimalAmount(
         localLiveQuoteData?.quote
             ? {
                   amount: localLiveQuoteData.quote.amountOut,
                   amountFormatted: localLiveQuoteData.quote.amountOutFormatted,
-                  amountUsd: localLiveQuoteData.quote.amountOutUsd,
                   tokenDecimals: receiveToken.decimals,
               }
             : null,
@@ -130,14 +134,8 @@ export function Step2({ handleBack }: StepProps) {
                             <ExchangeSummaryCard
                                 title={tEx("sell")}
                                 token={sellToken}
-                                amount={
-                                    localLiveQuoteData.quote.amountInFormatted
-                                }
-                                usdValue={
-                                    Number(
-                                        localLiveQuoteData.quote.amountInUsd,
-                                    ) || 0
-                                }
+                                amount={sellAmount}
+                                usdValue={localLiveQuoteData.quote.amountInUsd}
                             />
 
                             <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
@@ -152,12 +150,8 @@ export function Step2({ handleBack }: StepProps) {
                             <ExchangeSummaryCard
                                 title={tEx("receive")}
                                 token={receiveToken}
-                                amount={formattedReceiveAmount}
-                                usdValue={
-                                    Number(
-                                        localLiveQuoteData.quote.amountOutUsd,
-                                    ) || 0
-                                }
+                                amount={receiveAmount}
+                                usdValue={localLiveQuoteData.quote.amountOutUsd}
                             />
                         </div>
 
@@ -174,8 +168,7 @@ export function Step2({ handleBack }: StepProps) {
                                 hideSeparator
                                 size="sm"
                                 items={[
-                                    ...(marketPriceDifference &&
-                                    marketPriceDifference.hasMarketData
+                                    ...(marketPriceDifference?.hasMarketData
                                         ? [
                                               {
                                                   label: tEx(
@@ -183,23 +176,29 @@ export function Step2({ handleBack }: StepProps) {
                                                   ),
                                                   value: (
                                                       <span className="font-medium">
-                                                          {marketPriceDifference.isFavorable
-                                                              ? "+"
-                                                              : ""}
-                                                          {
-                                                              marketPriceDifference.percentDifference
-                                                          }
-                                                          % (
+                                                          <FormattedAmount
+                                                              kind="percent"
+                                                              value={
+                                                                  marketPriceDifference.percentDifference
+                                                              }
+                                                              signDisplay={
+                                                                  marketPriceDifference.isFavorable
+                                                                      ? "always"
+                                                                      : "auto"
+                                                              }
+                                                          />{" "}
+                                                          (
                                                           {marketPriceDifference.isFavorable
                                                               ? "+"
                                                               : "-"}
-                                                          {formatCurrencyWithSubCent(
-                                                              Math.abs(
+                                                          <FormattedAmount
+                                                              kind="fiat"
+                                                              value={Math.abs(
                                                                   Number(
                                                                       marketPriceDifference.usdDifference,
                                                                   ),
-                                                              ),
-                                                          )}
+                                                              )}
+                                                          />
                                                           )
                                                       </span>
                                                   ),
@@ -222,13 +221,24 @@ export function Step2({ handleBack }: StepProps) {
                                     },
                                     {
                                         label: tEx("info.minimumReceived"),
-                                        value: `${formatTokenDisplayAmount(
-                                            formatBalance(
-                                                localLiveQuoteData.quote
-                                                    .minAmountOut,
-                                                receiveToken.decimals,
-                                            ),
-                                        )} ${receiveToken.symbol}`,
+                                        value: (
+                                            <FormattedAmount
+                                                kind="raw-token"
+                                                value={
+                                                    localLiveQuoteData.quote
+                                                        .minAmountOut
+                                                }
+                                                symbol={receiveToken.symbol}
+                                                tokenDecimals={
+                                                    receiveToken.decimals
+                                                }
+                                                unitPriceUsd={
+                                                    receiveToken.price
+                                                }
+                                                profile="standard"
+                                                rounding="down"
+                                            />
+                                        ),
                                         info: tEx(
                                             "info.minimumReceivedTooltip",
                                         ),
@@ -280,15 +290,40 @@ export function Step2({ handleBack }: StepProps) {
                                                   ),
                                                   value: (() => {
                                                       const feeAmount =
-                                                          calculateExchangeFeeAmount(
-                                                              localLiveQuoteData
-                                                                  .quote
-                                                                  .amountInFormatted,
-                                                          );
+                                                          sellAmount
+                                                              ? calculateExchangeFeeAmount(
+                                                                    sellAmount,
+                                                                )
+                                                              : null;
 
-                                                      return `${EXCHANGE_FEE_PERCENTAGE}% / ${formatTokenDisplayAmount(
-                                                          feeAmount,
-                                                      )} ${sellToken.symbol}`;
+                                                      return (
+                                                          <span>
+                                                              <FormattedAmount
+                                                                  kind="percent"
+                                                                  value={
+                                                                      EXCHANGE_FEE_PERCENTAGE
+                                                                  }
+                                                              />{" "}
+                                                              /{" "}
+                                                              <FormattedAmount
+                                                                  kind="token"
+                                                                  value={
+                                                                      feeAmount
+                                                                  }
+                                                                  symbol={
+                                                                      sellToken.symbol
+                                                                  }
+                                                                  tokenDecimals={
+                                                                      sellToken.decimals
+                                                                  }
+                                                                  unitPriceUsd={
+                                                                      sellToken.price
+                                                                  }
+                                                                  profile="standard"
+                                                                  rounding="up"
+                                                              />
+                                                          </span>
+                                                      );
                                                   })(),
                                                   info: tEx(
                                                       "info.exchangeFeeTooltip",

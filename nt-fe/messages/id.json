@@ -1148,7 +1148,7 @@
         "review": {
             "header": "Tinjau Detail",
             "youAreAdding": "Anda menambahkan",
-            "newRecipients": "{count, plural, other {# penerima baru}}",
+            "newRecipients": "{count, plural, =0 {Tidak ada penerima baru} other {# penerima baru}}",
             "onNetworks": "di {count, plural, other {# jaringan}}",
             "recipients": "Penerima",
             "allDuplicates": "Semua penerima yang diimpor sudah ada di buku alamat Anda. Kembali untuk mengunggah daftar berbeda atau hapus duplikat dari tinjauan ini.",
@@ -1878,6 +1878,7 @@
         "Batch Payment Request": "Permintaan Pembayaran Batch",
         "Payment Request": "Permintaan Pembayaran",
         "Confidential Request": "Permintaan Rahasia",
+        "Move to Confidential": "Pindahkan ke Rahasia",
         "Exchange": "Tukar",
         "Function Call": "Panggilan Fungsi",
         "Change Policy": "Ubah Kebijakan",
@@ -1916,7 +1917,8 @@
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
         "nearComDescription": "Jaringan untuk trezu rahasia",
-        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com"
+        "nearComDescriptionPublic": "Jaringan untuk near.com",
+        "nearDescription": "Jaringan untuk penarikan publik"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",
@@ -2205,6 +2207,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# penerima ditambahkan}}",
+        "alreadyExistsToast": "Penerima sudah ada di buku alamat",
         "addedSingleToast": "Penerima ditambahkan",
         "addFailedToast": "Gagal menambahkan penerima",
         "addSingleFailedToast": "Gagal menambahkan penerima",
@@ -2663,5 +2666,40 @@
         "signInRequired": "Hubungkan dompet Anda untuk mengelola akun.",
         "avatarUploaded": "Avatar berhasil diunggah",
         "uploadError": "Terjadi kesalahan saat mengunggah gambar, coba lagi."
+    },
+    "moveAssets": {
+        "title": "Pindahkan Aset",
+        "description": "Pindahkan aset dari rantai publik ke treasury Rahasia Anda.",
+        "submitted": "Permintaan pemindahan dikirim",
+        "banner": {
+            "title": "<amount></amount> masuk ke saldo publik Anda",
+            "description": "Seseorang mengirimnya lewat jaringan yang salah. Pindahkan ke sini agar menjadi rahasia.",
+            "moveAssets": "Pindahkan Aset",
+            "viewRequest": "Lihat Permintaan"
+        },
+        "list": {
+            "title": "Dana yang perlu dipindahkan",
+            "token": "Token",
+            "moveAssets": "Pindahkan Aset",
+            "emptyTitle": "Tidak ada yang perlu dipindahkan",
+            "emptyDescription": "Saldo publik Anda kosong. Dana yang dikirim ke akun publik akan muncul di sini.",
+            "viewRequest": "Lihat Permintaan"
+        },
+        "form": {
+            "title": "Ke Rahasia",
+            "review": "Tinjau Pemindahan",
+            "reviewDisabled": "Masukkan jumlah"
+        },
+        "review": {
+            "title": "Tinjau Pemindahan Anda",
+            "youMove": "Anda memindahkan"
+        },
+        "errors": {
+            "invalid": "Masukkan jumlah yang valid",
+            "zero": "Jumlah harus lebih dari nol",
+            "tooManyDecimals": "Terlalu banyak angka desimal untuk token ini",
+            "exceedsBalance": "Jumlah melebihi saldo publik",
+            "failed": "Tidak dapat menyiapkan permintaan pemindahan. Silakan coba lagi."
+        }
     }
 }

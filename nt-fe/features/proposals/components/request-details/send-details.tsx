@@ -45,11 +45,6 @@ export function SendDetails({ data }: { data: PaymentRequestData }) {
         originTokenId: data.tokenId,
         originNetwork: tokenChainName,
         originChainIcons: tokenData?.chainIcons,
-        nearComRoute: {
-            depositAddress: data.depositAddress,
-            quoteSignature: data.quoteSignature,
-            networkFee: data.networkFee,
-        },
     });
 
     // An executed intents payment only learns its settled USD value from the

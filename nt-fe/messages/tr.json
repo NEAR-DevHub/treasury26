@@ -1148,7 +1148,7 @@
         "review": {
             "header": "Ayrıntıları İncele",
             "youAreAdding": "Ekliyorsunuz",
-            "newRecipients": "{count, plural, one {# yeni alıcı} other {# yeni alıcı}}",
+            "newRecipients": "{count, plural, =0 {Yeni alıcı yok} one {# yeni alıcı} other {# yeni alıcı}}",
             "onNetworks": "{count, plural, one {# ağda} other {# ağda}}",
             "recipients": "Alıcılar",
             "allDuplicates": "İçe aktarılan tüm alıcılar adres defterinizde zaten var. Farklı bir liste yüklemek için geri dönün veya bu incelemeden tekrarları kaldırın.",
@@ -1878,6 +1878,7 @@
         "Batch Payment Request": "Toplu Ödeme Talebi",
         "Payment Request": "Ödeme Talebi",
         "Confidential Request": "Gizli Talep",
+        "Move to Confidential": "Gizliye Taşı",
         "Exchange": "Takas",
         "Function Call": "Fonksiyon Çağrısı",
         "Change Policy": "Politika Değişikliği",
@@ -1916,7 +1917,8 @@
         "comingSoon": "Yakında",
         "forMembersOnly": "Yalnızca Üyelere Özel",
         "nearComDescription": "Gizli trezu için ağ",
-        "nearDescription": "Açık çekim ve near.com cüzdanı için ağ"
+        "nearComDescriptionPublic": "near.com için ağ",
+        "nearDescription": "Açık çekim için ağ"
     },
     "addressBookTable": {
         "emptyTitle": "Henüz alıcı yok",
@@ -2205,6 +2207,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Alıcı eklendi} other {# alıcı eklendi}}",
+        "alreadyExistsToast": "Alıcı zaten adres defterinizde",
         "addedSingleToast": "Alıcı eklendi",
         "addFailedToast": "Alıcılar eklenemedi",
         "addSingleFailedToast": "Alıcı eklenemedi",
@@ -2663,5 +2666,40 @@
         "signInRequired": "Hesabınızı yönetmek için cüzdanınızı bağlayın.",
         "avatarUploaded": "Avatar başarıyla yüklendi",
         "uploadError": "Görsel yüklenirken hata oluştu, lütfen tekrar deneyin."
+    },
+    "moveAssets": {
+        "title": "Varlıkları Taşı",
+        "description": "Varlıkları herkese açık zincirden Gizli hazinenize taşıyın.",
+        "submitted": "Taşıma isteği gönderildi",
+        "banner": {
+            "title": "<amount></amount> herkese açık bakiyenize ulaştı",
+            "description": "Birisi yanlış ağ üzerinden gönderdi. Gizli hale getirmek için buraya taşıyın.",
+            "moveAssets": "Varlıkları Taşı",
+            "viewRequest": "İsteği Görüntüle"
+        },
+        "list": {
+            "title": "Taşınması gereken fonlar",
+            "token": "Token",
+            "moveAssets": "Varlıkları Taşı",
+            "emptyTitle": "Taşınacak bir şey yok",
+            "emptyDescription": "Herkese açık bakiyeniz boş. Herkese açık hesaba gönderilen fonlar burada görünür.",
+            "viewRequest": "İsteği Görüntüle"
+        },
+        "form": {
+            "title": "Gizliye",
+            "review": "Taşımayı İncele",
+            "reviewDisabled": "Tutar girin"
+        },
+        "review": {
+            "title": "Taşımanızı İnceleyin",
+            "youMove": "Taşıdığınız"
+        },
+        "errors": {
+            "invalid": "Geçerli bir tutar girin",
+            "zero": "Tutar sıfırdan büyük olmalı",
+            "tooManyDecimals": "Bu token için çok fazla ondalık basamak",
+            "exceedsBalance": "Tutar herkese açık bakiyeyi aşıyor",
+            "failed": "Taşıma isteği hazırlanamadı. Lütfen tekrar deneyin."
+        }
     }
 }

@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/button";
 import { TreasuryAsset } from "@/lib/api";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { formatBalance } from "@/lib/utils";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import {
     buildEarningOverviewItems,
     hasStakingActivity,
@@ -53,7 +53,7 @@ export function EarningDetailsModal({
 
     // Format balances
     const formatTokenBalance = (balance: Big) => {
-        return Big(formatBalance(balance, asset.decimals)).toString();
+        return decimalFromBaseUnits(balance, asset.decimals).toFixed();
     };
 
     // Earning Overview items using shared function
@@ -61,7 +61,6 @@ export function EarningDetailsModal({
         staked: staking.stakedBalance,
         unstakedBalance: staking.unstakedBalance,
         canWithdraw: staking.canWithdraw,
-        symbol: asset.symbol,
         formatTokenBalance,
         labels: {
             staked: t("overview.staked"),

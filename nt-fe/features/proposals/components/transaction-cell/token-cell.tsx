@@ -8,13 +8,14 @@ import {
     StakingData,
 } from "../../types/index";
 import { Amount } from "../amount";
-import { TooltipUser } from "@/components/user";
+import { resolveUserDisplayName, TooltipUser } from "@/components/user";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
 import { useProfile, useToken } from "@/hooks/use-treasury-queries";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { useTreasury } from "@/hooks/use-treasury";
 import { Tooltip } from "@/components/tooltip";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { Address } from "@/components/address";
 
 /**
@@ -58,6 +59,9 @@ export function TokenCell({
     const { isConfidential } = useTreasury();
     const effectivePrefix = prefix ?? t("toPrefix");
     const nearFt = "nearFt" in data ? data.nearFt : undefined;
+    const destinationAssetId =
+        "destinationAssetId" in data ? data.destinationAssetId : undefined;
+    const isNearComDestination = isNearComPaymentRoute(destinationAssetId);
     const title = (
         <Amount
             amount={data.amount}
@@ -71,13 +75,18 @@ export function TokenCell({
         />
     );
     const { data: profile } = useProfile(data.receiver);
-    const address = profile?.addressBookName ?? data.receiver;
-    const destinationAssetId =
-        "destinationAssetId" in data ? data.destinationAssetId : undefined;
+    const displayReceiver = formatRecipientForNearComDestination(
+        data.receiver,
+        destinationAssetId,
+    );
+    const displayName = resolveUserDisplayName({
+        accountId: data.receiver,
+        profileName: profile?.name,
+    });
+    const nameIsAddress =
+        displayName.trim().toLowerCase() === data.receiver.trim().toLowerCase();
     const showConfidentialAddressShield =
-        isConfidential &&
-        "destinationAssetId" in data &&
-        isNearComPaymentRoute(data);
+        isConfidential && isNearComDestination;
 
     const subtitle = data.receiver ? (
         <div className="flex min-w-0 max-w-full items-center overflow-hidden">
@@ -92,20 +101,28 @@ export function TokenCell({
             {isUser ? (
                 <TooltipUser
                     accountId={data.receiver}
-                    useAddressBook
+                    displayAddress={displayReceiver}
                     chainName={destinationAssetId}
                 >
                     <div className="ml-1 min-w-0 flex-1 overflow-hidden">
-                        <Address
-                            address={address}
-                            prefixLength={6}
-                            suffixLength={6}
-                            className="min-w-0 truncate"
-                        />
+                        {nameIsAddress ? (
+                            <Address
+                                address={displayReceiver}
+                                prefixLength={6}
+                                suffixLength={6}
+                                className="min-w-0 truncate"
+                            />
+                        ) : (
+                            <span className="min-w-0 truncate block">
+                                {displayName}
+                            </span>
+                        )}
                     </div>
                 </TooltipUser>
             ) : (
-                <span className="ml-1 min-w-0 flex-1 truncate">{address}</span>
+                <span className="ml-1 min-w-0 flex-1 truncate">
+                    {displayName}
+                </span>
             )}
         </div>
     ) : undefined;

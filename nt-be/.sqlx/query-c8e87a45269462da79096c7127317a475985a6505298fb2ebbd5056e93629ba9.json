@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            ts.display_name,\n            ts.flag_logo,\n            (ma.account_id IS NOT NULL) AS \"is_treasury!\"\n        FROM (SELECT $1::text AS account_id) AS q\n        LEFT JOIN treasury_settings ts ON ts.account_id = q.account_id\n        LEFT JOIN monitored_accounts ma ON ma.account_id = q.account_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "flag_logo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "is_treasury!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "c8e87a45269462da79096c7127317a475985a6505298fb2ebbd5056e93629ba9"
+}

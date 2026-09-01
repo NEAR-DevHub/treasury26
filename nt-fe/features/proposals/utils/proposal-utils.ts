@@ -13,6 +13,8 @@ import {
 import { decodeArgs, decodeProposalDescription, nanosToMs } from "@/lib/utils";
 import { extractProposalData } from "./proposal-extractors";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
+import { PUBLIC_TO_CONFIDENTIAL_ACTION } from "@/constants/proposal-actions";
+import { isIntentsDepositKind } from "@/lib/near-proposal-builders";
 
 const BULK_PAYMENT_CONTRACT_ID =
     process.env.NEXT_PUBLIC_BULK_PAYMENT_CONTRACT_ID || "bulkpayment.near";
@@ -258,6 +260,17 @@ export function getProposalUIKind(proposal: Proposal): ProposalUIKind {
             if (proposalAction === "confidential") {
                 return "Confidential Request";
             }
+            // The marker is proposer-controlled: a move is only recognised
+            // when the call has the exact builder shape AND the backend has
+            // bound it to a 1Click quote in this DAO's confidential history.
+            // Otherwise it renders as the raw function call it is.
+            if (proposalAction === PUBLIC_TO_CONFIDENTIAL_ACTION) {
+                return isIntentsDepositKind(proposal.kind) &&
+                    proposal.confidential_metadata?.public_move?.verified ===
+                        true
+                    ? "Move to Confidential"
+                    : "Function Call";
+            }
             if (isVestingProposal(proposal)) {
                 return "Vesting";
             }
@@ -452,7 +465,8 @@ export function getProposalRequiredFunds(
     const { type: uiKind, data } = extractProposalData(proposal, treasuryId);
 
     switch (uiKind) {
-        case "Payment Request": {
+        case "Payment Request":
+        case "Move to Confidential": {
             const d = data as PaymentRequestData;
             return { tokenId: d.tokenId, amount: d.amount };
         }

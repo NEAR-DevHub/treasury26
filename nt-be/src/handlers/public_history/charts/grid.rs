@@ -1,6 +1,8 @@
 use chrono::{DateTime, Datelike, Duration, NaiveTime, TimeZone, Utc};
 
-pub const DAILY_BUCKET_LIMIT: usize = 90;
+// The frontend's widest daily window (3M = 90 days back from now) produces up
+// to 91 buckets: 90 aligned midnights plus the trailing now-bucket.
+pub const DAILY_BUCKET_LIMIT: usize = 92;
 pub const WEEKLY_BUCKET_LIMIT: usize = 53;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

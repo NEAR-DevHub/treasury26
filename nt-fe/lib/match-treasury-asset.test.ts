@@ -108,3 +108,62 @@ describe("findMatchingTreasuryAsset", () => {
         ).toBeNull();
     });
 });
+
+const arbAsset = {
+    id: "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+    contractId: "arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+    residency: "Intents",
+    network: "arb",
+    chainName: "Arbitrum",
+    symbol: "ARB",
+    balance: { Standard: { total: "7000000000000000000", locked: "0" } },
+    decimals: 18,
+    price: 1,
+    name: "Arbitrum",
+    icon: "",
+    balanceUSD: 7,
+    weight: 0,
+} as unknown as TreasuryAsset;
+
+describe("findMatchingTreasuryAsset network aliases", () => {
+    it("matches catalog long name against 1Click short code (dashboard Send)", () => {
+        const matched = findMatchingTreasuryAsset([arbAsset], {
+            address:
+                "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+            network: "arbitrum",
+            residency: "Intents",
+        });
+        expect(matched?.symbol).toBe("ARB");
+    });
+
+    it("still rejects a different chain despite matching id", () => {
+        expect(
+            findMatchingTreasuryAsset([arbAsset], {
+                address:
+                    "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+                network: "ethereum",
+            }),
+        ).toBeNull();
+    });
+
+    it("matches unmapped chain names only exactly", () => {
+        const fogo = {
+            ...(arbAsset as unknown as Record<string, unknown>),
+            network: "fogo",
+        } as unknown as TreasuryAsset;
+        expect(
+            findMatchingTreasuryAsset([fogo], {
+                address:
+                    "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+                network: "fogo",
+            })?.network,
+        ).toBe("fogo");
+        expect(
+            findMatchingTreasuryAsset([fogo], {
+                address:
+                    "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+                network: "fog",
+            }),
+        ).toBeNull();
+    });
+});

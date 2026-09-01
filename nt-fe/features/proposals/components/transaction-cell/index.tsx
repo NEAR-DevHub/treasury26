@@ -79,7 +79,8 @@ function TransactionCellSwitch({
     const timestamp = withDate ? proposal.submission_time : undefined;
 
     switch (type) {
-        case "Payment Request": {
+        case "Payment Request":
+        case "Move to Confidential": {
             const paymentData = data as PaymentRequestData;
             return (
                 <TokenCell

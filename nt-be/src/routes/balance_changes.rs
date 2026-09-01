@@ -146,6 +146,10 @@ pub struct EnrichedBalanceChange {
     pub usd_value: Option<BigDecimal>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proposal_id: Option<i64>,
+    /// 1Click deposit address of the linked quote proposal; presence marks the
+    /// row as intents-routed so clients can link the intents explorer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub quote_deposit_address: Option<String>,
 }
 
 /// The backing store selected for one balance-history request.
@@ -623,6 +627,7 @@ async fn fetch_legacy_balance_changes(
                 actions: change.actions,
                 usd_value: change.usd_value,
                 proposal_id: None,
+                quote_deposit_address: None,
             }
         })
         .collect();
