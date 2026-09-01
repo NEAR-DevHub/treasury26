@@ -45,7 +45,8 @@ pub struct GetProposalsQuery {
     pub proposers: Option<String>,
     pub proposers_not: Option<String>,
     /// When true, also exclude the backend gas-sponsor / confidential-setup
-    /// signer from results.
+    /// signer (`SIGNER_ID` / `AppState.signer_id`) from results. Only those
+    /// setup proposals are dropped; a different sponsor account will not match.
     pub exclude_setup_proposer: Option<bool>,
     pub approvers: Option<String>,
     pub approvers_not: Option<String>,

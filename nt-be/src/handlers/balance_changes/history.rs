@@ -1731,6 +1731,12 @@ pub struct RecentActivity {
 /// history cutoff and the caller's `startDate` both narrow the window. Collapse
 /// them to whichever is later so the plan limit cannot be bypassed and the
 /// requested range is still honoured.
+///
+/// `endDate` is not part of this helper: gold/confidential readers take the
+/// collapsed value as `start_time` and bind `endDate` separately, and the
+/// legacy `count_query` already binds `date_cutoff`, `start_date`, and
+/// `end_date` as distinct `>=` / `<=` params. Do not fold `end_date` in here
+/// or the legacy path will double-bind it.
 fn narrower_start_bound(
     date_cutoff: Option<DateTime<Utc>>,
     start_date: Option<DateTime<Utc>>,
@@ -1870,6 +1876,8 @@ pub async fn get_recent_activity(
         exclude_swaps_from_direction: true, // Recent activity: exclude swaps from incoming/outgoing (separate tab)
     };
 
+    // Gold/public readers: one lower bound. Legacy count_query below still
+    // binds cutoff + start_date separately (same max semantics).
     let effective_start_str: Option<String> =
         narrower_start_bound(filters.date_cutoff, filters.start_date).map(|dt| dt.to_rfc3339());
 
