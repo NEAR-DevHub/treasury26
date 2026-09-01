@@ -9,9 +9,20 @@ import { isIconUrl } from "@/lib/icon-url";
 /** Logos are flat art, so a small sample is enough and keeps the read cheap. */
 const SAMPLE_SIZE = 24;
 
-/** Icon URLs are stable, so a result is worth keeping for the whole session. */
+/** Cap so a long swap/bulk session does not retain every sampled icon forever. */
+const COLOR_CACHE_LIMIT = 80;
 const colorCache = new Map<string, Rgb | null>();
 const pending = new Map<string, Promise<Rgb | null>>();
+
+function rememberColor(url: string, color: Rgb | null) {
+    if (colorCache.has(url)) colorCache.delete(url);
+    colorCache.set(url, color);
+    while (colorCache.size > COLOR_CACHE_LIMIT) {
+        const oldest = colorCache.keys().next().value;
+        if (oldest === undefined) break;
+        colorCache.delete(oldest);
+    }
+}
 
 /** `null` colour means "read it, no colour to use"; `unread` means "try elsewhere". */
 type SampleResult = { read: true; color: Rgb | null } | { read: false };
@@ -65,11 +76,14 @@ function loadIconColor(url: string): Promise<Rgb | null> {
     const inFlight = pending.get(url);
     if (inFlight) return inFlight;
 
-    const request = readIconColor(url).then((color) => {
-        colorCache.set(url, color);
-        pending.delete(url);
-        return color;
-    });
+    const request = readIconColor(url)
+        .then((color) => {
+            rememberColor(url, color);
+            return color;
+        })
+        .finally(() => {
+            pending.delete(url);
+        });
     pending.set(url, request);
     return request;
 }
@@ -90,7 +104,9 @@ export function useIconAccentColor(icon?: string | null): Rgb | null {
             return;
         }
         if (colorCache.has(url)) {
-            setColor(colorCache.get(url) ?? null);
+            const cached = colorCache.get(url) ?? null;
+            rememberColor(url, cached);
+            setColor(cached);
             return;
         }
 

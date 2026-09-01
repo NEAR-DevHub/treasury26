@@ -13,9 +13,9 @@ describe("minimumReceivedDecimal", () => {
         expect(minimumReceivedDecimal("10", 0)).toBe("10");
     });
 
-    it("returns 0 when slippage is 100% or more", () => {
-        expect(minimumReceivedDecimal("10", 100)).toBe("0");
-        expect(minimumReceivedDecimal("10", 150)).toBe("0");
+    it("returns null when slippage is 100% or more", () => {
+        expect(minimumReceivedDecimal("10", 100)).toBeNull();
+        expect(minimumReceivedDecimal("10", 150)).toBeNull();
     });
 
     it("returns null for missing or invalid inputs", () => {

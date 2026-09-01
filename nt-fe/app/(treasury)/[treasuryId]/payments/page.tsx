@@ -1141,49 +1141,51 @@ export default function PaymentsPage() {
         watchedDestinationNetwork,
     ]);
 
-    // Clear dependent fields when token / destination change (skip initial seed).
-    const prevTokenKeyRef = useRef<string | null>(null);
-    const prevDestinationRef = useRef<string | null>(null);
+    // One snapshot for token + destination so the two clears cannot race.
+    // Token change always wipes; a follow-up auto-seed (`"" → dest`) does not.
+    const prevClearSnapshotRef = useRef<{
+        tokenKey: string;
+        destination: string;
+    } | null>(null);
 
     useEffect(() => {
         const tokenKey = watchedToken
             ? `${watchedToken.address}:${watchedToken.residency ?? ""}:${watchedToken.network ?? ""}`
             : "";
-        if (prevTokenKeyRef.current === null) {
-            prevTokenKeyRef.current = tokenKey;
-            return;
-        }
-        if (prevTokenKeyRef.current === tokenKey) return;
-        prevTokenKeyRef.current = tokenKey;
-
-        form.setValue("address", "", { shouldDirty: true });
-        form.setValue("amount", "", { shouldDirty: true });
-        form.clearErrors(["address", "amount", "destinationNetwork"]);
-        setIsAddressBookRecipientSelected(false);
-        setIntentsAmountMode("recipient");
-        prevDestinationRef.current = "";
-    }, [watchedToken, form]);
-
-    useEffect(() => {
         const destination = watchedDestinationNetwork || "";
-        if (prevDestinationRef.current === null) {
-            prevDestinationRef.current = destination;
+
+        if (prevClearSnapshotRef.current === null) {
+            prevClearSnapshotRef.current = { tokenKey, destination };
             return;
         }
-        const previous = prevDestinationRef.current;
-        if (previous === destination) return;
-        prevDestinationRef.current = destination;
 
-        // Initial / post-token auto-seed: "" → first destination. Don't wipe
-        // a URL recipient or fields already cleared by the token change.
-        if (!previous && destination) return;
+        const previous = prevClearSnapshotRef.current;
+        const tokenChanged = previous.tokenKey !== tokenKey;
+        const destChanged = previous.destination !== destination;
+        if (!tokenChanged && !destChanged) return;
+
+        if (tokenChanged) {
+            form.setValue("address", "", { shouldDirty: true });
+            form.setValue("amount", "", { shouldDirty: true });
+            form.clearErrors(["address", "amount", "destinationNetwork"]);
+            setIsAddressBookRecipientSelected(false);
+            setIntentsAmountMode("recipient");
+            // Treat the next dest write as a seed, not a user pick.
+            prevClearSnapshotRef.current = { tokenKey, destination: "" };
+            return;
+        }
+
+        prevClearSnapshotRef.current = { tokenKey, destination };
+
+        // Initial / post-token auto-seed: "" → first destination.
+        if (!previous.destination && destination) return;
 
         form.setValue("address", "", { shouldDirty: true });
         form.setValue("amount", "", { shouldDirty: true });
         form.clearErrors(["address", "amount"]);
         setIsAddressBookRecipientSelected(false);
         setIntentsAmountMode("recipient");
-    }, [watchedDestinationNetwork, form]);
+    }, [watchedToken, watchedDestinationNetwork, form]);
 
     // Prefill from ?address= once. Re-applying on every empty value fought the
     // recipient wipe clearer and bounced destination seed.

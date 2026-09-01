@@ -3,7 +3,9 @@ import Big from "@/lib/big";
 
 /**
  * Exact decimal string of `amountOut * (1 - slippagePercent / 100)`.
- * Returns null when the amount or slippage cannot be parsed.
+ * Returns null when the amount or slippage cannot be parsed, or when
+ * slippage is 100% or more (the floor collapses — callers show "—"
+ * rather than a phantom `0 <symbol>` transfer).
  */
 export function minimumReceivedDecimal(
     amountOut: string | null | undefined,
@@ -12,7 +14,7 @@ export function minimumReceivedDecimal(
     const amount = decimalOrNull(amountOut);
     const slip = decimalOrNull(slippagePercent);
     if (!amount || slip == null || slip.lt(0)) return null;
-    if (slip.gte(100)) return "0";
+    if (slip.gte(100)) return null;
     return amount.mul(Big(1).minus(slip.div(100))).toFixed();
 }
 
