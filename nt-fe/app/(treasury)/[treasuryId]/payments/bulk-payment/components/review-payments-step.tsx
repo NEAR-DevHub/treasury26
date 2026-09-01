@@ -707,7 +707,7 @@ export function ReviewPaymentsStep({
                                 form.setValue("comment", e.target.value)
                             }
                             placeholder={tPay("commentPlaceholder")}
-                            inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary!"
+                            inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary! focus-visible:border-general-border focus-visible:ring-0"
                             disabled={isSubmitting}
                         />
                     )}

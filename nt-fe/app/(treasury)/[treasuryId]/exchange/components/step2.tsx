@@ -1,6 +1,10 @@
 "use client";
 
-import { ArrowRight01Icon, HelpCircleIcon } from "@hugeicons/core-free-icons";
+import {
+    ArrowDown01Icon,
+    ArrowRight01Icon,
+    HelpCircleIcon,
+} from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useFormContext } from "react-hook-form";
@@ -147,143 +151,155 @@ export function Step2({ handleBack }: StepProps) {
 
     return (
         <ReviewStep reviewingTitle={tEx("review")} handleBack={handleBack}>
-            {isLoadingLiveQuote ? (
-                <div className="relative mb-2 flex items-center justify-center gap-3">
-                    <Skeleton className="h-40 flex-1 rounded-2xl" />
-                    <Skeleton className="size-8 shrink-0 rounded-lg" />
-                    <Skeleton className="h-40 flex-1 rounded-2xl" />
-                </div>
-            ) : localLiveQuoteData ? (
-                <>
-                    <div className="relative flex items-stretch gap-2">
-                        <ExchangeSummaryCard
-                            token={sellToken}
-                            amount={sellAmount}
-                            usdValue={localLiveQuoteData.quote.amountInUsd}
-                        />
-                        <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-                            <div className="flex size-8 items-center justify-center rounded-lg border border-general-border bg-card text-muted-foreground">
-                                <Icon icon={ArrowRight01Icon} />
-                            </div>
-                        </div>
-                        <ExchangeSummaryCard
-                            token={receiveToken}
-                            amount={receiveAmount}
-                            usdValue={localLiveQuoteData.quote.amountOutUsd}
-                        />
+            <div className="flex flex-col gap-4">
+                {isLoadingLiveQuote ? (
+                    <div className="relative mb-2 flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-center sm:gap-3">
+                        <Skeleton className="h-16 w-full rounded-2xl sm:h-40 sm:flex-1" />
+                        <Skeleton className="mx-auto size-8 shrink-0 rounded-lg sm:mx-0" />
+                        <Skeleton className="h-16 w-full rounded-2xl sm:h-40 sm:flex-1" />
                     </div>
-
-                    <div className="flex flex-col gap-2.5">
-                        <Rate
-                            quote={localLiveQuoteData.quote}
-                            sellToken={sellToken}
-                            receiveToken={receiveToken}
-                            variant="compact"
-                            preferReceiveBase
-                        />
-                        {marketPriceDifference?.hasMarketData ? (
-                            <DetailRow
-                                label={tEx("info.priceDifference")}
-                                info={tEx("info.priceDifferenceTooltip")}
-                            >
-                                <FormattedAmount
-                                    kind="percent"
-                                    value={
-                                        marketPriceDifference.percentDifference
-                                    }
-                                    signDisplay="auto"
-                                />{" "}
-                                ({marketPriceDifference.isFavorable ? "+" : "-"}
-                                <FormattedAmount
-                                    kind="fiat"
-                                    value={priceUsdAbs}
-                                />
-                                )
-                            </DetailRow>
-                        ) : null}
-                        <DetailRow
-                            label={tEx("maxSlippage")}
-                            info={tEx("maxSlippageTooltip")}
-                        >
-                            <FormattedAmount
-                                kind="percent"
-                                value={slippageTolerance}
+                ) : localLiveQuoteData ? (
+                    <>
+                        <div className="relative flex flex-col gap-2 sm:flex-row sm:items-stretch">
+                            <ExchangeSummaryCard
+                                token={sellToken}
+                                amount={sellAmount}
+                                usdValue={localLiveQuoteData.quote.amountInUsd}
                             />
-                        </DetailRow>
-                        <DetailRow
-                            label={tEx("receiveAtLeast")}
-                            info={tEx("receiveAtLeastTooltip")}
-                        >
-                            {minReceived ? (
-                                <FormattedAmount
-                                    kind="token"
-                                    value={minReceived}
-                                    symbol={receiveToken.symbol}
-                                    tokenDecimals={receiveToken.decimals}
-                                    unitPriceUsd={receiveToken.price}
-                                    profile="standard"
-                                    rounding="down"
-                                />
-                            ) : (
-                                "—"
-                            )}
-                        </DetailRow>
-                        {!isWrapConversion ? (
+                            <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+                                <div className="flex size-8 items-center justify-center rounded-lg border border-general-border bg-card text-muted-foreground">
+                                    <Icon
+                                        icon={ArrowDown01Icon}
+                                        className="sm:hidden"
+                                    />
+                                    <Icon
+                                        icon={ArrowRight01Icon}
+                                        className="hidden sm:block"
+                                    />
+                                </div>
+                            </div>
+                            <ExchangeSummaryCard
+                                token={receiveToken}
+                                amount={receiveAmount}
+                                usdValue={localLiveQuoteData.quote.amountOutUsd}
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-2.5">
+                            <Rate
+                                quote={localLiveQuoteData.quote}
+                                sellToken={sellToken}
+                                receiveToken={receiveToken}
+                                variant="compact"
+                                preferReceiveBase
+                            />
+                            {marketPriceDifference?.hasMarketData ? (
+                                <DetailRow
+                                    label={tEx("info.priceDifference")}
+                                    info={tEx("info.priceDifferenceTooltip")}
+                                >
+                                    <FormattedAmount
+                                        kind="percent"
+                                        value={
+                                            marketPriceDifference.percentDifference
+                                        }
+                                        signDisplay="auto"
+                                    />{" "}
+                                    (
+                                    {marketPriceDifference.isFavorable
+                                        ? "+"
+                                        : "-"}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={priceUsdAbs}
+                                    />
+                                    )
+                                </DetailRow>
+                            ) : null}
                             <DetailRow
-                                label={tEx("info.exchangeFee")}
-                                info={tEx("info.exchangeFeeTooltip")}
+                                label={tEx("maxSlippage")}
+                                info={tEx("maxSlippageTooltip")}
                             >
                                 <FormattedAmount
                                     kind="percent"
-                                    value={EXCHANGE_FEE_PERCENTAGE}
-                                />{" "}
-                                /{" "}
-                                <FormattedAmount
-                                    kind="token"
-                                    value={feeAmount}
-                                    symbol={sellToken.symbol}
-                                    tokenDecimals={sellToken.decimals}
-                                    unitPriceUsd={sellToken.price}
-                                    profile="standard"
-                                    rounding="up"
+                                    value={slippageTolerance}
                                 />
                             </DetailRow>
-                        ) : null}
-                    </div>
-                </>
-            ) : null}
+                            <DetailRow
+                                label={tEx("receiveAtLeast")}
+                                info={tEx("receiveAtLeastTooltip")}
+                            >
+                                {minReceived ? (
+                                    <FormattedAmount
+                                        kind="token"
+                                        value={minReceived}
+                                        symbol={receiveToken.symbol}
+                                        tokenDecimals={receiveToken.decimals}
+                                        unitPriceUsd={receiveToken.price}
+                                        profile="standard"
+                                        rounding="down"
+                                    />
+                                ) : (
+                                    "—"
+                                )}
+                            </DetailRow>
+                            {!isWrapConversion ? (
+                                <DetailRow
+                                    label={tEx("info.exchangeFee")}
+                                    info={tEx("info.exchangeFeeTooltip")}
+                                >
+                                    <FormattedAmount
+                                        kind="percent"
+                                        value={EXCHANGE_FEE_PERCENTAGE}
+                                    />{" "}
+                                    /{" "}
+                                    <FormattedAmount
+                                        kind="token"
+                                        value={feeAmount}
+                                        symbol={sellToken.symbol}
+                                        tokenDecimals={sellToken.decimals}
+                                        unitPriceUsd={sellToken.price}
+                                        profile="standard"
+                                        rounding="up"
+                                    />
+                                </DetailRow>
+                            ) : null}
+                        </div>
+                    </>
+                ) : null}
 
-            <FormField
-                control={form.control}
-                name="comment"
-                render={({ field }) => (
-                    <Input
-                        value={field.value ?? ""}
-                        onChange={field.onChange}
-                        placeholder={tPay("commentPlaceholder")}
-                        inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary!"
-                    />
-                )}
-            />
+                <FormField
+                    control={form.control}
+                    name="comment"
+                    render={({ field }) => (
+                        <Input
+                            value={field.value ?? ""}
+                            onChange={field.onChange}
+                            placeholder={tPay("commentPlaceholder")}
+                            inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary! focus-visible:border-general-border focus-visible:ring-0"
+                        />
+                    )}
+                />
 
-            <CreateRequestButton
-                isSubmitting={form.formState.isSubmitting}
-                type="submit"
-                className="w-full h-12 rounded-2xl"
-                permissions={[{ kind: "call", action: "AddProposal" }]}
-                idleMessage={tEx("confirmSubmit")}
-                disabled={
-                    isLoadingLiveQuote ||
-                    !localLiveQuoteData ||
-                    !!liveQuoteError
-                }
-            />
+                <CreateRequestButton
+                    isSubmitting={form.formState.isSubmitting}
+                    type="submit"
+                    className="w-full h-12 rounded-2xl"
+                    permissions={[{ kind: "call", action: "AddProposal" }]}
+                    idleMessage={tEx("confirmSubmit")}
+                    disabled={
+                        isLoadingLiveQuote ||
+                        !localLiveQuoteData ||
+                        !!liveQuoteError
+                    }
+                />
 
-            {localLiveQuoteData && !isLoadingLiveQuote ? (
-                <p className="text-center text-sm font-medium leading-[1.3125rem] text-general-secondary-foreground">
-                    {tEx("refreshingIn", { seconds: timeUntilRefresh })}
-                </p>
-            ) : null}
+                {localLiveQuoteData && !isLoadingLiveQuote ? (
+                    <p className="text-center text-sm font-medium leading-[1.3125rem] text-general-secondary-foreground">
+                        {tEx("refreshingIn", { seconds: timeUntilRefresh })}
+                    </p>
+                ) : null}
+            </div>
         </ReviewStep>
     );
 }

@@ -376,7 +376,6 @@
             "copyLink": "リンクをコピー",
             "titleConfidential": "near business へ送金",
             "chooseTreasuryTitle": "Treasury を選択",
-            "chooseTreasuryDescription": "この支払いの送金元の Treasury はどれですか？",
             "noMemberTreasuries": "まだどの Treasury のメンバーでもありません。",
             "createTreasury": "Treasury を作成",
             "expired": "期限切れ",

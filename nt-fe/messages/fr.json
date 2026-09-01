@@ -376,7 +376,6 @@
             "copyLink": "Copier le lien",
             "titleConfidential": "Transfert vers near business",
             "chooseTreasuryTitle": "Choisir une Treasury",
-            "chooseTreasuryDescription": "De quelle treasury provient ce paiement ?",
             "noMemberTreasuries": "Vous n’êtes encore membre d’aucune treasury.",
             "createTreasury": "Créer une treasury",
             "expired": "Expiré",

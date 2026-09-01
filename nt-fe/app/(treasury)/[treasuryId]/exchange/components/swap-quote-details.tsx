@@ -55,7 +55,7 @@ export function SwapQuoteDetails({
     );
 
     return (
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2.5 mt-2">
             <Rate
                 quote={quote}
                 sellToken={sellToken}

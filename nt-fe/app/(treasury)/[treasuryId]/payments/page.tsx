@@ -506,7 +506,7 @@ function Step2({
                                 value={field.value}
                                 onChange={field.onChange}
                                 placeholder={tPay("commentPlaceholder")}
-                                inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary!"
+                                inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary! focus-visible:border-general-border focus-visible:ring-0"
                             />
                         )}
                     />
@@ -1495,7 +1495,8 @@ export default function PaymentsPage() {
             backButton={treasuryId ? `/${treasuryId}` : true}
             backKind="section"
             hideMobileShellControls
-            headerActions={bulkPaymentsButton}
+            hideTitle={step === 1}
+            headerActions={step === 0 ? bulkPaymentsButton : undefined}
         >
             <Form {...form}>
                 <form

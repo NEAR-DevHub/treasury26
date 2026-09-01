@@ -234,12 +234,17 @@ export function RecipientNetworkSelect({
     }, [bridgeAssetMatch, isConfidential, t, token]);
 
     const availableOptions = useMemo(() => {
+        // Stay empty until the token and its destinations are known. near.com
+        // is a destination for every token, so offering it on its own during
+        // load shows a selector that is already filled in (and auto-select
+        // would settle on it) before the real destinations arrive.
+        if (!token || isBridgeAssetsLoading) return [];
+
         const others = tokenNetworkOptions
             .filter((option) => option.id !== NEAR_COM_NETWORK_ID)
             .sort((a, b) => a.name.localeCompare(b.name));
-        // near.com is a destination for every token.
         return [nearComOption, ...others];
-    }, [nearComOption, tokenNetworkOptions]);
+    }, [isBridgeAssetsLoading, nearComOption, token, tokenNetworkOptions]);
 
     const tokenHoldings = useMemo(() => {
         if (!token) return [];
@@ -310,8 +315,7 @@ export function RecipientNetworkSelect({
             ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
             : isBridgeAssetsLoading || availableOptions.length === 0);
 
-    // Clear when the selected network no longer matches the address format.
-    const hadRecipientRef = useRef(false);
+    const prevRecipientRef = useRef<string | null>(null);
     const onChangeRef = useRef(onChange);
     const onNetworkChangeRef = useRef(onNetworkChange);
     onChangeRef.current = onChange;
@@ -372,18 +376,33 @@ export function RecipientNetworkSelect({
         value,
     ]);
 
+    // Drop the selected network when the *address* changes into a format it
+    // can't take. Picking a network is the user's own choice, so it stands:
+    // the form clears the recipient in response, and clearing the network here
+    // as well would race that reset and leave both fields empty.
     useEffect(() => {
         if (locked) return;
         if (!recipient) {
-            hadRecipientRef.current = false;
+            prevRecipientRef.current = "";
             return;
         }
 
-        hadRecipientRef.current = true;
+        const recipientChanged = prevRecipientRef.current !== recipient;
+        prevRecipientRef.current = recipient;
         if (!value) return;
+        // Options aren't loaded yet — an unresolved selection means nothing.
+        if (availableOptions.length === 0) return;
+
+        if (!selectedOption) {
+            onChangeRef.current("");
+            return;
+        }
+
+        // Without the address gate every option is offered, so there is no
+        // compatibility to enforce.
+        if (!requireRecipient || !recipientChanged) return;
 
         if (
-            !selectedOption ||
             !isAddressCompatibleWithNetwork(
                 recipient,
                 selectedOption.networkName,
@@ -392,12 +411,20 @@ export function RecipientNetworkSelect({
         ) {
             onChangeRef.current("");
         }
-    }, [locked, recipient, value, selectedOption]);
+    }, [
+        availableOptions.length,
+        locked,
+        recipient,
+        requireRecipient,
+        selectedOption,
+        value,
+    ]);
 
     const placeholderText = requireRecipient
         ? !recipient
             ? (recipientRequiredPlaceholder ?? t("enterAddressFirst"))
-            : !hasCompatibleNetwork
+            : // While destinations load there is nothing to be incompatible with.
+              !hasCompatibleNetwork && !isBridgeAssetsLoading
               ? t("noCompatibleNetwork")
               : (placeholder ?? t("placeholder"))
         : (placeholder ?? t("placeholder"));

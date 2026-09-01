@@ -6,6 +6,7 @@ import {
     type ChangeEvent,
     type ClipboardEvent,
     type KeyboardEvent,
+    type MouseEvent,
     useEffect,
     useMemo,
     useRef,
@@ -49,6 +50,14 @@ import { WarningMessage } from "./warning-message";
 
 function sanitizeAmountInput(value: string): string {
     return value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+}
+
+function focusCardAmountInput(
+    event: MouseEvent<HTMLElement>,
+    disabled?: boolean,
+) {
+    if (disabled) return;
+    event.currentTarget.querySelector<HTMLInputElement>("input")?.focus();
 }
 
 function isEntireInputSelected(el: HTMLInputElement): boolean {
@@ -549,7 +558,7 @@ export function TokenInput<
                     ) : null;
 
                 const messageOffsetClass = isSwapCard
-                    ? "mt-3"
+                    ? "mt-0"
                     : isAmountCard
                       ? "mt-1 text-center"
                       : "mt-2";
@@ -602,65 +611,71 @@ export function TokenInput<
                 ) : null;
 
                 const tokenPicker = (
-                    <FormField
-                        control={control}
-                        name={tokenName}
-                        render={({ field: tokenField }) => {
-                            const handleTokenSelect = (
-                                selectedToken: SelectedTokenData,
-                            ) => {
-                                tokenField.onChange(selectedToken);
-                                onTokenChange?.(selectedToken as Token);
-                            };
+                    <div
+                        className="cursor-pointer"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <FormField
+                            control={control}
+                            name={tokenName}
+                            render={({ field: tokenField }) => {
+                                const handleTokenSelect = (
+                                    selectedToken: SelectedTokenData,
+                                ) => {
+                                    tokenField.onChange(selectedToken);
+                                    onTokenChange?.(selectedToken as Token);
+                                };
 
-                            return (
-                                <TokenSelect
-                                    disabled={tokenSelect?.disabled}
-                                    locked={tokenSelect?.locked}
-                                    showPopularAssets={
-                                        tokenSelect?.showPopularAssets ?? false
-                                    }
-                                    selectedToken={token}
-                                    setSelectedToken={handleTokenSelect}
-                                    showOnlyOwnedAssets={
-                                        tokenSelect?.showOnlyOwnedAssets ??
-                                        false
-                                    }
-                                    filterTokens={tokenSelect?.filterTokens}
-                                    autoSelect={tokenSelect?.autoSelect}
-                                    balanceLayout={
-                                        tokenSelectExtras?.balanceLayout
-                                    }
-                                    hideNetworkSubtitle={
-                                        isSwapCard ||
-                                        tokenSelectExtras?.hideNetworkSubtitle
-                                    }
-                                    triggerLabel={
-                                        isSwapCard
-                                            ? undefined
-                                            : tokenSelectExtras?.triggerLabel
-                                    }
-                                    appearance={
-                                        isSwapCard
-                                            ? "default"
-                                            : tokenSelectExtras?.appearance
-                                    }
-                                    iconSize={isSwapCard ? "lg" : undefined}
-                                    tintTriggerFromIcon={isSwapCard}
-                                    classNames={
-                                        isSwapCard
-                                            ? {
-                                                  trigger:
-                                                      "h-11 rounded-full border-general-border bg-muted px-2.5 hover:bg-muted hover:border-general-border",
-                                                  icon: "size-7",
-                                                  symbol: "text-base font-semibold leading-[1.2] text-general-foreground",
-                                              }
-                                            : undefined
-                                    }
-                                />
-                            );
-                        }}
-                    />
+                                return (
+                                    <TokenSelect
+                                        disabled={tokenSelect?.disabled}
+                                        locked={tokenSelect?.locked}
+                                        showPopularAssets={
+                                            tokenSelect?.showPopularAssets ??
+                                            false
+                                        }
+                                        selectedToken={token}
+                                        setSelectedToken={handleTokenSelect}
+                                        showOnlyOwnedAssets={
+                                            tokenSelect?.showOnlyOwnedAssets ??
+                                            false
+                                        }
+                                        filterTokens={tokenSelect?.filterTokens}
+                                        autoSelect={tokenSelect?.autoSelect}
+                                        balanceLayout={
+                                            tokenSelectExtras?.balanceLayout
+                                        }
+                                        hideNetworkSubtitle={
+                                            isSwapCard ||
+                                            tokenSelectExtras?.hideNetworkSubtitle
+                                        }
+                                        triggerLabel={
+                                            isSwapCard
+                                                ? undefined
+                                                : tokenSelectExtras?.triggerLabel
+                                        }
+                                        appearance={
+                                            isSwapCard
+                                                ? "default"
+                                                : tokenSelectExtras?.appearance
+                                        }
+                                        iconSize={isSwapCard ? "lg" : undefined}
+                                        tintTriggerFromIcon={isSwapCard}
+                                        classNames={
+                                            isSwapCard
+                                                ? {
+                                                      trigger:
+                                                          "h-11 rounded-full border-general-border bg-muted px-2.5 hover:bg-muted hover:border-general-border",
+                                                      icon: "size-7",
+                                                      symbol: "text-base font-semibold leading-[1.2] text-general-foreground",
+                                                  }
+                                                : undefined
+                                        }
+                                    />
+                                );
+                            }}
+                        />
+                    </div>
                 );
 
                 const usdToggle = secondaryLine ? (
@@ -724,8 +739,12 @@ export function TokenInput<
                         <div
                             className={cn(
                                 "flex flex-col rounded-2xl border border-general-border bg-card p-5",
+                                !readOnly && "cursor-text",
                                 displayError && "border-destructive",
                             )}
+                            onClick={(event) =>
+                                focusCardAmountInput(event, readOnly)
+                            }
                         >
                             <div className="flex min-h-0 flex-1 items-center justify-between gap-3">
                                 <div className="min-w-0 flex-1">
@@ -783,8 +802,12 @@ export function TokenInput<
                         <div
                             className={cn(
                                 "flex h-60 w-full flex-col items-stretch self-stretch rounded-3xl border border-general-border bg-card p-4",
+                                !readOnly && "cursor-text",
                                 displayError && "border-destructive",
                             )}
+                            onClick={(event) =>
+                                focusCardAmountInput(event, readOnly)
+                            }
                         >
                             <div className="flex w-full max-w-full flex-1 flex-col items-center justify-center gap-1 px-1">
                                 <LargeInput
@@ -857,6 +880,10 @@ export function TokenInput<
                         title={title}
                         invalid={!!displayError}
                         topRightContent={balanceFooter}
+                        className={cn(!readOnly && "cursor-text")}
+                        onClick={(event) =>
+                            focusCardAmountInput(event, readOnly)
+                        }
                     >
                         <div>
                             <div className="flex justify-between items-center">

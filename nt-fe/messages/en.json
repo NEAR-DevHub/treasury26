@@ -367,7 +367,6 @@
             "payWithNearcom": "Pay with near business",
             "payRequiresTreasury": "Sign in with a Near Business treasury to pay.",
             "chooseTreasuryTitle": "Choose a Treasury",
-            "chooseTreasuryDescription": "Which treasury is this payment coming from?",
             "noMemberTreasuries": "You are not a member of any treasuries yet.",
             "createTreasury": "Create a treasury",
             "copyLink": "Copy Link"

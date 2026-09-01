@@ -1,3 +1,4 @@
+import type { MouseEventHandler, ReactNode } from "react";
 import { Icon } from "@/components/icon";
 import { InformationCircleIcon } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
@@ -6,12 +7,13 @@ import { Tooltip } from "./tooltip";
 interface InputBlockProps {
     title?: string;
     info?: string;
-    topRightContent?: React.ReactNode;
-    children: React.ReactNode;
+    topRightContent?: ReactNode;
+    children: ReactNode;
     invalid: boolean;
     className?: string;
     interactive?: boolean;
     disabled?: boolean;
+    onClick?: MouseEventHandler<HTMLDivElement>;
 }
 
 export function InputBlock({
@@ -23,9 +25,11 @@ export function InputBlock({
     interactive,
     className,
     disabled,
+    onClick,
 }: InputBlockProps) {
     return (
         <div
+            onClick={onClick}
             className={cn(
                 "px-3.5 py-3 rounded-xl bg-muted",
                 "dark:[&_input]:bg-transparent! dark:[&_textarea]:bg-transparent! dark:**:data-[slot=select-trigger]:bg-transparent!",

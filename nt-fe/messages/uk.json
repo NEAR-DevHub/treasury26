@@ -376,7 +376,6 @@
             "copyLink": "Копіювати посилання",
             "titleConfidential": "Переказ до near business",
             "chooseTreasuryTitle": "Оберіть Treasury",
-            "chooseTreasuryDescription": "З якої treasury надходить цей платіж?",
             "noMemberTreasuries": "Ви ще не є учасником жодної treasury.",
             "createTreasury": "Створити treasury",
             "expired": "Прострочено",

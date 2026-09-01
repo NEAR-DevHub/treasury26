@@ -626,7 +626,6 @@ export default function BulkPaymentPage() {
                 title={pageTitle}
                 backButton={`/${selectedTreasury}/payments`}
                 hideMobileShellControls
-                mainClassName="pt-4"
             >
                 <BulkActivationCard />
             </PageComponentLayout>
@@ -641,7 +640,7 @@ export default function BulkPaymentPage() {
                 title={pageTitle}
                 backButton={handleCancelEdit}
                 hideMobileShellControls
-                mainClassName="pt-4"
+                hideTitle
             >
                 <div className="w-full max-w-lg mx-auto min-w-0">
                     <EditPaymentStep
@@ -669,12 +668,9 @@ export default function BulkPaymentPage() {
     return (
         <PageComponentLayout
             title={pageTitle}
-            backButton={
-                step === 0 ? `/${selectedTreasury}/payments` : undefined
-            }
-            hideMobileShellControls={step === 0}
-            hideHeaderOnMobile={step === 1}
-            mainClassName="pt-4"
+            backButton={`/${selectedTreasury}/payments`}
+            hideMobileShellControls
+            hideTitle={step === 1}
         >
             <FormProvider {...form}>
                 <div

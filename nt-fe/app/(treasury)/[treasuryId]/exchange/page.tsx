@@ -200,6 +200,7 @@ export default function ExchangePage() {
             backButton={selectedTreasury ? `/${selectedTreasury}` : true}
             backKind="section"
             hideMobileShellControls
+            hideTitle={step === 1}
         >
             <Form {...form}>
                 <form

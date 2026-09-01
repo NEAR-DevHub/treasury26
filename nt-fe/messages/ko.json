@@ -376,7 +376,6 @@
             "copyLink": "링크 복사",
             "titleConfidential": "near business로 전송",
             "chooseTreasuryTitle": "Treasury 선택",
-            "chooseTreasuryDescription": "이 결제는 어느 treasury에서 나오나요?",
             "noMemberTreasuries": "아직 어떤 treasury의 멤버도 아닙니다.",
             "createTreasury": "Treasury 만들기",
             "expired": "만료됨",

@@ -376,7 +376,6 @@
             "copyLink": "复制链接",
             "titleConfidential": "转账至 near business",
             "chooseTreasuryTitle": "选择 Treasury",
-            "chooseTreasuryDescription": "这笔付款来自哪个 treasury？",
             "noMemberTreasuries": "你还不是任何 treasury 的成员。",
             "createTreasury": "创建 treasury",
             "expired": "已过期",

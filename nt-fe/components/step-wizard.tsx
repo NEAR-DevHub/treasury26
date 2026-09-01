@@ -179,14 +179,18 @@ export function StepperHeader({
                     {<Icon icon={ArrowLeft01Icon} />}
                 </Button>
             )}
-            <div className="flex flex-col gap-0">
-                <p className="font-semibold text-sm md:text-base">{title}</p>
-                {description && (
-                    <p className="text-sm text-muted-foreground">
-                        {description}
+            {title ? (
+                <div className="flex flex-col gap-0">
+                    <p className="font-semibold text-sm md:text-base">
+                        {title}
                     </p>
-                )}
-            </div>
+                    {description && (
+                        <p className="text-sm text-muted-foreground">
+                            {description}
+                        </p>
+                    )}
+                </div>
+            ) : null}
         </div>
     );
 }
@@ -250,7 +254,7 @@ export function ReviewStep({
     backDisabled = false,
 }: ReviewStepProps) {
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 sm:gap-4">
             <StepperHeader
                 title={reviewingTitle}
                 handleBack={handleBack}

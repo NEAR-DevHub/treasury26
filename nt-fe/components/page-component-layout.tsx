@@ -61,6 +61,11 @@ interface PageComponentLayoutProps {
      */
     hideHeaderOnMobile?: boolean;
     /**
+     * Hides the stacked page heading on small screens only (keeps the top
+     * back control). Large screens still show the title in the header row.
+     */
+    hideTitle?: boolean;
+    /**
      * Pins the page to the viewport height on every breakpoint. A short viewport
      * that can't fit the content scrolls the whole page, header included.
      */
@@ -85,6 +90,7 @@ export function PageComponentLayout({
     headerActions,
     hideHeader = false,
     hideHeaderOnMobile = false,
+    hideTitle = false,
     fitViewport = false,
     logo,
     mainClassName,
@@ -149,32 +155,33 @@ export function PageComponentLayout({
 
     const titleBlock = !hideHeaderContent
         ? (logo ?? (
-              <div
-                  className={cn(
-                      "items-baseline gap-2",
-                      stackedInnerHeader
-                          ? "hidden lg:flex"
-                          : hideMobileShellControls
-                            ? "flex"
-                            : "hidden lg:flex",
-                  )}
-              >
-                  <h1 className="text-xl font-semibold leading-tight tracking-tight">
-                      {title}
-                  </h1>
-                  {description && (
-                      <span className="hidden lg:inline text-xs text-muted-foreground">
-                          {description}
-                      </span>
-                  )}
-              </div>
-          ))
-        : null;
+                  <div
+                      className={cn(
+                          "items-baseline gap-2",
+                          stackedInnerHeader
+                              ? "hidden lg:flex"
+                              : hideMobileShellControls
+                                ? "flex"
+                                : "hidden lg:flex",
+                      )}
+                  >
+                      <h1 className="text-xl font-semibold leading-tight tracking-tight">
+                          {title}
+                      </h1>
+                      {description && (
+                          <span className="hidden lg:inline text-xs text-muted-foreground">
+                              {description}
+                          </span>
+                      )}
+                  </div>
+              ))
+            : null;
 
     return (
         <div
             className={cn(
-                "flex h-full flex-col gap-2 sm:gap-0",
+                "flex h-full flex-col sm:gap-0",
+                hideMobileShellControls && "gap-6 px-2",
                 fitViewport && "h-dvh overflow-y-auto",
                 hideHeaderContent && "bg-general-bg-tertiary",
             )}
@@ -244,7 +251,10 @@ export function PageComponentLayout({
                         ) : null}
                     </div>
 
-                    {stackedInnerHeader && !hideHeaderContent && !logo ? (
+                    {stackedInnerHeader &&
+                    !hideHeaderContent &&
+                    !hideTitle &&
+                    !logo ? (
                         <div className="lg:hidden">
                             <h1 className="text-2xl font-semibold leading-tight tracking-tight text-general-foreground">
                                 {title}
