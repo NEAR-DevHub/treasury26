@@ -66,11 +66,16 @@ function SideSheetContent({
                 }}
                 className={cn(
                     "fixed z-50 flex flex-col overflow-hidden bg-card shadow-lg outline-none",
-                    "inset-y-2 right-2 w-[448px] max-w-[calc(100vw-1rem)] rounded-3xl",
-                    "max-sm:inset-x-2 max-sm:w-auto",
-                    "data-[state=open]:animate-in data-[state=closed]:animate-out",
-                    "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
-                    "duration-300",
+                    "data-[state=open]:animate-in data-[state=closed]:animate-out duration-300",
+                    // Phone and tablet: a sheet rising from the bottom edge,
+                    // leaving a strip of the list it came from visible above it.
+                    "inset-x-0 bottom-0 top-[10dvh] rounded-t-3xl",
+                    "data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom",
+                    // Desktop: a panel inset from the right edge instead. The
+                    // bottom slide has to be zeroed out or it still translates.
+                    "lg:inset-y-2 lg:right-2 lg:left-auto lg:w-[448px] lg:max-w-[calc(100vw-1rem)] lg:rounded-3xl",
+                    "lg:data-[state=open]:slide-in-from-bottom-0 lg:data-[state=closed]:slide-out-to-bottom-0",
+                    "lg:data-[state=open]:slide-in-from-right lg:data-[state=closed]:slide-out-to-right",
                     className,
                 )}
             >
@@ -135,7 +140,15 @@ function SideSheetFooter({
     children: React.ReactNode;
 }) {
     return (
-        <div className={cn("flex shrink-0 items-center gap-4 p-4", className)}>
+        <div
+            className={cn(
+                "flex shrink-0 items-center gap-4 p-4",
+                // On a phone the sheet reaches the bottom edge, so the footer
+                // owns the home-indicator inset.
+                "pb-[max(1rem,env(safe-area-inset-bottom))] lg:pb-4",
+                className,
+            )}
+        >
             {children}
         </div>
     );

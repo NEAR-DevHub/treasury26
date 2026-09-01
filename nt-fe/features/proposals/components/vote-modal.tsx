@@ -17,6 +17,7 @@ import { SlotWarning } from "@/components/warning-message";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProposalApproveBlock, useSlotBlock } from "@/hooks/use-warnings";
 import type { Proposal } from "@/lib/proposals-api";
+import { cn } from "@/lib/utils";
 import { stripMessageForTooltip } from "@/lib/warnings";
 import { isAppLevelSlotBlock } from "@/features/proposals/hooks/use-vote-action-slots";
 import { useNear } from "@/stores/near-store";
@@ -108,7 +109,15 @@ export function VoteModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="gap-4 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-[448px]!">
+            <DialogContent
+                className={cn(
+                    "gap-4 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-[448px]!",
+                    // On a phone the design floats the confirmation above the
+                    // bottom edge rather than letting it run into it, so it
+                    // keeps all four corners and its own gaps.
+                    "max-sm:inset-x-2 max-sm:bottom-2 max-sm:w-auto max-sm:gap-4 max-sm:rounded-3xl",
+                )}
+            >
                 {/* The design leaves the title bar to the close button alone
                     and centres the heading underneath it. */}
                 <DialogHeader className="mx-0 border-0 px-0 pb-0" />
@@ -168,7 +177,7 @@ export function VoteModal({
                     >
                         <span className="inline-block w-full">
                             <Button
-                                className="w-full rounded-xl"
+                                className="w-full rounded-2xl"
                                 size="xl"
                                 variant={
                                     vote === "Remove"
