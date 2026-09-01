@@ -51,6 +51,7 @@ import { RecipientSelectModal } from "./recipient-select-modal";
 import { cn } from "@/lib/utils";
 import { getNetworkDisplayName } from "@/components/token-display";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { isNearComNetwork } from "@/lib/intents-network";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 
 interface PaymentFormSectionProps<
@@ -99,6 +100,8 @@ interface PaymentFormSectionProps<
     destinationNetworkNameFieldName?: Path<TFieldValues>;
     /** Hide recipient network selector (e.g. bulk payments). Default false. */
     hideRecipientNetwork?: boolean;
+    /** Show destination as a disabled card (bulk edit). */
+    destinationLocked?: boolean;
     /**
      * When the network selector is hidden (bulk), validate the recipient and
      * filter the address book against this receive-network name instead of
@@ -106,6 +109,11 @@ interface PaymentFormSectionProps<
      * where receive network can differ from the source token.
      */
     recipientNetworkOverride?: string;
+    /**
+     * When true, the recipient must be `nearcom:` plus a valid NEAR account.
+     * Used by bulk edit when the destination id is not a form field.
+     */
+    requireNearComPrefix?: boolean;
     bridgeAssets?: BridgeAsset[];
     isBridgeAssetsLoading?: boolean;
     sendWarningMessage?: string | null;
@@ -148,7 +156,9 @@ export function PaymentFormSection<
     destinationNetworkName,
     destinationNetworkNameFieldName,
     hideRecipientNetwork = false,
+    destinationLocked = false,
     recipientNetworkOverride,
+    requireNearComPrefix: requireNearComPrefixProp = false,
     bridgeAssets = [],
     isBridgeAssetsLoading = false,
     sendWarningMessage,
@@ -182,16 +192,29 @@ export function PaymentFormSection<
         name: [
             tokenName,
             recipientName,
+            ...(destinationNetworkName ? [destinationNetworkName] : []),
             ...(destinationNetworkNameFieldName
                 ? [destinationNetworkNameFieldName]
                 : []),
         ] as Path<TFieldValues>[],
-    }) as unknown as [Token | null, string, string | undefined];
+    }) as unknown as [
+        Token | null,
+        string,
+        string | undefined,
+        string | undefined,
+    ];
     const token = watched[0];
     const recipient = (watched[1] ?? "") as string;
-    const selectedNetworkName = ((watched[2] ?? "") ||
+    const destinationNetworkId = destinationNetworkName
+        ? ((watched[2] ?? "") as string)
+        : "";
+    const selectedNetworkName = ((destinationNetworkName
+        ? (watched[3] ?? "")
+        : (watched[2] ?? "")) ||
         recipientNetworkOverride ||
         "") as string;
+    const requireNearComPrefix =
+        requireNearComPrefixProp || isNearComNetwork(destinationNetworkId);
     const amountValue = useWatch({
         control,
         name: amountName,
@@ -428,6 +451,8 @@ export function PaymentFormSection<
                         sectionRules={networkSectionRules}
                         appearance={confidentialAggregated ? "card" : "default"}
                         requireRecipient={!confidentialAggregated}
+                        autoSelect={!destinationLocked}
+                        locked={destinationLocked}
                         label={
                             confidentialAggregated
                                 ? tRecipientNetwork("label")
@@ -521,7 +546,7 @@ export function PaymentFormSection<
                                 {tPay("recipientLabel")}
                             </span>
                             {selectedContact || recipient ? (
-                                <span className="max-w-full truncate text-base font-semibold leading-tight text-foreground">
+                                <span className="max-w-full truncate text-base font-medium leading-tight text-foreground">
                                     {selectedContact ? (
                                         <User
                                             accountId={selectedContact.address}
@@ -535,7 +560,7 @@ export function PaymentFormSection<
                                     )}
                                 </span>
                             ) : (
-                                <span className="max-w-full truncate text-base font-semibold leading-tight text-muted-foreground">
+                                <span className="max-w-full truncate text-base font-medium leading-tight text-foreground">
                                     {tPay("selectRecipientPlaceholder")}
                                 </span>
                             )}
@@ -587,6 +612,7 @@ export function PaymentFormSection<
                         setIsValidating={setIsValidatingRecipient}
                         borderless
                         validateOnMount={!!recipient}
+                        requireNearComPrefix={requireNearComPrefix}
                     />
                 </div>
 
@@ -595,7 +621,11 @@ export function PaymentFormSection<
                     onClose={() => setIsContactModalOpen(false)}
                     contacts={addressBook}
                     chainMap={chainMap}
-                    networkName={selectedNetworkName || null}
+                    networkName={
+                        isNearComNetwork(destinationNetworkId)
+                            ? destinationNetworkId
+                            : selectedNetworkName || null
+                    }
                     networkDisplayName={networkDisplayName}
                     onSelect={({ address, contact }) => {
                         setSelectedContact(contact ?? null);
@@ -605,11 +635,6 @@ export function PaymentFormSection<
                                 Path<TFieldValues>
                             >,
                         );
-                        // Contacts are filtered by network; typed addresses are
-                        // re-checked by AccountInput against the destination chain.
-                        if (contact) {
-                            setIsRecipientValid(true);
-                        }
                     }}
                     restrictedAlert={restrictedAlertNode}
                 />
@@ -705,6 +730,7 @@ export function PaymentFormSection<
                         setIsValidating={setIsValidatingRecipient}
                         borderless
                         validateOnMount={hideRecipientNetwork && !!recipient}
+                        requireNearComPrefix={requireNearComPrefix}
                     />
                 )}
                 <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1">
@@ -743,6 +769,7 @@ export function PaymentFormSection<
                             setIsValidating={setIsValidatingRecipient}
                             borderless
                             validateOnMount
+                            requireNearComPrefix={requireNearComPrefix}
                         />
                     </div>
                 )}

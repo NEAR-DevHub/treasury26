@@ -1,21 +1,13 @@
 "use client";
-import { Icon } from "@/components/icon";
-import {
-    ArrowDown01Icon,
-    LoaderCircleIcon,
-    Shield01Icon,
-} from "@hugeicons/core-free-icons";
+import { ArrowDown01Icon, LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect } from "react";
 import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/button";
-import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
-import { NearIntentsLogo } from "@/components/icons/near-intents-logo";
-import { PendingButton } from "@/components/pending-button";
-import { type StepProps, StepperHeader } from "@/components/step-wizard";
+import { Icon } from "@/components/icon";
+import type { StepProps } from "@/components/step-wizard";
 import { TokenInput } from "@/components/token-input";
-import { Tooltip } from "@/components/tooltip";
 import { SlotWarning } from "@/components/warning-message";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
@@ -24,8 +16,7 @@ import { useBridgeScopedWarning } from "@/hooks/use-warnings";
 import { DRY_QUOTE_REFRESH_INTERVAL, ETH_TOKEN } from "../constants";
 import type { ExchangeFormValues } from "../exchange-form";
 import { useExchangeAmountQuote } from "../hooks/use-exchange-amount-quote";
-import { ExchangeSettingsModal } from "./exchange-settings-modal";
-import { Rate } from "./rate";
+import { SwapQuoteDetails } from "./swap-quote-details";
 
 export function Step1({
     handleNext,
@@ -34,12 +25,7 @@ export function Step1({
     const tEx = useTranslations("exchange");
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<ExchangeFormValues>();
-    const {
-        treasuryId: selectedTreasury,
-        isConfidential,
-        isGuestTreasury,
-    } = useTreasury();
-    const showConfidentialShield = isConfidential && !isGuestTreasury;
+    const { treasuryId: selectedTreasury, isConfidential } = useTreasury();
 
     const { blocked: exchangeSlotBlocked, scopedMessage: sendWarningMessage } =
         useBridgeScopedWarning(
@@ -184,51 +170,16 @@ export function Step1({
     return (
         <>
             <SlotWarning slot="exchange" />
-            <PageCard className="relative">
-                <div className="flex items-center justify-between gap-2">
-                    <StepperHeader
-                        title={
-                            showConfidentialShield ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                    <span>{tEx("heading")}</span>
-                                    <Tooltip
-                                        content={tEx("confidentialTooltip")}
-                                    >
-                                        <span className="inline-flex">
-                                            <Icon
-                                                icon={Shield01Icon}
-                                                className="fill-foreground"
-                                            />
-                                        </span>
-                                    </Tooltip>
-                                </span>
-                            ) : (
-                                tEx("heading")
-                            )
-                        }
-                    />
-                    <div className="flex items-center gap-2">
-                        <PendingButton
-                            id="exchange-pending-btn"
-                            types={["Exchange"]}
-                        />
-                        <ExchangeSettingsModal
-                            id="exchange-settings-btn"
-                            slippageTolerance={slippageTolerance}
-                            onSlippageChange={(value) => {
-                                form.setValue("slippageTolerance", value);
-                                onQuoteInputsChanged();
-                            }}
-                        />
-                    </div>
-                </div>
-
+            <div className="flex flex-col gap-2">
+                {/* The flip button hangs off the sell card's bottom edge so a
+                    warning growing the card can't shift it out of the gap. */}
                 <div className="relative">
                     <TokenInput
-                        title={tEx("sell")}
                         control={form.control}
                         amountName="sellAmount"
                         tokenName="sellToken"
+                        variant="swapCard"
+                        enableUsdToggle
                         showInsufficientBalance={true}
                         dynamicFontSize={true}
                         readOnly={isSellDerived && isQuoteBusy}
@@ -247,17 +198,17 @@ export function Step1({
                                 ? Number(quoteData.quote.amountInUsd) || 0
                                 : null
                         }
-                        errorMessage={!isSellDerived ? quoteError : null}
+                        errorMessage={isSellDerived ? quoteError : null}
                         warningMessage={sendWarningMessage}
                         onAmountInput={onSellAmountInput}
                         onMaxSet={onSellAmountInput}
                         onTokenChange={onQuoteInputsChanged}
                     />
-                    <div className="flex justify-center absolute bottom-[-25px] left-1/2 -translate-x-1/2">
+                    <div className="absolute bottom-0 left-1/2 z-10 -translate-x-1/2 translate-y-1/2">
                         <Button
                             type="button"
                             variant="unstyled"
-                            className="rounded-full bg-card border p-1.5! z-10 cursor-pointer"
+                            className="size-8 rounded-lg border border-general-border bg-card p-0 text-muted-foreground shadow-sm hover:bg-card"
                             onClick={handleSwapTokens}
                             disabled={isQuoteBusy}
                         >
@@ -272,12 +223,12 @@ export function Step1({
                         </Button>
                     </div>
                 </div>
-
                 <TokenInput
-                    title={tEx("receive")}
                     control={form.control}
                     amountName="receiveAmount"
                     tokenName="receiveToken"
+                    variant="swapCard"
+                    enableUsdToggle
                     readOnly={isReceiveDerived && isQuoteBusy}
                     loading={isReceiveDerived && isQuoteBusy}
                     customValue={
@@ -296,61 +247,48 @@ export function Step1({
                             ? Number(quoteData.quote.amountOutUsd) || 0
                             : null
                     }
-                    errorMessage={!isReceiveDerived ? quoteError : null}
+                    errorMessage={isReceiveDerived ? quoteError : null}
                     warningMessage={receiveWarningMessage}
                     onAmountInput={onReceiveAmountInput}
+                    onMaxSet={onReceiveAmountInput}
                     onTokenChange={onQuoteInputsChanged}
                 />
+            </div>
 
-                {quoteData?.quote && (
-                    <div className="flex flex-col gap-2 text-sm">
-                        <Rate
-                            quote={quoteData.quote}
-                            sellToken={sellToken}
-                            receiveToken={receiveToken}
-                        />
-                        <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground">
-                                {tEx("slippageTolerance")}
-                            </span>
-                            <span className="font-medium">
-                                {slippageTolerance}%
-                            </span>
-                        </div>
-                    </div>
-                )}
+            <CreateRequestButton
+                onClick={handleContinue}
+                className="w-full h-12 rounded-2xl"
+                permissions={[{ kind: "call", action: "AddProposal" }]}
+                disabled={
+                    areSameTokens ||
+                    !hasValidAmount ||
+                    !quoteData ||
+                    !!quoteError ||
+                    exchangeSlotBlocked
+                }
+                idleMessage={
+                    exchangeSlotBlocked
+                        ? tCreate("brieflyUnavailable")
+                        : areSameTokens
+                          ? tEx("disabled.differentTokens")
+                          : !hasValidAmount
+                            ? tEx("disabled.enterAmount")
+                            : tEx("review")
+                }
+            />
 
-                <div className="rounded-lg border bg-card p-0 overflow-hidden">
-                    <CreateRequestButton
-                        onClick={handleContinue}
-                        className="w-full h-10 rounded-none"
-                        permissions={[{ kind: "call", action: "AddProposal" }]}
-                        disabled={
-                            areSameTokens ||
-                            !hasValidAmount ||
-                            !quoteData ||
-                            !!quoteError ||
-                            exchangeSlotBlocked
-                        }
-                        idleMessage={
-                            exchangeSlotBlocked
-                                ? tCreate("brieflyUnavailable")
-                                : areSameTokens
-                                  ? tEx("disabled.differentTokens")
-                                  : !hasValidAmount
-                                    ? tEx("disabled.enterAmount")
-                                    : tEx("review")
-                        }
-                    />
-                </div>
-
-                <div className="flex justify-center items-center gap-2 text-sm text-muted-foreground">
-                    <span>{tEx("poweredBy")}</span>
-                    <span className="font-semibold flex items-center gap-1">
-                        <NearIntentsLogo className="h-3" />
-                    </span>
-                </div>
-            </PageCard>
+            {quoteData?.quote ? (
+                <SwapQuoteDetails
+                    quote={quoteData.quote}
+                    sellToken={sellToken}
+                    receiveToken={receiveToken}
+                    slippageTolerance={slippageTolerance}
+                    onSlippageChange={(value) => {
+                        form.setValue("slippageTolerance", value);
+                        onQuoteInputsChanged();
+                    }}
+                />
+            ) : null}
         </>
     );
 }

@@ -4,13 +4,16 @@ import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
+import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 import { Form } from "@/components/ui/form";
-import { PageCard } from "@/components/card";
-import { StepProps, StepperHeader } from "@/components/step-wizard";
+import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
+import { StepProps } from "@/components/step-wizard";
 import { PaymentFormSection } from "../../components/payment-form-section";
 import type { EditPaymentFormValues, BulkPaymentData } from "../schemas";
 import { buildEditPaymentSchema } from "../schemas";
 import type { SelectedTokenData } from "@/components/token-select";
+import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { needsStorageDepositCheck } from "../utils";
 import { getBatchStorageDepositIsRegistered } from "@/lib/api";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
@@ -33,6 +36,8 @@ interface EditPaymentStepProps extends StepProps {
     destinationNetwork?: string;
     /** Network option id — `near.com` keeps nearcom: on the recipient field. */
     destinationNetworkId?: string;
+    bridgeAssets?: BridgeAsset[];
+    isBridgeAssetsLoading?: boolean;
     onSave: (
         index: number,
         data: EditPaymentFormValues,
@@ -48,10 +53,13 @@ export function EditPaymentStep({
     networkFeePerRecipient,
     destinationNetwork,
     destinationNetworkId,
+    bridgeAssets = [],
+    isBridgeAssetsLoading = false,
     onSave,
     onCancel,
 }: EditPaymentStepProps) {
     const tValidation = useTranslations("paymentForm.validation");
+    const tBulk = useTranslations("bulkPayment.editStep");
     const editPaymentSchema = useMemo(
         () =>
             buildEditPaymentSchema({
@@ -75,6 +83,8 @@ export function EditPaymentStep({
                   ),
             amount: payment.amount,
             token: selectedToken,
+            destinationNetwork: destinationNetworkId ?? "",
+            destinationNetworkName: destinationNetwork ?? "",
         },
     });
     const handleSave = async () => {
@@ -123,10 +133,17 @@ export function EditPaymentStep({
         }
     };
 
-    const tBulk = useTranslations("bulkPayment.editStep");
     return (
-        <PageCard>
-            <StepperHeader title={tBulk("title")} handleBack={onCancel} />
+        <div className="flex flex-col gap-4">
+            <Button
+                type="button"
+                variant="ghost"
+                onClick={onCancel}
+                className="h-auto w-fit gap-1 self-start px-0 text-sm font-semibold text-foreground hover:bg-transparent"
+            >
+                <Icon icon={ArrowLeft01Icon} className="size-4 stroke-2" />
+                {tBulk("back")}
+            </Button>
 
             <Form {...form}>
                 <PaymentFormSection
@@ -134,15 +151,24 @@ export function EditPaymentStep({
                     amountName="amount"
                     tokenName="token"
                     recipientName="recipient"
-                    tokenLocked={true}
+                    destinationNetworkName="destinationNetwork"
+                    destinationNetworkNameFieldName="destinationNetworkName"
+                    tokenLocked
+                    destinationLocked
+                    confidentialAggregated
+                    hideRecipientNetwork={false}
+                    recipientNetworkOverride={destinationNetwork}
+                    requireNearComPrefix={
+                        destinationNetworkId === NEAR_COM_NETWORK_ID
+                    }
                     networkFee={networkFeePerRecipient}
+                    bridgeAssets={bridgeAssets}
+                    isBridgeAssetsLoading={isBridgeAssetsLoading}
                     saveButtonText={tBulk("saveChanges")}
                     onSave={handleSave}
-                    hideRecipientNetwork
-                    recipientNetworkOverride={destinationNetwork}
                     isSubmitting={isSaving}
                 />
             </Form>
-        </PageCard>
+        </div>
     );
 }

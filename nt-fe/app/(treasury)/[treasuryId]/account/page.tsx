@@ -16,6 +16,7 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { updateProfile } from "@/lib/api";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
@@ -57,6 +58,7 @@ export default function AccountPage() {
     const t = useTranslations("account");
     const tPages = useTranslations("pages.account");
     const { accountId, isAuthenticated } = useNear();
+    const { treasuryId } = useTreasury();
     const { data: profile, isLoading: isLoadingProfile } =
         useProfile(accountId);
     const queryClient = useQueryClient();
@@ -183,12 +185,11 @@ export default function AccountPage() {
             <PageComponentLayout
                 title={tPages("title")}
                 description={tPages("description")}
-                hideHeaderOnMobile
+                backButton={treasuryId ? `/${treasuryId}` : true}
+                backKind="section"
+                hideMobileShellControls
             >
                 <div className="mx-auto w-full max-w-[600px]">
-                    <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
-                        {tPages("title")}
-                    </h1>
                     <PageCard>
                         <p className="text-sm text-muted-foreground">
                             {t("signInRequired")}
@@ -203,12 +204,11 @@ export default function AccountPage() {
         <PageComponentLayout
             title={tPages("title")}
             description={tPages("description")}
-            hideHeaderOnMobile
+            backButton={treasuryId ? `/${treasuryId}` : true}
+            backKind="section"
+            hideMobileShellControls
         >
             <div className="mx-auto w-full max-w-[600px]">
-                <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
-                    {tPages("title")}
-                </h1>
                 {isLoadingProfile ? (
                     <PageCard className="space-y-6">
                         <Skeleton className="h-6 w-40" />

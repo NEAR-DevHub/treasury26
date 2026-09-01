@@ -21,7 +21,16 @@ import {
 } from "@/lib/near-validation";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import type { AddressBookEntry } from "@/features/address-book";
+import {
+    formatAddressBookDisplayAddress,
+    isNearComAddressBookEntry,
+} from "@/features/address-book";
 import type { ChainInfo } from "@/features/address-book/chains";
+import { isNearComNetwork } from "@/lib/intents-network";
+import {
+    isNearComRecipientAddress,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { paymentSelectModalListClassName } from "@/components/selector-field";
 import { cn } from "@/lib/utils";
 import { RecipientQrScanner } from "./recipient-qr-scanner";
@@ -111,8 +120,19 @@ export function RecipientSelectModal({
                 return;
             }
 
+            if (isNearComNetwork(networkName)) {
+                if (!isNearComRecipientAddress(trimmed)) {
+                    if (seq !== validationSeq.current) return;
+                    setIsValid(false);
+                    setShowInvalid(true);
+                    setIsValidating(false);
+                    return;
+                }
+            }
+
             if (blockchain === NEAR_NETWORK_ID) {
-                if (!isValidNearAddressFormat(trimmed)) {
+                const accountId = stripNearComAddressPrefix(trimmed);
+                if (!isValidNearAddressFormat(accountId)) {
                     if (seq !== validationSeq.current) return;
                     setIsValid(false);
                     setShowInvalid(true);
@@ -120,7 +140,7 @@ export function RecipientSelectModal({
                     return;
                 }
                 setIsValidating(true);
-                const result = await validateNearAddress(trimmed);
+                const result = await validateNearAddress(accountId);
                 if (seq !== validationSeq.current) return;
                 const ok = result === null;
                 setIsValidating(false);
@@ -135,7 +155,7 @@ export function RecipientSelectModal({
             setShowInvalid(!ok);
             setIsValidating(false);
         },
-        [blockchain],
+        [blockchain, networkName],
     );
 
     useEffect(() => {
@@ -147,12 +167,17 @@ export function RecipientSelectModal({
 
     const filteredContacts = useMemo(() => {
         if (!networkName) return contacts;
+        if (isNearComNetwork(networkName)) {
+            return contacts.filter(isNearComAddressBookEntry);
+        }
         const networkChain = getBlockchainType(networkName);
         return contacts.filter(
             (entry) =>
                 entry.networks.length === 0 ||
                 entry.networks.some(
-                    (key) => getBlockchainType(key) === networkChain,
+                    (key) =>
+                        !isNearComNetwork(key) &&
+                        getBlockchainType(key) === networkChain,
                 ),
         );
     }, [contacts, networkName]);
@@ -344,7 +369,9 @@ export function RecipientSelectModal({
                                                     className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-2.5 text-left hover:bg-muted"
                                                     onClick={() =>
                                                         handlePickAddress(
-                                                            entry.address,
+                                                            formatAddressBookDisplayAddress(
+                                                                entry,
+                                                            ),
                                                             entry,
                                                         )
                                                     }

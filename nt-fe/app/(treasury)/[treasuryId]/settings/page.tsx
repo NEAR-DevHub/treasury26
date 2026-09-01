@@ -21,7 +21,7 @@ function SettingsPageContent() {
     // The Developer tab only does anything for a signed-in member (its Enable action is
     // ChangePolicy-gated), so hide it from guests and signed-out viewers — same idea as the
     // feature-flag-gated Integrations tab.
-    const { isGuestTreasury } = useTreasury();
+    const { isGuestTreasury, treasuryId } = useTreasury();
     const showDeveloper = !isGuestTreasury;
     const [activeTab, setActiveTab] = useState(() => {
         if (tabFromUrl === "integrations" && features.integrations) {
@@ -79,12 +79,11 @@ function SettingsPageContent() {
         <PageComponentLayout
             title={t("title")}
             description={t("description")}
-            hideHeaderOnMobile
+            backButton={treasuryId ? `/${treasuryId}` : true}
+            backKind="section"
+            hideMobileShellControls
         >
             <div className="mx-auto w-full max-w-4xl">
-                <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
-                    {t("title")}
-                </h1>
                 <div className="mb-6 flex">
                     <TabGroup
                         tabs={tabs}
@@ -107,6 +106,7 @@ function SettingsPageContent() {
 
 export default function SettingsPage() {
     const t = useTranslations("pages.settings");
+    const { treasuryId } = useTreasury();
 
     return (
         <Suspense
@@ -114,7 +114,9 @@ export default function SettingsPage() {
                 <PageComponentLayout
                     title={t("title")}
                     description={t("description")}
-                    hideHeaderOnMobile
+                    backButton={treasuryId ? `/${treasuryId}` : true}
+                    backKind="section"
+                    hideMobileShellControls
                 >
                     <div className="mx-auto min-h-48 w-full max-w-4xl" />
                 </PageComponentLayout>

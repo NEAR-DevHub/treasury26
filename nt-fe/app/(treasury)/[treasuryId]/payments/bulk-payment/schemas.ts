@@ -51,6 +51,8 @@ export function buildEditPaymentSchema(messages: {
                 message: messages.amountGreaterThanZero,
             }),
         token: buildTokenSchema(messages.selectToken),
+        destinationNetwork: z.string().optional(),
+        destinationNetworkName: z.string().optional(),
     });
 }
 

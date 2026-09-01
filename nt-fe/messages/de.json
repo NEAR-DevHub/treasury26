@@ -200,8 +200,8 @@
             "description": "Geld sicher und geschuetzt senden."
         },
         "exchange": {
-            "title": "Tausch",
-            "confidentialTitle": "Vertraulicher Tausch",
+            "title": "Tauschen",
+            "confidentialTitle": "Tauschen",
             "description": "Tauschen Sie Ihre Token sicher und effizient"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "Zahlung bearbeiten",
+            "back": "Empfänger bearbeiten",
             "saveChanges": "Änderungen speichern"
         },
         "parsing": {
@@ -1360,13 +1361,13 @@
         "slippageTolerance": "Slippage-Toleranz",
         "disabled": {
             "differentTokens": "Token müssen unterschiedlich sein",
-            "enterAmount": "Geben Sie einen Betrag zum Tauschen ein"
+            "enterAmount": "Betrag eingeben"
         },
         "review": "Tausch prüfen",
         "poweredBy": "Bereitgestellt von",
         "info": {
             "priceDifference": "Preisunterschied",
-            "priceDifferenceTooltip": "Zeigt, wie der USD-Wert, den Sie erhalten, im Vergleich zum USD-Wert steht, den Sie senden.",
+            "priceDifferenceTooltip": "Unterschied zum Mid-Market-Preis.",
             "estimatedTime": "Geschätzte Zeit",
             "estimatedTimeValue": "{seconds} Sekunden",
             "estimatedTimeTooltip": "Ungefähre Zeit zum Abschluss des Tauschs.",
@@ -1377,12 +1378,16 @@
             "depositAddressCopied": "Einzahlungsadresse kopiert",
             "quoteExpires": "Angebot läuft ab",
             "exchangeFee": "Tauschgebühr",
-            "exchangeFeeTooltip": "Die hier anfallende Gebühr von 0,70 % deckt die Kosten des NEAR Intents-Protokolls zur Abwicklung Ihres Trades sowie die Near Business Widget-Gebühr. Dieser Betrag wird automatisch in Ihren angebotenen Kurs einberechnet."
+            "exchangeFeeTooltip": "Die hier anfallende Gebühr von 0,70 % deckt die Kosten des NEAR Intents-Protokolls zur Abwicklung Ihres Trades sowie die Trezu-Widget-Gebühr. Dieser Betrag ist bereits im quotierten Kurs enthalten."
         },
         "approveWithin24h": "Bitte genehmigen Sie diese Anfrage innerhalb von 24 Stunden, andernfalls läuft sie ab. Wir empfehlen, so bald wie möglich zu bestätigen.",
         "confirmSubmit": "Anfrage bestätigen und absenden",
         "refreshingIn": "Wechselkurs wird in {seconds}s aktualisiert",
-        "confidentialTooltip": "Die Betraege, die Sie senden und erhalten, sind vollstaendig vertraulich."
+        "confidentialTooltip": "Die Betraege, die Sie senden und erhalten, sind vollstaendig vertraulich.",
+        "maxSlippage": "Max. Slippage",
+        "maxSlippageTooltip": "Die Slippage-Einstellung schützt Sie davor, einen Endpreis zu erhalten, der stark vom quotierten Preis abweicht. Wird die festgelegte Slippage überschritten, schlägt Ihr Swap fehl.",
+        "receiveAtLeast": "Mindestens erhalten",
+        "receiveAtLeastTooltip": "Der quotierte Betrag ist eine Schätzung. Mehrere Solver konkurrieren um den besten Preis. Ihre maximale Slippage garantiert den Mindestbetrag, den Sie erhalten — kann er nicht erreicht werden, wird der Handel abgebrochen."
     },
     "vesting": {
         "validation": {
@@ -1933,9 +1938,8 @@
         "incompatible": "Inkompatibel",
         "comingSoon": "Demnächst verfügbar",
         "forMembersOnly": "Nur für Mitglieder",
-        "nearComDescription": "Netzwerk für vertrauliches Near Business",
-        "nearComDescriptionPublic": "Netzwerk für near.com",
-        "nearDescription": "Netzwerk für öffentliche Auszahlungen und near.com-Wallet",
+        "nearComDescription": "Netzwerk für Near Business und near.com",
+        "nearDescription": "Netzwerk für öffentliche Auszahlungen",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,18 +2016,19 @@
         "description": "Nur Treasury-Mitglieder haben Zugriff."
     },
     "exchangeRate": {
-        "rate": "Kurs",
+        "rate": "Wechselkurs",
         "clickToReverse": "Klicken, um Kurs umzukehren"
     },
     "exchangeSettings": {
-        "title": "Tausch-Einstellungen",
+        "title": "Slippage",
         "slippageTolerance": "Slippage-Toleranz",
-        "custom": "Benutzerdefiniert",
+        "custom": "Benutzerdefiniert %",
         "customPlaceholder": "z. B.: 2 %",
         "slippageRange": "Slippage muss zwischen 0,01 % und 100 % liegen",
         "enterSlippage": "Bitte geben Sie eine Slippage-Toleranz ein",
         "slippageHelp": "Wenn sich der Preis um mehr als diesen Prozentsatz ändert, wird die Transaktion zum Schutz Ihrer Mittel abgebrochen.",
-        "save": "Speichern"
+        "save": "Speichern",
+        "description": "Die Slippage-Einstellung schützt Sie davor, einen Endpreis zu erhalten, der stark vom quotierten Preis abweicht. Wird die festgelegte Slippage überschritten, wird Ihr Handel abgebrochen. Unten sehen Sie den Mindestbetrag, den Sie garantiert erhalten."
     },
     "assetsPage": {
         "title": "Vermögenswerte",
@@ -2132,7 +2137,7 @@
     "tokenSelectDialog": {
         "selectToken": "Token auswählen",
         "selectAsset": "Vermögenswert auswählen",
-        "selectNetworkFor": "Netzwerk für {token} auswählen",
+        "selectNetwork": "Netzwerk auswählen",
         "searchByName": "Nach Namen suchen",
         "noTokensWithBalance": "Keine Token mit Guthaben gefunden",
         "noTokensFound": "Keine Token gefunden",
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "Unzureichende Token. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
+        "insufficientTokens": "Unzureichendes Guthaben. Vor der Genehmigung aufladen.",
         "insufficientTokensForFee": "Unzureichende Token, um die Netzwerkgebühr ({fee} {symbol}) zu decken. Sie können die Anfrage einreichen und vor der Genehmigung aufladen.",
         "balance": "Guthaben: {amount} {symbol}",
         "balanceLabel": "Balance"

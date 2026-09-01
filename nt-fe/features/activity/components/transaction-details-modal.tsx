@@ -20,6 +20,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    mobileInsetSheetClassName,
 } from "@/components/modal";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import type { Token } from "@/components/token-input";
@@ -69,13 +70,6 @@ const TRANSACTION_LABEL_KEYS: Record<ActivityDetailsVariant, string> = {
     exchange: "exchangeTransaction",
     transfer: "sendTransaction",
 };
-
-/**
- * The shared dialog chrome is edge-to-edge on mobile; the details sheet floats
- * with a small inset instead, so it needs rounded corners on all sides.
- */
-const MOBILE_INSET =
-    "inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] w-auto rounded-3xl pb-4";
 
 interface TransactionDetailsModalProps {
     activity: RecentActivity | null;
@@ -1012,7 +1006,7 @@ function TransferDialog({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent
                 className={cn(
-                    MOBILE_INSET,
+                    mobileInsetSheetClassName,
                     "gap-3 bg-card sm:max-w-[448px]! sm:gap-3 sm:p-0",
                 )}
             >
@@ -1128,7 +1122,7 @@ export function TransactionDetailsModal({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent
                 className={cn(
-                    MOBILE_INSET,
+                    mobileInsetSheetClassName,
                     "gap-0 bg-card sm:max-w-[448px]! sm:gap-0.5 sm:bg-muted sm:p-0",
                 )}
             >

@@ -200,8 +200,8 @@
             "description": "Envie fundos com segurança e proteção."
         },
         "exchange": {
-            "title": "Troca",
-            "confidentialTitle": "Troca confidencial",
+            "title": "Trocar",
+            "confidentialTitle": "Trocar",
             "description": "Troque seus tokens de forma segura e eficiente"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "Editar pagamento",
+            "back": "Editar destinatário",
             "saveChanges": "Salvar alterações"
         },
         "parsing": {
@@ -1360,13 +1361,13 @@
         "slippageTolerance": "Tolerância de slippage",
         "disabled": {
             "differentTokens": "Os tokens devem ser diferentes",
-            "enterAmount": "Insira um valor para trocar"
+            "enterAmount": "Insira um valor"
         },
         "review": "Revisar troca",
         "poweredBy": "Desenvolvido por",
         "info": {
             "priceDifference": "Diferença de preço",
-            "priceDifferenceTooltip": "Mostra como o valor em USD que você recebe se compara ao valor em USD que você envia.",
+            "priceDifferenceTooltip": "Diferença em relação ao preço mid-market.",
             "estimatedTime": "Tempo estimado",
             "estimatedTimeValue": "{seconds} segundos",
             "estimatedTimeTooltip": "Tempo aproximado para concluir a troca.",
@@ -1377,12 +1378,16 @@
             "depositAddressCopied": "Endereço de depósito copiado",
             "quoteExpires": "A cotação expira",
             "exchangeFee": "Taxa de troca",
-            "exchangeFeeTooltip": "A taxa de 0,70% incorrida aqui cobre os custos do protocolo NEAR Intents para facilitar sua negociação e a taxa do widget Near Business. Este valor é calculado automaticamente na sua taxa cotada."
+            "exchangeFeeTooltip": "A taxa de 0,70% cobre os custos do protocolo NEAR Intents para facilitar a operação e a taxa do widget Trezu. Esse valor já está incluído na taxa cotada."
         },
         "approveWithin24h": "Por favor, aprove esta solicitação em até 24 horas, caso contrário ela expirará. Recomendamos confirmar o quanto antes.",
         "confirmSubmit": "Confirmar e enviar solicitação",
         "refreshingIn": "A taxa de câmbio será atualizada em {seconds}s",
-        "confidentialTooltip": "Os valores que você envia e recebe são totalmente confidenciais."
+        "confidentialTooltip": "Os valores que você envia e recebe são totalmente confidenciais.",
+        "maxSlippage": "Slippage máx.",
+        "maxSlippageTooltip": "A configuração de slippage protege você de um preço final muito diferente do cotado. Se o slippage for excedido, o swap falhará.",
+        "receiveAtLeast": "Receber pelo menos",
+        "receiveAtLeastTooltip": "O valor cotado é uma estimativa. Vários solvers competem pelo melhor preço. Seu slippage máximo garante um mínimo — se não puder ser atendido, a operação é cancelada."
     },
     "vesting": {
         "validation": {
@@ -1933,9 +1938,8 @@
         "incompatible": "Incompatível",
         "comingSoon": "Em breve",
         "forMembersOnly": "Apenas para membros",
-        "nearComDescription": "Rede para Near Business confidencial",
-        "nearComDescriptionPublic": "Rede para near.com",
-        "nearDescription": "Rede para saque público e carteira near.com",
+        "nearComDescription": "Rede para Near Business e near.com",
+        "nearDescription": "Rede para saque público",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,18 +2016,19 @@
         "description": "Apenas membros da tesouraria têm acesso."
     },
     "exchangeRate": {
-        "rate": "Taxa",
+        "rate": "Taxa de câmbio",
         "clickToReverse": "Clique para inverter a taxa"
     },
     "exchangeSettings": {
-        "title": "Configurações de troca",
+        "title": "Slippage",
         "slippageTolerance": "Tolerância de slippage",
-        "custom": "Personalizado",
+        "custom": "Personalizado %",
         "customPlaceholder": "ex: 2%",
         "slippageRange": "O slippage deve estar entre 0,01% e 100%",
         "enterSlippage": "Por favor, insira uma tolerância de slippage",
         "slippageHelp": "Se o preço mudar mais que esta porcentagem, a transação será cancelada para proteger seus fundos.",
-        "save": "Salvar"
+        "save": "Salvar",
+        "description": "A configuração de slippage protege você de um preço final muito diferente do cotado. Se o slippage for excedido, a operação será cancelada. Abaixo está o valor mínimo garantido."
     },
     "assetsPage": {
         "title": "Ativos",
@@ -2132,7 +2137,7 @@
     "tokenSelectDialog": {
         "selectToken": "Selecionar token",
         "selectAsset": "Selecionar ativo",
-        "selectNetworkFor": "Selecionar rede para {token}",
+        "selectNetwork": "Selecionar rede",
         "searchByName": "Buscar por nome",
         "noTokensWithBalance": "Nenhum token com saldo encontrado",
         "noTokensFound": "Nenhum token encontrado",
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "Tokens insuficientes. Você pode enviar a solicitação e completar o saldo antes da aprovação.",
+        "insufficientTokens": "Saldo insuficiente. Complete o saldo antes da aprovação.",
         "insufficientTokensForFee": "Tokens insuficientes para cobrir a taxa de rede ({fee} {symbol}). Você pode enviar a solicitação e completar o saldo antes da aprovação.",
         "balance": "Saldo: {amount} {symbol}",
         "balanceLabel": "Balance"

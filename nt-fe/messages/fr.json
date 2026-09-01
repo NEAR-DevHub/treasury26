@@ -200,8 +200,8 @@
             "description": "Envoyez des fonds de facon sure et securisee."
         },
         "exchange": {
-            "title": "Echange",
-            "confidentialTitle": "Echange confidentiel",
+            "title": "Échanger",
+            "confidentialTitle": "Échanger",
             "description": "Échangez vos tokens en toute sécurité et efficacité"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "Modifier le paiement",
+            "back": "Modifier le destinataire",
             "saveChanges": "Enregistrer les modifications"
         },
         "parsing": {
@@ -1360,13 +1361,13 @@
         "slippageTolerance": "Tolérance au glissement",
         "disabled": {
             "differentTokens": "Les tokens doivent être différents",
-            "enterAmount": "Saisissez un montant à échanger"
+            "enterAmount": "Saisissez un montant"
         },
         "review": "Vérifier l'échange",
         "poweredBy": "Propulsé par",
         "info": {
             "priceDifference": "Différence de prix",
-            "priceDifferenceTooltip": "Montre comment la valeur en USD que vous recevez se compare à la valeur en USD que vous envoyez.",
+            "priceDifferenceTooltip": "Écart par rapport au prix mid-market.",
             "estimatedTime": "Temps estimé",
             "estimatedTimeValue": "{seconds} secondes",
             "estimatedTimeTooltip": "Temps approximatif pour terminer l'échange.",
@@ -1377,12 +1378,16 @@
             "depositAddressCopied": "Adresse de dépôt copiée",
             "quoteExpires": "Expiration du devis",
             "exchangeFee": "Frais d'échange",
-            "exchangeFeeTooltip": "Les frais de 0,70 % couvrent ici les coûts du protocole NEAR Intents pour faciliter votre transaction et les frais du widget Near Business. Ce montant est automatiquement calculé dans votre taux coté."
+            "exchangeFeeTooltip": "Les 0,70 % de frais couvrent les coûts du protocole NEAR Intents pour faciliter votre échange et les frais du widget Trezu. Ce montant est déjà inclus dans le taux coté."
         },
         "approveWithin24h": "Veuillez approuver cette demande dans les 24 heures, sinon elle expirera. Nous recommandons de confirmer dès que possible.",
         "confirmSubmit": "Confirmer et soumettre la demande",
         "refreshingIn": "Le taux d'échange sera actualisé dans {seconds} s",
-        "confidentialTooltip": "Les montants que vous envoyez et recevez sont entierement confidentiels."
+        "confidentialTooltip": "Les montants que vous envoyez et recevez sont entierement confidentiels.",
+        "maxSlippage": "Glissement max.",
+        "maxSlippageTooltip": "Le glissement est un mécanisme de sécurité pour éviter un prix final très différent du prix coté. Si le glissement indiqué est dépassé, votre swap échouera.",
+        "receiveAtLeast": "Recevoir au moins",
+        "receiveAtLeastTooltip": "Le montant coté est une estimation. Plusieurs solvers se concurrencent pour vous offrir le meilleur prix. Votre glissement max. garantit un minimum — s'il ne peut pas être atteint, l'échange est annulé."
     },
     "vesting": {
         "validation": {
@@ -1933,9 +1938,8 @@
         "incompatible": "Incompatible",
         "comingSoon": "Bientôt disponible",
         "forMembersOnly": "Réservé aux membres",
-        "nearComDescription": "Réseau pour Near Business confidentiel",
-        "nearComDescriptionPublic": "Réseau pour near.com",
-        "nearDescription": "Réseau pour retrait public et portefeuille near.com",
+        "nearComDescription": "Réseau pour Near Business et near.com",
+        "nearDescription": "Réseau pour retrait public",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,18 +2016,19 @@
         "description": "Seuls les membres de la trésorerie y ont accès."
     },
     "exchangeRate": {
-        "rate": "Taux",
+        "rate": "Taux de change",
         "clickToReverse": "Cliquez pour inverser le taux"
     },
     "exchangeSettings": {
-        "title": "Paramètres d'échange",
+        "title": "Glissement",
         "slippageTolerance": "Tolérance au glissement",
-        "custom": "Personnalisé",
+        "custom": "Personnalisé %",
         "customPlaceholder": "ex : 2 %",
         "slippageRange": "Le glissement doit être compris entre 0,01 % et 100 %",
         "enterSlippage": "Veuillez saisir une tolérance au glissement",
         "slippageHelp": "Si le prix change de plus de ce pourcentage, la transaction sera annulée pour protéger vos fonds.",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "description": "Le glissement est un mécanisme de sécurité pour éviter un prix final très différent du prix coté. Si le glissement indiqué est dépassé, votre échange sera annulé. Voici le montant minimum qui vous est garanti."
     },
     "assetsPage": {
         "title": "Actifs",
@@ -2132,7 +2137,7 @@
     "tokenSelectDialog": {
         "selectToken": "Sélectionner un token",
         "selectAsset": "Sélectionner un actif",
-        "selectNetworkFor": "Sélectionner le réseau pour {token}",
+        "selectNetwork": "Sélectionner un réseau",
         "searchByName": "Rechercher par nom",
         "noTokensWithBalance": "Aucun token avec solde trouvé",
         "noTokensFound": "Aucun token trouvé",
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "Tokens insuffisants. Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
+        "insufficientTokens": "Solde insuffisant. Rechargez avant l'approbation.",
         "insufficientTokensForFee": "Tokens insuffisants pour couvrir les frais de réseau ({fee} {symbol}). Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
         "balance": "Solde : {amount} {symbol}",
         "balanceLabel": "Balance"

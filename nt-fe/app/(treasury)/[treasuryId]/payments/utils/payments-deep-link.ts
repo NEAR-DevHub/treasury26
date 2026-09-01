@@ -87,7 +87,6 @@ export function nearChainDestination(): {
     id: string;
     networkName: string;
 } {
-    // near.com is never soft-seeded — only a nearcom:<account> address selects it.
     return {
         id: NEAR_NETWORK_ID,
         networkName: NEAR_NETWORK_ID,

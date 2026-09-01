@@ -201,7 +201,7 @@
         },
         "exchange": {
             "title": "兑换",
-            "confidentialTitle": "机密兑换",
+            "confidentialTitle": "兑换",
             "description": "安全高效地兑换您的代币"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "编辑付款",
+            "back": "编辑收款人",
             "saveChanges": "保存更改"
         },
         "parsing": {
@@ -1343,13 +1344,13 @@
         "slippageTolerance": "滑点容忍度",
         "disabled": {
             "differentTokens": "代币必须不同",
-            "enterAmount": "请输入要兑换的金额"
+            "enterAmount": "请输入金额"
         },
         "review": "审核兑换",
         "poweredBy": "技术支持:",
         "info": {
             "priceDifference": "价差",
-            "priceDifferenceTooltip": "显示你收到的 USD 价值与发送的 USD 价值如何比较。",
+            "priceDifferenceTooltip": "与中间市场价格的差额。",
             "estimatedTime": "预计时间",
             "estimatedTimeValue": "{seconds} 秒",
             "estimatedTimeTooltip": "完成兑换的大致时间。",
@@ -1360,12 +1361,16 @@
             "depositAddressCopied": "存款地址已复制",
             "quoteExpires": "报价过期时间",
             "exchangeFee": "兑换手续费",
-            "exchangeFeeTooltip": "此处产生的 0.70% 手续费用于支付 NEAR Intents 协议的交易处理成本及 Near Business 小部件费用。该金额已自动计入您的报价汇率中。"
+            "exchangeFeeTooltip": "此处收取的 0.70% 费用涵盖促成交易的 NEAR Intents 协议成本以及 Trezu 组件费用。该金额已自动计入报价汇率。"
         },
         "approveWithin24h": "请在 24 小时内批准此请求,否则它将过期。建议尽快确认。",
         "confirmSubmit": "确认并提交请求",
         "refreshingIn": "兑换汇率将在 {seconds} 秒后刷新",
-        "confidentialTooltip": "您发送和接收的金额完全保密。"
+        "confidentialTooltip": "您发送和接收的金额完全保密。",
+        "maxSlippage": "最大滑点",
+        "maxSlippageTooltip": "滑点设置用于避免最终成交价与报价相差过大。如果超过指定滑点，兑换将失败。",
+        "receiveAtLeast": "至少收到",
+        "receiveAtLeastTooltip": "报价金额为估算值。多个求解器会竞争以提供最优价格。最大滑点保证你能收到的最低金额——若无法满足，交易将被取消。"
     },
     "vesting": {
         "validation": {
@@ -1916,9 +1921,8 @@
         "incompatible": "不兼容",
         "comingSoon": "即将推出",
         "forMembersOnly": "仅限成员",
-        "nearComDescription": "机密 Near Business 网络",
-        "nearComDescriptionPublic": "near.com 网络",
-        "nearDescription": "公开提现和 near.com 钱包网络",
+        "nearComDescription": "Near Business 和 near.com 网络",
+        "nearDescription": "公开提现网络",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -1999,14 +2003,15 @@
         "clickToReverse": "点击反转汇率"
     },
     "exchangeSettings": {
-        "title": "兑换设置",
+        "title": "滑点",
         "slippageTolerance": "滑点容忍度",
-        "custom": "自定义",
+        "custom": "自定义 %",
         "customPlaceholder": "例如:2%",
         "slippageRange": "滑点必须介于 0.01% 和 100% 之间",
         "enterSlippage": "请输入滑点容忍度",
         "slippageHelp": "如果价格变动超过此百分比,交易将被取消以保护您的资金。",
-        "save": "保存"
+        "save": "保存",
+        "description": "滑点设置用于避免最终成交价与报价相差过大。如果超过指定滑点，交易将被取消。以下是你保证能收到的最低金额。"
     },
     "assetsPage": {
         "title": "资产",
@@ -2115,7 +2120,7 @@
     "tokenSelectDialog": {
         "selectToken": "选择代币",
         "selectAsset": "选择资产",
-        "selectNetworkFor": "为 {token} 选择网络",
+        "selectNetwork": "选择网络",
         "searchByName": "按名称搜索",
         "noTokensWithBalance": "未找到有余额的代币",
         "noTokensFound": "未找到代币",
@@ -2191,7 +2196,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "代币不足。您可以提交请求,并在批准前充值。",
+        "insufficientTokens": "余额不足。请在批准前充值。",
         "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
         "balance": "余额:{amount} {symbol}",
         "balanceLabel": "Balance"

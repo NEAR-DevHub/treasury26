@@ -1,5 +1,4 @@
 "use client";
-import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
     ArrowLeft01Icon,
@@ -7,6 +6,11 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Icon } from "@/components/icon";
+import {
+    iconTintVars,
+    useIconAccentColor,
+} from "@/hooks/use-icon-accent-color";
 import {
     type MergedNetwork,
     type MergedToken,
@@ -26,15 +30,15 @@ import {
 import { Button } from "./button";
 import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
+import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { PaymentSelectModalContent } from "./payment-select-modal-content";
+import { SelectListIcon } from "./select-list";
 import {
     EmptySelectorIcon,
     paymentSelectModalListClassName,
     paymentSelectModalSearchInputClassName,
     selectorTriggerClassName,
 } from "./selector-field";
-import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
-import { SelectListIcon } from "./select-list";
 import { NetworkIconDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
 import { Tooltip } from "./tooltip";
@@ -68,6 +72,8 @@ interface TokenSelectProps {
     locked?: boolean;
     classNames?: {
         trigger?: string;
+        icon?: string;
+        symbol?: string;
     };
     lockedTokenData?: SelectedTokenData;
     /**
@@ -114,6 +120,12 @@ interface TokenSelectProps {
     hideNetworkSubtitle?: boolean;
     /** Full-width labeled card trigger (Send redesign). */
     appearance?: "default" | "card";
+    /**
+     * Tints the trigger with the selected icon's dominant colour (Swap pills).
+     * Falls back to the trigger's own background for icons whose colour cannot
+     * be read — monochrome art, or a host that serves no CORS headers.
+     */
+    tintTriggerFromIcon?: boolean;
 }
 
 export default function TokenSelect({
@@ -134,9 +146,14 @@ export default function TokenSelect({
     balanceLayout = "tokenPrimary",
     hideNetworkSubtitle = false,
     appearance = "default",
+    tintTriggerFromIcon = false,
 }: TokenSelectProps) {
     const t = useTranslations("tokenSelectDialog");
     const tDepositSections = useTranslations("depositModal.sections");
+    const iconAccent = useIconAccentColor(
+        tintTriggerFromIcon ? selectedToken?.icon : null,
+    );
+    const iconTint = iconTintVars(iconAccent);
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedAsset, setSelectedAsset] = useState<MergedToken | null>(
@@ -383,7 +400,7 @@ export default function TokenSelect({
                 variant="ghost"
                 type="button"
                 className={cn(
-                    "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
+                    "w-full flex items-center gap-1 py-2 rounded-lg h-auto justify-start pl-0! my-0.5",
                     isSelectedAsset &&
                         "bg-muted hover:bg-muted focus-visible:bg-muted",
                 )}
@@ -399,11 +416,11 @@ export default function TokenSelect({
                             query={search}
                         />
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                        {t("networksCount", {
-                            count: token.networks.length,
-                        })}
-                    </div>
+                    {token.name && token.name !== token.symbol ? (
+                        <div className="text-sm text-muted-foreground font-medium">
+                            <HighlightedText text={token.name} query={search} />
+                        </div>
+                    ) : null}
                 </div>
                 {token.totalBalance !== undefined && token.totalBalance > 0 && (
                     <div className="flex flex-col items-end">
@@ -414,7 +431,7 @@ export default function TokenSelect({
                                         token.totalBalanceUSD || 0,
                                     )}
                                 </span>
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-sm text-muted-foreground font-medium">
                                     {formatSmartAmount(token.totalBalance)}
                                 </span>
                             </>
@@ -423,7 +440,7 @@ export default function TokenSelect({
                                 <span className="font-semibold">
                                     {formatSmartAmount(token.totalBalance)}
                                 </span>
-                                <span className="text-sm text-muted-foreground">
+                                <span className="text-sm text-muted-foreground font-medium">
                                     ≈
                                     {formatCurrencyWithSubCent(
                                         token.totalBalanceUSD || 0,
@@ -460,6 +477,7 @@ export default function TokenSelect({
                         disabled={disabled || showDefaultLoading}
                         className={cn(
                             selectorTriggerClassName,
+                            (disabled || locked) && "opacity-60",
                             classNames?.trigger,
                         )}
                     >
@@ -510,9 +528,12 @@ export default function TokenSelect({
                     <Button
                         type="button"
                         variant="outline"
+                        style={iconTint}
                         className={cn(
                             "bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3! justify-start",
                             classNames?.trigger,
+                            iconTint &&
+                                "bg-[var(--icon-tint)] hover:bg-[var(--icon-tint-hover)]",
                         )}
                     >
                         {showDefaultLoading ? (
@@ -521,7 +542,7 @@ export default function TokenSelect({
                                 <Skeleton
                                     className={cn(
                                         "rounded-full shrink-0",
-                                        iconSkeletonClass,
+                                        classNames?.icon ?? iconSkeletonClass,
                                     )}
                                 />
                                 <div className="flex flex-col gap-1">
@@ -536,6 +557,7 @@ export default function TokenSelect({
                                     icon={selectedToken.icon}
                                     chainIcons={selectedToken.chainIcons}
                                     iconSize={iconSize}
+                                    className={classNames?.icon}
                                 />
                                 <div className="flex flex-col items-start gap-px">
                                     {triggerLabel && (
@@ -549,6 +571,7 @@ export default function TokenSelect({
                                             triggerLabel
                                                 ? "text-base leading-tight"
                                                 : "text-sm leading-none",
+                                            classNames?.symbol,
                                         )}
                                     >
                                         {selectedToken.symbol}
@@ -591,9 +614,7 @@ export default function TokenSelect({
                         <DialogTitle className="w-full text-left text-lg font-semibold">
                             {step === "token"
                                 ? t("selectToken")
-                                : t("selectNetworkFor", {
-                                      token: selectedAsset?.name ?? "",
-                                  })}
+                                : t("selectNetwork")}
                         </DialogTitle>
                     </div>
                 </DialogHeader>
@@ -630,7 +651,7 @@ export default function TokenSelect({
                                 {showPopularAssets &&
                                     popularTokens.length > 0 && (
                                         <div className="mb-3">
-                                            <div className="px-2 py-2 text-xs font-medium text-muted-foreground uppercase">
+                                            <div className="px-2 py-2 text-xs font-medium text-muted-foreground">
                                                 {tDepositSections(
                                                     "popularAssets",
                                                 )}
@@ -680,7 +701,7 @@ export default function TokenSelect({
 
                                 {yourAssets.length > 0 && (
                                     <div>
-                                        <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                        <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                             {t("yourAssets")}
                                         </div>
                                         {yourAssets.map(renderTokenButton)}
@@ -689,7 +710,7 @@ export default function TokenSelect({
 
                                 {otherAssets.length > 0 && (
                                     <div>
-                                        <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                        <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                             {t("otherAssets")}
                                         </div>
                                         {otherAssets.map(renderTokenButton)}
@@ -829,7 +850,7 @@ export default function TokenSelect({
                                     <>
                                         {supportedWithBalance.length > 0 && (
                                             <div>
-                                                <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                                <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                                     {t("networksWithAssets")}
                                                 </div>
                                                 {supportedWithBalance.map(
@@ -840,7 +861,7 @@ export default function TokenSelect({
 
                                         {supportedWithoutBalance.length > 0 && (
                                             <div>
-                                                <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                                <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                                     {t("supportedNetworks")}
                                                 </div>
                                                 {supportedWithoutBalance.map(
@@ -851,7 +872,7 @@ export default function TokenSelect({
 
                                         {comingSoonNetworks.length > 0 && (
                                             <div>
-                                                <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2 flex items-center gap-1.5">
+                                                <div className="text-xs font-medium text-muted-foreground px-2 py-2 flex items-center gap-1.5">
                                                     {t("comingSoon")}
                                                     {disableTokenMessage && (
                                                         <Tooltip

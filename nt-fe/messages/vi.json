@@ -200,8 +200,8 @@
             "description": "Gui tien an toan va bao mat."
         },
         "exchange": {
-            "title": "Hoan doi",
-            "confidentialTitle": "Hoan doi bao mat",
+            "title": "Hoán đổi",
+            "confidentialTitle": "Hoán đổi",
             "description": "Trao đổi token một cách an toàn và hiệu quả"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "Chỉnh sửa thanh toán",
+            "back": "Chỉnh sửa người nhận",
             "saveChanges": "Lưu thay đổi"
         },
         "parsing": {
@@ -1343,13 +1344,13 @@
         "slippageTolerance": "Dung sai trượt giá",
         "disabled": {
             "differentTokens": "Token phải khác nhau",
-            "enterAmount": "Nhập số tiền để trao đổi"
+            "enterAmount": "Nhập số tiền"
         },
-        "review": "Xem lại trao đổi",
+        "review": "Xem lại hoán đổi",
         "poweredBy": "Cung cấp bởi",
         "info": {
             "priceDifference": "Chênh lệch giá",
-            "priceDifferenceTooltip": "Hiển thị giá trị USD bạn nhận được so với giá trị USD bạn gửi đi.",
+            "priceDifferenceTooltip": "Chênh lệch so với giá mid-market.",
             "estimatedTime": "Thời gian ước tính",
             "estimatedTimeValue": "{seconds} giây",
             "estimatedTimeTooltip": "Thời gian xấp xỉ để hoàn tất giao dịch trao đổi.",
@@ -1360,12 +1361,16 @@
             "depositAddressCopied": "Đã sao chép địa chỉ nạp tiền",
             "quoteExpires": "Hết hạn báo giá",
             "exchangeFee": "Phí trao đổi",
-            "exchangeFeeTooltip": "Phí 0.70% phát sinh ở đây bao gồm chi phí giao thức NEAR Intents để hỗ trợ giao dịch của bạn và phí widget Near Business. Số tiền này được tự động tính vào tỷ giá đã báo của bạn."
+            "exchangeFeeTooltip": "Phí 0,70% ở đây gồm chi phí giao thức NEAR Intents để thực hiện giao dịch và phí widget Trezu. Số tiền này đã được tính vào tỷ giá báo."
         },
         "approveWithin24h": "Vui lòng phê duyệt yêu cầu này trong vòng 24 giờ, nếu không nó sẽ hết hạn. Chúng tôi khuyên bạn xác nhận càng sớm càng tốt.",
         "confirmSubmit": "Xác nhận và gửi yêu cầu",
         "refreshingIn": "Tỷ giá trao đổi sẽ làm mới trong {seconds}s",
-        "confidentialTooltip": "So tien ban gui va nhan duoc bao mat hoan toan."
+        "confidentialTooltip": "So tien ban gui va nhan duoc bao mat hoan toan.",
+        "maxSlippage": "Trượt giá tối đa",
+        "maxSlippageTooltip": "Cài đặt trượt giá bảo vệ bạn khỏi mức giá cuối khác xa giá báo. Nếu vượt quá trượt giá đã chọn, giao dịch hoán đổi sẽ thất bại.",
+        "receiveAtLeast": "Nhận ít nhất",
+        "receiveAtLeastTooltip": "Số tiền báo giá là ước tính. Nhiều solver cạnh tranh để đưa ra giá tốt nhất. Trượt giá tối đa đảm bảo số tiền tối thiểu — nếu không đạt được, giao dịch sẽ bị hủy."
     },
     "vesting": {
         "validation": {
@@ -1916,9 +1921,8 @@
         "incompatible": "Không tương thích",
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
-        "nearComDescription": "Mạng cho Near Business bí mật",
-        "nearComDescriptionPublic": "Mạng cho near.com",
-        "nearDescription": "Mạng cho rút tiền công khai và ví near.com",
+        "nearComDescription": "Mạng cho Near Business và near.com",
+        "nearDescription": "Mạng cho rút tiền công khai",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -1999,14 +2003,15 @@
         "clickToReverse": "Nhấp để đảo ngược tỷ giá"
     },
     "exchangeSettings": {
-        "title": "Cài đặt trao đổi",
+        "title": "Trượt giá",
         "slippageTolerance": "Dung sai trượt giá",
-        "custom": "Tùy chỉnh",
+        "custom": "Tùy chỉnh %",
         "customPlaceholder": "ví dụ: 2%",
         "slippageRange": "Trượt giá phải nằm trong khoảng 0.01% và 100%",
         "enterSlippage": "Vui lòng nhập dung sai trượt giá",
         "slippageHelp": "Nếu giá thay đổi nhiều hơn tỷ lệ phần trăm này, giao dịch sẽ bị hủy để bảo vệ tiền của bạn.",
-        "save": "Lưu"
+        "save": "Lưu",
+        "description": "Cài đặt trượt giá bảo vệ bạn khỏi mức giá cuối khác xa giá báo. Nếu vượt quá trượt giá đã chọn, giao dịch sẽ bị hủy. Bên dưới là số tiền tối thiểu được đảm bảo."
     },
     "assetsPage": {
         "title": "Tài sản",
@@ -2115,7 +2120,7 @@
     "tokenSelectDialog": {
         "selectToken": "Chọn token",
         "selectAsset": "Chọn tài sản",
-        "selectNetworkFor": "Chọn mạng cho {token}",
+        "selectNetwork": "Chọn mạng",
         "searchByName": "Tìm theo tên",
         "noTokensWithBalance": "Không tìm thấy token có số dư",
         "noTokensFound": "Không tìm thấy token",
@@ -2191,7 +2196,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "Không đủ token. Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
+        "insufficientTokens": "Số dư không đủ. Nạp thêm trước khi phê duyệt.",
         "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
         "balance": "Số dư: {amount} {symbol}",
         "balanceLabel": "Balance"

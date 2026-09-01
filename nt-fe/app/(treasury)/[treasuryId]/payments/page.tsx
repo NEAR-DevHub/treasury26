@@ -17,6 +17,7 @@ import { Address } from "@/components/address";
 import { AmountSummary } from "@/components/amount-summary";
 import { Button } from "@/components/button";
 import { CreateRequestButton } from "@/components/create-request-button";
+import { FittingFormattedAmount } from "@/components/fitting-text";
 import { FormattedAmount } from "@/components/formatted-amount";
 import { Input } from "@/components/input";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -50,7 +51,6 @@ import {
     type IntentsAmountMode,
     useIntentsQuote,
 } from "@/hooks/use-intents-quote";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import {
@@ -115,6 +115,7 @@ function buildPaymentFormSchema(messages: {
     amountGreaterThanZero: string;
     recipientSameAsToken: string;
     selectToken: string;
+    invalidAddress: string;
 }) {
     return z
         .object({
@@ -147,6 +148,16 @@ function buildPaymentFormSchema(messages: {
                     code: "custom",
                     path: ["address"],
                     message: messages.recipientSameAsToken,
+                });
+            }
+            if (
+                isNearComNetwork(data.destinationNetwork) &&
+                !isNearComRecipientAddress(data.address)
+            ) {
+                ctx.addIssue({
+                    code: "custom",
+                    path: ["address"],
+                    message: messages.invalidAddress,
                 });
             }
         });
@@ -300,66 +311,66 @@ function Step2({
     const { data: addressBook = [] } = useAddressBook();
     const contactName = findAddressBookEntry(addressBook, address)?.name;
 
-    const {
-        recipientAmount,
-        displayNetworkFee,
-        recipientEstimatedUSDValue,
-    } = useMemo(() => {
-        if (!token) {
+    const { recipientAmount, displayNetworkFee, recipientEstimatedUSDValue } =
+        useMemo(() => {
+            if (!token) {
+                return {
+                    totalAmountWithFees: Big(0),
+                    recipientAmount: Big(0),
+                    displayNetworkFee: Big(0),
+                    estimatedUSDValue: null,
+                    recipientEstimatedUSDValue: null,
+                };
+            }
+
+            const enteredAmount = decimalOrNull(amount) ?? Big(0);
+            const price = decimalOrNull(tokenData?.price);
+
+            if (liveQuote?.quote) {
+                const quotedTotal =
+                    decimalFromBaseUnitsOrNull(
+                        liveQuote.quote.amountIn || liveQuote.quote.minAmountIn,
+                        token.decimals,
+                    ) ??
+                    decimalOrNull(liveQuote.quote.amountInFormatted) ??
+                    Big(0);
+                const quotedRecipient =
+                    decimalOrNull(liveQuote.quote.amountOutFormatted) ??
+                    decimalFromBaseUnitsOrNull(
+                        liveQuote.quote.amountOut ||
+                            liveQuote.quote.minAmountOut,
+                        token.decimals,
+                    ) ??
+                    Big(0);
+                const feeValue =
+                    decimalOrNull(computeQuoteNetworkFee(liveQuote.quote)) ??
+                    Big(0);
+
+                return {
+                    totalAmountWithFees: quotedTotal,
+                    recipientAmount: quotedRecipient,
+                    displayNetworkFee: feeValue,
+                    estimatedUSDValue:
+                        decimalOrNull(liveQuote.quote.amountInUsd) ??
+                        (price?.gt(0) ? quotedTotal.mul(price) : null),
+                    recipientEstimatedUSDValue:
+                        decimalOrNull(liveQuote.quote.amountOutUsd) ??
+                        (price?.gt(0) ? quotedRecipient.mul(price) : null),
+                };
+            }
+
             return {
-                totalAmountWithFees: Big(0),
-                recipientAmount: Big(0),
+                totalAmountWithFees: enteredAmount,
+                recipientAmount: enteredAmount,
                 displayNetworkFee: Big(0),
-                estimatedUSDValue: null,
-                recipientEstimatedUSDValue: null,
+                estimatedUSDValue: price?.gt(0)
+                    ? enteredAmount.mul(price)
+                    : null,
+                recipientEstimatedUSDValue: price?.gt(0)
+                    ? enteredAmount.mul(price)
+                    : null,
             };
-        }
-
-        const enteredAmount = decimalOrNull(amount) ?? Big(0);
-        const price = decimalOrNull(tokenData?.price);
-
-        if (liveQuote?.quote) {
-            const quotedTotal =
-                decimalFromBaseUnitsOrNull(
-                    liveQuote.quote.amountIn || liveQuote.quote.minAmountIn,
-                    token.decimals,
-                ) ??
-                decimalOrNull(liveQuote.quote.amountInFormatted) ??
-                Big(0);
-            const quotedRecipient =
-                decimalOrNull(liveQuote.quote.amountOutFormatted) ??
-                decimalFromBaseUnitsOrNull(
-                    liveQuote.quote.amountOut || liveQuote.quote.minAmountOut,
-                    token.decimals,
-                ) ??
-                Big(0);
-            const feeValue =
-                decimalOrNull(computeQuoteNetworkFee(liveQuote.quote)) ??
-                Big(0);
-
-            return {
-                totalAmountWithFees: quotedTotal,
-                recipientAmount: quotedRecipient,
-                displayNetworkFee: feeValue,
-                estimatedUSDValue:
-                    decimalOrNull(liveQuote.quote.amountInUsd) ??
-                    (price?.gt(0) ? quotedTotal.mul(price) : null),
-                recipientEstimatedUSDValue:
-                    decimalOrNull(liveQuote.quote.amountOutUsd) ??
-                    (price?.gt(0) ? quotedRecipient.mul(price) : null),
-            };
-        }
-
-        return {
-            totalAmountWithFees: enteredAmount,
-            recipientAmount: enteredAmount,
-            displayNetworkFee: Big(0),
-            estimatedUSDValue: price?.gt(0) ? enteredAmount.mul(price) : null,
-            recipientEstimatedUSDValue: price?.gt(0)
-                ? enteredAmount.mul(price)
-                : null,
-        };
-    }, [amount, liveQuote, token, tokenData?.price]);
+        }, [amount, liveQuote, token, tokenData?.price]);
 
     const isQuoteLoading =
         isViaIntents && (isLoadingLiveQuote || isFetchingLiveQuote);
@@ -395,8 +406,8 @@ function Step2({
                                 className="text-sm font-semibold leading-normal text-general-foreground"
                             />
                         </div>
-                        <div className="flex min-w-fit flex-col items-end gap-0.5">
-                            <div className="flex items-center gap-1.5">
+                        <div className="flex min-w-0 max-w-[55%] flex-1 flex-col items-end gap-0.5">
+                            <div className="flex w-full min-w-0 items-center justify-end gap-1.5">
                                 <TokenDisplay
                                     icon={token.icon}
                                     symbol={token.symbol}
@@ -405,17 +416,17 @@ function Step2({
                                         token.chainIcons
                                     }
                                     iconSize="md"
+                                    className="shrink-0"
                                 />
-                                <p className="break-all text-sm font-semibold leading-normal text-general-foreground">
-                                    <FormattedAmount
-                                        kind="token"
-                                        value={recipientAmount}
-                                        symbol={token.symbol}
-                                        tokenDecimals={token.decimals}
-                                        unitPriceUsd={tokenData?.price}
-                                        profile="standard"
-                                    />
-                                </p>
+                                <FittingFormattedAmount
+                                    value={recipientAmount}
+                                    symbol={token.symbol}
+                                    tokenDecimals={token.decimals}
+                                    unitPriceUsd={tokenData?.price}
+                                    maxPx={14}
+                                    minPx={14}
+                                    className="text-right font-semibold leading-normal text-general-foreground"
+                                />
                             </div>
                             {recipientEstimatedUSDValue ? (
                                 <p className="break-all text-center text-xs font-normal leading-4 text-general-secondary-foreground">
@@ -591,6 +602,7 @@ export default function PaymentsPage() {
     const t = useTranslations("pages.payments");
     const tPay = useTranslations("payments");
     const tValidation = useTranslations("paymentForm.validation");
+    const tFormSection = useTranslations("paymentFormSection");
     const paymentFormSchema = useMemo(
         () =>
             buildPaymentFormSchema({
@@ -599,11 +611,11 @@ export default function PaymentsPage() {
                 amountGreaterThanZero: tValidation("amountGreaterThanZero"),
                 recipientSameAsToken: tValidation("recipientSameAsToken"),
                 selectToken: tValidation("selectToken"),
+                invalidAddress: tFormSection("invalidAddress"),
             }),
-        [tValidation],
+        [tValidation, tFormSection],
     );
     const { treasuryId, isConfidential } = useTreasury();
-    const isMobileShell = useMediaQuery("(max-width: 1023px)");
     const pageTitle = t("title");
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(treasuryId);
@@ -989,21 +1001,8 @@ export default function PaymentsPage() {
         if (!watchedToken) return null;
 
         const rawAddress = (watchedAddress ?? "").trim();
-        // nearcom: + any valid NEAR format (incl. eth-implicit 0x…).
-        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
-
-        // Only auto-destination: nearcom:<near> → near.com (public + confidential).
-        // Plain NEAR / eth / etc. keep the original picker compatibility path
-        // (no force-to-near).
-        if (isNearComRecipient) {
-            return {
-                id: NEAR_COM_NETWORK_ID,
-                networkName: NEAR_NETWORK_ID,
-            };
-        }
 
         // Soft Ft / native NEAR → NEAR destination when recipient is empty.
-        // Never soft-seed near.com (including prefersNearCom / confidential).
         if (isFtNetworkPrefill || isNativeNearPrefill) {
             if (rawAddress) return null;
             return nearChainDestination();
@@ -1012,27 +1011,29 @@ export default function PaymentsPage() {
         // Multiple soft chain prefs (address book) — leave destination empty.
         if (hasAmbiguousSoftNetworks) return null;
 
-        // Soft multi-chain prefs: only when recipient is empty. Typing an
-        // address must not keep re-resolving preferred destination.
+        // Soft prefs only fill an empty destination.
         if (rawAddress) return null;
 
-        if (preferredNetworks.length === 0 || bridgeAssets.length === 0) {
-            return null;
+        if (preferredNetworks.length === 0) return null;
+
+        const preferredNearCom = preferredNetworks.find(
+            (network) => network.trim().toLowerCase() === NEAR_COM_NETWORK_ID,
+        );
+        if (preferredNearCom) {
+            return {
+                id: NEAR_COM_NETWORK_ID,
+                networkName: NEAR_NETWORK_ID,
+            };
         }
 
-        // `networks=near.com` alone is not a bridge id — near.com is selected
-        // only via a nearcom: address (above).
-        const bridgePreferred = preferredNetworks.filter(
-            (network) => network.trim().toLowerCase() !== NEAR_COM_NETWORK_ID,
-        );
-        if (bridgePreferred.length === 0) return null;
+        if (bridgeAssets.length === 0) return null;
 
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
 
         return resolvePreferredDestinationNetwork(
             bridgeAsset,
-            bridgePreferred,
+            preferredNetworks,
             preferredBlockchainTypes,
         );
     }, [
@@ -1128,26 +1129,8 @@ export default function PaymentsPage() {
     }, [urlOverrideToken, form, tokenParam, preferredNetworks.length]);
 
     useEffect(() => {
-        const rawAddress = (watchedAddress ?? "").trim();
-        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
-
-        // Drop stale near.com when the address is no longer nearcom:<near>.
-        if (
-            isNearComNetwork(watchedDestinationNetwork) &&
-            !isNearComRecipient
-        ) {
-            form.setValue("destinationNetwork", "", { shouldDirty: true });
-            form.setValue("destinationNetworkName", "", { shouldDirty: true });
-            return;
-        }
-
         if (!compatibleDestinationId || !compatibleDestinationName) return;
-        if (watchedDestinationNetwork === compatibleDestinationId) return;
-
-        // Soft/URL prefs only fill an empty destination. nearcom: may overwrite.
-        if (!isNearComRecipient && watchedDestinationNetwork) {
-            return;
-        }
+        if (watchedDestinationNetwork) return;
 
         form.setValue("destinationNetwork", compatibleDestinationId, {
             shouldDirty: true,
@@ -1160,7 +1143,6 @@ export default function PaymentsPage() {
         compatibleDestinationName,
         form,
         watchedDestinationNetwork,
-        watchedAddress,
     ]);
 
     // Clear dependent fields when token / destination change (skip initial seed).
@@ -1178,8 +1160,6 @@ export default function PaymentsPage() {
         if (prevTokenKeyRef.current === tokenKey) return;
         prevTokenKeyRef.current = tokenKey;
 
-        form.setValue("destinationNetwork", "", { shouldDirty: true });
-        form.setValue("destinationNetworkName", "", { shouldDirty: true });
         form.setValue("address", "", { shouldDirty: true });
         form.setValue("amount", "", { shouldDirty: true });
         form.clearErrors(["address", "amount", "destinationNetwork"]);
@@ -1493,9 +1473,10 @@ export default function PaymentsPage() {
             <Tooltip content={tPay("bulkPaymentsTooltip")}>
                 <Button
                     variant="secondary"
-                    size={isMobileShell ? "icon" : "default"}
-                    className="flex items-center gap-2 bg-muted-foreground/10 px-3 text-sm font-bold leading-3.5 text-general-secondary-foreground hover:bg-muted-foreground/20"
+                    size="icon"
+                    className="size-10 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:h-9 lg:w-auto lg:rounded-md lg:bg-muted-foreground/10 lg:px-3 lg:text-sm lg:font-bold lg:leading-3.5 lg:text-general-secondary-foreground lg:hover:bg-muted-foreground/20"
                     id="payments-bulk-btn"
+                    aria-label={tPay("bulkPayments")}
                     onClick={() => {
                         trackEvent("bulk-payments-click", {
                             source: "payments_page",
@@ -1515,17 +1496,11 @@ export default function PaymentsPage() {
     return (
         <PageComponentLayout
             title={pageTitle}
-            hideHeaderOnMobile
-            headerActions={!isMobileShell ? bulkPaymentsButton : undefined}
+            backButton={treasuryId ? `/${treasuryId}` : true}
+            backKind="section"
+            hideMobileShellControls
+            headerActions={bulkPaymentsButton}
         >
-            {isMobileShell ? (
-                <div className="mx-auto my-4 flex max-w-lg flex-col-reverse gap-3">
-                    <h1 className="self-start text-2xl font-semibold leading-tight tracking-tight text-general-foreground">
-                        {pageTitle}
-                    </h1>
-                    <div className="self-end">{bulkPaymentsButton}</div>
-                </div>
-            ) : null}
             <Form {...form}>
                 <form
                     onSubmit={form.handleSubmit(onSubmit)}

@@ -1,9 +1,14 @@
 "use client";
 
-import { Icon } from "@/components/icon";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { SlidersHorizontalIcon } from "@hugeicons/core-free-icons";
-import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { Button } from "@/components/button";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { Icon } from "@/components/icon";
 import {
     Dialog,
     DialogContent,
@@ -11,20 +16,23 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/modal";
-import { Button } from "@/components/button";
+import { Form, FormField } from "@/components/ui/form";
+import { decimalOrNull } from "@/lib/amount-format";
+import { minimumReceivedDecimal } from "@/lib/minimum-received";
 import { cn } from "@/lib/utils";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Form, FormField, FormMessage } from "@/components/ui/form";
+
+export const SLIPPAGE_PRESETS = [0.1, 0.25, 0.5, 1, 3] as const;
 
 interface ExchangeSettingsModalProps {
     slippageTolerance: number;
     onSlippageChange: (value: number) => void;
     id?: string;
+    trigger?: ReactNode;
+    receiveAmount?: string | null;
+    receiveSymbol?: string;
+    receiveDecimals?: number;
+    receivePrice?: number;
 }
-
-const SLIPPAGE_PRESETS = [0.1, 0.5, 1.0];
 
 function buildSettingsFormSchema(messages: { slippageRange: string }) {
     return z.object({
@@ -39,12 +47,27 @@ function buildSettingsFormSchema(messages: { slippageRange: string }) {
 
 type SettingsFormValues = z.infer<ReturnType<typeof buildSettingsFormSchema>>;
 
+export function isSlippagePreset(value: number): boolean {
+    const parsed = decimalOrNull(value);
+    if (!parsed) return false;
+    return SLIPPAGE_PRESETS.some((preset) => {
+        const presetValue = decimalOrNull(preset);
+        return !!presetValue && parsed.eq(presetValue);
+    });
+}
+
 export function ExchangeSettingsModal({
     slippageTolerance,
     onSlippageChange,
     id,
+    trigger,
+    receiveAmount,
+    receiveSymbol,
+    receiveDecimals,
+    receivePrice,
 }: ExchangeSettingsModalProps) {
     const t = useTranslations("exchangeSettings");
+    const tEx = useTranslations("exchange");
     const [isOpen, setIsOpen] = useState(false);
 
     const settingsFormSchema = useMemo(
@@ -59,12 +82,21 @@ export function ExchangeSettingsModal({
         resolver: zodResolver(settingsFormSchema),
         defaultValues: {
             slippageTolerance,
-            isCustom: !SLIPPAGE_PRESETS.includes(slippageTolerance),
+            isCustom: !isSlippagePreset(slippageTolerance),
         },
     });
 
+    useEffect(() => {
+        if (!isOpen) return;
+        form.reset({
+            slippageTolerance,
+            isCustom: !isSlippagePreset(slippageTolerance),
+        });
+    }, [form, isOpen, slippageTolerance]);
+
     const isCustom = form.watch("isCustom");
     const currentSlippage = form.watch("slippageTolerance");
+    const minReceived = minimumReceivedDecimal(receiveAmount, currentSlippage);
 
     const handleSlippagePreset = (value: number) => {
         form.setValue("slippageTolerance", value);
@@ -74,6 +106,9 @@ export function ExchangeSettingsModal({
 
     const handleCustomClick = () => {
         form.setValue("isCustom", true);
+        if (isSlippagePreset(currentSlippage)) {
+            form.setValue("slippageTolerance", 0);
+        }
     };
 
     const onSubmit = (data: SettingsFormValues) => {
@@ -90,33 +125,63 @@ export function ExchangeSettingsModal({
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button
-                    id={id}
-                    size="icon"
-                    variant="ghost"
-                    type="button"
-                    className="border-2"
-                >
-                    <Icon icon={SlidersHorizontalIcon} />
-                </Button>
+                {trigger ?? (
+                    <Button
+                        id={id}
+                        size="icon"
+                        variant="ghost"
+                        type="button"
+                        className="border-2"
+                    >
+                        <Icon icon={SlidersHorizontalIcon} />
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{t("title")}</DialogTitle>
+                <DialogHeader className="border-0">
+                    <DialogTitle className="text-left">
+                        {t("title")}
+                    </DialogTitle>
                 </DialogHeader>
 
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(onSubmit)}
-                        className="flex flex-col gap-4 py-2"
+                        className="flex flex-col gap-5"
                     >
-                        <div className="flex flex-col gap-3">
-                            <h3 className="text-sm font-semibold">
-                                {t("slippageTolerance")}
-                            </h3>
+                        <p className="text-sm font-medium leading-[1.3125rem] text-general-secondary-foreground">
+                            {t("description")}
+                        </p>
 
-                            <div className="flex gap-2">
-                                {SLIPPAGE_PRESETS.map((preset) => (
+                        {receiveSymbol ? (
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-general-border px-3.5 py-3">
+                                <span className="text-sm text-muted-foreground">
+                                    {tEx("receiveAtLeast")}
+                                </span>
+                                <span className="text-sm font-semibold text-foreground">
+                                    {minReceived ? (
+                                        <FormattedAmount
+                                            kind="token"
+                                            value={minReceived}
+                                            symbol={receiveSymbol}
+                                            tokenDecimals={receiveDecimals}
+                                            unitPriceUsd={receivePrice}
+                                            profile="standard"
+                                            rounding="down"
+                                        />
+                                    ) : (
+                                        "—"
+                                    )}
+                                </span>
+                            </div>
+                        ) : null}
+
+                        <div className="grid grid-cols-3 gap-2">
+                            {SLIPPAGE_PRESETS.map((preset) => {
+                                const selected =
+                                    !isCustom &&
+                                    decimalOrNull(currentSlippage)?.eq(preset);
+                                return (
                                     <button
                                         key={preset}
                                         type="button"
@@ -124,77 +189,77 @@ export function ExchangeSettingsModal({
                                             handleSlippagePreset(preset)
                                         }
                                         className={cn(
-                                            "flex-1 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                                            !isCustom &&
-                                                currentSlippage === preset
-                                                ? "border border-general-unofficial-border-5 bg-general-secondary text-foreground"
-                                                : "border border-general-unofficial-border-3 bg-general-unofficial-outline text-foreground",
+                                            "rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                                            selected
+                                                ? "bg-foreground text-background"
+                                                : "bg-muted text-foreground hover:bg-muted/80",
                                         )}
                                     >
                                         {preset}%
                                     </button>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={handleCustomClick}
-                                    className={cn(
-                                        "flex-1 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                                        isCustom
-                                            ? "border border-general-unofficial-border-5 bg-general-secondary text-foreground"
-                                            : "border border-general-unofficial-border-3 bg-general-unofficial-outline text-foreground",
-                                    )}
-                                >
-                                    {t("custom")}
-                                </button>
-                            </div>
-
-                            {isCustom && (
+                                );
+                            })}
+                            {isCustom ? (
                                 <FormField
                                     control={form.control}
                                     name="slippageTolerance"
                                     render={({ field, fieldState }) => (
                                         <div className="relative">
                                             <input
-                                                type="number"
-                                                value={field.value || ""}
+                                                type="text"
+                                                inputMode="decimal"
+                                                autoFocus
+                                                value={
+                                                    field.value
+                                                        ? String(field.value)
+                                                        : ""
+                                                }
                                                 onChange={(e) => {
                                                     const value =
                                                         e.target.value.replace(
-                                                            /^0+(?=\d)/,
+                                                            /[^0-9.]/g,
                                                             "",
                                                         );
                                                     if (value === "") {
                                                         field.onChange(0);
-                                                    } else {
-                                                        field.onChange(
-                                                            parseFloat(value),
-                                                        );
+                                                        return;
                                                     }
+                                                    const parsed =
+                                                        Number(value);
+                                                    field.onChange(
+                                                        Number.isFinite(parsed)
+                                                            ? parsed
+                                                            : 0,
+                                                    );
                                                 }}
-                                                placeholder={t(
-                                                    "customPlaceholder",
+                                                placeholder={t("custom")}
+                                                className={cn(
+                                                    "h-full w-full rounded-xl bg-muted px-3 py-2.5 pr-8 text-sm font-medium outline-none",
+                                                    fieldState.error &&
+                                                        "ring-1 ring-destructive",
                                                 )}
-                                                step="0.01"
-                                                min="0.01"
-                                                max="100"
-                                                className="w-full px-4 py-3 text-sm bg-background border rounded-lg outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
                                             />
-                                            {fieldState.error && (
-                                                <p className="text-xs text-destructive mt-1.5">
-                                                    {fieldState.error.message}
-                                                </p>
-                                            )}
+                                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+                                                %
+                                            </span>
                                         </div>
                                     )}
                                 />
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={handleCustomClick}
+                                    className="rounded-xl bg-muted px-3 py-2.5 text-sm font-medium text-foreground hover:bg-muted/80"
+                                >
+                                    {t("custom")}
+                                </button>
                             )}
-
-                            <p className="text-sm text-muted-foreground mt-2">
-                                {t("slippageHelp")}
-                            </p>
                         </div>
 
-                        <Button type="submit" className="w-full h-10 mt-5">
+                        <Button
+                            type="submit"
+                            className="mt-1 h-12 w-full rounded-2xl"
+                        >
                             {t("save")}
                         </Button>
                     </form>

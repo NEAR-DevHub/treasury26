@@ -157,6 +157,14 @@ function DialogFooter({
     );
 }
 
+/**
+ * Recent-activity / payment-picker sheet on small screens: floats inset from
+ * the edges with rounded corners on every side, instead of an edge-to-edge
+ * bottom drawer.
+ */
+export const mobileInsetSheetClassName =
+    "max-sm:inset-x-3 max-sm:left-3 max-sm:right-3 max-sm:bottom-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:w-auto max-sm:rounded-3xl max-sm:rounded-b-3xl max-sm:pb-4";
+
 function DialogContent({
     className,
     children,

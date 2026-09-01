@@ -15,7 +15,10 @@ import {
 import { translateNearValidationError } from "@/lib/near-validation-i18n";
 import type { BlockchainType } from "@/lib/blockchain-utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
+import {
+    isNearComRecipientAddress,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 
 /**
  * Unified Account Input Component
@@ -38,6 +41,8 @@ interface AccountInputProps {
     disabled?: boolean;
     borderless?: boolean;
     validateOnMount?: boolean; // Force validation on mount (for edit screens)
+    /** When true, require `nearcom:` plus a valid NEAR account. */
+    requireNearComPrefix?: boolean;
 }
 
 const AccountInput = ({
@@ -49,6 +54,7 @@ const AccountInput = ({
     disabled = false,
     borderless = false,
     validateOnMount = false,
+    requireNearComPrefix = false,
 }: AccountInputProps) => {
     const t = useTranslations("accountInput");
     const [isValidating, setIsValidating] = useState(false);
@@ -136,6 +142,14 @@ const AccountInput = ({
             return;
         }
 
+        if (requireNearComPrefix && !isNearComRecipientAddress(value)) {
+            setValidationError(t("invalidNearFormat"));
+            setIsValid(false);
+            setHasValidated(false);
+            updateValidationState(false);
+            return;
+        }
+
         // NEAR validation (async) — nearcom: is display/routing only.
         if (isNear) {
             const bareAddress = stripNearComAddressPrefix(value);
@@ -184,6 +198,7 @@ const AccountInput = ({
         isNear,
         config.regex,
         validateOnMount,
+        requireNearComPrefix,
         setIsValid,
         validateNearFull,
         resetValidation,
@@ -203,6 +218,14 @@ const AccountInput = ({
 
         setValue(val);
         hasUserInteractedRef.current = true;
+
+        if (requireNearComPrefix && val && !isNearComRecipientAddress(val)) {
+            setHasValidated(false);
+            setValidationError(t("invalidNearFormat"));
+            setIsValid(false);
+            updateValidationState(false);
+            return;
+        }
 
         // Immediate validation feedback for NEAR
         if (isNear) {

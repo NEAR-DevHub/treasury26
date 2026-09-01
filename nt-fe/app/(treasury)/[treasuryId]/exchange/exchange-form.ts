@@ -17,6 +17,7 @@ export function buildExchangeFormSchema(messages: {
             receiveToken: tokenSchema,
             slippageTolerance: z.number().optional(),
             amountMode: z.enum(["EXACT_INPUT", "EXACT_OUTPUT"]),
+            comment: z.string().optional(),
         })
         .superRefine((data, ctx) => {
             // Validate the user-entered side; the other amount is quote-derived.

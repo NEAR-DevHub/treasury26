@@ -8,7 +8,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { StepperHeader } from "@/components/step-wizard";
 import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { default_near_token } from "@/constants/token";
 import { BulkActivationCard } from "@/features/confidential/components/bulk-activation-card";
@@ -627,18 +626,9 @@ export default function BulkPaymentPage() {
                 title={pageTitle}
                 backButton={`/${selectedTreasury}/payments`}
                 hideMobileShellControls
-                hideHeaderOnMobile
                 mainClassName="pt-4"
             >
-                <div className="flex flex-col gap-4">
-                    <StepperHeader
-                        title={pageTitle}
-                        handleBack={() =>
-                            router.push(`/${selectedTreasury}/payments`)
-                        }
-                    />
-                    <BulkActivationCard />
-                </div>
+                <BulkActivationCard />
             </PageComponentLayout>
         );
     }
@@ -649,9 +639,8 @@ export default function BulkPaymentPage() {
         return (
             <PageComponentLayout
                 title={pageTitle}
-                backButton={`/${selectedTreasury}/payments`}
+                backButton={handleCancelEdit}
                 hideMobileShellControls
-                hideHeaderOnMobile
                 mainClassName="pt-4"
             >
                 <div className="w-full max-w-lg mx-auto min-w-0">
@@ -662,11 +651,13 @@ export default function BulkPaymentPage() {
                         selectedToken={selectedToken}
                         networkFeePerRecipient={networkFeePerRecipient}
                         destinationNetwork={
-                            isConfidential ? destinationNetworkName : undefined
+                            destinationNetworkName || selectedToken.network
                         }
                         destinationNetworkId={
-                            isConfidential ? destinationNetworkId : undefined
+                            destinationNetworkId || selectedToken.network
                         }
+                        bridgeAssets={bridgeAssets}
+                        isBridgeAssetsLoading={isBridgeAssetsLoading}
                         onSave={handleSaveEdit}
                         onCancel={handleCancelEdit}
                     />
@@ -678,9 +669,11 @@ export default function BulkPaymentPage() {
     return (
         <PageComponentLayout
             title={pageTitle}
-            backButton={`/${selectedTreasury}/payments`}
-            hideMobileShellControls
-            hideHeaderOnMobile
+            backButton={
+                step === 0 ? `/${selectedTreasury}/payments` : undefined
+            }
+            hideMobileShellControls={step === 0}
+            hideHeaderOnMobile={step === 1}
             mainClassName="pt-4"
         >
             <FormProvider {...form}>
@@ -691,9 +684,6 @@ export default function BulkPaymentPage() {
                     {step === 0 && (
                         <UploadDataStep
                             treasuryId={selectedTreasury || ""}
-                            onBack={() =>
-                                router.push(`/${selectedTreasury}/payments`)
-                            }
                             onContinue={handleContinueFromUpload}
                             isConfidential={isConfidential}
                             destinationNetwork={

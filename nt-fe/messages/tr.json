@@ -201,7 +201,7 @@
         },
         "exchange": {
             "title": "Takas",
-            "confidentialTitle": "Gizli takas",
+            "confidentialTitle": "Takas",
             "description": "Tokenlerinizi güvenli ve verimli bir şekilde takas edin"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "Ödemeyi Düzenle",
+            "back": "Alıcıyı düzenle",
             "saveChanges": "Değişiklikleri Kaydet"
         },
         "parsing": {
@@ -1360,13 +1361,13 @@
         "slippageTolerance": "Kayma Toleransı",
         "disabled": {
             "differentTokens": "Tokenler farklı olmalıdır",
-            "enterAmount": "Takas etmek için bir miktar girin"
+            "enterAmount": "Bir miktar girin"
         },
-        "review": "Takası İncele",
+        "review": "Takası incele",
         "poweredBy": "Destekleyen",
         "info": {
             "priceDifference": "Fiyat Farkı",
-            "priceDifferenceTooltip": "Aldığınız USD değerinin, gönderdiğiniz USD değeriyle nasıl karşılaştırıldığını gösterir.",
+            "priceDifferenceTooltip": "Orta piyasa fiyatından fark.",
             "estimatedTime": "Tahmini Süre",
             "estimatedTimeValue": "{seconds} saniye",
             "estimatedTimeTooltip": "Takası tamamlamak için yaklaşık süre.",
@@ -1377,12 +1378,16 @@
             "depositAddressCopied": "Depozito adresi kopyalandı",
             "quoteExpires": "Teklif Sona Erme",
             "exchangeFee": "Takas Ücreti",
-            "exchangeFeeTooltip": "Burada uygulanan %0,70 ücret, işleminizi kolaylaştırmak için NEAR Intents protokol maliyetlerini ve Near Business widget ücretini karşılar. Bu miktar, teklif edilen oranınıza otomatik olarak hesaplanır."
+            "exchangeFeeTooltip": "Buradaki %0,70 ücret, işleminizi sağlayan NEAR Intents protokol maliyetlerini ve Trezu widget ücretini kapsar. Bu tutar teklif edilen kura otomatik olarak dahildir."
         },
         "approveWithin24h": "Lütfen bu talebi 24 saat içinde onaylayın, aksi takdirde süresi dolacaktır. Mümkün olan en kısa sürede onaylamanızı öneririz.",
         "confirmSubmit": "Onayla ve Talebi Gönder",
         "refreshingIn": "Takas oranı {seconds}sn içinde yenilenecek",
-        "confidentialTooltip": "Gonderdiginiz ve aldiginiz tutarlar tamamen gizlidir."
+        "confidentialTooltip": "Gonderdiginiz ve aldiginiz tutarlar tamamen gizlidir.",
+        "maxSlippage": "Maks. kayma",
+        "maxSlippageTooltip": "Kayma ayarı, teklif edilen fiyattan çok farklı bir nihai fiyat almanızı önler. Belirtilen kayma aşılırsa takas başarısız olur.",
+        "receiveAtLeast": "En az alınacak",
+        "receiveAtLeastTooltip": "Teklif edilen tutar bir tahmindir. Birden fazla solver en iyi fiyat için yarışır. Maksimum kayma, alacağınız asgari tutarı garanti eder — karşılanamazsa işlem iptal edilir."
     },
     "vesting": {
         "validation": {
@@ -1933,9 +1938,8 @@
         "incompatible": "Uyumsuz",
         "comingSoon": "Yakında",
         "forMembersOnly": "Yalnızca Üyelere Özel",
-        "nearComDescription": "Gizli Near Business için ağ",
-        "nearComDescriptionPublic": "near.com için ağ",
-        "nearDescription": "Açık çekim ve near.com cüzdanı için ağ",
+        "nearComDescription": "Near Business ve near.com için ağ",
+        "nearDescription": "Açık çekim için ağ",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,18 +2016,19 @@
         "description": "Yalnızca hazine üyelerinin erişimi var."
     },
     "exchangeRate": {
-        "rate": "Oran",
+        "rate": "Döviz kuru",
         "clickToReverse": "Oranı tersine çevirmek için tıklayın"
     },
     "exchangeSettings": {
-        "title": "Takas Ayarları",
+        "title": "Kayma",
         "slippageTolerance": "Kayma Toleransı",
-        "custom": "Özel",
+        "custom": "Özel %",
         "customPlaceholder": "örn: %2",
         "slippageRange": "Kayma %0,01 ile %100 arasında olmalıdır",
         "enterSlippage": "Lütfen bir kayma toleransı girin",
         "slippageHelp": "Fiyat bu yüzdeden fazla değişirse, fonlarınızı korumak için işlem iptal edilecektir.",
-        "save": "Kaydet"
+        "save": "Kaydet",
+        "description": "Kayma ayarı, teklif edilen fiyattan çok farklı bir nihai fiyat almanızı önler. Belirtilen kayma aşılırsa işlem iptal edilir. Aşağıda garanti edilen asgari tutar yer alır."
     },
     "assetsPage": {
         "title": "Varlıklar",
@@ -2132,7 +2137,7 @@
     "tokenSelectDialog": {
         "selectToken": "Token seç",
         "selectAsset": "Varlık Seç",
-        "selectNetworkFor": "{token} için ağ seçin",
+        "selectNetwork": "Ağ seçin",
         "searchByName": "İsme göre ara",
         "noTokensWithBalance": "Bakiyesi olan token bulunamadı",
         "noTokensFound": "Token bulunamadı",
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "Yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
+        "insufficientTokens": "Yetersiz bakiye. Onaydan önce yükleyin.",
         "insufficientTokensForFee": "Ağ ücretini ({fee} {symbol}) karşılamak için yetersiz token. Talebi gönderebilir ve onaydan önce yükleyebilirsiniz.",
         "balance": "Bakiye: {amount} {symbol}",
         "balanceLabel": "Balance"

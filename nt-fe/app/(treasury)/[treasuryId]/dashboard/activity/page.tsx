@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft01Icon, FilterIcon } from "@hugeicons/core-free-icons";
+import { FilterIcon } from "@hugeicons/core-free-icons";
 import { subMonths } from "date-fns";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -44,7 +44,7 @@ const FILTER_PANEL_MAX_HEIGHT = "500px";
  * the design system's 8px radius.
  */
 const ICON_BUTTON_CLASS =
-    "size-10 rounded-xl bg-general-bg-secondary hover:bg-general-bg-secondary/80 md:rounded-lg";
+    "size-10 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:size-9 lg:rounded-md";
 
 /** Backend activity statuses the tabs can filter by ("all" filters by nothing). */
 type ActivityStatus = "outgoing" | "incoming" | "exchange";
@@ -434,44 +434,14 @@ export default function ActivityPage() {
         <HistoryRefreshIndicatorProvider>
             <PageComponentLayout
                 title={t("title")}
-                // Activity is reachable from several places, so the mobile back
-                // button always lands on the treasury dashboard rather than
-                // unwinding history.
+                description={tActivity("recentSubtitle")}
                 backButton={`/${treasuryId}`}
+                backKind="section"
                 hideMobileShellControls
-                hideHeaderOnMobile
                 headerActions={
                     <HistoryRefreshButton className={ICON_BUTTON_CLASS} />
                 }
             >
-                {/* The shell header only carries the page title from `lg` up, so on
-                phones the page states its own heading above the controls. */}
-                <div className="flex flex-col gap-1 pb-4 lg:hidden">
-                    <div className="flex items-start justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2">
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => router.push(`/${treasuryId}`)}
-                                className="size-10 shrink-0 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground"
-                                aria-label={tCommon("back")}
-                            >
-                                <Icon
-                                    icon={ArrowLeft01Icon}
-                                    className="stroke-2"
-                                />
-                            </Button>
-                            <h1 className="text-2xl font-semibold leading-tight tracking-tight text-general-foreground">
-                                {t("title")}
-                            </h1>
-                        </div>
-                        <HistoryRefreshButton className={ICON_BUTTON_CLASS} />
-                    </div>
-                    <p className="text-base text-general-secondary-foreground leading-[1.5]">
-                        {tActivity("recentSubtitle")}
-                    </p>
-                </div>
                 <ResponsiveTabs
                     tabs={tabs}
                     value={currentTab}

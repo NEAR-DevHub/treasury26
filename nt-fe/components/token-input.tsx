@@ -159,8 +159,10 @@ interface TokenInputProps<
     /**
      * `default`: amount + token picker side-by-side.
      * `amountCard`: centered amount card (token selected elsewhere); balance + Use max footer.
+     * `swapCard`: bordered card with amount + USD toggle on the left, token
+     * picker + clickable max balance on the right (Swap).
      */
-    variant?: "default" | "amountCard";
+    variant?: "default" | "amountCard" | "swapCard";
     /** Forwarded to TokenSelect (card trigger / balance layout). */
     tokenSelectExtras?: {
         balanceLayout?: "usdPrimary" | "tokenPrimary";
@@ -199,6 +201,7 @@ export function TokenInput<
     tokenSelectExtras,
 }: TokenInputProps<TFieldValues, TTokenPath>) {
     const isAmountCard = variant === "amountCard";
+    const isSwapCard = variant === "swapCard";
     const t = useTranslations("tokenInput");
     const amountFormat = useAmountFormat();
     const { treasuryId } = useTreasury();
@@ -329,12 +332,9 @@ export function TokenInput<
                     );
                     field.onChange(maxAmount);
                     if (enableUsdToggle && inputMode === "usd" && tokenPrice) {
-                        const quoteUsd = parseUsdOverride(usdValueOverride);
-                        setUsdDraft(
-                            quoteUsd != null
-                                ? quoteUsd.toFixed(2)
-                                : tokenToUsdDraft(maxAmount, tokenPrice),
-                        );
+                        // Derived from the new amount, not `usdValueOverride`:
+                        // that quote still describes the amount being replaced.
+                        setUsdDraft(tokenToUsdDraft(maxAmount, tokenPrice));
                     }
                     onMaxSet?.(maxAmount);
                 };
@@ -442,7 +442,7 @@ export function TokenInput<
                     if (estimatedUSDValue?.gt(0)) {
                         return amountFormat.fiat(estimatedUSDValue).display;
                     }
-                    if (enableUsdToggle || isAmountCard) {
+                    if (enableUsdToggle || isAmountCard || isSwapCard) {
                         return amountFormat.fiat(0).display;
                     }
                     return null;
@@ -522,11 +522,17 @@ export function TokenInput<
                         </div>
                     ) : null;
 
+                const messageOffsetClass = isSwapCard
+                    ? "mt-3"
+                    : isAmountCard
+                      ? "mt-1 text-center"
+                      : "mt-2";
                 const amountMessages = displayError ? (
                     <p
                         className={cn(
-                            "text-destructive text-sm font-semibold",
-                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                            "text-sm font-semibold text-destructive",
+                            messageOffsetClass,
+                            isSwapCard && "text-left leading-[1.3125rem]",
                         )}
                     >
                         {String(displayError)}
@@ -535,7 +541,7 @@ export function TokenInput<
                     <p
                         className={cn(
                             "text-general-info-foreground text-sm font-semibold leading-normal",
-                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                            messageOffsetClass,
                         )}
                     >
                         {balanceWarning.type === "fee_not_covered"
@@ -551,23 +557,200 @@ export function TokenInput<
                         message={warningMessage}
                         className={cn(
                             "text-sm font-semibold",
-                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                            messageOffsetClass,
                         )}
                     />
                 ) : infoMessage ? (
                     <p
                         className={cn(
                             "text-general-info-foreground text-sm font-semibold leading-normal",
-                            isAmountCard ? "mt-1 text-center" : "mt-2",
+                            messageOffsetClass,
                         )}
                     >
                         {infoMessage}
                     </p>
-                ) : !isAmountCard ? (
+                ) : !isAmountCard && !isSwapCard ? (
                     <p className="text-muted-foreground text-xs invisible">
                         Invisible
                     </p>
                 ) : null;
+
+                const tokenPicker = (
+                    <FormField
+                        control={control}
+                        name={tokenName}
+                        render={({ field: tokenField }) => {
+                            const handleTokenSelect = (
+                                selectedToken: SelectedTokenData,
+                            ) => {
+                                tokenField.onChange(selectedToken);
+                                onTokenChange?.(selectedToken as Token);
+                            };
+
+                            return (
+                                <TokenSelect
+                                    disabled={tokenSelect?.disabled}
+                                    locked={tokenSelect?.locked}
+                                    showPopularAssets={
+                                        tokenSelect?.showPopularAssets ?? false
+                                    }
+                                    selectedToken={token}
+                                    setSelectedToken={handleTokenSelect}
+                                    showOnlyOwnedAssets={
+                                        tokenSelect?.showOnlyOwnedAssets ??
+                                        false
+                                    }
+                                    filterTokens={tokenSelect?.filterTokens}
+                                    autoSelect={tokenSelect?.autoSelect}
+                                    balanceLayout={
+                                        tokenSelectExtras?.balanceLayout
+                                    }
+                                    hideNetworkSubtitle={
+                                        isSwapCard ||
+                                        tokenSelectExtras?.hideNetworkSubtitle
+                                    }
+                                    triggerLabel={
+                                        isSwapCard
+                                            ? undefined
+                                            : tokenSelectExtras?.triggerLabel
+                                    }
+                                    appearance={
+                                        isSwapCard
+                                            ? "default"
+                                            : tokenSelectExtras?.appearance
+                                    }
+                                    iconSize={isSwapCard ? "lg" : undefined}
+                                    tintTriggerFromIcon={isSwapCard}
+                                    classNames={
+                                        isSwapCard
+                                            ? {
+                                                  trigger:
+                                                      "h-11 rounded-full border-general-border bg-muted px-2.5 hover:bg-muted hover:border-general-border",
+                                                  icon: "size-7",
+                                                  symbol: "text-base font-semibold leading-[1.2] text-general-foreground",
+                                              }
+                                            : undefined
+                                    }
+                                />
+                            );
+                        }}
+                    />
+                );
+
+                const usdToggle = secondaryLine ? (
+                    <button
+                        type="button"
+                        className={cn(
+                            "inline-flex items-center gap-1 rounded-md text-muted-foreground",
+                            isSwapCard
+                                ? "px-0 py-0 text-center text-sm font-semibold leading-[1.3125rem] text-general-secondary-foreground"
+                                : "px-2 py-0.5 text-xs mt-1",
+                            canToggle
+                                ? "cursor-pointer hover:text-foreground"
+                                : "cursor-default",
+                        )}
+                        onClick={canToggle ? handleToggleCurrency : undefined}
+                        disabled={!canToggle}
+                    >
+                        <span>
+                            {enableUsdToggle && secondaryTokenAmount
+                                ? secondaryTokenAmount
+                                : secondaryLine}
+                        </span>
+                        {canToggle ? (
+                            <Icon icon={ArrowUpDownIcon} className="size-3.5" />
+                        ) : null}
+                    </button>
+                ) : null;
+
+                const swapBalance =
+                    token && tokenBalance != null && tokenDecimals != null ? (
+                        <button
+                            type="button"
+                            onClick={handleMaxClick}
+                            disabled={
+                                readOnly ||
+                                tokenBalance === "" ||
+                                tokenBalance === "0"
+                            }
+                            aria-label={t("useMax")}
+                            className={cn(
+                                "max-w-[10rem] truncate text-sm font-semibold leading-[1.3125rem] text-general-secondary-foreground",
+                                readOnly
+                                    ? "cursor-default"
+                                    : "cursor-pointer hover:text-foreground",
+                            )}
+                        >
+                            <FormattedAmount
+                                kind="raw-token"
+                                value={tokenBalance}
+                                symbol={token.symbol}
+                                tokenDecimals={tokenDecimals}
+                                unitPriceUsd={tokenPrice}
+                                profile="compact"
+                                rounding="down"
+                            />
+                        </button>
+                    ) : null;
+
+                if (isSwapCard) {
+                    return (
+                        <div
+                            className={cn(
+                                "flex flex-col rounded-2xl border border-general-border bg-card p-5",
+                                displayError && "border-destructive",
+                            )}
+                        >
+                            <div className="flex min-h-0 flex-1 items-center justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                    <LargeInput
+                                        type="text"
+                                        inputMode="decimal"
+                                        borderless
+                                        dynamicFontSize={dynamicFontSize}
+                                        dynamicFontScale="hero"
+                                        containerClassName="w-full max-w-full justify-start"
+                                        textSizeClassName="font-semibold tracking-[-0.05625rem]"
+                                        onKeyDown={
+                                            readOnly
+                                                ? undefined
+                                                : handleAmountKeyDown
+                                        }
+                                        onPaste={
+                                            readOnly
+                                                ? undefined
+                                                : handleAmountPaste
+                                        }
+                                        onChange={
+                                            readOnly
+                                                ? undefined
+                                                : handleAmountChange
+                                        }
+                                        onBlur={
+                                            readOnly ? undefined : field.onBlur
+                                        }
+                                        value={displayPrimary}
+                                        placeholder="0"
+                                        className="h-10 text-left text-general-foreground placeholder:text-general-muted-foreground"
+                                        readOnly={readOnly}
+                                        suffix={
+                                            enableUsdToggle &&
+                                            inputMode === "usd"
+                                                ? "USD"
+                                                : undefined
+                                        }
+                                    />
+                                    {usdToggle}
+                                </div>
+                                <div className="flex shrink-0 flex-col items-end gap-2">
+                                    {tokenPicker}
+                                    {swapBalance}
+                                </div>
+                            </div>
+                            {amountMessages}
+                        </div>
+                    );
+                }
 
                 if (isAmountCard) {
                     return (
@@ -649,7 +832,7 @@ export function TokenInput<
                         invalid={!!displayError}
                         topRightContent={balanceFooter}
                     >
-                        <>
+                        <div>
                             <div className="flex justify-between items-center">
                                 <div className="flex-1 min-w-0">
                                     <LargeInput
@@ -690,57 +873,7 @@ export function TokenInput<
                                         }
                                     />
                                 </div>
-                                <FormField
-                                    control={control}
-                                    name={tokenName}
-                                    render={({ field: tokenField }) => {
-                                        const handleTokenSelect = (
-                                            selectedToken: SelectedTokenData,
-                                        ) => {
-                                            tokenField.onChange(selectedToken);
-                                            onTokenChange?.(
-                                                selectedToken as Token,
-                                            );
-                                        };
-
-                                        return (
-                                            <TokenSelect
-                                                disabled={tokenSelect?.disabled}
-                                                locked={tokenSelect?.locked}
-                                                showPopularAssets={
-                                                    tokenSelect?.showPopularAssets ??
-                                                    false
-                                                }
-                                                selectedToken={token}
-                                                setSelectedToken={
-                                                    handleTokenSelect
-                                                }
-                                                showOnlyOwnedAssets={
-                                                    tokenSelect?.showOnlyOwnedAssets ??
-                                                    false
-                                                }
-                                                filterTokens={
-                                                    tokenSelect?.filterTokens
-                                                }
-                                                autoSelect={
-                                                    tokenSelect?.autoSelect
-                                                }
-                                                balanceLayout={
-                                                    tokenSelectExtras?.balanceLayout
-                                                }
-                                                hideNetworkSubtitle={
-                                                    tokenSelectExtras?.hideNetworkSubtitle
-                                                }
-                                                triggerLabel={
-                                                    tokenSelectExtras?.triggerLabel
-                                                }
-                                                appearance={
-                                                    tokenSelectExtras?.appearance
-                                                }
-                                            />
-                                        );
-                                    }}
-                                />
+                                {tokenPicker}
                             </div>
                             {enableUsdToggle && secondaryTokenAmount ? (
                                 <button
@@ -790,7 +923,7 @@ export function TokenInput<
                                 </button>
                             ) : null}
                             {amountMessages}
-                        </>
+                        </div>
                     </InputBlock>
                 );
             }}

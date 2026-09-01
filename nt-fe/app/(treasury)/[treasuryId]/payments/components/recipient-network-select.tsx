@@ -26,11 +26,13 @@ import {
     getNetworkDisplayCaseClass,
     isNearComNetwork,
 } from "@/lib/intents-network";
+import { useMergedTokens } from "@/hooks/use-merged-tokens";
 import {
-    isNearComRecipientAddress,
+    hasNearComAddressPrefix,
     parseNearComAddress,
 } from "@/lib/nearcom-address";
 import { isValidNearAddressFormat } from "@/lib/near-address-format";
+import { pickDefaultDestinationNetwork } from "@/lib/pick-default-destination-network";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +81,13 @@ interface RecipientNetworkSelectProps {
     placeholder?: string;
     recipientRequiredPlaceholder?: string;
     modalTitle?: string;
+    /**
+     * Single send only. When a token is chosen, pick the destination with
+     * the highest USD holding, else the only chain, else the first option.
+     */
+    autoSelect?: boolean;
+    /** Display-only: selection cannot change (bulk edit). */
+    locked?: boolean;
 }
 
 export type RecipientNetworkRuleOption = RecipientNetworkOption & {
@@ -93,12 +102,10 @@ function isAddressCompatibleWithNetwork(
     if (!address) return true;
     const { hasPrefix, accountId } = parseNearComAddress(address);
 
-    // near.com only for nearcom:<validNear>. Never compatible otherwise.
     if (optionId === NEAR_COM_NETWORK_ID) {
-        return isNearComRecipientAddress(address);
+        return hasPrefix;
     }
 
-    // Original per-chain format checks (ignore nearcom: — that route is above).
     if (hasPrefix) return false;
 
     const blockchain = getBlockchainType(networkName);
@@ -131,11 +138,7 @@ function NetworkRow({
             <img
                 src={option.icon}
                 alt={`${option.name} network`}
-                className={cn(
-                    "size-6 md:size-8 rounded-full object-cover shrink-0",
-                    option.networkName.toLowerCase() === NEAR_NETWORK_ID &&
-                        "p-1",
-                )}
+                className="size-6 md:size-8 shrink-0 rounded-full object-cover"
             />
             <div className="flex flex-col items-start text-left min-w-0">
                 <HighlightedText
@@ -176,10 +179,15 @@ export function RecipientNetworkSelect({
     placeholder,
     recipientRequiredPlaceholder,
     modalTitle,
+    autoSelect = false,
+    locked = false,
 }: RecipientNetworkSelectProps) {
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
     const { isConfidential } = useTreasury();
+    const { tokens: mergedTokens } = useMergedTokens({
+        enabled: autoSelect,
+    });
     const [open, setOpen] = useState(false);
 
     const nearComOption: RecipientNetworkOption = useMemo(
@@ -190,13 +198,11 @@ export function RecipientNetworkSelect({
                 networkLabel: tAddressBookTable("network"),
                 fallbackName: "near.com",
             }),
-            description: isConfidential
-                ? t("nearComDescription")
-                : t("nearComDescriptionPublic"),
+            description: t("nearComDescription"),
             icon: NEAR_COM_ICON,
             networkName: NEAR_NETWORK_ID,
         }),
-        [isConfidential, t, tAddressBookTable],
+        [t, tAddressBookTable],
     );
 
     const bridgeAssetMatch = useMemo(
@@ -245,18 +251,32 @@ export function RecipientNetworkSelect({
     }, [bridgeAssetMatch, isConfidential, t, token]);
 
     const availableOptions = useMemo(() => {
-        const isNearComRecipient = isNearComRecipientAddress(recipient);
+        const others = tokenNetworkOptions
+            .filter((option) => option.id !== NEAR_COM_NETWORK_ID)
+            .sort((a, b) => a.name.localeCompare(b.name));
+        // near.com is a destination for every token.
+        return [nearComOption, ...others];
+    }, [nearComOption, tokenNetworkOptions]);
 
-        // nearcom:<validNear> → near.com only (public + confidential).
-        // Never listed as a free option — only when the recipient uses the prefix.
-        if (isNearComRecipient) {
-            return [nearComOption];
-        }
-
-        return [...tokenNetworkOptions].sort((a, b) =>
-            a.name.localeCompare(b.name),
+    const tokenHoldings = useMemo(() => {
+        if (!token) return [];
+        const tokenAddress = token.address?.trim().toLowerCase();
+        const tokenNetwork = token.network?.trim().toLowerCase();
+        const tokenSymbol = token.symbol?.trim().toLowerCase();
+        const asset = mergedTokens.find(
+            (merged) =>
+                merged.networks.some(
+                    (network) =>
+                        network.id.trim().toLowerCase() === tokenAddress &&
+                        network.name.trim().toLowerCase() === tokenNetwork,
+                ) || merged.symbol.trim().toLowerCase() === tokenSymbol,
         );
-    }, [nearComOption, recipient, tokenNetworkOptions]);
+        return (asset?.networks ?? []).map((network) => ({
+            id: network.id,
+            name: network.name,
+            balanceUSD: network.balanceUSD,
+        }));
+    }, [mergedTokens, token]);
 
     const selectedOption = useMemo(() => {
         if (!value) return null;
@@ -301,27 +321,78 @@ export function RecipientNetworkSelect({
     }, [enrichedOptions, sectionRules]);
 
     const hasCompatibleNetwork = compatibleOptions.length > 0;
-    const isDisabled = requireRecipient
-        ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
-        : isBridgeAssetsLoading || availableOptions.length === 0;
+    const isDisabled =
+        locked ||
+        (requireRecipient
+            ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
+            : isBridgeAssetsLoading || availableOptions.length === 0);
 
-    // Clear when the address is wiped, or when the selected network no longer
-    // matches the address format (e.g. Solana → EVM). Depend on `recipient` +
-    // `selectedOption` (not `availableOptions`) so token/list changes still
-    // clear a stale pick without coupling to memo array identity.
-    // Soft destination seed on the payments page only fills an empty field when
-    // the address is empty or nearcom:, so clearing here does not loop.
+    // Clear when the selected network no longer matches the address format.
     const hadRecipientRef = useRef(false);
     const onChangeRef = useRef(onChange);
+    const onNetworkChangeRef = useRef(onNetworkChange);
     onChangeRef.current = onChange;
-    useEffect(() => {
-        if (!requireRecipient) return;
+    onNetworkChangeRef.current = onNetworkChange;
 
-        if (!recipient) {
-            if (hadRecipientRef.current && value) {
-                hadRecipientRef.current = false;
-                onChangeRef.current("");
+    const tokenKey = token
+        ? `${token.address ?? ""}:${token.network ?? ""}:${token.residency ?? ""}`
+        : "";
+    const prevTokenKeyRef = useRef<string | null>(null);
+    const autoPickedRef = useRef(false);
+    const userPickedRef = useRef(false);
+
+    useEffect(() => {
+        if (!autoSelect || locked || !token || availableOptions.length === 0)
+            return;
+
+        const tokenChanged = prevTokenKeyRef.current !== tokenKey;
+        const hasUsdHoldings = tokenHoldings.some(
+            (holding) => (holding.balanceUSD ?? 0) > 0,
+        );
+
+        if (tokenChanged) {
+            const isFirstToken = prevTokenKeyRef.current === null;
+            prevTokenKeyRef.current = tokenKey;
+            userPickedRef.current = false;
+
+            // Keep a dest already set for this token (URL / parent seed).
+            if (
+                isFirstToken &&
+                value &&
+                availableOptions.some((option) => option.id === value)
+            ) {
+                autoPickedRef.current = false;
+                return;
             }
+        } else if (userPickedRef.current || !autoPickedRef.current) {
+            return;
+        } else if (!hasUsdHoldings) {
+            return;
+        }
+
+        const picked = pickDefaultDestinationNetwork(
+            availableOptions,
+            tokenHoldings,
+        );
+        if (!picked) return;
+        autoPickedRef.current = true;
+        if (picked.id === value) return;
+        onChangeRef.current(picked.id);
+        onNetworkChangeRef.current?.(picked);
+    }, [
+        autoSelect,
+        availableOptions,
+        locked,
+        token,
+        tokenHoldings,
+        tokenKey,
+        value,
+    ]);
+
+    useEffect(() => {
+        if (locked) return;
+        if (!recipient) {
+            hadRecipientRef.current = false;
             return;
         }
 
@@ -338,7 +409,7 @@ export function RecipientNetworkSelect({
         ) {
             onChangeRef.current("");
         }
-    }, [recipient, value, requireRecipient, selectedOption]);
+    }, [locked, recipient, value, selectedOption]);
 
     const placeholderText = requireRecipient
         ? !recipient
@@ -358,10 +429,11 @@ export function RecipientNetworkSelect({
                 className={cn(
                     selectorTriggerClassName,
                     invalid && "border-destructive bg-destructive/5",
-                    isDisabled && "opacity-100",
+                    isDisabled && !locked && "opacity-100",
+                    locked && "opacity-60",
                 )}
             >
-                {selectedOption && !isDisabled ? (
+                {selectedOption ? (
                     <img
                         src={selectedOption.icon}
                         alt=""
@@ -376,33 +448,29 @@ export function RecipientNetworkSelect({
                     </span>
                     <span
                         className={cn(
-                            "max-w-full truncate text-base font-semibold leading-tight",
-                            isDisabled || !selectedOption
-                                ? "text-muted-foreground"
-                                : "text-foreground",
+                            "max-w-full truncate text-base leading-tight",
+                            locked || !selectedOption
+                                ? "font-medium text-muted-foreground"
+                                : "font-semibold text-foreground",
                             selectedOption &&
                                 getNetworkDisplayCaseClass(selectedOption.id),
                         )}
                     >
-                        {selectedOption && !isDisabled
-                            ? selectedOption.name
-                            : placeholderText}
+                        {selectedOption ? selectedOption.name : placeholderText}
                     </span>
                 </span>
-                {selectedOption &&
-                    !isDisabled &&
-                    isNearComNetwork(selectedOption.id) && (
-                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-sm bg-foreground px-2.5 py-1.5">
-                            <img
-                                src={NEAR_COM_ICON}
-                                alt=""
-                                className="size-3.5 rounded-full"
-                            />
-                            <span className="text-xs font-semibold text-[#00EC97]">
-                                {t("internalTag")}
-                            </span>
+                {selectedOption && isNearComNetwork(selectedOption.id) && (
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-sm bg-foreground px-2.5 py-1.5">
+                        <img
+                            src={NEAR_COM_ICON}
+                            alt=""
+                            className="size-3.5 rounded-full"
+                        />
+                        <span className="text-xs font-semibold text-[#00EC97]">
+                            {t("internalTag")}
                         </span>
-                    )}
+                    </span>
+                )}
                 <Icon
                     icon={ArrowDown01Icon}
                     className="ml-auto size-4 shrink-0 text-muted-foreground"
@@ -422,7 +490,7 @@ export function RecipientNetworkSelect({
                     disabled={isDisabled}
                     className="w-full h-11 md:h-12 justify-between px-0! hover:bg-transparent dark:hover:bg-transparent focus-visible:bg-transparent dark:focus-visible:bg-transparent disabled:opacity-100"
                 >
-                    {selectedOption && !isDisabled ? (
+                    {selectedOption ? (
                         <NetworkRow option={selectedOption} />
                     ) : (
                         <span className="text-base md:text-xl! font-normal text-muted-foreground truncate">
@@ -464,6 +532,8 @@ export function RecipientNetworkSelect({
                         _disabled?: boolean;
                     };
                     if (rich._disabled) return;
+                    userPickedRef.current = true;
+                    autoPickedRef.current = false;
                     onChange(rich._option.id);
                     onNetworkChange?.(rich._option);
                     setOpen(false);

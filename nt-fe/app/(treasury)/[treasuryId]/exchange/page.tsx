@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { trackEvent } from "@/lib/analytics";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -16,16 +15,17 @@ import {
     usePageTour,
 } from "@/features/onboarding/steps/page-tours";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import {
     useBridgeAssetsForWarnings,
     useBridgeScopedWarning,
 } from "@/hooks/use-warnings";
-import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { trackEvent } from "@/lib/analytics";
 import type { IntentsQuoteResponse } from "@/lib/api";
 import { generateIntent } from "@/lib/api";
 import { parseTokenQueryParam } from "@/lib/token-query-param";
-import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
 import { useNear } from "@/stores/near-store";
+import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
 import { Step1 } from "./components/step1";
 import { Step2 } from "./components/step2";
 import { BTC_TOKEN, ETH_TOKEN } from "./constants";
@@ -80,6 +80,7 @@ export default function ExchangePage() {
             receiveToken: ETH_TOKEN,
             slippageTolerance: 0.5,
             amountMode: "EXACT_INPUT",
+            comment: "",
         },
     });
 
@@ -150,6 +151,7 @@ export default function ExchangePage() {
                     slippageTolerance: data.slippageTolerance || 0.5,
                     treasuryId: selectedTreasury,
                     proposalBond,
+                    comment: data.comment?.trim() || undefined,
                 };
 
                 let result;
@@ -195,12 +197,10 @@ export default function ExchangePage() {
     return (
         <PageComponentLayout
             title={pageTitle}
-            description={t("description")}
-            hideHeaderOnMobile
+            backButton={selectedTreasury ? `/${selectedTreasury}` : true}
+            backKind="section"
+            hideMobileShellControls
         >
-            <h1 className="mb-4 text-2xl font-semibold leading-tight tracking-tight text-general-foreground lg:hidden">
-                {pageTitle}
-            </h1>
             <Form {...form}>
                 <form
                     onSubmit={(e) => {
@@ -211,7 +211,7 @@ export default function ExchangePage() {
                         }
                         form.handleSubmit(onSubmit)(e);
                     }}
-                    className="flex flex-col gap-4 max-w-xl mx-auto"
+                    className="mx-auto flex max-w-lg flex-col gap-4"
                 >
                     <StepWizard
                         step={step}

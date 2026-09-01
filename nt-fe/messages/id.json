@@ -200,8 +200,8 @@
             "description": "Kirim dana dengan aman dan terlindungi."
         },
         "exchange": {
-            "title": "Penukaran",
-            "confidentialTitle": "Penukaran rahasia",
+            "title": "Tukar",
+            "confidentialTitle": "Tukar",
             "description": "Tukar token Anda dengan aman dan efisien"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "Ubah Pembayaran",
+            "back": "Ubah penerima",
             "saveChanges": "Simpan Perubahan"
         },
         "parsing": {
@@ -1360,13 +1361,13 @@
         "slippageTolerance": "Toleransi Slippage",
         "disabled": {
             "differentTokens": "Token harus berbeda",
-            "enterAmount": "Masukkan jumlah untuk ditukar"
+            "enterAmount": "Masukkan jumlah"
         },
-        "review": "Tinjau Pertukaran",
+        "review": "Tinjau tukar",
         "poweredBy": "Didukung oleh",
         "info": {
             "priceDifference": "Selisih Harga",
-            "priceDifferenceTooltip": "Menunjukkan bagaimana nilai USD yang Anda terima dibandingkan dengan nilai USD yang Anda kirim.",
+            "priceDifferenceTooltip": "Selisih dari harga mid-market.",
             "estimatedTime": "Estimasi Waktu",
             "estimatedTimeValue": "{seconds} detik",
             "estimatedTimeTooltip": "Waktu perkiraan untuk menyelesaikan pertukaran.",
@@ -1377,12 +1378,16 @@
             "depositAddressCopied": "Alamat deposit disalin",
             "quoteExpires": "Kuotasi Berakhir",
             "exchangeFee": "Biaya Pertukaran",
-            "exchangeFeeTooltip": "Biaya 0,70% yang dikenakan di sini menutupi biaya protokol NEAR Intents untuk memfasilitasi perdagangan Anda dan biaya widget Near Business. Jumlah ini secara otomatis dihitung ke dalam nilai tukar yang dikutip Anda."
+            "exchangeFeeTooltip": "Biaya 0,70% di sini mencakup biaya protokol NEAR Intents untuk memfasilitasi perdagangan Anda dan biaya widget Trezu. Jumlah ini sudah dihitung ke dalam kurs yang dikutip."
         },
         "approveWithin24h": "Silakan setujui permintaan ini dalam 24 jam, jika tidak akan kedaluwarsa. Kami sarankan untuk mengonfirmasi sesegera mungkin.",
         "confirmSubmit": "Konfirmasi dan Kirim Permintaan",
         "refreshingIn": "Nilai tukar akan diperbarui dalam {seconds}d",
-        "confidentialTooltip": "Jumlah yang Anda kirim dan terima sepenuhnya rahasia."
+        "confidentialTooltip": "Jumlah yang Anda kirim dan terima sepenuhnya rahasia.",
+        "maxSlippage": "Slippage maks.",
+        "maxSlippageTooltip": "Pengaturan slippage melindungi Anda dari harga akhir yang sangat berbeda dari harga kuotasi. Jika slippage terlampaui, swap akan gagal.",
+        "receiveAtLeast": "Terima setidaknya",
+        "receiveAtLeastTooltip": "Jumlah kuotasi adalah perkiraan. Beberapa solver bersaing untuk memberi harga terbaik. Slippage maksimum menjamin jumlah minimum — jika tidak terpenuhi, transaksi dibatalkan."
     },
     "vesting": {
         "validation": {
@@ -1933,9 +1938,8 @@
         "incompatible": "Tidak Kompatibel",
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
-        "nearComDescription": "Jaringan untuk Near Business rahasia",
-        "nearComDescriptionPublic": "Jaringan untuk near.com",
-        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com",
+        "nearComDescription": "Jaringan untuk Near Business dan near.com",
+        "nearDescription": "Jaringan untuk penarikan publik",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,18 +2016,19 @@
         "description": "Hanya anggota treasury yang memiliki akses."
     },
     "exchangeRate": {
-        "rate": "Nilai Tukar",
+        "rate": "Nilai tukar",
         "clickToReverse": "Klik untuk membalik nilai tukar"
     },
     "exchangeSettings": {
-        "title": "Pengaturan Pertukaran",
+        "title": "Slippage",
         "slippageTolerance": "Toleransi Slippage",
-        "custom": "Kustom",
+        "custom": "Kustom %",
         "customPlaceholder": "mis.: 2%",
         "slippageRange": "Slippage harus antara 0,01% dan 100%",
         "enterSlippage": "Silakan masukkan toleransi slippage",
         "slippageHelp": "Jika harga berubah lebih dari persentase ini, transaksi akan dibatalkan untuk melindungi dana Anda.",
-        "save": "Simpan"
+        "save": "Simpan",
+        "description": "Pengaturan slippage melindungi Anda dari harga akhir yang sangat berbeda dari harga kuotasi. Jika slippage terlampaui, transaksi akan dibatalkan. Di bawah ini jumlah minimum yang dijamin."
     },
     "assetsPage": {
         "title": "Aset",
@@ -2132,7 +2137,7 @@
     "tokenSelectDialog": {
         "selectToken": "Pilih token",
         "selectAsset": "Pilih Aset",
-        "selectNetworkFor": "Pilih jaringan untuk {token}",
+        "selectNetwork": "Pilih jaringan",
         "searchByName": "Cari berdasarkan nama",
         "noTokensWithBalance": "Tidak ada token dengan saldo ditemukan",
         "noTokensFound": "Tidak ada token ditemukan",
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "Token tidak mencukupi. Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
+        "insufficientTokens": "Saldo tidak mencukupi. Isi saldo sebelum persetujuan.",
         "insufficientTokensForFee": "Token tidak cukup untuk menutupi biaya jaringan ({fee} {symbol}). Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
         "balance": "Saldo: {amount} {symbol}",
         "balanceLabel": "Balance"

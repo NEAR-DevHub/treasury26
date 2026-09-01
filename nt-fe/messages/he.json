@@ -201,7 +201,7 @@
         },
         "exchange": {
             "title": "החלפה",
-            "confidentialTitle": "החלפה חסויה",
+            "confidentialTitle": "החלפה",
             "description": "החלף את הטוקנים שלך באופן מאובטח ויעיל"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "ערוך תשלום",
+            "back": "ערוך נמען",
             "saveChanges": "שמור שינויים"
         },
         "parsing": {
@@ -1360,13 +1361,13 @@
         "slippageTolerance": "סבילות החלקה",
         "disabled": {
             "differentTokens": "הטוקנים חייבים להיות שונים",
-            "enterAmount": "הזן סכום להחלפה"
+            "enterAmount": "הזן סכום"
         },
         "review": "סקור החלפה",
         "poweredBy": "מופעל על ידי",
         "info": {
             "priceDifference": "הפרש מחיר",
-            "priceDifferenceTooltip": "מציג כיצד ערך ה-USD שאתה מקבל משתווה לערך ה-USD שאתה שולח.",
+            "priceDifferenceTooltip": "הפרש ממחיר mid-market.",
             "estimatedTime": "זמן משוער",
             "estimatedTimeValue": "{seconds} שניות",
             "estimatedTimeTooltip": "זמן משוער להשלמת ההחלפה.",
@@ -1377,12 +1378,16 @@
             "depositAddressCopied": "כתובת ההפקדה הועתקה",
             "quoteExpires": "הציטוט פג ב-",
             "exchangeFee": "עמלת החלפה",
-            "exchangeFeeTooltip": "עמלת 0.70% הנגבית כאן מכסה את עלויות פרוטוקול NEAR Intents כדי לאפשר את המסחר שלך ואת עמלת הווידג'ט של Near Business. סכום זה מחושב אוטומטית בתוך השער המצוטט שלך."
+            "exchangeFeeTooltip": "עמלת 0.70% מכסה את עלויות פרוטוקול NEAR Intents לביצוע העסקה ואת עמלת הווידג'ט של Trezu. הסכום מחושב אוטומטית בשער המצוטט."
         },
         "approveWithin24h": "אנא אשר בקשה זו בתוך 24 שעות, אחרת היא תפוג. אנו ממליצים לאשר בהקדם האפשרי.",
         "confirmSubmit": "אשר ושלח בקשה",
         "refreshingIn": "שער ההחלפה יתרענן בעוד {seconds} שניות",
-        "confidentialTooltip": "הסכומים שאתם שולחים ומקבלים חסויים לחלוטין."
+        "confidentialTooltip": "הסכומים שאתם שולחים ומקבלים חסויים לחלוטין.",
+        "maxSlippage": "החלקה מקסימלית",
+        "maxSlippageTooltip": "הגדרת ההחלקה היא מנגנון הגנה מפני מחיר סופי שונה מאוד מהמחיר שצוטט. אם ההחלקה שצוינה תחרוג, ההחלפה תיכשל.",
+        "receiveAtLeast": "קבל לפחות",
+        "receiveAtLeastTooltip": "הסכום המצוטט הוא הערכה. מספר סולברים מתחרים כדי לתת לך את המחיר הטוב ביותר. החלקה מקסימלית מבטיחה סכום מינימלי — אם לא ניתן לעמוד בכך, העסקה מבוטלת."
     },
     "vesting": {
         "validation": {
@@ -1933,9 +1938,8 @@
         "incompatible": "לא תואם",
         "comingSoon": "בקרוב",
         "forMembersOnly": "לחברים בלבד",
-        "nearComDescription": "רשת עבור Near Business חסוי",
-        "nearComDescriptionPublic": "רשת עבור near.com",
-        "nearDescription": "רשת למשיכה ציבורית וארנק near.com",
+        "nearComDescription": "רשת עבור Near Business ו-near.com",
+        "nearDescription": "רשת למשיכה ציבורית",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,18 +2016,19 @@
         "description": "רק לחברי האוצר יש גישה."
     },
     "exchangeRate": {
-        "rate": "שער",
+        "rate": "שער החלפה",
         "clickToReverse": "לחץ להפוך את השער"
     },
     "exchangeSettings": {
-        "title": "הגדרות החלפה",
+        "title": "החלקה",
         "slippageTolerance": "סבילות החלקה",
-        "custom": "מותאם אישית",
+        "custom": "מותאם אישית %",
         "customPlaceholder": "למשל: 2%",
         "slippageRange": "ההחלקה חייבת להיות בין 0.01% ל-100%",
         "enterSlippage": "אנא הזן סבילות החלקה",
         "slippageHelp": "אם המחיר ישתנה ביותר מאחוז זה, העסקה תבוטל כדי להגן על הכספים שלך.",
-        "save": "שמירה"
+        "save": "שמירה",
+        "description": "הגדרת ההחלקה היא מנגנון הגנה מפני מחיר סופי שונה מאוד מהמחיר שצוטט. אם ההחלקה שצוינה תחרוג, העסקה תבוטל. להלן הסכום המינימלי המובטח."
     },
     "assetsPage": {
         "title": "נכסים",
@@ -2132,7 +2137,7 @@
     "tokenSelectDialog": {
         "selectToken": "בחר טוקן",
         "selectAsset": "בחר נכס",
-        "selectNetworkFor": "בחר רשת עבור {token}",
+        "selectNetwork": "בחר רשת",
         "searchByName": "חיפוש לפי שם",
         "noTokensWithBalance": "לא נמצאו טוקנים עם יתרה",
         "noTokensFound": "לא נמצאו טוקנים",
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "טוקנים לא מספקים. ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
+        "insufficientTokens": "יתרה לא מספקת. הטען לפני האישור.",
         "insufficientTokensForFee": "אין מספיק טוקנים לכיסוי עמלת הרשת ({fee} {symbol}). ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
         "balance": "יתרה: {amount} {symbol}",
         "balanceLabel": "Balance"

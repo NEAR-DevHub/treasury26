@@ -204,8 +204,8 @@
             "description": "Send funds safely and securely."
         },
         "exchange": {
-            "title": "Exchange",
-            "confidentialTitle": "Confidential Exchange",
+            "title": "Swap",
+            "confidentialTitle": "Swap",
             "description": "Exchange your tokens securely and efficiently"
         },
         "vesting": {
@@ -265,13 +265,13 @@
             "selectNetwork": "Please select a network"
         },
         "sections": {
-            "supportedNetworks": "Supported Networks",
-            "networksWithAssets": "Networks with Assets",
+            "supportedNetworks": "Supported networks",
+            "networksWithAssets": "Networks with assets",
             "yourAssets": "Your tokens",
             "otherAssets": "More tokens",
             "popularAssets": "Popular tokens",
             "available": "Available",
-            "forMembersOnly": "For Members Only"
+            "forMembersOnly": "For members only"
         },
         "errors": {
             "addressUnavailable": "Could not retrieve deposit address for the selected token and network.",
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "Edit Payment",
+            "back": "Edit recipient",
             "saveChanges": "Save Changes"
         },
         "parsing": {
@@ -1354,19 +1355,23 @@
             "amountPositive": "Amount must be greater than 0"
         },
         "requestSubmitted": "Exchange request submitted",
-        "heading": "Exchange",
+        "heading": "Swap",
         "sell": "Sell",
         "receive": "Receive",
         "slippageTolerance": "Slippage Tolerance",
+        "maxSlippage": "Max slippage",
+        "maxSlippageTooltip": "The slippage setting is a safety mechanism to protect you from getting a final price that is very different than the quoted price. If the specified slippage would be exceeded, your swap will be failed.",
+        "receiveAtLeast": "Receive at least",
+        "receiveAtLeastTooltip": "The quoted amount is an estimate. Multiple solvers compete to give you the best price. Your max slippage setting guarantees a minimum amount you'll receive—if that can't be met, the trade is cancelled.",
         "disabled": {
             "differentTokens": "Tokens must be different",
-            "enterAmount": "Enter an amount to exchange"
+            "enterAmount": "Enter an amount"
         },
-        "review": "Review Exchange",
+        "review": "Review swap",
         "poweredBy": "Powered by",
         "info": {
-            "priceDifference": "Price Difference",
-            "priceDifferenceTooltip": "Show how the USD value you receive compares to the USD value you send.",
+            "priceDifference": "Price difference",
+            "priceDifferenceTooltip": "Difference from mid-market price.",
             "estimatedTime": "Estimated Time",
             "estimatedTimeValue": "{seconds} seconds",
             "estimatedTimeTooltip": "Approximate time to complete the exchange.",
@@ -1376,12 +1381,12 @@
             "depositAddress": "Deposit Address",
             "depositAddressCopied": "Deposit address copied",
             "quoteExpires": "Quote Expires",
-            "exchangeFee": "Exchange Fee",
-            "exchangeFeeTooltip": "The 0.70% fee incurred here covers the NEAR Intents protocol costs to facilitate your trade and the Near Business widget fee. This amount is automatically calculated into your quoted rate."
+            "exchangeFee": "Exchange fee",
+            "exchangeFeeTooltip": "The 0.70% fee incurred here covers the NEAR Intents protocol costs to facilitate your trade and the Trezu widget fee. This amount is automatically calculated into your quoted rate."
         },
         "approveWithin24h": "Please approve this request within 24 hours, otherwise it will expire. We recommend confirming as soon as possible.",
-        "confirmSubmit": "Confirm and Submit Request",
-        "refreshingIn": "Exchange rate will refresh in {seconds}s",
+        "confirmSubmit": "Create request",
+        "refreshingIn": "Exchange rate will refresh in {seconds} s",
         "confidentialTooltip": "The amounts you send and receive are completely confidential."
     },
     "vesting": {
@@ -1933,9 +1938,8 @@
         "incompatible": "Incompatible",
         "comingSoon": "Coming Soon",
         "forMembersOnly": "For Members Only",
-        "nearComDescription": "Network for confidential Near Business",
-        "nearComDescriptionPublic": "Network for near.com",
-        "nearDescription": "Network for public withdrawal and near.com wallet",
+        "nearComDescription": "Network for Near Business and near.com",
+        "nearDescription": "Network for public withdrawal",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,13 +2016,14 @@
         "description": "Only treasury members have access."
     },
     "exchangeRate": {
-        "rate": "Rate",
+        "rate": "Exchange rate",
         "clickToReverse": "Click to reverse rate"
     },
     "exchangeSettings": {
-        "title": "Exchange Settings",
+        "title": "Slippage",
+        "description": "The slippage setting is a safety mechanism to protect you from getting a final price that is very different than the quoted price. If the specified slippage would be exceeded, your trade will be cancelled. Below is the minimum amount you are guaranteed to receive.",
         "slippageTolerance": "Slippage Tolerance",
-        "custom": "Custom",
+        "custom": "Custom %",
         "customPlaceholder": "ex: 2%",
         "slippageRange": "Slippage must be between 0.01% and 100%",
         "enterSlippage": "Please enter a slippage tolerance",
@@ -2122,7 +2127,7 @@
         "nativeToken": "Native Token"
     },
     "exchangeErrors": {
-        "noRoute": "No exchange found. Try a smaller amount or different token.",
+        "noRoute": "No exchange found. Try a smaller amount or a different token.",
         "amountTooLow": "Amount too low for swap. Cross-chain swaps require a higher minimum to cover network fees.",
         "amountTooLowWithMin": "Amount is too low to cover network fees. Enter at least {min} {token}.",
         "insufficientBalance": "Insufficient balance for this swap.",
@@ -2131,15 +2136,15 @@
     },
     "tokenSelectDialog": {
         "selectToken": "Select token",
-        "selectAsset": "Select Asset",
-        "selectNetworkFor": "Select network for {token}",
+        "selectAsset": "Select asset",
+        "selectNetwork": "Select network",
         "searchByName": "Search by name",
         "noTokensWithBalance": "No tokens with balance found",
         "noTokensFound": "No tokens found",
         "yourAssets": "Your tokens",
         "otherAssets": "More tokens",
         "networksWithAssets": "Networks with tokens",
-        "supportedNetworks": "Supported Networks",
+        "supportedNetworks": "Supported networks",
         "comingSoon": "Coming soon",
         "networksCount": "{count, plural, one {# Network} other {# Networks}}"
     },
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "max": "MAX",
         "useMax": "Use max",
-        "insufficientTokens": "Not enough funds. Submit now, top up before approval.",
+        "insufficientTokens": "Insufficient balance. Top up before approval.",
         "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
         "balance": "Balance: {amount} {symbol}",
         "balanceLabel": "Balance"

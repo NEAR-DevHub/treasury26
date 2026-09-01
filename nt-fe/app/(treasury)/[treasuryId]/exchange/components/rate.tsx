@@ -7,6 +7,7 @@ import type { Token } from "@/components/token-input";
 import { decimalFromBaseUnits } from "@/lib/amount-format";
 import Big from "@/lib/big";
 import { cn } from "@/lib/utils";
+import { quoteRowLabelClass, quoteRowValueClass } from "./quote-row";
 
 interface Quote {
     amountIn: string;
@@ -20,6 +21,10 @@ interface RateProps {
     sellToken: Token;
     receiveToken: Token;
     detailed?: boolean;
+    /** `compact` is `1 NEAR = 1.5967 USDC` without the USD parenthetical. */
+    variant?: "default" | "compact";
+    /** Start with 1 receive token as the base (Swap details). */
+    preferReceiveBase?: boolean;
     className?: string;
 }
 
@@ -28,11 +33,13 @@ export function Rate({
     sellToken,
     receiveToken,
     detailed: _detailed = false,
+    variant = "default",
+    preferReceiveBase = false,
     className = "",
 }: RateProps) {
     const t = useTranslations("exchangeRate");
     const tCommon = useTranslations("common");
-    const [isReversed, setIsReversed] = useState(false);
+    const [isReversed, setIsReversed] = useState(preferReceiveBase);
 
     if (!quote) return null;
 
@@ -80,15 +87,27 @@ export function Rate({
             onClick={() => setIsReversed(!isReversed)}
             title={t("clickToReverse")}
         >
-            <span className="text-muted-foreground">{t("rate")}</span>
-            <span className="font-medium">
-                {quotePerBase && unitUsd ? (
-                    <>
-                        1 {baseSymbol} (
-                        <FormattedAmount kind="unit-price" value={unitUsd} />) ≈{" "}
-                        <FormattedAmount kind="rate" value={quotePerBase} />{" "}
-                        {quoteSymbol}
-                    </>
+            <span className={quoteRowLabelClass}>{t("rate")}</span>
+            <span className={quoteRowValueClass}>
+                {quotePerBase && (variant === "compact" || unitUsd) ? (
+                    variant === "compact" ? (
+                        <>
+                            1 {baseSymbol} ={" "}
+                            <FormattedAmount kind="rate" value={quotePerBase} />{" "}
+                            {quoteSymbol}
+                        </>
+                    ) : (
+                        <>
+                            1 {baseSymbol} (
+                            <FormattedAmount
+                                kind="unit-price"
+                                value={unitUsd}
+                            />
+                            ) ≈{" "}
+                            <FormattedAmount kind="rate" value={quotePerBase} />{" "}
+                            {quoteSymbol}
+                        </>
+                    )
                 ) : (
                     tCommon("notAvailable")
                 )}

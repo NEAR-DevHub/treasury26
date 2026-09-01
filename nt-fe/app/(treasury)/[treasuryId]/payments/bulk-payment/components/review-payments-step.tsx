@@ -3,7 +3,7 @@
 import { Icon } from "@/components/icon";
 import {
     Delete01Icon,
-    Edit02Icon,
+    Edit03Icon,
     InformationCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useState, useEffect, useMemo } from "react";
@@ -35,6 +35,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import { AmountSummary } from "@/components/amount-summary";
+import { FittingFormattedAmount } from "@/components/fitting-text";
 import { FormattedAmount } from "@/components/formatted-amount";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { trackEvent } from "@/lib/analytics";
@@ -61,8 +62,8 @@ interface ReviewPaymentsStepProps extends StepProps {
     isSubmitting?: boolean;
     /**
      * Confidential flow: selected receive-network id (bridge asset network id
-     * or near.com). Drives the network badge on each recipient amount row —
-     * same pattern as single confidential payment review.
+     * or near.com). Drives the top-level send summary badge and the
+     * destination-network row.
      */
     destinationNetworkId?: string;
     /**
@@ -331,7 +332,7 @@ export function ReviewPaymentsStep({
         : null;
 
     return (
-        <div className="flex w-full min-w-0 max-w-lg mx-auto flex-col gap-4">
+        <div className="flex w-full min-w-0 max-w-lg mx-auto flex-col gap-6">
             <ReviewStep
                 reviewingTitle={tPay("reviewYourPayment")}
                 handleBack={handleBack}
@@ -414,7 +415,7 @@ export function ReviewPaymentsStep({
                                                   aria-label={tBulk("edit")}
                                               >
                                                   <Icon
-                                                      icon={Edit02Icon}
+                                                      icon={Edit03Icon}
                                                       className="size-[0.82813rem] shrink-0"
                                                   />
                                               </Button>
@@ -474,25 +475,18 @@ export function ReviewPaymentsStep({
                                                   </div>
                                               );
                                           })()}
-                                          <div className="flex min-w-fit flex-col items-end gap-0.5">
-                                              <div className="flex items-center gap-1.5">
-                                                  <TokenDisplay
-                                                      symbol={
-                                                          selectedToken.symbol
-                                                      }
-                                                      icon={
-                                                          selectedToken.icon ||
-                                                          ""
-                                                      }
-                                                      chainIcons={
-                                                          destinationChainIcons ??
-                                                          selectedToken.chainIcons
-                                                      }
-                                                      iconSize="lg"
-                                                  />
-                                                  <p className="whitespace-nowrap text-sm font-semibold leading-normal text-general-foreground">
-                                                      <FormattedAmount
-                                                          kind="token"
+                                          <div className="flex min-w-0 max-w-[55%] flex-1 items-center justify-end gap-1.5">
+                                              <TokenDisplay
+                                                  symbol={selectedToken.symbol}
+                                                  icon={
+                                                      selectedToken.icon || ""
+                                                  }
+                                                  iconSize="lg"
+                                                  className="shrink-0"
+                                              />
+                                              <div className="flex min-w-0 flex-1 flex-col items-end gap-0.5">
+                                                  <div className="flex w-full min-w-0 items-center justify-end gap-1.5">
+                                                      <FittingFormattedAmount
                                                           value={
                                                               recipientAmount
                                                           }
@@ -505,81 +499,83 @@ export function ReviewPaymentsStep({
                                                           unitPriceUsd={
                                                               selectedTokenData?.price
                                                           }
-                                                          profile="standard"
+                                                          maxPx={14}
+                                                          minPx={14}
+                                                          className="text-right font-semibold leading-normal text-general-foreground"
                                                       />
-                                                  </p>
-                                                  {recipientFee ? (
-                                                      <Tooltip
-                                                          content={
-                                                              <div className="text-left">
-                                                                  <p>
-                                                                      <FormattedAmount
-                                                                          kind="token"
-                                                                          value={
-                                                                              recipientAmount
-                                                                          }
-                                                                          symbol={
-                                                                              selectedToken.symbol
-                                                                          }
-                                                                          tokenDecimals={
-                                                                              selectedToken.decimals
-                                                                          }
-                                                                          unitPriceUsd={
-                                                                              selectedTokenData?.price
-                                                                          }
-                                                                          profile="standard"
-                                                                      />{" "}
-                                                                      +{" "}
-                                                                      <FormattedAmount
-                                                                          kind="token"
-                                                                          value={
-                                                                              recipientFee
-                                                                          }
-                                                                          symbol={
-                                                                              selectedToken.symbol
-                                                                          }
-                                                                          tokenDecimals={
-                                                                              selectedToken.decimals
-                                                                          }
-                                                                          unitPriceUsd={
-                                                                              selectedTokenData?.price
-                                                                          }
-                                                                          profile="standard"
-                                                                          rounding="up"
-                                                                      />
-                                                                  </p>
-                                                                  <p className="lowercase">
-                                                                      {tPay(
-                                                                          "networkFee",
-                                                                      )}
-                                                                  </p>
-                                                              </div>
-                                                          }
-                                                          side="right"
-                                                      >
-                                                          <Icon
-                                                              icon={
-                                                                  InformationCircleIcon
+                                                      {recipientFee ? (
+                                                          <Tooltip
+                                                              content={
+                                                                  <div className="text-left">
+                                                                      <p>
+                                                                          <FormattedAmount
+                                                                              kind="token"
+                                                                              value={
+                                                                                  recipientAmount
+                                                                              }
+                                                                              symbol={
+                                                                                  selectedToken.symbol
+                                                                              }
+                                                                              tokenDecimals={
+                                                                                  selectedToken.decimals
+                                                                              }
+                                                                              unitPriceUsd={
+                                                                                  selectedTokenData?.price
+                                                                              }
+                                                                              profile="standard"
+                                                                          />{" "}
+                                                                          +{" "}
+                                                                          <FormattedAmount
+                                                                              kind="token"
+                                                                              value={
+                                                                                  recipientFee
+                                                                              }
+                                                                              symbol={
+                                                                                  selectedToken.symbol
+                                                                              }
+                                                                              tokenDecimals={
+                                                                                  selectedToken.decimals
+                                                                              }
+                                                                              unitPriceUsd={
+                                                                                  selectedTokenData?.price
+                                                                              }
+                                                                              profile="standard"
+                                                                              rounding="up"
+                                                                          />
+                                                                      </p>
+                                                                      <p className="lowercase">
+                                                                          {tPay(
+                                                                              "networkFee",
+                                                                          )}
+                                                                      </p>
+                                                                  </div>
                                                               }
-                                                              className="shrink-0 text-muted-foreground"
-                                                              aria-label={tPay(
-                                                                  "networkFeeInfo",
-                                                              )}
+                                                              side="right"
+                                                          >
+                                                              <Icon
+                                                                  icon={
+                                                                      InformationCircleIcon
+                                                                  }
+                                                                  className="shrink-0 text-muted-foreground"
+                                                                  aria-label={tPay(
+                                                                      "networkFeeInfo",
+                                                                  )}
+                                                              />
+                                                          </Tooltip>
+                                                      ) : null}
+                                                  </div>
+                                                  {estimatedUSDValue ? (
+                                                      <p className="whitespace-nowrap text-xs font-normal leading-4 tracking-[0.01125rem] text-general-secondary-foreground">
+                                                          ≈{" "}
+                                                          <FormattedAmount
+                                                              kind="fiat"
+                                                              value={
+                                                                  estimatedUSDValue
+                                                              }
                                                           />
-                                                      </Tooltip>
+                                                      </p>
                                                   ) : null}
                                               </div>
-                                              {estimatedUSDValue ? (
-                                                  <p className="whitespace-nowrap text-xs font-normal leading-4 tracking-[0.01125rem] text-general-secondary-foreground">
-                                                      ≈{" "}
-                                                      <FormattedAmount
-                                                          kind="fiat"
-                                                          value={
-                                                              estimatedUSDValue
-                                                          }
-                                                      />
-                                                  </p>
-                                              ) : null}
                                           </div>
                                       </div>
                                       {payment.validationError ? (

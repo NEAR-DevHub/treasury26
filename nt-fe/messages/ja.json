@@ -200,8 +200,8 @@
             "description": "資金を安全かつ確実に送金します。"
         },
         "exchange": {
-            "title": "交換",
-            "confidentialTitle": "機密交換",
+            "title": "スワップ",
+            "confidentialTitle": "スワップ",
             "description": "トークンを安全かつ効率的に交換"
         },
         "vesting": {
@@ -1286,6 +1286,7 @@
         },
         "editStep": {
             "title": "支払いを編集",
+            "back": "受取人を編集",
             "saveChanges": "変更を保存"
         },
         "parsing": {
@@ -1360,13 +1361,13 @@
         "slippageTolerance": "スリッページ許容範囲",
         "disabled": {
             "differentTokens": "トークンは異なる必要があります",
-            "enterAmount": "交換する金額を入力してください"
+            "enterAmount": "金額を入力してください"
         },
-        "review": "交換を確認",
+        "review": "スワップを確認",
         "poweredBy": "提供:",
         "info": {
             "priceDifference": "価格差",
-            "priceDifferenceTooltip": "受け取るUSD価値が、送るUSD価値と比べてどうかを示します。",
+            "priceDifferenceTooltip": "ミッドマーケット価格との差額です。",
             "estimatedTime": "予想時間",
             "estimatedTimeValue": "{seconds}秒",
             "estimatedTimeTooltip": "交換完了までのおおよその時間です。",
@@ -1377,12 +1378,16 @@
             "depositAddressCopied": "入金アドレスをコピーしました",
             "quoteExpires": "見積り有効期限",
             "exchangeFee": "交換手数料",
-            "exchangeFeeTooltip": "ここで発生する0.70%の手数料は、取引を仲介するNEAR IntentsプロトコルのコストとNear Businessウィジェット手数料を賄います。この金額は見積りレートに自動的に含まれています。"
+            "exchangeFeeTooltip": "ここで発生する 0.70% の手数料は、取引を成立させる NEAR Intents プロトコル費用と Trezu ウィジェット手数料をカバーします。この金額は提示レートに自動的に含まれます。"
         },
         "approveWithin24h": "このリクエストは24時間以内に承認してください。期限を過ぎると失効します。できるだけ早く確認することをおすすめします。",
         "confirmSubmit": "確認してリクエストを送信",
         "refreshingIn": "交換レートは{seconds}秒後に更新されます",
-        "confidentialTooltip": "送信額と受取額は完全に機密です。"
+        "confidentialTooltip": "送信額と受取額は完全に機密です。",
+        "maxSlippage": "最大スリッページ",
+        "maxSlippageTooltip": "スリッページ設定は、提示価格と大きく異なる最終価格になることを防ぐ安全装置です。指定したスリッページを超える場合、スワップは失敗します。",
+        "receiveAtLeast": "最低受取額",
+        "receiveAtLeastTooltip": "提示額は見積りです。複数のソルバーが最良価格を競います。最大スリッページは最低受取額を保証し、満たせない場合は取引がキャンセルされます。"
     },
     "vesting": {
         "validation": {
@@ -1933,9 +1938,8 @@
         "incompatible": "非互換",
         "comingSoon": "近日公開",
         "forMembersOnly": "メンバー限定",
-        "nearComDescription": "機密 Near Business 用ネットワーク",
-        "nearComDescriptionPublic": "near.com用ネットワーク",
-        "nearDescription": "公開出金およびnear.comウォレット用ネットワーク",
+        "nearComDescription": "Near Business と near.com 用ネットワーク",
+        "nearDescription": "公開出金用ネットワーク",
         "internalTag": "Internal"
     },
     "addressBookTable": {
@@ -2012,18 +2016,19 @@
         "description": "トレジャリーメンバーのみがアクセスできます。"
     },
     "exchangeRate": {
-        "rate": "レート",
+        "rate": "為替レート",
         "clickToReverse": "クリックでレートを反転"
     },
     "exchangeSettings": {
-        "title": "交換設定",
+        "title": "スリッページ",
         "slippageTolerance": "スリッページ許容範囲",
-        "custom": "カスタム",
+        "custom": "カスタム %",
         "customPlaceholder": "例: 2%",
         "slippageRange": "スリッページは0.01%から100%の間である必要があります",
         "enterSlippage": "スリッページ許容範囲を入力してください",
         "slippageHelp": "価格がこの割合以上変動した場合、資金を保護するためにトランザクションがキャンセルされます。",
-        "save": "保存"
+        "save": "保存",
+        "description": "スリッページ設定は、提示価格と大きく異なる最終価格になることを防ぐ安全装置です。指定したスリッページを超える場合、取引はキャンセルされます。以下は保証される最低受取額です。"
     },
     "assetsPage": {
         "title": "資産",
@@ -2132,7 +2137,7 @@
     "tokenSelectDialog": {
         "selectToken": "トークンを選択",
         "selectAsset": "資産を選択",
-        "selectNetworkFor": "{token}のネットワークを選択",
+        "selectNetwork": "ネットワークを選択",
         "searchByName": "名前で検索",
         "noTokensWithBalance": "残高のあるトークンが見つかりません",
         "noTokensFound": "トークンが見つかりません",
@@ -2208,7 +2213,7 @@
     "tokenInput": {
         "useMax": "Use max",
         "max": "MAX",
-        "insufficientTokens": "トークンが不足しています。リクエストを送信してから承認前に補充できます。",
+        "insufficientTokens": "残高が不足しています。承認前に補充してください。",
         "insufficientTokensForFee": "ネットワーク手数料({fee} {symbol})をカバーするトークンが不足しています。リクエストを送信してから承認前に補充できます。",
         "balance": "残高: {amount} {symbol}",
         "balanceLabel": "Balance"
