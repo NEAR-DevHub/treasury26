@@ -200,7 +200,7 @@ returning a plain `404` (the board only owns `/api/v1`).
 | status-monitor | every 60s | — | |
 | notifications | every 15s | — | detection + Telegram dispatch joined per task |
 | sponsor-balance-monitor | every 60s | SPONSOR_BALANCE_POLL_INTERVAL_SECONDS | |
-| dao-list-sync | every 30min | — | |
+| dao-list-sync | every 30min | — | skipped when MANAGED_TREASURIES_ONLY=true |
 | dao-policy-dirty | every 5s | — | was a 1s poll; 5s avoids a task row per second |
 | dao-policy-stale | every 60s | — | |
 | subscription-monthly-reset | daily 00:00 UTC + startup task | — | |

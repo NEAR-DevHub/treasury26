@@ -16,7 +16,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::services::monitored_accounts::{
-    RegisterMonitoredAccountError, register_or_refresh_monitored_account,
+    NOT_MANAGED_TREASURY_MESSAGE, RegisterMonitoredAccountError, RegistrationMode,
+    register_or_refresh_monitored_account,
 };
 use crate::{AppState, auth::AuthUser};
 
@@ -79,12 +80,17 @@ pub async fn set_custom_requests_setting(
         state.goldsky_pool.as_ref(),
         &dao_id,
         false,
+        RegistrationMode::for_user_action(&state.env_vars),
     )
     .await
     .map_err(|e| match e {
         RegisterMonitoredAccountError::NotSputnikDao => (
             StatusCode::BAD_REQUEST,
             "Account is not a SputnikDAO treasury".to_string(),
+        ),
+        RegisterMonitoredAccountError::NotManaged => (
+            StatusCode::NOT_FOUND,
+            NOT_MANAGED_TREASURY_MESSAGE.to_string(),
         ),
         RegisterMonitoredAccountError::Db(e) => internal_error("Failed to register treasury", e),
     })?;

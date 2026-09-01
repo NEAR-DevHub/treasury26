@@ -20,6 +20,9 @@ pub struct EnvVars {
     pub disable_ft_lockup_scheduler: bool,
     pub disable_balance_changes_usd_backfill: bool,
     pub disable_gold_ledger_usd_backfill: bool,
+    /// Track only treasuries created through this app: skips the sputnik
+    /// factory mirror and makes user-initiated registrations refresh-only.
+    pub managed_treasuries_only: bool,
     /// Single public read switch. True serves public activity, charts, and
     /// asset balances from `gold_treasury_ledger_events`; false keeps the
     /// legacy `balance_changes` paths.
@@ -146,6 +149,10 @@ impl Default for EnvVars {
             .unwrap_or_else(|_| "false".to_string())
             .parse()
             .unwrap_or(false),
+            managed_treasuries_only: std::env::var("MANAGED_TREASURIES_ONLY")
+                .unwrap_or_else(|_| "false".to_string())
+                .parse()
+                .unwrap_or(false),
             // DISABLE_GOLD_PUBLIC_USD_BACKFILL is the deployed legacy name.
             disable_gold_ledger_usd_backfill: std::env::var("DISABLE_GOLD_LEDGER_USD_BACKFILL")
                 .or_else(|_| std::env::var("DISABLE_GOLD_PUBLIC_USD_BACKFILL"))
