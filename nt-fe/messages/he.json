@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "סקור את התשלום שלך",
         "reviewButton": "סקור תשלום",
         "reviewButtonDisabled": "הזן סכום וכתובת",
+        "reviewButtonEnterRecipient": "הזן נמען",
         "comingSoon": "בקרוב",
         "bulkPayments": "תשלומים בכמויות",
         "summaryRecipients": "ל-{count, plural, one {# נמען} two {# נמענים} many {# נמענים} other {# נמענים}}",

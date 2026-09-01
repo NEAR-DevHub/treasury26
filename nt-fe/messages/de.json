@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Überprüfen Sie Ihre Zahlung",
         "reviewButton": "Zahlung prüfen",
         "reviewButtonDisabled": "Betrag und Adresse eingeben",
+        "reviewButtonEnterRecipient": "Empfänger eingeben",
         "comingSoon": "Demnächst verfügbar",
         "bulkPayments": "Sammelzahlungen",
         "summaryRecipients": "an {count, plural, one {# Empfänger} other {# Empfänger}}",

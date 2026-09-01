@@ -155,7 +155,6 @@ export function EditPaymentStep({
                     destinationNetworkNameFieldName="destinationNetworkName"
                     tokenLocked
                     destinationLocked
-                    confidentialAggregated
                     hideRecipientNetwork={false}
                     recipientNetworkOverride={destinationNetwork}
                     requireNearComPrefix={

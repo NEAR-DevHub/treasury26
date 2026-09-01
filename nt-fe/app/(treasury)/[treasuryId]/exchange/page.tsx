@@ -9,11 +9,6 @@ import { toast } from "sonner";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { StepWizard } from "@/components/step-wizard";
 import { Form } from "@/components/ui/form";
-import {
-    PAGE_TOUR_NAMES,
-    PAGE_TOUR_STORAGE_KEYS,
-    usePageTour,
-} from "@/features/onboarding/steps/page-tours";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import {
@@ -64,12 +59,6 @@ export default function ExchangePage() {
         const sellTokenParam = searchParams.get("sellToken");
         return parseTokenQueryParam(sellTokenParam, BTC_TOKEN);
     }, [searchParams]);
-
-    // Onboarding tour
-    usePageTour(
-        PAGE_TOUR_NAMES.EXCHANGE_SETTINGS,
-        PAGE_TOUR_STORAGE_KEYS.EXCHANGE_SETTINGS_SHOWN,
-    );
 
     const form = useForm<ExchangeFormValues>({
         resolver: zodResolver(exchangeFormSchema),

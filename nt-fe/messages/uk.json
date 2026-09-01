@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Перегляньте ваш платіж",
         "reviewButton": "Переглянути платіж",
         "reviewButtonDisabled": "Введіть суму та адресу",
+        "reviewButtonEnterRecipient": "Введіть отримувача",
         "comingSoon": "Скоро",
         "bulkPayments": "Масові платежі",
         "summaryRecipients": "{count, plural, one {# отримувачу} few {# отримувачам} many {# отримувачам} other {# отримувачам}}",

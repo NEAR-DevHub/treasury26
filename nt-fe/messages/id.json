@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Tinjau Pembayaran Anda",
         "reviewButton": "Tinjau Pembayaran",
         "reviewButtonDisabled": "Masukkan jumlah dan alamat",
+        "reviewButtonEnterRecipient": "Masukkan penerima",
         "comingSoon": "Segera hadir",
         "bulkPayments": "Pembayaran Massal",
         "summaryRecipients": "ke {count, plural, other {# penerima}}",

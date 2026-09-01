@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "결제 검토",
         "reviewButton": "결제 검토",
         "reviewButtonDisabled": "금액과 주소를 입력하세요",
+        "reviewButtonEnterRecipient": "수신자를 입력하세요",
         "comingSoon": "출시 예정",
         "bulkPayments": "일괄 결제",
         "summaryRecipients": "{count, plural, other {#명의 수신자}}에게",

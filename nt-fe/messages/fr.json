@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Vérifiez votre paiement",
         "reviewButton": "Vérifier le paiement",
         "reviewButtonDisabled": "Saisissez le montant et l'adresse",
+        "reviewButtonEnterRecipient": "Saisissez un destinataire",
         "comingSoon": "Bientôt disponible",
         "bulkPayments": "Paiements groupés",
         "summaryRecipients": "à {count, plural, one {# destinataire} other {# destinataires}}",
