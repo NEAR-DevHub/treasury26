@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "支払いを確認",
         "reviewButton": "支払いを確認",
         "reviewButtonDisabled": "金額とアドレスを入力してください",
+        "reviewButtonEnterRecipient": "受取人を入力してください",
         "comingSoon": "近日公開",
         "bulkPayments": "一括支払い",
         "summaryRecipients": "{count, plural, other {# 人の受取人}}へ",

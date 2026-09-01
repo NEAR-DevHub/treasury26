@@ -38,12 +38,6 @@ import {
 } from "@/constants/network-ids";
 import { default_near_token, default_usdc_near_token } from "@/constants/token";
 import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
-import {
-    PAGE_TOUR_NAMES,
-    PAGE_TOUR_STORAGE_KEYS,
-    useManualPageTour,
-    usePageTour,
-} from "@/features/onboarding/steps/page-tours";
 import { type BridgeAsset, useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import {
     buildIntentsQuoteRequest,
@@ -179,7 +173,6 @@ interface Step1Props extends StepProps {
     recipientNetworkWarningMessage?: string | null;
     /** False when the page seeds token from ?token= / ?networks=. */
     tokenAutoSelect?: boolean;
-    confidentialAggregated?: boolean;
     balanceOverrideRaw?: string | null;
     /** Live quote USD to confirm price→token conversion in the amount field. */
     usdValueOverride?: number | null;
@@ -202,7 +195,6 @@ function Step1({
     sendWarningMessage = null,
     recipientNetworkWarningMessage = null,
     tokenAutoSelect = true,
-    confidentialAggregated = false,
     balanceOverrideRaw = null,
     usdValueOverride = null,
 }: Step1Props) {
@@ -225,14 +217,17 @@ function Step1({
         handleNext();
     };
 
-    const isFormFilled = !!amount && Number(amount) > 0 && !!address;
+    const hasAmount = !!amount && Number(amount) > 0;
+    const hasRecipient = !!address?.trim();
     const saveButtonText = paymentsSlotBlocked
         ? tCreate("brieflyUnavailable")
         : hasRestrictedRecipientError
           ? tPay("useDifferentAddress")
-          : isFormFilled
+          : hasAmount && hasRecipient
             ? tPay("reviewButton")
-            : tPay("reviewButtonDisabled");
+            : hasAmount
+              ? tPay("reviewButtonEnterRecipient")
+              : tPay("reviewButtonDisabled");
 
     return (
         <>
@@ -259,7 +254,6 @@ function Step1({
                 sendWarningMessage={sendWarningMessage}
                 recipientNetworkWarningMessage={recipientNetworkWarningMessage}
                 tokenAutoSelect={tokenAutoSelect}
-                confidentialAggregated={confidentialAggregated}
                 balanceOverrideRaw={balanceOverrideRaw}
                 usdValueOverride={usdValueOverride}
             />
@@ -752,19 +746,6 @@ export default function PaymentsPage() {
         const addressParam = searchParams.get("address");
         return addressParam ? decodeURIComponent(addressParam) : "";
     }, [searchParams]);
-
-    // Onboarding tours
-    usePageTour(
-        PAGE_TOUR_NAMES.PAYMENTS_BULK,
-        PAGE_TOUR_STORAGE_KEYS.PAYMENTS_BULK_SHOWN,
-        {
-            enabled: !isConfidential,
-        },
-    );
-    const { triggerTour: triggerPendingTour } = useManualPageTour(
-        PAGE_TOUR_NAMES.PAYMENTS_PENDING,
-        PAGE_TOUR_STORAGE_KEYS.PAYMENTS_PENDING_SHOWN,
-    );
 
     const form = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentFormSchema),
@@ -1377,7 +1358,6 @@ export default function PaymentsPage() {
                     setIntentsAmountMode("recipient");
                     setIsAddressBookRecipientSelected(false);
                     setStep(0);
-                    triggerPendingTour();
                 })
                 .catch((error) => {
                     reportError(error, "payments.createProposal");
@@ -1421,7 +1401,6 @@ export default function PaymentsPage() {
                     sendWarningMessage,
                     recipientNetworkWarningMessage,
                     tokenAutoSelect,
-                    confidentialAggregated: isConfidential,
                     usdValueOverride: quoteAmountUsd,
                 },
             },
@@ -1461,7 +1440,6 @@ export default function PaymentsPage() {
             recipientNetworkWarningMessage,
             tokenAutoSelect,
             quoteContextKey,
-            isConfidential,
             quoteAmountUsd,
         ],
     );

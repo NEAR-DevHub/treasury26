@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Revise seu pagamento",
         "reviewButton": "Revisar pagamento",
         "reviewButtonDisabled": "Insira o valor e o endereço",
+        "reviewButtonEnterRecipient": "Insira o destinatário",
         "comingSoon": "Em breve",
         "bulkPayments": "Pagamentos em massa",
         "summaryRecipients": "para {count, plural, one {# destinatário} other {# destinatários}}",

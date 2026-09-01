@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "审核您的付款",
         "reviewButton": "审核付款",
         "reviewButtonDisabled": "请输入金额和地址",
+        "reviewButtonEnterRecipient": "请输入收款人",
         "comingSoon": "即将推出",
         "bulkPayments": "批量付款",
         "summaryRecipients": "至 {count, plural, other {# 个收款人}}",

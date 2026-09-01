@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Xem lại thanh toán của bạn",
         "reviewButton": "Xem lại thanh toán",
         "reviewButtonDisabled": "Nhập số tiền và địa chỉ",
+        "reviewButtonEnterRecipient": "Nhập người nhận",
         "comingSoon": "Sắp ra mắt",
         "bulkPayments": "Thanh toán hàng loạt",
         "summaryRecipients": "đến {count, plural, other {# người nhận}}",

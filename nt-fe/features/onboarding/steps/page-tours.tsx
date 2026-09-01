@@ -13,12 +13,7 @@ import {
 } from "@/features/onboarding/feature-announcement-queue";
 import { useTreasury } from "@/hooks/use-treasury";
 
-type PageTourKey =
-    | "paymentsBulk"
-    | "paymentsPending"
-    | "exchangeSettings"
-    | "membersPending"
-    | "requestTemplates";
+type PageTourKey = "membersPending" | "requestTemplates";
 
 function PageTourContent({ k }: { k: PageTourKey }) {
     const t = useTranslations("pageTours");
@@ -32,9 +27,6 @@ function PageTourContentRich({ k }: { k: "newFeature" }) {
 
 // Tour names
 export const PAGE_TOUR_NAMES = {
-    PAYMENTS_BULK: "payments-bulk",
-    PAYMENTS_PENDING: "payments-pending",
-    EXCHANGE_SETTINGS: "exchange-settings",
     MEMBERS_PENDING: "members-pending",
     EARN_ANNOUNCEMENT: EARN_ANNOUNCEMENT_TOUR_NAME,
     REQUEST_TEMPLATES: "request-templates",
@@ -46,18 +38,12 @@ export const REQUEST_TEMPLATES_TOUR_NAME = PAGE_TOUR_NAMES.REQUEST_TEMPLATES;
 
 // Local storage keys
 export const PAGE_TOUR_STORAGE_KEYS = {
-    PAYMENTS_BULK_SHOWN: "payments-bulk-tour-shown",
-    PAYMENTS_PENDING_SHOWN: "payments-pending-tour-shown",
-    EXCHANGE_SETTINGS_SHOWN: "exchange-settings-tour-shown",
     MEMBERS_PENDING_SHOWN: "members-pending-tour-shown",
     REQUEST_TEMPLATES_SHOWN: "request-templates-tour-shown",
 } as const;
 
 // Selector IDs
 export const PAGE_TOUR_SELECTORS = {
-    PAYMENTS_BULK_BTN: "#payments-bulk-btn",
-    PAYMENTS_PENDING_BTN: "#payments-pending-btn",
-    EXCHANGE_SETTINGS_BTN: "#exchange-settings-btn",
     MEMBERS_PENDING_BTN: "#members-pending-btn",
     REQUEST_TEMPLATES_NAV: "#request-templates-nav",
 } as const;
@@ -71,24 +57,6 @@ export const EARN_ANNOUNCEMENT = {
     content: <PageTourContentRich k="newFeature" />,
 } as const;
 
-export const PAYMENTS_BULK_ANNOUNCEMENT = {
-    tourName: PAGE_TOUR_NAMES.PAYMENTS_BULK,
-    ctaLabelKey: "newFeatureCta" as const,
-    href: (treasuryId?: string | null) =>
-        treasuryId
-            ? `/${treasuryId}/payments/bulk-payment`
-            : "/payments/bulk-payment",
-} as const;
-
-export const PAYMENTS_PENDING_ANNOUNCEMENT = {
-    tourName: PAGE_TOUR_NAMES.PAYMENTS_PENDING,
-    ctaLabelKey: "newFeatureCta" as const,
-    href: (treasuryId?: string | null) =>
-        treasuryId
-            ? `/${treasuryId}/requests?tab=InProgress`
-            : "/requests?tab=InProgress",
-} as const;
-
 const defaultStepProps = {
     icon: null,
     title: "",
@@ -98,42 +66,6 @@ const defaultStepProps = {
     pointerPadding: 8,
     pointerRadius: 8,
 } as const;
-
-export const PAYMENTS_BULK_TOUR: Tour = {
-    tour: PAGE_TOUR_NAMES.PAYMENTS_BULK,
-    steps: [
-        {
-            ...defaultStepProps,
-            content: <PageTourContent k="paymentsBulk" />,
-            selector: PAGE_TOUR_SELECTORS.PAYMENTS_BULK_BTN,
-            side: "bottom",
-        },
-    ],
-};
-
-export const PAYMENTS_PENDING_TOUR: Tour = {
-    tour: PAGE_TOUR_NAMES.PAYMENTS_PENDING,
-    steps: [
-        {
-            ...defaultStepProps,
-            content: <PageTourContent k="paymentsPending" />,
-            selector: PAGE_TOUR_SELECTORS.PAYMENTS_PENDING_BTN,
-            side: "bottom-right",
-        },
-    ],
-};
-
-export const EXCHANGE_SETTINGS_TOUR: Tour = {
-    tour: PAGE_TOUR_NAMES.EXCHANGE_SETTINGS,
-    steps: [
-        {
-            ...defaultStepProps,
-            content: <PageTourContent k="exchangeSettings" />,
-            selector: PAGE_TOUR_SELECTORS.EXCHANGE_SETTINGS_BTN,
-            side: "bottom-right",
-        },
-    ],
-};
 
 export const MEMBERS_PENDING_TOUR: Tour = {
     tour: PAGE_TOUR_NAMES.MEMBERS_PENDING,
@@ -276,28 +208,4 @@ export function useNewFeatureTour(enabled = true) {
     }, [currentTour, releaseQueueSlot]);
 
     return pageTour;
-}
-
-/**
- * Hook for tours that should only trigger manually (not on mount).
- * Used for the payments pending tour which triggers after form submission.
- */
-export function useManualPageTour(tourName: string, storageKey: string) {
-    const { startNextStep } = useNextStep();
-    const { isGuestTreasury } = useTreasury();
-
-    const triggerTour = useCallback(() => {
-        if (isGuestTreasury) return;
-
-        const alreadyShown = localStorage.getItem(storageKey) === "true";
-        if (alreadyShown) return;
-
-        localStorage.setItem(storageKey, "true");
-        // Delay to let DOM update after form reset
-        setTimeout(() => {
-            startNextStep(tourName);
-        }, 500);
-    }, [isGuestTreasury, storageKey, tourName, startNextStep]);
-
-    return { triggerTour };
 }

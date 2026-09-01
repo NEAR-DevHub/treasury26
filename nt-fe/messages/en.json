@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Review send",
         "reviewButton": "Review send",
         "reviewButtonDisabled": "Enter amount",
+        "reviewButtonEnterRecipient": "Enter recipient",
         "comingSoon": "Coming soon",
         "bulkPayments": "Bulk payment",
         "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",

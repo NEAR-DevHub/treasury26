@@ -1222,6 +1222,7 @@
         "reviewYourPayment": "Ödemenizi İnceleyin",
         "reviewButton": "Ödemeyi İncele",
         "reviewButtonDisabled": "Miktar ve adres girin",
+        "reviewButtonEnterRecipient": "Alıcı girin",
         "comingSoon": "Yakında",
         "bulkPayments": "Toplu Ödemeler",
         "summaryRecipients": "{count, plural, one {# alıcıya} other {# alıcıya}}",

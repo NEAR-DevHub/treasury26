@@ -153,9 +153,11 @@ export function Step2({ handleBack }: StepProps) {
         <ReviewStep reviewingTitle={tEx("review")} handleBack={handleBack}>
             <div className="flex flex-col gap-4">
                 {isLoadingLiveQuote ? (
-                    <div className="relative mb-2 flex flex-col gap-2 sm:flex-row sm:items-stretch sm:justify-center sm:gap-3">
+                    <div className="relative mb-2 flex flex-col gap-2 sm:flex-row sm:items-stretch">
                         <Skeleton className="h-16 w-full rounded-2xl sm:h-40 sm:flex-1" />
-                        <Skeleton className="mx-auto size-8 shrink-0 rounded-lg sm:mx-0" />
+                        <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+                            <Skeleton className="size-8 rounded-lg" />
+                        </div>
                         <Skeleton className="h-16 w-full rounded-2xl sm:h-40 sm:flex-1" />
                     </div>
                 ) : localLiveQuoteData ? (

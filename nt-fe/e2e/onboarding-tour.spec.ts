@@ -328,9 +328,6 @@ async function gotoDashboardFresh(page: Page) {
         localStorage.removeItem("welcome-dismissed");
         localStorage.removeItem("dashboard-tour-completed");
         localStorage.removeItem("info-box-tour-dismissed");
-        localStorage.removeItem("payments-bulk-tour-shown");
-        localStorage.removeItem("payments-pending-tour-shown");
-        localStorage.removeItem("exchange-settings-tour-shown");
         localStorage.removeItem("members-pending-tour-shown");
         localStorage.removeItem("guest-save-tour-shown");
         localStorage.removeItem("new-feature-tour-shown");

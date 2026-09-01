@@ -80,9 +80,6 @@ const BRIDGE_ASSETS = [
 
 async function setupExchangeMocks(page: Page) {
     await seedMockWalletAccount(page, ACCOUNT_ID, "init");
-    await page.addInitScript(() => {
-        localStorage.setItem("exchange-settings-tour-shown:v1", "true");
-    });
 
     await page.route("**/*", async (route) => {
         if (await maybeFulfillMockWalletRequest(route)) return;

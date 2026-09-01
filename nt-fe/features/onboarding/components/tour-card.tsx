@@ -15,11 +15,7 @@ import {
     suppressFeatureAnnouncements,
 } from "@/features/onboarding/feature-announcement-queue";
 import { TOUR_NAMES, SELECTOR_IDS } from "../steps/dashboard";
-import {
-    EARN_ANNOUNCEMENT,
-    PAYMENTS_BULK_ANNOUNCEMENT,
-    PAYMENTS_PENDING_ANNOUNCEMENT,
-} from "../steps/page-tours";
+import { EARN_ANNOUNCEMENT } from "../steps/page-tours";
 
 // Steps that require the sidebar to be open (0-indexed) for different tours
 const SIDEBAR_STEPS_MAP: Record<string, readonly number[]> = {
@@ -37,16 +33,6 @@ const TOUR_ACTIONS = {
         getHref: (treasuryId?: string | null) =>
             EARN_ANNOUNCEMENT.href(treasuryId),
         ctaKey: EARN_ANNOUNCEMENT.ctaLabelKey,
-    },
-    [PAYMENTS_BULK_ANNOUNCEMENT.tourName]: {
-        getHref: (treasuryId?: string | null) =>
-            PAYMENTS_BULK_ANNOUNCEMENT.href(treasuryId),
-        ctaKey: PAYMENTS_BULK_ANNOUNCEMENT.ctaLabelKey,
-    },
-    [PAYMENTS_PENDING_ANNOUNCEMENT.tourName]: {
-        getHref: (treasuryId?: string | null) =>
-            PAYMENTS_PENDING_ANNOUNCEMENT.href(treasuryId),
-        ctaKey: PAYMENTS_PENDING_ANNOUNCEMENT.ctaLabelKey,
     },
 } as const;
 
