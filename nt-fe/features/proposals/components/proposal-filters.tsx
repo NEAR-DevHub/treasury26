@@ -36,6 +36,8 @@ import { CheckboxFilterContent } from "./checkbox-filter-content";
 const PROPOSAL_TYPE_OPTIONS = [
     "Payments",
     "Exchange",
+    "Earn",
+    "Vesting",
     "Function Call",
     "Change Policy",
     "Settings",
@@ -46,6 +48,8 @@ const PROPOSAL_TYPE_OPTIONS = [
 // Payments + Exchange into a single "Confidential" option.
 const CONFIDENTIAL_GUEST_PROPOSAL_TYPE_OPTIONS = [
     "Confidential",
+    "Earn",
+    "Vesting",
     "Function Call",
     "Change Policy",
     "Settings",
@@ -501,6 +505,8 @@ function FilterPill({
                                 `proposalTypes.${v}` as
                                     | "proposalTypes.Payments"
                                     | "proposalTypes.Exchange"
+                                    | "proposalTypes.Earn"
+                                    | "proposalTypes.Vesting"
                                     | "proposalTypes.Function Call"
                                     | "proposalTypes.Change Policy"
                                     | "proposalTypes.Settings"
