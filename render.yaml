@@ -26,7 +26,7 @@ services:
       - key: PORT
         value: 10000
       - key: UNIFIED_GOLD_LEDGER_READS
-        value: "false"
+        sync: false
       - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
         value: 300
       - key: JWT_SECRET
@@ -118,7 +118,7 @@ services:
       - key: PORT
         value: 10000
       - key: UNIFIED_GOLD_LEDGER_READS
-        value: "false"
+        sync: false
       - key: GOLD_USD_ENRICHMENT_INTERVAL_SECONDS
         value: 300
       - key: JWT_SECRET
