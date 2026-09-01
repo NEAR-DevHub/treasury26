@@ -13,7 +13,10 @@ use uuid::Uuid;
 use crate::{
     AppState,
     auth::AuthUser,
-    services::{RegisterMonitoredAccountError, register_or_refresh_monitored_account},
+    services::{
+        NOT_MANAGED_TREASURY_MESSAGE, RegisterMonitoredAccountError, RegistrationMode,
+        register_or_refresh_monitored_account,
+    },
 };
 
 // ---------------------------------------------------------------------------
@@ -216,12 +219,17 @@ pub async fn connect_treasuries(
             state.goldsky_pool.as_ref(),
             dao_id,
             false,
+            RegistrationMode::for_user_action(&state.env_vars),
         )
         .await
         .map_err(|e| match e {
             RegisterMonitoredAccountError::NotSputnikDao => (
                 StatusCode::BAD_REQUEST,
                 format!("Only sputnik-dao accounts can be connected: {}", dao_id),
+            ),
+            RegisterMonitoredAccountError::NotManaged => (
+                StatusCode::NOT_FOUND,
+                format!("{NOT_MANAGED_TREASURY_MESSAGE}: {dao_id}"),
             ),
             RegisterMonitoredAccountError::Db(err) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())

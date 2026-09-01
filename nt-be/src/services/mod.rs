@@ -32,7 +32,8 @@ pub use dao_sync::{
 pub use defillama::DeFiLlamaClient;
 pub use ft_lockup_scheduler::{refresh_ft_lockup_dao_schedules, run_due_ft_lockup_claims};
 pub use monitored_accounts::{
-    MonitoredAccount, RegisterMonitoredAccountError, RegisterMonitoredAccountResult,
+    MonitoredAccount, NOT_MANAGED_TREASURY_MESSAGE, RegisterMonitoredAccountError,
+    RegisterMonitoredAccountResult, RegistrationMode, is_managed_treasury,
     register_or_refresh_monitored_account,
 };
 pub use price_lookup::PriceLookupService;
