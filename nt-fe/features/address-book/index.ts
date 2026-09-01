@@ -30,6 +30,7 @@ export {
     addressBookEntryMatchesNetwork,
     findAddressBookEntry,
     formatAddressBookDisplayAddress,
+    isNearComAddressBookEntry,
     persistAddressBookAddress,
 } from "./utils/find-entry";
 

@@ -74,20 +74,13 @@ export const TokenDisplay = ({
                 </div>
             )}
             {networkImage.showImage && networkIcon && (
-                <div
-                    className={cn(
-                        "absolute -right-1 -bottom-1 flex items-center justify-center rounded-full border bg-muted",
-                        iconSize === "2xl" || iconSize === "3xl"
-                            ? "border-general-border"
-                            : "border-border",
-                    )}
-                >
+                <div className="absolute -right-0 -bottom-0 flex items-center justify-center overflow-hidden rounded-full border-1 border-card bg-card">
                     <img
                         key={networkIcon}
                         src={networkIcon}
                         alt="network"
                         className={cn(
-                            "shrink-0 p-0.5",
+                            "shrink-0 overflow-hidden rounded-full object-cover",
                             networkIconSizeClasses[iconSize],
                         )}
                         onError={networkImage.onError}

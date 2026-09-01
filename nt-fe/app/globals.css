@@ -262,6 +262,9 @@
     --general-info-border: rgb(191, 219, 254);
     --general-info-foreground: rgb(29, 78, 216);
     --general-info-icon: rgb(37, 99, 235);
+    --general-indigo-foreground: rgba(79, 70, 229, 1);
+    --general-indigo-background-faded: rgba(238, 242, 255, 1);
+    --general-indigo-border: rgba(224, 231, 255, 1);
     --general-warning-background-faded: rgb(254, 252, 232);
     --general-warning-border: rgb(254, 240, 138);
     --general-warning-foreground: rgb(161, 98, 7);
@@ -391,6 +394,9 @@
     --general-info-border: rgb(30, 58, 138);
     --general-info-foreground: rgb(147, 197, 253);
     --general-info-icon: rgb(96, 165, 250);
+    --general-indigo-foreground: rgba(129, 140, 248, 1);
+    --general-indigo-background-faded: rgba(30, 27, 75, 1);
+    --general-indigo-border: rgba(49, 46, 129, 1);
     --general-warning-background-faded: rgb(66, 32, 6);
     --general-warning-border: rgb(113, 63, 18);
     --general-warning-foreground: rgb(250, 204, 21);
@@ -526,6 +532,11 @@
     --color-general-info-border: var(--general-info-border);
     --color-general-info-foreground: var(--general-info-foreground);
     --color-general-info-icon: var(--general-info-icon);
+    --color-general-indigo-foreground: var(--general-indigo-foreground);
+    --color-general-indigo-background-faded: var(
+        --general-indigo-background-faded
+    );
+    --color-general-indigo-border: var(--general-indigo-border);
     --color-general-warning-background-faded: var(
         --general-warning-background-faded
     );

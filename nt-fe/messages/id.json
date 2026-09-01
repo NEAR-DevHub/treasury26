@@ -200,8 +200,8 @@
             "description": "Kirim dana dengan aman dan terlindungi."
         },
         "exchange": {
-            "title": "Penukaran",
-            "confidentialTitle": "Penukaran rahasia",
+            "title": "Tukar",
+            "confidentialTitle": "Tukar",
             "description": "Tukar token Anda dengan aman dan efisien"
         },
         "vesting": {
@@ -376,7 +376,6 @@
             "copyLink": "Salin tautan",
             "titleConfidential": "Transfer ke near business",
             "chooseTreasuryTitle": "Pilih Treasury",
-            "chooseTreasuryDescription": "Pembayaran ini berasal dari treasury mana?",
             "noMemberTreasuries": "Anda belum menjadi anggota treasury mana pun.",
             "createTreasury": "Buat treasury",
             "expired": "Kedaluwarsa",
@@ -466,6 +465,7 @@
             "rate": "Kurs",
             "detailsTitle": "Detail",
             "linkedRequest": "Permintaan tertaut",
+            "swapFee": "Biaya swap",
             "sendTransaction": "Transaksi Kirim",
             "bulkTitle": "Detail Transfer Massal",
             "toRecipients": "Ke {count} penerima",
@@ -1233,10 +1233,15 @@
         "useDifferentAddress": "Gunakan alamat berbeda",
         "failed1ClickQuote": "Gagal membuat kuotasi transfer 1Click",
         "paymentSubmitted": "Permintaan untuk mengirim pembayaran telah dikirim",
-        "confidentialTooltip": "Detail penerima dan jumlah yang diminta sepenuhnya rahasia."
+        "confidentialTooltip": "Detail penerima dan jumlah yang diminta sepenuhnya rahasia.",
+        "bulkPaymentsTooltip": "Kirim beberapa pembayaran dalam satu permintaan - tidak perlu menyetujuinya satu per satu.",
+        "destinationNetwork": "Jaringan tujuan",
+        "selectRecipientPlaceholder": "Pilih penerima",
+        "tokenLabel": "Token",
+        "recipientLabel": "Penerima"
     },
     "bulkPayment": {
-        "title": "Pembayaran Massal",
+        "title": "Kirim massal",
         "comingSoonToast": "Pembayaran massal akan segera hadir!",
         "submittingList": "Mengirim daftar pembayaran massal",
         "submittingProposal": "Mengirim usulan",
@@ -1264,7 +1269,6 @@
             "token": "Token",
             "destinationNetwork": "Jaringan tujuan",
             "uploadFileFirst": "Unggah file terlebih dahulu",
-            "exchangeAddressWarning": "Saya memahami bahwa mengirim langsung ke alamat bursa dapat mengakibatkan kehilangan dana atau masalah lainnya.",
             "removeFile": "Hapus file",
             "maxFileSize": "maks 1 file hingga 1.5 MB, hanya file CSV",
             "noFilePrompt": "Tidak punya file untuk diunggah?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "Ubah Pembayaran",
+            "back": "Ubah penerima",
             "saveChanges": "Simpan Perubahan"
         },
         "parsing": {
@@ -1355,13 +1360,13 @@
         "slippageTolerance": "Toleransi Slippage",
         "disabled": {
             "differentTokens": "Token harus berbeda",
-            "enterAmount": "Masukkan jumlah untuk ditukar"
+            "enterAmount": "Masukkan jumlah"
         },
-        "review": "Tinjau Pertukaran",
+        "review": "Tinjau tukar",
         "poweredBy": "Didukung oleh",
         "info": {
             "priceDifference": "Selisih Harga",
-            "priceDifferenceTooltip": "Menunjukkan bagaimana nilai USD yang Anda terima dibandingkan dengan nilai USD yang Anda kirim.",
+            "priceDifferenceTooltip": "Selisih dari harga mid-market.",
             "estimatedTime": "Estimasi Waktu",
             "estimatedTimeValue": "{seconds} detik",
             "estimatedTimeTooltip": "Waktu perkiraan untuk menyelesaikan pertukaran.",
@@ -1372,12 +1377,16 @@
             "depositAddressCopied": "Alamat deposit disalin",
             "quoteExpires": "Kuotasi Berakhir",
             "exchangeFee": "Biaya Pertukaran",
-            "exchangeFeeTooltip": "Biaya 0,70% yang dikenakan di sini menutupi biaya protokol NEAR Intents untuk memfasilitasi perdagangan Anda dan biaya widget Near Business. Jumlah ini secara otomatis dihitung ke dalam nilai tukar yang dikutip Anda."
+            "exchangeFeeTooltip": "Biaya 0,70% di sini mencakup biaya protokol NEAR Intents untuk memfasilitasi perdagangan Anda dan biaya widget Trezu. Jumlah ini sudah dihitung ke dalam kurs yang dikutip."
         },
         "approveWithin24h": "Silakan setujui permintaan ini dalam 24 jam, jika tidak akan kedaluwarsa. Kami sarankan untuk mengonfirmasi sesegera mungkin.",
         "confirmSubmit": "Konfirmasi dan Kirim Permintaan",
         "refreshingIn": "Nilai tukar akan diperbarui dalam {seconds}d",
-        "confidentialTooltip": "Jumlah yang Anda kirim dan terima sepenuhnya rahasia."
+        "confidentialTooltip": "Jumlah yang Anda kirim dan terima sepenuhnya rahasia.",
+        "maxSlippage": "Slippage maks.",
+        "maxSlippageTooltip": "Pengaturan slippage melindungi Anda dari harga akhir yang sangat berbeda dari harga kuotasi. Jika slippage terlampaui, swap akan gagal.",
+        "receiveAtLeast": "Terima setidaknya",
+        "receiveAtLeastTooltip": "Jumlah kuotasi adalah perkiraan. Beberapa solver bersaing untuk memberi harga terbaik. Slippage maksimum menjamin jumlah minimum — jika tidak terpenuhi, transaksi dibatalkan."
     },
     "vesting": {
         "validation": {
@@ -1460,7 +1469,7 @@
         "financialThreshold": "Ambang Finansial",
         "governanceThreshold": "Ambang Governance",
         "noDeploymentFee": "🎉 Tanpa biaya deployment",
-        "noDeploymentFeeDescription": "Untuk mendukung proyek baru, TREZU menanggung semua biaya deployment dan penyimpanan jaringan satu kali.",
+        "noDeploymentFeeDescription": "Untuk mendukung proyek baru, Near Business menanggung semua biaya deployment dan penyimpanan jaringan satu kali.",
         "connectWalletCreate": "Hubungkan Dompet Untuk Membuat Treasury",
         "walletNotSupportedTitle": "{wallet} belum didukung",
         "walletNotSupportedDescription": "Kami akan menambahkannya nanti. Sementara itu, masuklah dengan NEAR, Ledger, atau dompet EVM yang sudah Anda miliki.",
@@ -1496,7 +1505,7 @@
                 "recoveryLabel": "Pemulihan:",
                 "recoveryText": "Apa pun yang Anda pilih, kami sarankan menambahkan anggota kedua (wallet) setelah setup agar perangkat yang hilang tidak membuat Anda terkunci.",
                 "passkeyNew": "Baru",
-                "passkeyDomainNote": "Passkey Anda disimpan untuk trezu.app di perangkat ini (atau disinkronkan melalui iCloud/Google). Passkey ini tidak dapat digunakan di aplikasi lain, dan passkey aplikasi lain tidak dapat mengakses Near Business."
+                "passkeyDomainNote": "Passkey Anda disimpan untuk Near Business di perangkat ini (atau disinkronkan melalui iCloud/Google). Passkey ini tidak dapat digunakan di aplikasi lain, dan passkey aplikasi lain tidak dapat mengakses Near Business."
             },
             "passkeyCardTitle": "Passkey untuk Touch ID dan Face ID",
             "passkeyCardSubtitle": "Masuk dengan biometrik atau kode sandi perangkat Anda",
@@ -1669,7 +1678,7 @@
         "available": "{count} Tersedia",
         "used": "{count} Terpakai",
         "exhaustedBody": "Tim Anda telah mencapai tindakan tersponsor bulanan. Anda dapat melanjutkan setelah {date} atau hubungi kami",
-        "almostBody": "TREZU saat ini mensponsori biaya penyimpanan untuk semua tindakan tim, seperti membuat permintaan dan memilih atasnya. Tim Anda hampir mencapai batas tersponsor bulanan.",
+        "almostBody": "Near Business saat ini mensponsori biaya penyimpanan untuk semua tindakan tim, seperti membuat permintaan dan memilih atasnya. Tim Anda hampir mencapai batas tersponsor bulanan.",
         "contactUs": "Hubungi Kami",
         "nextMonthlyReset": "pengaturan ulang bulanan berikutnya",
         "sidebarBody": "Tim Anda telah mencapai tindakan tersponsor bulanan. Anda dapat melanjutkan setelah {date} atau ⬇️"
@@ -1898,6 +1907,18 @@
     "paymentFormSection": {
         "selectRecipient": "Pilih Penerima",
         "searchByNameOrAddress": "Cari berdasarkan nama atau alamat",
+        "noContactsForNetwork": "Anda belum membuat kontak untuk jaringan {network}.",
+        "noContacts": "Anda belum memiliki kontak.",
+        "contacts": "Kontak",
+        "invalidAddress": "Silakan masukkan alamat yang valid",
+        "scanQrCode": "Pindai kode QR",
+        "scanQrCodeDescription": "Gunakan kamera untuk mengisi alamat penerima",
+        "qrScanTitle": "Pindai kode QR",
+        "qrScanHint": "Arahkan kamera Anda ke kode QR penerima.",
+        "qrBackToRecipientList": "Kembali ke daftar penerima",
+        "qrCameraPermissionDenied": "Akses kamera diperlukan untuk memindai kode QR. Aktifkan di pengaturan browser Anda dan coba lagi.",
+        "qrCameraUnsupported": "Browser ini tidak dapat mengakses kamera untuk pemindaian QR.",
+        "qrCameraStarting": "Memulai kamera…",
         "restrictedRecipientTitle": "Transaksi tidak diizinkan",
         "restrictedRecipientMessage": "Alamat ini saat ini dibatasi karena pemeriksaan keamanan. Jika Anda yakin alamat ini harus diizinkan, Anda dapat <link>meminta untuk memasukkannya ke daftar putih</link>.",
         "send": "Kirim",
@@ -1916,9 +1937,9 @@
         "incompatible": "Tidak Kompatibel",
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
-        "nearComDescription": "Jaringan untuk trezu rahasia",
-        "nearComDescriptionPublic": "Jaringan untuk near.com",
-        "nearDescription": "Jaringan untuk penarikan publik"
+        "nearComDescription": "Jaringan untuk Near Business dan near.com",
+        "nearDescription": "Jaringan untuk penarikan publik",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",
@@ -1961,7 +1982,8 @@
     },
     "selectModal": {
         "searchByName": "Cari berdasarkan nama",
-        "noResults": "Tidak ada hasil ditemukan"
+        "noResults": "Tidak ada hasil ditemukan",
+        "back": "Kembali"
     },
     "selectList": {
         "noResults": "Tidak ada hasil ditemukan"
@@ -1993,18 +2015,19 @@
         "description": "Hanya anggota treasury yang memiliki akses."
     },
     "exchangeRate": {
-        "rate": "Nilai Tukar",
+        "rate": "Nilai tukar",
         "clickToReverse": "Klik untuk membalik nilai tukar"
     },
     "exchangeSettings": {
-        "title": "Pengaturan Pertukaran",
+        "title": "Slippage",
         "slippageTolerance": "Toleransi Slippage",
-        "custom": "Kustom",
+        "custom": "Kustom %",
         "customPlaceholder": "mis.: 2%",
         "slippageRange": "Slippage harus antara 0,01% dan 100%",
         "enterSlippage": "Silakan masukkan toleransi slippage",
         "slippageHelp": "Jika harga berubah lebih dari persentase ini, transaksi akan dibatalkan untuk melindungi dana Anda.",
-        "save": "Simpan"
+        "save": "Simpan",
+        "description": "Pengaturan slippage melindungi Anda dari harga akhir yang sangat berbeda dari harga kuotasi. Jika slippage terlampaui, transaksi akan dibatalkan. Di bawah ini jumlah minimum yang dijamin."
     },
     "assetsPage": {
         "title": "Aset",
@@ -2113,7 +2136,7 @@
     "tokenSelectDialog": {
         "selectToken": "Pilih token",
         "selectAsset": "Pilih Aset",
-        "selectNetworkFor": "Pilih jaringan untuk {asset}",
+        "selectNetwork": "Pilih jaringan",
         "searchByName": "Cari berdasarkan nama",
         "noTokensWithBalance": "Tidak ada token dengan saldo ditemukan",
         "noTokensFound": "Tidak ada token ditemukan",
@@ -2187,10 +2210,12 @@
         "votesSubmitted": "Suara Anda telah dikirim"
     },
     "tokenInput": {
+        "useMax": "Gunakan maks",
         "max": "MAX",
-        "insufficientTokens": "Token tidak mencukupi. Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
+        "insufficientTokens": "Saldo tidak mencukupi. Isi saldo sebelum persetujuan.",
         "insufficientTokensForFee": "Token tidak cukup untuk menutupi biaya jaringan ({fee} {symbol}). Anda dapat mengirim permintaan dan menambah saldo sebelum persetujuan.",
-        "balance": "Saldo: {amount} {symbol}"
+        "balance": "Saldo: {amount} {symbol}",
+        "balanceLabel": "Saldo"
     },
     "createRequestButton": {
         "idle": "Buat Permintaan",

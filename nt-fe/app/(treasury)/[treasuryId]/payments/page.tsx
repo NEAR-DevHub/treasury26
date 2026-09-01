@@ -2,9 +2,8 @@
 
 import { Icon } from "@/components/icon";
 import {
-    ArrowDown03Icon,
     InformationCircleIcon,
-    Shield01Icon,
+    UserGroup03Icon,
 } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -17,24 +16,26 @@ import { z } from "zod";
 import { Address } from "@/components/address";
 import { AmountSummary } from "@/components/amount-summary";
 import { Button } from "@/components/button";
-import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { FormattedAmount } from "@/components/formatted-amount";
+import { Input } from "@/components/input";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { PendingButton } from "@/components/pending-button";
 import {
     ReviewStep,
     type StepProps,
-    StepperHeader,
     StepWizard,
 } from "@/components/step-wizard";
-import { Textarea } from "@/components/textarea";
+import { getNetworkDisplayName } from "@/components/token-display";
 import { TokenDisplay } from "@/components/token-display-with-network";
 import { type Token, tokenSchema } from "@/components/token-input";
 import { Tooltip } from "@/components/tooltip";
 import { Form, FormField } from "@/components/ui/form";
 import { SlotWarning } from "@/components/warning-message";
-import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
+import {
+    NEAR_COM_NETWORK_ID,
+    NEAR_COM_NETWORK_NAME,
+    NEAR_NETWORK_ID,
+} from "@/constants/network-ids";
 import { default_near_token, default_usdc_near_token } from "@/constants/token";
 import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import {
@@ -49,7 +50,6 @@ import {
     type IntentsAmountMode,
     useIntentsQuote,
 } from "@/hooks/use-intents-quote";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import {
@@ -69,7 +69,12 @@ import {
     isIntentsCrossChainToken,
     isIntentsToken,
 } from "@/lib/intents-fee";
-import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import {
+    getNearComChainIcons,
+    getNetworkDisplayCaseClass,
+    isNearComNetwork,
+} from "@/lib/intents-network";
+import { reportError } from "@/lib/report-error";
 import {
     buildIntentsTransferProposal,
     buildNativeNearIntentsKind,
@@ -109,6 +114,7 @@ function buildPaymentFormSchema(messages: {
     amountGreaterThanZero: string;
     recipientSameAsToken: string;
     selectToken: string;
+    invalidAddress: string;
 }) {
     return z
         .object({
@@ -143,6 +149,16 @@ function buildPaymentFormSchema(messages: {
                     message: messages.recipientSameAsToken,
                 });
             }
+            if (
+                isNearComNetwork(data.destinationNetwork) &&
+                !isNearComRecipientAddress(data.address)
+            ) {
+                ctx.addIssue({
+                    code: "custom",
+                    path: ["address"],
+                    message: messages.invalidAddress,
+                });
+            }
         });
 }
 
@@ -163,6 +179,10 @@ interface Step1Props extends StepProps {
     recipientNetworkWarningMessage?: string | null;
     /** False when the page seeds token from ?token= / ?networks=. */
     tokenAutoSelect?: boolean;
+    confidentialAggregated?: boolean;
+    balanceOverrideRaw?: string | null;
+    /** Live quote USD to confirm price→token conversion in the amount field. */
+    usdValueOverride?: number | null;
 }
 
 function Step1({
@@ -182,15 +202,15 @@ function Step1({
     sendWarningMessage = null,
     recipientNetworkWarningMessage = null,
     tokenAutoSelect = true,
+    confidentialAggregated = false,
+    balanceOverrideRaw = null,
+    usdValueOverride = null,
 }: Step1Props) {
     const tPay = useTranslations("payments");
     const tCreate = useTranslations("createRequestButton");
     const form = useFormContext<PaymentFormValues>();
-    const { treasuryId, isConfidential, isGuestTreasury } = useTreasury();
-    const isMobile = useMediaQuery("(max-width: 768px)");
     const address = form.watch("address");
     const amount = form.watch("amount");
-    const showConfidentialShield = isConfidential && !isGuestTreasury;
 
     const handleSave = async () => {
         // Validate and proceed to next step
@@ -217,86 +237,32 @@ function Step1({
     return (
         <>
             <SlotWarning slot="payments" />
-            <PageCard>
-                <div className="flex justify-between items-center">
-                    <StepperHeader
-                        title={
-                            showConfidentialShield ? (
-                                <span className="inline-flex items-center gap-1.5">
-                                    <span>{tPay("title")}</span>
-                                    <Tooltip
-                                        content={tPay("confidentialTooltip")}
-                                    >
-                                        <span className="inline-flex">
-                                            <Icon
-                                                icon={Shield01Icon}
-                                                className="fill-foreground"
-                                            />
-                                        </span>
-                                    </Tooltip>
-                                </span>
-                            ) : (
-                                tPay("title")
-                            )
-                        }
-                    />
-                    <div className="flex items-center gap-2">
-                        {/* Bulk payments are available for confidential
-                            treasuries too: the bulk-payment page guides
-                            through one-time activation when the confidential
-                            bulk access key isn't registered yet. */}
-                        <Link href={`/${treasuryId}/payments/bulk-payment`}>
-                            <Button
-                                variant="ghost"
-                                size={isMobile ? "icon" : "default"}
-                                className="flex items-center gap-2 border-2"
-                                id="payments-bulk-btn"
-                                onClick={() => {
-                                    trackEvent("bulk-payments-click", {
-                                        source: "payments_page",
-                                        treasury_id: treasuryId ?? "",
-                                    });
-                                }}
-                            >
-                                <Icon icon={ArrowDown03Icon} />
-                                <span className="hidden md:block">
-                                    {tPay("bulkPayments")}
-                                </span>
-                            </Button>
-                        </Link>
-                        <PendingButton
-                            id="payments-pending-btn"
-                            types={["Payments"]}
-                        />
-                    </div>
-                </div>
-
-                <PaymentFormSection
-                    control={form.control}
-                    amountName="amount"
-                    tokenName="token"
-                    recipientName="address"
-                    destinationNetworkName="destinationNetwork"
-                    destinationNetworkNameFieldName="destinationNetworkName"
-                    feeErrorMessage={feeErrorMessage || quoteErrorMessage}
-                    networkFee={networkFee}
-                    showRestrictedRecipientAlert={!!hasRestrictedRecipientError}
-                    saveButtonText={saveButtonText}
-                    slotBlocked={paymentsSlotBlocked}
-                    onSave={handleSave}
-                    isSubmitting={isFeeLoading}
-                    onAmountInput={onAmountInput}
-                    onMaxSet={onMaxSet}
-                    onAddressBookSelectionChange={onAddressBookSelectionChange}
-                    bridgeAssets={bridgeAssets}
-                    isBridgeAssetsLoading={isBridgeAssetsLoading}
-                    sendWarningMessage={sendWarningMessage}
-                    recipientNetworkWarningMessage={
-                        recipientNetworkWarningMessage
-                    }
-                    tokenAutoSelect={tokenAutoSelect}
-                />
-            </PageCard>
+            <PaymentFormSection
+                control={form.control}
+                amountName="amount"
+                tokenName="token"
+                recipientName="address"
+                destinationNetworkName="destinationNetwork"
+                destinationNetworkNameFieldName="destinationNetworkName"
+                feeErrorMessage={feeErrorMessage || quoteErrorMessage}
+                networkFee={networkFee}
+                showRestrictedRecipientAlert={!!hasRestrictedRecipientError}
+                saveButtonText={saveButtonText}
+                slotBlocked={paymentsSlotBlocked}
+                onSave={handleSave}
+                isSubmitting={isFeeLoading}
+                onAmountInput={onAmountInput}
+                onMaxSet={onMaxSet}
+                onAddressBookSelectionChange={onAddressBookSelectionChange}
+                bridgeAssets={bridgeAssets}
+                isBridgeAssetsLoading={isBridgeAssetsLoading}
+                sendWarningMessage={sendWarningMessage}
+                recipientNetworkWarningMessage={recipientNetworkWarningMessage}
+                tokenAutoSelect={tokenAutoSelect}
+                confidentialAggregated={confidentialAggregated}
+                balanceOverrideRaw={balanceOverrideRaw}
+                usdValueOverride={usdValueOverride}
+            />
         </>
     );
 }
@@ -344,66 +310,66 @@ function Step2({
     const { data: addressBook = [] } = useAddressBook();
     const contactName = findAddressBookEntry(addressBook, address)?.name;
 
-    const {
-        totalAmountWithFees,
-        recipientAmount,
-        displayNetworkFee,
-        estimatedUSDValue,
-        recipientEstimatedUSDValue,
-    } = useMemo(() => {
-        if (!token) {
+    const { recipientAmount, displayNetworkFee, recipientEstimatedUSDValue } =
+        useMemo(() => {
+            if (!token) {
+                return {
+                    totalAmountWithFees: Big(0),
+                    recipientAmount: Big(0),
+                    displayNetworkFee: Big(0),
+                    estimatedUSDValue: null,
+                    recipientEstimatedUSDValue: null,
+                };
+            }
+
+            const enteredAmount = decimalOrNull(amount) ?? Big(0);
+            const price = decimalOrNull(tokenData?.price);
+
+            if (liveQuote?.quote) {
+                const quotedTotal =
+                    decimalFromBaseUnitsOrNull(
+                        liveQuote.quote.amountIn || liveQuote.quote.minAmountIn,
+                        token.decimals,
+                    ) ??
+                    decimalOrNull(liveQuote.quote.amountInFormatted) ??
+                    Big(0);
+                const quotedRecipient =
+                    decimalOrNull(liveQuote.quote.amountOutFormatted) ??
+                    decimalFromBaseUnitsOrNull(
+                        liveQuote.quote.amountOut ||
+                            liveQuote.quote.minAmountOut,
+                        token.decimals,
+                    ) ??
+                    Big(0);
+                const feeValue =
+                    decimalOrNull(computeQuoteNetworkFee(liveQuote.quote)) ??
+                    Big(0);
+
+                return {
+                    totalAmountWithFees: quotedTotal,
+                    recipientAmount: quotedRecipient,
+                    displayNetworkFee: feeValue,
+                    estimatedUSDValue:
+                        decimalOrNull(liveQuote.quote.amountInUsd) ??
+                        (price?.gt(0) ? quotedTotal.mul(price) : null),
+                    recipientEstimatedUSDValue:
+                        decimalOrNull(liveQuote.quote.amountOutUsd) ??
+                        (price?.gt(0) ? quotedRecipient.mul(price) : null),
+                };
+            }
+
             return {
-                totalAmountWithFees: Big(0),
-                recipientAmount: Big(0),
+                totalAmountWithFees: enteredAmount,
+                recipientAmount: enteredAmount,
                 displayNetworkFee: Big(0),
-                estimatedUSDValue: null,
-                recipientEstimatedUSDValue: null,
-            };
-        }
-
-        const enteredAmount = decimalOrNull(amount) ?? Big(0);
-        const price = decimalOrNull(tokenData?.price);
-
-        if (liveQuote?.quote) {
-            const quotedTotal =
-                decimalFromBaseUnitsOrNull(
-                    liveQuote.quote.amountIn || liveQuote.quote.minAmountIn,
-                    token.decimals,
-                ) ??
-                decimalOrNull(liveQuote.quote.amountInFormatted) ??
-                Big(0);
-            const quotedRecipient =
-                decimalOrNull(liveQuote.quote.amountOutFormatted) ??
-                decimalFromBaseUnitsOrNull(
-                    liveQuote.quote.amountOut || liveQuote.quote.minAmountOut,
-                    token.decimals,
-                ) ??
-                Big(0);
-            const feeValue =
-                decimalOrNull(computeQuoteNetworkFee(liveQuote.quote)) ??
-                Big(0);
-
-            return {
-                totalAmountWithFees: quotedTotal,
-                recipientAmount: quotedRecipient,
-                displayNetworkFee: feeValue,
-                estimatedUSDValue: price?.gt(0) ? quotedTotal.mul(price) : null,
+                estimatedUSDValue: price?.gt(0)
+                    ? enteredAmount.mul(price)
+                    : null,
                 recipientEstimatedUSDValue: price?.gt(0)
-                    ? quotedRecipient.mul(price)
+                    ? enteredAmount.mul(price)
                     : null,
             };
-        }
-
-        return {
-            totalAmountWithFees: enteredAmount,
-            recipientAmount: enteredAmount,
-            displayNetworkFee: Big(0),
-            estimatedUSDValue: price?.gt(0) ? enteredAmount.mul(price) : null,
-            recipientEstimatedUSDValue: price?.gt(0)
-                ? enteredAmount.mul(price)
-                : null,
-        };
-    }, [amount, liveQuote, token, tokenData?.price]);
+        }, [amount, liveQuote, token, tokenData?.price]);
 
     const isQuoteLoading =
         isViaIntents && (isLoadingLiveQuote || isFetchingLiveQuote);
@@ -411,135 +377,158 @@ function Step2({
     if (!token) return null;
 
     return (
-        <PageCard>
+        <div className="flex flex-col gap-4">
             <ReviewStep
                 reviewingTitle={tPay("reviewYourPayment")}
                 handleBack={handleBack}
             >
                 <AmountSummary
-                    total={totalAmountWithFees}
-                    totalUSD={estimatedUSDValue}
+                    total={recipientAmount}
+                    totalUSD={recipientEstimatedUSDValue}
                     token={token}
+                    title=""
                     showNetworkIcon={true}
-                >
-                    <p>{tPay("summaryRecipients", { count: 1 })}</p>
-                </AmountSummary>
-                <div className="flex flex-col gap-2">
-                    <div className="flex flex-col gap-1 w-full">
-                        <div className="flex justify-between items-center gap-2 w-full text-xs">
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                                {contactName && (
-                                    <p className="font-semibold">
-                                        {contactName}
-                                    </p>
-                                )}
-                                <Address
-                                    address={address}
-                                    className={cn(
-                                        contactName
-                                            ? "text-muted-foreground"
-                                            : "font-semibold",
-                                    )}
-                                />
-                            </div>
-                            <div className="flex items-center gap-5 min-w-fit">
+                    chainIcons={destinationChainIcons ?? token.chainIcons}
+                />
+                <div className="flex w-full flex-col gap-4 mt-2">
+                    <div className="flex w-full items-start justify-between gap-2">
+                        <div className="flex min-w-0 flex-col gap-0.5">
+                            {contactName && (
+                                <p className="text-sm font-semibold leading-normal text-general-foreground">
+                                    {contactName}
+                                </p>
+                            )}
+                            <Address
+                                address={address}
+                                prefixLength={6}
+                                suffixLength={6}
+                                className="text-sm font-semibold leading-normal text-general-foreground"
+                            />
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+                            <div className="flex items-center gap-1.5">
                                 <TokenDisplay
                                     icon={token.icon}
                                     symbol={token.symbol}
-                                    chainIcons={
-                                        destinationChainIcons ??
-                                        token.chainIcons ??
-                                        undefined
-                                    }
+                                    iconSize="md"
+                                    className="shrink-0"
                                 />
-                                <div className="flex flex-col gap-[3px] items-end">
-                                    <p className="text-xs font-semibold text-wrap break-all">
-                                        <FormattedAmount
-                                            kind="token"
-                                            value={recipientAmount}
-                                            symbol={token.symbol}
-                                            tokenDecimals={token.decimals}
-                                            unitPriceUsd={tokenData?.price}
-                                            profile="standard"
-                                        />
-                                    </p>
-                                    {recipientEstimatedUSDValue ? (
-                                        <p className="text-xxs text-muted-foreground text-wrap break-all">
-                                            ≈{" "}
-                                            <FormattedAmount
-                                                kind="fiat"
-                                                value={
-                                                    recipientEstimatedUSDValue
-                                                }
-                                            />
-                                        </p>
-                                    ) : null}
-                                </div>
-                            </div>
-                        </div>
-                        {isViaIntents && displayNetworkFee.gt(0) && (
-                            <div className="flex items-center justify-between gap-2 text-sm my-3">
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                    <p>{tPay("networkFee")}</p>
-                                    <Tooltip
-                                        content={tIntents("networkFeeTooltip")}
-                                        side="top"
-                                    >
-                                        <Icon
-                                            icon={InformationCircleIcon}
-                                            className="shrink-0"
-                                            aria-label={tPay("networkFeeInfo")}
-                                        />
-                                    </Tooltip>
-                                </div>
-                                <p>
+                                <span className="text-sm font-semibold leading-normal text-general-foreground">
                                     <FormattedAmount
                                         kind="token"
-                                        value={displayNetworkFee}
+                                        value={recipientAmount}
                                         symbol={token.symbol}
                                         tokenDecimals={token.decimals}
                                         unitPriceUsd={tokenData?.price}
                                         profile="standard"
-                                        rounding="up"
+                                    />
+                                </span>
+                            </div>
+                            {recipientEstimatedUSDValue ? (
+                                <p className="whitespace-nowrap text-xs font-normal leading-4 text-general-secondary-foreground">
+                                    ≈{" "}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={recipientEstimatedUSDValue}
                                     />
                                 </p>
-                            </div>
-                        )}
-                        <FormField
-                            control={form.control}
-                            name="memo"
-                            render={({ field }) => (
-                                <Textarea
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    borderless
-                                    rows={2}
-                                    placeholder={tPay("commentPlaceholder")}
-                                />
-                            )}
-                        />
+                            ) : null}
+                        </div>
                     </div>
+
+                    {destinationNetwork ? (
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium leading-normal text-general-secondary-foreground">
+                                {tPay("destinationNetwork")}
+                            </p>
+                            <div className="flex items-center gap-1.5">
+                                {destinationChainIcons?.icon ? (
+                                    <img
+                                        src={destinationChainIcons.icon}
+                                        alt=""
+                                        className="size-3.5 overflow-hidden rounded-full object-cover"
+                                    />
+                                ) : null}
+                                <span
+                                    className={cn(
+                                        "text-sm font-semibold leading-normal text-general-foreground",
+                                        getNetworkDisplayCaseClass(
+                                            destinationNetwork,
+                                        ),
+                                    )}
+                                >
+                                    {isNearComNetwork(destinationNetwork)
+                                        ? NEAR_COM_NETWORK_NAME
+                                        : getNetworkDisplayName(
+                                              form.getValues(
+                                                  "destinationNetworkName",
+                                              ) || destinationNetwork,
+                                          )}
+                                </span>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {isViaIntents && displayNetworkFee.gt(0) && (
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                                <p>{tPay("networkFee")}</p>
+                                <Tooltip
+                                    content={tIntents("networkFeeTooltip")}
+                                    side="top"
+                                >
+                                    <Icon
+                                        icon={InformationCircleIcon}
+                                        className="shrink-0"
+                                        aria-label={tPay("networkFeeInfo")}
+                                    />
+                                </Tooltip>
+                            </div>
+                            <p>
+                                <FormattedAmount
+                                    kind="token"
+                                    value={displayNetworkFee}
+                                    symbol={token.symbol}
+                                    tokenDecimals={token.decimals}
+                                    unitPriceUsd={tokenData?.price}
+                                    profile="standard"
+                                    rounding="up"
+                                />
+                            </p>
+                        </div>
+                    )}
+
+                    <FormField
+                        control={form.control}
+                        name="memo"
+                        render={({ field }) => (
+                            <Input
+                                value={field.value}
+                                onChange={field.onChange}
+                                placeholder={tPay("commentPlaceholder")}
+                                inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary! focus-visible:border-general-border focus-visible:ring-0"
+                            />
+                        )}
+                    />
                 </div>
             </ReviewStep>
 
-            <div className="rounded-lg border bg-card p-0 overflow-hidden">
-                <CreateRequestButton
-                    isSubmitting={form.formState.isSubmitting || isQuoteLoading}
-                    type="submit"
-                    className="w-full h-10 rounded-none"
-                    permissions={[
-                        { kind: "transfer", action: "AddProposal" },
-                        { kind: "call", action: "AddProposal" },
-                    ]}
-                    idleMessage={
-                        isQuoteLoading
-                            ? tPay("preparingRoute")
-                            : tPay("confirmSubmit")
-                    }
-                    disabled={isQuoteLoading}
-                />
-            </div>
-        </PageCard>
+            <CreateRequestButton
+                isSubmitting={form.formState.isSubmitting || isQuoteLoading}
+                type="submit"
+                className="w-full h-11 rounded-2xl"
+                permissions={[
+                    { kind: "transfer", action: "AddProposal" },
+                    { kind: "call", action: "AddProposal" },
+                ]}
+                idleMessage={
+                    isQuoteLoading
+                        ? tPay("preparingRoute")
+                        : tPay("confirmSubmit")
+                }
+                disabled={isQuoteLoading}
+            />
+        </div>
     );
 }
 
@@ -609,6 +598,7 @@ export default function PaymentsPage() {
     const t = useTranslations("pages.payments");
     const tPay = useTranslations("payments");
     const tValidation = useTranslations("paymentForm.validation");
+    const tFormSection = useTranslations("paymentFormSection");
     const paymentFormSchema = useMemo(
         () =>
             buildPaymentFormSchema({
@@ -617,11 +607,12 @@ export default function PaymentsPage() {
                 amountGreaterThanZero: tValidation("amountGreaterThanZero"),
                 recipientSameAsToken: tValidation("recipientSameAsToken"),
                 selectToken: tValidation("selectToken"),
+                invalidAddress: tFormSection("invalidAddress"),
             }),
-        [tValidation],
+        [tValidation, tFormSection],
     );
     const { treasuryId, isConfidential } = useTreasury();
-    const pageTitle = isConfidential ? t("confidentialTitle") : t("title");
+    const pageTitle = t("title");
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [step, setStep] = useState(0);
@@ -941,6 +932,19 @@ export default function PaymentsPage() {
         return fee ? fee.replaceAll(",", "") : null;
     }, [liveQuote]);
 
+    // Quote USD confirms the price→token conversion shown in the amount field.
+    // EXACT_OUTPUT (typed amount) → amountOutUsd; EXACT_INPUT (MAX) → amountInUsd.
+    const quoteAmountUsd = useMemo(() => {
+        const quote = liveQuote?.quote;
+        if (!quote) return null;
+        const raw =
+            intentsAmountMode === "total"
+                ? quote.amountInUsd
+                : quote.amountOutUsd;
+        const n = Number(raw);
+        return Number.isFinite(n) && n > 0 ? n : null;
+    }, [liveQuote, intentsAmountMode]);
+
     // Typed amounts treat fee as additive; MAX (EXACT_INPUT) already includes it.
     const balanceCheckNetworkFee =
         intentsAmountMode === "total" ? null : paymentNetworkFee;
@@ -993,21 +997,8 @@ export default function PaymentsPage() {
         if (!watchedToken) return null;
 
         const rawAddress = (watchedAddress ?? "").trim();
-        // nearcom: + any valid NEAR format (incl. eth-implicit 0x…).
-        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
-
-        // Only auto-destination: nearcom:<near> → near.com (public + confidential).
-        // Plain NEAR / eth / etc. keep the original picker compatibility path
-        // (no force-to-near).
-        if (isNearComRecipient) {
-            return {
-                id: NEAR_COM_NETWORK_ID,
-                networkName: NEAR_NETWORK_ID,
-            };
-        }
 
         // Soft Ft / native NEAR → NEAR destination when recipient is empty.
-        // Never soft-seed near.com (including prefersNearCom / confidential).
         if (isFtNetworkPrefill || isNativeNearPrefill) {
             if (rawAddress) return null;
             return nearChainDestination();
@@ -1016,27 +1007,29 @@ export default function PaymentsPage() {
         // Multiple soft chain prefs (address book) — leave destination empty.
         if (hasAmbiguousSoftNetworks) return null;
 
-        // Soft multi-chain prefs: only when recipient is empty. Typing an
-        // address must not keep re-resolving preferred destination.
+        // Soft prefs only fill an empty destination.
         if (rawAddress) return null;
 
-        if (preferredNetworks.length === 0 || bridgeAssets.length === 0) {
-            return null;
+        if (preferredNetworks.length === 0) return null;
+
+        const preferredNearCom = preferredNetworks.find(
+            (network) => network.trim().toLowerCase() === NEAR_COM_NETWORK_ID,
+        );
+        if (preferredNearCom) {
+            return {
+                id: NEAR_COM_NETWORK_ID,
+                networkName: NEAR_NETWORK_ID,
+            };
         }
 
-        // `networks=near.com` alone is not a bridge id — near.com is selected
-        // only via a nearcom: address (above).
-        const bridgePreferred = preferredNetworks.filter(
-            (network) => network.trim().toLowerCase() !== NEAR_COM_NETWORK_ID,
-        );
-        if (bridgePreferred.length === 0) return null;
+        if (bridgeAssets.length === 0) return null;
 
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
 
         return resolvePreferredDestinationNetwork(
             bridgeAsset,
-            bridgePreferred,
+            preferredNetworks,
             preferredBlockchainTypes,
         );
     }, [
@@ -1132,26 +1125,8 @@ export default function PaymentsPage() {
     }, [urlOverrideToken, form, tokenParam, preferredNetworks.length]);
 
     useEffect(() => {
-        const rawAddress = (watchedAddress ?? "").trim();
-        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
-
-        // Drop stale near.com when the address is no longer nearcom:<near>.
-        if (
-            isNearComNetwork(watchedDestinationNetwork) &&
-            !isNearComRecipient
-        ) {
-            form.setValue("destinationNetwork", "", { shouldDirty: true });
-            form.setValue("destinationNetworkName", "", { shouldDirty: true });
-            return;
-        }
-
         if (!compatibleDestinationId || !compatibleDestinationName) return;
-        if (watchedDestinationNetwork === compatibleDestinationId) return;
-
-        // Soft/URL prefs only fill an empty destination. nearcom: may overwrite.
-        if (!isNearComRecipient && watchedDestinationNetwork) {
-            return;
-        }
+        if (watchedDestinationNetwork) return;
 
         form.setValue("destinationNetwork", compatibleDestinationId, {
             shouldDirty: true,
@@ -1164,8 +1139,53 @@ export default function PaymentsPage() {
         compatibleDestinationName,
         form,
         watchedDestinationNetwork,
-        watchedAddress,
     ]);
+
+    // One snapshot for token + destination so the two clears cannot race.
+    // Token change always wipes; a follow-up auto-seed (`"" → dest`) does not.
+    const prevClearSnapshotRef = useRef<{
+        tokenKey: string;
+        destination: string;
+    } | null>(null);
+
+    useEffect(() => {
+        const tokenKey = watchedToken
+            ? `${watchedToken.address}:${watchedToken.residency ?? ""}:${watchedToken.network ?? ""}`
+            : "";
+        const destination = watchedDestinationNetwork || "";
+
+        if (prevClearSnapshotRef.current === null) {
+            prevClearSnapshotRef.current = { tokenKey, destination };
+            return;
+        }
+
+        const previous = prevClearSnapshotRef.current;
+        const tokenChanged = previous.tokenKey !== tokenKey;
+        const destChanged = previous.destination !== destination;
+        if (!tokenChanged && !destChanged) return;
+
+        if (tokenChanged) {
+            form.setValue("address", "", { shouldDirty: true });
+            form.setValue("amount", "", { shouldDirty: true });
+            form.clearErrors(["address", "amount", "destinationNetwork"]);
+            setIsAddressBookRecipientSelected(false);
+            setIntentsAmountMode("recipient");
+            // Treat the next dest write as a seed, not a user pick.
+            prevClearSnapshotRef.current = { tokenKey, destination: "" };
+            return;
+        }
+
+        prevClearSnapshotRef.current = { tokenKey, destination };
+
+        // Initial / post-token auto-seed: "" → first destination.
+        if (!previous.destination && destination) return;
+
+        form.setValue("address", "", { shouldDirty: true });
+        form.setValue("amount", "", { shouldDirty: true });
+        form.clearErrors(["address", "amount"]);
+        setIsAddressBookRecipientSelected(false);
+        setIntentsAmountMode("recipient");
+    }, [watchedToken, watchedDestinationNetwork, form]);
 
     // Prefill from ?address= once. Re-applying on every empty value fought the
     // recipient wipe clearer and bounced destination seed.
@@ -1264,7 +1284,7 @@ export default function PaymentsPage() {
                             quoteAmount,
                             isConfidential,
                             proposalPeriod,
-                            undefined,
+                            intentsAmountMode,
                             data.destinationNetwork,
                             true, // isPayment
                             {
@@ -1360,10 +1380,15 @@ export default function PaymentsPage() {
                     triggerPendingTour();
                 })
                 .catch((error) => {
-                    console.error("Payments error", error);
+                    reportError(error, "payments.createProposal");
                 });
         } catch (error) {
-            console.error("Payments error", error);
+            reportError(error, "payments.submit");
+            toast.error(
+                error instanceof Error && error.message
+                    ? error.message
+                    : tPay("failed1ClickQuote"),
+            );
         }
     };
 
@@ -1396,6 +1421,8 @@ export default function PaymentsPage() {
                     sendWarningMessage,
                     recipientNetworkWarningMessage,
                     tokenAutoSelect,
+                    confidentialAggregated: isConfidential,
+                    usdValueOverride: quoteAmountUsd,
                 },
             },
             {
@@ -1434,15 +1461,49 @@ export default function PaymentsPage() {
             recipientNetworkWarningMessage,
             tokenAutoSelect,
             quoteContextKey,
+            isConfidential,
+            quoteAmountUsd,
         ],
     );
 
+    const bulkPaymentsButton = (
+        <Link href={`/${treasuryId}/payments/bulk-payment`}>
+            <Tooltip content={tPay("bulkPaymentsTooltip")}>
+                <Button
+                    variant="secondary"
+                    size="icon"
+                    className="size-10 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:h-9 lg:w-auto lg:rounded-md lg:bg-muted-foreground/10 lg:px-3 lg:text-sm lg:font-bold lg:leading-3.5 lg:text-general-secondary-foreground lg:hover:bg-muted-foreground/20"
+                    id="payments-bulk-btn"
+                    aria-label={tPay("bulkPayments")}
+                    onClick={() => {
+                        trackEvent("bulk-payments-click", {
+                            source: "payments_page",
+                            treasury_id: treasuryId ?? "",
+                        });
+                    }}
+                >
+                    <Icon icon={UserGroup03Icon} />
+                    <span className="hidden lg:inline">
+                        {tPay("bulkPayments")}
+                    </span>
+                </Button>
+            </Tooltip>
+        </Link>
+    );
+
     return (
-        <PageComponentLayout title={pageTitle} description={t("description")}>
+        <PageComponentLayout
+            title={pageTitle}
+            backButton={treasuryId ? `/${treasuryId}` : true}
+            backKind="section"
+            hideMobileShellControls
+            hideTitle={step === 1}
+            headerActions={step === 0 ? bulkPaymentsButton : undefined}
+        >
             <Form {...form}>
                 <form
                     onSubmit={form.handleSubmit(onSubmit)}
-                    className="flex flex-col gap-4 max-w-[600px] mx-auto"
+                    className="mx-auto flex max-w-lg flex-col gap-4"
                 >
                     <StepWizard
                         step={step}

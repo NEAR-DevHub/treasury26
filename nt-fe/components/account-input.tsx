@@ -1,21 +1,22 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { LargeInput } from "./large-input";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import {
-    getAddressPattern,
     getAddressExample,
+    getAddressPattern,
     getBlockchainDisplayName,
 } from "@/lib/address-validation";
+import type { BlockchainType } from "@/lib/blockchain-utils";
 import {
-    validateNearAddress,
     isValidNearAddressFormat,
+    validateNearAddress,
 } from "@/lib/near-validation";
 import { translateNearValidationError } from "@/lib/near-validation-i18n";
-import type { BlockchainType } from "@/lib/blockchain-utils";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
+import { nearComPrefixIssue } from "@/lib/recipient-address-rules";
+import { LargeInput } from "./large-input";
 
 /**
  * Unified Account Input Component
@@ -38,6 +39,8 @@ interface AccountInputProps {
     disabled?: boolean;
     borderless?: boolean;
     validateOnMount?: boolean; // Force validation on mount (for edit screens)
+    /** When true, require `nearcom:` plus a valid NEAR account. */
+    requireNearComPrefix?: boolean;
 }
 
 const AccountInput = ({
@@ -49,6 +52,7 @@ const AccountInput = ({
     disabled = false,
     borderless = false,
     validateOnMount = false,
+    requireNearComPrefix = false,
 }: AccountInputProps) => {
     const t = useTranslations("accountInput");
     const [isValidating, setIsValidating] = useState(false);
@@ -73,6 +77,24 @@ const AccountInput = ({
             regex: getAddressPattern(blockchain),
         };
     }, [blockchain, t]);
+
+    // Shared with the network picker and the recipient modal so all three
+    // agree on which destination a `nearcom:` address belongs to.
+    const prefixErrorMessage = useCallback(
+        (address: string) => {
+            const issue = nearComPrefixIssue({
+                address,
+                isNearComDestination: requireNearComPrefix,
+            });
+            if (!issue) return null;
+            return isNear
+                ? t("invalidNearFormat")
+                : t("invalidChainAddress", {
+                      chain: getBlockchainDisplayName(blockchain),
+                  });
+        },
+        [blockchain, isNear, requireNearComPrefix, t],
+    );
 
     // Wrapper to set isValidating and notify parent
     const updateValidationState = useCallback(
@@ -136,6 +158,15 @@ const AccountInput = ({
             return;
         }
 
+        const prefixError = prefixErrorMessage(value);
+        if (prefixError) {
+            setValidationError(prefixError);
+            setIsValid(false);
+            setHasValidated(false);
+            updateValidationState(false);
+            return;
+        }
+
         // NEAR validation (async) — nearcom: is display/routing only.
         if (isNear) {
             const bareAddress = stripNearComAddressPrefix(value);
@@ -184,6 +215,7 @@ const AccountInput = ({
         isNear,
         config.regex,
         validateOnMount,
+        prefixErrorMessage,
         setIsValid,
         validateNearFull,
         resetValidation,
@@ -203,6 +235,15 @@ const AccountInput = ({
 
         setValue(val);
         hasUserInteractedRef.current = true;
+
+        const prefixError = val ? prefixErrorMessage(val) : null;
+        if (prefixError) {
+            setHasValidated(false);
+            setValidationError(prefixError);
+            setIsValid(false);
+            updateValidationState(false);
+            return;
+        }
 
         // Immediate validation feedback for NEAR
         if (isNear) {

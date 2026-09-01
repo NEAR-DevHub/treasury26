@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useLayoutEffect } from "react";
 import { AppShellProvider } from "@/components/app-shell-context";
 import { BalanceMaskProvider } from "@/components/balance-mask";
 import { LoadingScreen } from "@/components/loading-screen";
@@ -14,6 +15,7 @@ import { RequireAuth } from "@/components/require-auth";
 import { RequireTreasuryMember } from "@/components/require-treasury-member";
 import { Sidebar, shellSurfaceClass } from "@/components/sidebar";
 import { useTreasury } from "@/hooks/use-treasury";
+import { trackInAppPath } from "@/lib/in-app-navigation";
 import { cn } from "@/lib/utils";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { AppEventsProvider } from "./app-events-provider";
@@ -36,6 +38,9 @@ export function TreasuryLayoutClient({
     const { isSidebarOpen, setSidebarOpen } = useResponsiveSidebar();
     const { isLoading, isConfidential } = useTreasury();
     const pathname = usePathname();
+    useLayoutEffect(() => {
+        if (pathname) trackInAppPath(pathname);
+    }, [pathname]);
     const isPayShare = isPaySharePath(pathname);
     // Standalone chrome (no sidebar): pay share + receipts. Access control is
     // separate — only pay share skips auth/membership below.

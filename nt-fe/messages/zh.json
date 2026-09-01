@@ -201,7 +201,7 @@
         },
         "exchange": {
             "title": "兑换",
-            "confidentialTitle": "机密兑换",
+            "confidentialTitle": "兑换",
             "description": "安全高效地兑换您的代币"
         },
         "vesting": {
@@ -376,7 +376,6 @@
             "copyLink": "复制链接",
             "titleConfidential": "转账至 near business",
             "chooseTreasuryTitle": "选择 Treasury",
-            "chooseTreasuryDescription": "这笔付款来自哪个 treasury？",
             "noMemberTreasuries": "你还不是任何 treasury 的成员。",
             "createTreasury": "创建 treasury",
             "expired": "已过期",
@@ -466,6 +465,7 @@
             "rate": "汇率",
             "detailsTitle": "详情",
             "linkedRequest": "关联请求",
+            "swapFee": "兑换手续费",
             "sendTransaction": "发送交易",
             "bulkTitle": "批量转账详情",
             "toRecipients": "发送给 {count} 位收款人",
@@ -1233,10 +1233,15 @@
         "useDifferentAddress": "使用其他地址",
         "failed1ClickQuote": "创建 1Click 转账报价失败",
         "paymentSubmitted": "发送付款的请求已提交",
-        "confidentialTooltip": "收款人信息和请求金额完全保密。"
+        "confidentialTooltip": "收款人信息和请求金额完全保密。",
+        "bulkPaymentsTooltip": "在一个请求中发送多笔付款，无需逐笔审批。",
+        "destinationNetwork": "目标网络",
+        "selectRecipientPlaceholder": "选择收款人",
+        "tokenLabel": "代币",
+        "recipientLabel": "收款人"
     },
     "bulkPayment": {
-        "title": "批量付款",
+        "title": "批量发送",
         "comingSoonToast": "批量付款功能即将推出!",
         "submittingList": "正在提交批量付款列表",
         "submittingProposal": "正在提交提案",
@@ -1264,7 +1269,6 @@
             "token": "代币",
             "destinationNetwork": "目标网络",
             "uploadFileFirst": "请先上传文件",
-            "exchangeAddressWarning": "我了解，直接发送到交易所地址可能会导致资金损失或其他问题。",
             "removeFile": "移除文件",
             "maxFileSize": "最多 1 个文件,最大 1.5 MB,仅限 CSV 文件",
             "noFilePrompt": "没有文件可上传?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "编辑付款",
+            "back": "编辑收款人",
             "saveChanges": "保存更改"
         },
         "parsing": {
@@ -1338,13 +1343,13 @@
         "slippageTolerance": "滑点容忍度",
         "disabled": {
             "differentTokens": "代币必须不同",
-            "enterAmount": "请输入要兑换的金额"
+            "enterAmount": "请输入金额"
         },
         "review": "审核兑换",
         "poweredBy": "技术支持:",
         "info": {
             "priceDifference": "价差",
-            "priceDifferenceTooltip": "显示你收到的 USD 价值与发送的 USD 价值如何比较。",
+            "priceDifferenceTooltip": "与中间市场价格的差额。",
             "estimatedTime": "预计时间",
             "estimatedTimeValue": "{seconds} 秒",
             "estimatedTimeTooltip": "完成兑换的大致时间。",
@@ -1355,12 +1360,16 @@
             "depositAddressCopied": "存款地址已复制",
             "quoteExpires": "报价过期时间",
             "exchangeFee": "兑换手续费",
-            "exchangeFeeTooltip": "此处产生的 0.70% 手续费用于支付 NEAR Intents 协议的交易处理成本及 Near Business 小部件费用。该金额已自动计入您的报价汇率中。"
+            "exchangeFeeTooltip": "此处收取的 0.70% 费用涵盖促成交易的 NEAR Intents 协议成本以及 Trezu 组件费用。该金额已自动计入报价汇率。"
         },
         "approveWithin24h": "请在 24 小时内批准此请求,否则它将过期。建议尽快确认。",
         "confirmSubmit": "确认并提交请求",
         "refreshingIn": "兑换汇率将在 {seconds} 秒后刷新",
-        "confidentialTooltip": "您发送和接收的金额完全保密。"
+        "confidentialTooltip": "您发送和接收的金额完全保密。",
+        "maxSlippage": "最大滑点",
+        "maxSlippageTooltip": "滑点设置用于避免最终成交价与报价相差过大。如果超过指定滑点，兑换将失败。",
+        "receiveAtLeast": "至少收到",
+        "receiveAtLeastTooltip": "报价金额为估算值。多个求解器会竞争以提供最优价格。最大滑点保证你能收到的最低金额——若无法满足，交易将被取消。"
     },
     "vesting": {
         "validation": {
@@ -1443,7 +1452,7 @@
         "financialThreshold": "财务阈值",
         "governanceThreshold": "治理阈值",
         "noDeploymentFee": "🎉 无部署费用",
-        "noDeploymentFeeDescription": "为支持新项目,TREZU 承担所有一次性部署及网络存储费用。",
+        "noDeploymentFeeDescription": "为支持新项目,Near Business 承担所有一次性部署及网络存储费用。",
         "connectWalletCreate": "连接钱包以创建金库",
         "walletNotSupportedTitle": "{wallet} 暂不支持",
         "walletNotSupportedDescription": "我们之后会补上。现在你可以使用已支持的 NEAR、Ledger 或 EVM 钱包登录。",
@@ -1479,7 +1488,7 @@
                 "recoveryLabel": "恢复：",
                 "recoveryText": "无论你选择哪种方式，我们建议你在设置完成后添加第二位成员（钱包），以防设备丢失导致无法访问。",
                 "passkeyNew": "新",
-                "passkeyDomainNote": "您的通行密钥保存在此设备上，仅用于 trezu.app（或通过 iCloud/Google 同步）。它无法在其他应用中使用，其他应用的通行密钥也无法访问 Near Business。"
+                "passkeyDomainNote": "您的通行密钥保存在此设备上，仅用于 Near Business（或通过 iCloud/Google 同步）。它无法在其他应用中使用，其他应用的通行密钥也无法访问 Near Business。"
             },
             "passkeyCardTitle": "支持 Touch ID 和 Face ID 的通行密钥",
             "passkeyCardSubtitle": "使用设备的生物识别或密码登录",
@@ -1652,7 +1661,7 @@
         "available": "{count} 可用",
         "used": "已用 {count}",
         "exhaustedBody": "您的团队已达到本月赞助操作上限。您可以在 {date} 之后继续,或与我们联系",
-        "almostBody": "TREZU 当前为所有团队操作(如创建请求和投票)赞助存储费用。您的团队即将达到月度赞助上限。",
+        "almostBody": "Near Business 当前为所有团队操作(如创建请求和投票)赞助存储费用。您的团队即将达到月度赞助上限。",
         "contactUs": "联系我们",
         "nextMonthlyReset": "下次月度重置时间",
         "sidebarBody": "您的团队已达到本月赞助操作上限。您可以在 {date} 之后继续,或 ⬇️"
@@ -1881,6 +1890,18 @@
     "paymentFormSection": {
         "selectRecipient": "选择收款人",
         "searchByNameOrAddress": "按名称或地址搜索",
+        "noContactsForNetwork": "您还没有为 {network} 网络创建联系人。",
+        "noContacts": "您还没有联系人。",
+        "contacts": "联系人",
+        "invalidAddress": "请输入有效的地址",
+        "scanQrCode": "扫描二维码",
+        "scanQrCodeDescription": "使用相机填写收款人地址",
+        "qrScanTitle": "扫描二维码",
+        "qrScanHint": "将相机对准收款人的二维码。",
+        "qrBackToRecipientList": "返回收款人列表",
+        "qrCameraPermissionDenied": "扫描二维码需要相机权限。请在浏览器设置中启用后重试。",
+        "qrCameraUnsupported": "此浏览器无法访问相机以扫描二维码。",
+        "qrCameraStarting": "正在启动相机…",
         "restrictedRecipientTitle": "不允许此交易",
         "restrictedRecipientMessage": "由于安全检查,该地址当前受到限制。如果您认为该地址应被允许,可<link>申请将其加入白名单</link>。",
         "send": "发送",
@@ -1899,9 +1920,9 @@
         "incompatible": "不兼容",
         "comingSoon": "即将推出",
         "forMembersOnly": "仅限成员",
-        "nearComDescription": "机密 trezu 网络",
-        "nearComDescriptionPublic": "near.com 网络",
-        "nearDescription": "公开提现网络"
+        "nearComDescription": "Near Business 和 near.com 网络",
+        "nearDescription": "公开提现网络",
+        "internalTag": "内部"
     },
     "addressBookTable": {
         "emptyTitle": "暂无收款人",
@@ -1944,7 +1965,8 @@
     },
     "selectModal": {
         "searchByName": "按名称搜索",
-        "noResults": "未找到结果"
+        "noResults": "未找到结果",
+        "back": "返回"
     },
     "selectList": {
         "noResults": "未找到结果"
@@ -1980,14 +2002,15 @@
         "clickToReverse": "点击反转汇率"
     },
     "exchangeSettings": {
-        "title": "兑换设置",
+        "title": "滑点",
         "slippageTolerance": "滑点容忍度",
-        "custom": "自定义",
+        "custom": "自定义 %",
         "customPlaceholder": "例如:2%",
         "slippageRange": "滑点必须介于 0.01% 和 100% 之间",
         "enterSlippage": "请输入滑点容忍度",
         "slippageHelp": "如果价格变动超过此百分比,交易将被取消以保护您的资金。",
-        "save": "保存"
+        "save": "保存",
+        "description": "滑点设置用于避免最终成交价与报价相差过大。如果超过指定滑点，交易将被取消。以下是你保证能收到的最低金额。"
     },
     "assetsPage": {
         "title": "资产",
@@ -2096,7 +2119,7 @@
     "tokenSelectDialog": {
         "selectToken": "选择代币",
         "selectAsset": "选择资产",
-        "selectNetworkFor": "为 {asset} 选择网络",
+        "selectNetwork": "选择网络",
         "searchByName": "按名称搜索",
         "noTokensWithBalance": "未找到有余额的代币",
         "noTokensFound": "未找到代币",
@@ -2170,10 +2193,12 @@
         "votesSubmitted": "您的投票已提交"
     },
     "tokenInput": {
+        "useMax": "使用最大值",
         "max": "MAX",
-        "insufficientTokens": "代币不足。您可以提交请求,并在批准前充值。",
+        "insufficientTokens": "余额不足。请在批准前充值。",
         "insufficientTokensForFee": "代币不足以支付网络手续费({fee} {symbol})。您可以提交请求,并在批准前充值。",
-        "balance": "余额:{amount} {symbol}"
+        "balance": "余额:{amount} {symbol}",
+        "balanceLabel": "余额"
     },
     "createRequestButton": {
         "idle": "创建请求",

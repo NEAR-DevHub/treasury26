@@ -33,7 +33,7 @@ describe("classifyExchangeError", () => {
 describe("formatQuoteErrorMessage", () => {
     const tEx = (key: string, values?: Record<string, string>) => {
         if (key === "noRoute") {
-            return "No exchange found. Try a smaller amount or different token.";
+            return "No exchange found. Try a smaller amount or a different token.";
         }
         if (key === "amountTooLowWithMin") {
             return `Enter at least ${values?.min} ${values?.token}.`;
@@ -54,7 +54,7 @@ describe("formatQuoteErrorMessage", () => {
                 { decimals: 18, symbol: "ETH" },
                 tEx,
             ),
-        ).toBe("No exchange found. Try a smaller amount or different token.");
+        ).toBe("No exchange found. Try a smaller amount or a different token.");
     });
 
     it("formats amountTooLow with token decimals", () => {

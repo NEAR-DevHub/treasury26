@@ -201,7 +201,7 @@
         },
         "exchange": {
             "title": "Обмін",
-            "confidentialTitle": "Конфіденційний обмін",
+            "confidentialTitle": "Обмін",
             "description": "Обмінюйте токени безпечно й ефективно"
         },
         "vesting": {
@@ -376,7 +376,6 @@
             "copyLink": "Копіювати посилання",
             "titleConfidential": "Переказ до near business",
             "chooseTreasuryTitle": "Оберіть Treasury",
-            "chooseTreasuryDescription": "З якої treasury надходить цей платіж?",
             "noMemberTreasuries": "Ви ще не є учасником жодної treasury.",
             "createTreasury": "Створити treasury",
             "expired": "Прострочено",
@@ -466,6 +465,7 @@
             "rate": "Курс",
             "detailsTitle": "Деталі",
             "linkedRequest": "Пов'язаний запит",
+            "swapFee": "Комісія свопу",
             "sendTransaction": "Транзакція надсилання",
             "bulkTitle": "Деталі масового переказу",
             "toRecipients": "До {count} отримувачів",
@@ -1233,10 +1233,15 @@
         "useDifferentAddress": "Використайте іншу адресу",
         "failed1ClickQuote": "Не вдалось створити котирування 1Click",
         "paymentSubmitted": "Запит на надсилання платежу подано",
-        "confidentialTooltip": "Дані отримувача та запитана сума повністю конфіденційні."
+        "confidentialTooltip": "Дані отримувача та запитана сума повністю конфіденційні.",
+        "bulkPaymentsTooltip": "Надсилайте кілька платежів одним запитом — не потрібно затверджувати їх по одному.",
+        "destinationNetwork": "Мережа призначення",
+        "selectRecipientPlaceholder": "Оберіть отримувача",
+        "tokenLabel": "Токен",
+        "recipientLabel": "Отримувач"
     },
     "bulkPayment": {
-        "title": "Масовий платіж",
+        "title": "Масове надсилання",
         "comingSoonToast": "Масові платежі незабаром!",
         "submittingList": "Надсилання списку масових платежів",
         "submittingProposal": "Надсилання пропозиції",
@@ -1264,7 +1269,6 @@
             "token": "Токен",
             "destinationNetwork": "Мережа призначення",
             "uploadFileFirst": "Спочатку завантажте файл",
-            "exchangeAddressWarning": "Я розумію, що надсилання безпосередньо на адресу біржі може призвести до втрати коштів або інших проблем.",
             "removeFile": "Видалити файл",
             "maxFileSize": "не більше 1 файлу до 1.5 МБ, лише CSV",
             "noFilePrompt": "Немає файлу для завантаження?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "Редагувати платіж",
+            "back": "Редагувати отримувача",
             "saveChanges": "Зберегти зміни"
         },
         "parsing": {
@@ -1338,13 +1343,13 @@
         "slippageTolerance": "Допустиме прослизання",
         "disabled": {
             "differentTokens": "Токени мають відрізнятися",
-            "enterAmount": "Введіть суму для обміну"
+            "enterAmount": "Введіть суму"
         },
         "review": "Переглянути обмін",
         "poweredBy": "Працює на",
         "info": {
             "priceDifference": "Різниця в ціні",
-            "priceDifferenceTooltip": "Показує, як USD-вартість, яку ви отримуєте, порівнюється з USD-вартістю, яку ви надсилаєте.",
+            "priceDifferenceTooltip": "Різниця від mid-market ціни.",
             "estimatedTime": "Оцінний час",
             "estimatedTimeValue": "{seconds} с",
             "estimatedTimeTooltip": "Приблизний час до завершення обміну.",
@@ -1355,12 +1360,16 @@
             "depositAddressCopied": "Адресу депозиту скопійовано",
             "quoteExpires": "Котирування спливає",
             "exchangeFee": "Комісія за обмін",
-            "exchangeFeeTooltip": "Комісія 0,70% покриває витрати протоколу NEAR Intents для виконання обміну та комісію віджета Near Business. Ця сума вже враховується в котируванні."
+            "exchangeFeeTooltip": "Комісія 0,70% покриває витрати протоколу NEAR Intents на проведення угоди та комісію віджета Trezu. Ця сума вже врахована в котируванні."
         },
         "approveWithin24h": "Схваліть цей запит протягом 24 годин, інакше він спливе. Рекомендуємо підтвердити якнайшвидше.",
         "confirmSubmit": "Підтвердити та надіслати запит",
         "refreshingIn": "Курс оновиться через {seconds}с",
-        "confidentialTooltip": "Суми, які ви надсилаєте та отримуєте, повністю конфіденційні."
+        "confidentialTooltip": "Суми, які ви надсилаєте та отримуєте, повністю конфіденційні.",
+        "maxSlippage": "Макс. прослизання",
+        "maxSlippageTooltip": "Налаштування прослизання захищає від кінцевої ціни, яка сильно відрізняється від котирування. Якщо вказане прослизання буде перевищено, своп завершиться невдачею.",
+        "receiveAtLeast": "Отримати щонайменше",
+        "receiveAtLeastTooltip": "Котирована сума є оцінкою. Кілька солверів змагаються за найкращу ціну. Максимальне прослизання гарантує мінімум — якщо його не можна виконати, угоду буде скасовано."
     },
     "vesting": {
         "validation": {
@@ -1443,7 +1452,7 @@
         "financialThreshold": "Фінансовий поріг",
         "governanceThreshold": "Поріг управління",
         "noDeploymentFee": "🎉 Без комісії за розгортання",
-        "noDeploymentFeeDescription": "Щоб підтримати нові проєкти, TREZU покриває всі одноразові комісії за розгортання та мережеве сховище.",
+        "noDeploymentFeeDescription": "Щоб підтримати нові проєкти, Near Business покриває всі одноразові комісії за розгортання та мережеве сховище.",
         "connectWalletCreate": "Підключіть гаманець для створення скарбниці",
         "walletNotSupportedTitle": "{wallet} ще не підтримується",
         "walletNotSupportedDescription": "Ми додамо це пізніше. Поки що увійдіть через NEAR, Ledger або EVM-гаманці — залежно від того, що у вас вже є.",
@@ -1479,7 +1488,7 @@
                 "recoveryLabel": "Відновлення:",
                 "recoveryText": "Що б ви не обрали, радимо додати другого учасника (гаманець) після налаштування, щоб втрата пристрою не заблокувала доступ.",
                 "passkeyNew": "Нове",
-                "passkeyDomainNote": "Ваш ключ доступу зберігається для trezu.app на цьому пристрої (або синхронізується через iCloud/Google). Його не можна використовувати в інших застосунках, а ключі інших застосунків не мають доступу до Near Business."
+                "passkeyDomainNote": "Ваш ключ доступу зберігається для Near Business на цьому пристрої (або синхронізується через iCloud/Google). Його не можна використовувати в інших застосунках, а ключі інших застосунків не мають доступу до Near Business."
             },
             "passkeyCardTitle": "Passkey для Touch ID та Face ID",
             "passkeyCardSubtitle": "Увійдіть за допомогою біометрії або коду доступу пристрою",
@@ -1652,7 +1661,7 @@
         "available": "{count} доступно",
         "used": "{count} використано",
         "exhaustedBody": "Ваша команда досягла місячного ліміту спонсорованих дій. Ви зможете продовжити після {date} або зв'яжіться з нами",
-        "almostBody": "TREZU зараз покриває витрати на сховище для всіх дій команди, зокрема створення запитів і голосування. Ваша команда наближається до місячного спонсорованого ліміту.",
+        "almostBody": "Near Business зараз покриває витрати на сховище для всіх дій команди, зокрема створення запитів і голосування. Ваша команда наближається до місячного спонсорованого ліміту.",
         "contactUs": "Зв'язатися з нами",
         "nextMonthlyReset": "наступного щомісячного оновлення",
         "sidebarBody": "Ваша команда досягла місячного ліміту спонсорованих дій. Ви зможете продовжити після {date} або ⬇️"
@@ -1881,6 +1890,18 @@
     "paymentFormSection": {
         "selectRecipient": "Обрати одержувача",
         "searchByNameOrAddress": "Пошук за назвою або адресою",
+        "noContactsForNetwork": "У вас немає контактів для мережі {network}.",
+        "noContacts": "У вас ще немає контактів.",
+        "contacts": "Контакти",
+        "invalidAddress": "Введіть коректну адресу",
+        "scanQrCode": "Сканувати QR-код",
+        "scanQrCodeDescription": "Скористайтеся камерою, щоб заповнити адресу отримувача",
+        "qrScanTitle": "Сканувати QR-код",
+        "qrScanHint": "Наведіть камеру на QR-код отримувача.",
+        "qrBackToRecipientList": "Назад до списку отримувачів",
+        "qrCameraPermissionDenied": "Для сканування QR-коду потрібен доступ до камери. Увімкніть його в налаштуваннях браузера та спробуйте ще раз.",
+        "qrCameraUnsupported": "Цей браузер не може отримати доступ до камери для сканування QR-коду.",
+        "qrCameraStarting": "Запуск камери…",
         "restrictedRecipientTitle": "Транзакцію не дозволено",
         "restrictedRecipientMessage": "Ця адреса зараз обмежена через перевірки безпеки. Якщо ви вважаєте, що цю адресу слід дозволити, ви можете <link>подати запит на whitelist</link>.",
         "send": "Надіслати",
@@ -1899,9 +1920,9 @@
         "incompatible": "Несумісні",
         "comingSoon": "Скоро",
         "forMembersOnly": "Лише для учасників",
-        "nearComDescription": "Мережа для конфіденційного trezu",
-        "nearComDescriptionPublic": "Мережа для near.com",
-        "nearDescription": "Мережа для публічного виведення"
+        "nearComDescription": "Мережа для Near Business і near.com",
+        "nearDescription": "Мережа для публічного виведення",
+        "internalTag": "Внутрішня"
     },
     "addressBookTable": {
         "emptyTitle": "Ще немає одержувачів",
@@ -1944,7 +1965,8 @@
     },
     "selectModal": {
         "searchByName": "Пошук за назвою",
-        "noResults": "Результатів не знайдено"
+        "noResults": "Результатів не знайдено",
+        "back": "Назад"
     },
     "selectList": {
         "noResults": "Результатів не знайдено"
@@ -1976,18 +1998,19 @@
         "description": "Доступ мають лише учасники скарбниці."
     },
     "exchangeRate": {
-        "rate": "Курс",
+        "rate": "Обмінний курс",
         "clickToReverse": "Натисніть, щоб перевернути курс"
     },
     "exchangeSettings": {
-        "title": "Налаштування обміну",
+        "title": "Прослизання",
         "slippageTolerance": "Допустимий slippage",
-        "custom": "Свій",
+        "custom": "Свій %",
         "customPlaceholder": "напр.: 2%",
         "slippageRange": "Slippage має бути між 0.01% і 100%",
         "enterSlippage": "Вкажіть допустимий slippage",
         "slippageHelp": "Якщо ціна зміниться більше, ніж на цей відсоток, транзакція буде скасована для захисту коштів.",
-        "save": "Зберегти"
+        "save": "Зберегти",
+        "description": "Налаштування прослизання захищає від кінцевої ціни, яка сильно відрізняється від котирування. Якщо вказане прослизання буде перевищено, угоду буде скасовано. Нижче — гарантована мінімальна сума."
     },
     "assetsPage": {
         "title": "Активи",
@@ -2096,7 +2119,7 @@
     "tokenSelectDialog": {
         "selectToken": "Обрати токен",
         "selectAsset": "Обрати актив",
-        "selectNetworkFor": "Обрати мережу для {asset}",
+        "selectNetwork": "Оберіть мережу",
         "searchByName": "Пошук за назвою",
         "noTokensWithBalance": "Токенів з балансом не знайдено",
         "noTokensFound": "Токени не знайдено",
@@ -2170,10 +2193,12 @@
         "votesSubmitted": "Ваші голоси надіслано"
     },
     "tokenInput": {
+        "useMax": "Використати макс.",
         "max": "МАКС",
-        "insufficientTokens": "Недостатньо токенів. Можете надіслати запит і поповнити перед затвердженням.",
+        "insufficientTokens": "Недостатній баланс. Поповніть перед затвердженням.",
         "insufficientTokensForFee": "Недостатньо токенів для покриття комісії мережі ({fee} {symbol}). Можете надіслати запит і поповнити перед затвердженням.",
-        "balance": "Баланс: {amount} {symbol}"
+        "balance": "Баланс: {amount} {symbol}",
+        "balanceLabel": "Баланс"
     },
     "createRequestButton": {
         "idle": "Створити запит",

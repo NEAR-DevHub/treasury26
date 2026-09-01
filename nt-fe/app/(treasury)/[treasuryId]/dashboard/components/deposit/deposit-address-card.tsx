@@ -53,7 +53,7 @@ function AddressBody({
                     ) : null}
                 </div>
                 <div className="w-full md:flex-1 min-w-0 space-y-1 md:pt-1">
-                    <p className="text-sm font-medium leading-[150%] text-general-muted-foreground">
+                    <p className="text-sm font-medium leading-normal text-general-muted-foreground">
                         {t("addressLabel")}
                     </p>
                     <div className="flex items-start gap-2">
@@ -75,7 +75,7 @@ function AddressBody({
 
             {memo && (
                 <div className="space-y-1 border-t border-general-border pt-2">
-                    <p className="text-sm font-medium leading-[150%] text-general-muted-foreground">
+                    <p className="text-sm font-medium leading-normal text-general-muted-foreground">
                         {t("memoLabel")}
                     </p>
                     <div className="flex items-start gap-2">
@@ -149,7 +149,7 @@ export function DepositAddressCard({
                     <CopyButton
                         text={address}
                         variant="unstyled"
-                        className="h-auto justify-start gap-2 rounded-lg px-1 py-2 text-sm font-bold leading-[0.875rem] text-general-unofficial-ghost-foreground hover:bg-transparent"
+                        className="h-auto justify-start gap-2 rounded-lg px-1 py-2 text-sm font-bold leading-3.5 text-general-unofficial-ghost-foreground hover:bg-transparent"
                     >
                         {t("copy")}
                     </CopyButton>
@@ -158,7 +158,7 @@ export function DepositAddressCard({
                             type="button"
                             variant="unstyled"
                             onClick={onShare}
-                            className="h-auto justify-start gap-2 rounded-lg px-1 py-2 text-sm font-bold leading-[0.875rem] text-general-unofficial-ghost-foreground hover:bg-transparent"
+                            className="h-auto justify-start gap-2 rounded-lg px-1 py-2 text-sm font-bold leading-3.5 text-general-unofficial-ghost-foreground hover:bg-transparent"
                             data-testid="deposit-share-button"
                         >
                             <Icon icon={Sent02Icon} />

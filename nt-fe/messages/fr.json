@@ -200,8 +200,8 @@
             "description": "Envoyez des fonds de facon sure et securisee."
         },
         "exchange": {
-            "title": "Echange",
-            "confidentialTitle": "Echange confidentiel",
+            "title": "Échanger",
+            "confidentialTitle": "Échanger",
             "description": "Échangez vos tokens en toute sécurité et efficacité"
         },
         "vesting": {
@@ -376,7 +376,6 @@
             "copyLink": "Copier le lien",
             "titleConfidential": "Transfert vers near business",
             "chooseTreasuryTitle": "Choisir une Treasury",
-            "chooseTreasuryDescription": "De quelle treasury provient ce paiement ?",
             "noMemberTreasuries": "Vous n’êtes encore membre d’aucune treasury.",
             "createTreasury": "Créer une treasury",
             "expired": "Expiré",
@@ -466,6 +465,7 @@
             "rate": "Taux",
             "detailsTitle": "Détails",
             "linkedRequest": "Demande liée",
+            "swapFee": "Frais de swap",
             "sendTransaction": "Transaction d'envoi",
             "bulkTitle": "Détails du transfert groupé",
             "toRecipients": "À {count} destinataires",
@@ -1233,10 +1233,15 @@
         "useDifferentAddress": "Utiliser une adresse différente",
         "failed1ClickQuote": "Échec de la création du devis de transfert 1Click",
         "paymentSubmitted": "Demande d'envoi de paiement soumise",
-        "confidentialTooltip": "Les informations du destinataire et le montant demande sont entierement confidentiels."
+        "confidentialTooltip": "Les informations du destinataire et le montant demande sont entierement confidentiels.",
+        "bulkPaymentsTooltip": "Envoyez plusieurs paiements en une seule demande, sans avoir à les approuver un par un.",
+        "destinationNetwork": "Réseau de destination",
+        "selectRecipientPlaceholder": "Sélectionner un destinataire",
+        "tokenLabel": "Token",
+        "recipientLabel": "Destinataire"
     },
     "bulkPayment": {
-        "title": "Paiement groupé",
+        "title": "Envoi groupé",
         "comingSoonToast": "Les paiements groupés arrivent bientôt !",
         "submittingList": "Soumission de la liste de paiements groupés",
         "submittingProposal": "Soumission de la proposition",
@@ -1264,7 +1269,6 @@
             "token": "Jeton",
             "destinationNetwork": "Réseau de destination",
             "uploadFileFirst": "Importez d’abord un fichier",
-            "exchangeAddressWarning": "Je comprends qu’un envoi direct vers une adresse de plateforme d’échange peut entraîner une perte de fonds ou d’autres problèmes.",
             "removeFile": "Supprimer le fichier",
             "maxFileSize": "max 1 fichier jusqu'à 1,5 Mo, fichier CSV uniquement",
             "noFilePrompt": "Vous n'avez pas de fichier à télécharger ?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "Modifier le paiement",
+            "back": "Modifier le destinataire",
             "saveChanges": "Enregistrer les modifications"
         },
         "parsing": {
@@ -1355,13 +1360,13 @@
         "slippageTolerance": "Tolérance au glissement",
         "disabled": {
             "differentTokens": "Les tokens doivent être différents",
-            "enterAmount": "Saisissez un montant à échanger"
+            "enterAmount": "Saisissez un montant"
         },
         "review": "Vérifier l'échange",
         "poweredBy": "Propulsé par",
         "info": {
             "priceDifference": "Différence de prix",
-            "priceDifferenceTooltip": "Montre comment la valeur en USD que vous recevez se compare à la valeur en USD que vous envoyez.",
+            "priceDifferenceTooltip": "Écart par rapport au prix mid-market.",
             "estimatedTime": "Temps estimé",
             "estimatedTimeValue": "{seconds} secondes",
             "estimatedTimeTooltip": "Temps approximatif pour terminer l'échange.",
@@ -1372,12 +1377,16 @@
             "depositAddressCopied": "Adresse de dépôt copiée",
             "quoteExpires": "Expiration du devis",
             "exchangeFee": "Frais d'échange",
-            "exchangeFeeTooltip": "Les frais de 0,70 % couvrent ici les coûts du protocole NEAR Intents pour faciliter votre transaction et les frais du widget Near Business. Ce montant est automatiquement calculé dans votre taux coté."
+            "exchangeFeeTooltip": "Les 0,70 % de frais couvrent les coûts du protocole NEAR Intents pour faciliter votre échange et les frais du widget Trezu. Ce montant est déjà inclus dans le taux coté."
         },
         "approveWithin24h": "Veuillez approuver cette demande dans les 24 heures, sinon elle expirera. Nous recommandons de confirmer dès que possible.",
         "confirmSubmit": "Confirmer et soumettre la demande",
         "refreshingIn": "Le taux d'échange sera actualisé dans {seconds} s",
-        "confidentialTooltip": "Les montants que vous envoyez et recevez sont entierement confidentiels."
+        "confidentialTooltip": "Les montants que vous envoyez et recevez sont entierement confidentiels.",
+        "maxSlippage": "Glissement max.",
+        "maxSlippageTooltip": "Le glissement est un mécanisme de sécurité pour éviter un prix final très différent du prix coté. Si le glissement indiqué est dépassé, votre swap échouera.",
+        "receiveAtLeast": "Recevoir au moins",
+        "receiveAtLeastTooltip": "Le montant coté est une estimation. Plusieurs solvers se concurrencent pour vous offrir le meilleur prix. Votre glissement max. garantit un minimum — s'il ne peut pas être atteint, l'échange est annulé."
     },
     "vesting": {
         "validation": {
@@ -1460,7 +1469,7 @@
         "financialThreshold": "Seuil financier",
         "governanceThreshold": "Seuil de gouvernance",
         "noDeploymentFee": "🎉 Aucun frais de déploiement",
-        "noDeploymentFeeDescription": "Pour soutenir les nouveaux projets, TREZU couvre tous les frais ponctuels de déploiement et de stockage réseau.",
+        "noDeploymentFeeDescription": "Pour soutenir les nouveaux projets, Near Business couvre tous les frais ponctuels de déploiement et de stockage réseau.",
         "connectWalletCreate": "Connecter le portefeuille pour créer la trésorerie",
         "walletNotSupportedTitle": "{wallet} n'est pas encore pris en charge",
         "walletNotSupportedDescription": "Nous l'ajouterons plus tard. En attendant, connectez-vous avec NEAR, Ledger ou des wallets EVM, selon ce que vous avez deja.",
@@ -1496,7 +1505,7 @@
                 "recoveryLabel": "Récupération :",
                 "recoveryText": "Quel que soit votre choix, nous vous recommandons d'ajouter un deuxième membre (wallet) après la configuration afin qu'un appareil perdu ne vous bloque pas.",
                 "passkeyNew": "Nouveau",
-                "passkeyDomainNote": "Votre clé d’accès est enregistrée pour trezu.app sur cet appareil (ou synchronisée via iCloud/Google). Elle ne peut pas être utilisée sur d’autres applications, et les clés d’autres applications ne peuvent pas accéder à Near Business."
+                "passkeyDomainNote": "Votre clé d’accès est enregistrée pour Near Business sur cet appareil (ou synchronisée via iCloud/Google). Elle ne peut pas être utilisée sur d’autres applications, et les clés d’autres applications ne peuvent pas accéder à Near Business."
             },
             "passkeyCardTitle": "Passkey pour Touch ID et Face ID",
             "passkeyCardSubtitle": "Connectez-vous avec la biométrie ou le code de votre appareil",
@@ -1669,7 +1678,7 @@
         "available": "{count} disponibles",
         "used": "{count} utilisées",
         "exhaustedBody": "Votre équipe a atteint les actions sponsorisées mensuelles. Vous pouvez continuer après {date} ou nous contacter",
-        "almostBody": "TREZU sponsorise actuellement les coûts de stockage pour toutes les actions de l'équipe, telles que la création de demandes et le vote. Votre équipe est proche d'atteindre la limite mensuelle sponsorisée.",
+        "almostBody": "Near Business sponsorise actuellement les coûts de stockage pour toutes les actions de l'équipe, telles que la création de demandes et le vote. Votre équipe est proche d'atteindre la limite mensuelle sponsorisée.",
         "contactUs": "Contactez-nous",
         "nextMonthlyReset": "votre prochaine réinitialisation mensuelle",
         "sidebarBody": "Votre équipe a atteint les actions sponsorisées mensuelles. Vous pouvez continuer après {date} ou ⬇️"
@@ -1898,6 +1907,18 @@
     "paymentFormSection": {
         "selectRecipient": "Sélectionner un destinataire",
         "searchByNameOrAddress": "Rechercher par nom ou adresse",
+        "noContactsForNetwork": "Vous n'avez aucun contact créé pour le réseau {network}.",
+        "noContacts": "Vous n'avez pas encore de contacts.",
+        "contacts": "Contacts",
+        "invalidAddress": "Veuillez saisir une adresse valide",
+        "scanQrCode": "Scanner le code QR",
+        "scanQrCodeDescription": "Utilisez votre caméra pour remplir l'adresse du destinataire",
+        "qrScanTitle": "Scanner le code QR",
+        "qrScanHint": "Pointez votre caméra vers le code QR du destinataire.",
+        "qrBackToRecipientList": "Retour à la liste des destinataires",
+        "qrCameraPermissionDenied": "L'accès à la caméra est nécessaire pour scanner un code QR. Activez-le dans les paramètres de votre navigateur et réessayez.",
+        "qrCameraUnsupported": "Ce navigateur ne peut pas accéder à la caméra pour scanner un code QR.",
+        "qrCameraStarting": "Démarrage de la caméra…",
         "restrictedRecipientTitle": "Transaction non autorisée",
         "restrictedRecipientMessage": "Cette adresse est actuellement restreinte en raison de contrôles de sécurité. Si vous pensez que cette adresse devrait être autorisée, vous pouvez <link>demander à l'ajouter à la liste blanche</link>.",
         "send": "Envoyer",
@@ -1916,9 +1937,9 @@
         "incompatible": "Incompatible",
         "comingSoon": "Bientôt disponible",
         "forMembersOnly": "Réservé aux membres",
-        "nearComDescription": "Réseau pour trezu confidentiel",
-        "nearComDescriptionPublic": "Réseau pour near.com",
-        "nearDescription": "Réseau pour retrait public"
+        "nearComDescription": "Réseau pour Near Business et near.com",
+        "nearDescription": "Réseau pour retrait public",
+        "internalTag": "Interne"
     },
     "addressBookTable": {
         "emptyTitle": "Aucun destinataire pour l'instant",
@@ -1961,7 +1982,8 @@
     },
     "selectModal": {
         "searchByName": "Rechercher par nom",
-        "noResults": "Aucun résultat trouvé"
+        "noResults": "Aucun résultat trouvé",
+        "back": "Retour"
     },
     "selectList": {
         "noResults": "Aucun résultat trouvé"
@@ -1993,18 +2015,19 @@
         "description": "Seuls les membres de la trésorerie y ont accès."
     },
     "exchangeRate": {
-        "rate": "Taux",
+        "rate": "Taux de change",
         "clickToReverse": "Cliquez pour inverser le taux"
     },
     "exchangeSettings": {
-        "title": "Paramètres d'échange",
+        "title": "Glissement",
         "slippageTolerance": "Tolérance au glissement",
-        "custom": "Personnalisé",
+        "custom": "Personnalisé %",
         "customPlaceholder": "ex : 2 %",
         "slippageRange": "Le glissement doit être compris entre 0,01 % et 100 %",
         "enterSlippage": "Veuillez saisir une tolérance au glissement",
         "slippageHelp": "Si le prix change de plus de ce pourcentage, la transaction sera annulée pour protéger vos fonds.",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "description": "Le glissement est un mécanisme de sécurité pour éviter un prix final très différent du prix coté. Si le glissement indiqué est dépassé, votre échange sera annulé. Voici le montant minimum qui vous est garanti."
     },
     "assetsPage": {
         "title": "Actifs",
@@ -2113,7 +2136,7 @@
     "tokenSelectDialog": {
         "selectToken": "Sélectionner un token",
         "selectAsset": "Sélectionner un actif",
-        "selectNetworkFor": "Sélectionner le réseau pour {asset}",
+        "selectNetwork": "Sélectionner un réseau",
         "searchByName": "Rechercher par nom",
         "noTokensWithBalance": "Aucun token avec solde trouvé",
         "noTokensFound": "Aucun token trouvé",
@@ -2187,10 +2210,12 @@
         "votesSubmitted": "Vos votes ont été soumis"
     },
     "tokenInput": {
+        "useMax": "Utiliser max",
         "max": "MAX",
-        "insufficientTokens": "Tokens insuffisants. Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
+        "insufficientTokens": "Solde insuffisant. Rechargez avant l'approbation.",
         "insufficientTokensForFee": "Tokens insuffisants pour couvrir les frais de réseau ({fee} {symbol}). Vous pouvez soumettre la demande et faire l'appoint avant l'approbation.",
-        "balance": "Solde : {amount} {symbol}"
+        "balance": "Solde : {amount} {symbol}",
+        "balanceLabel": "Solde"
     },
     "createRequestButton": {
         "idle": "Créer une demande",

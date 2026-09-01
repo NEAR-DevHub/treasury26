@@ -1,5 +1,4 @@
 "use client";
-import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
     ArrowLeft01Icon,
@@ -7,6 +6,11 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Icon } from "@/components/icon";
+import {
+    iconTintVars,
+    useIconAccentColor,
+} from "@/hooks/use-icon-accent-color";
 import {
     type MergedNetwork,
     type MergedToken,
@@ -26,14 +30,15 @@ import {
 import { Button } from "./button";
 import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "./modal";
+import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
+import { PaymentSelectModalContent } from "./payment-select-modal-content";
 import { SelectListIcon } from "./select-list";
+import {
+    EmptySelectorIcon,
+    paymentSelectModalListClassName,
+    paymentSelectModalSearchInputClassName,
+    selectorTriggerClassName,
+} from "./selector-field";
 import { NetworkIconDisplay } from "./token-display";
 import { TokenDisplay } from "./token-display-with-network";
 import { Tooltip } from "./tooltip";
@@ -67,6 +72,8 @@ interface TokenSelectProps {
     locked?: boolean;
     classNames?: {
         trigger?: string;
+        icon?: string;
+        symbol?: string;
     };
     lockedTokenData?: SelectedTokenData;
     /**
@@ -107,6 +114,18 @@ interface TokenSelectProps {
      * that seeds its own tokens).
      */
     autoSelect?: boolean;
+    /** Balance column layout on asset rows. */
+    balanceLayout?: "usdPrimary" | "tokenPrimary";
+    /** Hide network subtitle under the trigger symbol. */
+    hideNetworkSubtitle?: boolean;
+    /** Full-width labeled card trigger (Send redesign). */
+    appearance?: "default" | "card";
+    /**
+     * Tints the trigger with the selected icon's dominant colour (Swap pills).
+     * Falls back to the trigger's own background for icons whose colour cannot
+     * be read — monochrome art, or a host that serves no CORS headers.
+     */
+    tintTriggerFromIcon?: boolean;
 }
 
 export default function TokenSelect({
@@ -124,9 +143,17 @@ export default function TokenSelect({
     filterTokens,
     showPopularAssets = false,
     autoSelect = true,
+    balanceLayout = "tokenPrimary",
+    hideNetworkSubtitle = false,
+    appearance = "default",
+    tintTriggerFromIcon = false,
 }: TokenSelectProps) {
     const t = useTranslations("tokenSelectDialog");
     const tDepositSections = useTranslations("depositModal.sections");
+    const iconAccent = useIconAccentColor(
+        tintTriggerFromIcon ? selectedToken?.icon : null,
+    );
+    const iconTint = iconTintVars(iconAccent);
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
     const [selectedAsset, setSelectedAsset] = useState<MergedToken | null>(
@@ -138,7 +165,9 @@ export default function TokenSelect({
     );
 
     const { tokens, isLoading, isAssetsReady } = useMergedTokens({
-        enabled: !showOnlyOwnedAssets && open,
+        // Fetch while auto-selecting even if the modal is closed, so the
+        // highest-USD default (and USDC fallback) can resolve immediately.
+        enabled: !showOnlyOwnedAssets && (open || autoSelect),
         showOnlyOwned: showOnlyOwnedAssets,
     });
 
@@ -149,7 +178,12 @@ export default function TokenSelect({
 
         setSelectedToken(
             pickDefaultSelectedToken(tokens, {
-                disableTokens,
+                disableTokens: (candidate) => {
+                    if (disableTokens?.(candidate)) return true;
+                    // Respect list filters (e.g. confidential intents-only).
+                    if (filterTokens && !filterTokens(candidate)) return true;
+                    return false;
+                },
             }),
         );
     }, [
@@ -160,6 +194,7 @@ export default function TokenSelect({
         locked,
         setSelectedToken,
         disableTokens,
+        filterTokens,
     ]);
 
     // Source-agnostic list for rendering/selecting.
@@ -186,7 +221,24 @@ export default function TokenSelect({
                 }),
             );
             if (filtered.length === 0) return null;
-            return { ...t, networks: filtered };
+            let totalBalance = 0;
+            let totalBalanceUSD = 0;
+            for (const n of filtered) {
+                totalBalanceUSD += n.balanceUSD ?? 0;
+                try {
+                    totalBalance += Big(n.balance || "0")
+                        .div(Big(10).pow(n.decimals))
+                        .toNumber();
+                } catch {
+                    /* skip */
+                }
+            }
+            return {
+                ...t,
+                networks: filtered,
+                totalBalance,
+                totalBalanceUSD,
+            };
         };
 
         const filteredTokensList: MergedToken[] = [];
@@ -327,7 +379,7 @@ export default function TokenSelect({
                     <span className="font-semibold text-sm leading-none">
                         {lockedTokenData.symbol}
                     </span>
-                    <span className="text-[10px] font-normal text-muted-foreground uppercase">
+                    <span className="text-xs font-normal text-muted-foreground uppercase">
                         {lockedTokenData.network}
                     </span>
                 </div>
@@ -348,7 +400,7 @@ export default function TokenSelect({
                 variant="ghost"
                 type="button"
                 className={cn(
-                    "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
+                    "w-full flex items-center gap-1 py-2 rounded-lg h-auto justify-start pl-0! my-0.5",
                     isSelectedAsset &&
                         "bg-muted hover:bg-muted focus-visible:bg-muted",
                 )}
@@ -364,23 +416,38 @@ export default function TokenSelect({
                             query={search}
                         />
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                        {t("networksCount", {
-                            count: token.networks.length,
-                        })}
-                    </div>
+                    {token.name && token.name !== token.symbol ? (
+                        <div className="text-sm text-muted-foreground font-medium">
+                            <HighlightedText text={token.name} query={search} />
+                        </div>
+                    ) : null}
                 </div>
                 {token.totalBalance !== undefined && token.totalBalance > 0 && (
                     <div className="flex flex-col items-end">
-                        <span className="font-semibold">
-                            {formatSmartAmount(token.totalBalance)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                            ≈
-                            {formatCurrencyWithSubCent(
-                                token.totalBalanceUSD || 0,
-                            )}
-                        </span>
+                        {balanceLayout === "usdPrimary" ? (
+                            <>
+                                <span className="font-semibold">
+                                    {formatCurrencyWithSubCent(
+                                        token.totalBalanceUSD || 0,
+                                    )}
+                                </span>
+                                <span className="text-sm text-muted-foreground font-medium">
+                                    {formatSmartAmount(token.totalBalance)}
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="font-semibold">
+                                    {formatSmartAmount(token.totalBalance)}
+                                </span>
+                                <span className="text-sm text-muted-foreground font-medium">
+                                    ≈
+                                    {formatCurrencyWithSubCent(
+                                        token.totalBalanceUSD || 0,
+                                    )}
+                                </span>
+                            </>
+                        )}
                     </div>
                 )}
             </Button>
@@ -403,73 +470,137 @@ export default function TokenSelect({
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild disabled={disabled || showDefaultLoading}>
-                <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                        "bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3! justify-start",
-                        classNames?.trigger,
-                    )}
-                >
-                    {showDefaultLoading ? (
-                        // Same pattern as treasury-selector loading state.
-                        <div className="flex items-center gap-2 min-w-0 h-9">
-                            <Skeleton
-                                className={cn(
-                                    "rounded-full shrink-0",
-                                    iconSkeletonClass,
-                                )}
-                            />
-                            <div className="flex flex-col gap-1">
-                                <Skeleton className="h-3 w-16" />
-                                <Skeleton className="h-3 w-12" />
+                {appearance === "card" ? (
+                    <Button
+                        type="button"
+                        variant="unstyled"
+                        disabled={disabled || showDefaultLoading}
+                        className={cn(
+                            selectorTriggerClassName,
+                            (disabled || locked) && "opacity-60",
+                            classNames?.trigger,
+                        )}
+                    >
+                        {showDefaultLoading ? (
+                            <div className="flex w-full items-center gap-3 min-w-0">
+                                <Skeleton className="size-10 rounded-full shrink-0" />
+                                <div className="flex flex-col gap-1 flex-1">
+                                    <Skeleton className="h-3 w-12" />
+                                    <Skeleton className="h-4 w-16" />
+                                </div>
                             </div>
-                        </div>
-                    ) : selectedToken ? (
-                        <>
-                            <TokenDisplay
-                                symbol={selectedToken.symbol}
-                                icon={selectedToken.icon}
-                                chainIcons={selectedToken.chainIcons}
-                                iconSize={iconSize}
-                            />
-                            <div className="flex flex-col items-start gap-px">
-                                {triggerLabel && (
-                                    <span className="text-sm font-medium leading-5 text-muted-foreground">
-                                        {triggerLabel}
-                                    </span>
+                        ) : (
+                            <>
+                                {selectedToken ? (
+                                    <TokenDisplay
+                                        symbol={selectedToken.symbol}
+                                        icon={selectedToken.icon}
+                                        chainIcons={selectedToken.chainIcons}
+                                        iconSize="2xl"
+                                    />
+                                ) : (
+                                    <EmptySelectorIcon />
                                 )}
-                                <span
-                                    className={cn(
-                                        "font-semibold",
-                                        triggerLabel
-                                            ? "text-base leading-[1.2]"
-                                            : "text-sm leading-none",
-                                    )}
-                                >
-                                    {selectedToken.symbol}
+                                <span className="flex min-w-0 flex-1 flex-col items-start gap-px">
+                                    <span className="text-sm font-medium leading-normal text-muted-foreground">
+                                        {triggerLabel ?? t("selectToken")}
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            "max-w-full truncate text-base font-semibold leading-tight",
+                                            selectedToken
+                                                ? "text-foreground"
+                                                : "text-muted-foreground",
+                                        )}
+                                    >
+                                        {selectedToken?.symbol ??
+                                            t("selectToken")}
+                                    </span>
                                 </span>
-                                {!triggerLabel && (
-                                    <span className="text-[10px] font-normal text-muted-foreground uppercase">
-                                        {selectedToken.network}
-                                    </span>
-                                )}
+                                <Icon
+                                    icon={ArrowDown01Icon}
+                                    className="ml-auto size-4 shrink-0 text-muted-foreground"
+                                />
+                            </>
+                        )}
+                    </Button>
+                ) : (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        style={iconTint}
+                        className={cn(
+                            "bg-card hover:bg-card hover:border-muted-foreground rounded-full py-1 px-3! justify-start",
+                            classNames?.trigger,
+                            iconTint &&
+                                "bg-[var(--icon-tint)] hover:bg-[var(--icon-tint-hover)]",
+                        )}
+                    >
+                        {showDefaultLoading ? (
+                            // Same pattern as treasury-selector loading state.
+                            <div className="flex items-center gap-2 min-w-0 h-9">
+                                <Skeleton
+                                    className={cn(
+                                        "rounded-full shrink-0",
+                                        classNames?.icon ?? iconSkeletonClass,
+                                    )}
+                                />
+                                <div className="flex flex-col gap-1">
+                                    <Skeleton className="h-3 w-16" />
+                                    <Skeleton className="h-3 w-12" />
+                                </div>
                             </div>
-                        </>
-                    ) : (
-                        <span className="text-muted-foreground">
-                            {t("selectToken")}
-                        </span>
-                    )}
-                    <Icon
-                        icon={ArrowDown01Icon}
-                        className="text-muted-foreground ml-auto"
-                    />
-                </Button>
+                        ) : selectedToken ? (
+                            <>
+                                <TokenDisplay
+                                    symbol={selectedToken.symbol}
+                                    icon={selectedToken.icon}
+                                    chainIcons={selectedToken.chainIcons}
+                                    iconSize={iconSize}
+                                    className={classNames?.icon}
+                                />
+                                <div className="flex flex-col items-start gap-px">
+                                    {triggerLabel && (
+                                        <span className="text-sm font-medium leading-5 text-muted-foreground">
+                                            {triggerLabel}
+                                        </span>
+                                    )}
+                                    <span
+                                        className={cn(
+                                            "font-semibold",
+                                            triggerLabel
+                                                ? "text-base leading-tight"
+                                                : "text-sm leading-none",
+                                            classNames?.symbol,
+                                        )}
+                                    >
+                                        {selectedToken.symbol}
+                                    </span>
+                                    {!triggerLabel && !hideNetworkSubtitle && (
+                                        <span className="text-xs font-normal text-muted-foreground uppercase">
+                                            {selectedToken.network}
+                                        </span>
+                                    )}
+                                </div>
+                            </>
+                        ) : (
+                            <span className="text-muted-foreground">
+                                {t("selectToken")}
+                            </span>
+                        )}
+                        <Icon
+                            icon={ArrowDown01Icon}
+                            className="text-muted-foreground ml-auto"
+                        />
+                    </Button>
+                )}
             </DialogTrigger>
-            <DialogContent className="flex flex-col sm:max-w-md">
-                <DialogHeader centerTitle={true}>
-                    <div className="flex items-center gap-2 w-full">
+            <PaymentSelectModalContent>
+                <DialogHeader
+                    centerTitle={false}
+                    className="sticky top-0 border-0 pb-0 text-left"
+                >
+                    <div className="flex w-full items-center gap-2">
                         {step === "network" && (
                             <Button
                                 variant="ghost"
@@ -480,44 +611,47 @@ export default function TokenSelect({
                                 <Icon icon={ArrowLeft01Icon} />
                             </Button>
                         )}
-                        <DialogTitle className="w-full text-center">
+                        <DialogTitle className="w-full text-left text-lg font-semibold">
                             {step === "token"
-                                ? t("selectAsset")
-                                : t("selectNetworkFor", {
-                                      asset: selectedAsset?.name ?? "",
-                                  })}
+                                ? t("selectToken")
+                                : t("selectNetwork")}
                         </DialogTitle>
                     </div>
                 </DialogHeader>
                 {step === "token" && (
-                    <div className="space-y-4">
+                    <div className="mt-4 flex min-h-0 flex-1 flex-col space-y-4 sm:mt-0">
                         <Input
                             placeholder={t("searchByName")}
                             search
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            inputClassName={
+                                paymentSelectModalSearchInputClassName
+                            }
                         />
                         {isLoading ? (
                             <div className="space-y-1 animate-pulse">
                                 {TOKEN_SKELETON_IDS.map((skeletonId) => (
                                     <div
                                         key={skeletonId}
-                                        className="w-full flex items-center gap-3 py-3 rounded-lg"
+                                        className="flex w-full items-center gap-3 rounded-lg py-3"
                                     >
-                                        <div className="w-10 h-10 rounded-full bg-general-unofficial-accent-0 shrink-0" />
+                                        <div className="size-10 shrink-0 rounded-full bg-general-unofficial-accent-0" />
                                         <div className="flex-1 space-y-2">
-                                            <div className="h-4 bg-general-unofficial-accent-0 rounded w-24" />
-                                            <div className="h-3 bg-general-unofficial-accent-0 rounded w-32" />
+                                            <div className="h-4 w-24 rounded bg-general-unofficial-accent-0" />
+                                            <div className="h-3 w-32 rounded bg-general-unofficial-accent-0" />
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <ScrollArea className="h-[min(400px,calc(80vh-10rem))]">
+                            <ScrollArea
+                                className={paymentSelectModalListClassName}
+                            >
                                 {showPopularAssets &&
                                     popularTokens.length > 0 && (
                                         <div className="mb-3">
-                                            <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                            <div className="px-2 py-2 text-xs font-medium text-muted-foreground">
                                                 {tDepositSections(
                                                     "popularAssets",
                                                 )}
@@ -534,7 +668,7 @@ export default function TokenSelect({
                                                         }
                                                         variant="secondary"
                                                         className={cn(
-                                                            "h-7 rounded-md px-2 py-0.5 text-xs font-medium gap-1",
+                                                            "h-7 gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
                                                             token.networks.some(
                                                                 (network) =>
                                                                     network.id ===
@@ -567,7 +701,7 @@ export default function TokenSelect({
 
                                 {yourAssets.length > 0 && (
                                     <div>
-                                        <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                        <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                             {t("yourAssets")}
                                         </div>
                                         {yourAssets.map(renderTokenButton)}
@@ -576,7 +710,7 @@ export default function TokenSelect({
 
                                 {otherAssets.length > 0 && (
                                     <div>
-                                        <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
+                                        <div className="text-xs font-medium text-muted-foreground px-2 py-2">
                                             {t("otherAssets")}
                                         </div>
                                         {otherAssets.map(renderTokenButton)}
@@ -595,171 +729,181 @@ export default function TokenSelect({
                     </div>
                 )}
                 {step === "network" && selectedAsset && (
-                    <ScrollArea className="h-[min(400px,calc(80vh-10rem))]">
-                        {(() => {
-                            const hasBalance = (item: MergedNetwork) => {
-                                if (
-                                    !item.balance ||
-                                    item.balance.trim() === "" ||
-                                    item.decimals === undefined
-                                ) {
-                                    return false;
-                                }
+                    <div className="mt-4 flex min-h-0 flex-1 flex-col sm:mt-0">
+                        <ScrollArea className={paymentSelectModalListClassName}>
+                            {(() => {
+                                const hasBalance = (item: MergedNetwork) => {
+                                    if (
+                                        !item.balance ||
+                                        item.balance.trim() === "" ||
+                                        item.decimals === undefined
+                                    ) {
+                                        return false;
+                                    }
 
-                                try {
-                                    return !Big(
-                                        formatBalance(
-                                            item.balance,
-                                            item.decimals,
-                                        ),
-                                    ).eq(0);
-                                } catch {
-                                    return false;
-                                }
-                            };
+                                    try {
+                                        return !Big(
+                                            formatBalance(
+                                                item.balance,
+                                                item.decimals,
+                                            ),
+                                        ).eq(0);
+                                    } catch {
+                                        return false;
+                                    }
+                                };
 
-                            const isComingSoon = (item: MergedNetwork) =>
-                                Boolean(
-                                    disableTokens?.({
+                                const isComingSoon = (item: MergedNetwork) =>
+                                    Boolean(
+                                        disableTokens?.({
+                                            address: item.id,
+                                            symbol: item.symbol,
+                                            network: item.name,
+                                            residency: item.residency,
+                                        }),
+                                    );
+
+                                const withBalance =
+                                    networkItems.filter(hasBalance);
+                                const withoutBalance = networkItems.filter(
+                                    (item) => !hasBalance(item),
+                                );
+
+                                const supportedWithBalance = withBalance.filter(
+                                    (item) => !isComingSoon(item),
+                                );
+                                const supportedWithoutBalance =
+                                    withoutBalance.filter(
+                                        (item) => !isComingSoon(item),
+                                    );
+                                const comingSoonNetworks = [
+                                    ...withBalance.filter(isComingSoon),
+                                    ...withoutBalance.filter(isComingSoon),
+                                ];
+
+                                const renderNetworkButton = (
+                                    item: MergedNetwork,
+                                    idx: number,
+                                ) => {
+                                    const isSelectedNetwork =
+                                        item.id === selectedToken?.address &&
+                                        item.name === selectedToken?.network;
+                                    const isDisabled = disableTokens?.({
                                         address: item.id,
                                         symbol: item.symbol,
                                         network: item.name,
                                         residency: item.residency,
-                                    }),
-                                );
-
-                            const withBalance = networkItems.filter(hasBalance);
-                            const withoutBalance = networkItems.filter(
-                                (item) => !hasBalance(item),
-                            );
-
-                            const supportedWithBalance = withBalance.filter(
-                                (item) => !isComingSoon(item),
-                            );
-                            const supportedWithoutBalance =
-                                withoutBalance.filter(
-                                    (item) => !isComingSoon(item),
-                                );
-                            const comingSoonNetworks = [
-                                ...withBalance.filter(isComingSoon),
-                                ...withoutBalance.filter(isComingSoon),
-                            ];
-
-                            const renderNetworkButton = (
-                                item: MergedNetwork,
-                                idx: number,
-                            ) => {
-                                const isSelectedNetwork =
-                                    item.id === selectedToken?.address &&
-                                    item.name === selectedToken?.network;
-                                const isDisabled = disableTokens?.({
-                                    address: item.id,
-                                    symbol: item.symbol,
-                                    network: item.name,
-                                    residency: item.residency,
-                                });
-                                return (
-                                    <Button
-                                        key={`${item.id}-${idx}`}
-                                        onClick={() => handleNetworkClick(item)}
-                                        variant="ghost"
-                                        type="button"
-                                        disabled={isDisabled}
-                                        className={cn(
-                                            "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
-                                            isSelectedNetwork &&
-                                                "bg-muted hover:bg-muted focus-visible:bg-muted",
-                                        )}
-                                    >
-                                        <div className="pl-3 w-full">
-                                            <div className="flex items-center gap-3">
-                                                <NetworkIconDisplay
-                                                    chainIcons={item.chainIcons}
-                                                    networkName={item.name}
-                                                    residency={item.residency}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex-1" />
-                                        {hasBalance(item) && (
-                                            <div className="flex flex-col items-end">
-                                                <span className="font-semibold">
-                                                    {formatSmartAmount(
-                                                        formatBalance(
-                                                            item.balance!,
-                                                            item.decimals!,
-                                                        ),
-                                                    )}
-                                                </span>
-                                                <span className="text-sm text-muted-foreground">
-                                                    ≈
-                                                    {formatCurrencyWithSubCent(
-                                                        item.balanceUSD || 0,
-                                                    )}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </Button>
-                                );
-                            };
-
-                            return (
-                                <>
-                                    {supportedWithBalance.length > 0 && (
-                                        <div>
-                                            <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
-                                                {t("networksWithAssets")}
-                                            </div>
-                                            {supportedWithBalance.map(
-                                                renderNetworkButton,
+                                    });
+                                    return (
+                                        <Button
+                                            key={`${item.id}-${idx}`}
+                                            onClick={() =>
+                                                handleNetworkClick(item)
+                                            }
+                                            variant="ghost"
+                                            type="button"
+                                            disabled={isDisabled}
+                                            className={cn(
+                                                "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
+                                                isSelectedNetwork &&
+                                                    "bg-muted hover:bg-muted focus-visible:bg-muted",
                                             )}
-                                        </div>
-                                    )}
-
-                                    {supportedWithoutBalance.length > 0 && (
-                                        <div>
-                                            <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2">
-                                                {t("supportedNetworks")}
-                                            </div>
-                                            {supportedWithoutBalance.map(
-                                                renderNetworkButton,
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {comingSoonNetworks.length > 0 && (
-                                        <div>
-                                            <div className="text-xs font-medium text-muted-foreground uppercase px-2 py-2 flex items-center gap-1.5">
-                                                {t("comingSoon")}
-                                                {disableTokenMessage && (
-                                                    <Tooltip
-                                                        content={
-                                                            disableTokenMessage
+                                        >
+                                            <div className="pl-3 w-full">
+                                                <div className="flex items-center gap-3">
+                                                    <NetworkIconDisplay
+                                                        chainIcons={
+                                                            item.chainIcons
                                                         }
-                                                        side="top"
-                                                    >
-                                                        <span className="inline-flex items-center justify-center">
-                                                            <Icon
-                                                                icon={
-                                                                    InformationCircleIcon
-                                                                }
-                                                                className="text-muted-foreground normal-case"
-                                                            />
-                                                        </span>
-                                                    </Tooltip>
+                                                        networkName={item.name}
+                                                        residency={
+                                                            item.residency
+                                                        }
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex-1" />
+                                            {hasBalance(item) && (
+                                                <div className="flex flex-col items-end">
+                                                    <span className="font-semibold">
+                                                        {formatSmartAmount(
+                                                            formatBalance(
+                                                                item.balance!,
+                                                                item.decimals!,
+                                                            ),
+                                                        )}
+                                                    </span>
+                                                    <span className="text-sm text-muted-foreground">
+                                                        ≈
+                                                        {formatCurrencyWithSubCent(
+                                                            item.balanceUSD ||
+                                                                0,
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </Button>
+                                    );
+                                };
+
+                                return (
+                                    <>
+                                        {supportedWithBalance.length > 0 && (
+                                            <div>
+                                                <div className="text-xs font-medium text-muted-foreground px-2 py-2">
+                                                    {t("networksWithAssets")}
+                                                </div>
+                                                {supportedWithBalance.map(
+                                                    renderNetworkButton,
                                                 )}
                                             </div>
-                                            {comingSoonNetworks.map(
-                                                renderNetworkButton,
-                                            )}
-                                        </div>
-                                    )}
-                                </>
-                            );
-                        })()}
-                    </ScrollArea>
+                                        )}
+
+                                        {supportedWithoutBalance.length > 0 && (
+                                            <div>
+                                                <div className="text-xs font-medium text-muted-foreground px-2 py-2">
+                                                    {t("supportedNetworks")}
+                                                </div>
+                                                {supportedWithoutBalance.map(
+                                                    renderNetworkButton,
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {comingSoonNetworks.length > 0 && (
+                                            <div>
+                                                <div className="text-xs font-medium text-muted-foreground px-2 py-2 flex items-center gap-1.5">
+                                                    {t("comingSoon")}
+                                                    {disableTokenMessage && (
+                                                        <Tooltip
+                                                            content={
+                                                                disableTokenMessage
+                                                            }
+                                                            side="top"
+                                                        >
+                                                            <span className="inline-flex items-center justify-center">
+                                                                <Icon
+                                                                    icon={
+                                                                        InformationCircleIcon
+                                                                    }
+                                                                    className="text-muted-foreground normal-case"
+                                                                />
+                                                            </span>
+                                                        </Tooltip>
+                                                    )}
+                                                </div>
+                                                {comingSoonNetworks.map(
+                                                    renderNetworkButton,
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
+                        </ScrollArea>
+                    </div>
                 )}
-            </DialogContent>
+            </PaymentSelectModalContent>
         </Dialog>
     );
 }

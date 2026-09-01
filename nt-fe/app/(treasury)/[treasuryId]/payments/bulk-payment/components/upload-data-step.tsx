@@ -4,27 +4,20 @@ import {
     BitcoinIcon,
     Cancel01Icon,
     File01Icon,
-    FileUploadIcon,
+    FileUpIcon,
     InformationCircleIcon,
     Invoice01Icon,
     UserGroupIcon,
     Wallet03Icon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import {
-    cloneElement,
-    isValidElement,
-    type ReactElement,
-    useEffect,
-    useState,
-} from "react";
+import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { Button } from "@/components/button";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { Textarea } from "@/components/textarea";
 import TokenSelect, { type SelectedTokenData } from "@/components/token-select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     hasInlineWarning,
@@ -96,12 +89,7 @@ export function UploadDataStep({
         row: number;
         message: string;
     }> | null>(null);
-    // Kept separate from dataErrors so the network card (not paste/upload)
-    // owns the "select recipient network" validation state.
-    const [networkError, setNetworkError] = useState<string | null>(null);
     const [isReviewLoading, setIsReviewLoading] = useState(false);
-    const [hasAcknowledgedExchangeRisk, setHasAcknowledgedExchangeRisk] =
-        useState(false);
 
     const isLoading = isLoadingSubscription;
     const availableCredits = subscription?.batchPaymentCredits ?? 0;
@@ -121,6 +109,21 @@ export function UploadDataStep({
         );
     const showTokenWarning =
         selectedToken != null && hasInlineWarning(sendWarningMessage);
+    const hasDataErrors = Boolean(dataErrors?.length);
+
+    const dataErrorList =
+        hasDataErrors && dataErrors ? (
+            <div className="max-h-48 space-y-1 overflow-y-auto overflow-x-hidden">
+                {dataErrors.map((error) => (
+                    <p
+                        key={`${error.row}-${error.message}`}
+                        className="wrap-anywhere break-word text-sm text-destructive"
+                    >
+                        {error.message}
+                    </p>
+                ))}
+            </div>
+        ) : null;
 
     // Restore uploaded file state when navigating back
     useEffect(() => {
@@ -129,13 +132,6 @@ export function UploadDataStep({
             setUploadedFile(file);
         }
     }, [uploadedFileName, uploadedFile]);
-
-    // Clear network-card error once a recipient network is selected.
-    useEffect(() => {
-        if (destinationNetwork) {
-            setNetworkError(null);
-        }
-    }, [destinationNetwork]);
 
     // Address/network validation errors are tied to the selected token (and
     // confidential receive network). Clear them when either changes so a
@@ -220,14 +216,12 @@ export function UploadDataStep({
         }
 
         // Confidential bulk requires a picked recipient network — its raw name
-        // drives address validation for ALL recipients. The picker is gated on
-        // having payment data; block Continue if they haven't chosen one yet.
+        // drives address validation for ALL recipients. The Review button is
+        // disabled until one is chosen; this is a submit-time safety net.
         if (isConfidential && !destinationNetwork) {
-            setNetworkError(t("selectRecipientNetwork"));
             return;
         }
 
-        setNetworkError(null);
         setDataErrors(null);
         setIsReviewLoading(true);
         try {
@@ -325,29 +319,26 @@ export function UploadDataStep({
     if (isLoading) {
         return (
             <div className="flex w-full min-w-0 flex-col items-start justify-center gap-5 lg:flex-row">
-                <div className="mx-auto flex w-full min-w-0 max-w-[464px] flex-col gap-2 lg:mx-0">
-                    <div className="h-[72px] animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
+                <div className="mx-auto flex w-full min-w-0 max-w-lg flex-col gap-2 lg:mx-0">
+                    <div className="h-18 animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
                     <div className="h-12 animate-pulse rounded-2xl bg-general-unofficial-accent-0" />
-                    <div className="h-[178px] animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
+                    <div className="h-44 animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
                     <div className="h-7 w-72 animate-pulse rounded-lg bg-general-unofficial-accent-0" />
-                    <div className="h-[72px] animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
-                    <div className="h-[66px] animate-pulse rounded-xl bg-general-unofficial-accent-0" />
+                    <div className="h-18 animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
+                    <div className="h-16 animate-pulse rounded-xl bg-general-unofficial-accent-0" />
                     <div className="h-11 animate-pulse rounded-2xl bg-general-unofficial-accent-0" />
                 </div>
-                <div className="mx-auto h-[123px] w-full max-w-[300px] shrink-0 animate-pulse rounded-3xl bg-general-unofficial-accent-0 lg:mx-0" />
+                <div className="h-30 w-full shrink-0 animate-pulse rounded-3xl bg-general-unofficial-accent-0 lg:max-w-72" />
             </div>
         );
     }
 
     return (
         <div className="flex w-full min-w-0 flex-col items-start justify-center gap-5 lg:flex-row">
-            <div className="mx-auto flex w-full min-w-0 max-w-[464px] flex-col gap-2 lg:mx-0">
+            <div className="mx-auto flex w-full min-w-0 max-w-lg flex-col gap-2 lg:mx-0">
                 {availableCredits === 0 && subscription && (
                     <Alert variant="info" className="mb-1">
-                        <Icon
-                            icon={InformationCircleIcon}
-                            className="mt-[2px]"
-                        />
+                        <Icon icon={InformationCircleIcon} className="mt-0.5" />
                         <AlertTitle className="font-semibold">
                             {isTrialPlan(subscription.planConfig)
                                 ? t("creditsUsed")
@@ -388,8 +379,8 @@ export function UploadDataStep({
                         triggerLabel={t("token")}
                         classNames={{
                             trigger: showTokenWarning
-                                ? "h-[72px] w-full shrink-0 rounded-3xl border-0 bg-transparent px-4! shadow-none hover:bg-transparent"
-                                : "h-[72px] w-full rounded-3xl border border-general-border bg-card px-4! shadow-none hover:border-general-border hover:bg-card",
+                                ? "h-18 w-full shrink-0 rounded-3xl border-0 bg-transparent px-4! shadow-none hover:bg-transparent"
+                                : "h-18 w-full rounded-3xl border border-general-border bg-card px-4! shadow-none hover:border-general-border hover:bg-card",
                         }}
                     />
                     {showTokenWarning && (
@@ -411,14 +402,14 @@ export function UploadDataStep({
                     <TabsList className="h-12 w-full justify-stretch gap-1 rounded-2xl border border-general-border bg-transparent">
                         <TabsTrigger
                             value="upload"
-                            className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
+                            className="h-10 flex-1 cursor-pointer rounded-xl px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
                         >
                             <Icon icon={Wallet03Icon} />
                             {t("uploadFile")}
                         </TabsTrigger>
                         <TabsTrigger
                             value="paste"
-                            className="h-10 flex-1 cursor-pointer rounded-[12px] px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
+                            className="h-10 flex-1 cursor-pointer rounded-xl px-2 py-3 font-bold text-general-unofficial-ghost-foreground data-[state=active]:border-general-border data-[state=active]:bg-card dark:data-[state=active]:border-general-border dark:data-[state=active]:bg-card"
                         >
                             <Icon icon={UserGroupIcon} />
                             {t("provideData")}
@@ -432,9 +423,11 @@ export function UploadDataStep({
                                     {/* biome-ignore lint/a11y/noStaticElementInteractions: Drag-and-drop supplements the accessible file button below. */}
                                     <div
                                         className={cn(
-                                            "flex h-[178px] items-center justify-center rounded-3xl border border-general-border bg-card px-6 text-center transition-colors hover:bg-general-tertiary focus-within:bg-general-tertiary",
+                                            "flex h-44 items-center justify-center rounded-3xl border border-general-border bg-card px-6 text-center transition-colors hover:bg-general-tertiary focus-within:bg-general-tertiary",
                                             isDragging &&
                                                 "border-primary bg-primary/5",
+                                            hasDataErrors &&
+                                                "border-destructive",
                                         )}
                                         onDrop={handleDrop}
                                         onDragOver={handleDragOver}
@@ -443,12 +436,12 @@ export function UploadDataStep({
                                         <div className="flex flex-col items-center gap-2.5">
                                             <span className="flex size-10 items-center justify-center rounded-full border border-general-border bg-muted">
                                                 <Icon
-                                                    icon={FileUploadIcon}
+                                                    icon={FileUpIcon}
                                                     className="text-muted-foreground"
                                                 />
                                             </span>
                                             <div className="flex flex-col gap-1">
-                                                <p className="text-base leading-[1.2]">
+                                                <p className="text-base leading-tight">
                                                     <Button
                                                         type="button"
                                                         variant="link"
@@ -493,169 +486,115 @@ export function UploadDataStep({
                                         </div>
                                     </div>
 
+                                    {dataErrorList}
+
                                     <div className="flex min-h-7 flex-wrap items-center gap-1 text-sm font-medium">
                                         <span>{t("noFilePrompt")}</span>
                                         <Button
                                             type="button"
                                             variant="link"
                                             onClick={downloadTemplate}
-                                            className="h-7 px-2! py-[3px] text-xs font-bold text-general-unofficial-ghost-foreground hover:underline"
+                                            className="h-7 px-2! py-0.5 text-xs font-bold text-general-unofficial-ghost-foreground hover:underline"
                                         >
                                             {t("downloadTemplate")}
                                         </Button>
                                     </div>
                                 </>
                             ) : (
-                                <div
-                                    className={cn(
-                                        "flex h-[72px] items-center justify-between rounded-3xl border border-general-border bg-card px-4",
-                                        dataErrors?.length &&
-                                            "border-destructive bg-destructive/5",
-                                    )}
-                                >
-                                    <div className="flex min-w-0 items-center gap-3">
-                                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
-                                            <Icon
-                                                icon={File01Icon}
-                                                className={cn(
-                                                    "text-primary",
-                                                    dataErrors?.length &&
-                                                        "text-destructive",
-                                                )}
-                                            />
-                                        </span>
-                                        <div className="min-w-0 text-left">
-                                            <p className="truncate text-sm font-semibold">
-                                                {uploadedFile.name}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {(
-                                                    uploadedFile.size / 1024
-                                                ).toFixed(0)}
-                                                KB
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        onClick={() => {
-                                            setUploadedFile(null);
-                                            form.setValue("csvData", null);
-                                            form.setValue(
-                                                "uploadedFileName",
-                                                null,
-                                            );
-                                            setDataErrors(null);
-                                        }}
+                                <>
+                                    <div
                                         className={cn(
-                                            "text-muted-foreground hover:text-foreground",
-                                            dataErrors?.length &&
-                                                "text-destructive hover:text-destructive/80",
+                                            "flex h-18 items-center justify-between rounded-3xl border border-general-border bg-card px-4",
+                                            hasDataErrors &&
+                                                "border-destructive",
                                         )}
                                     >
-                                        <Icon icon={Cancel01Icon} />
-                                        <span className="sr-only">
-                                            {t("removeFile")}
-                                        </span>
-                                    </Button>
-                                </div>
-                            )}
-
-                            {activeTab === "upload" &&
-                                dataErrors &&
-                                dataErrors.length > 0 && (
-                                    <div className="max-h-48 space-y-1 overflow-y-auto overflow-x-hidden">
-                                        {dataErrors.map((error) => (
-                                            <div
-                                                key={`${error.row}-${error.message}`}
-                                                className="wrap-anywhere break-word text-sm text-destructive"
-                                            >
-                                                {error.message}
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
+                                                <Icon
+                                                    icon={File01Icon}
+                                                    className={cn(
+                                                        "text-primary",
+                                                        dataErrors?.length &&
+                                                            "text-destructive",
+                                                    )}
+                                                />
+                                            </span>
+                                            <div className="min-w-0 text-left">
+                                                <p className="truncate text-sm font-semibold">
+                                                    {uploadedFile.name}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {(
+                                                        uploadedFile.size / 1024
+                                                    ).toFixed(0)}
+                                                    KB
+                                                </p>
                                             </div>
-                                        ))}
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            onClick={() => {
+                                                setUploadedFile(null);
+                                                form.setValue("csvData", null);
+                                                form.setValue(
+                                                    "uploadedFileName",
+                                                    null,
+                                                );
+                                                setDataErrors(null);
+                                            }}
+                                            className={cn(
+                                                "text-muted-foreground hover:text-foreground",
+                                                dataErrors?.length &&
+                                                    "text-destructive hover:text-destructive/80",
+                                            )}
+                                        >
+                                            <Icon icon={Cancel01Icon} />
+                                            <span className="sr-only">
+                                                {t("removeFile")}
+                                            </span>
+                                        </Button>
                                     </div>
-                                )}
+                                    {dataErrorList}
+                                </>
+                            )}
                         </div>
                     </TabsContent>
 
                     <TabsContent value="paste">
-                        <div className="space-y-2 rounded-3xl border border-general-border bg-card">
-                            <Textarea
-                                value={pasteDataInput}
-                                onChange={(event) => {
-                                    form.setValue(
-                                        "pasteDataInput",
-                                        event.target.value,
-                                    );
-                                    if (dataErrors?.length) {
-                                        setDataErrors(null);
-                                    }
-                                }}
-                                borderless
-                                placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
-                                rows={8}
+                        <div className="flex flex-col gap-1">
+                            <div
                                 className={cn(
-                                    "min-h-[178px] w-full max-w-full resize-none overflow-x-hidden rounded-3xl bg-transparent! p-4 font-mono text-base whitespace-pre-wrap shadow-none hover:bg-transparent! focus-within:bg-transparent! focus:outline-none disabled:opacity-100 md:text-sm",
-                                    dataErrors?.length &&
-                                        "border-destructive! bg-destructive/5! focus:border-destructive! focus-visible:border-destructive! focus-within:border-destructive!",
+                                    "rounded-3xl border border-general-border bg-card",
+                                    hasDataErrors && "border-destructive",
                                 )}
-                                disabled={availableCredits === 0}
-                            />
-
-                            {dataErrors && dataErrors.length > 0 && (
-                                <div className="max-h-48 space-y-1 overflow-y-auto overflow-x-hidden">
-                                    {dataErrors.map((error) => (
-                                        <div
-                                            key={`${error.row}-${error.message}`}
-                                            className="wrap-anywhere break-word text-sm text-destructive"
-                                        >
-                                            {error.message}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                            >
+                                <Textarea
+                                    value={pasteDataInput}
+                                    onChange={(event) => {
+                                        form.setValue(
+                                            "pasteDataInput",
+                                            event.target.value,
+                                        );
+                                        if (dataErrors?.length) {
+                                            setDataErrors(null);
+                                        }
+                                    }}
+                                    borderless
+                                    placeholder={`alice.near, 100.00\nbob.near, 100.00\ncharlie.near, 100.00`}
+                                    rows={8}
+                                    className="min-h-44 w-full max-w-full resize-none overflow-x-hidden rounded-3xl bg-transparent! p-4 font-mono text-base whitespace-pre-wrap shadow-none hover:bg-transparent! focus-within:bg-transparent! focus:outline-none disabled:opacity-100 md:text-sm"
+                                    disabled={availableCredits === 0}
+                                />
+                            </div>
+                            {dataErrorList}
                         </div>
                     </TabsContent>
                 </Tabs>
 
-                {networkSlot && isValidElement(networkSlot)
-                    ? cloneElement(
-                          networkSlot as ReactElement<{
-                              invalid?: boolean;
-                              errorMessage?: string | null;
-                          }>,
-                          {
-                              invalid: !!networkError,
-                              errorMessage: networkError,
-                          },
-                      )
-                    : networkSlot}
-
-                <div className="flex items-start gap-3 rounded-[12px] border border-[#dbeafe] bg-general-info-background-faded p-3 text-general-info-foreground dark:border-general-info-border">
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-general-info-foreground">
-                        <Icon
-                            icon={InformationCircleIcon}
-                            className="text-white"
-                            strokeWidth={3}
-                        />
-                    </span>
-                    <Checkbox
-                        id="bulk-payment-exchange-risk"
-                        checked={hasAcknowledgedExchangeRisk}
-                        onCheckedChange={(checked) =>
-                            setHasAcknowledgedExchangeRisk(checked === true)
-                        }
-                        className="mt-0.5 border-[#1447e6] data-[state=checked]:border-[#1447e6] data-[state=checked]:bg-[#1447e6] dark:border-general-info-foreground dark:data-[state=checked]:border-general-info-foreground dark:data-[state=checked]:bg-general-info-foreground"
-                    />
-                    <label
-                        htmlFor="bulk-payment-exchange-risk"
-                        className="cursor-pointer text-sm font-semibold leading-5"
-                    >
-                        {t("exchangeAddressWarning")}
-                    </label>
-                </div>
+                {networkSlot}
 
                 <CreateRequestButton
                     type="button"
@@ -664,7 +603,7 @@ export function UploadDataStep({
                         !selectedToken ||
                         (activeTab === "upload" && !csvData) ||
                         (activeTab === "paste" && !pasteDataInput.trim()) ||
-                        !hasAcknowledgedExchangeRisk ||
+                        (isConfidential && !destinationNetwork) ||
                         availableCredits === 0 ||
                         isReviewLoading ||
                         paymentsSlotBlocked
@@ -685,14 +624,16 @@ export function UploadDataStep({
                                   (activeTab === "paste" &&
                                       !pasteDataInput.trim())
                                 ? t("selectAndProvide")
-                                : t("continueToReview")
+                                : isConfidential && !destinationNetwork
+                                  ? t("selectRecipientNetwork")
+                                  : t("continueToReview")
                     }
                 />
             </div>
 
-            <aside className="mx-auto w-full max-w-[300px] shrink-0 rounded-3xl border border-general-border bg-general-tertiary lg:mx-0">
+            <aside className="w-full shrink-0 rounded-3xl border border-general-border bg-general-tertiary lg:mx-0 lg:max-w-72">
                 <div className="px-4 pb-2 pt-4">
-                    <p className="text-base font-semibold leading-[1.2]">
+                    <p className="text-base font-semibold leading-tight">
                         {t("requirements")}
                     </p>
                 </div>

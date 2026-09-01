@@ -11,6 +11,19 @@ const nextConfig: NextConfig = {
     // Required to support PostHog trailing slash API requests
     skipTrailingSlashRedirect: true,
     allowedDevOrigins: ["127.0.0.1"],
+    // Token icon hosts. Re-serving their art through the optimizer makes it
+    // same-origin, so `useIconAccentColor` can read its pixels — most of these
+    // hosts send no CORS headers, which taints a canvas.
+    images: {
+        remotePatterns: [
+            { protocol: "https", hostname: "s2.coinmarketcap.com" },
+            { protocol: "https", hostname: "assets.coingecko.com" },
+            { protocol: "https", hostname: "cdn.ondo.finance" },
+            { protocol: "https", hostname: "dd.dexscreener.com" },
+            { protocol: "https", hostname: "near-intents.org" },
+            { protocol: "https", hostname: "near.com" },
+        ],
+    },
     headers: async () => {
         return [
             // Allow CORS so NEAR Connect can load trezu-wallet.js

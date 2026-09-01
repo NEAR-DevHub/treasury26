@@ -201,7 +201,7 @@
         },
         "exchange": {
             "title": "החלפה",
-            "confidentialTitle": "החלפה חסויה",
+            "confidentialTitle": "החלפה",
             "description": "החלף את הטוקנים שלך באופן מאובטח ויעיל"
         },
         "vesting": {
@@ -376,7 +376,6 @@
             "copyLink": "העתק קישור",
             "titleConfidential": "העברה ל-near business",
             "chooseTreasuryTitle": "בחר Treasury",
-            "chooseTreasuryDescription": "מאיזו treasury מגיע התשלום הזה?",
             "noMemberTreasuries": "אינך חבר עדיין באף treasury.",
             "createTreasury": "צור treasury",
             "expired": "פג תוקף",
@@ -466,6 +465,7 @@
             "rate": "שער",
             "detailsTitle": "פרטים",
             "linkedRequest": "בקשה מקושרת",
+            "swapFee": "עמלת סואפ",
             "sendTransaction": "עסקת שליחה",
             "bulkTitle": "פרטי העברה מרוכזת",
             "toRecipients": "אל {count} נמענים",
@@ -1233,10 +1233,15 @@
         "useDifferentAddress": "השתמש בכתובת אחרת",
         "failed1ClickQuote": "יצירת ציטוט העברה של 1Click נכשלה",
         "paymentSubmitted": "בקשה לשליחת תשלום נשלחה",
-        "confidentialTooltip": "פרטי הנמען והסכום המבוקש חסויים לחלוטין."
+        "confidentialTooltip": "פרטי הנמען והסכום המבוקש חסויים לחלוטין.",
+        "bulkPaymentsTooltip": "שלחו מספר תשלומים בבקשה אחת – אין צורך לאשר אותם אחד אחד.",
+        "destinationNetwork": "רשת יעד",
+        "selectRecipientPlaceholder": "בחר נמען",
+        "tokenLabel": "טוקן",
+        "recipientLabel": "נמען"
     },
     "bulkPayment": {
-        "title": "תשלום מרוכז",
+        "title": "שליחה מרוכזת",
         "comingSoonToast": "תשלומים בכמויות יגיעו בקרוב!",
         "submittingList": "שולח רשימת תשלומים בכמויות",
         "submittingProposal": "שולח הצעה",
@@ -1264,7 +1269,6 @@
             "token": "אסימון",
             "destinationNetwork": "רשת יעד",
             "uploadFileFirst": "תחילה יש להעלות קובץ",
-            "exchangeAddressWarning": "אני מבין/ה ששליחה ישירות לכתובת בורסה עלולה לגרום לאובדן כספים או לבעיות אחרות.",
             "removeFile": "הסרת הקובץ",
             "maxFileSize": "מקסימום קובץ אחד עד 1.5 MB, קובץ CSV בלבד",
             "noFilePrompt": "אין לך קובץ להעלות?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "ערוך תשלום",
+            "back": "ערוך נמען",
             "saveChanges": "שמור שינויים"
         },
         "parsing": {
@@ -1355,13 +1360,13 @@
         "slippageTolerance": "סבילות החלקה",
         "disabled": {
             "differentTokens": "הטוקנים חייבים להיות שונים",
-            "enterAmount": "הזן סכום להחלפה"
+            "enterAmount": "הזן סכום"
         },
         "review": "סקור החלפה",
         "poweredBy": "מופעל על ידי",
         "info": {
             "priceDifference": "הפרש מחיר",
-            "priceDifferenceTooltip": "מציג כיצד ערך ה-USD שאתה מקבל משתווה לערך ה-USD שאתה שולח.",
+            "priceDifferenceTooltip": "הפרש ממחיר mid-market.",
             "estimatedTime": "זמן משוער",
             "estimatedTimeValue": "{seconds} שניות",
             "estimatedTimeTooltip": "זמן משוער להשלמת ההחלפה.",
@@ -1372,12 +1377,16 @@
             "depositAddressCopied": "כתובת ההפקדה הועתקה",
             "quoteExpires": "הציטוט פג ב-",
             "exchangeFee": "עמלת החלפה",
-            "exchangeFeeTooltip": "עמלת 0.70% הנגבית כאן מכסה את עלויות פרוטוקול NEAR Intents כדי לאפשר את המסחר שלך ואת עמלת הווידג'ט של Near Business. סכום זה מחושב אוטומטית בתוך השער המצוטט שלך."
+            "exchangeFeeTooltip": "עמלת 0.70% מכסה את עלויות פרוטוקול NEAR Intents לביצוע העסקה ואת עמלת הווידג'ט של Trezu. הסכום מחושב אוטומטית בשער המצוטט."
         },
         "approveWithin24h": "אנא אשר בקשה זו בתוך 24 שעות, אחרת היא תפוג. אנו ממליצים לאשר בהקדם האפשרי.",
         "confirmSubmit": "אשר ושלח בקשה",
         "refreshingIn": "שער ההחלפה יתרענן בעוד {seconds} שניות",
-        "confidentialTooltip": "הסכומים שאתם שולחים ומקבלים חסויים לחלוטין."
+        "confidentialTooltip": "הסכומים שאתם שולחים ומקבלים חסויים לחלוטין.",
+        "maxSlippage": "החלקה מקסימלית",
+        "maxSlippageTooltip": "הגדרת ההחלקה היא מנגנון הגנה מפני מחיר סופי שונה מאוד מהמחיר שצוטט. אם ההחלקה שצוינה תחרוג, ההחלפה תיכשל.",
+        "receiveAtLeast": "קבל לפחות",
+        "receiveAtLeastTooltip": "הסכום המצוטט הוא הערכה. מספר סולברים מתחרים כדי לתת לך את המחיר הטוב ביותר. החלקה מקסימלית מבטיחה סכום מינימלי — אם לא ניתן לעמוד בכך, העסקה מבוטלת."
     },
     "vesting": {
         "validation": {
@@ -1460,7 +1469,7 @@
         "financialThreshold": "סף פיננסי",
         "governanceThreshold": "סף ממשל",
         "noDeploymentFee": "🎉 ללא עמלת פריסה",
-        "noDeploymentFeeDescription": "כדי לתמוך בפרויקטים חדשים, TREZU מכסה את כל עמלות הפריסה החד-פעמיות ואחסון הרשת.",
+        "noDeploymentFeeDescription": "כדי לתמוך בפרויקטים חדשים, Near Business מכסה את כל עמלות הפריסה החד-פעמיות ואחסון הרשת.",
         "connectWalletCreate": "התחבר לארנק כדי ליצור אוצר",
         "walletNotSupportedTitle": "{wallet} עדיין לא נתמך",
         "walletNotSupportedDescription": "נוסיף את זה בהמשך. בינתיים אפשר להתחבר עם NEAR, Ledger או ארנקי EVM שכבר יש לכם.",
@@ -1496,7 +1505,7 @@
                 "recoveryLabel": "שחזור:",
                 "recoveryText": "לא משנה במה תבחר, אנו ממליצים להוסיף חבר שני (ארנק) לאחר ההגדרה כדי שאובדן מכשיר לא ינעל אותך בחוץ.",
                 "passkeyNew": "חדש",
-                "passkeyDomainNote": "מפתח הגישה שלך נשמר עבור trezu.app במכשיר זה (או מסונכרן דרך iCloud/Google). לא ניתן להשתמש בו באפליקציות אחרות, ומפתחות של אפליקציות אחרות לא יכולים לגשת ל‑Near Business."
+                "passkeyDomainNote": "מפתח הגישה שלך נשמר עבור Near Business במכשיר זה (או מסונכרן דרך iCloud/Google). לא ניתן להשתמש בו באפליקציות אחרות, ומפתחות של אפליקציות אחרות לא יכולים לגשת ל‑Near Business."
             },
             "passkeyCardTitle": "Passkey עבור Touch ID ו-Face ID",
             "passkeyCardSubtitle": "היכנסו באמצעות זיהוי ביומטרי או קוד המכשיר",
@@ -1669,7 +1678,7 @@
         "available": "{count} זמינים",
         "used": "{count} בשימוש",
         "exhaustedBody": "הצוות שלך הגיע למגבלת הפעולות הממומנות החודשיות. ניתן להמשיך לאחר {date} או צור קשר",
-        "almostBody": "TREZU מממנת כעת את עלויות האחסון עבור כל פעולות הצוות, כמו יצירת בקשות והצבעה עליהן. הצוות שלך קרוב להגיע למגבלה החודשית הממומנת.",
+        "almostBody": "Near Business מממנת כעת את עלויות האחסון עבור כל פעולות הצוות, כמו יצירת בקשות והצבעה עליהן. הצוות שלך קרוב להגיע למגבלה החודשית הממומנת.",
         "contactUs": "צור קשר",
         "nextMonthlyReset": "האיפוס החודשי הבא שלך",
         "sidebarBody": "הצוות שלך הגיע למגבלת הפעולות הממומנות החודשיות. ניתן להמשיך לאחר {date} או ⬇️"
@@ -1898,6 +1907,18 @@
     "paymentFormSection": {
         "selectRecipient": "בחר נמען",
         "searchByNameOrAddress": "חיפוש לפי שם או כתובת",
+        "noContactsForNetwork": "לא יצרת אנשי קשר עבור רשת {network}.",
+        "noContacts": "אין לך עדיין אנשי קשר.",
+        "contacts": "אנשי קשר",
+        "invalidAddress": "אנא הזן כתובת תקינה",
+        "scanQrCode": "סרוק קוד QR",
+        "scanQrCodeDescription": "השתמש במצלמה כדי למלא את כתובת הנמען",
+        "qrScanTitle": "סרוק קוד QR",
+        "qrScanHint": "כוונו את המצלמה לקוד QR של הנמען.",
+        "qrBackToRecipientList": "חזרה לרשימת הנמענים",
+        "qrCameraPermissionDenied": "נדרשת גישה למצלמה כדי לסרוק קוד QR. אפשרו אותה בהגדרות הדפדפן ונסו שוב.",
+        "qrCameraUnsupported": "דפדפן זה אינו יכול לגשת למצלמה לסריקת QR.",
+        "qrCameraStarting": "מפעיל את המצלמה…",
         "restrictedRecipientTitle": "עסקה אסורה",
         "restrictedRecipientMessage": "כתובת זו מוגבלת כעת עקב בדיקות אבטחה. אם אתה מאמין שכתובת זו צריכה להיות מותרת, תוכל <link>לבקש להוסיפה לרשימה הלבנה</link>.",
         "send": "שליחה",
@@ -1916,9 +1937,9 @@
         "incompatible": "לא תואם",
         "comingSoon": "בקרוב",
         "forMembersOnly": "לחברים בלבד",
-        "nearComDescription": "רשת עבור trezu חסוי",
-        "nearComDescriptionPublic": "רשת עבור near.com",
-        "nearDescription": "רשת למשיכה ציבורית"
+        "nearComDescription": "רשת עבור Near Business ו-near.com",
+        "nearDescription": "רשת למשיכה ציבורית",
+        "internalTag": "פנימי"
     },
     "addressBookTable": {
         "emptyTitle": "אין נמענים עדיין",
@@ -1961,7 +1982,8 @@
     },
     "selectModal": {
         "searchByName": "חיפוש לפי שם",
-        "noResults": "לא נמצאו תוצאות"
+        "noResults": "לא נמצאו תוצאות",
+        "back": "חזרה"
     },
     "selectList": {
         "noResults": "לא נמצאו תוצאות"
@@ -1993,18 +2015,19 @@
         "description": "רק לחברי האוצר יש גישה."
     },
     "exchangeRate": {
-        "rate": "שער",
+        "rate": "שער החלפה",
         "clickToReverse": "לחץ להפוך את השער"
     },
     "exchangeSettings": {
-        "title": "הגדרות החלפה",
+        "title": "החלקה",
         "slippageTolerance": "סבילות החלקה",
-        "custom": "מותאם אישית",
+        "custom": "מותאם אישית %",
         "customPlaceholder": "למשל: 2%",
         "slippageRange": "ההחלקה חייבת להיות בין 0.01% ל-100%",
         "enterSlippage": "אנא הזן סבילות החלקה",
         "slippageHelp": "אם המחיר ישתנה ביותר מאחוז זה, העסקה תבוטל כדי להגן על הכספים שלך.",
-        "save": "שמירה"
+        "save": "שמירה",
+        "description": "הגדרת ההחלקה היא מנגנון הגנה מפני מחיר סופי שונה מאוד מהמחיר שצוטט. אם ההחלקה שצוינה תחרוג, העסקה תבוטל. להלן הסכום המינימלי המובטח."
     },
     "assetsPage": {
         "title": "נכסים",
@@ -2113,7 +2136,7 @@
     "tokenSelectDialog": {
         "selectToken": "בחר טוקן",
         "selectAsset": "בחר נכס",
-        "selectNetworkFor": "בחר רשת עבור {asset}",
+        "selectNetwork": "בחר רשת",
         "searchByName": "חיפוש לפי שם",
         "noTokensWithBalance": "לא נמצאו טוקנים עם יתרה",
         "noTokensFound": "לא נמצאו טוקנים",
@@ -2187,10 +2210,12 @@
         "votesSubmitted": "ההצבעות שלך נשלחו"
     },
     "tokenInput": {
+        "useMax": "השתמש במקסימום",
         "max": "MAX",
-        "insufficientTokens": "טוקנים לא מספקים. ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
+        "insufficientTokens": "יתרה לא מספקת. הטען לפני האישור.",
         "insufficientTokensForFee": "אין מספיק טוקנים לכיסוי עמלת הרשת ({fee} {symbol}). ניתן לשלוח את הבקשה ולהטעין לפני האישור.",
-        "balance": "יתרה: {amount} {symbol}"
+        "balance": "יתרה: {amount} {symbol}",
+        "balanceLabel": "יתרה"
     },
     "createRequestButton": {
         "idle": "צור בקשה",

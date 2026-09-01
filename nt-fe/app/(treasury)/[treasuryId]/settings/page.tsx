@@ -21,7 +21,7 @@ function SettingsPageContent() {
     // The Developer tab only does anything for a signed-in member (its Enable action is
     // ChangePolicy-gated), so hide it from guests and signed-out viewers — same idea as the
     // feature-flag-gated Integrations tab.
-    const { isGuestTreasury } = useTreasury();
+    const { isGuestTreasury, treasuryId } = useTreasury();
     const showDeveloper = !isGuestTreasury;
     const [activeTab, setActiveTab] = useState(() => {
         if (tabFromUrl === "integrations" && features.integrations) {
@@ -76,9 +76,15 @@ function SettingsPageContent() {
     ];
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
-            <div className="w-full max-w-4xl mx-auto">
-                <div className="flex mb-6">
+        <PageComponentLayout
+            title={t("title")}
+            description={t("description")}
+            backButton={treasuryId ? `/${treasuryId}` : true}
+            backKind="section"
+            hideMobileShellControls
+        >
+            <div className="mx-auto w-full max-w-4xl">
+                <div className="mb-6 flex">
                     <TabGroup
                         tabs={tabs}
                         activeTab={activeTab}
@@ -100,6 +106,7 @@ function SettingsPageContent() {
 
 export default function SettingsPage() {
     const t = useTranslations("pages.settings");
+    const { treasuryId } = useTreasury();
 
     return (
         <Suspense
@@ -107,8 +114,11 @@ export default function SettingsPage() {
                 <PageComponentLayout
                     title={t("title")}
                     description={t("description")}
+                    backButton={treasuryId ? `/${treasuryId}` : true}
+                    backKind="section"
+                    hideMobileShellControls
                 >
-                    <div className="w-full max-w-4xl mx-auto min-h-48" />
+                    <div className="mx-auto min-h-48 w-full max-w-4xl" />
                 </PageComponentLayout>
             }
         >

@@ -55,8 +55,8 @@ export function parseNearComAddress(address: string): {
 }
 
 /**
- * Same gate as the payments network picker: `nearcom:` plus a valid NEAR
- * account format (named, implicit, or eth-implicit). Prefix alone is not enough.
+ * Typed near.com address: `nearcom:` plus a valid NEAR account format
+ * (named, implicit, or eth-implicit). Prefix alone is not enough.
  */
 export function isNearComRecipientAddress(
     address: string | null | undefined,

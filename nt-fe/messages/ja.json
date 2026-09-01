@@ -200,8 +200,8 @@
             "description": "資金を安全かつ確実に送金します。"
         },
         "exchange": {
-            "title": "交換",
-            "confidentialTitle": "機密交換",
+            "title": "スワップ",
+            "confidentialTitle": "スワップ",
             "description": "トークンを安全かつ効率的に交換"
         },
         "vesting": {
@@ -376,7 +376,6 @@
             "copyLink": "リンクをコピー",
             "titleConfidential": "near business へ送金",
             "chooseTreasuryTitle": "Treasury を選択",
-            "chooseTreasuryDescription": "この支払いの送金元の Treasury はどれですか？",
             "noMemberTreasuries": "まだどの Treasury のメンバーでもありません。",
             "createTreasury": "Treasury を作成",
             "expired": "期限切れ",
@@ -466,6 +465,7 @@
             "rate": "レート",
             "detailsTitle": "詳細",
             "linkedRequest": "リンクされたリクエスト",
+            "swapFee": "スワップ手数料",
             "sendTransaction": "送信トランザクション",
             "bulkTitle": "一括送金の詳細",
             "toRecipients": "{count} 件の受取人へ",
@@ -1233,10 +1233,15 @@
         "useDifferentAddress": "別のアドレスを使用",
         "failed1ClickQuote": "1Click送金見積りの作成に失敗しました",
         "paymentSubmitted": "支払い送信のリクエストを送信しました",
-        "confidentialTooltip": "受取人の詳細と要求金額は完全に機密です。"
+        "confidentialTooltip": "受取人の詳細と要求金額は完全に機密です。",
+        "bulkPaymentsTooltip": "複数の支払いを1つのリクエストで送信できます。1件ずつ承認する必要はありません。",
+        "destinationNetwork": "送信先ネットワーク",
+        "selectRecipientPlaceholder": "受取人を選択",
+        "tokenLabel": "トークン",
+        "recipientLabel": "受取人"
     },
     "bulkPayment": {
-        "title": "一括支払い",
+        "title": "一括送金",
         "comingSoonToast": "一括支払いは近日公開予定です!",
         "submittingList": "一括支払いリストを送信中",
         "submittingProposal": "提案を送信中",
@@ -1264,7 +1269,6 @@
             "token": "トークン",
             "destinationNetwork": "送信先ネットワーク",
             "uploadFileFirst": "先にファイルをアップロードしてください",
-            "exchangeAddressWarning": "取引所のアドレスに直接送信すると、資金の損失やその他の問題が発生する可能性があることを理解しています。",
             "removeFile": "ファイルを削除",
             "maxFileSize": "最大1ファイル、1.5MBまで、CSVファイルのみ",
             "noFilePrompt": "アップロードするファイルがない場合は?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "支払いを編集",
+            "back": "受取人を編集",
             "saveChanges": "変更を保存"
         },
         "parsing": {
@@ -1355,13 +1360,13 @@
         "slippageTolerance": "スリッページ許容範囲",
         "disabled": {
             "differentTokens": "トークンは異なる必要があります",
-            "enterAmount": "交換する金額を入力してください"
+            "enterAmount": "金額を入力してください"
         },
-        "review": "交換を確認",
+        "review": "スワップを確認",
         "poweredBy": "提供:",
         "info": {
             "priceDifference": "価格差",
-            "priceDifferenceTooltip": "受け取るUSD価値が、送るUSD価値と比べてどうかを示します。",
+            "priceDifferenceTooltip": "ミッドマーケット価格との差額です。",
             "estimatedTime": "予想時間",
             "estimatedTimeValue": "{seconds}秒",
             "estimatedTimeTooltip": "交換完了までのおおよその時間です。",
@@ -1372,12 +1377,16 @@
             "depositAddressCopied": "入金アドレスをコピーしました",
             "quoteExpires": "見積り有効期限",
             "exchangeFee": "交換手数料",
-            "exchangeFeeTooltip": "ここで発生する0.70%の手数料は、取引を仲介するNEAR IntentsプロトコルのコストとNear Businessウィジェット手数料を賄います。この金額は見積りレートに自動的に含まれています。"
+            "exchangeFeeTooltip": "ここで発生する 0.70% の手数料は、取引を成立させる NEAR Intents プロトコル費用と Trezu ウィジェット手数料をカバーします。この金額は提示レートに自動的に含まれます。"
         },
         "approveWithin24h": "このリクエストは24時間以内に承認してください。期限を過ぎると失効します。できるだけ早く確認することをおすすめします。",
         "confirmSubmit": "確認してリクエストを送信",
         "refreshingIn": "交換レートは{seconds}秒後に更新されます",
-        "confidentialTooltip": "送信額と受取額は完全に機密です。"
+        "confidentialTooltip": "送信額と受取額は完全に機密です。",
+        "maxSlippage": "最大スリッページ",
+        "maxSlippageTooltip": "スリッページ設定は、提示価格と大きく異なる最終価格になることを防ぐ安全装置です。指定したスリッページを超える場合、スワップは失敗します。",
+        "receiveAtLeast": "最低受取額",
+        "receiveAtLeastTooltip": "提示額は見積りです。複数のソルバーが最良価格を競います。最大スリッページは最低受取額を保証し、満たせない場合は取引がキャンセルされます。"
     },
     "vesting": {
         "validation": {
@@ -1460,7 +1469,7 @@
         "financialThreshold": "Financialしきい値",
         "governanceThreshold": "Governanceしきい値",
         "noDeploymentFee": "🎉 デプロイ手数料無料",
-        "noDeploymentFeeDescription": "新しいプロジェクトを支援するため、TREZUは1回限りのデプロイとネットワークストレージ手数料をすべて負担します。",
+        "noDeploymentFeeDescription": "新しいプロジェクトを支援するため、Near Businessは1回限りのデプロイとネットワークストレージ手数料をすべて負担します。",
         "connectWalletCreate": "トレジャリー作成のためにウォレットを接続",
         "walletNotSupportedTitle": "{wallet} はまだサポートされていません",
         "walletNotSupportedDescription": "今後対応予定です。今は、すでにお持ちの NEAR、Ledger、または EVM ウォレットでサインインしてください。",
@@ -1496,7 +1505,7 @@
                 "recoveryLabel": "復旧：",
                 "recoveryText": "どちらを選んでも、デバイス紛失時にアクセス不能にならないよう、セットアップ後に2人目のメンバー（ウォレット）を追加することをおすすめします。",
                 "passkeyNew": "新着",
-                "passkeyDomainNote": "パスキーはこのデバイス上で trezu.app 用に保存されます（iCloud/Google 経由で同期される場合もあります）。他のアプリでは使用できず、他のアプリのパスキーから Near Business にアクセスすることもできません。"
+                "passkeyDomainNote": "パスキーはこのデバイス上で Near Business 用に保存されます（iCloud/Google 経由で同期される場合もあります）。他のアプリでは使用できず、他のアプリのパスキーから Near Business にアクセスすることもできません。"
             },
             "passkeyCardTitle": "Touch ID・Face ID対応のパスキー",
             "passkeyCardSubtitle": "デバイスの生体認証またはパスコードでサインイン",
@@ -1669,7 +1678,7 @@
         "available": "{count} 利用可能",
         "used": "{count} 使用済み",
         "exhaustedBody": "チームは月のスポンサー付きアクション上限に達しました。{date}以降に再開できますが、お問い合わせも可能です",
-        "almostBody": "TREZUは現在、リクエスト作成や投票などすべてのチームアクションのストレージコストをスポンサーしています。チームは月間スポンサー上限に近づいています。",
+        "almostBody": "Near Businessは現在、リクエスト作成や投票などすべてのチームアクションのストレージコストをスポンサーしています。チームは月間スポンサー上限に近づいています。",
         "contactUs": "お問い合わせ",
         "nextMonthlyReset": "次の月次リセット",
         "sidebarBody": "チームは月のスポンサー付きアクション上限に達しました。{date}以降に再開できます ⬇️"
@@ -1898,6 +1907,18 @@
     "paymentFormSection": {
         "selectRecipient": "受取人を選択",
         "searchByNameOrAddress": "名前またはアドレスで検索",
+        "noContactsForNetwork": "{network} ネットワーク用の連絡先が作成されていません。",
+        "noContacts": "連絡先がまだありません。",
+        "contacts": "連絡先",
+        "invalidAddress": "有効なアドレスを入力してください",
+        "scanQrCode": "QRコードをスキャン",
+        "scanQrCodeDescription": "カメラで受取人のアドレスを入力します",
+        "qrScanTitle": "QRコードをスキャン",
+        "qrScanHint": "受取人のQRコードにカメラを向けてください。",
+        "qrBackToRecipientList": "受取人リストに戻る",
+        "qrCameraPermissionDenied": "QRコードをスキャンするにはカメラへのアクセスが必要です。ブラウザの設定で有効にして、もう一度お試しください。",
+        "qrCameraUnsupported": "このブラウザではQRスキャン用のカメラにアクセスできません。",
+        "qrCameraStarting": "カメラを起動中…",
         "restrictedRecipientTitle": "トランザクションは許可されていません",
         "restrictedRecipientMessage": "このアドレスは現在、セキュリティチェックにより制限されています。このアドレスを許可すべきだとお考えの場合は、<link>ホワイトリスト追加をリクエスト</link>できます。",
         "send": "送金",
@@ -1916,9 +1937,9 @@
         "incompatible": "非互換",
         "comingSoon": "近日公開",
         "forMembersOnly": "メンバー限定",
-        "nearComDescription": "機密trezu用ネットワーク",
-        "nearComDescriptionPublic": "near.com用ネットワーク",
-        "nearDescription": "公開出金用ネットワーク"
+        "nearComDescription": "Near Business と near.com 用ネットワーク",
+        "nearDescription": "公開出金用ネットワーク",
+        "internalTag": "内部"
     },
     "addressBookTable": {
         "emptyTitle": "受取人はまだいません",
@@ -1961,7 +1982,8 @@
     },
     "selectModal": {
         "searchByName": "名前で検索",
-        "noResults": "結果が見つかりません"
+        "noResults": "結果が見つかりません",
+        "back": "戻る"
     },
     "selectList": {
         "noResults": "結果が見つかりません"
@@ -1993,18 +2015,19 @@
         "description": "トレジャリーメンバーのみがアクセスできます。"
     },
     "exchangeRate": {
-        "rate": "レート",
+        "rate": "為替レート",
         "clickToReverse": "クリックでレートを反転"
     },
     "exchangeSettings": {
-        "title": "交換設定",
+        "title": "スリッページ",
         "slippageTolerance": "スリッページ許容範囲",
-        "custom": "カスタム",
+        "custom": "カスタム %",
         "customPlaceholder": "例: 2%",
         "slippageRange": "スリッページは0.01%から100%の間である必要があります",
         "enterSlippage": "スリッページ許容範囲を入力してください",
         "slippageHelp": "価格がこの割合以上変動した場合、資金を保護するためにトランザクションがキャンセルされます。",
-        "save": "保存"
+        "save": "保存",
+        "description": "スリッページ設定は、提示価格と大きく異なる最終価格になることを防ぐ安全装置です。指定したスリッページを超える場合、取引はキャンセルされます。以下は保証される最低受取額です。"
     },
     "assetsPage": {
         "title": "資産",
@@ -2113,7 +2136,7 @@
     "tokenSelectDialog": {
         "selectToken": "トークンを選択",
         "selectAsset": "資産を選択",
-        "selectNetworkFor": "{asset}のネットワークを選択",
+        "selectNetwork": "ネットワークを選択",
         "searchByName": "名前で検索",
         "noTokensWithBalance": "残高のあるトークンが見つかりません",
         "noTokensFound": "トークンが見つかりません",
@@ -2187,10 +2210,12 @@
         "votesSubmitted": "投票を送信しました"
     },
     "tokenInput": {
+        "useMax": "最大を使用",
         "max": "MAX",
-        "insufficientTokens": "トークンが不足しています。リクエストを送信してから承認前に補充できます。",
+        "insufficientTokens": "残高が不足しています。承認前に補充してください。",
         "insufficientTokensForFee": "ネットワーク手数料({fee} {symbol})をカバーするトークンが不足しています。リクエストを送信してから承認前に補充できます。",
-        "balance": "残高: {amount} {symbol}"
+        "balance": "残高: {amount} {symbol}",
+        "balanceLabel": "残高"
     },
     "createRequestButton": {
         "idle": "リクエストを作成",

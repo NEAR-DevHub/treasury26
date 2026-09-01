@@ -115,11 +115,11 @@ export function DepositAddressView({
                         {t("back")}
                     </Button>
                 )}
-                <h2 className="text-xl font-semibold leading-7 tracking-[-0.03125rem] text-foreground">
+                <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
                     {title}
                 </h2>
                 {subtitle && (
-                    <p className="mt-1 text-base font-medium leading-[120%] text-muted-foreground">
+                    <p className="mt-1 text-base font-medium leading-tight text-muted-foreground">
                         {subtitle}
                     </p>
                 )}

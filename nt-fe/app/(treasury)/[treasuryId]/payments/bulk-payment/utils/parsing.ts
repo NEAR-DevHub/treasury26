@@ -294,7 +294,7 @@ function validateRecipientAddress(
     const toNearCom =
         destinationNetworkId?.trim().toLowerCase() === NEAR_COM_NETWORK_ID;
 
-    // Confidential near.com destination: require nearcom:<validNear>.
+    // near.com destination: require nearcom: plus a valid NEAR account.
     if (toNearCom) {
         if (!hasPrefix || !isValidNearAddressFormat(accountId)) {
             return labels.invalidNearAddress(address);

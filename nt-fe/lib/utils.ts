@@ -408,6 +408,16 @@ export const parseKeyToReadableFormat = (key: string) => {
 };
 
 /**
+ * `<br>` separates fields in an encoded description, so a value containing one
+ * could forge extra fields. `decodeProposalDescription` returns the first match
+ * for a key, and free-text fields (notes, title) are encoded before the amounts
+ * and tokens — a crafted note could otherwise make a request's details render
+ * values that differ from the transaction being approved.
+ */
+const encodeMarkdownValue = (value: unknown) =>
+    String(value).replace(/<br\s*\/?>/gi, "\n");
+
+/**
  * Encode data object to markdown format for DAO proposals
  */
 export const encodeToMarkdown = (data: any) => {
@@ -421,7 +431,7 @@ export const encodeToMarkdown = (data: any) => {
             );
         })
         .map(([key, value]) => {
-            return `* ${parseKeyToReadableFormat(key)}: ${String(value)}`;
+            return `* ${parseKeyToReadableFormat(key)}: ${encodeMarkdownValue(value)}`;
         })
         .join(" <br>");
 };

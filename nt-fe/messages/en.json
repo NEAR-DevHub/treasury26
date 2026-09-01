@@ -199,13 +199,13 @@
             "description": "Manage your saved recipients"
         },
         "payments": {
-            "title": "Payments",
-            "confidentialTitle": "Confidential Payments",
+            "title": "Send",
+            "confidentialTitle": "Send",
             "description": "Send funds safely and securely."
         },
         "exchange": {
-            "title": "Exchange",
-            "confidentialTitle": "Confidential Exchange",
+            "title": "Swap",
+            "confidentialTitle": "Swap",
             "description": "Exchange your tokens securely and efficiently"
         },
         "vesting": {
@@ -265,13 +265,13 @@
             "selectNetwork": "Please select a network"
         },
         "sections": {
-            "supportedNetworks": "Supported Networks",
-            "networksWithAssets": "Networks with Assets",
+            "supportedNetworks": "Supported networks",
+            "networksWithAssets": "Networks with assets",
             "yourAssets": "Your tokens",
             "otherAssets": "More tokens",
             "popularAssets": "Popular tokens",
             "available": "Available",
-            "forMembersOnly": "For Members Only"
+            "forMembersOnly": "For members only"
         },
         "errors": {
             "addressUnavailable": "Could not retrieve deposit address for the selected token and network.",
@@ -367,7 +367,6 @@
             "payWithNearcom": "Pay with near business",
             "payRequiresTreasury": "Sign in with a Near Business treasury to pay.",
             "chooseTreasuryTitle": "Choose a Treasury",
-            "chooseTreasuryDescription": "Which treasury is this payment coming from?",
             "noMemberTreasuries": "You are not a member of any treasuries yet.",
             "createTreasury": "Create a treasury",
             "copyLink": "Copy Link"
@@ -466,6 +465,7 @@
             "failed": "Failed",
             "exchangeTransaction": "Exchange Transaction",
             "rate": "Rate",
+            "swapFee": "Swap fee",
             "sendTransaction": "Send transaction",
             "bulkTitle": "Bulk Transfer Details",
             "toRecipients": "To {count} recipients",
@@ -1218,25 +1218,30 @@
             "amountPositive": "Amount must be greater than 0",
             "recipientTokenSame": "Recipient and token address cannot be the same"
         },
-        "title": "Payment",
-        "reviewYourPayment": "Review Your Payment",
-        "reviewButton": "Review Payment",
-        "reviewButtonDisabled": "Enter amount and address",
+        "title": "Send",
+        "reviewYourPayment": "Review send",
+        "reviewButton": "Review send",
+        "reviewButtonDisabled": "Enter amount",
         "comingSoon": "Coming soon",
-        "bulkPayments": "Bulk Payments",
+        "bulkPayments": "Bulk payment",
+        "bulkPaymentsTooltip": "Send multiple payments in one request - no need to approve them one by one.",
         "summaryRecipients": "to {count, plural, one {# recipient} other {# recipients}}",
         "networkFee": "Network Fee",
         "networkFeeInfo": "Network fee info",
-        "commentPlaceholder": "Add a comment (optional)...",
+        "destinationNetwork": "Destination network",
+        "commentPlaceholder": "Add a comment",
         "preparingRoute": "Preparing 1Click transfer route...",
-        "confirmSubmit": "Confirm and Submit Request",
+        "confirmSubmit": "Create request",
         "useDifferentAddress": "Use a different address",
         "failed1ClickQuote": "Failed to create 1Click transfer quote",
         "paymentSubmitted": "Request to send payment submitted",
-        "confidentialTooltip": "Recipient details and the requested amount are fully confidential."
+        "confidentialTooltip": "Recipient details and the requested amount are fully confidential.",
+        "selectRecipientPlaceholder": "Select recipient",
+        "tokenLabel": "Token",
+        "recipientLabel": "Recipient"
     },
     "bulkPayment": {
-        "title": "Bulk payment",
+        "title": "Bulk send",
         "comingSoonToast": "Bulk payments are coming soon!",
         "submittingList": "Submitting bulk payment list",
         "submittingProposal": "Submitting proposal",
@@ -1264,7 +1269,6 @@
             "token": "Token",
             "destinationNetwork": "Destination network",
             "uploadFileFirst": "Upload a file first",
-            "exchangeAddressWarning": "I understand that sending directly to an exchange address may result in loss of funds or other issues.",
             "removeFile": "Remove file",
             "maxFileSize": "max 1 file up to 1.5 MB, CSV file only",
             "noFilePrompt": "Don't have a file to upload?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "Edit Payment",
+            "back": "Edit recipient",
             "saveChanges": "Save Changes"
         },
         "parsing": {
@@ -1349,19 +1354,23 @@
             "amountPositive": "Amount must be greater than 0"
         },
         "requestSubmitted": "Exchange request submitted",
-        "heading": "Exchange",
+        "heading": "Swap",
         "sell": "Sell",
         "receive": "Receive",
         "slippageTolerance": "Slippage Tolerance",
+        "maxSlippage": "Max slippage",
+        "maxSlippageTooltip": "The slippage setting is a safety mechanism to protect you from getting a final price that is very different than the quoted price. If the specified slippage would be exceeded, your swap will be failed.",
+        "receiveAtLeast": "Receive at least",
+        "receiveAtLeastTooltip": "The quoted amount is an estimate. Multiple solvers compete to give you the best price. Your max slippage setting guarantees a minimum amount you'll receive—if that can't be met, the trade is cancelled.",
         "disabled": {
             "differentTokens": "Tokens must be different",
-            "enterAmount": "Enter an amount to exchange"
+            "enterAmount": "Enter an amount"
         },
-        "review": "Review Exchange",
+        "review": "Review swap",
         "poweredBy": "Powered by",
         "info": {
-            "priceDifference": "Price Difference",
-            "priceDifferenceTooltip": "Show how the USD value you receive compares to the USD value you send.",
+            "priceDifference": "Price difference",
+            "priceDifferenceTooltip": "Difference from mid-market price.",
             "estimatedTime": "Estimated Time",
             "estimatedTimeValue": "{seconds} seconds",
             "estimatedTimeTooltip": "Approximate time to complete the exchange.",
@@ -1371,12 +1380,12 @@
             "depositAddress": "Deposit Address",
             "depositAddressCopied": "Deposit address copied",
             "quoteExpires": "Quote Expires",
-            "exchangeFee": "Exchange Fee",
-            "exchangeFeeTooltip": "The 0.70% fee incurred here covers the NEAR Intents protocol costs to facilitate your trade and the Near Business widget fee. This amount is automatically calculated into your quoted rate."
+            "exchangeFee": "Exchange fee",
+            "exchangeFeeTooltip": "The 0.70% fee incurred here covers the NEAR Intents protocol costs to facilitate your trade and the Trezu widget fee. This amount is automatically calculated into your quoted rate."
         },
         "approveWithin24h": "Please approve this request within 24 hours, otherwise it will expire. We recommend confirming as soon as possible.",
-        "confirmSubmit": "Confirm and Submit Request",
-        "refreshingIn": "Exchange rate will refresh in {seconds}s",
+        "confirmSubmit": "Create request",
+        "refreshingIn": "Exchange rate will refresh in {seconds} s",
         "confidentialTooltip": "The amounts you send and receive are completely confidential."
     },
     "vesting": {
@@ -1460,7 +1469,7 @@
         "financialThreshold": "Financial Threshold",
         "governanceThreshold": "Governance Threshold",
         "noDeploymentFee": "🎉 No deployment fee",
-        "noDeploymentFeeDescription": "To support new projects, TREZU covers all one-time deployment and network storage fees.",
+        "noDeploymentFeeDescription": "To support new projects, Near Business covers all one-time deployment and network storage fees.",
         "connectWalletCreate": "Connect Wallet To Create Treasury",
         "walletNotSupportedTitle": "{wallet} not supported yet",
         "walletNotSupportedDescription": "We'll add it later. In the meantime, sign in with NEAR, Ledger, or EVM Wallets - whichever you already have.",
@@ -1496,7 +1505,7 @@
                 "recoveryLabel": "Recovery:",
                 "recoveryText": "Whichever you choose, we recommend add a second member(wallet) after setup so a lost device doesn't lock you out.",
                 "passkeyNew": "New",
-                "passkeyDomainNote": "Your passkey is saved for trezu.app on this device (or synced via iCloud/Google). It cannot be used on other apps, and other apps’ passkeys cannot access Near Business."
+                "passkeyDomainNote": "Your passkey is saved for Near Business on this device (or synced via iCloud/Google). It cannot be used on other apps, and other apps’ passkeys cannot access Near Business."
             },
             "passkeyCardTitle": "Passkey for Touch ID and Face ID",
             "passkeyCardSubtitle": "Use your device biometrics or passcode to sign in",
@@ -1669,7 +1678,7 @@
         "available": "{count} Available",
         "used": "{count} Used",
         "exhaustedBody": "Your team has reached the monthly sponsored actions. You can continue after {date} or contact us",
-        "almostBody": "TREZU currently sponsors storage costs for all team actions, such as creating requests and voting on them. Your team is close to reaching the monthly sponsored limit.",
+        "almostBody": "Near Business currently sponsors storage costs for all team actions, such as creating requests and voting on them. Your team is close to reaching the monthly sponsored limit.",
         "contactUs": "Contact Us",
         "nextMonthlyReset": "your next monthly reset",
         "sidebarBody": "Your team has reached the monthly sponsored actions. You can continue after {date} or ⬇️"
@@ -1896,16 +1905,28 @@
         "Unsupported": "Unsupported"
     },
     "paymentFormSection": {
-        "selectRecipient": "Select Recipient",
-        "searchByNameOrAddress": "Search by name or address",
+        "selectRecipient": "Select a contact, or enter an address",
+        "searchByNameOrAddress": "Enter wallet address",
+        "noContactsForNetwork": "You have no contacts created for the {network} network.",
+        "noContacts": "You have no contacts yet.",
+        "contacts": "Contacts",
+        "invalidAddress": "Please enter a valid address",
+        "scanQrCode": "Scan QR code",
+        "scanQrCodeDescription": "Use your camera to fill recipient address",
+        "qrScanTitle": "Scan QR code",
+        "qrScanHint": "Point your camera at a recipient QR code.",
+        "qrBackToRecipientList": "Back to recipient list",
+        "qrCameraPermissionDenied": "Camera access is required to scan a QR code. Enable it in your browser settings and try again.",
+        "qrCameraUnsupported": "This browser cannot access the camera for QR scanning.",
+        "qrCameraStarting": "Starting camera…",
         "restrictedRecipientTitle": "Transaction not allowed",
         "restrictedRecipientMessage": "This address is currently restricted due to security checks. If you believe this address should be allowed, you can <link>request to whitelist it</link>.",
         "send": "Send",
         "to": "To"
     },
     "recipientNetworkSelect": {
-        "label": "Recipient Network",
-        "placeholder": "Select recipient network",
+        "label": "Destination network",
+        "placeholder": "Select network",
         "enterAddressFirst": "Enter recipient address first",
         "noCompatibleNetwork": "No network matches this address",
         "selectPlaceholder": "Select network",
@@ -1916,9 +1937,9 @@
         "incompatible": "Incompatible",
         "comingSoon": "Coming Soon",
         "forMembersOnly": "For Members Only",
-        "nearComDescription": "Network for confidential trezu",
-        "nearComDescriptionPublic": "Network for near.com",
-        "nearDescription": "Network for public withdrawals"
+        "nearComDescription": "Network for Near Business and near.com",
+        "nearDescription": "Network for public withdrawal",
+        "internalTag": "Internal"
     },
     "addressBookTable": {
         "emptyTitle": "No recipients yet",
@@ -1961,7 +1982,8 @@
     },
     "selectModal": {
         "searchByName": "Search by name",
-        "noResults": "No results found"
+        "noResults": "No results found",
+        "back": "Back"
     },
     "selectList": {
         "noResults": "No results found"
@@ -1993,13 +2015,14 @@
         "description": "Only treasury members have access."
     },
     "exchangeRate": {
-        "rate": "Rate",
+        "rate": "Exchange rate",
         "clickToReverse": "Click to reverse rate"
     },
     "exchangeSettings": {
-        "title": "Exchange Settings",
+        "title": "Slippage",
+        "description": "The slippage setting is a safety mechanism to protect you from getting a final price that is very different than the quoted price. If the specified slippage would be exceeded, your trade will be cancelled. Below is the minimum amount you are guaranteed to receive.",
         "slippageTolerance": "Slippage Tolerance",
-        "custom": "Custom",
+        "custom": "Custom %",
         "customPlaceholder": "ex: 2%",
         "slippageRange": "Slippage must be between 0.01% and 100%",
         "enterSlippage": "Please enter a slippage tolerance",
@@ -2103,7 +2126,7 @@
         "nativeToken": "Native Token"
     },
     "exchangeErrors": {
-        "noRoute": "No exchange found. Try a smaller amount or different token.",
+        "noRoute": "No exchange found. Try a smaller amount or a different token.",
         "amountTooLow": "Amount too low for swap. Cross-chain swaps require a higher minimum to cover network fees.",
         "amountTooLowWithMin": "Amount is too low to cover network fees. Enter at least {min} {token}.",
         "insufficientBalance": "Insufficient balance for this swap.",
@@ -2112,15 +2135,15 @@
     },
     "tokenSelectDialog": {
         "selectToken": "Select token",
-        "selectAsset": "Select Asset",
-        "selectNetworkFor": "Select network for {asset}",
+        "selectAsset": "Select asset",
+        "selectNetwork": "Select network",
         "searchByName": "Search by name",
         "noTokensWithBalance": "No tokens with balance found",
         "noTokensFound": "No tokens found",
-        "yourAssets": "Your Assets",
-        "otherAssets": "Other Assets",
-        "networksWithAssets": "Networks with assets",
-        "supportedNetworks": "Supported Networks",
+        "yourAssets": "Your tokens",
+        "otherAssets": "More tokens",
+        "networksWithAssets": "Networks with tokens",
+        "supportedNetworks": "Supported networks",
         "comingSoon": "Coming soon",
         "networksCount": "{count, plural, one {# Network} other {# Networks}}"
     },
@@ -2129,8 +2152,8 @@
         "noRoute": "No liquidity available for this token and network right now.",
         "fetchFailed": "Could not prepare a payment route right now. Please retry.",
         "amountTooLow": "Amount is too low to cover network fees. Enter a higher amount and try again.",
-        "amountTooLowWithMin": "Amount is too low to cover network fees. Enter at least {min} {token}.",
-        "networkFeeTooltip": "This fee is used to process the transaction on the selected chain."
+        "amountTooLowWithMin": "Minimum send is {min} {token}.",
+        "networkFeeTooltip": "A gas fee charged by the network to process your transaction. This will be added on top of the amount you entered."
     },
     "pageTours": {
         "paymentsBulk": "Create multiple payments in one flow",
@@ -2188,9 +2211,11 @@
     },
     "tokenInput": {
         "max": "MAX",
-        "insufficientTokens": "Insufficient tokens. You can submit the request and top up before approval.",
+        "useMax": "Use max",
+        "insufficientTokens": "Insufficient balance. Top up before approval.",
         "insufficientTokensForFee": "Insufficient tokens to cover the network fee ({fee} {symbol}). You can submit the request and top up before approval.",
-        "balance": "Balance: {amount} {symbol}"
+        "balance": "Balance: {amount} {symbol}",
+        "balanceLabel": "Balance"
     },
     "createRequestButton": {
         "idle": "Create Request",

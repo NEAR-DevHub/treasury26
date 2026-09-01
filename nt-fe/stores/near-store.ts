@@ -900,10 +900,10 @@ export const useNear = () => {
                         ),
                 },
                 classNames: {
-                    toast: "!p-2 !px-4",
+                    toast: "!grid !grid-cols-[auto_1fr] !items-start !gap-x-3 !gap-y-1 !p-4",
                     actionButton:
-                        "!bg-transparent !text-foreground hover:!bg-muted !border-0",
-                    title: "!border-r !border-r-border !pr-4",
+                        "!col-start-2 !row-start-2 !m-0 !h-auto !justify-start !bg-transparent !p-0 !text-sm !font-normal !text-white hover:!bg-transparent !border-0 !shadow-none",
+                    title: "!border-0 !p-0 !pr-0 !text-white",
                 },
             });
         }
@@ -942,14 +942,14 @@ export const useNear = () => {
             duration: 10000,
             action: toastAction,
             classNames: {
-                toast: "!p-2 !px-4",
+                toast: toastAction
+                    ? "!grid !grid-cols-[auto_1fr] !items-start !gap-x-3 !gap-y-1 !p-4"
+                    : "!p-4",
                 actionButton: cn(
                     !toastAction ? "!hidden" : "",
-                    "!bg-transparent !text-foreground hover:!bg-muted !border-0",
+                    "!col-start-2 !row-start-2 !m-0 !h-auto !justify-start !bg-transparent !p-0 !text-sm !font-normal !text-white hover:!bg-transparent !border-0 !shadow-none",
                 ),
-                title: cn(
-                    toastAction ? "!border-r !border-r-border !pr-4" : "!pr-0",
-                ),
+                title: "!border-0 !p-0 !pr-0 !text-white",
             },
         });
 

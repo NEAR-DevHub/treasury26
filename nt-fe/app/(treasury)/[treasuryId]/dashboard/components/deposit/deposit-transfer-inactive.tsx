@@ -17,7 +17,7 @@ export function DepositTransferInactive({
     return (
         <>
             <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3 pb-3 border-b border-general-border mb-3">
-                <h1 className="text-2xl font-bold leading-[120%] text-foreground">
+                <h1 className="text-2xl font-bold leading-tight text-foreground">
                     {pageTitle}
                 </h1>
                 <span className="inline-flex items-center rounded-full bg-muted text-muted-foreground px-2.5 py-1 text-xs font-medium shrink-0">

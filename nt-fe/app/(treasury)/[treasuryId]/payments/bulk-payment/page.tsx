@@ -354,10 +354,10 @@ export default function BulkPaymentPage() {
                         ),
                 },
                 classNames: {
-                    toast: "!p-2 !px-4",
+                    toast: "!grid !grid-cols-[auto_1fr] !items-start !gap-x-3 !gap-y-1 !p-4",
                     actionButton:
-                        "!bg-transparent !text-foreground hover:!bg-muted !border-0",
-                    title: "!border-r !border-r-border !pr-4",
+                        "!col-start-2 !row-start-2 !m-0 !h-auto !justify-start !bg-transparent !p-0 !text-sm !font-normal !text-white hover:!bg-transparent !border-0 !shadow-none",
+                    title: "!border-0 !p-0 !pr-0 !text-white",
                 },
             });
 
@@ -581,10 +581,10 @@ export default function BulkPaymentPage() {
                         ),
                 },
                 classNames: {
-                    toast: "!p-2 !px-4",
+                    toast: "!grid !grid-cols-[auto_1fr] !items-start !gap-x-3 !gap-y-1 !p-4",
                     actionButton:
-                        "!bg-transparent !text-foreground hover:!bg-muted !border-0",
-                    title: "!border-r !border-r-border !pr-4",
+                        "!col-start-2 !row-start-2 !m-0 !h-auto !justify-start !bg-transparent !p-0 !text-sm !font-normal !text-white hover:!bg-transparent !border-0 !shadow-none",
+                    title: "!border-0 !p-0 !pr-0 !text-white",
                 },
             });
 
@@ -625,7 +625,7 @@ export default function BulkPaymentPage() {
             <PageComponentLayout
                 title={pageTitle}
                 backButton={`/${selectedTreasury}/payments`}
-                mainClassName="pt-4"
+                hideMobileShellControls
             >
                 <BulkActivationCard />
             </PageComponentLayout>
@@ -638,10 +638,11 @@ export default function BulkPaymentPage() {
         return (
             <PageComponentLayout
                 title={pageTitle}
-                backButton={`/${selectedTreasury}/payments`}
-                mainClassName="pt-4"
+                backButton={handleCancelEdit}
+                hideMobileShellControls
+                hideTitle
             >
-                <div className="w-full max-w-[600px] mx-auto min-w-0">
+                <div className="w-full max-w-lg mx-auto min-w-0">
                     <EditPaymentStep
                         handleBack={handleCancelEdit}
                         payment={payment}
@@ -649,11 +650,13 @@ export default function BulkPaymentPage() {
                         selectedToken={selectedToken}
                         networkFeePerRecipient={networkFeePerRecipient}
                         destinationNetwork={
-                            isConfidential ? destinationNetworkName : undefined
+                            destinationNetworkName || selectedToken.network
                         }
                         destinationNetworkId={
-                            isConfidential ? destinationNetworkId : undefined
+                            destinationNetworkId || selectedToken.network
                         }
+                        bridgeAssets={bridgeAssets}
+                        isBridgeAssetsLoading={isBridgeAssetsLoading}
                         onSave={handleSaveEdit}
                         onCancel={handleCancelEdit}
                     />
@@ -666,11 +669,12 @@ export default function BulkPaymentPage() {
         <PageComponentLayout
             title={pageTitle}
             backButton={`/${selectedTreasury}/payments`}
-            mainClassName="pt-4"
+            hideMobileShellControls
+            hideTitle={step === 1}
         >
             <FormProvider {...form}>
                 <div
-                    className={`w-full mx-auto min-w-0 ${step === 1 ? "max-w-[600px]" : "max-w-7xl"}`}
+                    className={`w-full mx-auto min-w-0 ${step === 1 ? "max-w-lg" : "max-w-7xl"}`}
                 >
                     {/* Step 0: Upload Data */}
                     {step === 0 && (

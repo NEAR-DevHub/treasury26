@@ -1,48 +1,58 @@
 "use client";
 
-import { Icon } from "@/components/icon";
-import { Cancel01Icon, Contact01Icon } from "@hugeicons/core-free-icons";
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useTranslations } from "next-intl";
-import Gleap from "gleap";
 import {
-    Control,
-    FieldValues,
-    Path,
-    PathValue,
+    ArrowDown01Icon,
+    Cancel01Icon,
+    Contact01Icon,
+    Wallet03Icon,
+} from "@hugeicons/core-free-icons";
+import Gleap from "gleap";
+import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    type Control,
+    type FieldValues,
+    type Path,
+    type PathValue,
     useFormContext,
     useWatch,
 } from "react-hook-form";
-import { InputBlock } from "@/components/input-block";
-import { TokenInput, Token } from "@/components/token-input";
+import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import AccountInput from "@/components/account-input";
+import { Button } from "@/components/button";
 import {
     CreateRequestButton,
     type PermissionRequirement,
 } from "@/components/create-request-button";
+import { Icon } from "@/components/icon";
 import { InfoAlert } from "@/components/info-alert";
-import { getBlockchainType } from "@/lib/blockchain-utils";
+import { InputBlock } from "@/components/input-block";
+import { NetworkList } from "@/components/network-list";
+import { selectorTriggerClassName } from "@/components/selector-field";
+import { getNetworkDisplayName } from "@/components/token-display";
+import { type Token, TokenInput } from "@/components/token-input";
+import TokenSelect, { type SelectedTokenData } from "@/components/token-select";
+import { FormField } from "@/components/ui/form";
+import { User } from "@/components/user";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import {
-    useAddressBook,
-    AddressBookEntry,
+    type AddressBookEntry,
     addressBookEntryMatchesNetwork,
     findAddressBookEntry,
     formatAddressBookDisplayAddress,
+    useAddressBook,
 } from "@/features/address-book";
-import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
-import { useChains, ChainInfo } from "@/features/address-book/chains";
-import { NetworkList } from "@/components/network-list";
-import { Button } from "@/components/button";
-import { User } from "@/components/user";
-import { FormField } from "@/components/ui/form";
-import { type SectionRule } from "@/lib/section-rules";
-import {
-    RecipientNetworkSelect,
-    type RecipientNetworkRuleOption,
-} from "./recipient-network-select";
-import { cn } from "@/lib/utils";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { type ChainInfo, useChains } from "@/features/address-book/chains";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
+import { isNearComNetwork } from "@/lib/intents-network";
+import { resolveRecipientBlockchain } from "@/lib/recipient-address-rules";
+import type { SectionRule } from "@/lib/section-rules";
+import { cn } from "@/lib/utils";
+import {
+    type RecipientNetworkRuleOption,
+    RecipientNetworkSelect,
+} from "./recipient-network-select";
+import { RecipientSelectModal } from "./recipient-select-modal";
 
 interface PaymentFormSectionProps<
     TFieldValues extends FieldValues = FieldValues,
@@ -90,6 +100,8 @@ interface PaymentFormSectionProps<
     destinationNetworkNameFieldName?: Path<TFieldValues>;
     /** Hide recipient network selector (e.g. bulk payments). Default false. */
     hideRecipientNetwork?: boolean;
+    /** Show destination as a disabled card (bulk edit). */
+    destinationLocked?: boolean;
     /**
      * When the network selector is hidden (bulk), validate the recipient and
      * filter the address book against this receive-network name instead of
@@ -97,6 +109,11 @@ interface PaymentFormSectionProps<
      * where receive network can differ from the source token.
      */
     recipientNetworkOverride?: string;
+    /**
+     * When true, the recipient must be `nearcom:` plus a valid NEAR account.
+     * Used by bulk edit when the destination id is not a form field.
+     */
+    requireNearComPrefix?: boolean;
     bridgeAssets?: BridgeAsset[];
     isBridgeAssetsLoading?: boolean;
     sendWarningMessage?: string | null;
@@ -108,6 +125,11 @@ interface PaymentFormSectionProps<
      * Set false when the page seeds from ?token= / ?networks=.
      */
     tokenAutoSelect?: boolean;
+    /** Confidential Send: card selectors + recipient modal. */
+    confidentialAggregated?: boolean;
+    balanceOverrideRaw?: string | null;
+    /** Live quote USD used to confirm the amount after price→token conversion. */
+    usdValueOverride?: number | null;
 }
 
 export function PaymentFormSection<
@@ -134,15 +156,21 @@ export function PaymentFormSection<
     destinationNetworkName,
     destinationNetworkNameFieldName,
     hideRecipientNetwork = false,
+    destinationLocked = false,
     recipientNetworkOverride,
+    requireNearComPrefix: requireNearComPrefixProp = false,
     bridgeAssets = [],
     isBridgeAssetsLoading = false,
     sendWarningMessage,
     recipientNetworkWarningMessage,
     slotBlocked = false,
     tokenAutoSelect = true,
+    confidentialAggregated = false,
+    balanceOverrideRaw = null,
+    usdValueOverride = null,
 }: PaymentFormSectionProps<TFieldValues, TTokenPath>) {
     const t = useTranslations("paymentFormSection");
+    const tPay = useTranslations("payments");
     const tRecipientNetwork = useTranslations("recipientNetworkSelect");
     const { setValue, setError, clearErrors } = useFormContext<TFieldValues>();
     const [isRecipientValid, setIsRecipientValid] = useState(false);
@@ -150,7 +178,6 @@ export function PaymentFormSection<
     const [isContactModalOpen, setIsContactModalOpen] = useState(false);
     const [selectedContact, setSelectedContact] =
         useState<AddressBookEntry | null>(null);
-
     const { data: addressBook = [] } = useAddressBook();
     const { data: chains = [] } = useChains();
 
@@ -165,16 +192,35 @@ export function PaymentFormSection<
         name: [
             tokenName,
             recipientName,
+            ...(destinationNetworkName ? [destinationNetworkName] : []),
             ...(destinationNetworkNameFieldName
                 ? [destinationNetworkNameFieldName]
                 : []),
         ] as Path<TFieldValues>[],
-    }) as unknown as [Token | null, string, string | undefined];
+    }) as unknown as [
+        Token | null,
+        string,
+        string | undefined,
+        string | undefined,
+    ];
     const token = watched[0];
     const recipient = (watched[1] ?? "") as string;
-    const selectedNetworkName = ((watched[2] ?? "") ||
+    const destinationNetworkId = destinationNetworkName
+        ? ((watched[2] ?? "") as string)
+        : "";
+    const selectedNetworkName = ((destinationNetworkName
+        ? (watched[3] ?? "")
+        : (watched[2] ?? "")) ||
         recipientNetworkOverride ||
         "") as string;
+    const requireNearComPrefix =
+        requireNearComPrefixProp || isNearComNetwork(destinationNetworkId);
+    // Picker stores the chain name (`near`) separately from the option id
+    // (`near.com`). Address-book matching must use the option id or near.com
+    // contacts are filtered as bare NEAR.
+    const addressBookNetworkName = requireNearComPrefix
+        ? NEAR_COM_NETWORK_ID
+        : selectedNetworkName;
     const amountValue = useWatch({
         control,
         name: amountName,
@@ -233,11 +279,15 @@ export function PaymentFormSection<
     // network (override or form field), falling back to NEAR. When the
     // network selector is shown, the recipient input runs in "unknown" mode
     // and compatibility is surfaced through the network selector sections.
+    // Confidential: validate against the selected destination network.
     const blockchainType = useMemo(() => {
+        if (confidentialAggregated && selectedNetworkName) {
+            return resolveRecipientBlockchain(selectedNetworkName);
+        }
         if (!hideRecipientNetwork) return "unknown";
         if (!selectedNetworkName) return NEAR_NETWORK_ID;
-        return getBlockchainType(selectedNetworkName);
-    }, [hideRecipientNetwork, selectedNetworkName]);
+        return resolveRecipientBlockchain(selectedNetworkName);
+    }, [confidentialAggregated, hideRecipientNetwork, selectedNetworkName]);
 
     const hasSelectedNetwork = !!selectedNetworkName;
     const hasValidAmount = useMemo(() => {
@@ -286,7 +336,7 @@ export function PaymentFormSection<
         if (!selectedContact) return;
         const isCompatible = addressBookEntryMatchesNetwork(
             selectedContact,
-            selectedNetworkName,
+            addressBookNetworkName,
             blockchainType,
         );
         if (!isCompatible) {
@@ -299,7 +349,7 @@ export function PaymentFormSection<
     }, [
         hideRecipientNetwork,
         blockchainType,
-        selectedNetworkName,
+        addressBookNetworkName,
         selectedContact,
         setRecipientValue,
     ]);
@@ -310,16 +360,16 @@ export function PaymentFormSection<
                 ? addressBook.filter((entry) =>
                       addressBookEntryMatchesNetwork(
                           entry,
-                          selectedNetworkName,
+                          addressBookNetworkName,
                           blockchainType,
                       ),
                   )
                 : addressBook,
         [
             addressBook,
+            addressBookNetworkName,
             blockchainType,
             hideRecipientNetwork,
-            selectedNetworkName,
         ],
     );
 
@@ -344,6 +394,10 @@ export function PaymentFormSection<
         [filteredAddressBook],
     );
 
+    const networkDisplayName = selectedNetworkName
+        ? getNetworkDisplayName(selectedNetworkName)
+        : null;
+
     const isSaveDisabled =
         slotBlocked ||
         !hasValidAmount ||
@@ -364,6 +418,247 @@ export function PaymentFormSection<
     const handleOpenProductSupport = useCallback(() => {
         Gleap.open();
     }, []);
+
+    const restrictedAlertNode = showRestrictedRecipientAlert ? (
+        <InfoAlert
+            message={
+                <div className="text-sm">
+                    <div className="font-semibold">
+                        {t("restrictedRecipientTitle")}
+                    </div>
+                    <div>
+                        {t.rich("restrictedRecipientMessage", {
+                            link: (chunks) => (
+                                <Button
+                                    type="button"
+                                    variant="link"
+                                    className="h-auto p-0 underline underline-offset-2 text-inherit hover:text-inherit font-normal!"
+                                    onClick={handleOpenProductSupport}
+                                >
+                                    {chunks}
+                                </Button>
+                            ),
+                        })}
+                    </div>
+                </div>
+            }
+        />
+    ) : null;
+
+    const destinationNetworkField =
+        !hideRecipientNetwork && destinationNetworkName ? (
+            <FormField
+                control={control}
+                name={destinationNetworkName}
+                render={({ field }) => (
+                    <RecipientNetworkSelect
+                        value={(field.value as string | undefined) ?? ""}
+                        recipient={recipient}
+                        sectionRules={networkSectionRules}
+                        appearance={confidentialAggregated ? "card" : "default"}
+                        requireRecipient={!confidentialAggregated}
+                        autoSelect={!destinationLocked}
+                        locked={destinationLocked}
+                        label={
+                            confidentialAggregated
+                                ? tRecipientNetwork("label")
+                                : undefined
+                        }
+                        placeholder={
+                            confidentialAggregated
+                                ? tRecipientNetwork("placeholder")
+                                : undefined
+                        }
+                        onChange={(id) => {
+                            field.onChange(id);
+                            if (!id && destinationNetworkNameFieldName) {
+                                setValue(
+                                    destinationNetworkNameFieldName,
+                                    "" as PathValue<
+                                        TFieldValues,
+                                        Path<TFieldValues>
+                                    >,
+                                    { shouldDirty: true },
+                                );
+                            }
+                        }}
+                        onNetworkChange={(opt) => {
+                            if (destinationNetworkNameFieldName) {
+                                setValue(
+                                    destinationNetworkNameFieldName,
+                                    opt.networkName as PathValue<
+                                        TFieldValues,
+                                        Path<TFieldValues>
+                                    >,
+                                    { shouldDirty: true },
+                                );
+                            }
+                        }}
+                        bridgeAssets={bridgeAssets}
+                        token={token}
+                        isBridgeAssetsLoading={isBridgeAssetsLoading}
+                        warningMessage={recipientNetworkWarningMessage}
+                    />
+                )}
+            />
+        ) : null;
+
+    if (confidentialAggregated) {
+        return (
+            <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2">
+                    <FormField
+                        control={control}
+                        name={tokenName}
+                        render={({ field: tokenField }) => (
+                            <TokenSelect
+                                disabled={tokenLocked}
+                                locked={tokenLocked}
+                                selectedToken={token}
+                                setSelectedToken={(
+                                    selected: SelectedTokenData,
+                                ) => {
+                                    tokenField.onChange(selected);
+                                }}
+                                showOnlyOwnedAssets={false}
+                                autoSelect={tokenAutoSelect}
+                                filterTokens={(tok) =>
+                                    (tok.residency || "").toLowerCase() ===
+                                    "intents"
+                                }
+                                balanceLayout="usdPrimary"
+                                appearance="card"
+                                triggerLabel={tPay("tokenLabel")}
+                            />
+                        )}
+                    />
+
+                    {destinationNetworkField}
+
+                    <Button
+                        type="button"
+                        variant="unstyled"
+                        onClick={() => setIsContactModalOpen(true)}
+                        className={selectorTriggerClassName}
+                    >
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
+                            <Icon
+                                icon={Wallet03Icon}
+                                className="size-5 text-muted-foreground"
+                            />
+                        </span>
+                        <span className="flex min-w-0 flex-1 flex-col items-start gap-px">
+                            <span className="text-sm font-medium leading-normal text-muted-foreground">
+                                {tPay("recipientLabel")}
+                            </span>
+                            {selectedContact || recipient ? (
+                                <span className="max-w-full truncate text-base font-medium leading-tight text-foreground">
+                                    {selectedContact ? (
+                                        <User
+                                            accountId={selectedContact.address}
+                                            name={selectedContact.name}
+                                            preferAddressBook
+                                            size="sm"
+                                            withLink={false}
+                                        />
+                                    ) : (
+                                        recipient
+                                    )}
+                                </span>
+                            ) : (
+                                <span className="max-w-full truncate text-base font-medium leading-tight text-foreground">
+                                    {tPay("selectRecipientPlaceholder")}
+                                </span>
+                            )}
+                        </span>
+                        <Icon
+                            icon={ArrowDown01Icon}
+                            className="size-4 shrink-0 text-muted-foreground"
+                        />
+                    </Button>
+                </div>
+
+                <TokenInput
+                    control={control}
+                    amountName={amountName}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    tokenName={tokenName as any}
+                    dynamicFontSize={true}
+                    onAmountInput={onAmountInput}
+                    onMaxSet={onMaxSet}
+                    variant="amountCard"
+                    enableUsdToggle
+                    usdValueOverride={usdValueOverride}
+                    balanceOverrideRaw={balanceOverrideRaw}
+                    warningMessage={sendWarningMessage}
+                    showInsufficientBalance={
+                        !feeErrorMessage || showRestrictedRecipientAlert
+                    }
+                    networkFee={networkFee}
+                    errorMessage={
+                        showRestrictedRecipientAlert ? null : feeErrorMessage
+                    }
+                />
+
+                {/* Keep AccountInput mounted for validation when address is set */}
+                <div className="hidden" aria-hidden>
+                    <AccountInput
+                        key={`${recipient}-${blockchainType}`}
+                        blockchain={blockchainType}
+                        value={recipient}
+                        setValue={(val) =>
+                            setRecipientValue(
+                                val as PathValue<
+                                    TFieldValues,
+                                    Path<TFieldValues>
+                                >,
+                            )
+                        }
+                        setIsValid={setIsRecipientValid}
+                        setIsValidating={setIsValidatingRecipient}
+                        borderless
+                        validateOnMount={!!recipient}
+                        requireNearComPrefix={requireNearComPrefix}
+                    />
+                </div>
+
+                <RecipientSelectModal
+                    isOpen={isContactModalOpen}
+                    onClose={() => setIsContactModalOpen(false)}
+                    contacts={addressBook}
+                    chainMap={chainMap}
+                    networkName={
+                        isNearComNetwork(destinationNetworkId)
+                            ? destinationNetworkId
+                            : selectedNetworkName || null
+                    }
+                    networkDisplayName={networkDisplayName}
+                    onSelect={({ address, contact }) => {
+                        setSelectedContact(contact ?? null);
+                        setRecipientValue(
+                            address as PathValue<
+                                TFieldValues,
+                                Path<TFieldValues>
+                            >,
+                        );
+                    }}
+                    restrictedAlert={restrictedAlertNode}
+                />
+
+                <CreateRequestButton
+                    onClick={onSave}
+                    disabled={isSaveDisabled}
+                    isSubmitting={isSubmitting}
+                    idleMessage={saveButtonText}
+                    className="w-full h-11 rounded-2xl"
+                    permissions={{
+                        kind: "transfer",
+                        action: "AddProposal",
+                    }}
+                />
+            </div>
+        );
+    }
 
     return (
         <>
@@ -388,6 +683,9 @@ export function PaymentFormSection<
                 }
                 networkFee={networkFee}
                 balanceFromToken={balanceFromToken}
+                errorMessage={
+                    showRestrictedRecipientAlert ? null : feeErrorMessage
+                }
             />
 
             <InputBlock
@@ -438,6 +736,7 @@ export function PaymentFormSection<
                         setIsValidating={setIsValidatingRecipient}
                         borderless
                         validateOnMount={hideRecipientNetwork && !!recipient}
+                        requireNearComPrefix={requireNearComPrefix}
                     />
                 )}
                 <div className="absolute top-1/2 -translate-y-1/2 right-3 flex items-center gap-1">
@@ -476,79 +775,16 @@ export function PaymentFormSection<
                             setIsValidating={setIsValidatingRecipient}
                             borderless
                             validateOnMount
+                            requireNearComPrefix={requireNearComPrefix}
                         />
                     </div>
                 )}
+                {restrictedAlertNode ? (
+                    <div className="px-1 pt-2">{restrictedAlertNode}</div>
+                ) : null}
             </InputBlock>
 
-            {!hideRecipientNetwork && destinationNetworkName && (
-                <FormField
-                    control={control}
-                    name={destinationNetworkName}
-                    render={({ field }) => (
-                        <RecipientNetworkSelect
-                            value={(field.value as string | undefined) ?? ""}
-                            recipient={recipient}
-                            sectionRules={networkSectionRules}
-                            onChange={(id) => {
-                                field.onChange(id);
-                                if (!id && destinationNetworkNameFieldName) {
-                                    setValue(
-                                        destinationNetworkNameFieldName,
-                                        "" as PathValue<
-                                            TFieldValues,
-                                            Path<TFieldValues>
-                                        >,
-                                        { shouldDirty: true },
-                                    );
-                                }
-                            }}
-                            onNetworkChange={(opt) => {
-                                if (destinationNetworkNameFieldName) {
-                                    setValue(
-                                        destinationNetworkNameFieldName,
-                                        opt.networkName as PathValue<
-                                            TFieldValues,
-                                            Path<TFieldValues>
-                                        >,
-                                        { shouldDirty: true },
-                                    );
-                                }
-                            }}
-                            bridgeAssets={bridgeAssets}
-                            token={token}
-                            isBridgeAssetsLoading={isBridgeAssetsLoading}
-                            warningMessage={recipientNetworkWarningMessage}
-                        />
-                    )}
-                />
-            )}
-
-            {showRestrictedRecipientAlert && (
-                <InfoAlert
-                    message={
-                        <div className="text-sm">
-                            <div className="font-semibold">
-                                {t("restrictedRecipientTitle")}
-                            </div>
-                            <div>
-                                {t.rich("restrictedRecipientMessage", {
-                                    link: (chunks) => (
-                                        <Button
-                                            type="button"
-                                            variant="link"
-                                            className="h-auto p-0 underline underline-offset-2 text-inherit hover:text-inherit font-normal!"
-                                            onClick={handleOpenProductSupport}
-                                        >
-                                            {chunks}
-                                        </Button>
-                                    ),
-                                })}
-                            </div>
-                        </div>
-                    }
-                />
-            )}
+            {destinationNetworkField}
 
             <SelectModal
                 isOpen={isContactModalOpen}

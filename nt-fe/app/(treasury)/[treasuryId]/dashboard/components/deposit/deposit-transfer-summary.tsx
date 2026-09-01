@@ -31,7 +31,7 @@ export function DepositTransferSummary({
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-xl border border-general-border bg-card p-4 space-y-3">
-                <p className="text-sm font-medium leading-[150%] text-muted-foreground">
+                <p className="text-sm font-medium leading-normal text-muted-foreground">
                     {variant === "public"
                         ? t("transfer.youSendFromPublic")
                         : t("transfer.youSend")}
@@ -65,10 +65,10 @@ export function DepositTransferSummary({
                     <div className="min-w-0">
                         {variant === "public" ? (
                             <>
-                                <p className="text-base font-semibold leading-[120%] text-foreground">
+                                <p className="text-base font-semibold leading-tight text-foreground">
                                     {sendTokenMeta?.symbol || tokenId}
                                 </p>
-                                <p className="text-sm font-medium leading-[150%] text-muted-foreground">
+                                <p className="text-sm font-medium leading-normal text-muted-foreground">
                                     {t("transfer.onNetwork", {
                                         network:
                                             sendTokenMeta?.networkName ||
@@ -78,10 +78,10 @@ export function DepositTransferSummary({
                             </>
                         ) : (
                             <>
-                                <p className="text-base font-semibold leading-[120%] text-foreground">
+                                <p className="text-base font-semibold leading-tight text-foreground">
                                     {t("transfer.anyAsset")}
                                 </p>
-                                <p className="text-sm font-medium leading-[150%] text-muted-foreground">
+                                <p className="text-sm font-medium leading-normal text-muted-foreground">
                                     {t("transfer.onNearcomNetwork")}
                                 </p>
                             </>
@@ -91,7 +91,7 @@ export function DepositTransferSummary({
             </div>
 
             <div className="rounded-xl border border-general-border bg-card p-4 space-y-3">
-                <p className="text-sm font-medium leading-[150%] text-muted-foreground">
+                <p className="text-sm font-medium leading-normal text-muted-foreground">
                     {t("transfer.goesTo")}
                 </p>
                 <div className="flex items-start gap-2.5">
@@ -114,10 +114,10 @@ export function DepositTransferSummary({
                         />
                     )}
                     <div className="min-w-0">
-                        <p className="truncate text-base font-semibold leading-[120%] text-foreground">
+                        <p className="truncate text-base font-semibold leading-tight text-foreground">
                             {treasuryDisplayName}
                         </p>
-                        <p className="text-sm font-medium leading-[150%] text-muted-foreground">
+                        <p className="text-sm font-medium leading-normal text-muted-foreground">
                             {isConfidentialTreasury
                                 ? t("transfer.securedOnNearcom")
                                 : t("transfer.securedOnTrezu")}

@@ -63,10 +63,10 @@ export function DepositSourceCards({
                                 className="mt-0.5 size-5 shrink-0"
                             />
                             <div className="min-w-0">
-                                <p className="text-base font-semibold leading-[120%] text-foreground">
+                                <p className="text-base font-semibold leading-tight text-foreground">
                                     {card.title}
                                 </p>
-                                <p className="mt-0.5 text-sm font-medium leading-[150%] text-muted-foreground">
+                                <p className="mt-0.5 text-sm font-medium leading-normal text-muted-foreground">
                                     {card.subtitle}
                                 </p>
                             </div>

@@ -200,8 +200,8 @@
             "description": "Gui tien an toan va bao mat."
         },
         "exchange": {
-            "title": "Hoan doi",
-            "confidentialTitle": "Hoan doi bao mat",
+            "title": "Hoán đổi",
+            "confidentialTitle": "Hoán đổi",
             "description": "Trao đổi token một cách an toàn và hiệu quả"
         },
         "vesting": {
@@ -376,7 +376,6 @@
             "copyLink": "Sao chép liên kết",
             "titleConfidential": "Chuyển tới near business",
             "chooseTreasuryTitle": "Chọn một Treasury",
-            "chooseTreasuryDescription": "Thanh toán này đến từ treasury nào?",
             "noMemberTreasuries": "Bạn chưa là thành viên của treasury nào.",
             "createTreasury": "Tạo treasury",
             "expired": "Đã hết hạn",
@@ -466,6 +465,7 @@
             "rate": "Tỷ giá",
             "detailsTitle": "Chi tiết",
             "linkedRequest": "Yêu cầu liên kết",
+            "swapFee": "Phí swap",
             "sendTransaction": "Giao dịch gửi",
             "bulkTitle": "Chi tiết chuyển hàng loạt",
             "toRecipients": "Đến {count} người nhận",
@@ -1233,10 +1233,15 @@
         "useDifferentAddress": "Dùng một địa chỉ khác",
         "failed1ClickQuote": "Không thể tạo báo giá chuyển 1Click",
         "paymentSubmitted": "Đã gửi yêu cầu thanh toán",
-        "confidentialTooltip": "Thong tin nguoi nhan va so tien yeu cau duoc bao mat hoan toan."
+        "confidentialTooltip": "Thong tin nguoi nhan va so tien yeu cau duoc bao mat hoan toan.",
+        "bulkPaymentsTooltip": "Gửi nhiều khoản thanh toán trong một yêu cầu - không cần phê duyệt từng khoản.",
+        "destinationNetwork": "Mạng đích",
+        "selectRecipientPlaceholder": "Chọn người nhận",
+        "tokenLabel": "Token",
+        "recipientLabel": "Người nhận"
     },
     "bulkPayment": {
-        "title": "Thanh toán hàng loạt",
+        "title": "Gửi hàng loạt",
         "comingSoonToast": "Thanh toán hàng loạt sắp ra mắt!",
         "submittingList": "Đang gửi danh sách thanh toán hàng loạt",
         "submittingProposal": "Đang gửi đề xuất",
@@ -1264,7 +1269,6 @@
             "token": "Token",
             "destinationNetwork": "Mạng đích",
             "uploadFileFirst": "Hãy tải tệp lên trước",
-            "exchangeAddressWarning": "Tôi hiểu rằng gửi trực tiếp đến địa chỉ sàn giao dịch có thể dẫn đến mất tiền hoặc các vấn đề khác.",
             "removeFile": "Xóa tệp",
             "maxFileSize": "tối đa 1 tệp lên đến 1.5 MB, chỉ chấp nhận tệp CSV",
             "noFilePrompt": "Không có tệp để tải lên?",
@@ -1281,6 +1285,7 @@
         },
         "editStep": {
             "title": "Chỉnh sửa thanh toán",
+            "back": "Chỉnh sửa người nhận",
             "saveChanges": "Lưu thay đổi"
         },
         "parsing": {
@@ -1338,13 +1343,13 @@
         "slippageTolerance": "Dung sai trượt giá",
         "disabled": {
             "differentTokens": "Token phải khác nhau",
-            "enterAmount": "Nhập số tiền để trao đổi"
+            "enterAmount": "Nhập số tiền"
         },
-        "review": "Xem lại trao đổi",
+        "review": "Xem lại hoán đổi",
         "poweredBy": "Cung cấp bởi",
         "info": {
             "priceDifference": "Chênh lệch giá",
-            "priceDifferenceTooltip": "Hiển thị giá trị USD bạn nhận được so với giá trị USD bạn gửi đi.",
+            "priceDifferenceTooltip": "Chênh lệch so với giá mid-market.",
             "estimatedTime": "Thời gian ước tính",
             "estimatedTimeValue": "{seconds} giây",
             "estimatedTimeTooltip": "Thời gian xấp xỉ để hoàn tất giao dịch trao đổi.",
@@ -1355,12 +1360,16 @@
             "depositAddressCopied": "Đã sao chép địa chỉ nạp tiền",
             "quoteExpires": "Hết hạn báo giá",
             "exchangeFee": "Phí trao đổi",
-            "exchangeFeeTooltip": "Phí 0.70% phát sinh ở đây bao gồm chi phí giao thức NEAR Intents để hỗ trợ giao dịch của bạn và phí widget Near Business. Số tiền này được tự động tính vào tỷ giá đã báo của bạn."
+            "exchangeFeeTooltip": "Phí 0,70% ở đây gồm chi phí giao thức NEAR Intents để thực hiện giao dịch và phí widget Trezu. Số tiền này đã được tính vào tỷ giá báo."
         },
         "approveWithin24h": "Vui lòng phê duyệt yêu cầu này trong vòng 24 giờ, nếu không nó sẽ hết hạn. Chúng tôi khuyên bạn xác nhận càng sớm càng tốt.",
         "confirmSubmit": "Xác nhận và gửi yêu cầu",
         "refreshingIn": "Tỷ giá trao đổi sẽ làm mới trong {seconds}s",
-        "confidentialTooltip": "So tien ban gui va nhan duoc bao mat hoan toan."
+        "confidentialTooltip": "So tien ban gui va nhan duoc bao mat hoan toan.",
+        "maxSlippage": "Trượt giá tối đa",
+        "maxSlippageTooltip": "Cài đặt trượt giá bảo vệ bạn khỏi mức giá cuối khác xa giá báo. Nếu vượt quá trượt giá đã chọn, giao dịch hoán đổi sẽ thất bại.",
+        "receiveAtLeast": "Nhận ít nhất",
+        "receiveAtLeastTooltip": "Số tiền báo giá là ước tính. Nhiều solver cạnh tranh để đưa ra giá tốt nhất. Trượt giá tối đa đảm bảo số tiền tối thiểu — nếu không đạt được, giao dịch sẽ bị hủy."
     },
     "vesting": {
         "validation": {
@@ -1443,7 +1452,7 @@
         "financialThreshold": "Ngưỡng tài chính",
         "governanceThreshold": "Ngưỡng quản trị",
         "noDeploymentFee": "🎉 Không phí triển khai",
-        "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, TREZU bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
+        "noDeploymentFeeDescription": "Để hỗ trợ các dự án mới, Near Business bao gồm tất cả phí triển khai một lần và phí lưu trữ mạng.",
         "connectWalletCreate": "Kết nối ví để tạo ngân quỹ",
         "walletNotSupportedTitle": "{wallet} chưa được hỗ trợ",
         "walletNotSupportedDescription": "Chúng tôi sẽ bổ sung sau. Trong lúc này, hãy đăng nhập bằng NEAR, Ledger hoặc ví EVM mà bạn đang có.",
@@ -1479,7 +1488,7 @@
                 "recoveryLabel": "Khôi phục:",
                 "recoveryText": "Dù bạn chọn cách nào, chúng tôi khuyên bạn thêm thành viên thứ hai (ví) sau khi thiết lập để việc mất thiết bị không khiến bạn bị khóa truy cập.",
                 "passkeyNew": "Mới",
-                "passkeyDomainNote": "Passkey của bạn được lưu cho trezu.app trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Near Business."
+                "passkeyDomainNote": "Passkey của bạn được lưu cho Near Business trên thiết bị này (hoặc đồng bộ qua iCloud/Google). Nó không thể dùng cho ứng dụng khác, và passkey của ứng dụng khác cũng không thể truy cập Near Business."
             },
             "passkeyCardTitle": "Passkey cho Touch ID và Face ID",
             "passkeyCardSubtitle": "Đăng nhập bằng sinh trắc học hoặc mật mã của thiết bị",
@@ -1652,7 +1661,7 @@
         "available": "{count} khả dụng",
         "used": "Đã dùng {count}",
         "exhaustedBody": "Đội của bạn đã đạt số hành động được tài trợ trong tháng. Bạn có thể tiếp tục sau {date} hoặc liên hệ với chúng tôi",
-        "almostBody": "TREZU hiện tài trợ chi phí lưu trữ cho tất cả các hành động của đội, như tạo yêu cầu và bỏ phiếu cho chúng. Đội của bạn sắp đạt giới hạn được tài trợ trong tháng.",
+        "almostBody": "Near Business hiện tài trợ chi phí lưu trữ cho tất cả các hành động của đội, như tạo yêu cầu và bỏ phiếu cho chúng. Đội của bạn sắp đạt giới hạn được tài trợ trong tháng.",
         "contactUs": "Liên hệ với chúng tôi",
         "nextMonthlyReset": "lần đặt lại hàng tháng tiếp theo của bạn",
         "sidebarBody": "Đội của bạn đã đạt số hành động được tài trợ trong tháng. Bạn có thể tiếp tục sau {date} hoặc ⬇️"
@@ -1881,6 +1890,18 @@
     "paymentFormSection": {
         "selectRecipient": "Chọn người nhận",
         "searchByNameOrAddress": "Tìm theo tên hoặc địa chỉ",
+        "noContactsForNetwork": "Bạn chưa tạo liên hệ nào cho mạng {network}.",
+        "noContacts": "Bạn chưa có liên hệ nào.",
+        "contacts": "Danh bạ",
+        "invalidAddress": "Vui lòng nhập một địa chỉ hợp lệ",
+        "scanQrCode": "Quét mã QR",
+        "scanQrCodeDescription": "Dùng camera để điền địa chỉ người nhận",
+        "qrScanTitle": "Quét mã QR",
+        "qrScanHint": "Hướng camera vào mã QR của người nhận.",
+        "qrBackToRecipientList": "Quay lại danh sách người nhận",
+        "qrCameraPermissionDenied": "Cần quyền truy cập camera để quét mã QR. Hãy bật quyền này trong cài đặt trình duyệt và thử lại.",
+        "qrCameraUnsupported": "Trình duyệt này không thể truy cập camera để quét mã QR.",
+        "qrCameraStarting": "Đang khởi động camera…",
         "restrictedRecipientTitle": "Giao dịch không được phép",
         "restrictedRecipientMessage": "Địa chỉ này hiện đang bị hạn chế do các kiểm tra bảo mật. Nếu bạn cho rằng địa chỉ này nên được phép, bạn có thể <link>yêu cầu đưa vào danh sách trắng</link>.",
         "send": "Gửi",
@@ -1899,9 +1920,9 @@
         "incompatible": "Không tương thích",
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
-        "nearComDescription": "Mạng cho trezu bí mật",
-        "nearComDescriptionPublic": "Mạng cho near.com",
-        "nearDescription": "Mạng cho rút tiền công khai"
+        "nearComDescription": "Mạng cho Near Business và near.com",
+        "nearDescription": "Mạng cho rút tiền công khai",
+        "internalTag": "Nội bộ"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",
@@ -1944,7 +1965,8 @@
     },
     "selectModal": {
         "searchByName": "Tìm theo tên",
-        "noResults": "Không tìm thấy kết quả"
+        "noResults": "Không tìm thấy kết quả",
+        "back": "Quay lại"
     },
     "selectList": {
         "noResults": "Không tìm thấy kết quả"
@@ -1980,14 +2002,15 @@
         "clickToReverse": "Nhấp để đảo ngược tỷ giá"
     },
     "exchangeSettings": {
-        "title": "Cài đặt trao đổi",
+        "title": "Trượt giá",
         "slippageTolerance": "Dung sai trượt giá",
-        "custom": "Tùy chỉnh",
+        "custom": "Tùy chỉnh %",
         "customPlaceholder": "ví dụ: 2%",
         "slippageRange": "Trượt giá phải nằm trong khoảng 0.01% và 100%",
         "enterSlippage": "Vui lòng nhập dung sai trượt giá",
         "slippageHelp": "Nếu giá thay đổi nhiều hơn tỷ lệ phần trăm này, giao dịch sẽ bị hủy để bảo vệ tiền của bạn.",
-        "save": "Lưu"
+        "save": "Lưu",
+        "description": "Cài đặt trượt giá bảo vệ bạn khỏi mức giá cuối khác xa giá báo. Nếu vượt quá trượt giá đã chọn, giao dịch sẽ bị hủy. Bên dưới là số tiền tối thiểu được đảm bảo."
     },
     "assetsPage": {
         "title": "Tài sản",
@@ -2096,7 +2119,7 @@
     "tokenSelectDialog": {
         "selectToken": "Chọn token",
         "selectAsset": "Chọn tài sản",
-        "selectNetworkFor": "Chọn mạng cho {asset}",
+        "selectNetwork": "Chọn mạng",
         "searchByName": "Tìm theo tên",
         "noTokensWithBalance": "Không tìm thấy token có số dư",
         "noTokensFound": "Không tìm thấy token",
@@ -2170,10 +2193,12 @@
         "votesSubmitted": "Các phiếu của bạn đã được gửi"
     },
     "tokenInput": {
+        "useMax": "Dùng tối đa",
         "max": "MAX",
-        "insufficientTokens": "Không đủ token. Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
+        "insufficientTokens": "Số dư không đủ. Nạp thêm trước khi phê duyệt.",
         "insufficientTokensForFee": "Không đủ token để trang trả phí mạng ({fee} {symbol}). Bạn có thể gửi yêu cầu và nạp thêm trước khi phê duyệt.",
-        "balance": "Số dư: {amount} {symbol}"
+        "balance": "Số dư: {amount} {symbol}",
+        "balanceLabel": "Số dư"
     },
     "createRequestButton": {
         "idle": "Tạo yêu cầu",

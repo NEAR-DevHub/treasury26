@@ -12,7 +12,6 @@ import {
 } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { HighlightedText } from "@/components/highlighted-text";
 import { getNetworkDisplayName } from "@/components/token-display";
 import {
     parseWarningCopy,
@@ -40,10 +39,11 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import Big from "@/lib/big";
 import { fetchDepositAddress } from "@/lib/bridge-api";
-import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
 import { withNearComAddressPrefix } from "@/lib/nearcom-address";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
+import { NetworkSelectModal } from "@/components/network-select-modal";
+import { TokenSelectModal } from "@/components/token-select-modal";
 import { DepositAckPanel } from "./deposit/deposit-ack-panel";
 import {
     DepositAddressSkeleton,
@@ -77,7 +77,6 @@ import type {
     SelectOption,
 } from "./deposit/deposit-types";
 import { formatMinDepositDisplay } from "./deposit/format-min-deposit";
-import { SelectModal } from "./select-modal";
 
 interface DepositPageContentProps {
     prefillTokenId?: string;
@@ -168,27 +167,6 @@ function depositAssetsReducer(
         default:
             return state;
     }
-}
-
-function renderBalance(amount: number | string, amountUSD: number) {
-    const normalizedAmount = amount.toString();
-    if (!Big(normalizedAmount).gt(0)) {
-        return null;
-    }
-    const normalizedUsd = Number.isFinite(amountUSD)
-        ? formatCurrencyWithSubCent(amountUSD)
-        : formatCurrencyWithSubCent(0);
-
-    return (
-        <div className="flex flex-col items-end">
-            <span className="font-semibold">
-                {formatSmartAmount(normalizedAmount)}
-            </span>
-            <span className="text-sm text-muted-foreground">
-                ≈{normalizedUsd}
-            </span>
-        </div>
-    );
 }
 
 export function DepositModal({
@@ -1127,30 +1105,24 @@ export function DepositModal({
                 />
             )}
 
-            <SelectModal
+            <TokenSelectModal
                 isOpen={modalType === "asset"}
                 onClose={() => setModalType(null)}
-                onSelect={(option) => {
+                onSelectOption={(option) => {
                     handleAssetSelect(option);
                     setModalType(null);
                 }}
                 title={t("selectAsset")}
                 options={allAssets}
-                sections={assetSections}
+                optionSections={assetSections}
                 searchPlaceholder={t("searchByName")}
                 isLoading={isLoadingAssets}
                 selectedId={selectedAsset?.id}
-                renderRight={(item) => {
-                    const balanceData = assetBalanceMap.get(item.id);
-                    if (!balanceData) return null;
-                    return renderBalance(
-                        balanceData.balance,
-                        balanceData.balanceUSD,
-                    );
-                }}
+                showBalance
+                balancesById={assetBalanceMap}
             />
 
-            <SelectModal
+            <NetworkSelectModal
                 isOpen={modalType === "network"}
                 onClose={() => setModalType(null)}
                 onSelect={(option) => {
@@ -1163,43 +1135,8 @@ export function DepositModal({
                 searchPlaceholder={t("searchByName")}
                 isLoading={isLoadingAssets}
                 selectedId={selectedNetwork?.id}
-                renderContent={(item, { searchQuery }) => {
-                    const option = item as SelectOption;
-                    const networkLabel = getNetworkDisplayName(
-                        option.name || option.symbol || "",
-                    );
-                    return (
-                        <div className="flex-1 text-left">
-                            <div
-                                className={cn(
-                                    "font-semibold",
-                                    getNetworkDisplayCaseClass(option.name),
-                                )}
-                            >
-                                <HighlightedText
-                                    text={networkLabel}
-                                    query={searchQuery}
-                                />
-                            </div>
-                            {option.description && (
-                                <div className="text-xs text-muted-foreground font-normal">
-                                    <HighlightedText
-                                        text={option.description}
-                                        query={searchQuery}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    );
-                }}
-                renderRight={(item) => {
-                    const networkBalance = selectedNetworkBalances.get(item.id);
-                    if (!networkBalance) return null;
-                    return renderBalance(
-                        networkBalance.amount,
-                        networkBalance.amountUSD,
-                    );
-                }}
+                showBalance
+                balancesById={selectedNetworkBalances}
             />
         </div>
     );

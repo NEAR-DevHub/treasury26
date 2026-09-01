@@ -626,7 +626,13 @@ export default function MembersPage() {
     };
 
     return (
-        <PageComponentLayout title={t("title")} description={t("description")}>
+        <PageComponentLayout
+            title={t("title")}
+            description={t("description")}
+            backButton={treasuryId ? `/${treasuryId}` : true}
+            backKind="section"
+            hideMobileShellControls
+        >
             {!isInfoSectionDismissed && canAddMember && (
                 <PageCard className="py-4 px-6 gap-3 bg-general-tertiary mb-4">
                     <div className="flex items-start justify-between gap-3">
