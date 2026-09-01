@@ -44,6 +44,10 @@ pub struct GetProposalsQuery {
     pub amount_equal: Option<String>,
     pub proposers: Option<String>,
     pub proposers_not: Option<String>,
+    /// When true, also exclude the backend gas-sponsor / confidential-setup
+    /// signer (`SIGNER_ID` / `AppState.signer_id`) from results. Only those
+    /// setup proposals are dropped; a different sponsor account will not match.
+    pub exclude_setup_proposer: Option<bool>,
     pub approvers: Option<String>,
     pub approvers_not: Option<String>,
     pub voter_votes: Option<String>,
@@ -116,6 +120,18 @@ pub async fn get_proposals(
         .await?;
 
     // Create filters from query params
+    let proposers_not = if query.exclude_setup_proposer.unwrap_or(false) {
+        let signer = state.signer_id.as_str();
+        Some(match query.proposers_not {
+            Some(existing) if !existing.is_empty() => {
+                format!("{},{}", existing, signer)
+            }
+            _ => signer.to_string(),
+        })
+    } else {
+        query.proposers_not
+    };
+
     let filters = ProposalFilters {
         statuses: query.statuses,
         search: query.search,
@@ -137,7 +153,7 @@ pub async fn get_proposals(
         amount_max: query.amount_max,
         amount_equal: query.amount_equal,
         proposers: query.proposers,
-        proposers_not: query.proposers_not,
+        proposers_not,
         approvers: query.approvers,
         approvers_not: query.approvers_not,
         voter_votes: query.voter_votes,

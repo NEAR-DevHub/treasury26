@@ -13,6 +13,7 @@ use serde_json::Value;
 use sqlx::{PgPool, QueryBuilder, Row};
 
 use crate::AppState;
+use crate::handlers::balance_changes::token_filter::push_token_match;
 use crate::handlers::public_history::quotes::{
     proposal_quote_from_metadata, quote_destination_token_id,
 };
@@ -246,30 +247,16 @@ fn bind_public_filters<'a>(
         .as_ref()
         .filter(|tokens| !tokens.is_empty())
     {
-        builder.push(" AND (token_in = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_out = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_in LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))) OR token_out LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))))");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["token_in", "token_out"], tokens);
     }
     if let Some(tokens) = params
         .exclude_token_ids
         .as_ref()
         .filter(|tokens| !tokens.is_empty())
     {
-        builder.push(" AND NOT (token_in = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_out = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_in LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))) OR token_out LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))))");
+        builder.push(" AND NOT ");
+        push_token_match(&mut builder, &["token_in", "token_out"], tokens);
     }
 
     if let Some(min) = min_amount {
@@ -362,9 +349,8 @@ pub async fn load_prior_balances(
     builder.push(" AND gold.token_in IS NOT NULL AND gold.token_in_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND gold.token_in = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["gold.token_in"], tokens);
     }
 
     builder.push(
@@ -386,9 +372,8 @@ pub async fn load_prior_balances(
         .push(" AND gold.token_out IS NOT NULL AND gold.token_out_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND gold.token_out = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["gold.token_out"], tokens);
     }
 
     builder.push(

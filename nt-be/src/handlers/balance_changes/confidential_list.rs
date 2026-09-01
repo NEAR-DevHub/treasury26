@@ -17,6 +17,7 @@ use near_api::AccountId;
 use sqlx::{PgPool, QueryBuilder, Row};
 
 use crate::AppState;
+use crate::handlers::balance_changes::token_filter::push_token_match;
 use crate::handlers::intents::confidential::types::{ConfidentialTxType, bare_account};
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{BalanceChangesQuery, EnrichedBalanceChange, SwapInfo};
@@ -213,6 +214,15 @@ fn build_filtered_legs_query(
                     WHEN transaction_type = 'sent' THEN token_out
                     ELSE token_in
                 END AS leg_token_id,
+                -- An exchange leg displays the token it received, but the token
+                -- it spent is just as much part of the row, so token filters test
+                -- both sides. Non-exchange legs repeat leg_token_id here so
+                -- exclusion filters stay symmetric with inclusion ones.
+                CASE
+                    WHEN transaction_type = 'exchange' THEN COALESCE(token_out, token_in)
+                    WHEN transaction_type = 'sent' THEN token_out
+                    ELSE token_in
+                END AS leg_counter_token_id,
                 CASE
                     WHEN transaction_type = 'sent' THEN -COALESCE(amount_out, 0)
                     ELSE COALESCE(amount_in, 0)
@@ -280,14 +290,20 @@ fn build_filtered_legs_query(
     }
 
     if let Some(tokens) = params.token_ids.as_ref().filter(|t| !t.is_empty()) {
-        builder.push(" AND leg_token_id = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(
+            &mut builder,
+            &["leg_token_id", "leg_counter_token_id"],
+            tokens,
+        );
     }
     if let Some(exclude) = params.exclude_token_ids.as_ref().filter(|t| !t.is_empty()) {
-        builder.push(" AND NOT (leg_token_id = ANY(");
-        builder.push_bind(exclude.clone());
-        builder.push("))");
+        builder.push(" AND NOT ");
+        push_token_match(
+            &mut builder,
+            &["leg_token_id", "leg_counter_token_id"],
+            exclude,
+        );
     }
 
     if let Some(from_allow) = from_allow {
@@ -363,9 +379,8 @@ pub async fn load_prior_balances(
     builder.push(" AND token_out IS NOT NULL AND token_out_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND token_out = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["token_out"], tokens);
     }
 
     builder.push(
@@ -388,9 +403,8 @@ pub async fn load_prior_balances(
     builder.push(" AND token_in IS NOT NULL AND token_in_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND token_in = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["token_in"], tokens);
     }
 
     builder.push(
@@ -866,6 +880,61 @@ mod tests {
         Ok(())
     }
 
+    /// Exchange leg: the DAO spent USDC and received wNEAR.
+    async fn seed_exchange_confidential_change(
+        pool: &PgPool,
+        dao_id: &str,
+    ) -> Result<(), sqlx::Error> {
+        let now = chrono::Utc::now();
+        seed_confidential_dao(pool, dao_id).await?;
+        let deposit_address = format!("deposit-{}", Uuid::new_v4());
+        let event_id: i64 = sqlx::query_scalar(
+            r#"
+            INSERT INTO bronze_confidential_history_events (
+                account_id, created_at_external, deposit_address, status,
+                deposit_type, recipient_type, recipient, origin_asset,
+                destination_asset, raw_payload
+            )
+            VALUES ($1, $2, $3, 'SUCCESS',
+                'CONFIDENTIAL_INTENTS', 'CONFIDENTIAL_INTENTS', $1,
+                'nep141:usdc.near', 'nep141:wrap.near', '{}'::jsonb
+            )
+            RETURNING id
+            "#,
+        )
+        .bind(dao_id)
+        .bind(now)
+        .bind(&deposit_address)
+        .fetch_one(pool)
+        .await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO gold_treasury_ledger_events (
+                gold_event_key, dao_id, source_kind, history_visible,
+                transaction_type, status, event_time, source_order,
+                token_in, amount_in, token_in_user_balance_after,
+                token_out, amount_out, token_out_user_balance_after,
+                recipient, counterparty, proposal_executed_at
+            )
+            VALUES (
+                'confidential:' || $1, $2, 'confidential_history_event', TRUE,
+                'exchange', 'success', $3, $1,
+                'nep141:wrap.near', 2, 2,
+                'nep141:usdc.near', 5, 0,
+                $2, 'intents.near', $3
+            )
+            "#,
+        )
+        .bind(event_id)
+        .bind(dao_id)
+        .bind(now)
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
     /// Same-asset deposit with fees: the stored credit is the applied balance
     /// delta (out - in), not the gross 1Click amount.
     async fn seed_same_asset_fee_deposit(pool: &PgPool, dao_id: &str) -> Result<(), sqlx::Error> {
@@ -972,6 +1041,76 @@ mod tests {
         .await
         .expect("bare filter should exclude bare gold recipient");
         assert!(excluded.is_empty());
+
+        Ok(())
+    }
+
+    /// `?tokenSymbol=` resolves plain contract ids while gold stores the defuse
+    /// form, so a bare filter must still match the `nep141:`-prefixed row.
+    #[sqlx::test]
+    async fn confidential_token_filter_matches_bare_contract_id(pool: PgPool) -> sqlx::Result<()> {
+        let dao_id = format!("conf-list-{}.sputnik-dao.near", Uuid::new_v4());
+        let state = test_state(pool.clone()).await;
+        seed_sent_confidential_change(&pool, &dao_id, "bob.near").await?;
+
+        let mut bare = test_params(&dao_id, None, None);
+        bare.token_ids = Some(vec!["usdc.near".to_string()]);
+        let included = fetch_balance_change_legs(&state, &bare)
+            .await
+            .expect("bare contract id should match nep141-prefixed gold token");
+        assert_eq!(included.len(), 1);
+        assert_eq!(count_balance_change_legs(&pool, &bare).await?, 1);
+
+        let prior = load_prior_balances(
+            &pool,
+            &dao_id,
+            Utc::now() + chrono::Duration::minutes(1),
+            bare.token_ids.as_ref(),
+        )
+        .await?;
+        assert_eq!(prior.get("nep141:usdc.near"), Some(&BigDecimal::from(5)));
+
+        let mut excluded = test_params(&dao_id, None, None);
+        excluded.exclude_token_ids = Some(vec!["usdc.near".to_string()]);
+        assert_eq!(count_balance_change_legs(&pool, &excluded).await?, 0);
+
+        Ok(())
+    }
+
+    /// An exchange row is filterable by the token it spent, not just the token
+    /// it received and displays.
+    #[sqlx::test]
+    async fn exchange_token_filter_matches_the_spent_token(pool: PgPool) -> sqlx::Result<()> {
+        let dao_id = format!("conf-list-{}.sputnik-dao.near", Uuid::new_v4());
+        let state = test_state(pool.clone()).await;
+        seed_exchange_confidential_change(&pool, &dao_id).await?;
+
+        for token in [
+            "nep141:usdc.near",
+            "usdc.near",
+            "nep141:wrap.near",
+            "wrap.near",
+        ] {
+            let mut params = test_params(&dao_id, None, None);
+            params.token_ids = Some(vec![token.to_string()]);
+            let legs = fetch_balance_change_legs(&state, &params)
+                .await
+                .expect("exchange should match either side of the swap");
+            assert_eq!(legs.len(), 1, "expected exchange to match {token}");
+            assert_eq!(count_balance_change_legs(&pool, &params).await?, 1);
+
+            let mut excluded = test_params(&dao_id, None, None);
+            excluded.exclude_token_ids = Some(vec![token.to_string()]);
+            assert_eq!(
+                count_balance_change_legs(&pool, &excluded).await?,
+                0,
+                "expected exchange to be excluded by {token}"
+            );
+        }
+
+        let mut unrelated = test_params(&dao_id, None, None);
+        unrelated.token_ids = Some(vec!["nep141:other.near".to_string()]);
+        assert_eq!(count_balance_change_legs(&pool, &unrelated).await?, 0);
 
         Ok(())
     }
