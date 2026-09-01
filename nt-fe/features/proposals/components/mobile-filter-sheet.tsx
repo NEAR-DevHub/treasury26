@@ -163,6 +163,9 @@ export function MobileFilterSheet({
                     <FilterSheetBody
                         // Remounting per filter keeps each editor's draft state
                         // (selection, search, operation) scoped to its own visit.
+                        // That draft is seeded from the URL on mount only, so a
+                        // param changed elsewhere while the sheet is open lands
+                        // on the next visit rather than the current one.
                         key={activeOption.id}
                         option={activeOption}
                         label={activeOption.label}
