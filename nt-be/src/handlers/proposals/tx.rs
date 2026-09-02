@@ -71,7 +71,7 @@ async fn fetch_nearblocks_transactions(
     before_date: NaiveDate,
 ) -> Result<Vec<NearBlocksTransaction>, (StatusCode, String)> {
     let url = format!(
-        "https://api.nearblocks.io/v1/account/{}/receipts?method={}&after_date={}&before_date={}",
+        "https://api.nearblocks.io/v1/account/{}/receipts?method={}&after_date={}&before_date={}&per_page=50",
         dao_id, method, after_date, before_date
     );
 
