@@ -774,6 +774,7 @@
             "allowStaking": "스테이킹 허용",
             "loadingHistorical": "기록 구성 로딩 중...",
             "name": "이름",
+            "treasuryName": "트레저리 이름",
             "purpose": "용도",
             "logo": "로고",
             "logoAlt": "로고",
@@ -894,7 +895,10 @@
             "details": "세부 정보",
             "approvalWorkflow": "승인 절차",
             "approvals": "승인",
-            "note": "메모"
+            "note": "메모",
+            "transactionDetails": "트랜잭션 세부정보",
+            "showDetails": "세부정보 표시",
+            "hideDetails": "세부정보 숨기기"
         },
         "insufficientBalance": {
             "noAsset": "필요한 토큰이 트레저리에 없으므로 이 요청을 승인할 수 없습니다.",
@@ -2071,6 +2075,7 @@
     "changePolicyExpanded": {
         "proposalBond": "제안 본드",
         "proposalPeriod": "제안 기간",
+        "votingDuration": "투표 기간",
         "bountyBond": "현상금 본드",
         "bountyForgivenessPeriod": "현상금 면제 기간",
         "votesCount": "{count}표",

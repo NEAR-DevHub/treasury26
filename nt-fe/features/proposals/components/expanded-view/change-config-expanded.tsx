@@ -1,14 +1,14 @@
-import { Icon } from "@/components/icon";
 import { LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { ChangeConfigData } from "../../types/index";
-import { isNullValue, renderDiff } from "../../utils/diff-utils";
-import { Proposal } from "@/lib/proposals-api";
-import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
+import { type ReactNode, useMemo } from "react";
+import { Icon } from "@/components/icon";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useTreasuryConfig } from "@/hooks/use-treasury-queries";
+import type { Proposal } from "@/lib/proposals-api";
+import type { ChangeConfigData } from "../../types/index";
 import { computeConfigDiff } from "../../utils/config-diff-utils";
-import { useMemo } from "react";
+import { isNullValue, renderDiff } from "../../utils/diff-utils";
+import { DetailRow } from "../request-details/primitives";
 import { useRequestDisplayContext } from "./common/request-display-context";
 
 interface ChangeConfigExpandedProps {
@@ -61,7 +61,7 @@ export function ChangeConfigExpanded({
         );
     }
 
-    let infoItems: InfoItem[] = [];
+    const rows: { label: string; value: ReactNode }[] = [];
 
     const formatValue = (key: string, val: any) => {
         if (isNullValue(val))
@@ -70,10 +70,10 @@ export function ChangeConfigExpanded({
             );
         if (key === "primaryColor") {
             return (
-                <div
-                    className="w-5 h-5 rounded-full border inline-block align-middle"
+                <span
+                    className="inline-block size-5 rounded-full border align-middle"
                     style={{ backgroundColor: val }}
-                ></div>
+                />
             );
         }
         if (key === "flagLogo") {
@@ -104,14 +104,14 @@ export function ChangeConfigExpanded({
         );
 
     if (diff.nameChanged) {
-        infoItems.push({
-            label: t("name"),
+        rows.push({
+            label: t("treasuryName"),
             value: configDiff("name", diff.oldConfig.name, diff.newConfig.name),
         });
     }
 
     if (diff.purposeChanged) {
-        infoItems.push({
+        rows.push({
             label: t("purpose"),
             value: configDiff(
                 "purpose",
@@ -143,14 +143,14 @@ export function ChangeConfigExpanded({
                     .replace(/([A-Z])/g, " $1")
                     .replace(/^./, (str) => str.toUpperCase());
 
-            infoItems.push({
+            rows.push({
                 label,
                 value: configDiff(key, oldValue, newValue),
             });
         }
     }
 
-    if (infoItems.length === 0) {
+    if (rows.length === 0) {
         return (
             <div className="p-4 text-center text-muted-foreground">
                 {isPending ? t("noChangesCurrent") : t("noChangesHistorical")}
@@ -158,5 +158,15 @@ export function ChangeConfigExpanded({
         );
     }
 
-    return <InfoDisplay items={infoItems} />;
+    return (
+        <div className="flex flex-col">
+            {rows.map((row) => (
+                <DetailRow
+                    key={row.label}
+                    label={row.label}
+                    value={row.value}
+                />
+            ))}
+        </div>
+    );
 }

@@ -774,6 +774,7 @@
             "allowStaking": "允许质押",
             "loadingHistorical": "正在加载历史配置...",
             "name": "名称",
+            "treasuryName": "金库名称",
             "purpose": "目的",
             "logo": "标志",
             "logoAlt": "标志",
@@ -894,7 +895,10 @@
             "details": "详情",
             "approvalWorkflow": "审批流程",
             "approvals": "审批",
-            "note": "备注"
+            "note": "备注",
+            "transactionDetails": "交易详情",
+            "showDetails": "显示详情",
+            "hideDetails": "隐藏详情"
         },
         "insufficientBalance": {
             "noAsset": "由于金库中没有所需代币,此请求无法被批准。",
@@ -2054,6 +2058,7 @@
     "changePolicyExpanded": {
         "proposalBond": "提案保证金",
         "proposalPeriod": "提案期限",
+        "votingDuration": "投票时长",
         "bountyBond": "悬赏保证金",
         "bountyForgivenessPeriod": "悬赏宽限期",
         "votesCount": "{count} 票",

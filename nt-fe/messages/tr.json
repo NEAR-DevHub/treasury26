@@ -774,6 +774,7 @@
             "allowStaking": "Staking'e İzin Ver",
             "loadingHistorical": "Geçmiş yapılandırma yükleniyor...",
             "name": "Ad",
+            "treasuryName": "Hazine Adı",
             "purpose": "Amaç",
             "logo": "Logo",
             "logoAlt": "Logo",
@@ -894,7 +895,10 @@
             "details": "Ayrıntılar",
             "approvalWorkflow": "Onay akışı",
             "approvals": "Onaylar",
-            "note": "Not"
+            "note": "Not",
+            "transactionDetails": "İşlem Ayrıntıları",
+            "showDetails": "Ayrıntıları göster",
+            "hideDetails": "Ayrıntıları gizle"
         },
         "insufficientBalance": {
             "noAsset": "Bu talep onaylanamaz çünkü gerekli token hazinede mevcut değil.",
@@ -2071,6 +2075,7 @@
     "changePolicyExpanded": {
         "proposalBond": "Öneri Teminatı",
         "proposalPeriod": "Öneri Dönemi",
+        "votingDuration": "Oylama Süresi",
         "bountyBond": "Ödül Teminatı",
         "bountyForgivenessPeriod": "Ödül Affetme Dönemi",
         "votesCount": "{count} Oy",

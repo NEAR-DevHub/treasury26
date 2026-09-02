@@ -774,6 +774,7 @@
             "allowStaking": "אפשר סטייקינג",
             "loadingHistorical": "טוען תצורה היסטורית...",
             "name": "שם",
+            "treasuryName": "שם האוצר",
             "purpose": "מטרה",
             "logo": "לוגו",
             "logoAlt": "לוגו",
@@ -894,7 +895,10 @@
             "details": "פרטים",
             "approvalWorkflow": "תהליך אישור",
             "approvals": "אישורים",
-            "note": "הערה"
+            "note": "הערה",
+            "transactionDetails": "פרטי עסקה",
+            "showDetails": "הצג פרטים",
+            "hideDetails": "הסתר פרטים"
         },
         "insufficientBalance": {
             "noAsset": "לא ניתן לאשר בקשה זו מכיוון שהטוקן הנדרש אינו זמין באוצר.",
@@ -2071,6 +2075,7 @@
     "changePolicyExpanded": {
         "proposalBond": "ערבון הצעה",
         "proposalPeriod": "תקופת הצעה",
+        "votingDuration": "משך ההצבעה",
         "bountyBond": "ערבון פרס",
         "bountyForgivenessPeriod": "תקופת מחילת פרס",
         "votesCount": "{count} הצבעות",

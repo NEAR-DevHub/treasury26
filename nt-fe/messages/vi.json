@@ -774,6 +774,7 @@
             "allowStaking": "Cho phép staking",
             "loadingHistorical": "Đang tải cấu hình lịch sử...",
             "name": "Tên",
+            "treasuryName": "Tên ngân quỹ",
             "purpose": "Mục đích",
             "logo": "Logo",
             "logoAlt": "Logo",
@@ -894,7 +895,10 @@
             "details": "Chi tiết",
             "approvalWorkflow": "Quy trình phê duyệt",
             "approvals": "Phê duyệt",
-            "note": "Ghi chú"
+            "note": "Ghi chú",
+            "transactionDetails": "Chi tiết giao dịch",
+            "showDetails": "Hiện chi tiết",
+            "hideDetails": "Ẩn chi tiết"
         },
         "insufficientBalance": {
             "noAsset": "Yêu cầu này không thể được phê duyệt vì token cần thiết không có sẵn trong ngân quỹ.",
@@ -2054,6 +2058,7 @@
     "changePolicyExpanded": {
         "proposalBond": "Bond đề xuất",
         "proposalPeriod": "Thời gian đề xuất",
+        "votingDuration": "Thời lượng bỏ phiếu",
         "bountyBond": "Bond tiền thưởng",
         "bountyForgivenessPeriod": "Thời gian miễn tiền thưởng",
         "votesCount": "{count} phiếu",
