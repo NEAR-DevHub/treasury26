@@ -1,13 +1,13 @@
 "use client";
 
-import { Coins02Icon } from "@hugeicons/core-free-icons";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight01Icon, Coins02Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
 import { FormattedAmount } from "@/components/formatted-amount";
+import { Icon } from "@/components/icon";
 import { MoveAssetsIcon } from "@/components/icons/move-assets";
 import { StepperHeader } from "@/components/step-wizard";
 import {
@@ -142,7 +142,10 @@ export function PublicAssetsTable({
                                                 className="h-8"
                                             >
                                                 {t("viewRequest")}
-                                                <ArrowRight className="size-4" />
+                                                <Icon
+                                                    icon={ArrowRight01Icon}
+                                                    className="size-4"
+                                                />
                                             </Button>
                                         </Link>
                                     ) : (
