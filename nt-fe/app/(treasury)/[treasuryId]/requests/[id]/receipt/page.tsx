@@ -274,7 +274,7 @@ function ReceiptLayout({
                         rel="noopener noreferrer"
                         className="text-sm font-medium leading-[1.5] underline"
                     >
-                        near.com for biz
+                        business.near.com
                     </a>
                 </div>
             </div>
