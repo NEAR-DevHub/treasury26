@@ -1,5 +1,4 @@
 "use client";
-import { Icon } from "@/components/icon";
 import { File01Icon } from "@hugeicons/core-free-icons";
 import { redirect, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -8,13 +7,13 @@ import QRCode from "react-qr-code";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { CopyButton } from "@/components/copy-button";
-import Logo from "@/components/icons/logo";
+import { Icon } from "@/components/icon";
+import { NearBusinessLogo } from "@/components/icons/near-business-logo";
 import { Pill } from "@/components/pill";
 import { NetworkIconDisplay } from "@/components/token-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LANDING_PAGE } from "@/constants/config";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { StatusPill } from "@/features/proposals/components/proposal-status-pill";
 import type { BatchPaymentRequestData } from "@/features/proposals/types/index";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
@@ -51,14 +50,18 @@ import {
     isNearComNetwork,
     isNearComPaymentRoute,
 } from "@/lib/intents-network";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import {
     recordReceiptMetric,
     type SwapQuoteResponse,
 } from "@/lib/proposals-api";
 import { cn, formatUserDate } from "@/lib/utils";
 import {
+    ReceiptLabelValueRow,
+    ReceiptSection,
     ReceiptSenderSection,
     ReceiptTokenAmountRow,
+    receiptSectionRows,
 } from "./components/receipt-shared";
 import {
     type AsyncValue,
@@ -67,6 +70,10 @@ import {
     type TokenReceiptInfo,
 } from "./utils/receipt-models";
 import { getTokenDisplayFields } from "./utils/token-display";
+
+/** The printed sheet: a flat white page on the tinted app background. */
+const RECEIPT_CARD_CLASS =
+    "force-light-theme gap-8 rounded-none border-0 bg-white p-6 text-foreground print:bg-white print:shadow-none";
 
 interface RequestReceiptPageProps {
     params: Promise<{
@@ -101,46 +108,6 @@ interface ExchangeReceiptSectionsProps {
     destinationToken: TokenReceiptInfo;
     rate: AsyncValue<string>;
     executedTime: AsyncValue<string>;
-}
-
-interface ReceiptSectionTitleProps {
-    children: React.ReactNode;
-}
-
-function ReceiptSectionTitle({ children }: ReceiptSectionTitleProps) {
-    return <p className="text-base font-semibold">{children}</p>;
-}
-
-interface ReceiptLabelValueRowProps {
-    label: React.ReactNode;
-    value: React.ReactNode;
-    className?: string;
-    labelClassName?: string;
-    valueClassName?: string;
-}
-
-function ReceiptLabelValueRow({
-    label,
-    value,
-    className = "",
-    labelClassName = "",
-    valueClassName = "",
-}: ReceiptLabelValueRowProps) {
-    return (
-        <div className={cn("flex items-start gap-6 text-sm", className)}>
-            <p
-                className={cn(
-                    "w-60 shrink-0 text-muted-foreground text-sm",
-                    labelClassName,
-                )}
-            >
-                {label}
-            </p>
-            <div className={cn("flex-1 text-left font-medium", valueClassName)}>
-                {value}
-            </div>
-        </div>
-    );
 }
 
 function ReceiptValueSkeleton({ width = "w-24" }: { width?: string }) {
@@ -194,13 +161,14 @@ function ReceiptPageShell({
     const tReceipt = useTranslations("receiptPage");
 
     return (
-        <div className="min-h-dvh bg-background print-color-exact print:bg-white">
-            <header className="flex min-h-14 items-center justify-between border-b border-border bg-card px-4 md:px-6 print:hidden">
+        <div className="flex min-h-dvh flex-col gap-8 pb-20 print-color-exact print:block print:gap-0 print:pb-0">
+            <header className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 backdrop-blur-[2px] print:hidden">
                 <div className="flex items-center gap-3">
-                    <Logo size="sm" />
+                    <NearBusinessLogo className="h-6" />
                     <Pill
                         title={tReceipt("transactionConfirmation")}
-                        variant="secondary"
+                        variant="primary"
+                        className="rounded-sm font-semibold"
                     />
                 </div>
                 <div className="flex items-center gap-2 print:hidden">
@@ -208,20 +176,21 @@ function ReceiptPageShell({
                         <CopyButton
                             text={receiptUrl}
                             variant="secondary"
+                            size="sm"
                             iconClassName="size-4"
                         >
                             {tReceipt("copyLink")}
                         </CopyButton>
                     )}
-                    <Button variant="default" onClick={onPrint}>
+                    <Button variant="default" size="sm" onClick={onPrint}>
                         <Icon icon={File01Icon} />
                         {tReceipt("printOrSavePdf")}
                     </Button>
                 </div>
             </header>
 
-            <main className="px-4 py-4 pb-8 print:bg-white print:px-0 print:py-0">
-                <div className="mx-auto w-full max-w-[700px]">{children}</div>
+            <main className="px-4 print:bg-white print:px-0">
+                <div className="mx-auto w-full max-w-[595px]">{children}</div>
             </main>
         </div>
     );
@@ -237,11 +206,13 @@ function ReceiptLayout({
     const tCommon = useTranslations("common");
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-start justify-between border-b pb-4">
-                <div>
-                    <p className="text-xl font-medium">{title}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
+        <div className="flex flex-col gap-8">
+            <div className="flex items-start gap-1 border-b border-border pb-4">
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+                    <p className="text-xl font-semibold leading-[1.2] tracking-[-0.4px]">
+                        {title}
+                    </p>
+                    <p className="text-sm font-medium leading-[1.5] text-muted-foreground">
                         {tReceipt("generatedOn", {
                             date: formatUserDate(new Date(), {
                                 timezone: "UTC",
@@ -250,43 +221,45 @@ function ReceiptLayout({
                         })}
                     </p>
                 </div>
-                <Logo size="md" mode="light" />
+                <NearBusinessLogo className="h-6" />
             </div>
-            <p className="text-xl font-medium">
-                {tReceipt.rich("receiptTitle", {
-                    proposalId,
-                    date: receiptDate.value
-                        ? formatUserDate(receiptDate.value, {
-                              timezone: "UTC",
-                              includeTime: false,
-                          })
-                        : tCommon("notAvailable"),
-                    datePart: (chunks) =>
-                        receiptDate.isLoading ? (
-                            <span className="inline-block align-middle">
-                                <ReceiptValueSkeleton width="w-32" />
-                            </span>
-                        ) : (
-                            chunks
-                        ),
-                })}
-            </p>
-            {children}
-            <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
-                <div className="space-y-2">
-                    <span className="inline-flex rounded-md bg-foreground px-3 py-1 text-xs font-medium text-background">
+            <div className="flex flex-col gap-5 pb-6">
+                <p className="pb-3 text-xl font-semibold leading-[1.2] tracking-[-0.4px]">
+                    {tReceipt.rich("receiptTitle", {
+                        proposalId,
+                        date: receiptDate.value
+                            ? formatUserDate(receiptDate.value, {
+                                  timezone: "UTC",
+                                  includeTime: false,
+                              })
+                            : tCommon("notAvailable"),
+                        datePart: (chunks) =>
+                            receiptDate.isLoading ? (
+                                <span className="inline-block align-middle">
+                                    <ReceiptValueSkeleton width="w-32" />
+                                </span>
+                            ) : (
+                                chunks
+                            ),
+                    })}
+                </p>
+                {children}
+            </div>
+            <div className="flex items-center gap-10 rounded-xl border border-border bg-general-bg-secondary p-3">
+                <div className="flex min-w-0 flex-1 flex-col justify-center gap-3">
+                    <span className="flex min-h-6 w-fit items-center rounded-sm bg-general-bg-primary px-2 py-[3px] text-xs font-semibold leading-[14px] text-white">
                         Free to start
                     </span>
-                    <div>
-                        <p className="text-base font-medium">
+                    <div className="flex flex-col gap-1">
+                        <p className="text-base font-semibold leading-[1.2]">
                             {tReceipt("createYourTreasury")}
                         </p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm font-medium leading-[1.5] text-muted-foreground">
                             {tReceipt("createYourTreasuryDescription")}
                         </p>
                     </div>
                 </div>
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex shrink-0 flex-col items-center gap-2">
                     <a
                         href={LANDING_PAGE}
                         target="_blank"
@@ -299,9 +272,9 @@ function ReceiptLayout({
                         href={LANDING_PAGE}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[16px] font-medium underline"
+                        className="text-sm font-medium leading-[1.5] underline"
                     >
-                        trezu.org
+                        near.com for biz
                     </a>
                 </div>
             </div>
@@ -310,50 +283,42 @@ function ReceiptLayout({
 }
 
 function ReceiptPdfSkeletonLabelRow({
-    className = "py-3",
     valueWidth = "w-36",
 }: {
-    className?: string;
     valueWidth?: string;
 }) {
     return (
         <ReceiptLabelValueRow
             label={<Skeleton className="h-4 w-24" />}
             value={<Skeleton className={cn("h-4", valueWidth)} />}
-            className={className}
         />
     );
 }
 
 function ReceiptPdfSkeletonCard() {
     return (
-        <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
-            <div className="space-y-8">
-                <div className="flex items-start justify-between border-b pb-4">
-                    <div className="space-y-2">
-                        <Skeleton className="h-7 w-64" />
-                        <Skeleton className="h-4 w-40" />
-                    </div>
-                    <Skeleton className="h-8 w-24" />
+        <PageCard className={RECEIPT_CARD_CLASS}>
+            <div className="flex items-start gap-1 border-b border-border pb-4">
+                <div className="flex flex-1 flex-col gap-1">
+                    <Skeleton className="h-6 w-64" />
+                    <Skeleton className="h-5 w-40" />
                 </div>
+                <Skeleton className="h-6 w-[182px]" />
+            </div>
 
-                <Skeleton className="h-7 w-80" />
+            <div className="flex flex-col gap-5 pb-6">
+                <Skeleton className="mb-3 h-6 w-80" />
 
-                <section className="space-y-5">
-                    <div>
-                        <Skeleton className="h-6 w-20" />
-                        <ReceiptLabelValueRow
-                            label={<Skeleton className="h-4 w-16" />}
-                            value={<Skeleton className="h-4 w-64" />}
-                            className="mt-2 border-b pb-3 pt-3"
-                            valueClassName="break-all"
-                        />
+                <section className="flex flex-col gap-2">
+                    <Skeleton className="h-5 w-20" />
+                    <div className={receiptSectionRows}>
+                        <ReceiptPdfSkeletonLabelRow valueWidth="w-64" />
                     </div>
                 </section>
 
-                <section className="space-y-3">
-                    <Skeleton className="h-6 w-40" />
-                    <div className="divide-y text-sm">
+                <section className="flex flex-col gap-2">
+                    <Skeleton className="h-5 w-40" />
+                    <div className={receiptSectionRows}>
                         <ReceiptPdfSkeletonLabelRow valueWidth="w-20" />
                         <ReceiptPdfSkeletonLabelRow valueWidth="w-28" />
                         <ReceiptPdfSkeletonLabelRow valueWidth="w-32" />
@@ -362,17 +327,19 @@ function ReceiptPdfSkeletonCard() {
                         <ReceiptPdfSkeletonLabelRow valueWidth="w-36" />
                     </div>
                 </section>
+            </div>
 
-                <div className="flex items-center justify-between rounded-lg bg-secondary px-4 py-3">
-                    <div className="space-y-2">
-                        <Skeleton className="h-6 w-24 rounded-md" />
+            <div className="flex items-center gap-10 rounded-xl border border-border bg-general-bg-secondary p-3">
+                <div className="flex flex-1 flex-col gap-3">
+                    <Skeleton className="h-6 w-24 rounded-sm" />
+                    <div className="flex flex-col gap-1">
                         <Skeleton className="h-5 w-44" />
-                        <Skeleton className="h-4 w-72" />
+                        <Skeleton className="h-5 w-72" />
                     </div>
-                    <div className="space-y-2">
-                        <Skeleton className="size-[66px]" />
-                        <Skeleton className="h-4 w-20" />
-                    </div>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                    <Skeleton className="size-[66px]" />
+                    <Skeleton className="h-5 w-20" />
                 </div>
             </div>
         </PageCard>
@@ -398,82 +365,65 @@ function PaymentReceiptSections({
     return (
         <>
             <ReceiptSenderSection senderAddress={treasuryId ?? ""} />
-            <section className="space-y-5">
-                <div>
-                    <p className="text-base font-medium">
-                        {tReceipt("recipient")}
-                    </p>
-                    <ReceiptLabelValueRow
-                        label={tReceipt("address")}
-                        value={
-                            recipientAddress.isLoading ? (
-                                <ReceiptValueSkeleton width="w-28" />
-                            ) : (
-                                (recipientAddress.value ??
-                                tCommon("notAvailable"))
-                            )
-                        }
-                        className="mt-2 pt-3"
-                        valueClassName="break-all"
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("destinationNetwork")}
-                        value={
-                            <AsyncNetwork
-                                metadata={destinationToken.metadata}
-                                width="w-28"
-                            />
-                        }
-                        className="mt-2 border-b border-t pb-3 pt-3"
-                        valueClassName="break-all"
-                    />
-                </div>
-            </section>
 
-            <section>
-                <ReceiptSectionTitle>
-                    {tReceipt("transactionDetails")}
-                </ReceiptSectionTitle>
-                <div className="divide-y text-sm">
-                    <ReceiptLabelValueRow
-                        label={tReceipt("status")}
-                        value={<StatusPill status="Executed" />}
-                        className="py-3"
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("network")}
-                        value={
-                            <AsyncNetwork
-                                metadata={sourceToken.metadata}
-                                width="w-20"
-                            />
-                        }
-                        className="py-3"
-                    />
-                    <ReceiptTokenAmountRow
-                        label={tReceipt("amountWithToken", {
-                            token: amountSymbol,
-                        })}
-                        metadata={destinationToken.metadata}
-                        amount={destinationToken.amount}
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("amountUsd")}
-                        value={<AsyncText value={destinationToken.usd} />}
-                        className="py-3"
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("rate")}
-                        value={<AsyncText value={rate} />}
-                        className="py-3"
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("dateAndTime")}
-                        value={<AsyncText value={executedTime} />}
-                        className="py-3"
-                    />
-                </div>
-            </section>
+            <ReceiptSection title={tReceipt("recipient")}>
+                <ReceiptLabelValueRow
+                    label={tReceipt("address")}
+                    value={
+                        recipientAddress.isLoading ? (
+                            <ReceiptValueSkeleton width="w-28" />
+                        ) : (
+                            (recipientAddress.value ?? tCommon("notAvailable"))
+                        )
+                    }
+                    valueClassName="break-all"
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("destinationNetwork")}
+                    value={
+                        <AsyncNetwork
+                            metadata={destinationToken.metadata}
+                            width="w-28"
+                        />
+                    }
+                    valueClassName="break-all"
+                />
+            </ReceiptSection>
+
+            <ReceiptSection title={tReceipt("transactionDetails")} flushLastRow>
+                <ReceiptLabelValueRow
+                    label={tReceipt("status")}
+                    value={<StatusPill status="Executed" />}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("network")}
+                    value={
+                        <AsyncNetwork
+                            metadata={sourceToken.metadata}
+                            width="w-20"
+                        />
+                    }
+                />
+                <ReceiptTokenAmountRow
+                    label={tReceipt("amountWithToken", {
+                        token: amountSymbol,
+                    })}
+                    metadata={destinationToken.metadata}
+                    amount={destinationToken.amount}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("amountUsd")}
+                    value={<AsyncText value={destinationToken.usd} />}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("rate")}
+                    value={<AsyncText value={rate} />}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("dateAndTime")}
+                    value={<AsyncText value={executedTime} />}
+                />
+            </ReceiptSection>
         </>
     );
 }
@@ -495,67 +445,56 @@ function ExchangeReceiptSections({
         <>
             <ReceiptSenderSection senderAddress={treasuryId ?? ""} />
 
-            <section>
-                <ReceiptSectionTitle>
-                    {tReceipt("transactionDetails")}
-                </ReceiptSectionTitle>
-                <div className="divide-y text-sm">
-                    <ReceiptLabelValueRow
-                        label={tReceipt("status")}
-                        value={<StatusPill status="Executed" />}
-                        className="py-3"
-                    />
-                    <ReceiptTokenAmountRow
-                        label={tReceipt("sentAmountWithToken", {
-                            token: sentSymbol,
-                        })}
-                        metadata={sourceToken.metadata}
-                        amount={sourceToken.amount}
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("sentNetwork")}
-                        value={
-                            <AsyncNetwork
-                                metadata={sourceToken.metadata}
-                                width="w-20"
-                            />
-                        }
-                        className="py-3"
-                    />
-                    <ReceiptTokenAmountRow
-                        label={tReceipt("receiveAmountWithToken", {
-                            token: receiveSymbol,
-                        })}
-                        metadata={destinationToken.metadata}
-                        amount={destinationToken.amount}
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("receiveNetwork")}
-                        value={
-                            <AsyncNetwork
-                                metadata={destinationToken.metadata}
-                                width="w-28"
-                            />
-                        }
-                        className="py-3"
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("receiveAmountUsd")}
-                        value={<AsyncText value={destinationToken.usd} />}
-                        className="py-3"
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("rate")}
-                        value={<AsyncText value={rate} />}
-                        className="py-3"
-                    />
-                    <ReceiptLabelValueRow
-                        label={tReceipt("dateAndTime")}
-                        value={<AsyncText value={executedTime} />}
-                        className="py-3"
-                    />
-                </div>
-            </section>
+            <ReceiptSection title={tReceipt("transactionDetails")} flushLastRow>
+                <ReceiptLabelValueRow
+                    label={tReceipt("status")}
+                    value={<StatusPill status="Executed" />}
+                />
+                <ReceiptTokenAmountRow
+                    label={tReceipt("sentAmountWithToken", {
+                        token: sentSymbol,
+                    })}
+                    metadata={sourceToken.metadata}
+                    amount={sourceToken.amount}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("sentNetwork")}
+                    value={
+                        <AsyncNetwork
+                            metadata={sourceToken.metadata}
+                            width="w-20"
+                        />
+                    }
+                />
+                <ReceiptTokenAmountRow
+                    label={tReceipt("receiveAmountWithToken", {
+                        token: receiveSymbol,
+                    })}
+                    metadata={destinationToken.metadata}
+                    amount={destinationToken.amount}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("receiveNetwork")}
+                    value={
+                        <AsyncNetwork
+                            metadata={destinationToken.metadata}
+                            width="w-28"
+                        />
+                    }
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("receiveAmountUsd")}
+                    value={<AsyncText value={destinationToken.usd} />}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("rate")}
+                    value={<AsyncText value={rate} />}
+                />
+                <ReceiptLabelValueRow
+                    label={tReceipt("dateAndTime")}
+                    value={<AsyncText value={executedTime} />}
+                />
+            </ReceiptSection>
         </>
     );
 }
@@ -675,7 +614,7 @@ function BatchReceiptCard({
     return (
         <PageCard
             className={cn(
-                "force-light-theme rounded-none bg-white text-foreground p-8 print:bg-white print:shadow-none",
+                RECEIPT_CARD_CLASS,
                 paymentIndex < totalPayments - 1 && "break-after-page",
             )}
         >
@@ -1108,8 +1047,8 @@ export default function RequestReceiptPage({
         (shouldUseSwapExecutionDate && isLoadingSwapStatus)
     ) {
         return (
-            <div className="min-h-dvh bg-muted p-4 print:bg-white">
-                <div className="mx-auto w-full max-w-[700px]">
+            <div className="min-h-dvh p-4">
+                <div className="mx-auto w-full max-w-[595px]">
                     <ReceiptPdfSkeletonCard />
                 </div>
             </div>
@@ -1176,7 +1115,7 @@ export default function RequestReceiptPage({
             showCopyLink={!isConfidential}
             onPrint={handlePrint}
         >
-            <PageCard className="force-light-theme bg-white text-foreground p-8 rounded-none print:bg-white print:shadow-none">
+            <PageCard className={RECEIPT_CARD_CLASS}>
                 <ReceiptLayout
                     title={
                         isExchangeProposal

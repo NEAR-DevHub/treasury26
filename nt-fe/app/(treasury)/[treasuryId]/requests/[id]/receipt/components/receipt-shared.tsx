@@ -7,58 +7,93 @@ import type { TokenReceiptInfo } from "../utils/receipt-models";
 import { getTokenDisplayFields } from "../utils/token-display";
 
 interface ReceiptLabelValueRowProps {
-    label: string;
+    label: React.ReactNode;
     value: React.ReactNode;
     className?: string;
     labelClassName?: string;
     valueClassName?: string;
 }
 
-function ReceiptLabelValueRow({
+/**
+ * One receipt line: label and value each take half the width, separated by a
+ * hairline. The closing section drops its trailing rule via `flushLastRow`.
+ */
+export function ReceiptLabelValueRow({
     label,
     value,
-    className = "",
-    labelClassName = "",
-    valueClassName = "",
+    className,
+    labelClassName,
+    valueClassName,
 }: ReceiptLabelValueRowProps) {
     return (
-        <div className={cn("flex items-start gap-6 text-sm", className)}>
-            <p
+        <div
+            className={cn(
+                "flex items-center gap-4 border-b border-border py-3 text-base leading-[1.2]",
+                className,
+            )}
+        >
+            <div
                 className={cn(
-                    "w-60 shrink-0 text-muted-foreground text-sm",
+                    "min-w-0 flex-1 font-medium text-muted-foreground",
                     labelClassName,
                 )}
             >
                 {label}
-            </p>
-            <div className={cn("flex-1 text-left font-medium", valueClassName)}>
+            </div>
+            <div
+                className={cn(
+                    "min-w-0 flex-1 text-left font-semibold",
+                    valueClassName,
+                )}
+            >
                 {value}
             </div>
         </div>
     );
 }
 
+export const receiptSectionRows = "flex flex-col" as const;
+
+export function ReceiptSection({
+    title,
+    /** The receipt's closing section drops its trailing hairline. */
+    flushLastRow = false,
+    children,
+}: {
+    title: React.ReactNode;
+    flushLastRow?: boolean;
+    children: React.ReactNode;
+}) {
+    return (
+        <section className="flex flex-col gap-2">
+            <p className="text-base font-semibold leading-[1.2]">{title}</p>
+            <div
+                className={cn(
+                    receiptSectionRows,
+                    flushLastRow && "[&>*:last-child]:border-b-0",
+                )}
+            >
+                {children}
+            </div>
+        </section>
+    );
+}
+
 export function ReceiptSenderSection({
     senderAddress,
-    className = "mt-2 border-b pb-3 pt-3",
 }: {
     senderAddress: string;
-    className?: string;
 }) {
     const tReceipt = useTranslations("receiptPage");
 
     return (
-        <section className="space-y-3">
-            <div>
-                <p className="text-base font-semibold">{tReceipt("sender")}</p>
-                <ReceiptLabelValueRow
-                    label={tReceipt("address")}
-                    value={senderAddress}
-                    className={className}
-                    valueClassName="break-all"
-                />
-            </div>
-        </section>
+        <ReceiptSection title={tReceipt("sender")}>
+            <ReceiptLabelValueRow
+                label={tReceipt("address")}
+                value={senderAddress}
+                valueClassName="break-all"
+            />
+        </ReceiptSection>
     );
 }
 
@@ -66,12 +101,10 @@ export function ReceiptTokenAmountRow({
     label,
     metadata,
     amount,
-    className = "py-3",
 }: {
     label: string;
     metadata: TokenReceiptInfo["metadata"];
     amount: string;
-    className?: string;
 }) {
     const { symbol, icon } = getTokenDisplayFields(metadata);
 
@@ -79,7 +112,7 @@ export function ReceiptTokenAmountRow({
         <ReceiptLabelValueRow
             label={label}
             value={
-                <div className="flex items-center justify-start gap-2">
+                <div className="flex items-center justify-start gap-1.5">
                     <TokenDisplay
                         symbol={symbol}
                         icon={icon}
@@ -91,7 +124,6 @@ export function ReceiptTokenAmountRow({
                     <span>{amount}</span>
                 </div>
             }
-            className={className}
         />
     );
 }
