@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
     ArrowUp01Icon,
     CircleQuestionMarkIcon,
@@ -9,14 +8,15 @@ import {
     Moon02Icon,
     SunMediumIcon,
     User03Icon,
-    UserIcon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/copy-button";
+import { Icon } from "@/components/icon";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ProfileAvatarChip } from "@/components/profile-avatar-chip";
 import {
     accountMenuItemClass,
     ConnectWalletButton,
@@ -32,6 +32,7 @@ import { isStaging } from "@/constants/features";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
+import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
@@ -70,8 +71,6 @@ export function SidebarProfileMenu({
     }, []);
 
     const isDarkTheme = mounted ? resolvedTheme === "dark" : true;
-    const displayName =
-        profile?.name && profile.name !== accountId ? profile.name : accountId;
     const accountHref = treasuryId ? `/${treasuryId}/account` : null;
 
     const close = () => setIsOpen(false);
@@ -84,10 +83,14 @@ export function SidebarProfileMenu({
         );
     }
 
+    const displayName =
+        profile?.name && profile.name !== accountId ? profile.name : accountId;
+
     const avatar = (
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-green-500">
-            <Icon icon={UserIcon} className="text-gray-900" />
-        </span>
+        <ProfileAvatarChip
+            imageUrl={resolveProfileImageUrl(profile?.image)}
+            name={displayName}
+        />
     );
 
     const trigger = isReduced ? (
