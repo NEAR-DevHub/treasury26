@@ -774,6 +774,7 @@
             "allowStaking": "Дозволити стейкінг",
             "loadingHistorical": "Завантаження історичної конфігурації...",
             "name": "Назва",
+            "treasuryName": "Назва скарбниці",
             "purpose": "Призначення",
             "logo": "Логотип",
             "logoAlt": "Логотип",
@@ -894,7 +895,10 @@
             "details": "Деталі",
             "approvalWorkflow": "Процес погодження",
             "approvals": "Погодження",
-            "note": "Примітка"
+            "note": "Примітка",
+            "transactionDetails": "Деталі транзакції",
+            "showDetails": "Показати деталі",
+            "hideDetails": "Сховати деталі"
         },
         "insufficientBalance": {
             "noAsset": "Цей запит не можна схвалити, бо потрібного токена немає у скарбниці.",
@@ -2054,6 +2058,7 @@
     "changePolicyExpanded": {
         "proposalBond": "Застава пропозиції",
         "proposalPeriod": "Період пропозиції",
+        "votingDuration": "Тривалість голосування",
         "bountyBond": "Застава винагороди",
         "bountyForgivenessPeriod": "Період прощення винагороди",
         "votesCount": "{count} голосів",

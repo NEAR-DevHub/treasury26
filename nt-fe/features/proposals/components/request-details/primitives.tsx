@@ -1,8 +1,14 @@
 "use client";
 
-import { InformationCircleIcon } from "@hugeicons/core-free-icons";
-import type { ReactNode } from "react";
+import {
+    ArrowDown01Icon,
+    ArrowUp01Icon,
+    InformationCircleIcon,
+} from "@hugeicons/core-free-icons";
+import { useTranslations } from "next-intl";
+import { type ReactNode, useState } from "react";
 import { Address } from "@/components/address";
+import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
 import { Tooltip } from "@/components/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -73,6 +79,41 @@ export function DetailRow({
             <div className="min-w-0 text-right text-sm font-semibold text-foreground">
                 {value}
             </div>
+        </div>
+    );
+}
+
+/**
+ * The raw payload behind a request, kept out of the way until asked for. The
+ * toggle sits where a row's value would, so it lines up with the rows above it.
+ */
+export function TransactionDetails({ payload }: { payload: unknown }) {
+    const t = useTranslations("proposals.expanded");
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="flex w-full flex-col gap-1">
+            <div className="flex w-full items-center justify-between gap-4 py-1">
+                <span className="text-sm font-medium text-general-secondary-foreground">
+                    {t("transactionDetails")}
+                </span>
+                <Button
+                    variant="ghost"
+                    onClick={() => setIsOpen((open) => !open)}
+                    className="h-7 gap-1.5 rounded-sm px-2 text-xs text-general-unofficial-ghost-foreground"
+                >
+                    {isOpen ? t("hideDetails") : t("showDetails")}
+                    <Icon
+                        icon={isOpen ? ArrowUp01Icon : ArrowDown01Icon}
+                        className="size-[13.25px]"
+                    />
+                </Button>
+            </div>
+            {isOpen && (
+                <pre className="w-full whitespace-pre-wrap break-words rounded-sm bg-general-bg-tertiary px-3 py-3 font-sans text-sm font-medium text-foreground">
+                    {JSON.stringify(payload, null, 2)}
+                </pre>
+            )}
         </div>
     );
 }

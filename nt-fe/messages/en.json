@@ -774,6 +774,7 @@
             "allowStaking": "Allow Staking",
             "loadingHistorical": "Loading historical configuration...",
             "name": "Name",
+            "treasuryName": "Treasury Name",
             "purpose": "Purpose",
             "logo": "Logo",
             "logoAlt": "Logo",
@@ -894,7 +895,10 @@
             "details": "Details",
             "approvalWorkflow": "Approval workflow",
             "approvals": "Approvals",
-            "note": "Note"
+            "note": "Note",
+            "transactionDetails": "Transaction Details",
+            "showDetails": "Show details",
+            "hideDetails": "Hide details"
         },
         "insufficientBalance": {
             "noAsset": "This request can't be approved because the required token is not available in the treasury.",
@@ -2071,6 +2075,7 @@
     "changePolicyExpanded": {
         "proposalBond": "Proposal Bond",
         "proposalPeriod": "Proposal Period",
+        "votingDuration": "Voting Duration",
         "bountyBond": "Bounty Bond",
         "bountyForgivenessPeriod": "Bounty Forgiveness Period",
         "votesCount": "{count} Votes",

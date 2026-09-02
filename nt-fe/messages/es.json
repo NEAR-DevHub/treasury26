@@ -774,6 +774,7 @@
             "allowStaking": "Permitir staking",
             "loadingHistorical": "Cargando configuración histórica...",
             "name": "Nombre",
+            "treasuryName": "Nombre de la tesorería",
             "purpose": "Propósito",
             "logo": "Logotipo",
             "logoAlt": "Logotipo",
@@ -894,7 +895,10 @@
             "details": "Detalles",
             "approvalWorkflow": "Flujo de aprobación",
             "approvals": "Aprobaciones",
-            "note": "Nota"
+            "note": "Nota",
+            "transactionDetails": "Detalles de transacción",
+            "showDetails": "Mostrar detalles",
+            "hideDetails": "Ocultar detalles"
         },
         "insufficientBalance": {
             "noAsset": "Esta solicitud no se puede aprobar porque el token requerido no está disponible en la tesorería.",
@@ -2071,6 +2075,7 @@
     "changePolicyExpanded": {
         "proposalBond": "Garantía de propuesta",
         "proposalPeriod": "Período de propuesta",
+        "votingDuration": "Duración de la votación",
         "bountyBond": "Garantía de recompensa",
         "bountyForgivenessPeriod": "Período de gracia de recompensa",
         "votesCount": "{count} votos",

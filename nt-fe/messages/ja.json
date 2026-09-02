@@ -774,6 +774,7 @@
             "allowStaking": "ステーキングを許可",
             "loadingHistorical": "過去の設定を読み込み中...",
             "name": "名前",
+            "treasuryName": "トレジャリー名",
             "purpose": "目的",
             "logo": "ロゴ",
             "logoAlt": "ロゴ",
@@ -894,7 +895,10 @@
             "details": "詳細",
             "approvalWorkflow": "承認フロー",
             "approvals": "承認",
-            "note": "メモ"
+            "note": "メモ",
+            "transactionDetails": "トランザクションの詳細",
+            "showDetails": "詳細を表示",
+            "hideDetails": "詳細を非表示"
         },
         "insufficientBalance": {
             "noAsset": "必要なトークンがトレジャリーにないため、このリクエストは承認できません。",
@@ -2071,6 +2075,7 @@
     "changePolicyExpanded": {
         "proposalBond": "提案ボンド",
         "proposalPeriod": "提案期間",
+        "votingDuration": "投票期間",
         "bountyBond": "バウンティボンド",
         "bountyForgivenessPeriod": "バウンティ免除期間",
         "votesCount": "{count}票",

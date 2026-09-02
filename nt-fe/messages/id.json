@@ -774,6 +774,7 @@
             "allowStaking": "Izinkan Staking",
             "loadingHistorical": "Memuat konfigurasi historis...",
             "name": "Nama",
+            "treasuryName": "Nama Treasury",
             "purpose": "Tujuan",
             "logo": "Logo",
             "logoAlt": "Logo",
@@ -894,7 +895,10 @@
             "details": "Detail",
             "approvalWorkflow": "Alur persetujuan",
             "approvals": "Persetujuan",
-            "note": "Catatan"
+            "note": "Catatan",
+            "transactionDetails": "Detail Transaksi",
+            "showDetails": "Tampilkan detail",
+            "hideDetails": "Sembunyikan detail"
         },
         "insufficientBalance": {
             "noAsset": "Permintaan ini tidak dapat disetujui karena token yang diperlukan tidak tersedia di treasury.",
@@ -2071,6 +2075,7 @@
     "changePolicyExpanded": {
         "proposalBond": "Bond Usulan",
         "proposalPeriod": "Periode Usulan",
+        "votingDuration": "Durasi Pemungutan Suara",
         "bountyBond": "Bond Bounty",
         "bountyForgivenessPeriod": "Periode Pengampunan Bounty",
         "votesCount": "{count} Suara",
