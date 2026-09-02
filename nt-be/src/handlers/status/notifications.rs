@@ -738,11 +738,21 @@ mod tests {
 
     #[test]
     fn health_check_alert_keeps_post_title_in_the_body() {
-        let message = format_health_check_alert(
-            "near-intents",
-            "near-intents.status:P9D0S3K",
-            "warning",
-            "NEAR Intents has active maintenance: zCash Bridge Maintenance",
+        let post = crate::handlers::status::oh_dear::IntentsStatusPost {
+            id: Some("P9D0S3K".to_string()),
+            title: "zCash Bridge Maintenance".to_string(),
+            post_type: "maintenance".to_string(),
+            starts_at: Some(0),
+            ends_at: None,
+        };
+        let body = crate::handlers::status::oh_dear::intents_post_notification(&post, 1);
+        let check_name = crate::handlers::status::oh_dear::intents_post_check_name(
+            post.id.as_deref().expect("post id"),
+        );
+        let message = format_health_check_alert("near-intents", &check_name, "warning", &body);
+        assert!(
+            body.contains("zCash Bridge Maintenance"),
+            "title must enter the alert via intents_post_notification"
         );
         assert!(message.contains("⚠️ <b>Health check failed: NEAR Intents</b>"));
         assert!(message.contains("zCash Bridge Maintenance"));

@@ -36,7 +36,7 @@ pub const SUPPORTED_SERVICES: &[&str] = &[
 const NEAR_STATUS_UP: &str = "up";
 const INTENTS_POST_INCIDENT: &str = "incident";
 const INTENTS_POST_MAINTENANCE: &str = "maintenance";
-const NEAR_INTENTS_CHECK_PREFIX: &str = "near-intents.status";
+const NEAR_INTENTS_CHECK_PREFIX: &str = "near-intents.status:";
 
 const BACKEND_DATABASE_CHECK: CheckDefinition = CheckDefinition {
     name: "backend.database",
@@ -986,11 +986,11 @@ pub fn actionable_intents_posts(
 }
 
 pub fn intents_post_check_name(post_id: &str) -> String {
-    format!("{NEAR_INTENTS_CHECK_PREFIX}:{post_id}")
+    format!("{NEAR_INTENTS_CHECK_PREFIX}{post_id}")
 }
 
 pub fn is_intents_post_check(check_name: &str) -> bool {
-    check_name.starts_with(&format!("{NEAR_INTENTS_CHECK_PREFIX}:"))
+    check_name.starts_with(NEAR_INTENTS_CHECK_PREFIX)
 }
 
 /// Ops Telegram line for one status post. Always includes the title.
@@ -1298,6 +1298,18 @@ pub async fn fetch_intents_posts(state: &AppState) -> Result<Vec<IntentsStatusPo
     match fetch_intents_response(state).await.0 {
         Ok(response) => Ok(response.posts),
         Err(_) => Err("Failed to fetch NEAR Intents status posts".to_string()),
+    }
+}
+
+/// Same fetch as [`fetch_intents_posts`], but the error is the Oh Dear check
+/// the monitor should apply when the status API is down (one HTTP call).
+pub async fn fetch_intents_posts_with_check(
+    state: &AppState,
+) -> Result<Vec<IntentsStatusPost>, OhDearCheckResult> {
+    let (result, duration_ms) = fetch_intents_response(state).await;
+    match result {
+        Ok(response) => Ok(response.posts),
+        Err(error) => Err(NEAR_INTENTS_CHECK.failed_http(error, duration_ms, json!({}))),
     }
 }
 

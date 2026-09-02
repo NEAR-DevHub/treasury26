@@ -450,14 +450,14 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
 
 /// Track each Instatus post as its own incident so zCash and 1Click each page.
 async fn process_near_intents(state: &Arc<AppState>) {
-    let check = oh_dear::run_service_check(state, "near-intents").await;
-    let posts = match oh_dear::fetch_intents_posts(state).await {
+    let posts = match oh_dear::fetch_intents_posts_with_check(state).await {
         Ok(posts) => posts,
-        Err(e) => {
-            tracing::error!("[status-monitor] Failed to fetch intents posts: {e}");
-            if let Some(check) = check.as_ref() {
-                apply_check(state, "near-intents", check).await;
-            }
+        Err(check) => {
+            tracing::error!(
+                "[status-monitor] Failed to fetch intents posts: {}",
+                check.notification_message
+            );
+            apply_check(state, "near-intents", &check).await;
             return;
         }
     };
@@ -499,14 +499,6 @@ async fn process_near_intents(state: &Arc<AppState>) {
         // Posts are being tracked individually — close the legacy service-level
         // row and any post that has left the featured/relevant set.
         apply_healthy(state, "near-intents", incident).await;
-    }
-
-    if actionable.is_empty() {
-        if let Some(check) = check.as_ref() {
-            if oh_dear::is_unhealthy_for_monitor("near-intents", &check.status) {
-                apply_check(state, "near-intents", check).await;
-            }
-        }
     }
 }
 
@@ -628,7 +620,17 @@ async fn apply_unhealthy(
                 );
             }
         }
-        Ok(_) => {}
+        Ok(message_id) => {
+            tracing::warn!(
+                "[status-monitor] Ops alert for {service}/{check_name} returned message id {message_id}; releasing claim"
+            );
+            if let Err(release_err) = release_ops_alert_claim(&state.db_pool, incident.id).await {
+                tracing::error!(
+                    "[status-monitor] Failed to release ops alert claim for incident {}: {release_err}",
+                    incident.id
+                );
+            }
+        }
         Err(e) => {
             tracing::error!("[status-monitor] Failed to send ops alert for {service}: {e}");
             if let Err(release_err) = release_ops_alert_claim(&state.db_pool, incident.id).await {
