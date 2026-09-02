@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Shield01Icon } from "@hugeicons/core-free-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import { Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
@@ -12,6 +12,7 @@ import { AmountSummary } from "@/components/amount-summary";
 import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { FormattedAmount } from "@/components/formatted-amount";
+import { Icon } from "@/components/icon";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import {
     ReviewStep,
@@ -96,7 +97,10 @@ function SendStep({ handleNext, onExit }: StepBaseProps) {
                         <span>{t("form.title")}</span>
                         <Tooltip content={tCommon("confidentialDataTooltip")}>
                             <span className="inline-flex">
-                                <Shield className="size-4 fill-foreground" />
+                                <Icon
+                                    icon={Shield01Icon}
+                                    className="size-4 fill-foreground"
+                                />
                             </span>
                         </Tooltip>
                     </span>

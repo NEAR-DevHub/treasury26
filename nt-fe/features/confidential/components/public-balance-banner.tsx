@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight } from "lucide-react";
+import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/button";
 import { FormattedAmount } from "@/components/formatted-amount";
+import { Icon } from "@/components/icon";
 import { MoveAssetsIcon } from "@/components/icons/move-assets";
 import { useTreasury } from "@/hooks/use-treasury";
 import { usePendingMoveRequests } from "../hooks/use-pending-move-requests";
@@ -73,7 +74,7 @@ export function PublicBalanceBanner() {
                     {allPending ? (
                         <>
                             {t("viewRequest")}
-                            <ArrowRight className="size-4" />
+                            <Icon icon={ArrowRight01Icon} className="size-4" />
                         </>
                     ) : (
                         <>

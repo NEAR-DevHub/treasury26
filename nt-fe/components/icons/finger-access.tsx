@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils";
 
 /**
  * "Finger access" glyph from the design system: a fingerprint spiral with an
- * outer ridge and a short inner tail. Drawn locally because lucide's
- * `Fingerprint` is a different, multi-ridge glyph.
+ * outer ridge and a short inner tail. Drawn locally because the icon sets we
+ * ship only carry multi-ridge fingerprint glyphs.
  */
 export function FingerAccessIcon({
     className,
