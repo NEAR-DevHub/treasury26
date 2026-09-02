@@ -969,28 +969,34 @@ pub fn is_relevant_intents_post(ends_at: Option<i64>, now_ms: i64) -> bool {
     }
 }
 
-/// Incident / maintenance posts the status-monitor should track individually.
+/// Incident / maintenance posts the status-monitor should track individually,
+/// each paired with its per-post check name (`near-intents.status:<id>`).
 pub fn actionable_intents_posts(
     posts: impl IntoIterator<Item = IntentsStatusPost>,
     now_ms: i64,
-) -> Vec<IntentsStatusPost> {
+) -> Vec<(IntentsStatusPost, String)> {
     posts
         .into_iter()
-        .filter(|post| {
-            is_relevant_intents_post(post.ends_at, now_ms)
-                && (post.post_type == INTENTS_POST_INCIDENT
-                    || post.post_type == INTENTS_POST_MAINTENANCE)
-                && post.id.as_deref().is_some_and(|id| !id.trim().is_empty())
+        .filter_map(|post| {
+            if !is_relevant_intents_post(post.ends_at, now_ms) {
+                return None;
+            }
+            if post.post_type != INTENTS_POST_INCIDENT && post.post_type != INTENTS_POST_MAINTENANCE
+            {
+                return None;
+            }
+            let id = post.id.as_deref()?.trim();
+            if id.is_empty() {
+                return None;
+            }
+            let check_name = intents_post_check_name(id);
+            Some((post, check_name))
         })
         .collect()
 }
 
 pub fn intents_post_check_name(post_id: &str) -> String {
     format!("{NEAR_INTENTS_CHECK_PREFIX}{post_id}")
-}
-
-pub fn is_intents_post_check(check_name: &str) -> bool {
-    check_name.starts_with(NEAR_INTENTS_CHECK_PREFIX)
 }
 
 /// Ops Telegram line for one status post. Always includes the title.
@@ -1305,11 +1311,15 @@ pub async fn fetch_intents_posts(state: &AppState) -> Result<Vec<IntentsStatusPo
 /// the monitor should apply when the status API is down (one HTTP call).
 pub async fn fetch_intents_posts_with_check(
     state: &AppState,
-) -> Result<Vec<IntentsStatusPost>, OhDearCheckResult> {
+) -> Result<Vec<IntentsStatusPost>, Box<OhDearCheckResult>> {
     let (result, duration_ms) = fetch_intents_response(state).await;
     match result {
         Ok(response) => Ok(response.posts),
-        Err(error) => Err(NEAR_INTENTS_CHECK.failed_http(error, duration_ms, json!({}))),
+        Err(error) => Err(Box::new(NEAR_INTENTS_CHECK.failed_http(
+            error,
+            duration_ms,
+            json!({}),
+        ))),
     }
 }
 
@@ -1770,8 +1780,9 @@ mod tests {
             intents_post_check_name("P9D0S3K"),
             "near-intents.status:P9D0S3K"
         );
-        assert!(is_intents_post_check("near-intents.status:P9D0S3K"));
-        assert!(!is_intents_post_check("near-intents.status"));
+        let tracked = actionable_intents_posts([post], 1);
+        assert_eq!(tracked.len(), 1);
+        assert_eq!(tracked[0].1, "near-intents.status:P9D0S3K");
     }
 
     #[test]

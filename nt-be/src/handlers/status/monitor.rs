@@ -181,6 +181,27 @@ async fn release_ops_alert_claim(pool: &sqlx::PgPool, incident_id: i32) -> Resul
     Ok(())
 }
 
+async fn release_ops_alert_claim_logged(pool: &sqlx::PgPool, incident_id: i32) {
+    if let Err(release_err) = release_ops_alert_claim(pool, incident_id).await {
+        tracing::error!(
+            "[status-monitor] Failed to release ops alert claim for incident {incident_id}: {release_err}"
+        );
+    }
+}
+
+async fn persist_telegram_message_or_release(
+    pool: &sqlx::PgPool,
+    incident_id: i32,
+    message_id: i32,
+) {
+    if let Err(e) = set_incident_telegram_message(pool, incident_id, message_id).await {
+        tracing::error!(
+            "[status-monitor] Failed to persist telegram message id for incident {incident_id}: {e}"
+        );
+        release_ops_alert_claim_logged(pool, incident_id).await;
+    }
+}
+
 fn had_real_ops_alert(incident: &StatusIncident) -> bool {
     incident
         .telegram_message_id
@@ -457,31 +478,26 @@ async fn process_near_intents(state: &Arc<AppState>) {
                 "[status-monitor] Failed to fetch intents posts: {}",
                 check.notification_message
             );
-            apply_check(state, "near-intents", &check).await;
+            apply_check(state, "near-intents", check.as_ref()).await;
             return;
         }
     };
 
     let now_ms = chrono::Utc::now().timestamp_millis();
-    let actionable = oh_dear::actionable_intents_posts(posts, now_ms);
-    let active_names: HashSet<String> = actionable
+    let tracked = oh_dear::actionable_intents_posts(posts, now_ms);
+    let active_names: HashSet<&str> = tracked
         .iter()
-        .filter_map(|post| post.id.as_deref())
-        .map(oh_dear::intents_post_check_name)
+        .map(|(_, check_name)| check_name.as_str())
         .collect();
 
-    for post in &actionable {
-        let Some(post_id) = post.id.as_deref() else {
-            continue;
-        };
-        let check_name = oh_dear::intents_post_check_name(post_id);
+    for (post, check_name) in &tracked {
         let status = if post.post_type == "incident" {
             "failed"
         } else {
             "warning"
         };
         let message = oh_dear::intents_post_notification(post, now_ms);
-        apply_unhealthy(state, "near-intents", &check_name, status, &message).await;
+        apply_unhealthy(state, "near-intents", check_name, status, &message).await;
     }
 
     let open = match load_active_incidents_for_service(&state.db_pool, "near-intents").await {
@@ -493,7 +509,7 @@ async fn process_near_intents(state: &Arc<AppState>) {
     };
 
     for incident in open {
-        if active_names.contains(&incident.check_name) {
+        if active_names.contains(incident.check_name.as_str()) {
             continue;
         }
         // Posts are being tracked individually — close the legacy service-level
@@ -611,34 +627,17 @@ async fn apply_unhealthy(
                 "[status-monitor] Sent ops alert for {service}/{check_name} after {} failures (telegram message {message_id})",
                 incident.consecutive_failures
             );
-            if let Err(e) =
-                set_incident_telegram_message(&state.db_pool, incident.id, message_id).await
-            {
-                tracing::error!(
-                    "[status-monitor] Failed to persist telegram message id for incident {}: {e}",
-                    incident.id
-                );
-            }
+            persist_telegram_message_or_release(&state.db_pool, incident.id, message_id).await;
         }
         Ok(message_id) => {
             tracing::warn!(
                 "[status-monitor] Ops alert for {service}/{check_name} returned message id {message_id}; releasing claim"
             );
-            if let Err(release_err) = release_ops_alert_claim(&state.db_pool, incident.id).await {
-                tracing::error!(
-                    "[status-monitor] Failed to release ops alert claim for incident {}: {release_err}",
-                    incident.id
-                );
-            }
+            release_ops_alert_claim_logged(&state.db_pool, incident.id).await;
         }
         Err(e) => {
             tracing::error!("[status-monitor] Failed to send ops alert for {service}: {e}");
-            if let Err(release_err) = release_ops_alert_claim(&state.db_pool, incident.id).await {
-                tracing::error!(
-                    "[status-monitor] Failed to release ops alert claim for incident {}: {release_err}",
-                    incident.id
-                );
-            }
+            release_ops_alert_claim_logged(&state.db_pool, incident.id).await;
         }
     }
 }
