@@ -63,6 +63,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.19.0
       - key: NEXT_PUBLIC_SENTRY_ENVIRONMENT
         value: production
       - key: MAXMIND_LICENSE_KEY
@@ -156,6 +158,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.19.0
       - key: NEXT_PUBLIC_SENTRY_ENVIRONMENT
         value: staging
       - key: MAXMIND_LICENSE_KEY
@@ -175,6 +179,8 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 24.19.0
       - key: NEXT_PUBLIC_SENTRY_ENVIRONMENT
         value: staging-redesign
       - key: MAXMIND_LICENSE_KEY
