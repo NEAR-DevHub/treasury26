@@ -59,6 +59,8 @@ export function useUserTreasuriesWithOptions(
             }),
         enabled: !!accountId,
         staleTime: 10 * 1000, // 10 seconds
+        retry: 3,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
     });
 }
 
@@ -97,6 +99,8 @@ export function useBalanceChart(params: BalanceChartRequest | null) {
         enabled: !!params?.accountId,
         staleTime: 1000 * 30, // 5 seconds (balance chart changes frequently)
         placeholderData: keepPreviousData, // Show previous data while fetching new query key to avoid loading flicker
+        retry: 3,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
     });
 }
 
@@ -136,6 +140,8 @@ export function useTreasuryPolicy(
         queryFn: () => getTreasuryPolicy(treasuryId!, before),
         enabled: !!treasuryId,
         staleTime: 1000 * 60 * 10, // 10 minutes (policies don't change frequently)
+        retry: 3,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
     });
 }
 
@@ -360,6 +366,8 @@ export function useRecentActivity(
             ),
         enabled: !!accountId,
         staleTime: 1000 * 5, // 5 seconds (activity changes frequently)
+        retry: 3,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
     });
 }
 
