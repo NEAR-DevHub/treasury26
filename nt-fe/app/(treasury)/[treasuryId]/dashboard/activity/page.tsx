@@ -45,6 +45,13 @@ const FILTER_PANEL_MAX_HEIGHT = "500px";
  */
 const ICON_BUTTON_CLASS =
     "size-10 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:size-9 lg:rounded-md";
+/**
+ * The Filters button is a 40px #F2F2F2 square on a phone and grows into a
+ * labelled pill of the same height from `md` up. Both keep the design's 12px
+ * radius, so it must not inherit the shrinking `lg` geometry above.
+ */
+const FILTERS_BUTTON_CLASS =
+    "size-10 rounded-lg bg-general-bg-secondary text-general-secondary-foreground hover:bg-general-bg-secondary/80 hover:text-general-foreground md:w-auto md:gap-2 md:px-4 md:text-sm";
 
 /** Backend activity statuses the tabs can filter by ("all" filters by nothing). */
 type ActivityStatus = "outgoing" | "incoming" | "exchange";
@@ -380,16 +387,14 @@ export default function ActivityPage() {
                 variant="secondary"
                 size="icon"
                 className={cn(
-                    ICON_BUTTON_CLASS,
-                    "md:h-10 md:w-auto md:gap-2 md:px-4 md:text-sm",
+                    FILTERS_BUTTON_CLASS,
                     // Active state is the design's gray-900 (#171717) surface.
                     // Surface and label are overridden as a pair: both
                     // `--general-foreground` and `--background` flip with the
                     // theme, and neither is rewritten by `PrimaryColorProvider`,
                     // so branded treasuries keep a readable label too.
-                    activeFilterCount > 0
-                        ? "bg-general-foreground text-background hover:bg-general-foreground/90"
-                        : "text-muted-foreground",
+                    activeFilterCount > 0 &&
+                        "bg-general-foreground text-background hover:bg-general-foreground/90 hover:text-background",
                 )}
                 // A popover row of filter pills has nowhere to go on a phone,
                 // so mobile drills into the same filters through a sheet.
@@ -400,7 +405,10 @@ export default function ActivityPage() {
                 }
                 aria-label={filtersLabel}
             >
-                <Icon icon={FilterIcon} className="md:size-[13.25px]" />
+                <Icon
+                    icon={FilterIcon}
+                    className="size-[16.25px] md:size-[13.25px]"
+                />
                 <span className="hidden md:inline">{filtersLabel}</span>
             </Button>
         </div>
