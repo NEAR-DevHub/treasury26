@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import Big from "@/lib/big";
 import { http as axios } from "@/lib/http";
@@ -59,20 +60,15 @@ export async function getUserTreasuries(
 ): Promise<Treasury[]> {
     if (!accountId) return [];
 
-    try {
-        const url = `${BACKEND_API_BASE}/user/treasuries`;
+    const url = `${BACKEND_API_BASE}/user/treasuries`;
 
-        const response = await axios.get<Treasury[]>(url, {
-            params: {
-                accountId,
-                includeHidden: options?.includeHidden ?? false,
-            },
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Error getting user treasuries", error);
-        return [];
-    }
+    const response = await axios.get<Treasury[]>(url, {
+        params: {
+            accountId,
+            includeHidden: options?.includeHidden ?? false,
+        },
+    });
+    return response.data;
 }
 
 export type TokenResidency = "Near" | "Ft" | "Intents" | "Lockup" | "Staked";
@@ -138,19 +134,17 @@ export async function getTreasuryAssets(
 ): Promise<TreasuryAssets> {
     if (!treasuryId) return { tokens: [], totalBalanceUSD: Big(0) };
 
-    try {
-        const url = `${BACKEND_API_BASE}/user/assets`;
+    // Must throw on failure: a swallowed error resolves as an empty-success,
+    // which React Query caches as "$0" with no retry. Throwing keeps the
+    // last known balances on screen and lets React Query retry.
+    const url = `${BACKEND_API_BASE}/user/assets`;
 
-        const response = await axios.get<TreasuryAssetRaw[]>(url, {
-            params: { accountId: treasuryId },
-            withCredentials: true,
-        });
+    const response = await axios.get<TreasuryAssetRaw[]>(url, {
+        params: { accountId: treasuryId },
+        withCredentials: true,
+    });
 
-        return transformTreasuryAssets(response.data);
-    } catch (error) {
-        console.error("Error getting whitelist tokens", error);
-        return { tokens: [], totalBalanceUSD: Big(0) };
-    }
+    return transformTreasuryAssets(response.data);
 }
 
 /**
@@ -253,31 +247,26 @@ export async function getBalanceChart(
 ): Promise<BalanceChartData | null> {
     if (!params.accountId) return null;
 
-    try {
-        const url = `${BACKEND_API_BASE}/balance-history/chart`;
+    const url = `${BACKEND_API_BASE}/balance-history/chart`;
 
-        const queryParams = new URLSearchParams({
-            accountId: params.accountId,
-            startTime: params.startTime,
-            endTime: params.endTime,
-            interval: params.interval,
-        });
+    const queryParams = new URLSearchParams({
+        accountId: params.accountId,
+        startTime: params.startTime,
+        endTime: params.endTime,
+        interval: params.interval,
+    });
 
-        // Add token_ids as comma-separated values
-        if (params.tokenIds && params.tokenIds.length > 0) {
-            queryParams.append("tokenIds", params.tokenIds.join(","));
-        }
-
-        const response = await axios.get<BalanceChartData>(
-            `${url}?${queryParams.toString()}`,
-            { withCredentials: true },
-        );
-
-        return response.data;
-    } catch (error) {
-        console.error("Error getting balance chart data", error);
-        return null;
+    // Add token_ids as comma-separated values
+    if (params.tokenIds && params.tokenIds.length > 0) {
+        queryParams.append("tokenIds", params.tokenIds.join(","));
     }
+
+    const response = await axios.get<BalanceChartData>(
+        `${url}?${queryParams.toString()}`,
+        { withCredentials: true },
+    );
+
+    return response.data;
 }
 
 export interface TokenBalance {
@@ -367,55 +356,50 @@ export async function getRecentActivity(
 ): Promise<RecentActivityResponse | null> {
     if (!accountId) return null;
 
-    try {
-        const url = `${BACKEND_API_BASE}/recent-activity`;
-        const params: Record<string, string | number> = {
-            accountId: accountId,
-            limit,
-            offset,
-        };
-        if (minUsdValue !== undefined) {
-            params.minUsdValue = minUsdValue;
-        }
-        if (transactionType !== undefined && transactionType !== "all") {
-            params.transactionType = transactionType;
-        }
-        if (tokenSymbol) {
-            params.tokenSymbol = tokenSymbol;
-        }
-        if (tokenSymbolNot) {
-            params.tokenSymbolNot = tokenSymbolNot;
-        }
-        if (txHash) {
-            params.txHash = txHash;
-        }
-        if (fromAccount && fromAccount.length > 0) {
-            params.from = fromAccount.join(",");
-        }
-        if (fromAccountNot && fromAccountNot.length > 0) {
-            params.fromNot = fromAccountNot.join(",");
-        }
-        if (toAccount && toAccount.length > 0) {
-            params.to = toAccount.join(",");
-        }
-        if (toAccountNot && toAccountNot.length > 0) {
-            params.toNot = toAccountNot.join(",");
-        }
-        if (startDate) {
-            params.startDate = startDate;
-        }
-        if (endDate) {
-            params.endDate = endDate;
-        }
-        const response = await axios.get<RecentActivityResponse>(url, {
-            params,
-            withCredentials: true,
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Error getting recent activity", error);
-        return null;
+    const url = `${BACKEND_API_BASE}/recent-activity`;
+    const params: Record<string, string | number> = {
+        accountId: accountId,
+        limit,
+        offset,
+    };
+    if (minUsdValue !== undefined) {
+        params.minUsdValue = minUsdValue;
     }
+    if (transactionType !== undefined && transactionType !== "all") {
+        params.transactionType = transactionType;
+    }
+    if (tokenSymbol) {
+        params.tokenSymbol = tokenSymbol;
+    }
+    if (tokenSymbolNot) {
+        params.tokenSymbolNot = tokenSymbolNot;
+    }
+    if (txHash) {
+        params.txHash = txHash;
+    }
+    if (fromAccount && fromAccount.length > 0) {
+        params.from = fromAccount.join(",");
+    }
+    if (fromAccountNot && fromAccountNot.length > 0) {
+        params.fromNot = fromAccountNot.join(",");
+    }
+    if (toAccount && toAccount.length > 0) {
+        params.to = toAccount.join(",");
+    }
+    if (toAccountNot && toAccountNot.length > 0) {
+        params.toNot = toAccountNot.join(",");
+    }
+    if (startDate) {
+        params.startDate = startDate;
+    }
+    if (endDate) {
+        params.endDate = endDate;
+    }
+    const response = await axios.get<RecentActivityResponse>(url, {
+        params,
+        withCredentials: true,
+    });
+    return response.data;
 }
 
 export interface ConfidentialHistoryRefreshStatus {
@@ -580,8 +564,10 @@ export async function getTreasuryPolicy(
 
         return response.data;
     } catch (error) {
-        console.error(`Error getting treasury policy for ${treasuryId}`, error);
-        return null;
+        // 404 = policy genuinely absent (historical `atBefore` reads); anything
+        // else throws so React Query retries instead of caching null as success.
+        if (isAxiosError(error) && error.response?.status === 404) return null;
+        throw error;
     }
 }
 

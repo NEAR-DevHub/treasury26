@@ -54,9 +54,16 @@ export function useAssets(
 
     return useQuery({
         queryKey: ["treasuryAssets", treasuryId, onlyPositiveBalance],
+        // getTreasuryAssets throws on failure (never resolves empty — do not
+        // reintroduce a catch there): React Query keeps serving the last
+        // successful data while it retries, so an outage or a post-txn fetch
+        // hiccup never renders as a $0 treasury. Retry is pinned here so a
+        // future defaultOptions.queries change can't silently remove it.
         queryFn: () => getTreasuryAssets(treasuryId!),
         enabled: !!treasuryId && (options?.enabled ?? true),
         staleTime: 1000 * 5, // 5 seconds (assets change frequently)
+        retry: 3,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
         select: (data) => {
             return {
                 ...data,
