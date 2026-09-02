@@ -22,17 +22,31 @@ pub struct OhDearHealthConfig {
 
 /// Consecutive unhealthy checks before sending a Telegram ops alert (~3 min at 60s).
 pub const ALERT_AFTER_FAILURES: i32 = 3;
-/// Longer streak for flaky intents-side dependencies (~5 min at 60s).
+/// Status-page posts (maintenance / incidents) — page after ~5 min.
 pub const ALERT_AFTER_FAILURES_INTENTS: i32 = 5;
+/// Explorer transaction search flaps — page only after ~15 min down.
+pub const ALERT_AFTER_FAILURES_FLAKY: i32 = 15;
 /// Consecutive healthy checks before closing an incident (~2 min at 60s).
 pub const RECOVER_AFTER_SUCCESSES: i32 = 2;
+/// Explorer must stay healthy this long before a recovery Telegram (~15 min).
+pub const RECOVER_AFTER_SUCCESSES_FLAKY: i32 = 15;
 
 /// Per-service alert threshold. Intents-related checks are noisier, so they
 /// need a longer consecutive-failure streak before paging Telegram.
 pub fn alert_after_failures(service: &str) -> i32 {
     match service {
-        "exchange" | "intents-explorer" | "near-intents" => ALERT_AFTER_FAILURES_INTENTS,
+        "intents-explorer" => ALERT_AFTER_FAILURES_FLAKY,
+        "exchange" | "near-intents" => ALERT_AFTER_FAILURES_INTENTS,
         _ => ALERT_AFTER_FAILURES,
+    }
+}
+
+/// Per-service recovery threshold. Explorer stays open through brief green
+/// blips so we do not emit fail/recover pairs every few minutes.
+pub fn recover_after_successes(service: &str) -> i32 {
+    match service {
+        "intents-explorer" => RECOVER_AFTER_SUCCESSES_FLAKY,
+        _ => RECOVER_AFTER_SUCCESSES,
     }
 }
 
@@ -67,10 +81,18 @@ mod tests {
 
     #[test]
     fn intents_services_use_longer_alert_threshold() {
-        assert_eq!(alert_after_failures("intents-explorer"), 5);
-        assert_eq!(alert_after_failures("near-intents"), 5);
+        assert_eq!(alert_after_failures("intents-explorer"), 15);
         assert_eq!(alert_after_failures("exchange"), 5);
+        assert_eq!(alert_after_failures("near-intents"), 5);
         assert_eq!(alert_after_failures("backend"), 3);
         assert_eq!(alert_after_failures("near-rpc"), 3);
+    }
+
+    #[test]
+    fn flaky_probes_need_a_longer_healthy_streak_to_recover() {
+        assert_eq!(recover_after_successes("intents-explorer"), 15);
+        assert_eq!(recover_after_successes("exchange"), 2);
+        assert_eq!(recover_after_successes("near-intents"), 2);
+        assert_eq!(recover_after_successes("backend"), 2);
     }
 }

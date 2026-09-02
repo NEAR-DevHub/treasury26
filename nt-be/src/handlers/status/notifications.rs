@@ -737,6 +737,20 @@ mod tests {
     }
 
     #[test]
+    fn health_check_alert_keeps_post_title_in_the_body() {
+        let message = format_health_check_alert(
+            "near-intents",
+            "near-intents.status:P9D0S3K",
+            "warning",
+            "NEAR Intents has active maintenance: zCash Bridge Maintenance",
+        );
+        assert!(message.contains("⚠️ <b>Health check failed: NEAR Intents</b>"));
+        assert!(message.contains("zCash Bridge Maintenance"));
+        assert!(message.contains("near-intents.status:P9D0S3K"));
+        assert!(message.contains("Create the warning in admin"));
+    }
+
+    #[test]
     fn health_check_recovery_has_consistent_header() {
         let message = format_health_check_recovery("near-rpc", "near-rpc.status");
         assert!(message.contains("✅ <b>Health check recovered: NEAR RPC</b>"));
