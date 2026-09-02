@@ -54,6 +54,10 @@ export function useAssets(
 
     return useQuery({
         queryKey: ["treasuryAssets", treasuryId, onlyPositiveBalance],
+        // getTreasuryAssets throws on failure (never resolves empty): React
+        // Query catches it, retries 3 times with backoff, and keeps serving
+        // the last successful data meanwhile — so an outage or a post-txn
+        // fetch hiccup never renders as a $0 treasury.
         queryFn: () => getTreasuryAssets(treasuryId!),
         enabled: !!treasuryId && (options?.enabled ?? true),
         staleTime: 1000 * 5, // 5 seconds (assets change frequently)

@@ -138,19 +138,17 @@ export async function getTreasuryAssets(
 ): Promise<TreasuryAssets> {
     if (!treasuryId) return { tokens: [], totalBalanceUSD: Big(0) };
 
-    try {
-        const url = `${BACKEND_API_BASE}/user/assets`;
+    // Must throw on failure: a swallowed error resolves as an empty-success,
+    // which React Query caches as "$0" with no retry. Throwing keeps the
+    // last known balances on screen and lets React Query retry.
+    const url = `${BACKEND_API_BASE}/user/assets`;
 
-        const response = await axios.get<TreasuryAssetRaw[]>(url, {
-            params: { accountId: treasuryId },
-            withCredentials: true,
-        });
+    const response = await axios.get<TreasuryAssetRaw[]>(url, {
+        params: { accountId: treasuryId },
+        withCredentials: true,
+    });
 
-        return transformTreasuryAssets(response.data);
-    } catch (error) {
-        console.error("Error getting whitelist tokens", error);
-        return { tokens: [], totalBalanceUSD: Big(0) };
-    }
+    return transformTreasuryAssets(response.data);
 }
 
 /**
