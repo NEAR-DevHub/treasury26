@@ -1,6 +1,6 @@
 "use client";
 
-import { UserIcon } from "@hugeicons/core-free-icons";
+import { User02Icon } from "@hugeicons/core-free-icons";
 import { useState } from "react";
 import { Icon } from "@/components/icon";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ export function ProfileAvatarChip({
                 "flex items-center justify-center bg-green-700 text-white",
             )}
         >
-            <Icon icon={UserIcon} />
+            <Icon icon={User02Icon} fill="white" />
         </span>
     );
 }
