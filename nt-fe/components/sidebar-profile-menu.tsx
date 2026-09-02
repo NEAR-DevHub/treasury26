@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
     ArrowUp01Icon,
     CircleQuestionMarkIcon,
@@ -9,14 +8,15 @@ import {
     Moon02Icon,
     SunMediumIcon,
     User03Icon,
-    UserIcon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { CopyButton } from "@/components/copy-button";
+import { Icon } from "@/components/icon";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { ProfileAvatarChip } from "@/components/profile-avatar-chip";
 import {
     accountMenuItemClass,
     ConnectWalletButton,
@@ -84,11 +84,7 @@ export function SidebarProfileMenu({
         );
     }
 
-    const avatar = (
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-green-500">
-            <Icon icon={UserIcon} className="text-gray-900" />
-        </span>
-    );
+    const avatar = <ProfileAvatarChip />;
 
     const trigger = isReduced ? (
         <button

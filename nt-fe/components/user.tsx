@@ -1,11 +1,11 @@
-import { Contact01Icon } from "@hugeicons/core-free-icons";
+import { UserAccountIcon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { findAddressBookEntry } from "@/features/address-book/utils/find-entry";
 import { useAddressBook } from "@/features/address-book/hooks/use-address-book";
+import { findAddressBookEntry } from "@/features/address-book/utils/find-entry";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { getExplorerAddressUrl } from "@/lib/blockchain-utils";
@@ -19,6 +19,7 @@ import { Address } from "./address";
 import { Button } from "./button";
 import { CopyButton } from "./copy-button";
 import { HighlightedText } from "./highlighted-text";
+import { ProfileAvatarChip } from "./profile-avatar-chip";
 import { Tooltip, type TooltipProps } from "./tooltip";
 import { Separator } from "./ui/separator";
 import { Skeleton } from "./ui/skeleton";
@@ -389,10 +390,12 @@ export function UserWithData({
 /**
  * 40px ghost rows, left aligned, that fill the tooltip's 6px action tray.
  * `rounded-lg` is the design's 12px — this project rebases the radius scale on
- * `--radius: 0.75rem`, so `rounded-xl` would be 16px.
+ * `--radius: 0.75rem`, so `rounded-xl` would be 16px. Labels are 14/700 at a
+ * 100% line height; tooltips force `dark`, where the ghost foreground token is
+ * the design's #E5E5E5.
  */
 const TOOLTIP_ACTION_CLASS =
-    "h-10 justify-start rounded-lg px-4 text-sm text-general-unofficial-ghost-foreground";
+    "h-10 justify-start rounded-lg px-4 text-sm font-bold leading-none text-general-unofficial-ghost-foreground";
 const TOOLTIP_ACTION_ICON_CLASS = "size-[13.25px]";
 
 interface TooltipUserProps {
@@ -472,13 +475,9 @@ export function TooltipUser({
             content={
                 <div className="flex flex-col">
                     <div className="flex items-center gap-3 p-3">
-                        <UserAvatar
-                            name={resolvedName}
-                            address={accountId}
+                        <ProfileAvatarChip
                             imageUrl={resolveProfileImageUrl(profile?.image)}
-                            // The design gives the tooltip a 28px rounded
-                            // square, not the circle the inline rows use.
-                            className="size-7 rounded-lg"
+                            name={resolvedName}
                         />
                         <div className="flex min-w-0 flex-col">
                             {nameIsAddress ? (
@@ -513,7 +512,7 @@ export function TooltipUser({
                                 >
                                     <Link href={addToAddressBookUrl}>
                                         <Icon
-                                            icon={Contact01Icon}
+                                            icon={UserAccountIcon}
                                             className={
                                                 TOOLTIP_ACTION_ICON_CLASS
                                             }

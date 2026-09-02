@@ -1,12 +1,13 @@
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { Address } from "@/components/address";
 import { Icon } from "@/components/icon";
+import { ProfileAvatarChip } from "@/components/profile-avatar-chip";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import { resolveUserName, UserAvatar } from "@/components/user";
+import { resolveUserName } from "@/components/user";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
@@ -67,13 +68,9 @@ function VoterRow({ accountId, vote }: { accountId: string; vote: Vote }) {
 
     return (
         <div className="flex items-center gap-3">
-            <UserAvatar
-                name={name}
-                address={accountId}
+            <ProfileAvatarChip
                 imageUrl={resolveProfileImageUrl(profile?.image)}
-                // The design gives the tooltip a 28px rounded square, not the
-                // circle the inline rows use.
-                className="size-7 rounded-sm"
+                name={name}
             />
             <div className="flex min-w-0 flex-1 flex-col text-left">
                 {!nameIsAddress && (
