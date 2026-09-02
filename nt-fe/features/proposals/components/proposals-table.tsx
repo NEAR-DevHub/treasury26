@@ -66,22 +66,9 @@ import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insuffic
 import { HighlightedText } from "@/components/highlighted-text";
 import { cn } from "@/lib/utils";
 import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
+import { COLUMN_CLASS, HEAD_CLASS } from "./proposals-table-layout";
 
 const columnHelper = createColumnHelper<Proposal>();
-
-/** Width and padding per column, from the design. Shared by header and body. */
-const COLUMN_CLASS: Record<string, string> = {
-    select: "w-10 px-3",
-    id: "px-3",
-    transaction: "px-4",
-    proposer: "px-3",
-    voting: "w-[200px] px-3",
-    status: "w-[132px] px-3",
-    expand: "w-[60px] px-3",
-};
-
-const HEAD_CLASS =
-    "h-10 text-sm font-semibold normal-case leading-[1.5] text-general-secondary-foreground";
 
 interface ProposalsTableProps {
     proposals: Proposal[];

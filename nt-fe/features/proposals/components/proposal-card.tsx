@@ -4,7 +4,6 @@ import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { HighlightedText } from "@/components/highlighted-text";
 import { Icon } from "@/components/icon";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { Proposal } from "@/lib/proposals-api";
 import type { Policy } from "@/types/policy";
@@ -92,33 +91,6 @@ export function ProposalCard({
             <div className="relative flex w-full items-center justify-between py-4">
                 <VotingIndicator proposal={proposal} policy={policy} />
                 <ProposalStatusPill proposal={proposal} policy={policy} />
-            </div>
-        </div>
-    );
-}
-
-/**
- * A card-shaped placeholder, so the phone list doesn't load as a wide table.
- * It repeats the card's own frame and paddings rather than hard-coding a
- * height, so the placeholder can't drift away from the card it stands in for.
- */
-export function ProposalCardSkeleton() {
-    return (
-        <div className="flex w-full flex-col rounded-3xl border border-general-border bg-card px-3">
-            <div className="flex w-full items-start gap-2 py-3">
-                <Skeleton className="size-9 shrink-0 rounded-full" />
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-4 w-3/4" />
-                </div>
-                <span className="size-9 shrink-0" />
-            </div>
-
-            <span className="h-px w-full bg-general-border" />
-
-            <div className="flex w-full items-center justify-between py-4">
-                <Skeleton className="h-6 w-20 rounded-sm" />
-                <Skeleton className="h-6 w-24 rounded-full" />
             </div>
         </div>
     );
