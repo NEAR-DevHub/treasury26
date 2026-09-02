@@ -25,6 +25,9 @@ export function ProfileAvatarChip({
     className,
 }: ProfileAvatarChipProps) {
     // Keyed by URL rather than a boolean so a changed picture gets a fresh try.
+    // The URL that failed stays broken for the lifetime of this mounted
+    // instance, though, so a flaky host that recovers keeps showing the glyph
+    // until the chip remounts.
     const [brokenImageUrl, setBrokenImageUrl] = useState<string>();
 
     const containerClass = cn("size-7 shrink-0 rounded-sm", className);
