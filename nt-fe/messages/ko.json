@@ -106,7 +106,8 @@
         "wallet": "지갑",
         "termsOfService": "이용약관",
         "privacyPolicy": "개인정보 처리방침",
-        "disconnect": "연결 해제"
+        "disconnect": "로그아웃",
+        "myAccount": "내 계정"
     },
     "auth": {
         "noWallet": "지갑을 연결하세요",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Trezu Wallet",
             "description": "Trezu를 통해 트레저리 제안에 서명하세요"
+        },
+        "account": {
+            "title": "내 계정",
+            "description": "개인 프로필과 설정을 관리하세요"
         }
     },
     "depositModal": {
@@ -270,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "선택한 자산과 네트워크에 대한 입금 주소를 가져올 수 없습니다.",
-            "fetchFailed": "입금 주소를 가져오지 못했습니다. 다시 시도해 주세요."
+            "fetchFailed": "입금 주소를 가져오지 못했습니다. 다시 시도해 주세요.",
+            "loginRequired": "일회용 입금 주소를 생성하려면 로그인하세요."
         },
         "title": "입금",
         "subtitle": "입금 주소를 보려면 자산과 네트워크를 선택하세요",
@@ -283,7 +289,7 @@
         "depositAddressHeading": "입금 주소",
         "depositAddressSubtitle": "입금 주소는 항상 두 번 확인하세요.",
         "depositAddressSubtitleConfidential": "<semibold>1회용 입금 주소입니다.</semibold> 이 주소를 재사용하거나 만료 후 자금을 보내면 영구적인 자금 손실이 발생할 수 있습니다.",
-        "depositAddressSubtitleConfidentialExpiry": "생성 시점부터 3일 동안 유효합니다. 만료까지: {expiresIn} 남음",
+        "depositAddressSubtitleConfidentialExpiry": "생성 시점부터 14일간 유효합니다. 만료까지: {expiresIn} 남음",
         "singleUseAcknowledgement": "이 주소를 한 번만 사용하겠습니다",
         "addressLabel": "주소",
         "addressCopied": "주소가 클립보드에 복사되었습니다",
@@ -306,7 +312,91 @@
             "fiatAnswer": "아직은 지원하지 않지만, 곧 법정화폐 입금을 제공하기 위해 작업 중입니다. 조금만 기다려 주세요 - 곧 제공됩니다 🚀",
             "arrivalQuestion": "입금이 도착하는 데 얼마나 걸리나요?",
             "arrivalAnswer": "처리 시간은 네트워크에 따라 다릅니다."
-        }
+        },
+        "back": "뒤로",
+        "publicAddressTitle": "{network}의 {symbol} 입금 주소",
+        "publicAddressSubtitle": "이 토큰만 이 네트워크에서 아래 주소로 보내세요.",
+        "oneTimeAddressTitle": "{network} 네트워크의 일회용 {symbol} 입금 주소",
+        "oneTimeAddressSubtitle": "이 토큰만 이 네트워크에서 아래 주소로 보내세요.",
+        "confidentialTrezuTitle": "near.com 네트워크의 기밀 Trezu에서 입금",
+        "confidentialTrezuSubtitle": "기밀 Trezu에서 모든 자산을 받을 수 있습니다.",
+        "confidentialNearcomTitle": "내부 네트워크의 기밀 near.com에서 입금",
+        "confidentialNearcomSubtitle": "기밀 near.com에서 모든 자산을 받을 수 있습니다.",
+        "oneTimeSectionTitle": "일회용 기밀 입금 주소",
+        "oneTimeSectionSubtitle": "한 번만 사용하세요. 첫 입금 이후에는 손실됩니다.",
+        "internalAddressTitle": "이것은 내부 기밀 주소입니다",
+        "generateAddress": "주소 생성",
+        "showAddress": "주소 보기",
+        "copy": "복사",
+        "share": "공유",
+        "linkCopied": "링크가 클립보드에 복사되었습니다",
+        "minDepositValue": "최소 입금액 <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "테스트 입금을 <bold>보내지 마세요</bold>",
+        "doNotReuseAddress": "주소를 <bold>재사용·저장·화이트리스트·공유하지 마세요</bold>",
+        "doNotReuseAddressShort": "주소를 <bold>재사용·저장·화이트리스트에 추가하지 마세요</bold>",
+        "oneTimeAckCheckbox": "이 주소는 일회용이며, 한 번의 전송으로 최소 {amount} {symbol}를 보내야 함을 이해합니다.",
+        "oneTimeAckCheckboxNoMin": "이 주소는 한 번의 전송에만 사용하는 일회용 주소임을 이해합니다.",
+        "onlySendAssetNetwork": "<bold>{network}</bold> 네트워크에서 <bold>{symbol}</bold>만 보내세요. 다른 자산이나 네트워크는 자금 손실을 초래합니다.",
+        "expiresInDays": "<bold>{days}일</bold> 후 만료 – <bold>사용하지 않아도</bold>.",
+        "createNewAddressHint": "다른 입금 정보가 필요하신가요? <link>새 주소 만들기</link>. 다른 주소를 만들어도 이 주소는 비활성화되지 않습니다.",
+        "receivesOnlyConfidential": "기밀 Trezu 또는 near.com 계정에서만 자금을 받습니다",
+        "receivesOnlyConfidentialSub": "재사용 가능. 만료되지 않음.",
+        "anythingElseLost": "다른 곳에서 보낸 것은 모두 손실됩니다",
+        "anythingElseLostSub": "거래소, 공개 지갑, 다른 네트워크 – 복구할 수 없습니다.",
+        "confidentialAckCheckbox": "기밀 Trezu 또는 near.com 외부에서의 입금은 손실됨을 이해합니다.",
+        "onlyFromConfidentialTrezu": "기밀 <bold>Trezu</bold>에서만",
+        "onlyFromConfidentialNearcom": "기밀 <bold>near.com</bold>에서만",
+        "reusableDoesntExpire": "<bold>재사용 가능.</bold> 만료되지 않음",
+        "fundsOutsideTrezuLost": "기밀 Trezu 외부에서 보낸 자금은 손실됩니다",
+        "fundsOutsideNearcomLost": "기밀 near.com 외부에서 보낸 자금은 손실됩니다",
+        "publicNetworkRecommendation": "<bold>{network}</bold> 네트워크에서만 입금하세요. 전액을 보내기 전에 소액 테스트 거래로 시작하세요.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "공개 지갑에서",
+                "subtitle": "일회용 입금 주소 만들기"
+            },
+            "confidentialUser": {
+                "title": "기밀 사용자에서",
+                "subtitle": "기밀 Trezu 및 near.com에서 입금"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "기밀 Trezu에서",
+            "nearcom": "기밀 near.com에서",
+            "short": "기밀에서"
+        },
+        "guestBanner": {
+            "title": "게스트로 보고 있습니다",
+            "description": "이 주소는 다른 사람의 treasury에 속합니다. 보내기 전에 다시 확인하세요."
+        },
+        "transfer": {
+            "title": "Treasury로 전송",
+            "waitingForPayment": "결제 대기 중",
+            "youSendFromPublic": "공개 지갑에서 보냅니다",
+            "youSend": "보내는 자산",
+            "goesTo": "받는 곳",
+            "assetOnNetwork": "{network} 네트워크의 {symbol}",
+            "anyAsset": "모든 자산",
+            "onNetwork": "{network} 네트워크에서",
+            "onNearcomNetwork": "near.com 네트워크에서",
+            "anyAssetOnNearcom": "near.com 네트워크의 모든 자산",
+            "securedOnTrezu": "Trezu에서 보호됨",
+            "payWithTrezu": "Trezu로 결제",
+            "payWithNearcom": "near.com로 결제",
+            "payRequiresTreasury": "결제하려면 Trezu treasury로 로그인하세요.",
+            "copyLink": "링크 복사",
+            "titleConfidential": "기밀 Treasury로 전송",
+            "chooseTreasuryTitle": "Treasury 선택",
+            "chooseTreasuryDescription": "이 결제는 어느 treasury에서 나오나요?",
+            "noMemberTreasuries": "아직 어떤 treasury의 멤버도 아닙니다.",
+            "createTreasury": "Treasury 만들기",
+            "expired": "만료됨",
+            "used": "사용됨",
+            "linkInactiveTitle": "이 링크는 더 이상 유효하지 않습니다",
+            "linkInactiveDescription": "이 결제를 하려면 링크를 보낸 사람에게 새 링크를 요청하세요."
+        },
+        "expiresInRemaining": "<time>{duration}</time> 후 만료 – <bold>사용하지 않아도</bold>.",
+        "addressExpired": "이 주소는 만료되었습니다."
     },
     "assetDetails": {
         "coinPrice": "코인 가격",
@@ -843,7 +933,8 @@
             "yourLink": "초대 링크",
             "copyLink": "링크 복사",
             "linkCopied": "초대 링크가 복사되었습니다",
-            "generateNewLink": "새 링크 생성"
+            "generateNewLink": "새 링크 생성",
+            "generatingNewLink": "새 링크 생성 중"
         },
         "joinRequests": {
             "title": "가입 희망",
@@ -871,6 +962,9 @@
             "successTitle": "거의 다 왔습니다",
             "successDescription": "팀이 요청을 검토하면\n가입할 수 있습니다. 지금은 더 할 일이 없습니다.",
             "seeTreasury": "트레저리 보기",
+            "alreadyMemberTitle": "이미 멤버입니다",
+            "alreadyMemberDescription": "접근을 요청할 필요가 없습니다 — 이미 {treasury}의 일원입니다.",
+            "goToTreasury": "트레저리로 이동",
             "invalidTitle": "초대를 찾을 수 없음",
             "invalidDescription": "이 초대 링크는 유효하지 않거나 더 이상 사용할 수 없습니다.",
             "usedTitle": "이미 사용된 초대",
@@ -978,7 +1072,11 @@
             "fileReadError": "파일 읽기 오류입니다. 다시 시도해 주세요.",
             "primaryColor": "기본 색상",
             "primaryColorDescription": "트레저리의 인터페이스 요소에 대한 기본 색상을 설정하세요. 이 색상은 라이트 모드와 다크 모드 모두에서 사용되므로 중성 색조를 선택할 때 대비를 고려하세요.",
-            "selectColorLabel": "색상 {color} 선택"
+            "selectColorLabel": "색상 {color} 선택",
+            "saveChanges": "변경 사항 저장",
+            "saving": "저장 중...",
+            "savedToast": "변경 사항이 저장되었습니다.",
+            "saveFailed": "변경 사항을 저장하지 못했습니다. 다시 시도하세요."
         },
         "voting": {
             "validation": {
@@ -1042,7 +1140,7 @@
         "review": {
             "header": "세부정보 검토",
             "youAreAdding": "추가 중",
-            "newRecipients": "{count, plural, other {신규 수신자 #명}}",
+            "newRecipients": "{count, plural, =0 {새 수신자 없음} other {신규 수신자 #명}}",
             "onNetworks": "{count, plural, other {#개의 네트워크}}",
             "recipients": "수신자",
             "allDuplicates": "가져온 모든 수신자가 이미 주소록에 있습니다. 다른 목록을 업로드하려면 뒤로 가거나 이 검토에서 중복을 제거하세요.",
@@ -1452,44 +1550,49 @@
             "functionCall": "외부 dApp의 제안: {receiverId}에서 {methods}",
             "unsupportedAction": "지원되지 않는 작업 유형 \"{type}\"입니다. Trezu 제안으로 변환할 수 있는 작업은 Transfer 및 FunctionCall뿐입니다."
         },
-        "loading": "로딩 중...",
-        "connectPrompt": "계속하려면 NEAR 지갑을 연결하세요. 그런 다음 대신 작동할 트레저리를 선택하게 됩니다.",
+        "connectPrompt": "Trezu에 가입할 때 사용한 지갑으로 연결하세요.\n로그인하면 트레저리가 기다리고 있습니다.",
         "connectWallet": "지갑 연결",
-        "cancel": "취소",
+        "connecting": "연결 중...",
         "connectedAs": "<strong>{account}</strong>(으)로 연결됨",
         "loadingTreasuries": "트레저리 로딩 중...",
-        "selectSignIn": "로그인할 트레저리를 선택하세요:",
+        "selectSignIn": "{app, select, unknown {사용할 트레저리를 선택하세요.} other {{app}에서 사용할 트레저리를 선택하세요.}}",
         "selectSignTx": "제안을 생성할 트레저리를 선택하세요:",
         "notMember": "어떤 트레저리의 멤버도 아닙니다.",
-        "actingAs": "다음으로 작동 중",
-        "signedBy": "{account}이(가) 서명함",
-        "createsNProposals": "다음 항목에 대한 {count, plural, other {Trezu 제안 #건}}이(가) 생성됩니다:",
-        "proposalDescriptionLabel": "제안 설명 (선택사항)",
-        "proposalDescriptionPlaceholder": "이 제안에 대해 설명하세요...",
+        "actingAs": "이 제안을 실행하는 트레저리",
+        "signedBy": "제안 요청자: {account}",
+        "createsNProposals": "제안 생성",
+        "proposalDescriptionPlaceholder": "제안에 코멘트 추가 (선택 사항)...",
         "createProposal": "제안 생성",
         "creatingProposal": "제안 생성 중...",
         "confirmInWallet": "지갑에서 확인해 주세요",
-        "proposalSubmitted": "제안 제출됨",
-        "shareProposal": "제안이 생성되었습니다. 투표를 위해 아래 링크를 트레저리 멤버에게 공유하세요.",
+        "proposalSubmitted": "제안이 생성되었습니다!",
+        "shareProposal": "{count, plural, =1 {이제 Trezu에서 요청을 승인하세요.} other {이제 Trezu에서 #개의 요청을 승인하세요.}}",
         "proposalLink": "{daoId} — 제안 #{id}",
-        "checking": "확인 중...",
-        "proposalApprovedProceed": "제안이 승인되었습니다. 진행하세요",
-        "signedInSuccess": "성공적으로 로그인되었습니다",
+        "walletOpensNotice": "{count, plural, =1 {NEAR 지갑이 한 번 열려 제안에 서명합니다. 완료해 주세요.} =2 {NEAR 지갑이 두 번 열립니다 — 제안마다 한 번씩. 모두 완료해 주세요.} other {NEAR 지갑이 #번 열립니다 — 제안마다 한 번씩. 모두 완료해 주세요.}}",
+        "whatToDoNext": "다음 단계",
+        "stepApproveTitle": "Trezu를 열고 요청 승인",
+        "stepVotesTitle": "충분한 투표 대기",
+        "stepVotesDesc": "트레저리가 설정에 따라 필요한 승인 수에 도달하면 실행됩니다.",
+        "stepExecutedTitle": "트랜잭션 실행됨",
+        "openTrezuApprove": "승인하러 Trezu 열기",
+        "signedInSuccess": "트레저리가 연결되었습니다",
         "proposalCreatedSuccess": "제안이 성공적으로 생성되었습니다",
         "closeWindow": "이 창을 닫을 수 있습니다.",
         "errorGeneric": "오류가 발생했습니다",
         "tryAgain": "다시 시도",
+        "errorProposalsNotCreated": "제안이 생성되지 않았습니다",
+        "tryCreateAgain": "제안 생성 다시 시도",
         "errors": {
             "parseTx": "트랜잭션 요청 구문 분석에 실패했습니다. 다시 시도해 주세요.",
             "fetchTreasuries": "트레저리를 가져오지 못했습니다. 다시 시도해 주세요.",
             "connectFailed": "지갑 연결에 실패했습니다",
             "createProposalFailed": "제안 생성에 실패했습니다",
-            "stillPending": "제안이 아직 승인 대기 중입니다. 트레저리 멤버가 투표할 때까지 기다려 주세요.",
             "wasStatus": "제안 #{id}이(가) {status} 상태입니다",
             "awaitIndex": "제안이 승인되었지만 실행 트랜잭션이 아직 인덱싱되지 않았습니다. 잠시 후 다시 시도해 주세요.",
             "checkStatusFailed": "제안 상태 확인에 실패했습니다",
             "userCancelled": "사용자가 취소했습니다",
-            "proposalWasStatus": "제안이 {status} 상태입니다"
+            "proposalWasStatus": "제안이 {status} 상태입니다",
+            "noProposalIds": "제안이 생성되었지만 ID를 확인할 수 없습니다. 트레저리의 요청 페이지를 확인하세요."
         }
     },
     "telegram": {
@@ -1785,6 +1888,7 @@
         "Batch Payment Request": "일괄 결제 요청",
         "Payment Request": "결제 요청",
         "Confidential Request": "비공개 요청",
+        "Move to Confidential": "기밀로 이동",
         "Exchange": "교환",
         "Function Call": "함수 호출",
         "Change Policy": "정책 변경",
@@ -1823,7 +1927,8 @@
         "comingSoon": "곧 제공",
         "forMembersOnly": "회원 전용",
         "nearComDescription": "기밀 trezu용 네트워크",
-        "nearDescription": "공개 출금 및 near.com 지갑용 네트워크"
+        "nearComDescriptionPublic": "near.com용 네트워크",
+        "nearDescription": "공개 출금용 네트워크"
     },
     "addressBookTable": {
         "emptyTitle": "아직 수신자가 없습니다",
@@ -2060,10 +2165,9 @@
         "exchangeFulfillment": "교환",
         "stakingRewards": "스테이킹 보상",
         "proposalAction": "제안 작업",
-        "deposit": "{symbol} 입금",
-        "paymentSent": "결제 송금됨",
+        "deposit": "입금",
+        "transfer": "송금",
         "transaction": "트랜잭션",
-        "fallbackToken": "토큰",
         "viaIntents": "NEAR Intents 경유",
         "from": "{account}에서",
         "to": "{account}에게",
@@ -2106,6 +2210,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {수신자 #명 추가됨}}",
+        "alreadyExistsToast": "수신자가 이미 주소록에 있습니다",
         "addedSingleToast": "수신자가 추가되었습니다",
         "addFailedToast": "수신자 추가에 실패했습니다",
         "addSingleFailedToast": "수신자 추가에 실패했습니다",
@@ -2299,6 +2404,10 @@
             "title": "Trezu 살펴보기",
             "description": "Trezu의 모든 기능과 혜택에 대한 권한을 잠금 해제하려면 계정을 생성하세요.",
             "cta": "트레저리 생성"
+        },
+        "pendingJoinBanner": {
+            "title": "가입 요청이 대기 중입니다",
+            "description": "지금 이 트레저리를 볼 수 있습니다. 멤버가 승인하면 역할에 따라 요청 생성, 투표 또는 자금 관리를 할 수 있습니다."
         },
         "infoBox": {
             "title": "Trezu에서 더 많은 것을 얻으세요",
@@ -2537,6 +2646,59 @@
             "pattern": "{label}이(가) 요구되는 형식과 일치하지 않습니다",
             "min": "{label}은(는) 최소 {min} 이상이어야 합니다",
             "max": "{label}은(는) 최대 {max} 이하여야 합니다"
+        }
+    },
+    "account": {
+        "personalSettings": "개인 설정",
+        "uploadAvatar": "아바타 업로드",
+        "removeAvatar": "아바타 제거",
+        "uploading": "업로드 중...",
+        "displayName": "표시 이름",
+        "displayNamePlaceholder": "표시 이름 입력",
+        "myWallet": "내 지갑",
+        "saveChanges": "변경 사항 저장",
+        "saving": "저장 중...",
+        "saveSuccess": "변경 사항이 저장되었습니다.",
+        "saveError": "변경 사항을 저장하지 못했습니다. 다시 시도하세요.",
+        "invalidImage": "유효한 이미지 파일을 선택하세요.",
+        "imageTooLarge": "이미지는 2 MB 이하여야 합니다.",
+        "signInRequired": "계정을 관리하려면 지갑을 연결하세요.",
+        "avatarUploaded": "아바타가 업로드되었습니다",
+        "uploadError": "이미지 업로드 중 오류가 발생했습니다. 다시 시도하세요."
+    },
+    "moveAssets": {
+        "title": "자산 이동",
+        "description": "퍼블릭 체인의 자산을 기밀 트레저리로 이동합니다.",
+        "submitted": "이동 요청이 제출되었습니다",
+        "banner": {
+            "title": "<amount></amount>이(가) 퍼블릭 잔액에 입금되었습니다",
+            "description": "누군가 잘못된 네트워크로 보냈습니다. 여기로 이동하여 기밀로 전환하세요.",
+            "moveAssets": "자산 이동",
+            "viewRequest": "요청 보기"
+        },
+        "list": {
+            "title": "이동해야 할 자금",
+            "token": "토큰",
+            "moveAssets": "자산 이동",
+            "emptyTitle": "이동할 자산 없음",
+            "emptyDescription": "퍼블릭 잔액이 비어 있습니다. 퍼블릭 계정으로 보낸 자금이 여기에 표시됩니다.",
+            "viewRequest": "요청 보기"
+        },
+        "form": {
+            "title": "기밀로",
+            "review": "이동 검토",
+            "reviewDisabled": "금액 입력"
+        },
+        "review": {
+            "title": "이동 내용 검토",
+            "youMove": "이동 금액"
+        },
+        "errors": {
+            "invalid": "유효한 금액을 입력하세요",
+            "zero": "금액은 0보다 커야 합니다",
+            "tooManyDecimals": "이 토큰에 비해 소수 자릿수가 너무 많습니다",
+            "exceedsBalance": "금액이 퍼블릭 잔액을 초과합니다",
+            "failed": "이동 요청을 준비할 수 없습니다. 다시 시도하세요."
         }
     }
 }

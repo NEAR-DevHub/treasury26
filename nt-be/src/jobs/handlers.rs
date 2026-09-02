@@ -6,9 +6,12 @@ use std::sync::Arc;
 
 use apalis::prelude::*;
 use apalis_cron::Tick;
+use chrono::{DateTime, Utc};
 use tokio::sync::{Mutex, OnceCell};
 
 use crate::AppState;
+
+const PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS: i64 = 60;
 
 /// Converts a non-Send boxed error (several legacy cycles return
 /// `Box<dyn Error>`) into an apalis-compatible one.
@@ -83,22 +86,19 @@ pub async fn gold_usd_enrichment(
         Err(error) => errors.push(format!("price loading failed: {error}")),
     }
 
-    if state.env_vars.disable_gold_public_usd_backfill {
-        outcomes.push("public=disabled".to_string());
+    if state.env_vars.disable_gold_ledger_usd_backfill {
+        outcomes.push("ledger=disabled".to_string());
     } else {
-        let backfill = crate::services::GoldPublicUsdBackfill::new(
+        let backfill = crate::services::GoldLedgerUsdBackfill::new(
             state.db_pool.clone(),
             Arc::clone(&state.token_price_service),
         );
         match backfill.run().await {
-            Ok(summary) => outcomes.push(format!("public=[{summary}]")),
-            Err(error) => errors.push(format!("public USD fill failed: {error}")),
+            Ok(summary) => outcomes.push(format!("ledger=[{summary}]")),
+            Err(error) => errors.push(format!("ledger USD fill failed: {error}")),
         }
-    }
 
-    if state.env_vars.disable_gold_confidential_usd_backfill {
-        outcomes.push("confidential=disabled".to_string());
-    } else {
+        // TODO(confidential-v2): remove with the dual-write.
         let backfill = crate::services::GoldConfidentialUsdBackfill::new(
             state.db_pool.clone(),
             Arc::clone(&state.token_price_service),
@@ -183,18 +183,80 @@ pub async fn confidential_history_ingest(
     ))
 }
 
-/// Public history bronze scheduler: Goldsky latest refresh enqueue + backfill seeding.
+fn public_history_tick_age_ms(tick: &Tick, now: DateTime<Utc>) -> i64 {
+    (now - tick.get_timestamp()).num_milliseconds().max(0)
+}
+
+/// Latency-sensitive Goldsky detector. Old ticks carry no unique payload:
+/// one current scan resumes from the durable cursor and covers all of them.
 pub async fn public_history_scheduler(
-    _t: Tick,
+    tick: Tick,
     state: Data<Arc<AppState>>,
 ) -> Result<String, BoxDynError> {
+    let tick_age_ms = public_history_tick_age_ms(&tick, Utc::now());
+    if tick_age_ms > PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS * 1_000 {
+        return Ok(format!("skipped_stale_tick age_ms={tick_age_ms}"));
+    }
+
     let stats =
-        crate::handlers::public_history::bronze::jobs::run_public_history_scheduler_cycle(&state)
+        crate::handlers::public_history::bronze::jobs::run_public_history_detector_cycle(&state)
             .await?;
     Ok(format!(
-        "latest_enqueued={} backfill_enqueued={}",
-        stats.latest_enqueued, stats.backfill_enqueued
+        "outcomes={} batches={} latest_enqueued={} confidential_marked={}",
+        stats.outcomes_seen,
+        stats.batches_processed,
+        stats.latest_enqueued,
+        stats.confidential_marked
     ))
+}
+
+/// Durable realtime-demand dispatcher. This is deliberately a separate cron
+/// worker from Goldsky detection so sink outages cannot strand demands that
+/// are already persisted in the application database.
+pub async fn public_history_latest_dispatcher(
+    tick: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let tick_age_ms = public_history_tick_age_ms(&tick, Utc::now());
+    if tick_age_ms > PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS * 1_000 {
+        return Ok(format!("skipped_stale_tick age_ms={tick_age_ms}"));
+    }
+
+    let dispatched =
+        crate::handlers::public_history::bronze::jobs::run_public_history_latest_dispatcher_cycle(
+            &state,
+        )
+        .await?;
+    Ok(format!("dispatched={dispatched}"))
+}
+
+/// Snapshot source-readiness scheduler. It deliberately runs outside the
+/// Goldsky detector so finalized-block RPC and provider coverage work cannot
+/// delay recent activity detection.
+pub async fn public_history_readiness_scheduler(
+    _tick: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let enqueued =
+        crate::handlers::public_history::bronze::jobs::run_public_history_readiness_scheduler_cycle(
+            &state,
+        )
+        .await?;
+    Ok(format!("enqueued={enqueued}"))
+}
+
+/// Historical Bronze page scheduler. Backfill cursor scans are independent
+/// from both the Goldsky cursor and the recent-activity detector.
+pub async fn public_history_backfill_scheduler(
+    _tick: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let enqueued =
+        crate::handlers::public_history::bronze::jobs::run_public_history_backfill_scheduler_cycle(
+            &state,
+        )
+        .await?;
+    Ok(format!("enqueued={enqueued}"))
 }
 
 /// Public history silver projection for dirty accounts.
@@ -205,17 +267,73 @@ pub async fn public_silver_projection(
     let stats =
         crate::handlers::public_history::silver::worker::project_public_silver_for_dirty_accounts(
             &state.db_pool,
+            state.signer_id.as_str(),
         )
         .await?;
+
+    // Every ledger change on a verified account is immediately anchored
+    // against chain at the new head block — the per-transaction extra check
+    // on top of the hourly watermark head check.
+    let heads_anchored = crate::handlers::public_history::verification::BalanceVerifier::new(
+        &state.db_pool,
+        &state.archival_network,
+        state.env_vars.public_native_verification_tolerance_near,
+    )
+    .anchor_changed_account_heads(&stats.changed_accounts)
+    .await;
+
+    // Silver only marks cursors dirty; the hourly sweeper batches every
+    // change inside the window into one sparse refresh row.
     Ok(format!(
-        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={}",
+        "seen={} projected={} skipped_locked={} failed={} rows_projected={} rows_deleted={} errors={} heads_anchored={}",
         stats.accounts_seen,
         stats.accounts_projected,
         stats.accounts_skipped_locked,
         stats.accounts_failed,
         stats.rows_projected,
         stats.rows_deleted,
-        stats.errors_written
+        stats.errors_written,
+        heads_anchored,
+    ))
+}
+
+/// Staking pool observations: 90-day archival backfill plus daily capture.
+/// Rewards accrue without transactions, so this is the only periodic
+/// balance source; everything else stays transaction-triggered.
+pub async fn staking_observation(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let stats =
+        crate::handlers::public_history::observations::run_staking_observation_cycle(&state)
+            .await?;
+    Ok(format!(
+        "pools_discovered={} validated={} observations={} boundaries_skipped={} reads_failed={}",
+        stats.pools_discovered,
+        stats.pools_validated,
+        stats.observations_written,
+        stats.boundaries_skipped,
+        stats.reads_failed
+    ))
+}
+
+/// Historical chart prices. Deliberately readiness-neutral: missing prices
+/// never make an otherwise authoritative balance dataset unready.
+pub async fn price_history_backfill(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    let backfill = crate::services::HistoricalPriceBackfill::new(
+        state.http_client.clone(),
+        state.env_vars.defillama_api_base_url.clone(),
+        state.db_pool.clone(),
+        Arc::clone(&state.token_price_service),
+        state.defillama_limiter.clone(),
+    );
+    let summary = backfill.run().await?;
+    Ok(format!(
+        "prices_fetched={} prices=[{summary}]",
+        summary.rows_inserted
     ))
 }
 
@@ -233,9 +351,10 @@ pub async fn public_gold_projection(
         .await?;
     let changed = stats.changed_accounts.len();
     for account_id in stats.changed_accounts {
-        state.publish_treasury_projection_updated(account_id);
+        state.publish_treasury_projection_updated(account_id).await;
     }
-    Ok(format!(
+
+    let projection = format!(
         "seen={} projected={} skipped_locked={} failed={} changed={} rows_projected={} rows_deleted={} errors={}",
         stats.accounts_seen,
         stats.accounts_projected,
@@ -244,8 +363,33 @@ pub async fn public_gold_projection(
         changed,
         stats.rows_projected,
         stats.rows_deleted,
-        stats.errors_written
-    ))
+        stats.errors_written,
+    );
+    if changed == 0 {
+        return Ok(projection);
+    }
+
+    // On-chain verification (full-history gates for unverified DAOs, head
+    // drift checks for verified ones) runs inline whenever the ledger
+    // changed, not on a timer. Failed gates retry on the next change.
+    let verifier = crate::handlers::public_history::verification::BalanceVerifier::new(
+        &state.db_pool,
+        &state.archival_network,
+        state.env_vars.public_native_verification_tolerance_near,
+    );
+    match verifier.run_cycle().await {
+        Ok(vstats) => Ok(format!(
+            "{projection} gates_run={} gates_passed={} gates_failed={} head_checks={} head_failed={}",
+            vstats.gates_run,
+            vstats.gates_passed,
+            vstats.gates_failed,
+            vstats.head_checks_run,
+            vstats.head_checks_failed,
+        )),
+        Err(error) => {
+            Err(format!("verification failed: {error}; completed stages: {projection}").into())
+        }
+    }
 }
 
 /// Reconciles stale public DAO proposal statuses.
@@ -286,7 +430,8 @@ pub async fn confidential_snapshots(
     crate::handlers::intents::confidential::gold::snapshots::tick_confidential_balance_snapshot_cron(
         &state,
     )
-    .await;
+    .await
+    .map_err(erase)?;
     Ok("snapshot tick done".to_string())
 }
 
@@ -299,7 +444,8 @@ pub async fn confidential_gold_reconciliation(
         &state,
         "scheduled",
     )
-    .await;
+    .await
+    .map_err(erase)?;
     Ok("reconciliation pass done".to_string())
 }
 
@@ -376,7 +522,9 @@ pub async fn treasury_creation_sweeper(
 
 /// Oh Dear health checks + fallback warnings.
 pub async fn status_monitor(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
-    crate::handlers::status::monitor::run_monitor_cycle(&state).await;
+    crate::handlers::status::monitor::run_monitor_cycle(&state)
+        .await
+        .map_err(erase)?;
     Ok("status cycle done".to_string())
 }
 
@@ -526,9 +674,7 @@ pub async fn ft_lockup_refresh(
 /// var is set. Deletes `Done`/`Killed` **and** exhausted `Failed`
 /// (`attempts >= max_attempts`) rows — the latter are terminal too and were
 /// never cleaned before, so they accumulated. Retryable `Failed` rows
-/// (`attempts < max_attempts`) and any Pending/Queued/Running task are left
-/// untouched. Runs in bounded batches so a large backlog can't hold a long
-/// lock on the table the workers are actively polling.
+/// (`attempts < max_attempts`) and every Pending task are left untouched.
 pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String, BoxDynError> {
     // Clamp so a misconfigured (negative) value can't flip the cutoff into the
     // future and delete *every* terminal task; cap at ~10y for sanity.
@@ -543,42 +689,6 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
         })
         .unwrap_or(48)
         .clamp(0, 3650 * 24);
-
-    // Reclaim tasks stuck in `Running` well past the handler timeout. apalis's
-    // own orphan-reclaim only fires when the *worker's* heartbeat is stale, so a
-    // task whose ack never landed (e.g. the handler hit `job_timeout` during DB
-    // instability, or the ack UPDATE failed) is left `Running` forever while the
-    // worker stays alive — these phantom rows accumulate (one per timeout) and
-    // are never reclaimed or pruned. The threshold is at least 2× `job_timeout`,
-    // so a genuinely-running task (bounded by `job_timeout`) is never touched.
-    // Reclaimed rows become `Killed` (terminal, not retried) and are then
-    // removed by the retention sweep below once they age out.
-    let reclaim_secs: i64 = std::env::var("APALIS_STUCK_RUNNING_RECLAIM_SECONDS")
-        .ok()
-        .and_then(|s| s.parse::<i64>().ok())
-        .filter(|&n| n >= 1)
-        .unwrap_or(3600)
-        .max((crate::jobs::job_timeout().as_secs() as i64).saturating_mul(2));
-    let reclaimed = sqlx::query(
-        r#"UPDATE apalis.jobs
-           SET status = 'Killed',
-               done_at = NOW(),
-               last_result = '{"Err": "Reclaimed: stuck in Running past threshold (ack likely failed)"}'::jsonb
-           WHERE status = 'Running'
-             AND lock_at IS NOT NULL
-             AND lock_at < now() - make_interval(secs => $1::double precision)"#,
-    )
-    .bind(reclaim_secs)
-    .execute(&state.db_pool)
-    .await?;
-    let reclaimed = reclaimed.rows_affected();
-    if reclaimed > 0 {
-        tracing::warn!(
-            reclaimed,
-            reclaim_secs,
-            "reclaimed apalis tasks stuck in Running (orphaned locks)"
-        );
-    }
 
     const BATCH_SIZE: i64 = 10_000;
     // Backstop against a runaway loop; 100 batches = up to 1M rows per run.
@@ -625,7 +735,41 @@ pub async fn apalis_prune(_t: Tick, state: Data<Arc<AppState>>) -> Result<String
         tracing::warn!(error = %e, "VACUUM apalis.jobs after prune failed");
     }
 
+    let reclaim_audits_pruned = crate::jobs::reclaimer::prune_reclaim_audit(&state.db_pool).await?;
+
     Ok(format!(
-        "reclaimed {reclaimed} stuck-Running, pruned {total} terminal tasks older than {retention_hours}h"
+        "pruned {total} terminal tasks older than {retention_hours}h and {reclaim_audits_pruned} reclaim audit rows"
     ))
+}
+
+/// Diff near.com private production.json vs vendored catalog; Telegram notify-only.
+pub async fn nearcom_catalog_watch(
+    _t: Tick,
+    state: Data<Arc<AppState>>,
+) -> Result<String, BoxDynError> {
+    crate::services::nearcom_catalog_watch::run_nearcom_catalog_watch_cycle(&state)
+        .await
+        .map_err(erase)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn public_history_tick_age_is_never_negative() {
+        let now = Utc::now();
+        assert_eq!(
+            public_history_tick_age_ms(&Tick::new(now + chrono::Duration::seconds(1)), now),
+            0
+        );
+    }
+
+    #[test]
+    fn public_history_tick_age_identifies_stale_ticks() {
+        let now = Utc::now();
+        let stale = chrono::Duration::seconds(PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS + 1);
+        let age_ms = public_history_tick_age_ms(&Tick::new(now - stale), now);
+        assert!(age_ms > PUBLIC_HISTORY_DETECTOR_MAX_TICK_AGE_SECONDS * 1_000);
+    }
 }

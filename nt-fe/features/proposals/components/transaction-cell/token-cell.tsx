@@ -1,6 +1,5 @@
 import { useTranslations } from "next-intl";
 import { Shield } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import {
     PaymentRequestData,
     VestingData,
@@ -9,10 +8,10 @@ import {
 import { Amount } from "../amount";
 import { TooltipUser } from "@/components/user";
 import { TitleSubtitleCell } from "./title-subtitle-cell";
-import { useProfile } from "@/hooks/use-treasury-queries";
 import { useTreasury } from "@/hooks/use-treasury";
 import { Tooltip } from "@/components/tooltip";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { Address } from "@/components/address";
 
 interface TokenCellProps {
@@ -35,26 +34,27 @@ export function TokenCell({
     const { isConfidential } = useTreasury();
     const effectivePrefix = prefix ?? t("toPrefix");
     const nearFt = "nearFt" in data ? data.nearFt : undefined;
+    const destinationAssetId =
+        "destinationAssetId" in data ? data.destinationAssetId : undefined;
+    const isNearComDestination = isNearComPaymentRoute(destinationAssetId);
+    const displayReceiver = formatRecipientForNearComDestination(
+        data.receiver,
+        destinationAssetId,
+    );
     const title = (
         <Amount
             amount={data.amount}
             tokenId={data.tokenId}
             showUSDValue={false}
             showNetworkTooltip
-            expandNearComLabel={"destinationAssetId" in data}
+            expandNearComLabel={isNearComDestination}
             iconSize="sm"
             textOnly={textOnly}
             nearFt={nearFt}
         />
     );
-    const { data: profile } = useProfile(data.receiver);
-    const address = profile?.addressBookName ?? data.receiver;
-    const destinationAssetId =
-        "destinationAssetId" in data ? data.destinationAssetId : undefined;
     const showConfidentialAddressShield =
-        isConfidential &&
-        "destinationAssetId" in data &&
-        isNearComPaymentRoute(data);
+        isConfidential && isNearComDestination;
 
     const subtitle = data.receiver ? (
         <div className="flex min-w-0 max-w-full items-center overflow-hidden">
@@ -69,12 +69,12 @@ export function TokenCell({
             {isUser ? (
                 <TooltipUser
                     accountId={data.receiver}
-                    useAddressBook
+                    displayAddress={displayReceiver}
                     chainName={destinationAssetId}
                 >
                     <div className="ml-1 min-w-0 flex-1 overflow-hidden">
                         <Address
-                            address={address}
+                            address={displayReceiver}
                             prefixLength={6}
                             suffixLength={6}
                             className="min-w-0 truncate"
@@ -82,7 +82,9 @@ export function TokenCell({
                     </div>
                 </TooltipUser>
             ) : (
-                <span className="ml-1 min-w-0 flex-1 truncate">{address}</span>
+                <span className="ml-1 min-w-0 flex-1 truncate">
+                    {displayReceiver}
+                </span>
             )}
         </div>
     ) : undefined;

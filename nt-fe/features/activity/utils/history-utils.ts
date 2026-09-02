@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import Big from "@/lib/big";
 
 /**
  * Format history duration based on months
@@ -84,7 +85,6 @@ export interface ActivityAccount {
     actionKind?: string | null;
     methodName?: string | null;
     amount?: string;
-    tokenSymbol?: string;
 }
 
 export type ActivityStatus = "pending" | "failed" | null;
@@ -119,8 +119,8 @@ export function getActivityStatus(activity: ActivityAccount): ActivityStatus {
  * 1. Swaps → "Exchange"
  * 2. Staking rewards → "Staking Rewards"
  * 3. Proposal actions → "Proposal Action"
- * 4. Positive amount → "Deposit [TOKEN]"
- * 5. Negative amount or action data → "Payment Sent"
+ * 4. Positive amount → "Deposit"
+ * 5. Negative amount or action data → "Transfer"
  * 6. No direction or action data → "Transaction"
  */
 export interface ActivityLabels {
@@ -129,10 +129,9 @@ export interface ActivityLabels {
     exchangeFulfillment: string;
     stakingRewards: string;
     proposalAction: string;
-    deposit: (symbol: string) => string;
-    paymentSent: string;
+    deposit: string;
+    transfer: string;
     transaction: string;
-    fallbackToken: string;
 }
 
 export function getActivityLabel(
@@ -157,14 +156,18 @@ export function getActivityLabel(
         return labels.proposalAction;
     }
 
-    const amount = parseFloat(activity.amount ?? "0");
-
-    if (amount > 0) {
-        const symbol = activity.tokenSymbol || labels.fallbackToken;
-        return labels.deposit(symbol);
+    let amount = Big(0);
+    try {
+        amount = Big(activity.amount ?? "0");
+    } catch {
+        // Malformed API amounts are treated as directionless transactions.
     }
-    if (amount < 0 || activity.actionKind) {
-        return labels.paymentSent;
+
+    if (amount.gt(0)) {
+        return labels.deposit;
+    }
+    if (amount.lt(0) || activity.actionKind) {
+        return labels.transfer;
     }
 
     return labels.transaction;
@@ -203,7 +206,12 @@ export function getActivitySubLabel(
         return "";
     }
 
-    const isReceived = parseFloat(activity.amount ?? "0") > 0;
+    let isReceived = false;
+    try {
+        isReceived = Big(activity.amount ?? "0").gt(0);
+    } catch {
+        // Malformed API amounts are treated as outgoing/directionless.
+    }
 
     if (isReceived) {
         const from = activity.counterparty || activity.signerId;
@@ -340,10 +348,9 @@ function buildActivityLabels(
         exchangeFulfillment: t("exchangeFulfillment"),
         stakingRewards: t("stakingRewards"),
         proposalAction: t("proposalAction"),
-        deposit: (symbol: string) => t("deposit", { symbol }),
-        paymentSent: t("paymentSent"),
+        deposit: t("deposit"),
+        transfer: t("transfer"),
         transaction: t("transaction"),
-        fallbackToken: t("fallbackToken"),
     };
 }
 

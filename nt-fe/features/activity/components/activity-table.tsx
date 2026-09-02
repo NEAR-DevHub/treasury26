@@ -3,15 +3,17 @@
 import {
     ArrowDownToLine,
     ArrowRightLeft,
-    ArrowUpToLine,
     ChevronRight,
     Clock,
     Info,
     Loader2,
+    Minus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { Address } from "@/components/address";
+import { useState } from "react";
+import { Button } from "@/components/button";
 import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { FormattedDate } from "@/components/formatted-date";
 import { Pagination } from "@/components/pagination";
 import {
@@ -23,13 +25,18 @@ import {
     TableRow,
 } from "@/components/table";
 import { TableSkeleton } from "@/components/table-skeleton";
-import { TokenAmountDisplay } from "@/components/token-display";
 import { TokenDisplay } from "@/components/token-display-with-network";
+import { Address } from "@/components/address";
 import { Tooltip } from "@/components/tooltip";
 import { TooltipUser } from "@/components/user";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { RecentActivity } from "@/lib/api";
-import { cn, formatActivityAmount, formatSmartAmount } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import {
+    activityUnitPriceUsd,
+    isPositiveActivityAmount,
+    unitPriceUsdForAmount,
+} from "../utils/activity-amount";
 import {
     getActivityStatus,
     getFromAccountId,
@@ -38,6 +45,7 @@ import {
     useGetActivityLabel,
     useGetFromAccount,
 } from "../utils/history-utils";
+import { TransactionDetailsModal } from "./transaction-details-modal";
 import { TransactionHashCell } from "./transaction-hash-cell";
 
 interface ActivityTableProps {
@@ -61,18 +69,23 @@ export function ActivityTable({
     const getActivityLabel = useGetActivityLabel();
     const getFromAccount = useGetFromAccount();
     const { treasuryId, isConfidential } = useTreasury();
+    const [selectedActivity, setSelectedActivity] =
+        useState<RecentActivity | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     const totalPages = Math.ceil(total / pageSize);
 
     const getTypeLabel = (activity: RecentActivity) => {
-        return getActivityLabel({
-            ...activity,
-            tokenSymbol: activity.tokenMetadata?.symbol,
-        });
+        return getActivityLabel(activity);
+    };
+
+    const openTransactionDetails = (activity: RecentActivity) => {
+        setSelectedActivity(activity);
+        setIsModalOpen(true);
     };
 
     if (isLoading) {
-        return <TableSkeleton rows={pageSize} columns={5} />;
+        return <TableSkeleton rows={pageSize} columns={6} />;
     }
 
     if (activities.length === 0) {
@@ -103,7 +116,7 @@ export function ActivityTable({
                             <TableHead className="min-w-[150px] text-xs font-medium uppercase text-muted-foreground">
                                 {t("table.to")}
                             </TableHead>
-                            <TableHead className="text-right pr-6 min-w-[120px] text-xs font-medium uppercase text-muted-foreground">
+                            <TableHead className="text-right pr-2 min-w-[120px] text-xs font-medium uppercase text-muted-foreground">
                                 <div className="flex items-center justify-end gap-1">
                                     {t("table.transactionHash")}
                                     <Tooltip content={t("table.hashTooltip")}>
@@ -111,12 +124,19 @@ export function ActivityTable({
                                     </Tooltip>
                                 </div>
                             </TableHead>
+                            <TableHead className="w-10 pr-4">
+                                <span className="sr-only">
+                                    {t("details.title")}
+                                </span>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {activities.map((activity) => {
                             const isSwap = !!activity.swap;
-                            const isReceived = parseFloat(activity.amount) > 0;
+                            const isReceived = isPositiveActivityAmount(
+                                activity.amount,
+                            );
                             const typeLabel = getTypeLabel(activity);
                             const status = getActivityStatus(activity);
                             const fromId = getFromAccountId(
@@ -134,22 +154,13 @@ export function ActivityTable({
                                 <TableRow key={activity.id}>
                                     <TableCell className="pl-6">
                                         <div className="flex items-center gap-3">
-                                            <div
-                                                className={cn(
-                                                    "flex h-10 w-10 items-center justify-center rounded-full shrink-0",
-                                                    isSwap
-                                                        ? "bg-blue-500/10"
-                                                        : isReceived
-                                                          ? "bg-general-success-background-faded"
-                                                          : "bg-general-destructive-background-faded",
-                                                )}
-                                            >
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full shrink-0 bg-muted">
                                                 {isSwap ? (
-                                                    <ArrowRightLeft className="h-5 w-5 text-blue-500" />
+                                                    <ArrowRightLeft className="h-4 w-4" />
                                                 ) : isReceived ? (
-                                                    <ArrowDownToLine className="h-5 w-5 text-general-success-foreground" />
+                                                    <ArrowDownToLine className="h-4 w-4" />
                                                 ) : (
-                                                    <ArrowUpToLine className="h-5 w-5 text-general-destructive-foreground" />
+                                                    <Minus className="h-4 w-4" />
                                                 )}
                                             </div>
                                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -207,17 +218,34 @@ export function ActivityTable({
                                                 {activity.swap.sentAmount &&
                                                 activity.swap
                                                     .sentTokenMetadata ? (
-                                                    <span className="font-normal text-foreground whitespace-nowrap">
-                                                        {formatSmartAmount(
+                                                    <FormattedAmount
+                                                        kind="token"
+                                                        value={
                                                             activity.swap
-                                                                .sentAmount,
-                                                        )}{" "}
-                                                        {
+                                                                .sentAmount
+                                                        }
+                                                        symbol={
                                                             activity.swap
                                                                 .sentTokenMetadata
                                                                 .symbol
                                                         }
-                                                    </span>
+                                                        tokenDecimals={
+                                                            activity.swap
+                                                                .sentTokenMetadata
+                                                                .decimals
+                                                        }
+                                                        unitPriceUsd={unitPriceUsdForAmount(
+                                                            activity.swap
+                                                                .sentAmount,
+                                                            activity.swap
+                                                                .sentAmountUsd,
+                                                            activity.swap
+                                                                .sentTokenMetadata
+                                                                .price,
+                                                        )}
+                                                        profile="compact"
+                                                        className="font-normal text-foreground whitespace-nowrap"
+                                                    />
                                                 ) : (
                                                     <span className="font-normal text-muted-foreground">
                                                         ?
@@ -313,41 +341,95 @@ export function ActivityTable({
                                                     iconSize="sm"
                                                 />
                                                 {/* Received amount with + sign */}
-                                                <span className="font-normal text-general-success-foreground whitespace-nowrap">
-                                                    {activity.swap
-                                                        .receivedAmount
-                                                        ? `+${formatSmartAmount(activity.swap.receivedAmount)} `
-                                                        : ""}
-                                                    {
-                                                        activity.swap
-                                                            .receivedTokenMetadata
-                                                            .symbol
-                                                    }
-                                                </span>
+                                                {activity.swap
+                                                    .receivedAmount ? (
+                                                    <FormattedAmount
+                                                        kind="token"
+                                                        value={
+                                                            activity.swap
+                                                                .receivedAmount
+                                                        }
+                                                        symbol={
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .symbol
+                                                        }
+                                                        tokenDecimals={
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .decimals
+                                                        }
+                                                        unitPriceUsd={unitPriceUsdForAmount(
+                                                            activity.swap
+                                                                .receivedAmount,
+                                                            activity.swap
+                                                                .receivedAmountUsd,
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .price,
+                                                        )}
+                                                        profile="compact"
+                                                        signDisplay="always"
+                                                        className="font-normal text-general-success-foreground whitespace-nowrap"
+                                                    />
+                                                ) : (
+                                                    <span className="font-normal text-general-success-foreground whitespace-nowrap">
+                                                        {
+                                                            activity.swap
+                                                                .receivedTokenMetadata
+                                                                .symbol
+                                                        }
+                                                    </span>
+                                                )}
                                             </div>
                                         ) : (
-                                            <TokenAmountDisplay
-                                                icon={
-                                                    activity.tokenMetadata.icon
-                                                }
-                                                chainIcons={
+                                            <div className="flex items-center gap-2">
+                                                {(activity.tokenMetadata.icon ||
                                                     activity.tokenMetadata
-                                                        .chainIcons
-                                                }
-                                                symbol={
-                                                    activity.tokenMetadata
-                                                        .symbol
-                                                }
-                                                amount={formatActivityAmount(
-                                                    activity.amount,
+                                                        .chainIcons) && (
+                                                    <TokenDisplay
+                                                        symbol={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .symbol
+                                                        }
+                                                        icon={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .icon || ""
+                                                        }
+                                                        chainIcons={
+                                                            activity
+                                                                .tokenMetadata
+                                                                .chainIcons
+                                                        }
+                                                        iconSize="lg"
+                                                    />
                                                 )}
-                                                className={cn(
-                                                    "font-normal",
-                                                    isReceived
-                                                        ? "text-general-success-foreground"
-                                                        : "text-foreground",
-                                                )}
-                                            />
+                                                <FormattedAmount
+                                                    kind="token"
+                                                    value={activity.amount}
+                                                    symbol={
+                                                        activity.tokenMetadata
+                                                            .symbol
+                                                    }
+                                                    tokenDecimals={
+                                                        activity.tokenMetadata
+                                                            .decimals
+                                                    }
+                                                    unitPriceUsd={activityUnitPriceUsd(
+                                                        activity,
+                                                    )}
+                                                    profile="compact"
+                                                    signDisplay="always"
+                                                    className={cn(
+                                                        "font-normal",
+                                                        isReceived
+                                                            ? "text-general-success-foreground"
+                                                            : "text-foreground",
+                                                    )}
+                                                />
+                                            </div>
                                         )}
                                     </TableCell>
                                     <TableCell className="min-w-[150px] max-w-[200px]">
@@ -400,7 +482,7 @@ export function ActivityTable({
                                             </span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right pr-6">
+                                    <TableCell className="text-right pr-2">
                                         <TransactionHashCell
                                             transactionHashes={
                                                 activity.transactionHashes
@@ -410,7 +492,25 @@ export function ActivityTable({
                                                 activity.tokenMetadata
                                                     ?.chainName
                                             }
+                                            depositAddress={
+                                                activity.quoteDepositAddress
+                                            }
+                                            isConfidential={isConfidential}
                                         />
+                                    </TableCell>
+                                    <TableCell className="w-10 px-0 pr-4 text-right">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon-sm"
+                                            aria-label={t("details.title")}
+                                            className="size-8 p-0 text-muted-foreground hover:text-foreground"
+                                            onClick={() =>
+                                                openTransactionDetails(activity)
+                                            }
+                                        >
+                                            <ChevronRight className="size-4" />
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             );
@@ -429,6 +529,13 @@ export function ActivityTable({
                     />
                 </div>
             )}
+
+            <TransactionDetailsModal
+                activity={selectedActivity}
+                treasuryId={treasuryId || ""}
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+            />
         </div>
     );
 }

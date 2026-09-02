@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import { useTranslations } from "next-intl";
 import {
     createContext,
@@ -11,15 +10,17 @@ import {
     useMemo,
 } from "react";
 import { useFormatDate } from "@/components/formatted-date";
+import { networksMatchAliased } from "@/components/token-display";
 import {
     getProposalRequiredFunds,
     getProposalUIKind,
 } from "@/features/proposals/utils/proposal-utils";
-import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { type BridgeAsset, useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import {
     type BridgeScope,
     resolveBridgeScope,
 } from "@/lib/bridge-asset-resolver";
+import { http as axios } from "@/lib/http";
 import type { Proposal } from "@/lib/proposals-api";
 import {
     actionKeyForSlot,
@@ -116,7 +117,15 @@ function getCandidateSlots(slot: string): string[] {
     return [slot, ...getParentSlots(slot)];
 }
 
-function warningMatchesQuery(
+/**
+ * A scoped warning matches only when every set field agrees with the query:
+ * - token: exact (case-insensitive); never aliased
+ * - network: exact or same-chain alias (`arb`/`arbitrum`); never cross-chain
+ * - slot: exact, parent, or prefix match
+ *
+ * Null warning.token / warning.network means "any" for that dimension.
+ */
+export function warningMatchesQuery(
     warning: Warning,
     slot: string,
     token?: string,
@@ -127,11 +136,16 @@ function warningMatchesQuery(
     const warningToken = normalizeToken(warning.token);
     const warningNetwork = normalizeToken(warning.network);
 
+    // Token is never aliased — eth warning must not match usdc selection.
     if (warningToken && warningToken !== normalizedToken) {
         return false;
     }
 
-    if (warningNetwork && warningNetwork !== normalizedNetwork) {
+    // Network aliases only within the same chain; missing query network fails.
+    if (
+        warningNetwork &&
+        !networksMatchAliased(warningNetwork, normalizedNetwork)
+    ) {
         return false;
     }
 
@@ -544,12 +558,9 @@ export function useBridgeScopedWarning(
 }
 
 /** Fetch bridge assets only when a token/network-scoped warning is live on `slot`. */
-export function useBridgeAssetsForWarnings(
-    slot: string,
-    options?: { includeNearNetwork?: boolean },
-) {
+export function useBridgeAssetsForWarnings(slot: string) {
     const enabled = useHasTokenOrNetworkWarning(slot);
-    return useBridgeTokens(enabled, options);
+    return useTokenCatalog({ enabled });
 }
 
 /**
@@ -578,6 +589,7 @@ const PROPOSAL_KIND_TO_SLOT: Record<string, string> = {
     "Payment Request": "payments",
     "Batch Payment Request": "payments",
     "Confidential Request": "payments",
+    "Move to Confidential": "payments",
     Exchange: "exchange",
 };
 
@@ -608,10 +620,9 @@ export function useProposalApproveBlock(
         useHasTokenOrNetworkWarning("exchange");
     const hasTokenOrNetworkFeatureWarning =
         hasPaymentsTokenOrNetworkWarning || hasExchangeTokenOrNetworkWarning;
-    const { data: bridgeAssets = [] } = useBridgeTokens(
-        hasTokenOrNetworkFeatureWarning,
-        { includeNearNetwork: true },
-    );
+    const { data: bridgeAssets = [] } = useTokenCatalog({
+        enabled: hasTokenOrNetworkFeatureWarning,
+    });
 
     return useMemo(() => {
         let blockedCount = 0;

@@ -280,7 +280,7 @@ export default function EditMemberPage() {
                 <FormProvider {...form}>
                     {!membersReady ? (
                         <PageCard>
-                            <div className="h-40 animate-pulse bg-muted rounded-lg" />
+                            <div className="h-40 animate-pulse bg-general-unofficial-accent-0 rounded-lg" />
                         </PageCard>
                     ) : originalMembers.length === 0 ? null : (
                         <StepWizard

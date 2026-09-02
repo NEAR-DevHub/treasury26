@@ -2,18 +2,18 @@
 
 import { useTranslations } from "next-intl";
 import { CopyButton } from "@/components/copy-button";
-import { Button } from "@/components/button";
-import { ExternalLink } from "lucide-react";
-import { useReceiptSearch } from "@/hooks/use-receipt-search";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useReceiptSearch } from "@/hooks/use-receipt-search";
+import { getTransactionExplorerLink } from "@/lib/blockchain-utils";
 import { cn } from "@/lib/utils";
-import { getExplorerTxUrl } from "@/lib/blockchain-utils";
 
 interface TransactionHashCellProps {
     transactionHashes?: string[];
     receiptIds?: string[];
     className?: string;
     chainName?: string | null;
+    depositAddress?: string | null;
+    isConfidential?: boolean;
 }
 
 /**
@@ -21,7 +21,8 @@ interface TransactionHashCellProps {
  *
  * Displays a clickable transaction hash link with copy functionality.
  * If no transaction hash is provided, attempts to resolve it from receipt ID.
- * When chainName (from token metadata) is provided, it's used to pick the right
+ * Intents-routed rows (carrying a 1Click deposit address) link to the NEAR
+ * Intents explorer; otherwise chainName (from token metadata) picks the
  * block explorer for the tx hash.
  */
 export function TransactionHashCell({
@@ -29,9 +30,11 @@ export function TransactionHashCell({
     receiptIds,
     className = "flex items-center justify-end gap-2",
     chainName,
+    depositAddress,
+    isConfidential = false,
 }: TransactionHashCellProps) {
     const t = useTranslations("transactionHashCell");
-    const needsReceiptSearch = !transactionHashes?.length;
+    const needsReceiptSearch = !transactionHashes?.length && !depositAddress;
     const { data: transactionFromReceipt, isLoading } = useReceiptSearch(
         needsReceiptSearch ? receiptIds?.[0] : undefined,
     );
@@ -44,25 +47,31 @@ export function TransactionHashCell({
         return <Skeleton className={cn("h-5 w-full", className)} />;
     }
 
-    if (!transactionHash) return null;
+    const displayValue = transactionHash ?? depositAddress;
+    if (!displayValue) return null;
 
-    const explorerUrl = getExplorerTxUrl(chainName, transactionHash);
+    const explorerLink = getTransactionExplorerLink({
+        depositAddress,
+        isConfidential,
+        transactionHash,
+        chainName,
+    });
 
     return (
         <div className={className}>
-            <div className="text-sm">{transactionHash.slice(0, 12)}...</div>
-            {explorerUrl ? (
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    tooltipContent={t("openInExplorer")}
-                    onClick={() => window.open(explorerUrl, "_blank")}
+            {explorerLink ? (
+                <a
+                    href={explorerLink.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t("openInExplorer")}
+                    className="text-sm underline"
                 >
-                    <ExternalLink className="h-3 w-3" />
-                </Button>
+                    {displayValue.slice(0, 12)}...
+                </a>
             ) : null}
             <CopyButton
-                text={transactionHash}
+                text={displayValue}
                 toastMessage={t("hashCopied")}
                 variant="ghost"
                 size="icon-sm"

@@ -1,34 +1,45 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import { useQuery } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 import { useDebounce } from "use-debounce";
-import { useTranslations } from "next-intl";
-import { useQuery } from "@tanstack/react-query";
-import * as Sentry from "@sentry/nextjs";
+import type { Token } from "@/components/token-input";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { getAddressPattern } from "@/lib/address-validation";
+import { getIntentsQuote, type IntentsQuoteResponse } from "@/lib/api";
 import Big from "@/lib/big";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import { isIntentsToken } from "@/lib/intents-fee";
 import { isNearComNetwork } from "@/lib/intents-network";
 import {
     isEthImplicitNearAddress,
     isValidNearAddressFormat,
 } from "@/lib/near-validation";
-import { getIntentsQuote, type IntentsQuoteResponse } from "@/lib/api";
-import { formatBalance, nanosToMs } from "@/lib/utils";
-import type { Token } from "@/components/token-input";
-import { isIntentsToken } from "@/lib/intents-fee";
+import {
+    hasNearComAddressPrefix,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
+import { formatAssetForIntentsAPI } from "@/lib/oneclick-asset-routing";
+import { nanosToMs } from "@/lib/utils";
 
 export type IntentsAmountMode = "recipient" | "total";
 
 function isAddressValidForToken(address: string, token: Token): boolean {
     if (!address) return false;
+    const accountId = stripNearComAddressPrefix(address);
     const blockchain = getBlockchainType(token.network);
     if (blockchain === NEAR_NETWORK_ID)
-        return isValidNearAddressFormat(address);
-    if (blockchain === "unknown") return true;
+        return isValidNearAddressFormat(accountId);
+    if (blockchain === "unknown") {
+        if (hasNearComAddressPrefix(address)) {
+            return isValidNearAddressFormat(accountId);
+        }
+        return accountId.length > 0;
+    }
     const pattern = getAddressPattern(blockchain);
-    return pattern ? pattern.test(address) : true;
+    return pattern ? pattern.test(accountId) : true;
 }
 
 export function buildIntentsQuoteRequest(
@@ -41,6 +52,16 @@ export function buildIntentsQuoteRequest(
     amountMode: IntentsAmountMode = "recipient",
     destinationNetwork?: string,
     isPayment: boolean = false,
+    options?: {
+        /** 1Click routing id for cross-chain destination (may be `1cs_v1:`) */
+        destinationQuoteAssetId?: string;
+        /**
+         * Deliver a public-origin quote into the recipient's confidential
+         * balance (public-to-confidential recovery). Only affects the
+         * near.com route; the origin/refund side stays public.
+         */
+        confidentialRecipient?: boolean;
+    },
 ) {
     const deadlineMs = nanosToMs(proposalPeriod);
 
@@ -54,31 +75,43 @@ export function buildIntentsQuoteRequest(
           ? ("INTENTS" as const)
           : ("ORIGIN_CHAIN" as const);
 
-    // Empty destinationNetwork = no explicit selection. Only near.com is
-    // user-selectable today, so default to it.
-    const isNearComRoute =
-        !destinationNetwork || isNearComNetwork(destinationNetwork);
+    // Payments require an explicit destination — never treat "" as near.com
+    // (that fetched 1Click with a bad route and blocked the form).
+    // Non-payment flows may still omit destination and default to near.com.
+    const isNearComRoute = isPayment
+        ? isNearComNetwork(destinationNetwork)
+        : !destinationNetwork || isNearComNetwork(destinationNetwork);
     const recipientType = isNearComRoute
-        ? isConfidential
+        ? isConfidential || options?.confidentialRecipient
             ? ("CONFIDENTIAL_INTENTS" as const)
             : ("INTENTS" as const)
         : ("DESTINATION_CHAIN" as const);
 
-    // near.com → keep origin token address (stays on Intents).
-    // Other networks → destinationNetwork IS the bridge network id (e.g.
-    // `nep141:usdc-eth.omft.near`) and serves as the destinationAsset.
-    const destinationAsset = isNearComRoute
-        ? token.address
-        : destinationNetwork!;
-    const normalizedRecipient = isEthImplicitNearAddress(address)
-        ? address.toLowerCase()
-        : address;
+    // Held balance id for INTENTS origin. Ft picker rows store the bare
+    // contract on `balanceAssetId`; 1Click rejects that as tokenIn.
+    const originAsset = formatAssetForIntentsAPI(
+        token.balanceAssetId || token.address,
+    );
+
+    // near.com / INTENTS receive → same holdable balance id (never a chain 1cs).
+    // External receiver network → 1Click routing id for that network
+    // (caller passes destinationQuoteAssetId from the selected network).
+    const destinationAsset = formatAssetForIntentsAPI(
+        isNearComRoute
+            ? originAsset
+            : (options?.destinationQuoteAssetId ?? destinationNetwork!),
+    );
+    // 1Click wants the bare account — nearcom: is FE routing/display only.
+    const bareRecipient = stripNearComAddressPrefix(address.trim());
+    const normalizedRecipient = isEthImplicitNearAddress(bareRecipient)
+        ? bareRecipient.toLowerCase()
+        : bareRecipient;
 
     return {
         daoId: treasuryId,
         swapType: amountMode === "recipient" ? "EXACT_OUTPUT" : "EXACT_INPUT",
         slippageTolerance: 0,
-        originAsset: token.address,
+        originAsset,
         depositType,
         destinationAsset,
         amount: parsedAmount,
@@ -161,6 +194,8 @@ interface UseIntentsQuoteParams {
     feeErrorMessage?: string | null;
     amountMode?: IntentsAmountMode;
     destinationNetwork?: string;
+    /** 1Click routing id for cross-chain destination (may be `1cs_v1:`) */
+    destinationQuoteAssetId?: string;
     isPayment?: boolean;
     /** When false, the quote is never fetched (e.g. the action is paused). */
     enabled?: boolean;
@@ -177,6 +212,7 @@ export function useIntentsQuote({
     feeErrorMessage,
     amountMode = "recipient",
     destinationNetwork,
+    destinationQuoteAssetId,
     isPayment = false,
     enabled = true,
 }: UseIntentsQuoteParams) {
@@ -198,6 +234,9 @@ export function useIntentsQuote({
         !!token &&
         !!debouncedAddress &&
         isAddressValidForToken(debouncedAddress, token);
+    const hasDestinationNetwork = !!destinationNetwork?.trim();
+    // Payments: never quote without a destination (empty used to default to
+    // near.com inside buildIntentsQuoteRequest and surface recipient errors).
     const requiresDestinationSelectionForPayment = isPayment && isIntents;
     const isQuoteReady =
         enabled &&
@@ -208,7 +247,7 @@ export function useIntentsQuote({
         !!debouncedAmount &&
         Number(debouncedAmount) > 0 &&
         !!proposalPeriod &&
-        (!requiresDestinationSelectionForPayment || !!destinationNetwork) &&
+        (!requiresDestinationSelectionForPayment || hasDestinationNetwork) &&
         !feeErrorMessage;
     const missingRequiredDecimalsForQuote =
         isQuoteReady && requestAmountDecimals === undefined;
@@ -238,6 +277,7 @@ export function useIntentsQuote({
             debouncedAddress,
             amountMode,
             destinationNetwork,
+            destinationQuoteAssetId,
             isPayment,
         ],
         queryFn: async ({ signal }): Promise<IntentsQuoteResponse | null> => {
@@ -260,6 +300,7 @@ export function useIntentsQuote({
                     amountMode,
                     destinationNetwork,
                     isPayment,
+                    { destinationQuoteAssetId },
                 ),
                 false,
                 signal,
@@ -270,9 +311,13 @@ export function useIntentsQuote({
         retry: false,
     });
 
-    const hasError = hasQueryError || missingRequiredDecimalsForQuote;
+    // Don't surface stale 1Click errors after destination/address is cleared —
+    // those blocked "continue" while the user was still editing.
+    const hasError =
+        isQuoteReady && (hasQueryError || missingRequiredDecimalsForQuote);
 
     const errorMessage = useMemo(() => {
+        if (!isQuoteReady) return null;
         if (missingRequiredDecimalsForQuote) {
             return t("fetchFailed");
         }
@@ -289,6 +334,7 @@ export function useIntentsQuote({
             t,
         );
     }, [
+        isQuoteReady,
         missingRequiredDecimalsForQuote,
         hasQueryError,
         error,
@@ -329,7 +375,10 @@ export function useIntentsQuote({
             }
 
             if (feeErrorMessage) return { ok: false };
-            if (requiresDestinationSelectionForPayment && !destinationNetwork) {
+            if (
+                requiresDestinationSelectionForPayment &&
+                !destinationNetwork?.trim()
+            ) {
                 return { ok: false };
             }
 
@@ -362,6 +411,7 @@ export function useIntentsQuote({
                         amountMode,
                         destinationNetwork,
                         isPayment,
+                        { destinationQuoteAssetId },
                     ),
                     false,
                 );
@@ -401,6 +451,7 @@ export function useIntentsQuote({
             isConfidential,
             amountMode,
             destinationNetwork,
+            destinationQuoteAssetId,
             requiresDestinationSelectionForPayment,
             requestAmountDecimals,
             captureMissingDestinationDecimals,

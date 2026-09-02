@@ -1,4 +1,4 @@
-import axios from "axios";
+import { http as axios } from "@/lib/http";
 
 const BACKEND_API_BASE =
     process.env.NEXT_PUBLIC_BACKEND_API_BASE || "http://localhost:3001";

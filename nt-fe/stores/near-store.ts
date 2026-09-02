@@ -15,7 +15,7 @@ import { APP_WALLET_SETUP_URL } from "@/constants/config";
 import { markPaymentPending } from "@/features/onboarding/payment-pending";
 import { getNearStoreMessages } from "@/i18n/store-messages";
 import { trackEvent } from "@/lib/analytics";
-import { markDaoDirty, relayDelegateAction } from "@/lib/api";
+import { markDaoDirty, refreshProposal, relayDelegateAction } from "@/lib/api";
 import {
     type AuthUserInfo,
     acceptTerms as apiAcceptTerms,
@@ -29,20 +29,26 @@ import {
     getKindFromProposal,
     type ProposalPermissionKind,
 } from "@/lib/config-utils";
-import type { Proposal, Vote as ProposalVote } from "@/lib/proposals-api";
 import { ensurePasskeyWallet } from "@/lib/passkey-wallet";
+import {
+    getLastProposalId,
+    type Proposal,
+    type Vote as ProposalVote,
+} from "@/lib/proposals-api";
+import { reportError } from "@/lib/report-error";
 import { clearSessionQueries } from "@/lib/session-query-cleanup";
 import {
     estimateProposalStorage,
     estimateVoteStorage,
 } from "@/lib/sputnik-storage";
 import { cn } from "@/lib/utils";
+import { isUserRejection } from "@/lib/wallet-errors";
 import {
     DIRECT_TRIGGER_WALLET_IDS,
+    isDirectTriggerWallet,
     SELECTED_WALLET_STORAGE_KEY,
     TARGET_WALLET_STORAGE_KEY,
     WALLET_IDS,
-    isDirectTriggerWallet,
 } from "@/lib/wallets";
 
 /**
@@ -249,8 +255,8 @@ interface NearStore {
         storageBytes: Big,
         proposalType?: string,
         addressBookPayment?: boolean,
-    ) => Promise<boolean>;
-    createProposal: (params: CreateProposalParams) => Promise<void>;
+    ) => Promise<number[]>;
+    createProposal: (params: CreateProposalParams) => Promise<number[]>;
     voteProposals: (treasuryId: string, votes: Vote[]) => Promise<void>;
 }
 
@@ -459,7 +465,13 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 });
             }
         } catch (error) {
-            console.error("Authentication failed:", error);
+            if (!isUserRejection(error)) {
+                reportError(error, "Authentication failed", {
+                    code: "FE_WALLET_AUTH_FAILED",
+                });
+            } else {
+                console.error("Authentication failed:", error);
+            }
             set({
                 isAuthenticating: false,
                 authError:
@@ -618,7 +630,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         storageBytes: Big,
         proposalType?: string,
         addressBookPayment?: boolean,
-    ): Promise<boolean> => {
+    ): Promise<number[]> => {
         const state = get();
         if (!isFullyAuthenticated(state)) {
             throw new Error(
@@ -634,6 +646,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         // Relay each signed delegate action to the backend for gas-sponsored submission.
         // proposalType is only passed for the first action (the actual proposal/vote);
         // subsequent actions are helper calls like storage_deposit.
+        const proposalIds: number[] = [];
         for (let i = 0; i < result.signedDelegateActions.length; i++) {
             const relayResult = await relayDelegateAction(
                 treasuryId,
@@ -647,9 +660,12 @@ export const useNearStore = create<NearStore>((set, get) => ({
                     relayResult.error || "Failed to relay delegate action",
                 );
             }
+            if (relayResult.proposalIds) {
+                proposalIds.push(...relayResult.proposalIds);
+            }
         }
 
-        return true;
+        return proposalIds;
     },
 
     createProposal: async (params: CreateProposalParams) => {
@@ -706,7 +722,7 @@ export const useNearStore = create<NearStore>((set, get) => ({
         }));
 
         try {
-            await get().signAndSendDelegateAction(
+            return await get().signAndSendDelegateAction(
                 params.treasuryId,
                 { delegateActions, network: "mainnet" },
                 storageBytes,
@@ -714,7 +730,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 params.addressBookPayment,
             );
         } catch (error) {
-            console.error("Failed to create proposal:", error);
+            if (!isUserRejection(error)) {
+                reportError(error, "Failed to create proposal", {
+                    code: "FE_WALLET_SIGN_FAILED",
+                    priority: "p1",
+                });
+            } else {
+                console.error("Failed to create proposal:", error);
+            }
             toast.error(getNearStoreMessages().transactionNotApproved);
             throw error;
         }
@@ -788,7 +811,14 @@ export const useNearStore = create<NearStore>((set, get) => ({
                 treasury_id: treasuryId,
             });
         } catch (error) {
-            console.error("Failed to vote proposals:", error);
+            if (!isUserRejection(error)) {
+                reportError(error, "Failed to vote proposals", {
+                    code: "FE_WALLET_SIGN_FAILED",
+                    priority: "p1",
+                });
+            } else {
+                console.error("Failed to vote proposals:", error);
+            }
             toast.error(
                 votes.length > 1
                     ? getNearStoreMessages().failedSubmitVotes
@@ -836,7 +866,21 @@ export const useNear = () => {
         params: CreateProposalParams,
         showToast: boolean = true,
     ) => {
-        await storeCreateProposal(params);
+        const proposalIds = await storeCreateProposal(params);
+        // Nudge the backend about the new proposal (fire-and-forget): it
+        // re-fetches from chain RPC and projects it, so history reflects the
+        // proposal seconds after submission instead of at indexer speed. The
+        // relay reports the created ids; if it didn't, fall back to the DAO's
+        // counter minus one.
+        if (proposalIds.length > 0) {
+            for (const id of proposalIds) {
+                refreshProposal(params.treasuryId, id);
+            }
+        } else {
+            void getLastProposalId(params.treasuryId)
+                .then((count) => refreshProposal(params.treasuryId, count - 1))
+                .catch(() => {});
+        }
         // Signal the onboarding flow that a payment request was just made so it
         // can poll for it while the backend indexer catches up.
         if (params.proposalType === "payment") {
@@ -878,6 +922,12 @@ export const useNear = () => {
 
     const voteProposals = async (treasuryId: string, votes: Vote[]) => {
         await storeVoteProposals(treasuryId, votes);
+        // An approving vote may have just executed the proposal — nudge the
+        // backend (fire-and-forget) so the pending payment/exchange row
+        // appears in history before the indexer catches up.
+        for (const vote of votes) {
+            refreshProposal(treasuryId, vote.proposalId);
+        }
         // Invalidate queries after delay and show toast simultaneously
         await new Promise((resolve) => setTimeout(resolve, 2000));
 

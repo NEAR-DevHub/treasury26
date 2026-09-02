@@ -106,7 +106,8 @@
         "wallet": "ウォレット",
         "termsOfService": "利用規約",
         "privacyPolicy": "プライバシーポリシー",
-        "disconnect": "切断"
+        "disconnect": "ログアウト",
+        "myAccount": "マイアカウント"
     },
     "auth": {
         "noWallet": "ウォレットを接続してください",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Trezuウォレット",
             "description": "Trezu経由でトレジャリー提案に署名"
+        },
+        "account": {
+            "title": "マイアカウント",
+            "description": "個人プロフィールと設定を管理"
         }
     },
     "depositModal": {
@@ -270,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "選択した資産とネットワークの入金アドレスを取得できませんでした。",
-            "fetchFailed": "入金アドレスの取得に失敗しました。もう一度お試しください。"
+            "fetchFailed": "入金アドレスの取得に失敗しました。もう一度お試しください。",
+            "loginRequired": "ワンタイム入金アドレスを生成するにはサインインしてください。"
         },
         "title": "入金",
         "subtitle": "資産とネットワークを選択して入金アドレスを表示",
@@ -283,7 +289,7 @@
         "depositAddressHeading": "入金アドレス",
         "depositAddressSubtitle": "入金アドレスは必ず再確認してください。",
         "depositAddressSubtitleConfidential": "<semibold>この入金アドレスは1回限りです。</semibold> このアドレスを再利用したり、有効期限後に送金したりすると、資金を恒久的に失う可能性があります。",
-        "depositAddressSubtitleConfidentialExpiry": "生成時点から3日間有効です。失効まで: 残り{expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "生成時点から14日間有効です。失効まで: 残り{expiresIn}",
         "singleUseAcknowledgement": "このアドレスは一度だけ使用します",
         "addressLabel": "アドレス",
         "addressCopied": "アドレスをクリップボードにコピーしました",
@@ -306,7 +312,91 @@
             "fiatAnswer": "現時点では未対応ですが、法定通貨での入金をまもなく提供できるよう取り組んでいます。今しばらくお待ちください - まもなく公開予定です 🚀",
             "arrivalQuestion": "入金が反映されるまでどのくらいかかりますか？",
             "arrivalAnswer": "処理時間はネットワークによって異なります。"
-        }
+        },
+        "back": "戻る",
+        "publicAddressTitle": "{network} 上の {symbol} 入金アドレス",
+        "publicAddressSubtitle": "このトークンのみを、このネットワークで下のアドレスに送ってください。",
+        "oneTimeAddressTitle": "{network} ネットワーク上のワンタイム {symbol} 入金アドレス",
+        "oneTimeAddressSubtitle": "このトークンのみを、このネットワークで下のアドレスに送ってください。",
+        "confidentialTrezuTitle": "near.com ネットワーク上の機密 Trezu からの入金",
+        "confidentialTrezuSubtitle": "機密 Trezu から任意の資産を受け取れます。",
+        "confidentialNearcomTitle": "内部ネットワーク上の機密 near.com からの入金",
+        "confidentialNearcomSubtitle": "機密 near.com から任意の資産を受け取れます。",
+        "oneTimeSectionTitle": "ワンタイム機密入金アドレス",
+        "oneTimeSectionSubtitle": "一度だけ使用してください。初回入金以降は失われます。",
+        "internalAddressTitle": "これは内部の機密アドレスです",
+        "generateAddress": "アドレスを生成",
+        "showAddress": "アドレスを表示",
+        "copy": "コピー",
+        "share": "共有",
+        "linkCopied": "リンクをクリップボードにコピーしました",
+        "minDepositValue": "最低入金額 <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "テスト入金を<bold>送らないでください</bold>",
+        "doNotReuseAddress": "アドレスを<bold>再利用・保存・ホワイトリスト登録・共有しないでください</bold>",
+        "doNotReuseAddressShort": "アドレスを<bold>再利用・保存・ホワイトリスト登録しないでください</bold>",
+        "oneTimeAckCheckbox": "これはワンタイムアドレスであり、1回の送金で少なくとも {amount} {symbol} を送る必要があることを理解しています。",
+        "oneTimeAckCheckboxNoMin": "これは1回の送金でのみ使用するワンタイムアドレスであることを理解しています。",
+        "onlySendAssetNetwork": "<bold>{network}</bold> ネットワークで <bold>{symbol}</bold> のみを送ってください。他の資産やネットワークでは資金を失います。",
+        "expiresInDays": "<bold>{days} 日</bold>で期限切れ – <bold>未使用でも</bold>。",
+        "createNewAddressHint": "別の入金情報が必要ですか？<link>新しいアドレスを作成</link>。別のアドレスを作成しても、このアドレスは無効になりません。",
+        "receivesOnlyConfidential": "機密 Trezu または near.com アカウントからのみ資金を受け取ります",
+        "receivesOnlyConfidentialSub": "再利用可能。期限なし。",
+        "anythingElseLost": "他から送られたものは失われます",
+        "anythingElseLostSub": "取引所、公開ウォレット、他のネットワーク – 復元できません。",
+        "confidentialAckCheckbox": "機密 Trezu または near.com 以外からの入金は失われることを理解しています。",
+        "onlyFromConfidentialTrezu": "機密 <bold>Trezu</bold> からのみ",
+        "onlyFromConfidentialNearcom": "機密 <bold>near.com</bold> からのみ",
+        "reusableDoesntExpire": "<bold>再利用可能。</bold>期限なし",
+        "fundsOutsideTrezuLost": "機密 Trezu 以外から送られた資金は失われます",
+        "fundsOutsideNearcomLost": "機密 near.com 以外から送られた資金は失われます",
+        "publicNetworkRecommendation": "<bold>{network}</bold> ネットワークからのみ入金してください。全額を送る前に少額のテスト取引から始めることをおすすめします。",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "公開ウォレットから",
+                "subtitle": "ワンタイム入金アドレスを作成"
+            },
+            "confidentialUser": {
+                "title": "機密ユーザーから",
+                "subtitle": "機密 Trezu と near.com から入金"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "機密 Trezu から",
+            "nearcom": "機密 near.com から",
+            "short": "機密から"
+        },
+        "guestBanner": {
+            "title": "ゲストとして表示しています",
+            "description": "このアドレスは他者の treasury のものです。送信前に再確認してください。"
+        },
+        "transfer": {
+            "title": "Treasury へ送金",
+            "waitingForPayment": "支払い待ち",
+            "youSendFromPublic": "任意の公開ウォレットから送金",
+            "youSend": "送金内容",
+            "goesTo": "送金先",
+            "assetOnNetwork": "{network} ネットワーク上の {symbol}",
+            "anyAsset": "任意の資産",
+            "onNetwork": "{network} ネットワーク上",
+            "onNearcomNetwork": "near.com ネットワーク上",
+            "anyAssetOnNearcom": "near.com ネットワーク上の任意の資産",
+            "securedOnTrezu": "Trezu で保護",
+            "payWithTrezu": "Trezu で支払う",
+            "payWithNearcom": "near.com で支払う",
+            "payRequiresTreasury": "支払うには Trezu treasury でサインインしてください。",
+            "copyLink": "リンクをコピー",
+            "titleConfidential": "機密 Treasury へ送金",
+            "chooseTreasuryTitle": "Treasury を選択",
+            "chooseTreasuryDescription": "この支払いの送金元の Treasury はどれですか？",
+            "noMemberTreasuries": "まだどの Treasury のメンバーでもありません。",
+            "createTreasury": "Treasury を作成",
+            "expired": "期限切れ",
+            "used": "使用済み",
+            "linkInactiveTitle": "このリンクは無効です",
+            "linkInactiveDescription": "この支払いを行うには、リンクを送った人に新しいリンクを依頼してください。"
+        },
+        "expiresInRemaining": "<time>{duration}</time>で期限切れ – <bold>未使用でも</bold>。",
+        "addressExpired": "このアドレスは期限切れです。"
     },
     "assetDetails": {
         "coinPrice": "コイン価格",
@@ -843,7 +933,8 @@
             "yourLink": "招待リンク",
             "copyLink": "リンクをコピー",
             "linkCopied": "招待リンクをコピーしました",
-            "generateNewLink": "新しいリンクを作成"
+            "generateNewLink": "新しいリンクを作成",
+            "generatingNewLink": "新しいリンクを作成中"
         },
         "joinRequests": {
             "title": "参加希望",
@@ -871,6 +962,9 @@
             "successTitle": "もう少しで参加できます",
             "successDescription": "チームがリクエストを確認したら\n参加できます。今は他にすることはありません。",
             "seeTreasury": "トレジャリーを見る",
+            "alreadyMemberTitle": "すでにメンバーです",
+            "alreadyMemberDescription": "アクセスを申請する必要はありません — すでに {treasury} の一員です。",
+            "goToTreasury": "トレジャリーへ",
             "invalidTitle": "招待が見つかりません",
             "invalidDescription": "この招待リンクは無効か、利用できなくなっています。",
             "usedTitle": "招待は使用済みです",
@@ -978,7 +1072,11 @@
             "fileReadError": "ファイルの読み込みエラーです。もう一度お試しください。",
             "primaryColor": "メインカラー",
             "primaryColorDescription": "トレジャリーのインターフェース要素のメインカラーを設定します。この色はライトモードとダークモードの両方で使われるため、ニュートラルな色を選ぶ際はコントラストに注意してください。",
-            "selectColorLabel": "色 {color} を選択"
+            "selectColorLabel": "色 {color} を選択",
+            "saveChanges": "変更を保存",
+            "saving": "保存中...",
+            "savedToast": "変更を保存しました。",
+            "saveFailed": "変更を保存できませんでした。もう一度お試しください。"
         },
         "voting": {
             "validation": {
@@ -1042,7 +1140,7 @@
         "review": {
             "header": "詳細を確認",
             "youAreAdding": "追加対象:",
-            "newRecipients": "{count, plural, other {# 人の新しい受取人}}",
+            "newRecipients": "{count, plural, =0 {新しい受取人はいません} other {# 人の新しい受取人}}",
             "onNetworks": "{count, plural, other {# 件のネットワーク}}上",
             "recipients": "受取人",
             "allDuplicates": "インポートされたすべての受取人はすでにアドレス帳に存在します。戻って別のリストをアップロードするか、このレビューから重複を削除してください。",
@@ -1452,44 +1550,49 @@
             "functionCall": "外部dAppからの提案: {receiverId}で{methods}",
             "unsupportedAction": "未対応のアクションタイプ「{type}」。TransferとFunctionCallアクションのみTrezu提案に変換できます。"
         },
-        "loading": "読み込み中...",
-        "connectPrompt": "続行するにはNEARウォレットを接続してください。その後、代理として動作するトレジャリーを選択します。",
+        "connectPrompt": "Trezuに参加したときと同じウォレットを使用してください。\nログインすればトレジャリーが待っています。",
         "connectWallet": "ウォレットを接続",
-        "cancel": "キャンセル",
+        "connecting": "接続中...",
         "connectedAs": "<strong>{account}</strong>として接続中",
         "loadingTreasuries": "トレジャリーを読み込み中...",
-        "selectSignIn": "サインインするトレジャリーを選択:",
+        "selectSignIn": "{app, select, unknown {使用するトレジャリーを選択してください。} other {{app}で使用するトレジャリーを選択してください。}}",
         "selectSignTx": "提案を作成するトレジャリーを選択:",
         "notMember": "あなたはどのトレジャリーのメンバーでもありません。",
-        "actingAs": "代理として動作中:",
-        "signedBy": "{account}が署名",
-        "createsNProposals": "次のために{count, plural, other {# 件のTrezu提案}}を作成します:",
-        "proposalDescriptionLabel": "提案の説明(任意)",
-        "proposalDescriptionPlaceholder": "この提案を説明してください...",
+        "actingAs": "この提案を実行するトレジャリー",
+        "signedBy": "提案リクエスト元: {account}",
+        "createsNProposals": "提案を作成",
+        "proposalDescriptionPlaceholder": "提案にコメントを追加（任意）...",
         "createProposal": "提案を作成",
         "creatingProposal": "提案を作成中...",
         "confirmInWallet": "ウォレットで確認してください",
-        "proposalSubmitted": "提案を送信しました",
-        "shareProposal": "提案が作成されました。下のリンクをトレジャリーメンバーと共有して投票してもらってください。",
+        "proposalSubmitted": "提案が作成されました！",
+        "shareProposal": "{count, plural, =1 {Trezuを開いてリクエストを承認してください。} other {Trezuを開いて#件のリクエストを承認してください。}}",
         "proposalLink": "{daoId} — 提案 #{id}",
-        "checking": "確認中...",
-        "proposalApprovedProceed": "提案が承認されました。続行してください",
-        "signedInSuccess": "正常にサインインしました",
+        "walletOpensNotice": "{count, plural, =1 {NEARウォレットが1回開き、提案に署名します。完了してください。} =2 {NEARウォレットが2回開きます — 提案ごとに1回。両方完了してください。} other {NEARウォレットが#回開きます — 提案ごとに1回。すべて完了してください。}}",
+        "whatToDoNext": "次のステップ",
+        "stepApproveTitle": "Trezuを開いてリクエストを承認",
+        "stepVotesTitle": "十分な投票を待つ",
+        "stepVotesDesc": "トレジャリーが設定に基づく必要承認数に達すると、実行されます。",
+        "stepExecutedTitle": "トランザクション実行済み",
+        "openTrezuApprove": "Trezuを開いて承認",
+        "signedInSuccess": "トレジャリーに接続しました",
         "proposalCreatedSuccess": "提案が正常に作成されました",
         "closeWindow": "このウィンドウを閉じることができます。",
         "errorGeneric": "エラーが発生しました",
         "tryAgain": "もう一度お試しください",
+        "errorProposalsNotCreated": "提案は作成されませんでした",
+        "tryCreateAgain": "提案の作成を再試行",
         "errors": {
             "parseTx": "トランザクションリクエストの解析に失敗しました。もう一度お試しください。",
             "fetchTreasuries": "トレジャリーの取得に失敗しました。もう一度お試しください。",
             "connectFailed": "ウォレットの接続に失敗しました",
             "createProposalFailed": "提案の作成に失敗しました",
-            "stillPending": "提案はまだ承認待ちです。トレジャリーメンバーの投票をお待ちください。",
             "wasStatus": "提案 #{id} は{status}でした",
             "awaitIndex": "提案は承認されましたが、実行トランザクションがまだインデックスされていません。少し時間を置いてからもう一度お試しください。",
             "checkStatusFailed": "提案ステータスの確認に失敗しました",
             "userCancelled": "ユーザーがキャンセルしました",
-            "proposalWasStatus": "提案は{status}でした"
+            "proposalWasStatus": "提案は{status}でした",
+            "noProposalIds": "提案は作成されましたが、IDを特定できませんでした。トレジャリーのリクエストページを確認してください。"
         }
     },
     "telegram": {
@@ -1785,6 +1888,7 @@
         "Batch Payment Request": "一括支払いリクエスト",
         "Payment Request": "支払いリクエスト",
         "Confidential Request": "機密リクエスト",
+        "Move to Confidential": "機密へ移動",
         "Exchange": "交換",
         "Function Call": "関数呼び出し",
         "Change Policy": "ポリシー変更",
@@ -1823,7 +1927,8 @@
         "comingSoon": "近日公開",
         "forMembersOnly": "メンバー限定",
         "nearComDescription": "機密trezu用ネットワーク",
-        "nearDescription": "公開出金およびnear.comウォレット用ネットワーク"
+        "nearComDescriptionPublic": "near.com用ネットワーク",
+        "nearDescription": "公開出金用ネットワーク"
     },
     "addressBookTable": {
         "emptyTitle": "受取人はまだいません",
@@ -2060,10 +2165,9 @@
         "exchangeFulfillment": "交換",
         "stakingRewards": "ステーキング報酬",
         "proposalAction": "提案アクション",
-        "deposit": "{symbol}を入金",
-        "paymentSent": "支払い送信",
+        "deposit": "入金",
+        "transfer": "送金",
         "transaction": "トランザクション",
-        "fallbackToken": "トークン",
         "viaIntents": "NEAR Intents経由",
         "from": "{account}から",
         "to": "{account}へ",
@@ -2106,6 +2210,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# 名の受取人を追加しました}}",
+        "alreadyExistsToast": "この受取人はすでにアドレス帳にあります",
         "addedSingleToast": "受取人を追加しました",
         "addFailedToast": "受取人の追加に失敗しました",
         "addSingleFailedToast": "受取人の追加に失敗しました",
@@ -2299,6 +2404,10 @@
             "title": "Trezuを探索",
             "description": "アカウントを作成して、Trezuのすべての機能と特典の権限をアンロックしましょう。",
             "cta": "トレジャリーを作成"
+        },
+        "pendingJoinBanner": {
+            "title": "参加リクエストは承認待ちです",
+            "description": "このトレジャリーは今すぐ閲覧できます。メンバーが承認すると、ロールに応じてリクエストの作成、投票、資金管理ができるようになります。"
         },
         "infoBox": {
             "title": "Trezuをもっと活用",
@@ -2537,6 +2646,59 @@
             "pattern": "{label}が必要なパターンに一致しません",
             "min": "{label}は{min}以上である必要があります",
             "max": "{label}は{max}以下である必要があります"
+        }
+    },
+    "account": {
+        "personalSettings": "個人設定",
+        "uploadAvatar": "アバターをアップロード",
+        "removeAvatar": "アバターを削除",
+        "uploading": "アップロード中...",
+        "displayName": "表示名",
+        "displayNamePlaceholder": "表示名を入力",
+        "myWallet": "マイウォレット",
+        "saveChanges": "変更を保存",
+        "saving": "保存中...",
+        "saveSuccess": "変更を保存しました。",
+        "saveError": "変更を保存できませんでした。もう一度お試しください。",
+        "invalidImage": "有効な画像ファイルを選択してください。",
+        "imageTooLarge": "画像は2 MB以下にしてください。",
+        "signInRequired": "アカウントを管理するにはウォレットを接続してください。",
+        "avatarUploaded": "アバターをアップロードしました",
+        "uploadError": "画像のアップロード中にエラーが発生しました。もう一度お試しください。"
+    },
+    "moveAssets": {
+        "title": "資産を移動",
+        "description": "パブリックチェーンから機密トレジャリーへ資産を移動します。",
+        "submitted": "移動リクエストを送信しました",
+        "banner": {
+            "title": "<amount></amount> がパブリック残高に着金しました",
+            "description": "誰かが誤ったネットワークで送金しました。ここに移動して機密化してください。",
+            "moveAssets": "資産を移動",
+            "viewRequest": "リクエストを表示"
+        },
+        "list": {
+            "title": "移動が必要な資金",
+            "token": "トークン",
+            "moveAssets": "資産を移動",
+            "emptyTitle": "移動するものはありません",
+            "emptyDescription": "パブリック残高は空です。パブリックアカウントに送られた資金はここに表示されます。",
+            "viewRequest": "リクエストを表示"
+        },
+        "form": {
+            "title": "機密へ",
+            "review": "移動内容を確認",
+            "reviewDisabled": "金額を入力"
+        },
+        "review": {
+            "title": "移動内容の確認",
+            "youMove": "移動する額"
+        },
+        "errors": {
+            "invalid": "有効な金額を入力してください",
+            "zero": "金額は0より大きい必要があります",
+            "tooManyDecimals": "このトークンには小数桁が多すぎます",
+            "exceedsBalance": "金額がパブリック残高を超えています",
+            "failed": "移動リクエストを準備できませんでした。もう一度お試しください。"
         }
     }
 }

@@ -5,7 +5,7 @@ use serde_json::json;
 use crate::{
     AppState,
     handlers::status::{
-        config::{ALERT_AFTER_FAILURES, RECOVER_AFTER_SUCCESSES},
+        config::{self, RECOVER_AFTER_SUCCESSES},
         fallbacks::{
             self, POST_TO_APP_CALLBACK_PREFIX, StatusIncident, admin_page_url, oh_dear_status_url,
         },
@@ -421,47 +421,57 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
         };
 
         // Wait for consecutive failures before notifying (filters brief blips).
-        if incident.telegram_message_id.is_none()
-            && incident.consecutive_failures >= ALERT_AFTER_FAILURES
-        {
-            let text = notifications::format_health_check_alert(
-                service,
-                check_name,
-                status,
-                &check.notification_message,
-            );
-            let callback_data = fallbacks::supports_fallback_button(service)
-                .then(|| format!("{POST_TO_APP_CALLBACK_PREFIX}{service}"));
-            let admin_url = admin_page_url();
-            let check_url = oh_dear_status_url(service);
+        let alert_after = config::alert_after_failures(service);
+        if incident.telegram_message_id.is_none() {
+            if incident.consecutive_failures < alert_after {
+                tracing::debug!(
+                    "[status-monitor] {service} unhealthy ({}/{} consecutive); holding ops alert",
+                    incident.consecutive_failures,
+                    alert_after
+                );
+            } else {
+                let text = notifications::format_health_check_alert(
+                    service,
+                    check_name,
+                    status,
+                    &check.notification_message,
+                );
+                let callback_data = fallbacks::supports_fallback_button(service)
+                    .then(|| format!("{POST_TO_APP_CALLBACK_PREFIX}{service}"));
+                let admin_url = admin_page_url();
+                let check_url = oh_dear_status_url(service);
 
-            match state
-                .telegram_client
-                .send_ops_alert_with_buttons(
-                    &text,
-                    &admin_url,
-                    Some(&check_url),
-                    callback_data.as_deref(),
-                )
-                .await
-            {
-                Ok(message_id) if message_id > 0 => {
-                    tracing::info!(
-                        "[status-monitor] Sent ops alert for {service} after {} failures (telegram message {message_id})",
-                        incident.consecutive_failures
-                    );
-                    if let Err(e) =
-                        set_incident_telegram_message(&state.db_pool, incident.id, message_id).await
-                    {
+                match state
+                    .telegram_client
+                    .send_ops_alert_with_buttons(
+                        &text,
+                        &admin_url,
+                        Some(&check_url),
+                        callback_data.as_deref(),
+                    )
+                    .await
+                {
+                    Ok(message_id) if message_id > 0 => {
+                        tracing::info!(
+                            "[status-monitor] Sent ops alert for {service} after {} failures (telegram message {message_id})",
+                            incident.consecutive_failures
+                        );
+                        if let Err(e) =
+                            set_incident_telegram_message(&state.db_pool, incident.id, message_id)
+                                .await
+                        {
+                            tracing::error!(
+                                "[status-monitor] Failed to persist telegram message id for incident {}: {e}",
+                                incident.id
+                            );
+                        }
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
                         tracing::error!(
-                            "[status-monitor] Failed to persist telegram message id for incident {}: {e}",
-                            incident.id
+                            "[status-monitor] Failed to send ops alert for {service}: {e}"
                         );
                     }
-                }
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::error!("[status-monitor] Failed to send ops alert for {service}: {e}");
                 }
             }
         }
@@ -509,6 +519,9 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
 
         delete_linked_warnings(state, service).await;
 
+        // Only notify recovery when we previously alerted ops about the outage.
+        let had_ops_alert = incident.telegram_message_id.is_some();
+
         match fallbacks::delete_fallback(state, service).await {
             Ok(Some(recovery)) => {
                 tracing::info!(
@@ -518,9 +531,15 @@ async fn process_service(state: &Arc<AppState>, service: &str) {
             }
             Ok(None) => {
                 tracing::info!("[status-monitor] Recovered {service}");
+                if had_ops_alert {
+                    send_health_recovery_telegram(state, service, check_name).await;
+                }
             }
             Err(e) => {
                 tracing::error!("[status-monitor] Failed to delete fallback for {service}: {e}");
+                if had_ops_alert {
+                    send_health_recovery_telegram(state, service, check_name).await;
+                }
             }
         }
     }
@@ -620,7 +639,24 @@ async fn send_recovery_telegram(state: &Arc<AppState>, recovery: &fallbacks::Aut
     }
 }
 
-pub async fn run_monitor_cycle(state: &Arc<AppState>) {
+async fn send_health_recovery_telegram(state: &Arc<AppState>, service: &str, check_name: &str) {
+    let text = notifications::format_health_check_recovery(service, check_name);
+    match state.telegram_client.send_ops_alert_html(&text).await {
+        Ok(()) => {
+            tracing::info!("[status-monitor] Sent recovery ops alert for {service}");
+        }
+        Err(e) => {
+            tracing::error!(
+                "[status-monitor] Failed to send recovery ops alert for {service}: {e}"
+            );
+        }
+    }
+}
+
+/// Per-service check failures are the feature (they open incidents), so they
+/// never fail the cycle; only infrastructure failures (the fallback cleanup)
+/// propagate as a task error so the run shows Failed on the board.
+pub async fn run_monitor_cycle(state: &Arc<AppState>) -> Result<(), String> {
     futures::future::join_all(SUPPORTED_SERVICES.iter().map(|&service| {
         let state = Arc::clone(state);
         async move {
@@ -644,9 +680,8 @@ pub async fn run_monitor_cycle(state: &Arc<AppState>) {
                 );
                 send_recovery_telegram(state, &recovery).await;
             }
+            Ok(())
         }
-        Err(e) => {
-            tracing::error!("[status-monitor] Failed stale auto-fallback cleanup: {e}");
-        }
+        Err(e) => Err(format!("stale auto-fallback cleanup failed: {e}")),
     }
 }

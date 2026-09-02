@@ -545,7 +545,7 @@ async fn update_confidential_intent_proposal(
     Ok(false)
 }
 
-async fn handle_confidential_add_proposal(
+pub(crate) async fn handle_confidential_add_proposal(
     app_pool: &PgPool,
     network: &NetworkConfig,
     dao_id: &str,
@@ -650,7 +650,10 @@ pub async fn run_enrichment_cycle(
     intents_api_url: &str,
     history_state: Option<&AppState>,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    let http_client = reqwest::Client::new();
+    let http_client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .connect_timeout(std::time::Duration::from_secs(5))
+        .build()?;
     let consumer_name = "balance_enrichment";
     let cursor = load_goldsky_cursor(app_pool, goldsky_pool, consumer_name).await?;
 

@@ -106,7 +106,8 @@
         "wallet": "Portefeuille",
         "termsOfService": "Conditions d'utilisation",
         "privacyPolicy": "Politique de confidentialité",
-        "disconnect": "Déconnecter"
+        "disconnect": "Se déconnecter",
+        "myAccount": "Mon compte"
     },
     "auth": {
         "noWallet": "Connectez votre portefeuille",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Portefeuille Trezu",
             "description": "Signez les propositions de trésorerie via Trezu"
+        },
+        "account": {
+            "title": "Mon compte",
+            "description": "Gérez votre profil et vos paramètres personnels"
         }
     },
     "depositModal": {
@@ -270,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "Impossible de récupérer l'adresse de dépôt pour l'actif et le réseau sélectionnés.",
-            "fetchFailed": "Échec de la récupération de l'adresse de dépôt. Veuillez réessayer."
+            "fetchFailed": "Échec de la récupération de l'adresse de dépôt. Veuillez réessayer.",
+            "loginRequired": "Connectez-vous pour générer une adresse de dépôt à usage unique."
         },
         "title": "Dépôt",
         "subtitle": "Sélectionnez un actif et un réseau pour voir l'adresse de dépôt",
@@ -283,7 +289,7 @@
         "depositAddressHeading": "Adresse de dépôt",
         "depositAddressSubtitle": "Vérifiez toujours votre adresse de dépôt.",
         "depositAddressSubtitleConfidential": "<semibold>Adresse de dépôt à usage unique.</semibold> Réutiliser cette adresse ou envoyer des fonds après expiration peut entraîner une perte permanente des fonds.",
-        "depositAddressSubtitleConfidentialExpiry": "Valide pendant 3 jours à compter de sa génération. Expire dans : il reste {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Valable 14 jours à compter de la génération. Expire dans : {expiresIn} restants",
         "singleUseAcknowledgement": "J'utiliserai cette adresse une seule fois",
         "addressLabel": "Adresse",
         "addressCopied": "Adresse copiée dans le presse-papiers",
@@ -306,7 +312,91 @@
             "fiatAnswer": "Pas pour le moment, mais nous travaillons pour proposer bientôt les dépôts fiat. Restez à l’écoute - c’est en route 🚀",
             "arrivalQuestion": "Combien de temps faut-il pour qu’un dépôt arrive ?",
             "arrivalAnswer": "Le délai de traitement dépend du réseau."
-        }
+        },
+        "back": "Retour",
+        "publicAddressTitle": "Adresse de dépôt {symbol} sur {network}",
+        "publicAddressSubtitle": "N’envoyez que ce jeton, sur ce réseau, à l’adresse ci-dessous.",
+        "oneTimeAddressTitle": "Adresse de dépôt à usage unique {symbol} sur le réseau {network}",
+        "oneTimeAddressSubtitle": "N’envoyez que ce jeton, sur ce réseau, à l’adresse ci-dessous.",
+        "confidentialTrezuTitle": "Dépôt depuis Trezu confidentiel sur le réseau near.com",
+        "confidentialTrezuSubtitle": "Recevez n’importe quel actif depuis Trezu confidentiel.",
+        "confidentialNearcomTitle": "Dépôt depuis near.com confidentiel sur le réseau interne",
+        "confidentialNearcomSubtitle": "Recevez n’importe quel actif depuis near.com confidentiel.",
+        "oneTimeSectionTitle": "Adresse de dépôt confidentielle à usage unique",
+        "oneTimeSectionSubtitle": "À n’utiliser qu’une seule fois ; tout après le premier dépôt est perdu.",
+        "internalAddressTitle": "Voici votre adresse confidentielle interne",
+        "generateAddress": "Générer l’adresse",
+        "showAddress": "Afficher l’adresse",
+        "copy": "Copier",
+        "share": "Partager",
+        "linkCopied": "Lien copié dans le presse-papiers",
+        "minDepositValue": "Dépôt minimum <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>N’envoyez pas</bold> de dépôt test",
+        "doNotReuseAddress": "<bold>Ne</bold> réutilisez pas, n’enregistrez pas, n’ajoutez pas à une liste blanche et ne partagez pas l’adresse",
+        "doNotReuseAddressShort": "<bold>Ne</bold> réutilisez pas, n’enregistrez pas et n’ajoutez pas l’adresse à une liste blanche",
+        "oneTimeAckCheckbox": "Je comprends que c’est une adresse à usage unique et que je dois envoyer au moins {amount} {symbol} en un seul transfert.",
+        "oneTimeAckCheckboxNoMin": "Je comprends que c’est une adresse à usage unique à utiliser en un seul transfert.",
+        "onlySendAssetNetwork": "N’envoyez que <bold>{symbol}</bold> sur le réseau <bold>{network}</bold>. D’autres actifs ou réseaux entraîneront une perte de fonds.",
+        "expiresInDays": "Expire dans <bold>{days} jours</bold> – <bold>même si inutilisée</bold>.",
+        "createNewAddressHint": "Besoin d’autres détails de dépôt ? <link>Créer une nouvelle adresse</link>. En créer une autre ne désactive pas celle-ci.",
+        "receivesOnlyConfidential": "Reçoit des fonds uniquement depuis des comptes Trezu ou near.com confidentiels",
+        "receivesOnlyConfidentialSub": "Réutilisable. N’expire pas.",
+        "anythingElseLost": "Tout envoi depuis ailleurs est perdu",
+        "anythingElseLostSub": "Exchanges, portefeuilles publics, autres réseaux – irrécupérable.",
+        "confidentialAckCheckbox": "Je comprends que les dépôts hors Trezu ou near.com confidentiels seront perdus.",
+        "onlyFromConfidentialTrezu": "Uniquement depuis <bold>Trezu</bold> confidentiel",
+        "onlyFromConfidentialNearcom": "Uniquement depuis <bold>near.com</bold> confidentiel",
+        "reusableDoesntExpire": "<bold>Réutilisable.</bold> N’expire pas",
+        "fundsOutsideTrezuLost": "Les fonds envoyés hors de Trezu confidentiel seront perdus",
+        "fundsOutsideNearcomLost": "Les fonds envoyés hors de near.com confidentiel seront perdus",
+        "publicNetworkRecommendation": "Ne déposez que depuis le réseau <bold>{network}</bold>. Commencez par une petite transaction de test avant d’envoyer le montant total.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Depuis un portefeuille public",
+                "subtitle": "Créer une adresse de dépôt à usage unique"
+            },
+            "confidentialUser": {
+                "title": "Depuis un utilisateur confidentiel",
+                "subtitle": "Dépôt depuis Trezu & near.com confidentiels"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Depuis Trezu confidentiel",
+            "nearcom": "Depuis near.com confidentiel",
+            "short": "Depuis confidentiel"
+        },
+        "guestBanner": {
+            "title": "Vous consultez en invité",
+            "description": "Cette adresse appartient à la treasury de quelqu’un d’autre. Vérifiez avant d’envoyer."
+        },
+        "transfer": {
+            "title": "Transfert vers la Treasury",
+            "waitingForPayment": "En attente de paiement",
+            "youSendFromPublic": "Vous envoyez depuis n’importe quel portefeuille public",
+            "youSend": "Vous envoyez",
+            "goesTo": "Va vers",
+            "assetOnNetwork": "{symbol} sur le réseau {network}",
+            "anyAsset": "N’importe quel actif",
+            "onNetwork": "sur le réseau {network}",
+            "onNearcomNetwork": "sur le réseau near.com",
+            "anyAssetOnNearcom": "N’importe quel actif sur le réseau near.com",
+            "securedOnTrezu": "Sécurisé sur Trezu",
+            "payWithTrezu": "Payer avec Trezu",
+            "payWithNearcom": "Payer avec near.com",
+            "payRequiresTreasury": "Connectez-vous avec une treasury Trezu pour payer.",
+            "copyLink": "Copier le lien",
+            "titleConfidential": "Transfert vers la Treasury confidentielle",
+            "chooseTreasuryTitle": "Choisir une Treasury",
+            "chooseTreasuryDescription": "De quelle treasury provient ce paiement ?",
+            "noMemberTreasuries": "Vous n’êtes encore membre d’aucune treasury.",
+            "createTreasury": "Créer une treasury",
+            "expired": "Expiré",
+            "used": "Utilisé",
+            "linkInactiveTitle": "Ce lien n'est plus actif",
+            "linkInactiveDescription": "Pour effectuer ce paiement, demandez un nouveau lien à la personne qui vous l'a envoyé."
+        },
+        "expiresInRemaining": "Expire dans <time>{duration}</time> – <bold>même si inutilisée</bold>.",
+        "addressExpired": "Cette adresse a expiré."
     },
     "assetDetails": {
         "coinPrice": "Prix de la pièce",
@@ -843,7 +933,8 @@
             "yourLink": "Votre lien d’invitation",
             "copyLink": "Copier le lien",
             "linkCopied": "Lien d’invitation copié",
-            "generateNewLink": "Générer un nouveau lien"
+            "generateNewLink": "Générer un nouveau lien",
+            "generatingNewLink": "Génération d’un nouveau lien"
         },
         "joinRequests": {
             "title": "Souhaite rejoindre",
@@ -871,6 +962,9 @@
             "successTitle": "Vous y êtes presque",
             "successDescription": "Vous pourrez rejoindre une fois que l’équipe aura examiné\nvotre demande. Rien d’autre à faire pour l’instant.",
             "seeTreasury": "Voir le treasury",
+            "alreadyMemberTitle": "Vous êtes déjà membre",
+            "alreadyMemberDescription": "Pas besoin de demander l'accès — vous faites déjà partie de {treasury}.",
+            "goToTreasury": "Aller au treasury",
             "invalidTitle": "Invitation introuvable",
             "invalidDescription": "Ce lien d’invitation est invalide ou n’est plus disponible.",
             "usedTitle": "Invitation déjà utilisée",
@@ -978,7 +1072,11 @@
             "fileReadError": "Erreur de lecture du fichier. Veuillez réessayer.",
             "primaryColor": "Couleur principale",
             "primaryColorDescription": "Définissez la couleur principale des éléments d'interface de votre trésorerie. Cette couleur sera utilisée en mode clair et sombre, gardez donc le contraste à l'esprit lors du choix de teintes neutres.",
-            "selectColorLabel": "Sélectionner la couleur {color}"
+            "selectColorLabel": "Sélectionner la couleur {color}",
+            "saveChanges": "Enregistrer les modifications",
+            "saving": "Enregistrement...",
+            "savedToast": "Vos modifications ont été enregistrées.",
+            "saveFailed": "Impossible d'enregistrer vos modifications. Réessayez."
         },
         "voting": {
             "validation": {
@@ -1042,7 +1140,7 @@
         "review": {
             "header": "Vérifier les détails",
             "youAreAdding": "Vous ajoutez",
-            "newRecipients": "{count, plural, one {# nouveau destinataire} other {# nouveaux destinataires}}",
+            "newRecipients": "{count, plural, =0 {Aucun nouveau destinataire} one {# nouveau destinataire} other {# nouveaux destinataires}}",
             "onNetworks": "sur {count, plural, one {# réseau} other {# réseaux}}",
             "recipients": "Destinataires",
             "allDuplicates": "Tous les destinataires importés existent déjà dans votre carnet d'adresses. Revenez en arrière pour télécharger une autre liste ou supprimez les doublons de cette vérification.",
@@ -1452,44 +1550,49 @@
             "functionCall": "Proposition d'une dApp externe : {methods} sur {receiverId}",
             "unsupportedAction": "Type d'action non pris en charge « {type} ». Seules les actions Transfer et FunctionCall peuvent être converties en propositions Trezu."
         },
-        "loading": "Chargement...",
-        "connectPrompt": "Connectez votre portefeuille NEAR pour continuer. Vous sélectionnerez ensuite une trésorerie au nom de laquelle agir.",
+        "connectPrompt": "Utilisez le portefeuille avec lequel vous avez rejoint Trezu.\nVos trésoreries vous attendent une fois connecté.",
         "connectWallet": "Connecter le portefeuille",
-        "cancel": "Annuler",
+        "connecting": "Connexion...",
         "connectedAs": "Connecté en tant que <strong>{account}</strong>",
         "loadingTreasuries": "Chargement des trésoreries...",
-        "selectSignIn": "Sélectionnez une trésorerie pour vous connecter en tant que :",
+        "selectSignIn": "{app, select, unknown {Choisissez la trésorerie à utiliser.} other {Choisissez la trésorerie à utiliser dans {app}.}}",
         "selectSignTx": "Sélectionnez une trésorerie sur laquelle créer une proposition :",
         "notMember": "Vous n'êtes membre d'aucune trésorerie.",
-        "actingAs": "Agissant en tant que",
-        "signedBy": "Signé par {account}",
-        "createsNProposals": "Cela créera {count, plural, one {une proposition Trezu} other {# propositions Trezu}} pour :",
-        "proposalDescriptionLabel": "Description de la proposition (facultatif)",
-        "proposalDescriptionPlaceholder": "Décrivez cette proposition...",
-        "createProposal": "Créer la proposition",
-        "creatingProposal": "Création de la proposition...",
+        "actingAs": "{count, plural, one {Trésorerie exécutant cette proposition} other {Trésorerie exécutant ces propositions}}",
+        "signedBy": "Proposition demandée par {account}",
+        "createsNProposals": "Création {count, plural, one {de la proposition} other {des propositions}}",
+        "proposalDescriptionPlaceholder": "Ajouter un commentaire à la proposition (facultatif)...",
+        "createProposal": "{count, plural, one {Créer la proposition} other {Créer les propositions}}",
+        "creatingProposal": "{count, plural, one {Création de la proposition...} other {Création des propositions...}}",
         "confirmInWallet": "Veuillez confirmer dans votre portefeuille",
-        "proposalSubmitted": "Proposition soumise",
-        "shareProposal": "Votre proposition a été créée. Partagez le lien ci-dessous avec les membres de la trésorerie pour voter.",
+        "proposalSubmitted": "{count, plural, one {Proposition créée avec succès !} other {Propositions créées avec succès !}}",
+        "shareProposal": "Rendez-vous maintenant sur Trezu pour approuver {count, plural, one {la demande} =2 {les deux demandes} other {les # demandes}}.",
         "proposalLink": "{daoId} — Proposition #{id}",
-        "checking": "Vérification...",
-        "proposalApprovedProceed": "La proposition est approuvée. Continuer",
-        "signedInSuccess": "Connexion réussie",
+        "walletOpensNotice": "{count, plural, =1 {Votre portefeuille NEAR s'ouvrira une fois pour signer la proposition. Terminez pour finir.} =2 {Votre portefeuille NEAR s'ouvrira deux fois — une par proposition. Terminez les deux pour finir.} other {Votre portefeuille NEAR s'ouvrira # fois — une par proposition. Terminez-les toutes pour finir.}}",
+        "whatToDoNext": "Prochaines étapes",
+        "stepApproveTitle": "Ouvrez Trezu et approuvez {count, plural, one {la demande} other {les demandes}}",
+        "stepVotesTitle": "Attendez suffisamment de votes",
+        "stepVotesDesc": "Dès que votre trésorerie atteint les approbations requises selon vos paramètres, l'exécution a lieu.",
+        "stepExecutedTitle": "Transaction exécutée",
+        "openTrezuApprove": "Ouvrir Trezu pour approuver",
+        "signedInSuccess": "Trésorerie connectée",
         "proposalCreatedSuccess": "Proposition créée avec succès",
         "closeWindow": "Vous pouvez fermer cette fenêtre.",
         "errorGeneric": "Une erreur s'est produite",
         "tryAgain": "Réessayer",
+        "errorProposalsNotCreated": "{count, plural, one {Proposition non créée} other {Propositions non créées}}",
+        "tryCreateAgain": "{count, plural, one {Réessayer de créer la proposition} other {Réessayer de créer les propositions}}",
         "errors": {
             "parseTx": "Échec de l'analyse de la requête de transaction. Veuillez réessayer.",
             "fetchTreasuries": "Échec de la récupération de vos trésoreries. Veuillez réessayer.",
             "connectFailed": "Échec de la connexion du portefeuille",
             "createProposalFailed": "Échec de la création de la proposition",
-            "stillPending": "La proposition est encore en attente d'approbation. Veuillez attendre que les membres de la trésorerie votent.",
             "wasStatus": "La proposition #{id} était {status}",
             "awaitIndex": "La proposition est approuvée mais la transaction d'exécution n'est pas encore indexée. Veuillez réessayer dans un instant.",
             "checkStatusFailed": "Échec de la vérification du statut de la proposition",
             "userCancelled": "Annulé par l'utilisateur",
-            "proposalWasStatus": "La proposition était {status}"
+            "proposalWasStatus": "La proposition était {status}",
+            "noProposalIds": "La proposition a été créée mais son identifiant n'a pas pu être déterminé. Consultez la page des demandes de la trésorerie."
         }
     },
     "telegram": {
@@ -1785,6 +1888,7 @@
         "Batch Payment Request": "Demande de paiement groupé",
         "Payment Request": "Demande de paiement",
         "Confidential Request": "Demande confidentielle",
+        "Move to Confidential": "Déplacer vers Confidentiel",
         "Exchange": "Échange",
         "Function Call": "Appel de fonction",
         "Change Policy": "Modification de politique",
@@ -1823,7 +1927,8 @@
         "comingSoon": "Bientôt disponible",
         "forMembersOnly": "Réservé aux membres",
         "nearComDescription": "Réseau pour trezu confidentiel",
-        "nearDescription": "Réseau pour retrait public et portefeuille near.com"
+        "nearComDescriptionPublic": "Réseau pour near.com",
+        "nearDescription": "Réseau pour retrait public"
     },
     "addressBookTable": {
         "emptyTitle": "Aucun destinataire pour l'instant",
@@ -2060,10 +2165,9 @@
         "exchangeFulfillment": "Échange",
         "stakingRewards": "Récompenses de staking",
         "proposalAction": "Action de proposition",
-        "deposit": "Dépôt {symbol}",
-        "paymentSent": "Paiement envoyé",
+        "deposit": "Dépôt",
+        "transfer": "Transfert",
         "transaction": "Transaction",
-        "fallbackToken": "Token",
         "viaIntents": "via NEAR Intents",
         "from": "de {account}",
         "to": "vers {account}",
@@ -2106,6 +2210,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Destinataire ajouté} other {# destinataires ajoutés}}",
+        "alreadyExistsToast": "Le destinataire est déjà dans votre carnet d'adresses",
         "addedSingleToast": "Destinataire ajouté",
         "addFailedToast": "Échec de l'ajout des destinataires",
         "addSingleFailedToast": "Échec de l'ajout du destinataire",
@@ -2299,6 +2404,10 @@
             "title": "Explorer Trezu",
             "description": "Créez un compte pour débloquer les autorisations à toutes les fonctionnalités et avantages de Trezu.",
             "cta": "Créer une trésorerie"
+        },
+        "pendingJoinBanner": {
+            "title": "Votre demande d'adhésion est en attente",
+            "description": "Vous pouvez déjà consulter cette trésorerie. Lorsqu'un membre vous approuvera, vous pourrez créer des demandes, voter ou gérer les fonds selon votre rôle."
         },
         "infoBox": {
             "title": "Tirez le meilleur parti de Trezu",
@@ -2537,6 +2646,59 @@
             "pattern": "{label} ne correspond pas au format requis",
             "min": "{label} doit être au minimum {min}",
             "max": "{label} doit être au maximum {max}"
+        }
+    },
+    "account": {
+        "personalSettings": "Paramètres personnels",
+        "uploadAvatar": "Téléverser l'avatar",
+        "removeAvatar": "Supprimer l'avatar",
+        "uploading": "Téléversement...",
+        "displayName": "Nom d'affichage",
+        "displayNamePlaceholder": "Entrez un nom d'affichage",
+        "myWallet": "Mon portefeuille",
+        "saveChanges": "Enregistrer les modifications",
+        "saving": "Enregistrement...",
+        "saveSuccess": "Vos modifications ont été enregistrées.",
+        "saveError": "Impossible d'enregistrer vos modifications. Réessayez.",
+        "invalidImage": "Veuillez choisir un fichier image valide.",
+        "imageTooLarge": "L'image doit faire 2 Mo ou moins.",
+        "signInRequired": "Connectez votre portefeuille pour gérer votre compte.",
+        "avatarUploaded": "Avatar téléversé avec succès",
+        "uploadError": "Erreur lors du téléversement de l'image. Réessayez."
+    },
+    "moveAssets": {
+        "title": "Déplacer les actifs",
+        "description": "Déplacez des actifs de la chaîne publique vers votre trésorerie confidentielle.",
+        "submitted": "Demande de déplacement envoyée",
+        "banner": {
+            "title": "<amount></amount> sont arrivés sur votre solde public",
+            "description": "Quelqu'un les a envoyés sur le mauvais réseau. Déplacez-les ici pour les rendre confidentiels.",
+            "moveAssets": "Déplacer les actifs",
+            "viewRequest": "Voir la demande"
+        },
+        "list": {
+            "title": "Fonds à déplacer",
+            "token": "Jeton",
+            "moveAssets": "Déplacer les actifs",
+            "emptyTitle": "Rien à déplacer",
+            "emptyDescription": "Votre solde public est vide. Les fonds envoyés au compte public apparaîtront ici.",
+            "viewRequest": "Voir la demande"
+        },
+        "form": {
+            "title": "Vers Confidentiel",
+            "review": "Vérifier le déplacement",
+            "reviewDisabled": "Saisissez un montant"
+        },
+        "review": {
+            "title": "Vérifiez votre déplacement",
+            "youMove": "Vous déplacez"
+        },
+        "errors": {
+            "invalid": "Saisissez un montant valide",
+            "zero": "Le montant doit être supérieur à zéro",
+            "tooManyDecimals": "Trop de décimales pour ce jeton",
+            "exceedsBalance": "Le montant dépasse le solde public",
+            "failed": "Impossible de préparer la demande de déplacement. Veuillez réessayer."
         }
     }
 }

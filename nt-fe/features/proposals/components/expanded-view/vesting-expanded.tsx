@@ -14,7 +14,7 @@ export function VestingExpanded({ data }: VestingExpandedProps) {
     const infoItems: InfoItem[] = [
         {
             label: t("recipient"),
-            value: <User accountId={data.receiver} useAddressBook />,
+            value: <User accountId={data.receiver} preferAddressBook />,
         },
         {
             label: t("amount"),

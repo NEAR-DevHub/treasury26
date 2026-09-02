@@ -106,7 +106,8 @@
         "wallet": "Гаманець",
         "termsOfService": "Умови використання",
         "privacyPolicy": "Політика конфіденційності",
-        "disconnect": "Відключити"
+        "disconnect": "Вийти",
+        "myAccount": "Мій обліковий запис"
     },
     "auth": {
         "noWallet": "Підключіть свій гаманець",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Trezu Wallet",
             "description": "Підписуйте пропозиції скарбниці через Trezu"
+        },
+        "account": {
+            "title": "Мій обліковий запис",
+            "description": "Керуйте особистим профілем і налаштуваннями"
         }
     },
     "depositModal": {
@@ -270,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "Не вдалось отримати адресу депозиту для обраного активу та мережі.",
-            "fetchFailed": "Не вдалось отримати адресу депозиту. Спробуйте ще раз."
+            "fetchFailed": "Не вдалось отримати адресу депозиту. Спробуйте ще раз.",
+            "loginRequired": "Увійдіть, щоб створити одноразову адресу для депозиту."
         },
         "title": "Поповнити",
         "subtitle": "Оберіть актив і мережу, щоб побачити адресу депозиту",
@@ -283,7 +289,7 @@
         "depositAddressHeading": "Адреса депозиту",
         "depositAddressSubtitle": "Завжди двічі перевіряйте адресу депозиту.",
         "depositAddressSubtitleConfidential": "<semibold>Одноразова адреса депозиту.</semibold> Повторне використання цієї адреси або надсилання коштів після завершення терміну дії може призвести до постійної втрати коштів.",
-        "depositAddressSubtitleConfidentialExpiry": "Дійсна протягом 3 днів з моменту створення. Закінчується через: залишилось {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Дійсна 14 днів з моменту створення. Закінчується через: залишилось {expiresIn}",
         "singleUseAcknowledgement": "Я використаю цю адресу лише один раз",
         "addressLabel": "Адреса",
         "addressCopied": "Адресу скопійовано в буфер обміну",
@@ -306,7 +312,91 @@
             "fiatAnswer": "Поки що ні, але ми працюємо над тим, щоб незабаром додати фіатні депозити. Слідкуйте за оновленнями - це вже в дорозі 🚀",
             "arrivalQuestion": "Скільки часу займає зарахування депозиту?",
             "arrivalAnswer": "Час обробки залежить від мережі."
-        }
+        },
+        "back": "Назад",
+        "publicAddressTitle": "Адреса депозиту {symbol} у мережі {network}",
+        "publicAddressSubtitle": "Надсилайте лише цей токен, у цій мережі, на адресу нижче.",
+        "oneTimeAddressTitle": "Одноразова адреса депозиту {symbol} у мережі {network}",
+        "oneTimeAddressSubtitle": "Надсилайте лише цей токен, у цій мережі, на адресу нижче.",
+        "confidentialTrezuTitle": "Депозит із конфіденційного Trezu у мережі near.com",
+        "confidentialTrezuSubtitle": "Отримуйте будь-який актив із конфіденційного Trezu.",
+        "confidentialNearcomTitle": "Депозит із конфіденційного near.com у внутрішній мережі",
+        "confidentialNearcomSubtitle": "Отримуйте будь-який актив із конфіденційного near.com.",
+        "oneTimeSectionTitle": "Одноразова конфіденційна адреса депозиту",
+        "oneTimeSectionSubtitle": "Використовуйте лише один раз; усе після першого депозиту буде втрачено.",
+        "internalAddressTitle": "Це ваша внутрішня конфіденційна адреса",
+        "generateAddress": "Створити адресу",
+        "showAddress": "Показати адресу",
+        "copy": "Копіювати",
+        "share": "Поділитися",
+        "linkCopied": "Посилання скопійовано в буфер обміну",
+        "minDepositValue": "Мінімальний депозит <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Не</bold> надсилайте тестовий депозит",
+        "doNotReuseAddress": "<bold>Не</bold> повторно використовуйте, зберігайте, додавайте до білого списку чи поширюйте адресу",
+        "doNotReuseAddressShort": "<bold>Не</bold> повторно використовуйте, зберігайте чи додавайте адресу до білого списку",
+        "oneTimeAckCheckbox": "Я розумію, що це одноразова адреса, і я маю надіслати щонайменше {amount} {symbol} в одному переказі.",
+        "oneTimeAckCheckboxNoMin": "Я розумію, що це одноразова адреса, яку потрібно використати в одному переказі.",
+        "onlySendAssetNetwork": "Надсилайте лише <bold>{symbol}</bold> у мережі <bold>{network}</bold>. Інші активи чи мережі призведуть до втрати коштів.",
+        "expiresInDays": "Дійсна <bold>{days} днів</bold> – <bold>навіть якщо не використана</bold>.",
+        "createNewAddressHint": "Потрібні інші дані для депозиту? <link>Створити нову адресу</link>. Створення іншої не деактивує цю.",
+        "receivesOnlyConfidential": "Приймає кошти лише з конфіденційних акаунтів Trezu або near.com",
+        "receivesOnlyConfidentialSub": "Багаторазова. Не закінчується.",
+        "anythingElseLost": "Усе надіслане звідкись ще буде втрачено",
+        "anythingElseLostSub": "Біржі, публічні гаманці, інші мережі – відновити неможливо.",
+        "confidentialAckCheckbox": "Я розумію, що депозити з-поза конфіденційного Trezu або near.com буде втрачено.",
+        "onlyFromConfidentialTrezu": "Лише з конфіденційного <bold>Trezu</bold>",
+        "onlyFromConfidentialNearcom": "Лише з конфіденційного <bold>near.com</bold>",
+        "reusableDoesntExpire": "<bold>Багаторазова.</bold> Не закінчується",
+        "fundsOutsideTrezuLost": "Кошти, надіслані з-поза конфіденційного Trezu, буде втрачено",
+        "fundsOutsideNearcomLost": "Кошти, надіслані з-поза конфіденційного near.com, буде втрачено",
+        "publicNetworkRecommendation": "Вносьте депозит лише з мережі <bold>{network}</bold>. Почніть із невеликої тестової транзакції, перш ніж надсилати повну суму.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "З публічного гаманця",
+                "subtitle": "Створити одноразову адресу депозиту"
+            },
+            "confidentialUser": {
+                "title": "Від конфіденційного користувача",
+                "subtitle": "Депозит із конфіденційних Trezu і near.com"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "З конфіденційного Trezu",
+            "nearcom": "З конфіденційного near.com",
+            "short": "З конфіденційного"
+        },
+        "guestBanner": {
+            "title": "Ви переглядаєте як гість",
+            "description": "Ця адреса належить чужій treasury. Перевірте двічі перед надсиланням."
+        },
+        "transfer": {
+            "title": "Переказ до Treasury",
+            "waitingForPayment": "Очікування платежу",
+            "youSendFromPublic": "Ви надсилаєте з будь-якого публічного гаманця",
+            "youSend": "Ви надсилаєте",
+            "goesTo": "Отримувач",
+            "assetOnNetwork": "{symbol} у мережі {network}",
+            "anyAsset": "Будь-який актив",
+            "onNetwork": "у мережі {network}",
+            "onNearcomNetwork": "у мережі near.com",
+            "anyAssetOnNearcom": "Будь-який актив у мережі near.com",
+            "securedOnTrezu": "Захищено на Trezu",
+            "payWithTrezu": "Сплатити через Trezu",
+            "payWithNearcom": "Сплатити через near.com",
+            "payRequiresTreasury": "Увійдіть із treasury Trezu, щоб сплатити.",
+            "copyLink": "Копіювати посилання",
+            "titleConfidential": "Переказ до конфіденційної Treasury",
+            "chooseTreasuryTitle": "Оберіть Treasury",
+            "chooseTreasuryDescription": "З якої treasury надходить цей платіж?",
+            "noMemberTreasuries": "Ви ще не є учасником жодної treasury.",
+            "createTreasury": "Створити treasury",
+            "expired": "Прострочено",
+            "used": "Використано",
+            "linkInactiveTitle": "Це посилання більше не активне",
+            "linkInactiveDescription": "Щоб здійснити цей платіж, попросіть у того, хто надіслав посилання, нове."
+        },
+        "expiresInRemaining": "Дійсна ще <time>{duration}</time> – <bold>навіть якщо не використана</bold>.",
+        "addressExpired": "Термін дії цієї адреси закінчився."
     },
     "assetDetails": {
         "coinPrice": "Ціна токена",
@@ -843,7 +933,8 @@
             "yourLink": "Ваше посилання-запрошення",
             "copyLink": "Копіювати посилання",
             "linkCopied": "Посилання-запрошення скопійовано",
-            "generateNewLink": "Створити нове посилання"
+            "generateNewLink": "Створити нове посилання",
+            "generatingNewLink": "Створення нового посилання"
         },
         "joinRequests": {
             "title": "Хоче приєднатися",
@@ -871,6 +962,9 @@
             "successTitle": "Ви майже всередині",
             "successDescription": "Ви зможете приєднатися після того, як команда перевірить\nваш запит. Поки що більше нічого робити не потрібно.",
             "seeTreasury": "Переглянути treasury",
+            "alreadyMemberTitle": "Ви вже учасник",
+            "alreadyMemberDescription": "Не потрібно запитувати доступ — ви вже частина {treasury}.",
+            "goToTreasury": "Перейти до treasury",
             "invalidTitle": "Запрошення не знайдено",
             "invalidDescription": "Це посилання-запрошення недійсне або більше недоступне.",
             "usedTitle": "Запрошення вже використано",
@@ -978,7 +1072,11 @@
             "fileReadError": "Помилка читання файлу. Спробуйте ще раз.",
             "primaryColor": "Основний колір",
             "primaryColorDescription": "Задайте основний колір для елементів інтерфейсу вашої скарбниці. Колір використовуватиметься як у світлій, так і в темній темах, тож враховуйте контраст при виборі нейтральних відтінків.",
-            "selectColorLabel": "Обрати колір {color}"
+            "selectColorLabel": "Обрати колір {color}",
+            "saveChanges": "Зберегти зміни",
+            "saving": "Збереження...",
+            "savedToast": "Ваші зміни збережено.",
+            "saveFailed": "Не вдалося зберегти зміни. Спробуйте ще раз."
         },
         "voting": {
             "validation": {
@@ -1042,7 +1140,7 @@
         "review": {
             "header": "Переглянути деталі",
             "youAreAdding": "Ви додаєте",
-            "newRecipients": "{count, plural, one {# нового отримувача} few {# нових отримувачі} many {# нових отримувачів} other {# нових отримувачів}}",
+            "newRecipients": "{count, plural, =0 {Немає нових отримувачів} one {# нового отримувача} few {# нових отримувачі} many {# нових отримувачів} other {# нових отримувачів}}",
             "onNetworks": "у {count, plural, one {# мережі} few {# мережах} many {# мережах} other {# мережах}}",
             "recipients": "Отримувачі",
             "allDuplicates": "Усі імпортовані отримувачі вже є у вашій адресній книзі. Поверніться, щоб завантажити інший список, або видаліть дублікати тут.",
@@ -1435,44 +1533,49 @@
             "functionCall": "Пропозиція від зовнішнього dApp: {methods} на {receiverId}",
             "unsupportedAction": "Непідтримуваний тип дії \"{type}\". У пропозиції Trezu можна конвертувати лише дії Transfer і FunctionCall."
         },
-        "loading": "Завантаження...",
-        "connectPrompt": "Підключіть гаманець NEAR, щоб продовжити. Потім оберіть скарбницю, від імені якої діяти.",
+        "connectPrompt": "Використовуйте той самий гаманець, з яким ви приєдналися до Trezu.\nВаші скарбниці чекають на вас після входу.",
         "connectWallet": "Підключити гаманець",
-        "cancel": "Скасувати",
+        "connecting": "Підключення...",
         "connectedAs": "Підключено як <strong>{account}</strong>",
         "loadingTreasuries": "Завантаження скарбниць...",
-        "selectSignIn": "Оберіть скарбницю, від імені якої увійти:",
+        "selectSignIn": "{app, select, unknown {Виберіть, яку скарбницю використовувати.} other {Виберіть, яку скарбницю використовувати в {app}.}}",
         "selectSignTx": "Оберіть скарбницю, де створити пропозицію:",
         "notMember": "Ви не є учасником жодної скарбниці.",
-        "actingAs": "Діє як",
-        "signedBy": "Підписано {account}",
-        "createsNProposals": "Це створить {count, plural, one {пропозицію Trezu} few {# пропозиції Trezu} many {# пропозицій Trezu} other {# пропозицій Trezu}} для:",
-        "proposalDescriptionLabel": "Опис пропозиції (необов'язково)",
-        "proposalDescriptionPlaceholder": "Опишіть цю пропозицію...",
-        "createProposal": "Створити пропозицію",
-        "creatingProposal": "Створення пропозиції...",
+        "actingAs": "{count, plural, one {Скарбниця, що виконує цю пропозицію} other {Скарбниця, що виконує ці пропозиції}}",
+        "signedBy": "Пропозицію запросив {account}",
+        "createsNProposals": "Створення {count, plural, one {пропозиції} other {пропозицій}}",
+        "proposalDescriptionPlaceholder": "Додайте коментар до пропозиції (необов'язково)...",
+        "createProposal": "{count, plural, one {Створити пропозицію} other {Створити пропозиції}}",
+        "creatingProposal": "{count, plural, one {Створення пропозиції...} other {Створення пропозицій...}}",
         "confirmInWallet": "Підтвердьте у вашому гаманці",
-        "proposalSubmitted": "Пропозицію надіслано",
-        "shareProposal": "Вашу пропозицію створено. Поділіться посиланням нижче з учасниками скарбниці для голосування.",
+        "proposalSubmitted": "{count, plural, one {Пропозицію успішно створено!} other {Пропозиції успішно створено!}}",
+        "shareProposal": "Тепер перейдіть у Trezu та схваліть {count, plural, one {запит} =2 {обидва запити} other {усі # запитів}}.",
         "proposalLink": "{daoId} — Пропозиція №{id}",
-        "checking": "Перевірка...",
-        "proposalApprovedProceed": "Пропозицію схвалено. Продовжити",
-        "signedInSuccess": "Успішно увійшли",
+        "walletOpensNotice": "{count, plural, =1 {Ваш гаманець NEAR відкриється один раз для підпису пропозиції. Завершіть, щоб закінчити.} =2 {Ваш гаманець NEAR відкриється двічі — по разу на пропозицію. Завершіть обидві.} other {Ваш гаманець NEAR відкриється # разів — по разу на пропозицію. Завершіть усі.}}",
+        "whatToDoNext": "Наступні кроки",
+        "stepApproveTitle": "Відкрийте Trezu та схваліть {count, plural, one {запит} other {запити}}",
+        "stepVotesTitle": "Дочекайтеся достатньої кількості голосів",
+        "stepVotesDesc": "Щойно ваша скарбниця досягне необхідної кількості схвалень згідно з налаштуваннями, відбудеться виконання.",
+        "stepExecutedTitle": "Транзакцію виконано",
+        "openTrezuApprove": "Відкрити Trezu для схвалення",
+        "signedInSuccess": "Скарбницю підключено",
         "proposalCreatedSuccess": "Пропозицію успішно створено",
         "closeWindow": "Ви можете закрити це вікно.",
         "errorGeneric": "Сталася помилка",
         "tryAgain": "Спробувати ще раз",
+        "errorProposalsNotCreated": "{count, plural, one {Пропозицію не створено} other {Пропозиції не створено}}",
+        "tryCreateAgain": "{count, plural, one {Спробувати створити пропозицію ще раз} other {Спробувати створити пропозиції ще раз}}",
         "errors": {
             "parseTx": "Не вдалось розібрати запит транзакції. Спробуйте ще раз.",
             "fetchTreasuries": "Не вдалось завантажити ваші скарбниці. Спробуйте ще раз.",
             "connectFailed": "Не вдалось підключити гаманець",
             "createProposalFailed": "Не вдалось створити пропозицію",
-            "stillPending": "Пропозиція ще очікує схвалення. Дочекайтесь, поки учасники скарбниці проголосують.",
             "wasStatus": "Пропозиція №{id} була {status}",
             "awaitIndex": "Пропозицію схвалено, але транзакція виконання ще не проіндексована. Спробуйте ще раз за мить.",
             "checkStatusFailed": "Не вдалось перевірити статус пропозиції",
             "userCancelled": "Користувач скасував",
-            "proposalWasStatus": "Пропозиція була {status}"
+            "proposalWasStatus": "Пропозиція була {status}",
+            "noProposalIds": "Пропозицію створено, але не вдалося визначити її ідентифікатор. Перевірте сторінку запитів скарбниці."
         }
     },
     "telegram": {
@@ -1768,6 +1871,7 @@
         "Batch Payment Request": "Запит на масовий платіж",
         "Payment Request": "Запит на платіж",
         "Confidential Request": "Конфіденційний запит",
+        "Move to Confidential": "Перемістити до конфіденційного",
         "Exchange": "Обмін",
         "Function Call": "Виклик функції",
         "Change Policy": "Зміна політики",
@@ -1806,7 +1910,8 @@
         "comingSoon": "Скоро",
         "forMembersOnly": "Лише для учасників",
         "nearComDescription": "Мережа для конфіденційного trezu",
-        "nearDescription": "Мережа для публічного виведення та гаманця near.com"
+        "nearComDescriptionPublic": "Мережа для near.com",
+        "nearDescription": "Мережа для публічного виведення"
     },
     "addressBookTable": {
         "emptyTitle": "Ще немає одержувачів",
@@ -2043,10 +2148,9 @@
         "exchangeFulfillment": "Обмін",
         "stakingRewards": "Винагороди стейкінгу",
         "proposalAction": "Дія пропозиції",
-        "deposit": "Поповнення {symbol}",
-        "paymentSent": "Платіж надіслано",
+        "deposit": "Поповнення",
+        "transfer": "Переказ",
         "transaction": "Транзакція",
-        "fallbackToken": "Токен",
         "viaIntents": "через NEAR Intents",
         "from": "від {account}",
         "to": "до {account}",
@@ -2089,6 +2193,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Одержувача додано} few {# одержувачів додано} many {# одержувачів додано} other {# одержувачів додано}}",
+        "alreadyExistsToast": "Одержувач уже є в адресній книзі",
         "addedSingleToast": "Одержувача додано",
         "addFailedToast": "Не вдалось додати одержувачів",
         "addSingleFailedToast": "Не вдалось додати одержувача",
@@ -2282,6 +2387,10 @@
             "title": "Відкрийте Trezu",
             "description": "Створіть обліковий запис, щоб розблокувати всі функції та переваги Trezu.",
             "cta": "Створити скарбницю"
+        },
+        "pendingJoinBanner": {
+            "title": "Ваш запит на приєднання очікує підтвердження",
+            "description": "Ви вже можете переглядати цю скарбницю. Коли учасник вас схвалить, ви зможете створювати запити, голосувати або керувати коштами відповідно до своєї ролі."
         },
         "infoBox": {
             "title": "Більше від Trezu",
@@ -2538,5 +2647,58 @@
         "errorTitle": "Не вдалося завантажити статус активації",
         "noPermissionNote": "У вас немає дозволу розпочати активацію. Попросіть учасника скарбниці з правами створення пропозицій активувати масові платежі.",
         "awaitingApproverHint": "Учасники скарбниці з правами схвалення повинні схвалити очікуваний запит, щоб завершити активацію."
+    },
+    "account": {
+        "personalSettings": "Особисті налаштування",
+        "uploadAvatar": "Завантажити аватар",
+        "removeAvatar": "Видалити аватар",
+        "uploading": "Завантаження...",
+        "displayName": "Відображуване ім'я",
+        "displayNamePlaceholder": "Введіть відображуване ім'я",
+        "myWallet": "Мій гаманець",
+        "saveChanges": "Зберегти зміни",
+        "saving": "Збереження...",
+        "saveSuccess": "Ваші зміни збережено.",
+        "saveError": "Не вдалося зберегти зміни. Спробуйте ще раз.",
+        "invalidImage": "Виберіть дійсний файл зображення.",
+        "imageTooLarge": "Зображення має бути не більше 2 МБ.",
+        "signInRequired": "Підключіть гаманець, щоб керувати обліковим записом.",
+        "avatarUploaded": "Аватар успішно завантажено",
+        "uploadError": "Сталася помилка під час завантаження зображення, спробуйте ще раз."
+    },
+    "moveAssets": {
+        "title": "Перемістити активи",
+        "description": "Перемістіть активи з публічного ланцюга до конфіденційної скарбниці.",
+        "submitted": "Запит на переміщення надіслано",
+        "banner": {
+            "title": "<amount></amount> надійшли на ваш публічний баланс",
+            "description": "Хтось надіслав їх через неправильну мережу. Перемістіть їх сюди, щоб зробити конфіденційними.",
+            "moveAssets": "Перемістити активи",
+            "viewRequest": "Переглянути запит"
+        },
+        "list": {
+            "title": "Кошти, які потрібно перемістити",
+            "token": "Токен",
+            "moveAssets": "Перемістити активи",
+            "emptyTitle": "Немає що переміщувати",
+            "emptyDescription": "Ваш публічний баланс порожній. Кошти, надіслані на публічний рахунок, з'являться тут.",
+            "viewRequest": "Переглянути запит"
+        },
+        "form": {
+            "title": "До конфіденційного",
+            "review": "Перевірити переміщення",
+            "reviewDisabled": "Введіть суму"
+        },
+        "review": {
+            "title": "Перевірте переміщення",
+            "youMove": "Ви переміщуєте"
+        },
+        "errors": {
+            "invalid": "Введіть коректну суму",
+            "zero": "Сума має бути більшою за нуль",
+            "tooManyDecimals": "Забагато знаків після коми для цього токена",
+            "exceedsBalance": "Сума перевищує публічний баланс",
+            "failed": "Не вдалося підготувати запит на переміщення. Спробуйте ще раз."
+        }
     }
 }

@@ -6,6 +6,7 @@ import {
     APP_EVENT_NAMES,
     type AppEventScope,
     handleAppEvent,
+    invalidateTreasuryScopedQueries,
     parseAppEvent,
 } from "@/lib/app-events";
 
@@ -44,11 +45,28 @@ export function AppEventsProvider({ scope }: { scope: AppEventScope }) {
             void handleAppEvent(queryClient, event, activeScope);
         };
 
+        // Events emitted while the stream was down (server restart, network
+        // blip) are never replayed, so every reconnect catches up with one
+        // blanket invalidation. The first open is skipped: initial page
+        // queries are fetching fresh data already.
+        let hasConnected = false;
+        const handleOpen = () => {
+            if (!hasConnected) {
+                hasConnected = true;
+                return;
+            }
+            if (treasuryId) {
+                void invalidateTreasuryScopedQueries(queryClient, treasuryId);
+            }
+        };
+        eventSource.addEventListener("open", handleOpen);
+
         for (const eventName of APP_EVENT_NAMES) {
             eventSource.addEventListener(eventName, handleMessage);
         }
 
         return () => {
+            eventSource.removeEventListener("open", handleOpen);
             for (const eventName of APP_EVENT_NAMES) {
                 eventSource.removeEventListener(eventName, handleMessage);
             }

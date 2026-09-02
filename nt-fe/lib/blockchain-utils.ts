@@ -1,4 +1,5 @@
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { getIntentsExplorerUrl } from "@/lib/utils";
 
 /**
  * Maps chainName from backend to blockchain identifiers for address validation
@@ -29,37 +30,97 @@ export type BlockchainType =
     | "unknown";
 
 /**
+ * Compact form of a chain label: lowercased, spaces/underscores/hyphens removed.
+ * Backend `network_name_for_base` lowercases catalog *display* names
+ * (e.g. "XRP Ledger" → "xrp ledger", "BNB Smart Chain" → "bnb smart chain"),
+ * so matching must accept both keys and display variants.
+ */
+function compactChainKey(chainName: string): string {
+    return chainName.toLowerCase().replace(/[\s_-]+/g, "");
+}
+
+/**
+ * EVM explorer origin for keys + catalog display names (shared by tx + address
+ * links so they cannot diverge).
+ */
+function getEvmExplorerOrigin(chainName: string): string {
+    const compact = compactChainKey(chainName);
+    if (compact === "arbitrum" || compact === "arb") {
+        return "https://arbiscan.io";
+    }
+    if (compact === "polygon" || compact === "pol" || compact === "matic") {
+        return "https://polygonscan.com";
+    }
+    if (
+        compact === "bsc" ||
+        compact === "bnb" ||
+        compact === "binance" ||
+        compact === "bnbsmartchain" ||
+        compact === "binancesmartchain"
+    ) {
+        return "https://bscscan.com";
+    }
+    if (compact === "optimism" || compact === "op") {
+        return "https://optimistic.etherscan.io";
+    }
+    if (compact === "base") {
+        return "https://basescan.org";
+    }
+    if (compact === "avalanche" || compact === "avax") {
+        return "https://snowtrace.io";
+    }
+    if (compact === "gnosis") {
+        return "https://gnosisscan.io";
+    }
+    if (compact === "berachain" || compact === "bera") {
+        return "https://berascan.com";
+    }
+    if (compact === "scroll") {
+        return "https://scrollscan.com";
+    }
+    if (compact === "aurora" || compact === "auroradevnet") {
+        return "https://explorer.aurora.dev";
+    }
+    return "https://etherscan.io";
+}
+
+/**
  * Maps a chainName (from token data) to a blockchain type for validation
  */
 export function getBlockchainType(chainName: string): BlockchainType {
-    const chainLower = chainName.toLowerCase();
+    const chainLower = chainName.toLowerCase().trim();
+    const compact = compactChainKey(chainName);
 
     // NEAR chains
-    if (chainLower === NEAR_NETWORK_ID) {
+    if (
+        chainLower === NEAR_NETWORK_ID ||
+        compact === "nearprotocol" ||
+        compact === "near"
+    ) {
         return NEAR_NETWORK_ID;
     }
 
     // Bitcoin
-    if (chainLower === "bitcoin" || chainLower === "btc") {
+    if (compact === "bitcoin" || compact === "btc") {
         return "bitcoin";
     }
 
-    // Bitcoin Cash
-    if (chainLower === "bitcoincash" || chainLower === "bch") {
+    // Bitcoin Cash — catalog display "Bitcoin Cash" → "bitcoin cash"
+    if (compact === "bitcoincash" || compact === "bch") {
         return "bitcoincash";
     }
 
     // Litecoin
-    if (chainLower === "litecoin" || chainLower === "ltc") {
+    if (compact === "litecoin" || compact === "ltc") {
         return "litecoin";
     }
 
     // Dash
-    if (chainLower === "dash") {
+    if (compact === "dash") {
         return "dash";
     }
 
-    // Ethereum and EVM chains
+    // Ethereum and EVM chains (keys + display-name compact forms)
     const evmChains = new Set([
         "eth",
         "ethereum",
@@ -71,98 +132,102 @@ export function getBlockchainType(chainName: string): BlockchainType {
         "base",
         "polygon",
         "pol",
+        "matic",
         "bsc",
+        "bnb",
         "binance",
+        "bnbsmartchain",
+        "binancesmartchain",
         "optimism",
         "op",
         "avalanche",
         "avax",
         "aurora",
+        "auroradevnet",
         "turbochain",
         "vertex",
         "easychain",
         "hako",
         "optima",
+        // key is tuxappchain; catalog display "TuxaChain" → "tuxachain"
         "tuxappchain",
-        "aurora_devnet",
+        "tuxachain",
         "layerx",
         "xlayer",
         "monad",
         "scroll",
         "plasma",
         "adi",
+        "hyperliquid",
+        "hypercore",
     ]);
-    if (evmChains.has(chainLower)) {
+    if (evmChains.has(compact)) {
         return "ethereum";
     }
 
     // Solana
-    if (chainLower === "solana" || chainLower === "sol") {
+    if (compact === "solana" || compact === "sol") {
         return "solana";
     }
 
     // Tron
-    if (chainLower === "tron" || chainLower === "trx") {
+    if (compact === "tron" || compact === "trx") {
         return "tron";
     }
 
     // Zcash
-    if (chainLower === "zcash" || chainLower === "zec") {
+    if (compact === "zcash" || compact === "zec") {
         return "zcash";
     }
 
     // Dogecoin
-    if (chainLower === "dogecoin" || chainLower === "doge") {
+    if (compact === "dogecoin" || compact === "doge") {
         return "dogecoin";
     }
 
-    // XRP/Ripple
-    if (
-        chainLower === "xrp" ||
-        chainLower === "ripple" ||
-        chainLower === "xrpledger"
-    ) {
+    // XRP/Ripple — catalog display "XRP Ledger" → "xrp ledger"
+    if (compact === "xrp" || compact === "ripple" || compact === "xrpledger") {
         return "xrp";
     }
 
     // Stellar
-    if (chainLower === "stellar" || chainLower === "xlm") {
+    if (compact === "stellar" || compact === "xlm") {
         return "stellar";
     }
 
     // Sui
-    if (chainLower === "sui") {
+    if (compact === "sui") {
         return "sui";
     }
 
     // Aptos
-    if (chainLower === "aptos" || chainLower === "apt") {
+    if (compact === "aptos" || compact === "apt") {
         return "aptos";
     }
 
     // Cardano
-    if (chainLower === "cardano" || chainLower === "ada") {
+    if (compact === "cardano" || compact === "ada") {
         return "cardano";
     }
 
     // TON
-    if (chainLower === "ton") {
+    if (compact === "ton") {
         return "ton";
     }
 
     // Starknet
-    if (chainLower === "starknet") {
+    if (compact === "starknet") {
         return "starknet";
     }
 
     // Aleo
-    if (chainLower === "aleo") {
+    if (compact === "aleo") {
         return "aleo";
     }
 
-    // Hyperliquid (treat as EVM-compatible for now, though it may need special handling)
-    if (chainLower === "hyperliquid") {
-        return "ethereum";
+    // UI-only intra-Intents ids — not a chain address format.
+    if (chainLower === "near.com" || chainLower === "near.com:direct") {
+        return "unknown";
     }
 
     console.log(
@@ -185,46 +250,13 @@ export function getExplorerTxUrl(
     if (!chainName) return null;
 
     const blockchainType = getBlockchainType(chainName);
-    const chainLower = chainName.toLowerCase();
 
     switch (blockchainType) {
         case NEAR_NETWORK_ID:
             return `https://nearblocks.io/txns/${txHash}`;
 
         case "ethereum":
-            // Map specific EVM chains to their explorers.
-            if (chainLower === "arbitrum" || chainLower === "arb") {
-                return `https://arbiscan.io/tx/${txHash}`;
-            }
-            if (chainLower === "polygon" || chainLower === "pol") {
-                return `https://polygonscan.com/tx/${txHash}`;
-            }
-            if (chainLower === "bsc" || chainLower === "binance") {
-                return `https://bscscan.com/tx/${txHash}`;
-            }
-            if (chainLower === "optimism" || chainLower === "op") {
-                return `https://optimistic.etherscan.io/tx/${txHash}`;
-            }
-            if (chainLower === "base") {
-                return `https://basescan.org/tx/${txHash}`;
-            }
-            if (chainLower === "avalanche" || chainLower === "avax") {
-                return `https://snowtrace.io/tx/${txHash}`;
-            }
-            if (chainLower === "gnosis") {
-                return `https://gnosisscan.io/tx/${txHash}`;
-            }
-            if (chainLower === "berachain" || chainLower === "bera") {
-                return `https://berascan.com/tx/${txHash}`;
-            }
-            if (chainLower === "scroll") {
-                return `https://scrollscan.com/tx/${txHash}`;
-            }
-            if (chainLower === "aurora") {
-                return `https://explorer.aurora.dev/tx/${txHash}`;
-            }
-            // Default to Ethereum mainnet for unspecified EVM chains.
-            return `https://etherscan.io/tx/${txHash}`;
+            return `${getEvmExplorerOrigin(chainName)}/tx/${txHash}`;
 
         case "bitcoin":
             return `https://blockchair.com/bitcoin/transaction/${txHash}`;
@@ -301,47 +333,21 @@ export function requiresCrossChainValidation(
 }
 
 /**
- * Get the explorer URL for a given blockchain and address
+ * Get the explorer URL for a given blockchain and address.
+ * EVM sub-chains use the same compact-key mapping as {@link getExplorerTxUrl}.
  */
 export function getExplorerAddressUrl(
     chainName: string,
     address: string,
 ): string | null {
     const blockchainType = getBlockchainType(chainName);
-    const chainLower = chainName.toLowerCase();
 
     switch (blockchainType) {
         case NEAR_NETWORK_ID:
             return `https://nearblocks.io/address/${address}`;
 
         case "ethereum":
-            // Map specific EVM chains to their explorers
-            if (chainLower === "arbitrum" || chainLower === "arb") {
-                return `https://arbiscan.io/address/${address}`;
-            }
-            if (chainLower === "polygon" || chainLower === "pol") {
-                return `https://polygonscan.com/address/${address}`;
-            }
-            if (chainLower === "bsc" || chainLower === "binance") {
-                return `https://bscscan.com/address/${address}`;
-            }
-            if (chainLower === "optimism" || chainLower === "op") {
-                return `https://optimistic.etherscan.io/address/${address}`;
-            }
-            if (chainLower === "base") {
-                return `https://basescan.org/address/${address}`;
-            }
-            if (chainLower === "avalanche" || chainLower === "avax") {
-                return `https://snowtrace.io/address/${address}`;
-            }
-            if (chainLower === "gnosis") {
-                return `https://gnosisscan.io/address/${address}`;
-            }
-            if (chainLower === "aurora") {
-                return `https://explorer.aurora.dev/address/${address}`;
-            }
-            // Default to Ethereum mainnet for unspecified EVM chains
-            return `https://etherscan.io/address/${address}`;
+            return `${getEvmExplorerOrigin(chainName)}/address/${address}`;
 
         case "bitcoin":
             return `https://blockchair.com/bitcoin/address/${address}`;
@@ -396,4 +402,36 @@ export function getExplorerAddressUrl(
             // Return null for unknown chains - no link will be shown
             return null;
     }
+}
+
+export type TransactionExplorerLink = {
+    url: string;
+    source: "intents" | "chain";
+};
+
+/**
+ * Universal explorer-link resolver for transaction rows.
+ *
+ * Intents-routed rows (any transfer, deposit or exchange carrying a 1Click
+ * deposit address) link to the NEAR Intents explorer — `/mask/` for
+ * confidential treasuries, `/transactions/` for public ones. Everything else
+ * falls back to the per-chain tx explorer (nearblocks for NEAR). Rows whose
+ * token metadata carries no chain are NEAR movements.
+ */
+export function getTransactionExplorerLink({
+    depositAddress,
+    isConfidential = false,
+    transactionHash,
+    chainName,
+}: {
+    depositAddress?: string | null;
+    isConfidential?: boolean;
+    transactionHash?: string | null;
+    chainName?: string | null;
+}): TransactionExplorerLink | null {
+    const intentsUrl = getIntentsExplorerUrl(depositAddress, isConfidential);
+    if (intentsUrl) return { url: intentsUrl, source: "intents" };
+    if (!transactionHash) return null;
+    const url = getExplorerTxUrl(chainName ?? NEAR_NETWORK_ID, transactionHash);
+    return url ? { url, source: "chain" } : null;
 }

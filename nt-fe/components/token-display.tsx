@@ -1,13 +1,23 @@
+"use client";
+
 import { useTranslations } from "next-intl";
-import { ChainIcons, TreasuryAsset } from "@/lib/api";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
-import Big from "@/lib/big";
-import {
-    getNetworkDisplayCaseClass,
-    getLocalizedNetworkDisplayName,
-} from "@/lib/intents-network";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { useImageLoadError } from "@/hooks/use-image-load-error";
+import { decimalOrNull } from "@/lib/amount-format";
+import type { ChainIcons, TreasuryAsset } from "@/lib/api";
+import type Big from "@/lib/big";
+import {
+    getLocalizedNetworkDisplayName,
+    getNetworkDisplayCaseClass,
+    getNetworkDisplayName,
+    networksMatchAliased,
+} from "@/lib/intents-network";
+import { cn } from "@/lib/utils";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
+
+// Re-export network label helpers so existing `@/components/token-display` imports keep working.
+export { getNetworkDisplayName, networksMatchAliased };
 
 interface NetworkIconDisplayProps {
     chainIcons: ChainIcons | null;
@@ -15,41 +25,8 @@ interface NetworkIconDisplayProps {
     residency?: string;
     networkNameClassName?: string;
     expandNearComLabel?: boolean;
+    className?: string;
 }
-
-const NETWORK_DISPLAY_NAMES: Record<string, string> = {
-    eth: "Ethereum",
-    ethereum: "Ethereum",
-    btc: "Bitcoin",
-    bitcoin: "Bitcoin",
-    sol: "Solana",
-    solana: "Solana",
-    arb: "Arbitrum",
-    arbitrum: "Arbitrum",
-    pol: "Polygon",
-    polygon: "Polygon",
-    bsc: "BNB Chain",
-    trx: "Tron",
-    tron: "Tron",
-    xlm: "Stellar",
-    stellar: "Stellar",
-    apt: "Aptos",
-    aptos: "Aptos",
-    ada: "Cardano",
-    cardano: "Cardano",
-    doge: "Dogecoin",
-    dogecoin: "Dogecoin",
-    zec: "Zcash",
-    zcash: "Zcash",
-    xrp: "XRP",
-    bera: "Berachain",
-    berachain: "Berachain",
-    near: "NEAR",
-};
-
-export const getNetworkDisplayName = (name: string): string => {
-    return NETWORK_DISPLAY_NAMES[name.toLowerCase()] ?? name;
-};
 
 const useResidencyLabel = () => {
     const t = useTranslations("residency");
@@ -78,18 +55,11 @@ export const NetworkIconDisplay = ({
     networkNameClassName,
     expandNearComLabel = false,
     className,
-}: {
-    chainIcons: ChainIcons | null;
-    networkName: string;
-    residency?: string;
-    networkNameClassName?: string;
-    expandNearComLabel?: boolean;
-    className?: string;
-}) => {
+}: NetworkIconDisplayProps) => {
     const getResidencyLabel = useResidencyLabel();
     const tAddressBookTable = useTranslations("addressBookTable");
-
     const iconUrl = chainIcons?.icon ?? null;
+    const { showImage, onError } = useImageLoadError(iconUrl);
 
     const isNEAR = networkName.toLowerCase() === NEAR_NETWORK_ID;
     const displayName = getLocalizedNetworkDisplayName({
@@ -101,15 +71,17 @@ export const NetworkIconDisplay = ({
 
     return (
         <div className={cn("flex items-center gap-3", className)}>
-            {iconUrl ? (
+            {showImage && iconUrl ? (
                 <img
+                    key={iconUrl}
                     src={iconUrl}
                     alt={`${networkName} network`}
                     className="size-6 rounded-full object-cover"
+                    onError={onError}
                 />
             ) : (
                 <div className="size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal">
-                    {networkName.charAt(0)}
+                    {networkName.charAt(0).toUpperCase()}
                 </div>
             )}
             <div className="flex flex-col gap-0 items-baseline text-left">
@@ -142,7 +114,7 @@ export const NetworkDisplay = ({
     const tRes = useTranslations("residency");
     const tAddressBookTable = useTranslations("addressBookTable");
 
-    let type;
+    let type: string | undefined;
     switch (asset.residency) {
         case "Lockup":
             type = tRes("vestedToken");
@@ -195,13 +167,26 @@ export const BalanceCell = ({
     symbol: string;
     balanceUSD: number;
 }) => {
+    const parsedBalanceUSD = decimalOrNull(balanceUSD);
+    const unitPriceUsd =
+        balance.gt(0) && parsedBalanceUSD
+            ? parsedBalanceUSD.div(balance)
+            : null;
+
     return (
         <div className="min-w-0 max-w-full overflow-hidden text-right">
             <div className="truncate font-medium text-sm">
-                {formatCurrencyWithSubCent(balanceUSD)}
+                <FormattedAmount kind="fiat" value={parsedBalanceUSD} />
             </div>
             <div className="truncate text-xxs text-muted-foreground">
-                {formatSmartAmount(balance)} {symbol}
+                <FormattedAmount
+                    kind="token"
+                    value={balance}
+                    symbol={symbol}
+                    unitPriceUsd={unitPriceUsd}
+                    profile="compact"
+                    rounding="down"
+                />
             </div>
         </div>
     );

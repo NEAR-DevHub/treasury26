@@ -15,10 +15,19 @@ import { ContactRound, X } from "lucide-react";
 import { InputBlock } from "@/components/input-block";
 import { TokenInput, Token } from "@/components/token-input";
 import AccountInput from "@/components/account-input";
-import { CreateRequestButton } from "@/components/create-request-button";
+import {
+    CreateRequestButton,
+    type PermissionRequirement,
+} from "@/components/create-request-button";
 import { InfoAlert } from "@/components/info-alert";
 import { getBlockchainType } from "@/lib/blockchain-utils";
-import { useAddressBook, AddressBookEntry } from "@/features/address-book";
+import {
+    useAddressBook,
+    AddressBookEntry,
+    addressBookEntryMatchesNetwork,
+    findAddressBookEntry,
+    formatAddressBookDisplayAddress,
+} from "@/features/address-book";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { useChains, ChainInfo } from "@/features/address-book/chains";
 import { NetworkList } from "@/components/network-list";
@@ -48,6 +57,16 @@ interface PaymentFormSectionProps<
     recipientName: Path<TFieldValues>;
 
     tokenLocked?: boolean;
+    /**
+     * Recipient is fixed by the caller (shown read-only, no validation or
+     * address book). Used by public-to-confidential moves where the DAO
+     * itself is the recipient.
+     */
+    recipientLocked?: boolean;
+    /** Balance/price come from the form token, not the treasury assets. */
+    balanceFromToken?: boolean;
+    /** Permission(s) required to submit; defaults to `transfer` AddProposal. */
+    savePermissions?: PermissionRequirement | PermissionRequirement[];
     feeErrorMessage?: string | null;
     networkFee?: string | null;
     showRestrictedRecipientAlert?: boolean;
@@ -99,6 +118,9 @@ export function PaymentFormSection<
     tokenName,
     recipientName,
     tokenLocked = false,
+    recipientLocked = false,
+    balanceFromToken = false,
+    savePermissions = { kind: "transfer", action: "AddProposal" },
     feeErrorMessage = null,
     networkFee = null,
     showRestrictedRecipientAlert = false,
@@ -243,7 +265,7 @@ export function PaymentFormSection<
     useEffect(() => {
         if (selectedContact) {
             setRecipientValue(
-                selectedContact.address as PathValue<
+                formatAddressBookDisplayAddress(selectedContact) as PathValue<
                     TFieldValues,
                     Path<TFieldValues>
                 >,
@@ -261,11 +283,11 @@ export function PaymentFormSection<
     useEffect(() => {
         if (!hideRecipientNetwork) return;
         if (!selectedContact) return;
-        const isCompatible =
-            selectedContact.networks.length === 0 ||
-            selectedContact.networks.some(
-                (key) => getBlockchainType(key) === blockchainType,
-            );
+        const isCompatible = addressBookEntryMatchesNetwork(
+            selectedContact,
+            selectedNetworkName,
+            blockchainType,
+        );
         if (!isCompatible) {
             setSelectedContact(null);
             setRecipientValue(
@@ -276,6 +298,7 @@ export function PaymentFormSection<
     }, [
         hideRecipientNetwork,
         blockchainType,
+        selectedNetworkName,
         selectedContact,
         setRecipientValue,
     ]);
@@ -283,25 +306,27 @@ export function PaymentFormSection<
     const filteredAddressBook = useMemo(
         () =>
             hideRecipientNetwork
-                ? addressBook.filter(
-                      (entry) =>
-                          entry.networks.length === 0 ||
-                          entry.networks.some(
-                              (key) =>
-                                  getBlockchainType(key) === blockchainType,
-                          ),
+                ? addressBook.filter((entry) =>
+                      addressBookEntryMatchesNetwork(
+                          entry,
+                          selectedNetworkName,
+                          blockchainType,
+                      ),
                   )
                 : addressBook,
-        [addressBook, blockchainType, hideRecipientNetwork],
+        [
+            addressBook,
+            blockchainType,
+            hideRecipientNetwork,
+            selectedNetworkName,
+        ],
     );
 
     // When recipient is pre-filled (e.g. stepping back from review), check if it matches an address book entry
     useEffect(() => {
         if (!recipient || selectedContact || filteredAddressBook.length === 0)
             return;
-        const match = filteredAddressBook.find(
-            (e) => e.address.toLowerCase() === recipient.toLowerCase(),
-        );
+        const match = findAddressBookEntry(filteredAddressBook, recipient);
         if (match) setSelectedContact(match);
     }, [recipient, filteredAddressBook, selectedContact]);
 
@@ -322,7 +347,7 @@ export function PaymentFormSection<
         slotBlocked ||
         !hasValidAmount ||
         !recipient ||
-        (hideRecipientNetwork && !isRecipientValid) ||
+        (hideRecipientNetwork && !recipientLocked && !isRecipientValid) ||
         (!hideRecipientNetwork && !hasSelectedNetwork) ||
         showRestrictedRecipientAlert ||
         isValidatingRecipient ||
@@ -361,27 +386,35 @@ export function PaymentFormSection<
                     !feeErrorMessage || showRestrictedRecipientAlert
                 }
                 networkFee={networkFee}
+                balanceFromToken={balanceFromToken}
             />
 
             <InputBlock
-                interactive={!selectedContact}
+                interactive={!selectedContact && !recipientLocked}
                 title={t("to")}
                 className="relative"
                 invalid={
                     hideRecipientNetwork &&
+                    !recipientLocked &&
                     !selectedContact &&
                     !!recipient &&
                     !isRecipientValid &&
                     !isValidatingRecipient
                 }
             >
-                {selectedContact ? (
+                {recipientLocked ? (
+                    <p className="text-muted-foreground truncate pt-1">
+                        {recipient}
+                    </p>
+                ) : selectedContact ? (
                     <div className="flex items-center pt-1 pr-20">
                         <div className="flex flex-col gap-1 min-w-0">
                             <User
                                 accountId={selectedContact.address}
+                                displayAddress={formatAddressBookDisplayAddress(
+                                    selectedContact,
+                                )}
                                 name={selectedContact.name}
-                                useAddressBook
                                 size="md"
                                 withLink={false}
                             />
@@ -420,7 +453,7 @@ export function PaymentFormSection<
                     >
                         <X className="size-3.5" />
                     </Button>
-                    {showContactButton && (
+                    {showContactButton && !recipientLocked && (
                         <Button
                             variant="card"
                             size="icon-sm"
@@ -530,7 +563,7 @@ export function PaymentFormSection<
                     setIsContactModalOpen(false);
                 }}
                 renderIcon={() => null}
-                renderContent={(option) => {
+                renderContent={(option, { searchQuery }) => {
                     const entry = filteredAddressBook.find(
                         (e) => e.id === option.id,
                     );
@@ -542,10 +575,13 @@ export function PaymentFormSection<
                         <div className="flex items-center justify-between w-full gap-2">
                             <User
                                 accountId={entry.address}
+                                displayAddress={formatAddressBookDisplayAddress(
+                                    entry,
+                                )}
                                 name={entry.name}
-                                useAddressBook
                                 size="sm"
                                 withLink={false}
+                                highlightQuery={searchQuery}
                             />
                             {entryChains.length > 0 && (
                                 <NetworkList
@@ -567,10 +603,7 @@ export function PaymentFormSection<
                 disabled={isSaveDisabled}
                 isSubmitting={isSubmitting}
                 idleMessage={saveButtonText}
-                permissions={{
-                    kind: "transfer",
-                    action: "AddProposal",
-                }}
+                permissions={savePermissions}
             />
         </>
     );

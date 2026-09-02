@@ -28,7 +28,7 @@ use crate::handlers::balance_changes::query_builder::{
     BalanceChangeFilters, FROM_ACCOUNT_EXPR, RELAYER_ACCOUNT, TO_ACCOUNT_EXPR, build_count_query,
     build_where_conditions,
 };
-use crate::handlers::balance_changes::{confidential_list, public_list};
+use crate::handlers::balance_changes::{confidential_list, confidential_list_legacy, public_list};
 use crate::handlers::subscription::plans::get_account_plan_info;
 use crate::handlers::token::{TokenMetadata, fetch_tokens_with_fallback};
 use crate::routes::{
@@ -125,6 +125,8 @@ pub struct ChartMeta {
     pub status: ChartStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_snapshot_at: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coverage_start: Option<DateTime<Utc>>,
 }
 
 /// Chart response with metadata
@@ -149,16 +151,18 @@ pub async fn get_balance_chart(
 ) -> Result<Json<ChartResponse>, (StatusCode, String)> {
     user.verify_member_if_confidential(&state.db_pool, &params.account_id)
         .await?;
-    let read_source = resolve_balance_changes_read_source(&state, params.account_id.as_str())
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Confidential charts are served from trusted balance snapshots — the
-    // event ledger can drift from real balances (missed deposits) and must
-    // not drive the chart.
-    if read_source == BalanceChangesReadSource::Confidential {
-        let response =
-            crate::handlers::intents::confidential::gold::snapshots::build_confidential_chart_response(
+    // Decide confidentiality independently from the balance-history read
+    // source. Public snapshot reads must return before the legacy/PublicGold
+    // resolver so the enabled path cannot fall through to `balance_changes`.
+    let is_confidential =
+        confidential_list::is_confidential_dao(&state.db_pool, params.account_id.as_str())
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    if is_confidential {
+        let response = if state.env_vars.unified_gold_ledger_reads {
+            crate::handlers::public_history::charts::chart::build_confidential_chart_response(
                 &state,
                 params.account_id.as_str(),
                 params.start_time,
@@ -166,9 +170,39 @@ pub async fn get_balance_chart(
                 &params.interval,
                 params.token_ids.as_ref(),
             )
-            .await?;
+            .await?
+        } else {
+            crate::handlers::intents::confidential::gold::snapshots::build_confidential_snapshot_chart_response(
+                &state,
+                params.account_id.as_str(),
+                params.start_time,
+                params.end_time,
+                &params.interval,
+                params.token_ids.as_ref(),
+            )
+            .await?
+        };
         return Ok(Json(response));
     }
+
+    if state.env_vars.unified_gold_ledger_reads {
+        let response = crate::handlers::public_history::charts::chart::build_public_chart_response(
+            &state,
+            params.account_id.as_str(),
+            params.start_time,
+            params.end_time,
+            &params.interval,
+            params.token_ids.as_ref(),
+        )
+        .await?;
+        return Ok(Json(response));
+    }
+
+    let read_source = resolve_balance_changes_read_source(&state, params.account_id.as_str())
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    debug_assert_ne!(read_source, BalanceChangesReadSource::Confidential);
 
     let last_synced_at = sqlx::query_scalar::<_, Option<DateTime<Utc>>>(
         "SELECT last_synced_at FROM monitored_accounts WHERE account_id = $1",
@@ -1219,6 +1253,37 @@ mod tests {
     use chrono::TimeZone;
 
     #[test]
+    fn start_bound_uses_requested_start_when_inside_plan_window() {
+        // Regression: the plan cutoff used to win unconditionally, so a
+        // `startDate` inside the plan window was dropped and older rows
+        // (e.g. July) leaked into an August-only request.
+        let cutoff = Utc.with_ymd_and_hms(2026, 2, 25, 0, 0, 0).unwrap();
+        let start = Utc.with_ymd_and_hms(2026, 8, 18, 22, 0, 0).unwrap();
+
+        assert_eq!(narrower_start_bound(Some(cutoff), Some(start)), Some(start));
+    }
+
+    #[test]
+    fn start_bound_keeps_plan_cutoff_when_requested_start_is_older() {
+        let cutoff = Utc.with_ymd_and_hms(2026, 2, 25, 0, 0, 0).unwrap();
+        let start = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+
+        assert_eq!(
+            narrower_start_bound(Some(cutoff), Some(start)),
+            Some(cutoff)
+        );
+    }
+
+    #[test]
+    fn start_bound_falls_back_to_whichever_bound_exists() {
+        let bound = Utc.with_ymd_and_hms(2026, 8, 18, 22, 0, 0).unwrap();
+
+        assert_eq!(narrower_start_bound(Some(bound), None), Some(bound));
+        assert_eq!(narrower_start_bound(None, Some(bound)), Some(bound));
+        assert_eq!(narrower_start_bound(None, None), None);
+    }
+
+    #[test]
     fn test_interval_increment_hourly() {
         let dt = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
         let result = Interval::Hourly.increment(dt);
@@ -1653,11 +1718,33 @@ pub struct RecentActivity {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proposal_id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub quote_deposit_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub swap: Option<SwapInfo>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub action_kind: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub method_name: Option<String>,
+}
+
+/// `BalanceChangesQuery` carries a single lower time bound, but the plan
+/// history cutoff and the caller's `startDate` both narrow the window. Collapse
+/// them to whichever is later so the plan limit cannot be bypassed and the
+/// requested range is still honoured.
+///
+/// `endDate` is not part of this helper: gold/confidential readers take the
+/// collapsed value as `start_time` and bind `endDate` separately, and the
+/// legacy `count_query` already binds `date_cutoff`, `start_date`, and
+/// `end_date` as distinct `>=` / `<=` params. Do not fold `end_date` in here
+/// or the legacy path will double-bind it.
+fn narrower_start_bound(
+    date_cutoff: Option<DateTime<Utc>>,
+    start_date: Option<DateTime<Utc>>,
+) -> Option<DateTime<Utc>> {
+    match (date_cutoff, start_date) {
+        (Some(cutoff), Some(start)) => Some(cutoff.max(start)),
+        (cutoff, start) => cutoff.or(start),
+    }
 }
 
 pub async fn get_recent_activity(
@@ -1760,9 +1847,6 @@ pub async fn get_recent_activity(
         None
     };
 
-    // Build query filters for total count (need to count before USD filtering)
-    let count_date_cutoff_str: Option<String> = date_cutoff.map(|dt| dt.to_rfc3339());
-
     // For recent activity, "incoming" should exclude staking rewards (shown in separate tab)
     let transaction_types_for_query = params
         .transaction_type
@@ -1791,6 +1875,11 @@ pub async fn get_recent_activity(
         exclude_near_dust: true,
         exclude_swaps_from_direction: true, // Recent activity: exclude swaps from incoming/outgoing (separate tab)
     };
+
+    // Gold/public readers: one lower bound. Legacy count_query below still
+    // binds cutoff + start_date separately (same max semantics).
+    let effective_start_str: Option<String> =
+        narrower_start_bound(filters.date_cutoff, filters.start_date).map(|dt| dt.to_rfc3339());
 
     // Count query
     let count_query_str = build_count_query(&filters);
@@ -1832,9 +1921,7 @@ pub async fn get_recent_activity(
         account_id: params.account_id.clone(),
         limit: None,
         offset: None,
-        start_time: count_date_cutoff_str
-            .clone()
-            .or_else(|| start_date.map(|s| s.to_string())),
+        start_time: effective_start_str.clone(),
         end_time: end_date.map(|s| s.to_string()),
         token_ids: token_ids.clone(),
         exclude_token_ids: exclude_token_ids.clone(),
@@ -1854,9 +1941,18 @@ pub async fn get_recent_activity(
     };
     let total: i64 = match read_source {
         BalanceChangesReadSource::Confidential => {
-            confidential_list::count_balance_change_legs(&state.db_pool, &source_count_query)
+            if state.env_vars.unified_gold_ledger_reads {
+                confidential_list::count_balance_change_legs(&state.db_pool, &source_count_query)
+                    .await
+                    .unwrap_or(0)
+            } else {
+                confidential_list_legacy::count_balance_change_legs(
+                    &state.db_pool,
+                    &source_count_query,
+                )
                 .await
                 .unwrap_or(0)
+            }
         }
         BalanceChangesReadSource::PublicGold => {
             public_list::count_balance_change_legs(&state.db_pool, &source_count_query)
@@ -1880,13 +1976,11 @@ pub async fn get_recent_activity(
 
     // Use the source already selected for this request so the rows cannot
     // switch stores after the count query has completed.
-    let start_time_str: Option<String> =
-        count_date_cutoff_str.or_else(|| start_date.map(|s| s.to_string()));
     let balance_query = BalanceChangesQuery {
         account_id: params.account_id.clone(),
         limit: Some(fetch_limit),
         offset: Some(offset),
-        start_time: start_time_str,
+        start_time: effective_start_str,
         end_time: end_date.map(|s| s.to_string()),
         token_ids: token_ids.clone(),
         exclude_token_ids: exclude_token_ids.clone(),
@@ -2147,6 +2241,7 @@ pub async fn get_recent_activity(
                 receipt_ids: change.receipt_id,
                 value_usd,
                 proposal_id: change.proposal_id,
+                quote_deposit_address: change.quote_deposit_address,
                 swap,
                 action_kind: change.action_kind,
                 method_name: change.method_name,

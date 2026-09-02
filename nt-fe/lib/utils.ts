@@ -1,8 +1,8 @@
-import Big from "@/lib/big";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { clsx, type ClassValue } from "clsx";
+import { type ClassValue, clsx } from "clsx";
 import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import Big from "@/lib/big";
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
@@ -27,110 +27,6 @@ export function base64ToJson(base64: string): any {
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
     const decoded = new TextDecoder().decode(bytes);
     return JSON.parse(decoded);
-}
-
-interface FormatCurrencyOptions {
-    showSubCentAsLessThan?: boolean;
-    minimumFractionDigits?: number;
-}
-
-export function formatCurrency(
-    value: number | Big,
-    options: FormatCurrencyOptions = {},
-) {
-    if (typeof value === "number" && !Number.isFinite(value)) {
-        return "$0.00";
-    }
-
-    const bigValue = typeof value === "number" ? Big(value) : value;
-    const numericValue = Number(bigValue.toString());
-    if (!Number.isFinite(numericValue)) {
-        return "$0.00";
-    }
-
-    const absoluteValue = bigValue.abs();
-    const { showSubCentAsLessThan = false, minimumFractionDigits = 2 } =
-        options;
-
-    if (
-        showSubCentAsLessThan &&
-        absoluteValue.gt(0) &&
-        absoluteValue.lt(0.01)
-    ) {
-        return bigValue.lt(0) ? "-<$0.01" : "<$0.01";
-    }
-
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits,
-    }).format(numericValue);
-}
-
-export function formatCurrencyWithSubCent(value: number | Big) {
-    return formatCurrency(value, { showSubCentAsLessThan: true });
-}
-
-/**
- * Format token amount with optimal precision based on USD value
- * Shows enough decimals to represent $0.01 equivalent accurately (truncated, never rounded up)
- *
- * @param bigIntAmount - Token amount in smallest unit as string (e.g., "30517641175187890330" for 30.517 ETH with 18 decimals)
- * @param tokenDecimals - Number of decimals for the token (e.g., 18 for ETH, 8 for BTC)
- * @param tokenPrice - USD price per token (e.g., 60000 for BTC)
- * @returns Formatted string with thousand separators and optimal decimals
- *
- * @example
- * // BTC @ $60,000:
- * formatTokenAmount("50000000", 8, 60000)    // "0.5" ($30,000)
- * formatTokenAmount("250000", 8, 60000)      // "0.0025" ($150)
- * formatTokenAmount("3333", 8, 60000)        // "0.00003333" ($2)
- *
- * // ETH @ $3,000:
- * formatTokenAmount("10000000000000000000", 18, 3000)  // "10" ($30,000)
- * formatTokenAmount("50000000000000000", 18, 3000)     // "0.05" ($150)
- */
-export function formatTokenAmount(
-    bigIntAmount: string,
-    tokenDecimals: number,
-    tokenPrice: number,
-): string {
-    // Step 1: Convert to Big decimal number
-    const divisor = Big(10).pow(tokenDecimals);
-    const tokenAmount = Big(bigIntAmount).div(divisor);
-
-    // Step 2: Determine decimals needed to represent $0.01 equivalent
-    // We need: tokenAmount * price to be accurate within $0.01
-    // Required token precision = $0.01 / tokenPrice
-    const requiredTokenPrecision = Big(0.01).div(tokenPrice);
-
-    // Step 3: Calculate decimals needed: ceil(-log10(requiredTokenPrecision))
-    // Using: -log10(x) = -ln(x) / ln(10)
-    const log10Value =
-        Math.log(Number(requiredTokenPrecision.toString())) / Math.log(10);
-    const decimalsNeeded = Math.max(0, Math.ceil(-log10Value));
-
-    // Cap at token's native decimals (e.g., 18 for ETH, 8 for BTC)
-    const finalDecimals = Math.min(decimalsNeeded, tokenDecimals);
-
-    // Step 4: Format with calculated decimals (truncate, don't round up)
-    // We must never show more tokens than the user will actually receive
-    const multiplier = Big(10).pow(finalDecimals);
-    const truncated = tokenAmount
-        .mul(multiplier)
-        .round(0, Big.roundDown)
-        .div(multiplier);
-    let formatted = truncated.toFixed(finalDecimals);
-
-    // Remove trailing zeros
-    formatted = formatted.replace(/\.?0+$/, "");
-
-    // Add thousand separators
-    const parts = formatted.split(".");
-    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-    formatted = parts.join(".");
-
-    return formatted;
 }
 
 /**
@@ -380,8 +276,25 @@ function normalizeUtcTimezoneLabel(formatted: string): string {
         .replace(/\bUTC\b(?![+-])/, "UTC+00:00");
 }
 
-export function formatGas(gas: string): string {
-    return `${formatBalance(gas, 12, 2)}`;
+export function formatGas(gas: string | null | undefined): string {
+    try {
+        return Big(gas ?? "")
+            .div(Big(10).pow(12))
+            .toFixed(2, Big.roundDown)
+            .replace(/\.?0+$/, "");
+    } catch {
+        return "—";
+    }
+}
+
+export function sumIntegerStrings(values: readonly string[]): string | null {
+    try {
+        return values
+            .reduce((sum, value) => sum + BigInt(value), BigInt(0))
+            .toString();
+    } catch {
+        return null;
+    }
 }
 
 const NEAR_INTENTS_EXPLORER_BASE = "https://explorer.near-intents.org";
@@ -404,159 +317,6 @@ export function getIntentsExplorerUrl(
     if (!depositAddress) return null;
     const path = isConfidential ? "mask" : "transactions";
     return `${NEAR_INTENTS_EXPLORER_BASE}/${path}/${depositAddress}`;
-}
-
-/**
- * Convert a decimal token amount to raw/base units using token decimals.
- * Returns 0 for empty/invalid/non-positive inputs.
- */
-export function toBaseUnits(
-    amount: string | number | Big | null | undefined,
-    decimals: number,
-): Big {
-    if (amount === null || amount === undefined) return Big(0);
-
-    const normalized = amount.toString().trim();
-    if (!normalized || isNaN(Number(normalized)) || Number(normalized) <= 0) {
-        return Big(0);
-    }
-
-    return Big(normalized).mul(Big(10).pow(decimals));
-}
-
-export function formatBalance(
-    balance: string | Big,
-    decimals: number,
-    displayDecimals: number = 5,
-): string {
-    // Handle null/undefined/empty values
-    if (!balance || (typeof balance === "string" && balance.trim() === "")) {
-        return "0";
-    }
-
-    let parsedBalance: Big;
-    if (typeof balance === "string") {
-        try {
-            parsedBalance = Big(balance);
-        } catch (error) {
-            console.error(
-                "[formatBalance] Error parsing balance string:",
-                error,
-                { balance },
-            );
-            return "0";
-        }
-    } else {
-        parsedBalance = balance;
-    }
-    // Round down so the displayed balance never exceeds the true amount.
-    return parsedBalance
-        .div(Big(10).pow(decimals))
-        .toFixed(displayDecimals, Big.roundDown)
-        .replace(/\.?0+$/, "");
-}
-
-export function formatNearAmount(
-    amount: string,
-    displayDecimals: number = 5,
-): string {
-    return formatBalance(amount, 24, displayDecimals);
-}
-
-/**
- * Format a number with smart precision and thousand separators
- * - For numbers >= 1: shows up to 4 decimals
- * - For numbers < 1: shows up to 8 significant figures
- *
- * @param value - The value to format (number, string, or Big)
- * @returns Formatted string with smart precision and thousand separators
- *
- * @example
- * formatSmartAmount(1234.5678) => "1,234.5678"
- * formatSmartAmount(0.000123456) => "0.00012346"
- * formatSmartAmount(0.00000000012) => "0.00000000012"
- */
-export function formatSmartAmount(value: number | string | Big): string {
-    const num =
-        typeof value === "number" || typeof value === "string"
-            ? parseFloat(value.toString())
-            : parseFloat(value.toString());
-
-    // Handle zero
-    if (num === 0) return "0";
-
-    const absNum = Math.abs(num);
-    const absBig =
-        typeof value === "object" && "toFixed" in value
-            ? value.abs()
-            : Big(absNum.toString());
-
-    let formatted: string;
-
-    // For numbers >= 1, show up to 4 decimals (min 2)
-    if (absNum >= 1) {
-        formatted = absBig.toFixed(4).replace(/(\.\d{2,}?)0+$/, "$1");
-    } else {
-        // For small numbers, find first significant digit and show up to 8 significant figures
-        const str = absNum.toExponential();
-        const [, exponent] = str.split("e");
-        const exp = Math.abs(parseInt(exponent));
-
-        // Show enough decimals to display ~6-8 significant figures
-        const decimalPlaces = Math.min(exp + 6, 30);
-        formatted = absBig
-            .toFixed(decimalPlaces)
-            .replace(/(\.\d{2,}?)0+$/, "$1");
-    }
-
-    // Add thousands separator using locale formatting
-    const parts = formatted.split(".");
-    const integerPart = parseInt(parts[0]).toLocaleString();
-    return parts[1] ? `${integerPart}.${parts[1]}` : integerPart;
-}
-
-/**
- * Format token amounts with smart fractional precision and grouped integer part.
- * Uses formatSmartAmount for decimal precision strategy.
- */
-export function formatTokenDisplayAmount(value: number | string | Big): string {
-    let normalized = "";
-
-    try {
-        if (typeof value === "string") {
-            const trimmed = value.trim();
-            normalized = trimmed.replace(/,/g, "").replace(/^\+/, "");
-        } else {
-            normalized = value.toString();
-        }
-
-        const parsed = Big(normalized || "0");
-        const absFormatted = formatSmartAmount(parsed.abs());
-
-        if (parsed.lt(0)) return `-${absFormatted}`;
-        return absFormatted;
-    } catch {
-        return "0";
-    }
-}
-
-/**
- * Format an activity amount with sign (+/-) for display in transaction lists
- * Uses smart precision: 4 decimals for amounts >= 1, up to 8 significant figures for smaller amounts
- * NOTE: Expects amount to already be in human-readable format (e.g., "0.000123" NEAR, not yoctoNEAR)
- *
- * @param amount - The amount in human-readable format (positive for received, negative for sent)
- * @returns Formatted amount with sign and smart precision, e.g., "+1,234.5678" or "-0.000123"
- */
-export function formatActivityAmount(amount: string): string {
-    try {
-        const parsed = Big(amount);
-        if (parsed.eq(0)) return "+0";
-        const absFormatted = formatTokenDisplayAmount(parsed.abs());
-        return parsed.gt(0) ? `+${absFormatted}` : `-${absFormatted}`;
-    } catch {
-        return "+0";
-    }
 }
 
 /**
@@ -658,6 +418,10 @@ export function msToNanos(ms: number): string {
  */
 export function normalizeNearAssetId(value?: string | null): string {
     const normalized = (value || "").trim().toLowerCase();
+    // Keep 1Click Omni routing ids intact (do not strip as nep141 contracts).
+    if (normalized.startsWith("1cs_v1:")) {
+        return normalized;
+    }
     return normalized.startsWith("nep141:")
         ? normalized.slice("nep141:".length)
         : normalized;
@@ -670,8 +434,13 @@ export function normalizeNearAssetId(value?: string | null): string {
  * - intents.near:nep245:v2_1.omni.hot.tg:56_... -> v2_1.omni.hot.tg:56_...
  * - nep245:v2_1.omni.hot.tg:56_... -> v2_1.omni.hot.tg:56_...
  * - nep141:wrap.near -> wrap.near
+ * - 1cs_v1:btc:native:coin -> 1cs_v1:btc:native:coin (unchanged)
  */
 export function canonicalizeTokenIdForMatch(value?: string | null): string {
+    const trimmed = (value || "").trim().toLowerCase();
+    if (trimmed.startsWith("1cs_v1:")) {
+        return trimmed;
+    }
     return normalizeNearAssetId(value)
         .replace(/^intents\.near:/i, "")
         .replace(/^nep245:/i, "")

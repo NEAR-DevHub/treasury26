@@ -24,6 +24,12 @@ impl ChainIcons {
             icon: format!("{}{}", ICON_PREFIX, icon_suffix),
         }
     }
+
+    pub fn from_url(icon: &str) -> Self {
+        Self {
+            icon: icon.to_string(),
+        }
+    }
 }
 
 impl ChainMetadata {
@@ -31,6 +37,14 @@ impl ChainMetadata {
         Self {
             name: name.to_string(),
             icon: ChainIcons::new(icon_suffix),
+            canonical_key: None,
+        }
+    }
+
+    pub fn with_icon_url(name: &str, icon_url: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            icon: ChainIcons::from_url(icon_url),
             canonical_key: None,
         }
     }
@@ -60,7 +74,15 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "eth".to_string(),
         ChainMetadata::new("Ethereum", "ethereum.svg"),
     );
+    // Network picker label matches near.com (NEAR in all caps; other chains title case).
     metadata.insert("near".to_string(), ChainMetadata::new("NEAR", "near.svg"));
+    // Intra-Intents receive network (address book + /api/chains). Icon is the
+    // same asset the FE already serves; not a near.com/static network glyph.
+    metadata.insert(
+        "near.com".to_string(),
+        ChainMetadata::with_icon_url("near.com", "/near.com.svg"),
+    );
+    add_chain_alias(&mut metadata, "nearcom", "near.com");
     metadata.insert("base".to_string(), ChainMetadata::new("Base", "base.svg"));
     metadata.insert(
         "arbitrum".to_string(),
@@ -145,6 +167,7 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
         "hyperliquid".to_string(),
         ChainMetadata::new("Hyperliquid", "hyperliquid.svg"),
     );
+    add_chain_alias(&mut metadata, "hypercore", "hyperliquid");
     metadata.insert("ton".to_string(), ChainMetadata::new("TON", "ton.svg"));
     metadata.insert(
         "optimism".to_string(),
@@ -221,4 +244,23 @@ pub static CHAIN_METADATA: Lazy<HashMap<String, ChainMetadata>> = Lazy::new(|| {
 pub fn get_chain_metadata_by_name(chain_name: &str) -> Option<ChainMetadata> {
     let normalized_name = chain_name.to_lowercase();
     CHAIN_METADATA.get(&normalized_name).cloned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn near_com_is_listed_as_a_canonical_chain() {
+        let meta = get_chain_metadata_by_name("near.com").expect("near.com metadata");
+        assert!(
+            meta.canonical_key.is_none(),
+            "near.com must appear in /api/chains"
+        );
+        assert_eq!(meta.name, "near.com");
+        assert_eq!(meta.icon.icon, "/near.com.svg");
+
+        let alias = get_chain_metadata_by_name("nearcom").expect("nearcom alias");
+        assert_eq!(alias.canonical_key.as_deref(), Some("near.com"));
+    }
 }

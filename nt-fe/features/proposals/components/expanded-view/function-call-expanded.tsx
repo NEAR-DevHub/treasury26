@@ -1,21 +1,22 @@
+import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { User } from "@/components/user";
-import { cn, formatGas, formatNearAmount } from "@/lib/utils";
-import { FunctionCallData, FunctionCallAction } from "../../types/index";
+import { useState } from "react";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { InfoDisplay, type InfoItem } from "@/components/info-display";
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { User } from "@/components/user";
+import { cn, formatGas, sumIntegerStrings } from "@/lib/utils";
+import type { FunctionCallAction, FunctionCallData } from "../../types/index";
 
 interface FunctionCallExpandedProps {
     data: FunctionCallData;
 }
 
-function ActionArgs({ args }: { args: Record<string, any> }) {
+function ActionArgs({ args }: { args: Record<string, unknown> }) {
     return (
         <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs">
             <code className="text-foreground/90">
@@ -53,7 +54,15 @@ function ActionDisplay({
     if (action.deposit && action.deposit !== "0") {
         items.push({
             label: t("deposit"),
-            value: <span>{formatNearAmount(action.deposit)}</span>,
+            value: (
+                <FormattedAmount
+                    kind="raw-token"
+                    value={action.deposit}
+                    symbol="NEAR"
+                    tokenDecimals={24}
+                    profile="standard"
+                />
+            ),
         });
     }
 
@@ -110,7 +119,7 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
     const headerItems: InfoItem[] = [
         {
             label: t("contract"),
-            value: <User accountId={data.receiver} useAddressBook />,
+            value: <User accountId={data.receiver} preferAddressBook />,
         },
     ];
 
@@ -137,9 +146,13 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
                             items.push({
                                 label: t("deposit"),
                                 value: (
-                                    <span>
-                                        {formatNearAmount(action.deposit)}
-                                    </span>
+                                    <FormattedAmount
+                                        kind="raw-token"
+                                        value={action.deposit}
+                                        symbol="NEAR"
+                                        tokenDecimals={24}
+                                        profile="standard"
+                                    />
                                 ),
                             });
                         }
@@ -155,12 +168,15 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
         );
     }
 
-    const totalGas = data.actions
-        .reduce((sum, a) => sum + BigInt(a.gas), BigInt(0))
-        .toString();
-    const totalDeposit = data.actions
-        .reduce((sum, a) => sum + BigInt(a.deposit || "0"), BigInt(0))
-        .toString();
+    const totalGas = sumIntegerStrings(
+        data.actions.map((action) => action.gas),
+    );
+    const totalDeposit = sumIntegerStrings(
+        data.actions.map((action) => action.deposit || "0"),
+    );
+    const hasDeposit = data.actions.some(
+        (action) => action.deposit && action.deposit !== "0",
+    );
 
     const isAllExpanded = expanded.length === data.actions.length;
     const toggleAllExpanded = () => {
@@ -178,10 +194,18 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
         },
     ];
 
-    if (totalDeposit !== "0") {
+    if (hasDeposit) {
         summaryItems.push({
             label: t("totalDeposit"),
-            value: <span>{formatNearAmount(totalDeposit)}</span>,
+            value: (
+                <FormattedAmount
+                    kind="raw-token"
+                    value={totalDeposit}
+                    symbol="NEAR"
+                    tokenDecimals={24}
+                    profile="standard"
+                />
+            ),
         });
     }
 

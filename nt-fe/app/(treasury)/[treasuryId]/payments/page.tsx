@@ -7,16 +7,15 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm, useFormContext, useWatch } from "react-hook-form";
-import { z } from "zod";
 import { toast } from "sonner";
-
+import { z } from "zod";
+import { Address } from "@/components/address";
 import { AmountSummary } from "@/components/amount-summary";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { CreateRequestButton } from "@/components/create-request-button";
-import { TokenDisplay } from "@/components/token-display-with-network";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { PageComponentLayout } from "@/components/page-component-layout";
-import { SlotWarning } from "@/components/warning-message";
 import { PendingButton } from "@/components/pending-button";
 import {
     ReviewStep,
@@ -25,66 +24,78 @@ import {
     StepWizard,
 } from "@/components/step-wizard";
 import { Textarea } from "@/components/textarea";
-import { Tooltip } from "@/components/tooltip";
+import { TokenDisplay } from "@/components/token-display-with-network";
 import { type Token, tokenSchema } from "@/components/token-input";
+import { Tooltip } from "@/components/tooltip";
 import { Form, FormField } from "@/components/ui/form";
-import { default_usdc_near_token } from "@/constants/token";
-import { useAddressBook } from "@/features/address-book";
+import { SlotWarning } from "@/components/warning-message";
+import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { default_near_token, default_usdc_near_token } from "@/constants/token";
+import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import {
     PAGE_TOUR_NAMES,
     PAGE_TOUR_STORAGE_KEYS,
     useManualPageTour,
     usePageTour,
 } from "@/features/onboarding/steps/page-tours";
-import { type BridgeAsset, useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { type BridgeAsset, useTokenCatalog } from "@/hooks/use-bridge-tokens";
+import {
+    buildIntentsQuoteRequest,
+    type IntentsAmountMode,
+    useIntentsQuote,
+} from "@/hooks/use-intents-quote";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
+import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
 import {
     scopedFieldMessage,
     useBridgeScopedWarning,
     useScopedSlotWarning,
 } from "@/hooks/use-warnings";
-import { useToken, useTreasuryPolicy } from "@/hooks/use-treasury-queries";
+import { decimalFromBaseUnitsOrNull, decimalOrNull } from "@/lib/amount-format";
 import { trackEvent } from "@/lib/analytics";
-import { generateIntent, getIntentsQuote } from "@/lib/api";
 import type { IntentsQuoteResponse } from "@/lib/api";
+import { generateIntent, getIntentsQuote } from "@/lib/api";
 import Big from "@/lib/big";
 import { getBlockchainType } from "@/lib/blockchain-utils";
-import {
-    buildIntentsTransferProposal,
-    buildNativeNearIntentsKind,
-    buildNearFtIntentsKind,
-} from "@/lib/near-proposal-builders";
-import {
-    isEthImplicitNearAddress,
-    isValidNearAddressFormat,
-} from "@/lib/near-validation";
-import { useNear } from "@/stores/near-store";
-import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
-import { PaymentFormSection } from "./components/payment-form-section";
-import { Address } from "@/components/address";
-import {
-    useIntentsQuote,
-    buildIntentsQuoteRequest,
-    type IntentsAmountMode,
-} from "@/hooks/use-intents-quote";
-import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
-import { parseTokenQueryParam } from "@/lib/token-query-param";
-import {
-    cn,
-    encodeToMarkdown,
-    formatCurrency,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
 import { findBridgeAssetForToken } from "@/lib/bridge-asset-resolver";
 import {
     computeQuoteNetworkFee,
     isIntentsCrossChainToken,
     isIntentsToken,
-    isNearChainFtToken,
-    isNearChainNativeToken,
 } from "@/lib/intents-fee";
-import { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
+import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import {
+    buildIntentsTransferProposal,
+    buildNativeNearIntentsKind,
+    buildNearFtIntentsKind,
+} from "@/lib/near-proposal-builders";
+import { isNearComRecipientAddress } from "@/lib/nearcom-address";
+import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
+import {
+    classifyPaymentToken,
+    normalizePaymentRecipient,
+    shouldUseDirectPaymentTransfer,
+} from "@/lib/payment-route";
+import type { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
+import { parseTokenQueryParam } from "@/lib/token-query-param";
+import { cn, encodeToMarkdown } from "@/lib/utils";
+import { useNear } from "@/stores/near-store";
+import { buildConfidentialProposal } from "../../../../features/confidential/utils/proposal-builder";
+import { PaymentFormSection } from "./components/payment-form-section";
+import {
+    isBareNearContractId,
+    isIntentsNetworkId,
+    isJsonTokenQueryParam,
+    nearChainDestination,
+    normalizePreferredNetwork,
+    parseSoftNetworks,
+    pickCompatibleFallbackToken,
+    resolveExactBridgeToken,
+    isNativeNearPrefill as resolveIsNativeNearPrefill,
+    resolvePreferredDestinationNetwork,
+    resolvePreferredNetworks,
+} from "./utils/payments-deep-link";
 import { buildDirectTransferKind } from "./utils/proposal-builder";
 
 function buildPaymentFormSchema(messages: {
@@ -323,9 +334,7 @@ function Step2({
         return undefined;
     }, [bridgeAssets, destinationNetwork]);
     const { data: addressBook = [] } = useAddressBook();
-    const contactName = addressBook.find(
-        (e) => e.address.toLowerCase() === address?.toLowerCase(),
-    )?.name;
+    const contactName = findAddressBookEntry(addressBook, address)?.name;
 
     const {
         totalAmountWithFees,
@@ -339,43 +348,41 @@ function Step2({
                 totalAmountWithFees: Big(0),
                 recipientAmount: Big(0),
                 displayNetworkFee: Big(0),
-                estimatedUSDValue: Big(0),
-                recipientEstimatedUSDValue: Big(0),
+                estimatedUSDValue: null,
+                recipientEstimatedUSDValue: null,
             };
         }
 
-        const enteredAmount = Big(amount || "0");
-        const price = tokenData?.price ?? 0;
+        const enteredAmount = decimalOrNull(amount) ?? Big(0);
+        const price = decimalOrNull(tokenData?.price);
 
         if (liveQuote?.quote) {
-            const divisor = Big(10).pow(token.decimals);
-            const quotedTotal = Big(
-                liveQuote.quote.amountInFormatted ||
-                    Big(liveQuote.quote.minAmountIn || "0")
-                        .div(divisor)
-                        .toString(),
-            );
-            const quotedRecipient = Big(
-                liveQuote.quote.amountOutFormatted ||
-                    Big(liveQuote.quote.minAmountOut || "0")
-                        .div(divisor)
-                        .toString(),
-            );
-            const feeValue = Big(
-                (computeQuoteNetworkFee(liveQuote.quote) || "0").replaceAll(
-                    ",",
-                    "",
-                ),
-            );
+            const quotedTotal =
+                decimalFromBaseUnitsOrNull(
+                    liveQuote.quote.amountIn || liveQuote.quote.minAmountIn,
+                    token.decimals,
+                ) ??
+                decimalOrNull(liveQuote.quote.amountInFormatted) ??
+                Big(0);
+            const quotedRecipient =
+                decimalOrNull(liveQuote.quote.amountOutFormatted) ??
+                decimalFromBaseUnitsOrNull(
+                    liveQuote.quote.amountOut || liveQuote.quote.minAmountOut,
+                    token.decimals,
+                ) ??
+                Big(0);
+            const feeValue =
+                decimalOrNull(computeQuoteNetworkFee(liveQuote.quote)) ??
+                Big(0);
 
             return {
                 totalAmountWithFees: quotedTotal,
                 recipientAmount: quotedRecipient,
                 displayNetworkFee: feeValue,
-                estimatedUSDValue: price ? quotedTotal.mul(price) : Big(0),
-                recipientEstimatedUSDValue: price
+                estimatedUSDValue: price?.gt(0) ? quotedTotal.mul(price) : null,
+                recipientEstimatedUSDValue: price?.gt(0)
                     ? quotedRecipient.mul(price)
-                    : Big(0),
+                    : null,
             };
         }
 
@@ -383,10 +390,10 @@ function Step2({
             totalAmountWithFees: enteredAmount,
             recipientAmount: enteredAmount,
             displayNetworkFee: Big(0),
-            estimatedUSDValue: price ? enteredAmount.mul(price) : Big(0),
-            recipientEstimatedUSDValue: price
+            estimatedUSDValue: price?.gt(0) ? enteredAmount.mul(price) : null,
+            recipientEstimatedUSDValue: price?.gt(0)
                 ? enteredAmount.mul(price)
-                : Big(0),
+                : null,
         };
     }, [amount, liveQuote, token, tokenData?.price]);
 
@@ -403,10 +410,9 @@ function Step2({
             >
                 <AmountSummary
                     total={totalAmountWithFees}
-                    totalUSD={estimatedUSDValue.toNumber()}
+                    totalUSD={estimatedUSDValue}
                     token={token}
                     showNetworkIcon={true}
-                    preserveFormattedTotal={!!liveQuote?.quote}
                 >
                     <p>{tPay("summaryRecipients", { count: 1 })}</p>
                 </AmountSummary>
@@ -440,17 +446,26 @@ function Step2({
                                 />
                                 <div className="flex flex-col gap-[3px] items-end">
                                     <p className="text-xs font-semibold text-wrap break-all">
-                                        {formatTokenDisplayAmount(
-                                            recipientAmount,
-                                        )}{" "}
-                                        {token.symbol}
+                                        <FormattedAmount
+                                            kind="token"
+                                            value={recipientAmount}
+                                            symbol={token.symbol}
+                                            tokenDecimals={token.decimals}
+                                            unitPriceUsd={tokenData?.price}
+                                            profile="standard"
+                                        />
                                     </p>
-                                    <p className="text-xxs text-muted-foreground text-wrap break-all">
-                                        ≈{" "}
-                                        {formatCurrency(
-                                            recipientEstimatedUSDValue,
-                                        )}
-                                    </p>
+                                    {recipientEstimatedUSDValue ? (
+                                        <p className="text-xxs text-muted-foreground text-wrap break-all">
+                                            ≈{" "}
+                                            <FormattedAmount
+                                                kind="fiat"
+                                                value={
+                                                    recipientEstimatedUSDValue
+                                                }
+                                            />
+                                        </p>
+                                    ) : null}
                                 </div>
                             </div>
                         </div>
@@ -469,10 +484,15 @@ function Step2({
                                     </Tooltip>
                                 </div>
                                 <p>
-                                    {formatTokenDisplayAmount(
-                                        displayNetworkFee,
-                                    )}{" "}
-                                    {token.symbol}
+                                    <FormattedAmount
+                                        kind="token"
+                                        value={displayNetworkFee}
+                                        symbol={token.symbol}
+                                        tokenDecimals={token.decimals}
+                                        unitPriceUsd={tokenData?.price}
+                                        profile="standard"
+                                        rounding="up"
+                                    />
                                 </p>
                             </div>
                         )}
@@ -516,14 +536,6 @@ function Step2({
 
 type PaymentFormValues = z.infer<ReturnType<typeof buildPaymentFormSchema>>;
 
-type PaymentTokenClassification = {
-    isNearNativeToken: boolean;
-    isNearFtToken: boolean;
-    isNearComRoute: boolean;
-    intentsOriginAsset: string;
-    tokenForIntentsQuote: Token;
-};
-
 /** Decimals for the quote `amount`: destination asset for EXACT_OUTPUT, origin for EXACT_INPUT. */
 function getQuoteAmountDecimals(
     token: Token,
@@ -543,114 +555,6 @@ function getQuoteAmountDecimals(
     const bridgeAsset = findBridgeAssetForToken(bridgeAssets, token);
     return bridgeAsset?.networks.find((n) => n.id === destinationNetwork)
         ?.decimals;
-}
-
-function classifyPaymentToken(
-    token: Token,
-    destinationNetwork?: string,
-): PaymentTokenClassification {
-    const isNearNativeToken = isNearChainNativeToken(token);
-    const isNearFtToken = isNearChainFtToken(token);
-    const isNearComRoute = isNearComNetwork(destinationNetwork);
-    const intentsOriginAsset = isNearNativeToken
-        ? "nep141:wrap.near"
-        : isNearFtToken
-          ? `nep141:${token.address}`
-          : token.address;
-
-    return {
-        isNearNativeToken,
-        isNearFtToken,
-        isNearComRoute,
-        intentsOriginAsset,
-        tokenForIntentsQuote:
-            intentsOriginAsset === token.address
-                ? token
-                : { ...token, address: intentsOriginAsset },
-    };
-}
-
-const STABLE_TOKEN_PRIORITY: Record<string, number> = {
-    USDC: 2,
-    USDT: 1,
-};
-
-function getNetworkMatchScore(
-    tokenNetwork: string,
-    preferredNetworks: string[],
-): number {
-    const normalizedTokenNetwork = tokenNetwork.trim().toLowerCase();
-    const tokenBlockchain = getBlockchainType(normalizedTokenNetwork);
-    let bestScore = 0;
-
-    preferredNetworks.forEach((preferredNetwork, index) => {
-        const normalizedPreferredNetwork = preferredNetwork
-            .trim()
-            .toLowerCase();
-
-        if (normalizedPreferredNetwork === normalizedTokenNetwork) {
-            bestScore = Math.max(bestScore, 200 - index);
-            return;
-        }
-
-        const preferredBlockchain = getBlockchainType(
-            normalizedPreferredNetwork,
-        );
-
-        if (
-            preferredBlockchain !== "unknown" &&
-            preferredBlockchain === tokenBlockchain
-        ) {
-            bestScore = Math.max(bestScore, 100 - index);
-        }
-    });
-
-    return bestScore;
-}
-
-function pickCompatibleFallbackToken(
-    preferredNetworks: string[],
-    bridgeAssets: BridgeAsset[],
-): Token | null {
-    let bestCandidate: { score: number; token: Token } | null = null;
-
-    for (const asset of bridgeAssets) {
-        for (const network of asset.networks) {
-            const networkScore = getNetworkMatchScore(
-                network.name,
-                preferredNetworks,
-            );
-
-            if (networkScore === 0) {
-                continue;
-            }
-
-            const stablePriority =
-                STABLE_TOKEN_PRIORITY[network.symbol.toUpperCase()] ?? 0;
-            const candidateScore = networkScore * 10 + stablePriority;
-            const candidate: Token = {
-                address: network.id,
-                symbol: network.symbol,
-                decimals: network.decimals,
-                name: asset.name,
-                icon: asset.icon,
-                network: network.name,
-                chainIcons: network.chainIcons ?? undefined,
-                residency: "Intents",
-                minWithdrawalAmount: network.minWithdrawalAmount,
-                minDepositAmount: network.minDepositAmount,
-            };
-
-            if (!bestCandidate || candidateScore > bestCandidate.score) {
-                bestCandidate = {
-                    score: candidateScore,
-                    token: candidate,
-                };
-            }
-        }
-    }
-
-    return bestCandidate?.token ?? null;
 }
 
 function buildIntentTransferDescription(
@@ -722,54 +626,123 @@ export default function PaymentsPage() {
         useState(false);
 
     const tokenParam = searchParams.get("token");
+    // Hybrid deep links:
+    // - exact Intents:     `?token=<assetId>&network=nep141:…` (or `eth:1:…`)
+    // - exact Ft:          `?token=<assetId>&network=<bareContract>`
+    // - exact native NEAR: `?token=NEAR&network=near`
+    // - soft:              `?networks=eth,near` (+ optional `token=<assetId>`)
+    const networkParam = searchParams.get("network");
+    const networksParam = searchParams.get("networks");
+    const softNetworks = useMemo(
+        () => parseSoftNetworks(networksParam),
+        [networksParam],
+    );
+    const isFtNetworkPrefill = !!(
+        networkParam && isBareNearContractId(networkParam)
+    );
+    const isNativeNearPrefill = resolveIsNativeNearPrefill({
+        tokenParam,
+        networkParam,
+    });
+    const exactTokenNetworkId =
+        !isNativeNearPrefill &&
+        networkParam &&
+        (isIntentsNetworkId(networkParam) || isFtNetworkPrefill)
+            ? networkParam
+            : null;
     const preferredNetworks = useMemo(
         () =>
-            (searchParams.get("networks") ?? searchParams.get("network") ?? "")
-                .split(",")
-                .map((network) => network.trim())
-                .filter(Boolean),
-        [searchParams],
+            resolvePreferredNetworks({
+                softNetworks,
+                networkParam,
+                isFtNetworkPrefill,
+                isNativeNearPrefill,
+            }),
+        [softNetworks, networkParam, isFtNetworkPrefill, isNativeNearPrefill],
     );
     const {
         data: bridgeAssets = [],
         isLoading: isBridgeAssetsLoading,
         isFetching: isBridgeAssetsFetching,
-    } = useBridgeTokens(true);
+    } = useTokenCatalog({ kind: "swap" });
     // Generic default (highest-USD → USDC) lives in TokenSelect.autoSelect.
     // Page only seeds from URL overrides so the two don't fight.
+    const namePreferredNetworks = useMemo(
+        () =>
+            preferredNetworks.filter((network) => !isIntentsNetworkId(network)),
+        [preferredNetworks],
+    );
+    // Address-book links often list many chains — still pick a send token, but
+    // leave destination empty so the user chooses among preferred networks.
+    const hasAmbiguousSoftNetworks = namePreferredNetworks.length > 1;
+    const plainTokenAssetId =
+        tokenParam && !isJsonTokenQueryParam(tokenParam) ? tokenParam : null;
     const compatibleDefaultToken = useMemo(() => {
-        if (tokenParam || preferredNetworks.length === 0) {
+        if (isNativeNearPrefill) return null;
+        if (namePreferredNetworks.length === 0) return null;
+        return pickCompatibleFallbackToken(
+            namePreferredNetworks,
+            bridgeAssets,
+            plainTokenAssetId,
+        );
+    }, [
+        bridgeAssets,
+        namePreferredNetworks,
+        plainTokenAssetId,
+        isNativeNearPrefill,
+    ]);
+
+    const urlOverrideToken = useMemo(() => {
+        if (
+            isBridgeAssetsLoading &&
+            (tokenParam || preferredNetworks.length > 0)
+        ) {
             return null;
         }
 
-        return pickCompatibleFallbackToken(preferredNetworks, bridgeAssets);
-    }, [bridgeAssets, preferredNetworks, tokenParam]);
-
-    const urlOverrideToken = useMemo(() => {
-        if (tokenParam) {
+        // 1) Legacy assets-table JSON blob (read-only compat).
+        if (tokenParam && isJsonTokenQueryParam(tokenParam)) {
             return parseTokenQueryParam(tokenParam, default_usdc_near_token());
         }
-        if (preferredNetworks.length === 0) return null;
-        if (isBridgeAssetsLoading) return null;
+
+        // 2) Native NEAR (not intents wrap.near).
+        if (isNativeNearPrefill) {
+            return default_near_token(isConfidential);
+        }
+
+        // 3) Exact: prefixed network → Intents; bare NEAR contract → Ft.
+        const exact = resolveExactBridgeToken(
+            bridgeAssets,
+            plainTokenAssetId,
+            exactTokenNetworkId,
+        );
+        if (exact) return exact;
+
+        // 4) Soft: `?networks=…` (+ optional asset id filter).
         return compatibleDefaultToken;
     }, [
         tokenParam,
+        plainTokenAssetId,
+        exactTokenNetworkId,
+        isNativeNearPrefill,
+        isConfidential,
+        bridgeAssets,
         preferredNetworks.length,
         isBridgeAssetsLoading,
         compatibleDefaultToken,
     ]);
 
-    // Let TokenSelect pick when there's no URL token and no compatible
-    // ?networks= match (or no networks param at all).
+    // Let TokenSelect pick when there's no URL seed (or seed failed to resolve).
     const tokenAutoSelect =
         !tokenParam &&
-        (preferredNetworks.length === 0 ||
-            (!isBridgeAssetsLoading && !compatibleDefaultToken));
+        namePreferredNetworks.length === 0 &&
+        !exactTokenNetworkId &&
+        !isNativeNearPrefill;
 
     const preferredBlockchainTypes = useMemo(() => {
         const set = new Set<string>();
         for (const network of preferredNetworks) {
-            const type = getBlockchainType(network);
+            const type = getBlockchainType(normalizePreferredNetwork(network));
             if (type !== "unknown") set.add(type);
         }
         return set;
@@ -844,47 +817,28 @@ export default function PaymentsPage() {
         : null;
 
     const watchedTokenClassification = useMemo(
-        () =>
-            watchedToken
-                ? classifyPaymentToken(watchedToken, watchedDestinationNetwork)
-                : null,
-        [watchedToken, watchedDestinationNetwork],
+        () => (watchedToken ? classifyPaymentToken(watchedToken) : null),
+        [watchedToken],
     );
-    const isWatchedNearNativeToken =
-        watchedTokenClassification?.isNearNativeToken ?? false;
-    const isWatchedNearFtToken =
-        watchedTokenClassification?.isNearFtToken ?? false;
-
-    const normalizedWatchedAddress = watchedAddress.trim().toLowerCase();
-    const isWatchedEthImplicit = isEthImplicitNearAddress(
-        normalizedWatchedAddress,
-    );
-    const isWatchedNearRecipient =
-        isValidNearAddressFormat(normalizedWatchedAddress) &&
-        !isWatchedEthImplicit;
-    const isWatchedNearComRoute =
-        watchedTokenClassification?.isNearComRoute ?? false;
 
     // True when we'll send via a direct Transfer (not through Intents).
     const isWatchedDirectTransfer =
-        !isConfidential &&
-        !isWatchedNearComRoute &&
-        isWatchedNearRecipient &&
-        (isWatchedNearNativeToken || isWatchedNearFtToken);
+        !!watchedToken &&
+        shouldUseDirectPaymentTransfer({
+            token: watchedToken,
+            destinationNetwork: watchedDestinationNetwork,
+            recipient: watchedAddress ?? "",
+            isConfidential,
+        });
 
     // Token object to use for the 1Click quote. For native NEAR and NEAR FT we
     // swap in the nep141: prefix so the hook enables and shows a fee preview.
     // Null while assets load (before default token is seeded).
     const quoteToken = useMemo((): Token | null => {
         if (!watchedToken || !watchedTokenClassification) return null;
-        if (isConfidential || isWatchedDirectTransfer) return watchedToken;
+        if (isWatchedDirectTransfer) return watchedToken;
         return watchedTokenClassification.tokenForIntentsQuote;
-    }, [
-        watchedToken,
-        isConfidential,
-        isWatchedDirectTransfer,
-        watchedTokenClassification,
-    ]);
+    }, [watchedToken, isWatchedDirectTransfer, watchedTokenClassification]);
 
     // Whether this payment will go through the Intents protocol.
     const isViaIntents = !!quoteToken && isIntentsToken(quoteToken);
@@ -926,6 +880,23 @@ export default function PaymentsPage() {
         ],
     );
 
+    const findQuoteAssetIdFor = useCallback(
+        (networkId: string | undefined): string | undefined => {
+            if (!networkId || isNearComNetwork(networkId)) {
+                return networkId;
+            }
+            // Receiver network decides the 1Click destination id (balance vs
+            // 1cs routing alias, e.g. nBTC → native BTC on Bitcoin).
+            return findQuoteAssetIdForDestination(bridgeAssets, networkId);
+        },
+        [bridgeAssets],
+    );
+
+    const destinationQuoteAssetId = useMemo(
+        () => findQuoteAssetIdFor(watchedDestinationNetwork),
+        [findQuoteAssetIdFor, watchedDestinationNetwork],
+    );
+
     // ── Live quote (drives step-1 fee preview & step-2 review) ───────────────
 
     const {
@@ -948,6 +919,7 @@ export default function PaymentsPage() {
         proposalPeriod: policy?.proposal_period,
         amountMode: intentsAmountMode,
         destinationNetwork: watchedDestinationNetwork,
+        destinationQuoteAssetId,
         isPayment: true,
         // Paused payment (critical warning on token/network or app-wide): don't
         // fetch the quote. Also wait until the default token is ready.
@@ -1009,27 +981,70 @@ export default function PaymentsPage() {
     // ── Destination network auto-wiring ───────────────────────────────────────
 
     const compatibleDestination = useMemo(() => {
-        if (
-            preferredBlockchainTypes.size === 0 ||
-            !watchedToken ||
-            bridgeAssets.length === 0
-        ) {
+        if (!watchedToken) return null;
+
+        const rawAddress = (watchedAddress ?? "").trim();
+        // nearcom: + any valid NEAR format (incl. eth-implicit 0x…).
+        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
+
+        // Only auto-destination: nearcom:<near> → near.com (public + confidential).
+        // Plain NEAR / eth / etc. keep the original picker compatibility path
+        // (no force-to-near).
+        if (isNearComRecipient) {
+            return {
+                id: NEAR_COM_NETWORK_ID,
+                networkName: NEAR_NETWORK_ID,
+            };
+        }
+
+        // Soft Ft / native NEAR → NEAR destination when recipient is empty.
+        // Never soft-seed near.com (including prefersNearCom / confidential).
+        if (isFtNetworkPrefill || isNativeNearPrefill) {
+            if (rawAddress) return null;
+            return nearChainDestination();
+        }
+
+        // Multiple soft chain prefs (address book) — leave destination empty.
+        if (hasAmbiguousSoftNetworks) return null;
+
+        // Soft multi-chain prefs: only when recipient is empty. Typing an
+        // address must not keep re-resolving preferred destination.
+        if (rawAddress) return null;
+
+        if (preferredNetworks.length === 0 || bridgeAssets.length === 0) {
             return null;
         }
+
+        // `networks=near.com` alone is not a bridge id — near.com is selected
+        // only via a nearcom: address (above).
+        const bridgePreferred = preferredNetworks.filter(
+            (network) => network.trim().toLowerCase() !== NEAR_COM_NETWORK_ID,
+        );
+        if (bridgePreferred.length === 0) return null;
 
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
 
-        const matches = bridgeAsset.networks.filter((network) =>
-            preferredBlockchainTypes.has(getBlockchainType(network.name)),
+        return resolvePreferredDestinationNetwork(
+            bridgeAsset,
+            bridgePreferred,
+            preferredBlockchainTypes,
         );
-        if (matches.length !== 1) return null;
+    }, [
+        bridgeAssets,
+        preferredNetworks,
+        preferredBlockchainTypes,
+        watchedToken,
+        watchedAddress,
+        hasAmbiguousSoftNetworks,
+        isFtNetworkPrefill,
+        isNativeNearPrefill,
+    ]);
 
-        return {
-            id: matches[0].id,
-            networkName: matches[0].name,
-        };
-    }, [bridgeAssets, preferredBlockchainTypes, watchedToken]);
+    // Stable id/name so destination seed effect doesn't re-run every render.
+    const compatibleDestinationId = compatibleDestination?.id ?? null;
+    const compatibleDestinationName =
+        compatibleDestination?.networkName ?? null;
 
     // ── Ensure quote is fresh before entering the review step ─────────────────
 
@@ -1084,45 +1099,78 @@ export default function PaymentsPage() {
 
     // ── Effects ───────────────────────────────────────────────────────────────
 
-    // Seed only URL overrides; TokenSelect.autoSelect handles the rest.
+    // Seed URL token/network overrides; TokenSelect.autoSelect handles the rest.
     useEffect(() => {
         if (!urlOverrideToken) return;
-        if (tokenParam) {
-            form.setValue("token", urlOverrideToken);
+        // Deep-link seeds always win over a prior selection.
+        if (tokenParam || preferredNetworks.length > 0) {
+            const current = form.getValues("token");
+            const sameToken =
+                current?.address === urlOverrideToken.address &&
+                current?.residency === urlOverrideToken.residency;
+            if (!sameToken) {
+                form.setValue("token", urlOverrideToken);
+                // Clear so destination can re-resolve for the preferred network.
+                form.setValue("destinationNetwork", "");
+                form.setValue("destinationNetworkName", "");
+            }
             return;
         }
         const currentToken = form.getValues("token");
         if (!currentToken) {
             form.setValue("token", urlOverrideToken);
         }
-    }, [urlOverrideToken, form, tokenParam]);
+    }, [urlOverrideToken, form, tokenParam, preferredNetworks.length]);
 
     useEffect(() => {
-        if (!compatibleDestination) return;
-        if (watchedDestinationNetwork) return;
-        const timeoutId = window.setTimeout(() => {
-            form.setValue("destinationNetwork", compatibleDestination.id, {
-                shouldDirty: true,
-            });
-            form.setValue(
-                "destinationNetworkName",
-                compatibleDestination.networkName,
-                { shouldDirty: true },
-            );
-        }, 150);
-        return () => window.clearTimeout(timeoutId);
-    }, [compatibleDestination, form, watchedDestinationNetwork]);
+        const rawAddress = (watchedAddress ?? "").trim();
+        const isNearComRecipient = isNearComRecipientAddress(rawAddress);
 
+        // Drop stale near.com when the address is no longer nearcom:<near>.
+        if (
+            isNearComNetwork(watchedDestinationNetwork) &&
+            !isNearComRecipient
+        ) {
+            form.setValue("destinationNetwork", "", { shouldDirty: true });
+            form.setValue("destinationNetworkName", "", { shouldDirty: true });
+            return;
+        }
+
+        if (!compatibleDestinationId || !compatibleDestinationName) return;
+        if (watchedDestinationNetwork === compatibleDestinationId) return;
+
+        // Soft/URL prefs only fill an empty destination. nearcom: may overwrite.
+        if (!isNearComRecipient && watchedDestinationNetwork) {
+            return;
+        }
+
+        form.setValue("destinationNetwork", compatibleDestinationId, {
+            shouldDirty: true,
+        });
+        form.setValue("destinationNetworkName", compatibleDestinationName, {
+            shouldDirty: true,
+        });
+    }, [
+        compatibleDestinationId,
+        compatibleDestinationName,
+        form,
+        watchedDestinationNetwork,
+        watchedAddress,
+    ]);
+
+    // Prefill from ?address= once. Re-applying on every empty value fought the
+    // recipient wipe clearer and bounced destination seed.
+    const didSeedDefaultAddressRef = useRef(false);
     useEffect(() => {
-        if (!defaultAddress) return;
-        if (!watchedDestinationNetwork) return;
+        if (!defaultAddress || didSeedDefaultAddressRef.current) return;
+        didSeedDefaultAddressRef.current = true;
         if (form.getValues("address") === defaultAddress) return;
         form.setValue("address", defaultAddress, {
             shouldDirty: true,
             shouldTouch: true,
             shouldValidate: true,
         });
-    }, [defaultAddress, watchedDestinationNetwork, form]);
+    }, [defaultAddress, form]);
 
     useEffect(() => {
         if (!isCrossChainIntentsToken) {
@@ -1142,31 +1190,21 @@ export default function PaymentsPage() {
 
         try {
             const proposalBond = policy?.proposal_bond || "0";
+            // Form may include nearcom: (routing/display). 1Click gets bare via
+            // buildIntentsQuoteRequest; direct transfers use bareAddress.
             const trimmedAddress = data.address.trim();
-            const tokenClassification = classifyPaymentToken(
+            const bareAddress = normalizePaymentRecipient(trimmedAddress);
+            const tokenClassification = classifyPaymentToken(token);
+            const { isNearNativeToken } = tokenClassification;
+
+            const shouldUseDirectTransfer = shouldUseDirectPaymentTransfer({
                 token,
-                data.destinationNetwork,
-            );
-            const normalizedNearAddress = trimmedAddress.toLowerCase();
-            const { isNearNativeToken, isNearFtToken, isNearComRoute } =
-                tokenClassification;
+                destinationNetwork: data.destinationNetwork,
+                recipient: trimmedAddress,
+                isConfidential,
+            });
 
-            const isEthImplicit = isEthImplicitNearAddress(
-                normalizedNearAddress,
-            );
-            const isNearRecipient =
-                isValidNearAddressFormat(normalizedNearAddress) &&
-                !isEthImplicit;
-
-            const shouldUseDirectTransfer =
-                !isConfidential &&
-                !isNearComRoute &&
-                isNearRecipient &&
-                (isNearNativeToken || isNearFtToken);
-
-            const shouldUseIntents = isConfidential
-                ? isIntentsToken(token)
-                : !shouldUseDirectTransfer;
+            const shouldUseIntents = !shouldUseDirectTransfer;
 
             const directTransferAmount = Big(data.amount)
                 .mul(Big(10).pow(token.decimals))
@@ -1220,6 +1258,12 @@ export default function PaymentsPage() {
                             undefined,
                             data.destinationNetwork,
                             true, // isPayment
+                            {
+                                destinationQuoteAssetId:
+                                    findQuoteAssetIdFor(
+                                        data.destinationNetwork,
+                                    ) ?? data.destinationNetwork,
+                            },
                         ),
                         false,
                     ));
@@ -1276,7 +1320,7 @@ export default function PaymentsPage() {
             } else {
                 // Direct NEAR or NEAR FT transfer
                 proposalKind = buildDirectTransferKind(
-                    trimmedAddress,
+                    bareAddress,
                     token,
                     directTransferAmount,
                     isConfidential,

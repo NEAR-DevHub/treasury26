@@ -10,9 +10,19 @@ nt-be/examples/playwright/test-results/
 nt-be/examples/playwright/fixtures/*.png
 nt-be/examples/fixtures/auth_response.json
 nt-be/examples/fixtures/mpc_auth_result.txt
+nt-be/examples/dao_history_control.rs
 test-results/
 nt-be/src/bin/confidential_deposit_verifier.rs
 
 # local-only confidential deposit verification script
 nt-be/scripts/verify_confidential_deposits.sh
+nt-be/scripts/import_staging_balance_changes.sh
+nt-be/examples/sentry_drill.rs
 .gstack/
+
+# local-only DAO history stop/clamp operator script
+nt-be/examples/dao_history_control.rs
+
+# local-only verification re-check diagnostic script
+nt-be/examples/verify_check_local.rs
+ERROR_OBSERVABILITY_AUDIT.md

@@ -1,8 +1,8 @@
-import { Policy } from "@/types/policy";
-import axios from "axios";
-import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { Balance, BalanceRaw, transformBalance } from "./balance";
+import Big from "@/lib/big";
+import { http as axios } from "@/lib/http";
+import type { Policy } from "@/types/policy";
+import { type Balance, type BalanceRaw, transformBalance } from "./balance";
 
 const BACKEND_API_BASE = `${process.env.NEXT_PUBLIC_BACKEND_API_BASE}/api`;
 
@@ -146,55 +146,80 @@ export async function getTreasuryAssets(
             withCredentials: true,
         });
 
-        // Transform raw tokens with USD values
-        const tokensWithUSD = response.data.map((token) => {
-            const { balance, total } = transformBalance(token.balance);
-            const price = parseFloat(token.price);
-            const totalDecimalAdjusted = total.div(Big(10).pow(token.decimals));
-            const balanceUSD = totalDecimalAdjusted.mul(price).toNumber();
-
-            return {
-                id: token.id,
-                contractId: token.contractId,
-                lockupInstanceId: token.lockupInstanceId,
-                ftLockupSchedule: token.ftLockupSchedule,
-                residency: token.residency,
-                network: token.network,
-                symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
-                decimals: token.decimals,
-                balance,
-                chainName: token.chainName,
-                chainIcons: token.chainIcons,
-                balanceUSD,
-                price,
-                name: token.name,
-                icon: token.icon,
-                weight: 0,
-            };
-        });
-
-        // Calculate total USD value
-        const totalUSD = tokensWithUSD.reduce(
-            (sum, token) => sum.add(token.balanceUSD),
-            Big(0),
-        );
-
-        // Calculate weights
-        const tokens: TreasuryAsset[] = tokensWithUSD.map((token) => ({
-            ...token,
-            weight: totalUSD.gt(0)
-                ? Big(token.balanceUSD).div(totalUSD).mul(100).toNumber()
-                : 0,
-        }));
-
-        return {
-            tokens,
-            totalBalanceUSD: totalUSD,
-        };
+        return transformTreasuryAssets(response.data);
     } catch (error) {
         console.error("Error getting whitelist tokens", error);
         return { tokens: [], totalBalanceUSD: Big(0) };
     }
+}
+
+/**
+ * Liquid public balances (NEAR / NEP-141 on the DAO account + public intents)
+ * of a confidential treasury — funds that landed outside the confidential
+ * balance. Member-only; the backend rejects public treasuries.
+ */
+export async function getConfidentialPublicAssets(
+    treasuryId: string,
+): Promise<TreasuryAssets> {
+    if (!treasuryId) return { tokens: [], totalBalanceUSD: Big(0) };
+
+    const url = `${BACKEND_API_BASE}/confidential/public-assets`;
+    const response = await axios.get<TreasuryAssetRaw[]>(url, {
+        params: { accountId: treasuryId },
+        withCredentials: true,
+    });
+
+    return transformTreasuryAssets(response.data);
+}
+
+/** Raw backend tokens → USD-valued, weighted `TreasuryAssets`. */
+export function transformTreasuryAssets(
+    rawTokens: TreasuryAssetRaw[],
+): TreasuryAssets {
+    const tokensWithUSD = rawTokens.map((token) => {
+        const { balance, total } = transformBalance(token.balance);
+        const price = parseFloat(token.price);
+        const totalDecimalAdjusted = total.div(Big(10).pow(token.decimals));
+        const balanceUSD = totalDecimalAdjusted.mul(price).toNumber();
+
+        return {
+            id: token.id,
+            contractId: token.contractId,
+            lockupInstanceId: token.lockupInstanceId,
+            ftLockupSchedule: token.ftLockupSchedule,
+            residency: token.residency,
+            network: token.network,
+            symbol: token.symbol === "wNEAR" ? "NEAR" : token.symbol,
+            decimals: token.decimals,
+            balance,
+            chainName: token.chainName,
+            chainIcons: token.chainIcons,
+            balanceUSD,
+            price,
+            name: token.name,
+            icon: token.icon,
+            weight: 0,
+        };
+    });
+
+    // Calculate total USD value
+    const totalUSD = tokensWithUSD.reduce(
+        (sum, token) => sum.add(token.balanceUSD),
+        Big(0),
+    );
+
+    // Calculate weights
+    const tokens: TreasuryAsset[] = tokensWithUSD.map((token) => ({
+        ...token,
+        weight: totalUSD.gt(0)
+            ? Big(token.balanceUSD).div(totalUSD).mul(100).toNumber()
+            : 0,
+    }));
+
+    return {
+        tokens,
+        totalBalanceUSD: totalUSD,
+    };
 }
 
 export interface BalanceSnapshot {
@@ -304,6 +329,8 @@ export interface RecentActivity {
     receiptIds: string[];
     valueUsd?: number;
     proposalId?: number | null;
+    /** 1Click deposit address of the linked quote proposal; marks the row as intents-routed. */
+    quoteDepositAddress?: string | null;
     swap?: SwapInfo;
     actionKind?: string | null;
     methodName?: string | null;
@@ -492,7 +519,7 @@ export async function getRecentActivityRecipients(
 
 /**
  * Get treasury config for a specific treasury
- * Fetches from backend which queries the treasury contract for config data
+ * Prefers local `treasury_settings` DB overrides when present, else on-chain config.
  */
 export async function getTreasuryConfig(
     treasuryId: string,
@@ -512,6 +539,27 @@ export async function getTreasuryConfig(
         console.error(`Error getting treasury config for ${treasuryId}`, error);
         return null;
     }
+}
+
+export interface UpdateTreasurySettingsRequest {
+    treasuryId: string;
+    displayName: string;
+    flagLogo?: string | null;
+    primaryColor?: string | null;
+}
+
+/**
+ * Update treasury branding settings in the DB (no on-chain ChangeConfig proposal).
+ */
+export async function updateTreasurySettings(
+    body: UpdateTreasurySettingsRequest,
+): Promise<TreasuryConfig> {
+    const response = await axios.put<TreasuryConfig>(
+        `${BACKEND_API_BASE}/treasury/config`,
+        body,
+        { withCredentials: true },
+    );
+    return response.data;
 }
 
 /**
@@ -642,6 +690,7 @@ export async function getTokenMetadata(
     const noPrefixNoNear =
         !token.startsWith("nep141:") &&
         !token.startsWith("nep245:") &&
+        !token.startsWith("1cs_v1:") &&
         token.toLowerCase() !== NEAR_NETWORK_ID;
 
     if (noPrefixNoNear && token.split(":").length === 2) {
@@ -807,6 +856,27 @@ export async function getProfile(
     }
 }
 
+export interface UpdateProfileRequest {
+    displayName?: string | null;
+    /** IPFS/https URL. `null` clears the avatar (including NEAR Social fallback). */
+    avatarUrl?: string | null;
+}
+
+/**
+ * Update the authenticated user's local profile (display name + avatar).
+ * Stored in `user_profiles` and overrides NEAR Social fields when set.
+ */
+export async function updateProfile(
+    body: UpdateProfileRequest,
+): Promise<ProfileData> {
+    const response = await axios.put<ProfileData>(
+        `${BACKEND_API_BASE}/user/profile`,
+        body,
+        { withCredentials: true },
+    );
+    return response.data;
+}
+
 export type PaymentStatus = "Pending" | { Paid: { block_height: number } };
 
 export interface BatchPayment {
@@ -936,6 +1006,8 @@ export async function createTreasuryStream(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(request),
+        // Send the auth cookie: the backend requires a signed-in member.
+        credentials: "include",
     });
 
     if (!response.ok) {
@@ -1540,9 +1612,32 @@ export async function searchReceipt(
     }
 }
 
+/**
+ * Fire-and-forget nudge telling the backend a proposal was just submitted or
+ * voted on. The backend fetches the proposal from chain RPC (nothing here is
+ * trusted) and projects it, so an approved payment/exchange shows up in
+ * history as a pending row within seconds instead of waiting for the
+ * indexer. Never awaited, never surfaces errors — the indexer remains the
+ * safety net.
+ */
+export function refreshProposal(accountId: string, proposalId: number): void {
+    if (!Number.isInteger(proposalId) || proposalId < 0) {
+        return;
+    }
+    void axios
+        .post(
+            `${BACKEND_API_BASE}/proposals/refresh`,
+            { accountId, proposalId },
+            { withCredentials: true },
+        )
+        .catch(() => {});
+}
+
 export interface RelayDelegateActionResponse {
     success: boolean;
     error?: string;
+    /** Ids of the proposals created by an add_proposal relay, in submission order. */
+    proposalIds?: number[];
 }
 
 export async function relayDelegateAction(

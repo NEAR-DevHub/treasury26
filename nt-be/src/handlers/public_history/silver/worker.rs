@@ -2,14 +2,15 @@ use futures::StreamExt;
 use sqlx::PgPool;
 use std::collections::{HashMap, HashSet};
 
+use super::balance_history::BalanceLedgerBuilder;
+use super::balance_history::repository::{replace_ledger_suffix, seed_balances_before};
 use super::cursors::clear_silver_dirty_if_not_advanced;
 use super::models::{SilverProjectionCycleStats, SilverProjectionResult};
 use super::normalize::normalize_bronze_row;
-use super::quote_pending::build_quote_pending_legs;
 use super::repository::{
     clear_projection_errors, delete_stale_silver_rows, earliest_bronze_time, has_silver_before,
-    load_bronze_suffix, load_dirty_accounts, mark_gold_dirty_for_silver_change,
-    upsert_projection_errors, upsert_silver_legs,
+    load_bronze_suffix, load_capped_at_time, load_dirty_accounts,
+    mark_gold_dirty_for_silver_change, upsert_projection_errors, upsert_silver_legs,
 };
 use crate::handlers::public_history::bronze::store::is_public_history_backfill_complete;
 const PUBLIC_SILVER_WORKERS: usize = 2;
@@ -17,6 +18,7 @@ const PUBLIC_SILVER_WORKERS: usize = 2;
 pub async fn project_public_silver_for_account(
     pool: &PgPool,
     account_id: &str,
+    relayer_account: &str,
 ) -> Result<SilverProjectionResult, sqlx::Error> {
     if !is_public_history_backfill_complete(pool, account_id).await? {
         return Ok(SilverProjectionResult::default());
@@ -69,7 +71,20 @@ pub async fn project_public_silver_for_account(
     };
 
     let mut recompute_from = cursor_recompute_from.unwrap_or(earliest);
-    if earliest < recompute_from && !has_silver_before(&mut tx, account_id, recompute_from).await? {
+    let capped_at_time = load_capped_at_time(&mut tx, account_id).await?;
+    if let Some(capped_at_time) = capped_at_time {
+        // The clamp's own anchor (in silver_balance_history, not
+        // silver_public_transfer_legs) is the trust boundary here — bronze
+        // from before it is unreconciled and must never be turned into
+        // movements. has_silver_before's "no prior coverage, expand to a
+        // full recompute" fallback below doesn't apply: this account was
+        // deliberately never given prior silver coverage by design, not by
+        // gap. Nudge past the anchor's own instant so seed_balances_before's
+        // strict `<` picks it up.
+        recompute_from = recompute_from.max(capped_at_time + chrono::Duration::microseconds(1));
+    } else if earliest < recompute_from
+        && !has_silver_before(&mut tx, account_id, recompute_from).await?
+    {
         recompute_from = earliest;
     }
 
@@ -78,11 +93,10 @@ pub async fn project_public_silver_for_account(
     let mut legs = Vec::new();
     let mut leg_positions = HashMap::new();
     let mut preserve_leg_keys: HashSet<String> = HashSet::new();
-    let mut clear_error_source_event_ids = Vec::new();
     let mut projection_errors = Vec::new();
 
-    for row in rows {
-        match normalize_bronze_row(&row) {
+    for row in &rows {
+        match normalize_bronze_row(row) {
             Ok(Some(leg)) => {
                 let leg_key = leg.leg_key.clone();
                 preserve_leg_keys.insert(leg_key.clone());
@@ -92,32 +106,52 @@ pub async fn project_public_silver_for_account(
                     leg_positions.insert(leg_key, legs.len());
                     legs.push(leg);
                 }
-                clear_error_source_event_ids.push(row.id);
                 stats.rows_projected += 1;
             }
-            Ok(None) => {
-                clear_error_source_event_ids.push(row.id);
-            }
+            Ok(None) => {}
             Err(reason) => {
-                projection_errors.push((row.id, reason, row.raw_payload));
-                stats.errors_written += 1;
+                projection_errors.push((row.id, reason, row.raw_payload.clone()));
             }
         }
     }
 
-    upsert_silver_legs(&mut tx, &legs).await?;
-    let quote_pending_legs = build_quote_pending_legs(&mut tx, account_id, recompute_from).await?;
-    for leg in &quote_pending_legs {
-        preserve_leg_keys.insert(leg.leg_key.clone());
+    // The balance ledger is projected from the same bronze suffix inside the
+    // same transaction, so legs and ledger can never be observed inconsistent.
+    let ledger_seeds = seed_balances_before(&mut tx, account_id, recompute_from).await?;
+    let ledger = BalanceLedgerBuilder::new(account_id, relayer_account, ledger_seeds).build(&rows);
+    if ledger.sponsor_clamped_entries > 0 {
+        tracing::info!(
+            account_id,
+            sponsor_clamped_entries = ledger.sponsor_clamped_entries,
+            "user-owned outflow exceeded available user balance; excess booked as sponsor-funded spend"
+        );
     }
-    stats.rows_projected += quote_pending_legs.len() as u64;
-    upsert_silver_legs(&mut tx, &quote_pending_legs).await?;
+    let mut error_source_event_ids: HashSet<i64> =
+        projection_errors.iter().map(|(id, _, _)| *id).collect();
+    for error in ledger.errors {
+        if error_source_event_ids.insert(error.source_event_id) {
+            projection_errors.push((error.source_event_id, error.reason, error.raw_payload));
+        }
+    }
+    stats.errors_written = projection_errors.len() as u64;
+    let clear_error_source_event_ids: Vec<i64> = rows
+        .iter()
+        .map(|row| row.id)
+        .filter(|id| !error_source_event_ids.contains(id))
+        .collect();
+
+    upsert_silver_legs(&mut tx, &legs).await?;
     clear_projection_errors(&mut tx, &clear_error_source_event_ids).await?;
     upsert_projection_errors(&mut tx, account_id, &projection_errors).await?;
 
     let preserve_leg_keys = preserve_leg_keys.into_iter().collect::<Vec<_>>();
     stats.rows_deleted =
         delete_stale_silver_rows(&mut tx, account_id, recompute_from, &preserve_leg_keys).await?;
+
+    let ledger_outcome =
+        replace_ledger_suffix(&mut tx, account_id, recompute_from, &ledger.entries).await?;
+    stats.rows_projected += ledger_outcome.entries_written;
+    stats.rows_deleted += ledger_outcome.entries_deleted;
 
     // Every successful silver cycle must schedule gold validation. Even a
     // no-op cycle previously invalidated readiness when it became dirty.
@@ -131,15 +165,18 @@ pub async fn project_public_silver_for_account(
 
 pub async fn project_public_silver_for_dirty_accounts(
     pool: &PgPool,
+    relayer_account: &str,
 ) -> Result<SilverProjectionCycleStats, sqlx::Error> {
     let dirty_accounts = load_dirty_accounts(pool).await?;
     let accounts_seen = dirty_accounts.len();
 
     let mut stream = futures::stream::iter(dirty_accounts.into_iter().map(|account| {
         let pool = pool.clone();
+        let relayer_account = relayer_account.to_string();
         async move {
             let account_id = account.account_id;
-            let result = project_public_silver_for_account(&pool, &account_id).await;
+            let result =
+                project_public_silver_for_account(&pool, &account_id, &relayer_account).await;
             (account_id, result)
         }
     }))
@@ -160,6 +197,9 @@ pub async fn project_public_silver_for_dirty_accounts(
                 stats.rows_projected += account_stats.rows_projected;
                 stats.rows_deleted += account_stats.rows_deleted;
                 stats.errors_written += account_stats.errors_written;
+                if account_stats.rows_projected > 0 || account_stats.rows_deleted > 0 {
+                    stats.changed_accounts.push(account_id);
+                }
             }
             Err(e) => {
                 stats.accounts_failed += 1;

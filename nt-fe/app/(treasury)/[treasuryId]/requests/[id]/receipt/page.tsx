@@ -2,7 +2,7 @@
 
 import { FileText } from "lucide-react";
 import { redirect, useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { use, useEffect, useMemo, useRef } from "react";
 import QRCode from "react-qr-code";
 import { Button } from "@/components/button";
@@ -15,6 +15,7 @@ import { NetworkIconDisplay } from "@/components/token-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LANDING_PAGE } from "@/constants/config";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { StatusPill } from "@/features/proposals/components/proposal-status-pill";
 import type { BatchPaymentRequestData } from "@/features/proposals/types/index";
 import { extractProposalData } from "@/features/proposals/utils/proposal-extractors";
@@ -43,6 +44,10 @@ import {
     useTreasuryPolicy,
 } from "@/hooks/use-treasury-queries";
 import {
+    decimalFromBaseUnitsOrNull,
+    formatTokenQuantity,
+} from "@/lib/amount-format";
+import {
     getNearComChainIcons,
     isNearComNetwork,
     isNearComPaymentRoute,
@@ -51,12 +56,7 @@ import {
     recordReceiptMetric,
     type SwapQuoteResponse,
 } from "@/lib/proposals-api";
-import {
-    cn,
-    formatBalance,
-    formatTokenDisplayAmount,
-    formatUserDate,
-} from "@/lib/utils";
+import { cn, formatUserDate } from "@/lib/utils";
 import {
     ReceiptSenderSection,
     ReceiptTokenAmountRow,
@@ -593,6 +593,7 @@ function BatchReceiptCard({
     proposalId,
 }: BatchReceiptCardProps) {
     const tReceipt = useTranslations("receiptPage");
+    const locale = useLocale();
     const executedTimeDisplay = transactionDate
         ? formatUserDate(transactionDate, {
               timezone: "UTC",
@@ -608,12 +609,17 @@ function BatchReceiptCard({
         !isNearComDestination && destinationTokenData
             ? destinationTokenData
             : tokenData;
-    const sourceAmountDecimal = formatBalance(
-        batchPayment.amount,
-        receiveToken?.decimals ?? 24,
-    );
-    const sourceAmountDisplayInput =
-        formatTokenDisplayAmount(sourceAmountDecimal);
+    const sourceAmountDecimal =
+        decimalFromBaseUnitsOrNull(
+            batchPayment.amount,
+            receiveToken?.decimals ?? 24,
+        )?.toFixed() ?? null;
+    const sourceAmountDisplayInput = formatTokenQuantity(sourceAmountDecimal, {
+        locale,
+        profile: "standard",
+        tokenDecimals: receiveToken?.decimals,
+        unitPriceUsd: receiveToken?.price,
+    }).display;
     const { sourceAmountDisplay, sourceAmountUsd, rateLabel } =
         buildReceiptAmountModel({
             isExchangeReceipt: false,
@@ -632,6 +638,7 @@ function BatchReceiptCard({
                 tokenPrice: receiveToken?.price ?? null,
                 historicalPriceUsd: sourceHistoricalPriceUsd,
             },
+            locale,
         });
 
     const sourceNetworkName = tokenData?.network || "NEAR";
@@ -683,7 +690,10 @@ function BatchReceiptCard({
             >
                 <PaymentReceiptSections
                     recipientAddress={{
-                        value: batchPayment.recipient,
+                        value: formatRecipientForNearComDestination(
+                            batchPayment.recipient,
+                            destinationAssetId,
+                        ),
                         isLoading: false,
                     }}
                     sourceToken={batchTokenInfo}
@@ -706,6 +716,7 @@ export default function RequestReceiptPage({
     params,
 }: RequestReceiptPageProps) {
     const tReceipt = useTranslations("receiptPage");
+    const locale = useLocale();
     const hasRecordedGeneratedRef = useRef(false);
     const { id } = use(params);
     const searchParams = useSearchParams();
@@ -784,7 +795,12 @@ export default function RequestReceiptPage({
         receiptSourceAmountUsd !== undefined ||
         receiptDestinationAmountUsd !== undefined;
     const isExecutableReceipt = status === "Executed";
-    const shouldUseSwapExecutionDate = isExecutableReceipt && !!depositAddress;
+    // Intents-routed receipts poll swap status for settlement gating; a move
+    // to confidential does too, but its date comes from the chain transaction
+    // (the confidential quote status only exposes the quote time).
+    const shouldTrackSwapStatus = isExecutableReceipt && !!depositAddress;
+    const shouldUseSwapExecutionDate =
+        shouldTrackSwapStatus && proposalUiKind !== "Move to Confidential";
 
     const {
         data: transaction,
@@ -799,7 +815,7 @@ export default function RequestReceiptPage({
     const { data: swapStatus, isLoading: isLoadingSwapStatus } = useSwapStatus(
         depositAddress,
         undefined,
-        shouldUseSwapExecutionDate,
+        shouldTrackSwapStatus,
         treasuryId,
     );
     // Intents-routed proposals gate the receipt on a SUCCESS swap status — a
@@ -807,7 +823,7 @@ export default function RequestReceiptPage({
     // button gate). Public treasury receipts stay accessible to logged-out /
     // non-member (guest) viewers regardless of swap status.
     const isSwapSuccessReady =
-        !shouldUseSwapExecutionDate ||
+        !shouldTrackSwapStatus ||
         (!isConfidential && isGuestTreasury) ||
         swapStatus?.status === "SUCCESS";
     const {
@@ -926,8 +942,13 @@ export default function RequestReceiptPage({
     );
     const sourceAmountDecimal =
         isSingleReceiptProposal && sourceAmountRaw
-            ? formatBalance(sourceAmountRaw, sourceToken?.decimals ?? 24)
-            : "0";
+            ? (decimalFromBaseUnitsOrNull(
+                  sourceAmountRaw,
+                  sourceToken?.decimals ?? 24,
+              )?.toFixed() ?? null)
+            : isSingleReceiptProposal
+              ? null
+              : "0";
     const isValidReceipt =
         !!proposal &&
         isReceiptEligibleProposal &&
@@ -978,8 +999,12 @@ export default function RequestReceiptPage({
                 quote: isSingleReceiptProposal ? effectiveQuote : null,
                 sourceToken: {
                     amountDecimal: sourceAmountDecimal,
-                    amountDisplay:
-                        formatTokenDisplayAmount(sourceAmountDecimal),
+                    amountDisplay: formatTokenQuantity(sourceAmountDecimal, {
+                        locale,
+                        profile: "standard",
+                        tokenDecimals: sourceToken?.decimals,
+                        unitPriceUsd: sourceToken?.price,
+                    }).display,
                     amountUsd: receiptSourceAmountUsd,
                     symbol: sourceToken?.symbol ?? "",
                     tokenPrice: sourceToken?.price ?? null,
@@ -993,6 +1018,7 @@ export default function RequestReceiptPage({
                     historicalPriceUsd:
                         destinationHistoricalPrice?.priceUsd ?? null,
                 },
+                locale,
             }),
         [
             isExchangeProposal,
@@ -1005,10 +1031,12 @@ export default function RequestReceiptPage({
             sourceHistoricalPrice?.priceUsd,
             destinationHistoricalPrice?.priceUsd,
             sourceToken?.price,
+            sourceToken?.decimals,
             destinationToken?.price,
             sourceToken?.symbol,
             destinationToken?.symbol,
             isSingleReceiptProposal,
+            locale,
         ],
     );
     const isTransactionDateLoading =
@@ -1209,7 +1237,12 @@ export default function RequestReceiptPage({
                     ) : (
                         <PaymentReceiptSections
                             recipientAddress={{
-                                value: receiverAddress ?? null,
+                                value: receiverAddress
+                                    ? formatRecipientForNearComDestination(
+                                          receiverAddress,
+                                          destinationTokenId,
+                                      )
+                                    : null,
                                 isLoading: false,
                             }}
                             sourceToken={sourceTokenInfo}

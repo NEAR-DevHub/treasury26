@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/collapsible";
 import { ArrowUpRight, ChevronDown, FileText, SearchX } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
+import { getTransactionExplorerLink } from "@/lib/blockchain-utils";
 import { cn } from "@/lib/utils";
-import { Address } from "@/components/address";
 import { User } from "@/components/user";
 import Link from "next/link";
 import { StatusPill } from "../proposal-status-pill";
@@ -25,6 +25,7 @@ import { Proposal } from "@/lib/proposals-api";
 import Big from "@/lib/big";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { NetworkIconDisplay } from "@/components/token-display";
+import { formatRecipientForNearComDestination } from "@/lib/nearcom-address";
 import { useDestinationNetworkMeta } from "../../hooks/use-destination-network-meta";
 import { useRequestDisplayContext } from "./common/request-display-context";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -47,6 +48,8 @@ interface PaymentDisplayProps {
     proposalId: number;
     showReceiptButton: boolean;
     chainName: string;
+    /** Receive network — only `near.com` gets a nearcom: display prefix. */
+    destinationAssetId?: string;
 }
 
 const paymentStatusToText = (status: PaymentStatus): "Pending" | "Paid" => {
@@ -68,6 +71,7 @@ function PaymentDisplay({
     proposalId,
     showReceiptButton,
     chainName,
+    destinationAssetId,
 }: PaymentDisplayProps) {
     const t = useTranslations("proposals.expanded");
     const tReceipt = useTranslations("receiptPage");
@@ -75,25 +79,29 @@ function PaymentDisplay({
     const status = paymentStatusToText(payment.status);
     const isPaid = status === "Paid";
     const resolvedAmountTokenId = amountTokenId || tokenId;
+    const displayRecipient = formatRecipientForNearComDestination(
+        payment.recipient,
+        destinationAssetId,
+    );
     const { data: txData } = useBulkPaymentTransactionHash(
         isPaid ? batchId : null,
         isPaid ? payment.recipient : null,
     );
     const transactionHash = txData?.transactionHash;
 
-    // Transaction links are always NEAR (nearblocks)
-    const nearBlocksUrl = transactionHash
-        ? `https://nearblocks.io/txns/${transactionHash}`
-        : null;
+    // Batch payment transactions execute on NEAR (nearblocks link).
+    const explorerLink = getTransactionExplorerLink({ transactionHash });
 
     let items: InfoItem[] = [
         {
             label: t("recipient"),
             value: (
                 <User
-                    useAddressBook
                     accountId={payment.recipient}
+                    displayAddress={displayRecipient}
                     chainName={chainName}
+                    withHoverCard
+                    preferAddressBook
                 />
             ),
         },
@@ -117,13 +125,13 @@ function PaymentDisplay({
         });
     }
 
-    if (isPaid && nearBlocksUrl && nearBlocksUrl.length > 0) {
+    if (isPaid && explorerLink) {
         items.push({
             label: t("transactionLink"),
             value: (
                 <Link
                     className="flex items-center gap-2"
-                    href={nearBlocksUrl}
+                    href={explorerLink.url}
                     target="_blank"
                     rel="noopener noreferrer"
                 >
@@ -148,7 +156,13 @@ function PaymentDisplay({
                     {t("recipientNumber", { number })}
                 </div>
                 <div className="hidden md:flex gap-3 items-baseline text-sm text-muted-foreground">
-                    <Address address={payment.recipient} />
+                    <User
+                        accountId={payment.recipient}
+                        displayAddress={displayRecipient}
+                        variant="details"
+                        withLink={false}
+                        preferAddressBook
+                    />
                     <Amount
                         amount={payment.amount.toString()}
                         textOnly
@@ -377,6 +391,7 @@ export function BatchPaymentExpandedView({
                             proposalId={proposalId ?? 0}
                             showReceiptButton={showReceiptButton}
                             chainName={recipientChainName}
+                            destinationAssetId={destinationAssetId}
                         />
                     ))}
                 </div>
@@ -477,6 +492,7 @@ export function BatchPaymentRequestExpanded({
             batchId={data.batchId}
             proposalId={proposal.id}
             showReceiptButton={showReceiptButton}
+            destinationAssetId={data.destinationAssetId}
         />
     );
 }

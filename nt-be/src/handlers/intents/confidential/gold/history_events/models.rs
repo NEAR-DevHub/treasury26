@@ -11,7 +11,10 @@ use crate::handlers::intents::confidential::types::ConfidentialTxType;
 /// Bronze SUCCESS row plus optional intent join — input to gold projection.
 pub(crate) type BronzeRow = BronzeProjectionRow;
 
-/// Gold table row produced from a bronze row (same shape as legacy `ProjectedRow`).
+/// Replayed confidential history event, mapped onto the unified ledger by
+/// `convert::unified_bind_from_event` and dual-written to the legacy
+/// `gold_confidential_history_events` while `UNIFIED_GOLD_LEDGER_READS`
+/// can still be turned off.
 pub(crate) struct GoldHistoryEvent {
     pub(crate) history_event_id: i64,
     pub(crate) intent_id: Option<i32>,
@@ -41,12 +44,32 @@ pub(crate) struct GoldHistoryEvent {
     pub(crate) proposal_execution_transaction_hash: Option<String>,
     pub(crate) quote_created_at: DateTime<Utc>,
     pub(crate) proposal_created_at: Option<DateTime<Utc>>,
+    pub(crate) proposal_id: Option<i64>,
     /// On-chain deposit tx hash from quoteTransactions[0].txHash.
     pub(crate) deposit_tx_hash: Option<String>,
 }
 
 /// Back-compat alias used by repository upsert.
 pub(crate) type ProjectedRow = GoldHistoryEvent;
+
+/// The unified-ledger column set for one confidential gold row, produced by
+/// `convert::unified_bind_from_event`. In-leg = credit, out-leg = debit; the
+/// out-leg amount is the applied debit delta (before - after), not the raw
+/// 1Click amount, so `balance_before` derivation on the read side stays exact
+/// even when the replay clamped a balance at zero.
+pub(crate) struct UnifiedGoldBind {
+    pub(crate) gold_event_key: String,
+    pub(crate) event_time: DateTime<Utc>,
+    pub(crate) source_order: i64,
+    pub(crate) token_in: Option<String>,
+    pub(crate) amount_in: Option<BigDecimal>,
+    pub(crate) amount_in_usd: Option<BigDecimal>,
+    pub(crate) token_in_user_balance_after: Option<BigDecimal>,
+    pub(crate) token_out: Option<String>,
+    pub(crate) amount_out: Option<BigDecimal>,
+    pub(crate) amount_out_usd: Option<BigDecimal>,
+    pub(crate) token_out_user_balance_after: Option<BigDecimal>,
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct ProjectionCycleStats {
@@ -95,6 +118,7 @@ pub(crate) struct BronzeProjectionRow {
     pub(crate) destination_asset: String,
     pub(crate) raw_payload: Value,
     pub(crate) intent_id: Option<i32>,
+    pub(crate) proposal_id: Option<i64>,
     pub(crate) proposal_created_at: Option<DateTime<Utc>>,
     pub(crate) proposal_executed_at: Option<DateTime<Utc>>,
     pub(crate) proposal_execution_block_height: Option<i64>,

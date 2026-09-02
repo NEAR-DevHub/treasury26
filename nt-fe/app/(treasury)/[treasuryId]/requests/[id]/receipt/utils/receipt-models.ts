@@ -1,9 +1,13 @@
-import type { ChainIcons, TokenMetadata } from "@/lib/api";
-import type { SwapQuoteResponse } from "@/lib/proposals-api";
 import {
-    formatCurrencyWithSubCent,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
+    decimalOrNull,
+    formatFiatValue,
+    formatRate,
+    formatTokenQuantity,
+    formatUnitPrice,
+} from "@/lib/amount-format";
+import type { ChainIcons, TokenMetadata } from "@/lib/api";
+import type Big from "@/lib/big";
+import type { SwapQuoteResponse } from "@/lib/proposals-api";
 
 export interface AsyncValue<T> {
     value: T | null;
@@ -39,12 +43,13 @@ export function buildReceiptAmountModel({
     quote,
     sourceToken,
     destinationToken,
+    locale = "en-US",
 }: {
     isExchangeReceipt: boolean;
     hasDepositAddress: boolean;
     quote?: SwapQuoteResponse | null;
     sourceToken: {
-        amountDecimal: string;
+        amountDecimal: string | null;
         amountDisplay: string;
         amountUsd?: number | null;
         symbol: string;
@@ -52,92 +57,120 @@ export function buildReceiptAmountModel({
         historicalPriceUsd: number | null;
     };
     destinationToken: {
-        amountDecimal?: string;
+        amountDecimal?: string | null;
         amountUsd?: number | null;
         symbol: string;
         tokenPrice: number | null;
         historicalPriceUsd: number | null;
     };
+    locale?: string;
 }) {
-    const sourceAmountRaw =
-        quote?.amountInFormatted ?? sourceToken.amountDecimal;
-    const destinationAmountRaw =
-        quote?.amountOutFormatted ?? destinationToken.amountDecimal ?? "0";
-    const sourceAmountValue = Number(sourceAmountRaw);
-    const destinationAmountValue = Number(destinationAmountRaw);
-    const quoteSourceAmountUsd = quote?.amountInUsd
-        ? Number(quote.amountInUsd)
-        : null;
-    const explicitSourceAmountUsd = sourceToken.amountUsd;
-    const explicitDestinationAmountUsd = destinationToken.amountUsd;
+    const sourceAmountValue =
+        decimalOrNull(quote?.amountInFormatted) ??
+        decimalOrNull(sourceToken.amountDecimal);
+    const destinationAmountValue =
+        decimalOrNull(quote?.amountOutFormatted) ??
+        decimalOrNull(destinationToken.amountDecimal);
+    const quoteSourceAmountUsd = decimalOrNull(quote?.amountInUsd);
+    const quoteDestinationAmountUsd = decimalOrNull(quote?.amountOutUsd);
+    // Tri-state: an explicitly provided amountUsd (even null/invalid) must
+    // suppress the quote/historical fallbacks; only an absent prop enables them.
+    const hasExplicitSourceUsd = sourceToken.amountUsd !== undefined;
+    const hasExplicitDestinationUsd = destinationToken.amountUsd !== undefined;
+    const explicitSourceAmountUsd = decimalOrNull(sourceToken.amountUsd);
+    const explicitDestinationAmountUsd = decimalOrNull(
+        destinationToken.amountUsd,
+    );
+    const historicalSourcePrice = decimalOrNull(sourceToken.historicalPriceUsd);
+    const historicalDestinationPrice = decimalOrNull(
+        destinationToken.historicalPriceUsd,
+    );
     const sourceAmountDisplay = isExchangeReceipt
-        ? (quote?.amountInFormatted ?? sourceToken.amountDisplay)
+        ? formatTokenQuantity(sourceAmountValue, {
+              locale,
+              profile: "standard",
+              unitPriceUsd: sourceToken.tokenPrice,
+          }).display
         : sourceToken.amountDisplay;
-    const destinationAmountDisplay =
-        quote?.amountOutFormatted ||
-        formatTokenDisplayAmount(destinationToken.amountDecimal || "0");
+    const destinationAmountDisplay = formatTokenQuantity(
+        destinationAmountValue,
+        {
+            locale,
+            profile: "standard",
+            unitPriceUsd: destinationToken.tokenPrice,
+        },
+    ).display;
 
-    let sourceUnitPriceUsd: number | null = null;
-    if (explicitSourceAmountUsd !== undefined) {
+    let sourceUnitPriceUsd: Big | null = null;
+    if (hasExplicitSourceUsd) {
         sourceUnitPriceUsd =
-            explicitSourceAmountUsd != null && sourceAmountValue > 0
-                ? explicitSourceAmountUsd / sourceAmountValue
+            explicitSourceAmountUsd && sourceAmountValue?.gt(0)
+                ? explicitSourceAmountUsd.div(sourceAmountValue)
                 : null;
     } else if (
-        sourceAmountValue > 0 &&
+        sourceAmountValue?.gt(0) &&
         quoteSourceAmountUsd != null &&
-        quoteSourceAmountUsd > 0
+        quoteSourceAmountUsd.gt(0)
     ) {
-        sourceUnitPriceUsd = quoteSourceAmountUsd / sourceAmountValue;
+        sourceUnitPriceUsd = quoteSourceAmountUsd.div(sourceAmountValue);
     } else if (!hasDepositAddress) {
-        sourceUnitPriceUsd = sourceToken.historicalPriceUsd;
+        sourceUnitPriceUsd = historicalSourcePrice;
     }
 
     let sourceAmountUsd: string | null = null;
-    if (explicitSourceAmountUsd !== undefined) {
-        sourceAmountUsd =
-            explicitSourceAmountUsd != null
-                ? formatCurrencyWithSubCent(explicitSourceAmountUsd)
-                : null;
-    } else if (quote?.amountInUsd) {
-        sourceAmountUsd = formatCurrencyWithSubCent(Number(quote.amountInUsd));
-    } else if (!hasDepositAddress && sourceUnitPriceUsd != null) {
-        sourceAmountUsd = formatCurrencyWithSubCent(
-            Number(sourceToken.amountDecimal) * sourceUnitPriceUsd,
-        );
+    if (hasExplicitSourceUsd) {
+        sourceAmountUsd = explicitSourceAmountUsd
+            ? formatFiatValue(explicitSourceAmountUsd, { locale }).display
+            : null;
+    } else if (quoteSourceAmountUsd) {
+        sourceAmountUsd = formatFiatValue(quoteSourceAmountUsd, {
+            locale,
+        }).display;
+    } else if (
+        !hasDepositAddress &&
+        sourceUnitPriceUsd != null &&
+        sourceAmountValue
+    ) {
+        sourceAmountUsd = formatFiatValue(
+            sourceAmountValue.mul(sourceUnitPriceUsd),
+            { locale },
+        ).display;
     }
 
-    let destinationUnitPriceUsd: number | null = null;
-    if (explicitDestinationAmountUsd !== undefined) {
+    let destinationUnitPriceUsd: Big | null = null;
+    if (hasExplicitDestinationUsd) {
         destinationUnitPriceUsd =
-            explicitDestinationAmountUsd != null && destinationAmountValue > 0
-                ? explicitDestinationAmountUsd / destinationAmountValue
+            explicitDestinationAmountUsd && destinationAmountValue?.gt(0)
+                ? explicitDestinationAmountUsd.div(destinationAmountValue)
                 : null;
     } else if (!hasDepositAddress) {
-        destinationUnitPriceUsd = destinationToken.historicalPriceUsd;
+        destinationUnitPriceUsd = historicalDestinationPrice;
     }
 
     let destinationAmountUsd: string | null = null;
-    if (explicitDestinationAmountUsd !== undefined) {
-        destinationAmountUsd =
-            explicitDestinationAmountUsd != null
-                ? formatCurrencyWithSubCent(explicitDestinationAmountUsd)
-                : null;
-    } else if (quote?.amountOutUsd) {
-        destinationAmountUsd = formatCurrencyWithSubCent(
-            Number(quote.amountOutUsd),
-        );
-    } else if (!hasDepositAddress && destinationUnitPriceUsd != null) {
-        destinationAmountUsd = formatCurrencyWithSubCent(
-            Number(destinationToken.amountDecimal ?? "0") *
-                destinationUnitPriceUsd,
-        );
+    if (hasExplicitDestinationUsd) {
+        destinationAmountUsd = explicitDestinationAmountUsd
+            ? formatFiatValue(explicitDestinationAmountUsd, { locale }).display
+            : null;
+    } else if (quoteDestinationAmountUsd) {
+        destinationAmountUsd = formatFiatValue(quoteDestinationAmountUsd, {
+            locale,
+        }).display;
+    } else if (
+        !hasDepositAddress &&
+        destinationUnitPriceUsd != null &&
+        destinationAmountValue
+    ) {
+        destinationAmountUsd = formatFiatValue(
+            destinationAmountValue.mul(destinationUnitPriceUsd),
+            { locale },
+        ).display;
     } else {
         destinationAmountUsd = sourceAmountUsd;
     }
     const destinationPerSourceRate =
-        sourceAmountValue > 0 && destinationAmountValue > 0
-            ? destinationAmountValue / sourceAmountValue
+        sourceAmountValue?.gt(0) && destinationAmountValue?.gt(0)
+            ? destinationAmountValue.div(sourceAmountValue)
             : null;
 
     let rateLabel: string | null = null;
@@ -147,9 +180,9 @@ export function buildReceiptAmountModel({
         sourceToken.symbol &&
         destinationToken.symbol
     ) {
-        rateLabel = `1 ${sourceToken.symbol} (${formatCurrencyWithSubCent(sourceUnitPriceUsd)}) ≈ ${formatTokenDisplayAmount(destinationPerSourceRate)} ${destinationToken.symbol}`;
+        rateLabel = `1 ${sourceToken.symbol} (${formatUnitPrice(sourceUnitPriceUsd, { locale }).display}) ≈ ${formatRate(destinationPerSourceRate, { locale }).display} ${destinationToken.symbol}`;
     } else if (sourceUnitPriceUsd && sourceToken.symbol) {
-        rateLabel = `1 ${sourceToken.symbol} = ${formatCurrencyWithSubCent(sourceUnitPriceUsd)}`;
+        rateLabel = `1 ${sourceToken.symbol} = ${formatUnitPrice(sourceUnitPriceUsd, { locale }).display}`;
     }
 
     return {

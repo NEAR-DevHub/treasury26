@@ -1,14 +1,21 @@
 name: Publish E2E Report
 
-# Runs after "Frontend E2E Tests" completes and publishes its Playwright HTML
-# report (with inline videos, traces and screenshots) to GitHub Pages under a
-# per-PR path, then posts/updates a sticky comment linking it.
+# After "Frontend E2E Tests" completes, publish that run's Playwright report
+# (with inline videos, traces and screenshots) to GitHub Pages under a per-PR
+# path, and post/update a sticky comment linking it.
 #
-# This is a separate `workflow_run` workflow on purpose: `pull_request` runs
-# from forks get a read-only token and cannot push to gh-pages or comment.
-# `workflow_run` always executes in the base repo with the base repo's token,
-# so it works for fork PRs too. It only ever publishes an already-built static
-# report — it never checks out or runs PR code.
+# Nothing is written to the git repo. Pages is served from the "GitHub Actions"
+# source (not a branch), so the site — videos included — lives in Pages storage.
+# Per-PR folders are kept by carrying the whole site between runs as a normal CI
+# artifact (`pages-site`): each run restores it, adds/updates this PR's folder,
+# re-uploads it, and deploys. A concurrency group serializes site mutations so
+# concurrent PRs don't clobber each other.
+#
+# Separate `workflow_run` workflow on purpose: `pull_request` runs from forks get
+# a read-only token and cannot deploy Pages or comment. `workflow_run` runs in
+# the base repo with a token that can, and never checks out or runs PR code.
+#
+# One-time setup: repo Settings → Pages → Source = "GitHub Actions".
 
 on:
   workflow_run:
@@ -16,32 +23,28 @@ on:
     types: [completed]
 
 permissions:
-  contents: write # push the report to the gh-pages branch
-  pull-requests: write # post/update the sticky comment
-  actions: read # download artifacts from the triggering run
+  pull-requests: write # sticky comment
+  actions: read # read/download the run's artifacts + the pages-site state
+  pages: write # deploy to Pages
+  id-token: write # Pages deployment OIDC
 
-# Serialize gh-pages deploys across all PRs so concurrent runs don't clash on
-# the branch.
+# Serialize every mutation of the shared site + Pages deploys (publish here and
+# cleanup on PR close both use this group).
 concurrency:
-  group: gh-pages-e2e-report
+  group: e2e-report-pages
   cancel-in-progress: false
 
 jobs:
   publish:
     name: Publish report to Pages
-    # Only for PR-triggered E2E runs (pushes to main don't need a PR comment).
     if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
     steps:
-      - name: Download Playwright report
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report
-          run-id: ${{ github.event.workflow_run.id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
+      # The E2E job records which PR it ran for in a tiny artifact (fork PRs
+      # don't populate workflow_run.pull_requests, so we can't rely on that).
       - name: Download PR metadata
         continue-on-error: true
         uses: actions/download-artifact@v4
@@ -51,12 +54,21 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download Playwright report
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report
+          path: incoming
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       # A run that died before uploading (e.g. a build failure) leaves no
       # report. Skip quietly in that case instead of failing this workflow.
       - name: Resolve PR number and validate report
         id: pr
         run: |
-          if [ ! -f pr-meta/pr-number.txt ] || [ ! -f playwright-report/index.html ]; then
+          if [ ! -f pr-meta/pr-number.txt ] || [ ! -f incoming/index.html ]; then
             echo "Report or PR metadata missing; nothing to publish."
             echo "ok=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -70,15 +82,68 @@ jobs:
           echo "number=$num" >> "$GITHUB_OUTPUT"
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
-      - name: Publish to gh-pages
+      # Restore the accumulated multi-PR site from the most recent `pages-site`
+      # artifact (across previous runs). Absent on the very first run.
+      - name: Restore accumulated site
         if: steps.pr.outputs.ok == 'true'
-        uses: JamesIves/github-pages-deploy-action@v4
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p site
+          id="$(gh api "/repos/${{ github.repository }}/actions/artifacts?name=pages-site&per_page=1" --jq '.artifacts[0].id // empty')"
+          if [ -n "$id" ]; then
+            echo "Restoring pages-site artifact #$id"
+            gh api "/repos/${{ github.repository }}/actions/artifacts/$id/zip" > site.zip
+            unzip -q -o site.zip -d site || true
+            rm -f site.zip
+          else
+            echo "No prior pages-site artifact; starting fresh."
+          fi
+
+      - name: Add this PR's report
+        if: steps.pr.outputs.ok == 'true'
+        env:
+          PR: ${{ steps.pr.outputs.number }}
+        run: |
+          rm -rf "site/pr-${PR}"
+          mkdir -p "site/pr-${PR}"
+          cp -R incoming/. "site/pr-${PR}/"
+          # Root index linking every PR report currently on the site.
+          {
+            echo '<!doctype html><meta charset="utf-8"><title>E2E reports</title>'
+            echo '<h1>Playwright E2E reports</h1><ul>'
+            for d in site/pr-*/; do
+              [ -d "$d" ] || continue
+              n="$(basename "$d")"
+              echo "<li><a href=\"./${n}/\">${n}</a></li>"
+            done
+            echo '</ul>'
+          } > site/index.html
+
+      # Persist the updated site for the next run (the state store — not git).
+      - name: Save accumulated site
+        if: steps.pr.outputs.ok == 'true'
+        uses: actions/upload-artifact@v4
         with:
-          branch: gh-pages
-          folder: playwright-report
-          target-folder: pr-${{ steps.pr.outputs.number }}
-          clean: false
-          commit-message: "e2e report for PR #${{ steps.pr.outputs.number }} @ ${{ github.event.workflow_run.head_sha }}"
+          name: pages-site
+          path: site
+          retention-days: 90
+          overwrite: true
+
+      - name: Configure Pages
+        if: steps.pr.outputs.ok == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        if: steps.pr.outputs.ok == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to Pages
+        id: deploy
+        if: steps.pr.outputs.ok == 'true'
+        uses: actions/deploy-pages@v4
 
       - name: Comment report link on PR
         if: steps.pr.outputs.ok == 'true'
@@ -87,9 +152,9 @@ jobs:
           script: |
             const prNumber = Number('${{ steps.pr.outputs.number }}');
             const run = context.payload.workflow_run;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const url = `https://${owner.toLowerCase()}.github.io/${repo}/pr-${prNumber}/`;
+            const { owner, repo } = context.repo;
+            const base = ('${{ steps.deploy.outputs.page_url }}' || '').replace(/\/?$/, '/');
+            const url = `${base}pr-${prNumber}/`;
 
             const passed = run.conclusion === 'success';
             const status = passed
@@ -106,13 +171,13 @@ jobs:
               'video, plus traces and screenshots. Videos stream in the browser;',
               'no download needed. Use it to review the behaviour this PR produces.',
               '',
-              `<sub>Rebuilt on every push to this PR · [workflow run](${run.html_url})</sub>`,
+              `<sub>Hosted on GitHub Pages (nothing committed to git) · rebuilt on every push · [workflow run](${run.html_url})</sub>`,
             ].join('\n');
 
             const { data: comments } = await github.rest.issues.listComments({
               owner, repo, issue_number: prNumber, per_page: 100,
             });
-            const existing = comments.find(c => c.body && c.body.includes(marker));
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
             if (existing) {
               await github.rest.issues.updateComment({
                 owner, repo, comment_id: existing.id, body,

@@ -20,6 +20,7 @@ import { SearchX, Trash2, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
 import { useChains } from "../chains";
 import type { AddressBookEntry } from "../types";
+import { formatAddressBookDisplayAddress } from "../utils/find-entry";
 
 interface AddressBookTableProps {
     entries: AddressBookEntry[];
@@ -27,6 +28,8 @@ interface AddressBookTableProps {
     onSelectionChange: (ids: Set<string>) => void;
     onDelete?: (entry: AddressBookEntry) => void;
     onSend?: (entry: AddressBookEntry) => void;
+    /** Active search query — used to highlight matching text. */
+    searchQuery?: string;
     pageIndex?: number;
     pageSize?: number;
     total?: number;
@@ -39,6 +42,7 @@ export function AddressBookTable({
     onSelectionChange,
     onDelete,
     onSend,
+    searchQuery = "",
     pageIndex = 0,
     pageSize = 15,
     total = entries.length,
@@ -153,11 +157,14 @@ export function AddressBookTable({
                                     <TableCell>
                                         <User
                                             accountId={entry.address}
+                                            displayAddress={formatAddressBookDisplayAddress(
+                                                entry,
+                                            )}
                                             name={entry.name}
                                             withLink={false}
-                                            useAddressBook
                                             size="md"
                                             withHoverCard
+                                            highlightQuery={searchQuery}
                                         />
                                     </TableCell>
 

@@ -19,6 +19,8 @@ dotenvy = "0.15"
 moka = { version = "0.12", features = ["future"] }
 base64 = "0.22"
 sha2 = "0.10"
+aes-gcm = "0.10"
+secrecy = "0.10"
 hex = "0.4"
 serde_with = { version = "3.16.1", features = ["base64"] }
 chrono = "0.4"

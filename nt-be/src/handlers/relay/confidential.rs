@@ -15,6 +15,7 @@ use crate::{
     },
     handlers::relay::{effects::background, parse::ProposalKind},
     observability::sanitize_sensitive_json_value,
+    services::{CredentialScope, TokenBundle},
     utils::cache::CacheKey,
 };
 use base64::Engine;
@@ -158,9 +159,12 @@ pub async fn store_pending_intent(
 
 /// Extract MPC signature from the execution result debug string.
 /// Searches for the base64 marker "eyJzY2hlbWUi" (= `{"scheme"`).
+/// Base64 prefix of the signer's `{"scheme":…}` signature payload; its
+/// presence in a vote outcome means a signature was produced.
+pub(crate) const MPC_SIGNATURE_MARKER: &str = "eyJzY2hlbWUi";
+
 pub(crate) fn extract_mpc_signature(result_debug: &str) -> Option<Vec<u8>> {
-    let marker = "eyJzY2hlbWUi";
-    let start = result_debug.find(marker)?;
+    let start = result_debug.find(MPC_SIGNATURE_MARKER)?;
     let rest = &result_debug[start..];
     let end = rest
         .find(|c: char| !c.is_alphanumeric() && c != '+' && c != '/' && c != '=')
@@ -313,7 +317,8 @@ pub async fn submit_intent_to_oneclick(
     let status = response.status();
     let resp_body: Value = response.json().await.unwrap_or_default();
     if !status.is_success() {
-        return Err(format!("1click {} {}: {:?}", path, status, resp_body));
+        let sanitized_body = sanitize_sensitive_json_value(&resp_body);
+        return Err(format!("1click {} {}: {:?}", path, status, sanitized_body));
     }
     Ok(resp_body)
 }
@@ -348,11 +353,24 @@ pub async fn try_auto_submit_intent(
     let sig_bytes = match extract_mpc_signature(result_debug) {
         Some(bytes) => bytes,
         None => {
-            tracing::warn!(
-                "No MPC signature found in vote result for {} (hash={})",
-                treasury_id,
-                payload_hash
-            );
+            // The marker present but unparseable means the signer produced a
+            // signature we no longer understand (format/protocol drift) — the
+            // intent will sit `pending` forever. Marker absent is the routine
+            // non-approving vote (no signature expected yet).
+            if result_debug.contains(MPC_SIGNATURE_MARKER) {
+                crate::error_event!(
+                    crate::error_event::ErrorCode::ConfIntentSigParseFailed,
+                    treasury_id,
+                    payload_hash,
+                    proposal_id
+                );
+            } else {
+                tracing::debug!(
+                    treasury_id,
+                    payload_hash,
+                    "no MPC signature in vote result (vote did not approve yet)"
+                );
+            }
             return;
         }
     };
@@ -486,43 +504,93 @@ pub async fn try_auto_submit_intent(
             // For auth flavors: store the JWT tokens in monitored_accounts.
             // `auth` authenticates the DAO itself; `bulk_auth` authenticates
             // the DAO's bulk-payment subaccount (bulk-payments activation).
-            if (intent_type == "auth" || intent_type == "bulk_auth")
-                && let (Some(access_token), Some(refresh_token)) = (
+            // An auth intent is only `submitted` once its credentials are
+            // stored — a 200 without tokens or a failed save marks it
+            // `failed` (the UI maps that to a restartable state).
+            if intent_type == "auth" || intent_type == "bulk_auth" {
+                let (Some(access_token), Some(refresh_token)) = (
                     resp_body.get("accessToken").and_then(|v| v.as_str()),
                     resp_body.get("refreshToken").and_then(|v| v.as_str()),
-                )
-            {
+                ) else {
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::ConfAuthTokensMissing,
+                        intent_type,
+                        treasury_id,
+                        payload_hash,
+                        response = ?sanitized_resp_body
+                    );
+                    let _ = sqlx::query!(
+                        "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
+                        serde_json::json!({
+                            "error": format!("{} response missing tokens", intent_type)
+                        }),
+                        treasury_id,
+                        payload_hash,
+                    )
+                    .execute(&state.db_pool)
+                    .await;
+                    return;
+                };
                 let expires_in = resp_body
                     .get("expiresIn")
                     .and_then(|v| v.as_i64())
                     .unwrap_or(3600);
                 let expires_at = chrono::Utc::now() + chrono::Duration::seconds(expires_in);
 
-                let update_sql = if intent_type == "bulk_auth" {
-                    r#"
-                        UPDATE monitored_accounts
-                        SET bulk_payment_access_token = $1,
-                            bulk_payment_refresh_token = $2,
-                            bulk_payment_token_expires_at = $3
-                        WHERE account_id = $4
-                        "#
+                let scope = if intent_type == "bulk_auth" {
+                    CredentialScope::BulkPayment
                 } else {
-                    r#"
-                        UPDATE monitored_accounts
-                        SET confidential_access_token = $1,
-                            confidential_refresh_token = $2,
-                            confidential_token_expires_at = $3
-                        WHERE account_id = $4
-                        "#
+                    CredentialScope::Dao
                 };
-                let _ = sqlx::query(update_sql)
-                    .bind(access_token)
-                    .bind(refresh_token)
-                    .bind(expires_at)
-                    .bind(treasury_id)
+                let bundle = TokenBundle {
+                    access_token: access_token.to_string(),
+                    refresh_token: refresh_token.to_string(),
+                };
+                let store = state.confidential_credentials();
+                let persisted = match store
+                    .store_new(treasury_id, scope, &bundle, expires_at)
+                    .await
+                {
+                    Ok(()) => Ok(()),
+                    // A stale-generation fence rejection mid-rotation would
+                    // otherwise be terminal here: this trigger fires exactly
+                    // once, retrying on this pod can never pass the fence,
+                    // and 1Click has already issued the pair. Persist it
+                    // plaintext-only instead — the load-time heal
+                    // re-encrypts it under the active key on the next touch
+                    // from an up-to-date pod.
+                    Err(e) if e.is_retryable() => {
+                        tracing::warn!(
+                            "Generation fence rejected {} JWT persistence for DAO {} ({}); storing via plaintext fallback for heal-on-load",
+                            intent_type,
+                            treasury_id,
+                            e
+                        );
+                        store
+                            .store_new_plaintext_fallback(treasury_id, scope, &bundle, expires_at)
+                            .await
+                    }
+                    Err(e) => Err(e),
+                };
+                if let Err(e) = persisted {
+                    crate::error_event!(
+                        crate::error_event::ErrorCode::ConfJwtPersistFailed,
+                        intent_type,
+                        treasury_id,
+                        error = %e
+                    );
+                    let _ = sqlx::query!(
+                        "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
+                        serde_json::json!({
+                            "error": format!("failed to persist {} credentials: {}", intent_type, e)
+                        }),
+                        treasury_id,
+                        payload_hash,
+                    )
                     .execute(&state.db_pool)
                     .await;
-
+                    return;
+                }
                 tracing::info!(
                     "Stored {} JWT for DAO {} (expires in {}s)",
                     intent_type,
@@ -583,21 +651,32 @@ pub async fn try_auto_submit_intent(
             }
         }
         Err(err) => {
-            tracing::error!(
-                "1Click {} failed for {} (hash={}): {}",
-                intent_type,
+            crate::error_event!(
+                crate::error_event::ErrorCode::ConfIntentSubmitFailed,
                 treasury_id,
                 payload_hash,
-                err
+                proposal_id,
+                intent_type,
+                error = %err
             );
-            let _ = sqlx::query!(
+            if let Err(db_err) = sqlx::query!(
                 "UPDATE confidential_intents SET status = 'failed', submit_result = $1, updated_at = NOW() WHERE dao_id = $2 AND payload_hash = $3",
                 serde_json::json!({ "error": err }),
                 treasury_id,
                 payload_hash,
             )
             .execute(&state.db_pool)
-            .await;
+            .await
+            {
+                // The intent now looks `pending` with nothing ever touching it
+                // again — the one state no inline alert can catch later.
+                crate::error_event!(
+                    crate::error_event::ErrorCode::ConfIntentMarkFailedLost,
+                    treasury_id,
+                    payload_hash,
+                    error = %db_err
+                );
+            }
         }
     }
 }

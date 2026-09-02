@@ -47,12 +47,8 @@ import { useProposalApproveBlock } from "@/hooks/use-warnings";
 import { isNearComPaymentRoute } from "@/lib/intents-network";
 import { getApproversAndThreshold } from "@/lib/config-utils";
 import type { Proposal } from "@/lib/proposals-api";
-import {
-    cn,
-    decodeProposalDescription,
-    getIntentsExplorerUrl,
-    nanosToMs,
-} from "@/lib/utils";
+import { getTransactionExplorerLink } from "@/lib/blockchain-utils";
+import { nanosToMs } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 import type { Policy } from "@/types/policy";
 import { NotEnoughBalance } from "../../not-enough-balance";
@@ -292,7 +288,11 @@ export function ProposalSidebar({
     const isPending = status === "Pending";
     const isExecuted = status === "Executed";
     const isExchangeProposal = proposalType === "Exchange";
-    const isPaymentProposal = proposalType === "Payment Request";
+    const isMoveToConfidential = proposalType === "Move to Confidential";
+    // A move to confidential is a payment-shaped Intents transfer: same
+    // deposit-address settlement tracking and receipt gating as payments.
+    const isPaymentProposal =
+        proposalType === "Payment Request" || isMoveToConfidential;
     const isConfidentialRequest = proposalType === "Confidential Request";
     const isBatchPaymentProposal = proposalType === "Batch Payment Request";
     const isConfidentialRequestProposal =
@@ -358,8 +358,13 @@ export function ProposalSidebar({
     // Whether this proposal used the Intents protocol (has a deposit address)
     const hasDepositAddress = !!depositAddress;
     const shouldUseTransactionDate = isExecuted;
+    // Confidential quotes only expose the quote time, not the settlement time —
+    // the executed date/link come from the on-chain transaction instead.
     const shouldUseSwapDate =
-        isExecuted && hasDepositAddress && !isConfidentialRequestProposal;
+        isExecuted &&
+        hasDepositAddress &&
+        !isConfidentialRequestProposal &&
+        !isMoveToConfidential;
 
     // Fetch transaction data for non-intents proposals, or for statuses
     // whose resolved date/link should come from the chain transaction.
@@ -405,25 +410,27 @@ export function ProposalSidebar({
     const isResolvedDateLoading = isExecuted && resolvedDateLoading;
     const isHidden = isConfidential && isGuestTreasury;
 
-    // Confidential exchange (a confidential request that is not a payment).
-    const isConfidentialExchange =
-        isConfidentialRequestProposal && !isConfidentialPayment;
     // Swap is still settling (no finalized transaction yet).
     const isSwapProcessing = swapStatus?.status === "PROCESSING";
     // Hide the transaction link for confidential requests while the swap is
     // still processing — there is no finalized transaction to link to yet.
     const hideTransactionLink =
         isConfidentialRequestProposal && isSwapProcessing;
-    // Confidential exchanges and near.com confidential payments link to NEAR
-    // Blocks; other intents-routed proposals use the NEAR Intents explorer
-    // (masked for confidential).
+    // near.com confidential payments link to NEAR Blocks; all other
+    // intents-routed proposals use the NEAR Intents explorer (masked for
+    // confidential).
     const isConfidentialNearComPayment =
         isConfidentialPayment &&
         isNearComPaymentRoute(confidentialPaymentData ?? {});
     const useNearblocksLink =
         !hasDepositAddress ||
-        isConfidentialExchange ||
-        isConfidentialNearComPayment;
+        isConfidentialNearComPayment ||
+        isMoveToConfidential;
+    const transactionExplorerLink = getTransactionExplorerLink({
+        depositAddress: useNearblocksLink ? null : depositAddress,
+        isConfidential: isConfidentialRequestProposal,
+        transactionHash: transaction?.transaction_hash,
+    });
     // Receipt button visibility rules:
     // - Proposal must be executed and of a receipt-eligible kind.
     // - For intents-routed proposals (with depositAddress), swap status must be SUCCESS.
@@ -556,30 +563,10 @@ export function ProposalSidebar({
                         </Button>
                     )}
                     {/* Transaction link. Hidden for confidential requests while
-                        the swap is still processing. Confidential exchanges and
-                        near.com confidential payments link to NEAR Blocks; other
-                        intents-routed proposals use the NEAR Intents explorer
-                        (masked for confidential). */}
-                    {hideTransactionLink ? null : useNearblocksLink ? (
-                        transaction && (
-                            <Link
-                                href={transaction.nearblocks_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"
-                            >
-                                <SquareArrowOutUpRight className="size-4" />
-                                {t("viewTransaction")}
-                            </Link>
-                        )
-                    ) : (
+                        the swap is still processing. */}
+                    {hideTransactionLink || !transactionExplorerLink ? null : (
                         <Link
-                            href={
-                                getIntentsExplorerUrl(
-                                    depositAddress,
-                                    isConfidentialRequestProposal,
-                                ) ?? "#"
-                            }
+                            href={transactionExplorerLink.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex font-medium text-sm items-center justify-center gap-1.5 text-foreground"

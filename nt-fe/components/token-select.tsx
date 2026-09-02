@@ -4,22 +4,19 @@ import { ChevronDown, ChevronLeft, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    useMergedTokens,
     type MergedNetwork,
     type MergedToken,
+    useMergedTokens,
 } from "@/hooks/use-merged-tokens";
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
 import type { ChainIcons } from "@/lib/api";
 import Big from "@/lib/big";
 import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
-import {
-    canonicalizeTokenIdForMatch,
-    cn,
-    formatBalance,
-    formatCurrencyWithSubCent,
-    formatSmartAmount,
-} from "@/lib/utils";
+import { canonicalizeTokenIdForMatch, cn } from "@/lib/utils";
 import { Button } from "./button";
+import { FormattedAmount } from "./formatted-amount";
+import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
 import {
     Dialog,
@@ -49,6 +46,8 @@ export interface SelectedTokenData {
     minDepositAmount?: string;
     balance?: string;
     price?: number;
+    balanceAssetId?: string;
+    quoteAssetId?: string;
 }
 
 interface TokenSelectProps {
@@ -273,6 +272,11 @@ export default function TokenSelect({
                 minDepositAmount: network.minDepositAmount,
                 balance: network.balance,
                 price: network.price,
+                balanceAssetId: network.balanceAssetId || network.id,
+                quoteAssetId:
+                    network.quoteAssetId ||
+                    network.balanceAssetId ||
+                    network.id,
             });
 
             setOpen(false);
@@ -324,7 +328,6 @@ export default function TokenSelect({
                 network.id === selectedToken?.address &&
                 network.name === selectedToken?.network,
         );
-
         return (
             <Button
                 key={token.id}
@@ -343,22 +346,43 @@ export default function TokenSelect({
                 />
                 <div className="flex-1 text-left">
                     <div className="font-semibold">
-                        {token.symbol || token.name}
+                        <HighlightedText
+                            text={token.symbol || token.name}
+                            query={search}
+                        />
                     </div>
                     <div className="text-sm text-muted-foreground">
-                        {t("networksCount", { count: token.networks.length })}
+                        {t("networksCount", {
+                            count: token.networks.length,
+                        })}
                     </div>
                 </div>
                 {token.totalBalance !== undefined && token.totalBalance > 0 && (
                     <div className="flex flex-col items-end">
                         <span className="font-semibold">
-                            {formatSmartAmount(token.totalBalance)}
+                            <FormattedAmount
+                                kind="token"
+                                value={token.totalBalance}
+                                symbol=""
+                                unitPriceUsd={
+                                    token.totalBalance > 0
+                                        ? Big(
+                                              (
+                                                  token.totalBalanceUSD || 0
+                                              ).toString(),
+                                          ).div(token.totalBalance.toString())
+                                        : null
+                                }
+                                profile="compact"
+                                rounding="down"
+                            />
                         </span>
                         <span className="text-sm text-muted-foreground">
                             ≈
-                            {formatCurrencyWithSubCent(
-                                token.totalBalanceUSD || 0,
-                            )}
+                            <FormattedAmount
+                                kind="fiat"
+                                value={token.totalBalanceUSD || 0}
+                            />
                         </span>
                     </div>
                 )}
@@ -458,10 +482,10 @@ export default function TokenSelect({
                                         key={i}
                                         className="w-full flex items-center gap-3 py-3 rounded-lg"
                                     >
-                                        <div className="w-10 h-10 rounded-full bg-muted shrink-0" />
+                                        <div className="w-10 h-10 rounded-full bg-general-unofficial-accent-0 shrink-0" />
                                         <div className="flex-1 space-y-2">
-                                            <div className="h-4 bg-muted rounded w-24" />
-                                            <div className="h-3 bg-muted rounded w-32" />
+                                            <div className="h-4 bg-general-unofficial-accent-0 rounded w-24" />
+                                            <div className="h-3 bg-general-unofficial-accent-0 rounded w-32" />
                                         </div>
                                     </div>
                                 ))}
@@ -506,10 +530,13 @@ export default function TokenSelect({
                                                             }
                                                             size="sm"
                                                         />
-                                                        <span>
-                                                            {token.symbol ||
-                                                                token.name}
-                                                        </span>
+                                                        <HighlightedText
+                                                            text={
+                                                                token.symbol ||
+                                                                token.name
+                                                            }
+                                                            query={search}
+                                                        />
                                                     </Button>
                                                 ))}
                                             </div>
@@ -558,11 +585,9 @@ export default function TokenSelect({
                                 }
 
                                 try {
-                                    return !Big(
-                                        formatBalance(
-                                            item.balance,
-                                            item.decimals,
-                                        ),
+                                    return !decimalFromBaseUnits(
+                                        item.balance,
+                                        item.decimals,
                                     ).eq(0);
                                 } catch {
                                     return false;
@@ -635,18 +660,28 @@ export default function TokenSelect({
                                         {hasBalance(item) && (
                                             <div className="flex flex-col items-end">
                                                 <span className="font-semibold">
-                                                    {formatSmartAmount(
-                                                        formatBalance(
-                                                            item.balance!,
-                                                            item.decimals!,
-                                                        ),
-                                                    )}
+                                                    <FormattedAmount
+                                                        kind="raw-token"
+                                                        value={item.balance!}
+                                                        symbol=""
+                                                        tokenDecimals={
+                                                            item.decimals!
+                                                        }
+                                                        unitPriceUsd={
+                                                            item.price
+                                                        }
+                                                        profile="compact"
+                                                        rounding="down"
+                                                    />
                                                 </span>
                                                 <span className="text-sm text-muted-foreground">
                                                     ≈
-                                                    {formatCurrencyWithSubCent(
-                                                        item.balanceUSD || 0,
-                                                    )}
+                                                    <FormattedAmount
+                                                        kind="fiat"
+                                                        value={
+                                                            item.balanceUSD || 0
+                                                        }
+                                                    />
                                                 </span>
                                             </div>
                                         )}

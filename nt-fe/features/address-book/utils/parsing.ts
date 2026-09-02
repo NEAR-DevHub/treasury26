@@ -1,5 +1,6 @@
 import { parseCsv } from "@/lib/csv-utils";
 import { getCompatibleChains } from "../compatible-chains";
+import { persistAddressBookAddress } from "./find-entry";
 import { buildNetworkLookup, resolveNetworkName } from "./resolve-network";
 import type { ChainInfo } from "../chains";
 
@@ -227,7 +228,7 @@ function parseAddressBookData(
 
         recipients.push({
             name,
-            address,
+            address: persistAddressBookAddress({ address, networks }),
             networks,
             note: note || undefined,
         });

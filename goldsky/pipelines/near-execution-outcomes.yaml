@@ -1,6 +1,7 @@
 name: treasury-dao-outcomes
 apiVersion: 3
 resource_size: s
+use_dedicated_ip: true
 
 sources:
   near_outcomes:

@@ -2,12 +2,13 @@
 
 import { AmountSummary } from "@/components/amount-summary";
 import type { Token } from "@/components/token-input";
+import type { AmountValue } from "@/lib/amount-format";
 
 interface ExchangeSummaryCardProps {
     title: string;
     token: Token;
-    amount: string;
-    usdValue?: number;
+    amount: AmountValue | null;
+    usdValue?: AmountValue | null;
 }
 
 /**

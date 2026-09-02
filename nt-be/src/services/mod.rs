@@ -1,15 +1,20 @@
 //! Services module for external integrations and business logic
 
 pub mod coingecko;
+pub mod confidential_credentials;
 pub mod dao_sync;
 pub mod defillama;
 pub mod ft_lockup_scheduler;
 pub mod goldsky_cursor;
 pub mod monitored_accounts;
+pub mod nearcom_catalog_watch;
+pub mod oneclick_asset_routing;
+pub mod oneclick_tokens;
 pub mod platform_metrics;
 pub mod price_lookup;
 pub mod price_provider;
 pub mod price_sync;
+pub mod public_balance_reader;
 pub mod public_dashboard;
 pub mod sponsor_alerts;
 pub mod testing_accounts;
@@ -17,6 +22,9 @@ pub mod token_prices;
 pub mod usd_value_backfill;
 
 pub use coingecko::CoinGeckoClient;
+pub use confidential_credentials::{
+    ConfidentialCredentialStore, CredentialScope, TokenBundle, TokenKeyring,
+};
 pub use dao_sync::{
     mark_dao_dirty, process_dirty_daos, process_stale_daos, register_new_dao,
     register_new_dao_and_wait, sync_dao_list,
@@ -24,7 +32,8 @@ pub use dao_sync::{
 pub use defillama::DeFiLlamaClient;
 pub use ft_lockup_scheduler::{refresh_ft_lockup_dao_schedules, run_due_ft_lockup_claims};
 pub use monitored_accounts::{
-    MonitoredAccount, RegisterMonitoredAccountError, RegisterMonitoredAccountResult,
+    MonitoredAccount, NOT_MANAGED_TREASURY_MESSAGE, RegisterMonitoredAccountError,
+    RegisterMonitoredAccountResult, RegistrationMode, is_managed_treasury,
     register_or_refresh_monitored_account,
 };
 pub use price_lookup::PriceLookupService;
@@ -37,7 +46,7 @@ pub use public_dashboard::{
 pub use sponsor_alerts::run_sponsor_monitor_cycle;
 pub use testing_accounts::{mark_testing_if_needed, should_mark_testing};
 pub use token_prices::{
-    BalanceChangesUsdBackfill, GoldConfidentialUsdBackfill, GoldPublicUsdBackfill,
+    BalanceChangesUsdBackfill, GoldConfidentialUsdBackfill, GoldLedgerUsdBackfill,
     HistoricalPriceBackfill, TokenPriceIngestor, TokenPriceService,
     spawn_token_price_ingest_worker,
 };

@@ -6,13 +6,17 @@ use std::{sync::Arc, time::Duration};
 use tokio::sync::broadcast;
 
 use crate::{
+    error_event::ErrorCode,
     events::{AppEvent, EVENT_BUS_CAPACITY},
     handlers::balance_changes::transfer_hints::{
         TransferHintService, fastnear::FastNearProvider, neardata::NeardataClient,
     },
     handlers::public_history::bronze::NearblocksPriority,
     jobs::leadership::BackgroundJobsStatus,
-    services::{DeFiLlamaClient, PriceLookupService, TokenPriceService},
+    services::{
+        ConfidentialCredentialStore, DeFiLlamaClient, PriceLookupService, TokenKeyring,
+        TokenPriceService,
+    },
     utils::{
         cache::{Cache, CacheKey, CacheTier},
         env::EnvVars,
@@ -23,9 +27,17 @@ use crate::{
 };
 
 /// Sustained NearBlocks request ceiling (per minute) shared by every NearBlocks
-/// caller. Kept under the plan's 190/min hard limit to leave headroom for the
-/// on-demand v1 call sites; the daily/monthly budget is enforced separately.
-const NEARBLOCKS_MAX_PER_MINUTE: u32 = 10;
+/// caller, overridable via `NEARBLOCKS_MAX_PER_MINUTE`. Kept under the plan's
+/// 190/min hard limit to leave headroom for the on-demand v1 call sites; the
+/// daily/monthly budget is enforced separately.
+const NEARBLOCKS_MAX_PER_MINUTE_DEFAULT: u32 = 10;
+
+fn nearblocks_max_per_minute() -> u32 {
+    std::env::var("NEARBLOCKS_MAX_PER_MINUTE")
+        .ok()
+        .and_then(|value| value.parse().ok())
+        .unwrap_or(NEARBLOCKS_MAX_PER_MINUTE_DEFAULT)
+}
 
 /// Sustained DeFiLlama request ceiling (per minute) shared by every DeFiLlama
 /// caller. The free tier enforces 500/min per IP; we stay well under it.
@@ -106,6 +118,11 @@ pub struct AppState {
     /// Used by the enrichment worker to read indexed_dao_outcomes.
     /// None if GOLDSKY_DATABASE_URL is not configured.
     pub goldsky_pool: Option<PgPool>,
+    /// AES-256-GCM keyring for confidential JWT storage, from
+    /// `CONFIDENTIAL_TOKEN_KEYRING_JSON`. None = legacy plaintext mode.
+    /// Kept out of `EnvVars` so its `Debug` derive can never print key
+    /// material. Access via [`AppState::confidential_credentials`].
+    pub confidential_keyring: Option<Arc<TokenKeyring>>,
     pub event_tx: broadcast::Sender<AppEvent>,
     pub background_jobs_status: Arc<BackgroundJobsStatus>,
     /// Wakes the treasury creation sweeper immediately (instead of waiting for
@@ -148,6 +165,7 @@ pub struct AppStateBuilder {
     telegram_client: Option<TelegramClient>,
     transfer_hint_service: Option<TransferHintService>,
     goldsky_pool: Option<PgPool>,
+    confidential_keyring: Option<Arc<TokenKeyring>>,
 }
 
 impl AppStateBuilder {
@@ -168,6 +186,7 @@ impl AppStateBuilder {
             telegram_client: None,
             transfer_hint_service: None,
             goldsky_pool: None,
+            confidential_keyring: None,
         }
     }
 
@@ -246,6 +265,13 @@ impl AppStateBuilder {
     /// Set the Goldsky database pool (Goldsky sink, read-only)
     pub fn goldsky_pool(mut self, goldsky_pool: PgPool) -> Self {
         self.goldsky_pool = Some(goldsky_pool);
+        self
+    }
+
+    /// Set the confidential-credential keyring (tests; production loads it
+    /// from the environment in `build()`)
+    pub fn confidential_keyring(mut self, keyring: TokenKeyring) -> Self {
+        self.confidential_keyring = Some(Arc::new(keyring));
         self
     }
 
@@ -385,10 +411,7 @@ impl AppStateBuilder {
                     Some(pool)
                 }
                 Err(e) => {
-                    tracing::warn!(
-                        "Failed to connect to Goldsky sink database: {} — enrichment worker disabled",
-                        e
-                    );
+                    crate::error_event!(ErrorCode::GoldskySinkConnectFailed, error = %e);
                     None
                 }
             }
@@ -400,10 +423,11 @@ impl AppStateBuilder {
         // spawn the gate's driver here so no AppState can exist without a running
         // driver (a gate whose driver isn't running would fail open → unlimited
         // NearBlocks calls). build() is always awaited inside a tokio runtime.
+        let nearblocks_max_per_minute = nearblocks_max_per_minute();
         let nearblocks_limiter = RateLimiter::per_minute(
             "nearblocks",
-            NEARBLOCKS_MAX_PER_MINUTE,
-            NEARBLOCKS_MAX_PER_MINUTE,
+            nearblocks_max_per_minute,
+            nearblocks_max_per_minute,
         );
         let (nearblocks_gate, nearblocks_gate_driver) =
             PriorityRateGate::<NearblocksPriority>::new(nearblocks_limiter);
@@ -412,6 +436,20 @@ impl AppStateBuilder {
         let defillama_limiter = RateLimiter::per_minute("defillama", DEFILLAMA_MAX_PER_MINUTE, 0);
 
         let (event_tx, _) = broadcast::channel(EVENT_BUS_CAPACITY);
+
+        let confidential_keyring = match self.confidential_keyring {
+            Some(keyring) => Some(keyring),
+            // A set-but-invalid keyring fails boot with a clean error (never
+            // silently fall back to plaintext); the message names the env
+            // var and carries no key material.
+            None => match TokenKeyring::from_env() {
+                Ok(keyring) => keyring.map(Arc::new),
+                Err(e) => {
+                    crate::error_event!(ErrorCode::ConfKeyringRejected, error = %e);
+                    return Err(e.into());
+                }
+            },
+        };
 
         Ok(AppState {
             http_client: self.http_client.unwrap_or_default(),
@@ -432,6 +470,7 @@ impl AppStateBuilder {
             transfer_hint_service,
             neardata_client,
             goldsky_pool,
+            confidential_keyring,
             event_tx,
             background_jobs_status: Arc::new(BackgroundJobsStatus::new()),
             creation_sweep_notify: Arc::new(tokio::sync::Notify::new()),
@@ -446,7 +485,20 @@ impl Default for AppStateBuilder {
 }
 
 impl AppState {
-    pub fn publish_treasury_projection_updated(&self, account_id: String) {
+    /// The single gateway to confidential 1Click JWT storage — handlers must
+    /// not query the token columns directly.
+    pub fn confidential_credentials(&self) -> ConfidentialCredentialStore {
+        ConfidentialCredentialStore::new(self.db_pool.clone(), self.confidential_keyring.clone())
+    }
+
+    pub async fn publish_treasury_projection_updated(&self, account_id: String) {
+        // Evict the account's cached assets response before broadcasting:
+        // clients refetch on this event, and a refetch inside the cache TTL
+        // would read the pre-projection payload and never retry.
+        self.cache
+            .short_term
+            .invalidate(&format!("{account_id}-user-assets"))
+            .await;
         let event = AppEvent::treasury_projection_updated(account_id);
         if let Err(e) = self.event_tx.send(event) {
             tracing::debug!(
@@ -527,7 +579,14 @@ impl AppState {
 
         tracing::info!("Database connection established successfully");
 
-        let http_client = reqwest::Client::new();
+        // Bounded so no handler or job can hang forever on an external HTTP
+        // call (1Click, NearBlocks, DeFiLlama, …); a hung call now fails and
+        // hits the normal retry/alert paths instead of holding a slot.
+        let http_client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .connect_timeout(Duration::from_secs(5))
+            .build()
+            .expect("failed to build shared HTTP client");
 
         // Initialize price service with DeFiLlama provider (free, no API key required)
         let base_url = &env_vars.defillama_api_base_url;
@@ -544,9 +603,18 @@ impl AppState {
             env_vars.telegram_chat_id.clone(),
             env_vars.telegram_ops_chat_id.clone(),
         );
+        tracing::info!(
+            bot_configured = env_vars
+                .telegram_bot_token
+                .as_deref()
+                .is_some_and(|t| !t.is_empty()),
+            notifications_chat = env_vars.telegram_chat_id.is_some(),
+            ops_chat = env_vars.telegram_ops_chat_id.is_some(),
+            "telegram channel configuration"
+        );
 
         // Use the builder pattern internally for consistency
-        AppStateBuilder::new()
+        let state = AppStateBuilder::new()
             .http_client(http_client)
             .cache(Cache::new())
             .signer(
@@ -559,7 +627,80 @@ impl AppState {
             .price_service(price_service)
             .telegram_client(telegram_client)
             .build()
-            .await
+            .await?;
+
+        // Register the keyring against the persisted key-generation fence
+        // first: a pod whose keyring the fence rejects (stale generation
+        // after a rotation, or a conflicting keyring claiming this schema)
+        // must not serve — every encrypted write would fail anyway, and a
+        // stale-generation reconcile would try to rotate envelopes BACK to
+        // the old key.
+        if state.confidential_keyring.is_some() {
+            let store = state.confidential_credentials();
+            if let Err(e) = store.ensure_key_state().await {
+                crate::error_event!(
+                    ErrorCode::ConfKeyringRejected,
+                    cause = "key-state fence",
+                    error = %e
+                );
+                let _ = state
+                    .telegram_client
+                    .send_ops_alert_html(&format!(
+                        "🚨 <b>Confidential keyring rejected at boot</b>: {}",
+                        e
+                    ))
+                    .await;
+                return Err(
+                    format!("confidential keyring rejected by key-state fence: {e}").into(),
+                );
+            }
+
+            // Encrypt any legacy plaintext confidential JWTs and re-encrypt
+            // envelopes on non-active keys (idempotent). Failure never blocks
+            // boot — the plaintext fallback keeps affected treasuries working
+            // and the next deploy retries — but anything short of a clean run
+            // alerts the ops channel, since a quiet log line is not an
+            // operational signal. Old keys may be removed from the keyring
+            // only while the PERSISTED rotation status is complete — never on
+            // the strength of these log lines.
+            match store.reconcile().await {
+                Ok(report) => {
+                    tracing::info!(
+                        encrypted = report.encrypted,
+                        already_encrypted = report.already_encrypted,
+                        rotated = report.rotated,
+                        failed = report.failed,
+                        partial = report.partial.len(),
+                        stale_after_sweep = report.stale_after_sweep,
+                        rotation_complete = report.rotation_complete,
+                        "confidential credential reconcile complete"
+                    );
+                    if !report.is_clean() {
+                        let text = format!(
+                            "⚠️ <b>Confidential credential reconcile finished with issues</b> (rotation stays pending)\nencrypted: {}\nrotated: {}\nfailed rows: {}\npartial pairs (need re-auth): {}\nrows without a verified active-key envelope: {}",
+                            report.encrypted,
+                            report.rotated,
+                            report.failed,
+                            report.partial.len(),
+                            report.stale_after_sweep
+                        );
+                        let _ = state.telegram_client.send_ops_alert_html(&text).await;
+                    }
+                }
+                Err(e) => {
+                    crate::error_event!(ErrorCode::ConfCredentialReconcileFailed, error = %e);
+                    let _ = state
+                        .telegram_client
+                        .send_ops_alert_html(&format!(
+                            "🚨 <b>Confidential credential reconcile failed at boot</b>: {}",
+                            e
+                        ))
+                        .await;
+                }
+            }
+        }
+
+        Ok(state)
     }
 
     /// Find the block height for a given timestamp

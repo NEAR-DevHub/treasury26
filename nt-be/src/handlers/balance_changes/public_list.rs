@@ -1,7 +1,8 @@
-//! Read-side adapter for public DAOs backed by `gold_public_history_events`.
+//! Read-side adapter for public DAOs backed by `gold_treasury_ledger_events`.
 //!
 //! This mirrors `confidential_list`: callers keep using `EnrichedBalanceChange`
-//! while the backing table switches from legacy `balance_changes` to public gold.
+//! while the backing table switches from legacy `balance_changes` to the
+//! unified gold ledger.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -12,6 +13,7 @@ use serde_json::Value;
 use sqlx::{PgPool, QueryBuilder, Row};
 
 use crate::AppState;
+use crate::handlers::balance_changes::token_filter::push_token_match;
 use crate::handlers::public_history::quotes::{
     proposal_quote_from_metadata, quote_destination_token_id,
 };
@@ -44,6 +46,7 @@ struct PublicGoldRow {
     proposal_execution_transaction_hash: Option<String>,
     status: String,
     quote_metadata: Option<Value>,
+    quote_deposit_address: Option<String>,
     created_at: DateTime<Utc>,
 }
 
@@ -75,6 +78,7 @@ impl sqlx::FromRow<'_, sqlx::postgres::PgRow> for PublicGoldRow {
                 .try_get("proposal_execution_transaction_hash")?,
             status: row.try_get("status")?,
             quote_metadata: row.try_get("quote_metadata")?,
+            quote_deposit_address: row.try_get("quote_deposit_address")?,
             created_at: row.try_get("created_at")?,
         })
     }
@@ -192,6 +196,7 @@ fn bind_public_filters<'a>(
 
     builder.push(" WHERE dao_id = ");
     builder.push_bind(params.account_id.as_str());
+    builder.push(" AND history_visible AND source_kind = 'public_silver_leg'");
 
     if let Some(start) = start_date {
         builder.push(" AND event_time >= ");
@@ -242,30 +247,16 @@ fn bind_public_filters<'a>(
         .as_ref()
         .filter(|tokens| !tokens.is_empty())
     {
-        builder.push(" AND (token_in = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_out = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_in LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))) OR token_out LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))))");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["token_in", "token_out"], tokens);
     }
     if let Some(tokens) = params
         .exclude_token_ids
         .as_ref()
         .filter(|tokens| !tokens.is_empty())
     {
-        builder.push(" AND NOT (token_in = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_out = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(") OR token_in LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))) OR token_out LIKE ANY(ARRAY(SELECT '%:' || unnest(");
-        builder.push_bind(tokens.clone());
-        builder.push("))))");
+        builder.push(" AND NOT ");
+        push_token_match(&mut builder, &["token_in", "token_out"], tokens);
     }
 
     if let Some(min) = min_amount {
@@ -298,10 +289,6 @@ fn bind_public_filters<'a>(
         builder.push("))");
     }
 
-    if params.exclude_near_dust {
-        builder.push(" AND NOT ((token_in = 'near' OR token_out = 'near') AND ABS(COALESCE(amount_in, amount_out, 0)) < 0.09)");
-    }
-
     if !count_only {
         builder.push(" ORDER BY event_time DESC, id DESC");
         if params.limit.is_some() || params.offset.is_some() {
@@ -320,7 +307,7 @@ pub async fn count_balance_change_legs(
     params: &BalanceChangesQuery,
 ) -> Result<i64, sqlx::Error> {
     let builder =
-        QueryBuilder::<sqlx::Postgres>::new("SELECT COUNT(*) FROM gold_public_history_events");
+        QueryBuilder::<sqlx::Postgres>::new("SELECT COUNT(*) FROM gold_treasury_ledger_events");
     let mut builder = bind_public_filters(builder, params, true);
     builder.build_query_scalar::<i64>().fetch_one(pool).await
 }
@@ -331,47 +318,69 @@ pub async fn load_prior_balances(
     start_time: DateTime<Utc>,
     token_ids: Option<&Vec<String>>,
 ) -> Result<HashMap<String, BigDecimal>, sqlx::Error> {
+    // Latest is chain order (block, then intra-block source order), not
+    // event_time: same-transaction legs share one event_time, and an id
+    // tiebreak there can surface the balance from before the final leg.
+    //
+    // Each stamp is positioned at the block of the leg it came from, not the
+    // row's own block: an exchange row carries the outgoing leg's block, but
+    // its token_in stamp belongs to the incoming (counter) leg, which can
+    // land blocks later — ordering by the row block would let an older
+    // hidden-row stamp shadow it.
     let mut builder = QueryBuilder::<sqlx::Postgres>::new(
         r#"
         SELECT DISTINCT ON (asset) asset, balance
         FROM (
-            SELECT token_in AS asset, token_in_balance_after AS balance, event_time, id
-            FROM gold_public_history_events
-            WHERE dao_id = "#,
+            SELECT gold.token_in AS asset,
+                   gold.token_in_user_balance_after AS balance,
+                   COALESCE(counter_leg.block_height, primary_leg.block_height,
+                            gold.block_height) AS block_height,
+                   gold.source_order, gold.event_time, gold.id
+            FROM gold_treasury_ledger_events gold
+            LEFT JOIN silver_public_transfer_legs primary_leg
+              ON primary_leg.id = gold.primary_transfer_leg_id
+            LEFT JOIN silver_public_transfer_legs counter_leg
+              ON counter_leg.id = gold.counter_transfer_leg_id
+            WHERE gold.dao_id = "#,
     );
     builder.push_bind(account_id);
-    builder.push(" AND event_time < ");
+    builder.push(" AND gold.event_time < ");
     builder.push_bind(start_time);
-    builder.push(" AND token_in IS NOT NULL AND token_in_balance_after IS NOT NULL");
+    builder.push(" AND gold.token_in IS NOT NULL AND gold.token_in_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND token_in = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["gold.token_in"], tokens);
     }
 
     builder.push(
         r#"
             UNION ALL
-            SELECT token_out AS asset, token_out_balance_after AS balance, event_time, id
-            FROM gold_public_history_events
-            WHERE dao_id = "#,
+            SELECT gold.token_out AS asset,
+                   gold.token_out_user_balance_after AS balance,
+                   COALESCE(primary_leg.block_height, gold.block_height) AS block_height,
+                   gold.source_order, gold.event_time, gold.id
+            FROM gold_treasury_ledger_events gold
+            LEFT JOIN silver_public_transfer_legs primary_leg
+              ON primary_leg.id = gold.primary_transfer_leg_id
+            WHERE gold.dao_id = "#,
     );
     builder.push_bind(account_id);
-    builder.push(" AND event_time < ");
+    builder.push(" AND gold.event_time < ");
     builder.push_bind(start_time);
-    builder.push(" AND token_out IS NOT NULL AND token_out_balance_after IS NOT NULL");
+    builder
+        .push(" AND gold.token_out IS NOT NULL AND gold.token_out_user_balance_after IS NOT NULL");
 
     if let Some(tokens) = token_ids.filter(|tokens| !tokens.is_empty()) {
-        builder.push(" AND token_out = ANY(");
-        builder.push_bind(tokens.clone());
-        builder.push(")");
+        builder.push(" AND ");
+        push_token_match(&mut builder, &["gold.token_out"], tokens);
     }
 
     builder.push(
         r#"
         ) balances
-        ORDER BY asset, event_time DESC, id DESC
+        ORDER BY asset, block_height DESC NULLS LAST, source_order DESC,
+                 event_time DESC, id DESC
         "#,
     );
 
@@ -387,6 +396,9 @@ pub async fn fetch_balance_change_legs(
     state: &Arc<AppState>,
     params: &BalanceChangesQuery,
 ) -> Result<Vec<EnrichedBalanceChange>, Box<dyn std::error::Error + Send + Sync>> {
+    // Unified rows carry user-owned balances; balance_before is derived
+    // (user_balance_after − signed delta) instead of stored. Visible rows are
+    // always user-owned by construction — non-user movements are hidden.
     let builder = QueryBuilder::<sqlx::Postgres>::new(
         r#"
         SELECT
@@ -400,10 +412,12 @@ pub async fn fetch_balance_change_legs(
             amount_in_usd,
             amount_out_usd,
             usd_change,
-            token_in_balance_before,
-            token_in_balance_after,
-            token_out_balance_before,
-            token_out_balance_after,
+            token_in_user_balance_after - COALESCE(amount_in, 0)
+                AS token_in_balance_before,
+            token_in_user_balance_after AS token_in_balance_after,
+            token_out_user_balance_after + COALESCE(amount_out, 0)
+                AS token_out_balance_before,
+            token_out_user_balance_after AS token_out_balance_after,
             recipient,
             counterparty,
             transaction_hash,
@@ -413,19 +427,26 @@ pub async fn fetch_balance_change_legs(
             proposal_id,
             proposal_execution_transaction_hash,
             status::text AS status,
-            raw_payload->'quote_metadata' AS quote_metadata,
+            (
+                SELECT proposal.quote_metadata
+                FROM dao_proposals proposal
+                WHERE proposal.dao_id = gold_treasury_ledger_events.dao_id
+                  AND proposal.proposal_id = gold_treasury_ledger_events.proposal_id
+            ) AS quote_metadata,
+            (
+                SELECT proposal.quote_deposit_address
+                FROM dao_proposals proposal
+                WHERE proposal.dao_id = gold_treasury_ledger_events.dao_id
+                  AND proposal.proposal_id = gold_treasury_ledger_events.proposal_id
+            ) AS quote_deposit_address,
             created_at
-        FROM gold_public_history_events
+        FROM gold_treasury_ledger_events
         "#,
     );
     let mut builder = bind_public_filters(builder, params, false);
     let rows: Vec<PublicGoldRow> = builder.build_query_as().fetch_all(&state.db_pool).await?;
 
-    let expand_exchange_balances = params.include_metadata != Some(true);
-    let legs: Vec<LegRow> = rows
-        .into_iter()
-        .flat_map(|row| LegRow::from_gold(row, expand_exchange_balances))
-        .collect();
+    let legs: Vec<LegRow> = rows.into_iter().flat_map(LegRow::from_gold).collect();
 
     let metadata_map = {
         let ids = collect_token_ids(&legs);
@@ -478,6 +499,7 @@ struct LegRow {
     receipt_id: Vec<String>,
     created_at: DateTime<Utc>,
     proposal_id: Option<i64>,
+    quote_deposit_address: Option<String>,
     usd_value: Option<BigDecimal>,
     action_kind: String,
     swap_sent_token: Option<String>,
@@ -512,7 +534,7 @@ impl LegRow {
         hashes
     }
 
-    fn from_gold(row: PublicGoldRow, expand_exchange_balances: bool) -> Vec<Self> {
+    fn from_gold(row: PublicGoldRow) -> Vec<Self> {
         match row.transaction_type.as_str() {
             "deposit" => row
                 .token_in
@@ -544,6 +566,7 @@ impl LegRow {
                             .unwrap_or_default(),
                         created_at: row.created_at,
                         proposal_id: row.proposal_id,
+                        quote_deposit_address: row.quote_deposit_address.clone(),
                         usd_value: row.amount_in_usd.clone(),
                         action_kind: "PublicDeposit".to_string(),
                         swap_sent_token: None,
@@ -556,9 +579,9 @@ impl LegRow {
                     }]
                 })
                 .unwrap_or_default(),
-            "sent" if expand_exchange_balances && row.token_out_balance_after.is_none() => {
-                Vec::new()
-            }
+            // Pending payment rows (approved proposal, transfer not indexed
+            // yet) have no balances but must render — they disappear only by
+            // being replaced with the real indexed row.
             "sent" => row
                 .token_out
                 .clone()
@@ -602,6 +625,7 @@ impl LegRow {
                             .unwrap_or_default(),
                         created_at: row.created_at,
                         proposal_id: row.proposal_id,
+                        quote_deposit_address: row.quote_deposit_address.clone(),
                         usd_value: row.amount_out_usd.clone(),
                         action_kind,
                         swap_sent_token: None,
@@ -614,55 +638,10 @@ impl LegRow {
                     }]
                 })
                 .unwrap_or_default(),
-            "exchange" if expand_exchange_balances && row.token_out_balance_after.is_none() => {
-                Vec::new()
-            }
-            "exchange" if expand_exchange_balances => {
-                let mut legs = Vec::new();
-                if let Some(token_out) = row.token_out.clone() {
-                    let amount = row.amount_out.clone().unwrap_or_else(BigDecimal::zero);
-                    legs.push(Self {
-                        id: -row.id,
-                        account_id: row.dao_id.clone(),
-                        token_id: token_out,
-                        amount: -amount,
-                        balance_before: row
-                            .token_out_balance_before
-                            .clone()
-                            .unwrap_or_else(BigDecimal::zero),
-                        balance_after: row
-                            .token_out_balance_after
-                            .clone()
-                            .unwrap_or_else(BigDecimal::zero),
-                        counterparty: row.counterparty.clone(),
-                        signer_id: Some(row.dao_id.clone()),
-                        receiver_id: row.counterparty.clone(),
-                        block_height: row.block_height.unwrap_or(0),
-                        block_time: row.event_time,
-                        transaction_hashes: Self::hashes(&row),
-                        receipt_id: row
-                            .receipt_id
-                            .clone()
-                            .map(|id| vec![id])
-                            .unwrap_or_default(),
-                        created_at: row.created_at,
-                        proposal_id: row.proposal_id,
-                        usd_value: row.amount_out_usd.clone(),
-                        action_kind: "PublicExchange".to_string(),
-                        swap_sent_token: None,
-                        swap_sent_amount: None,
-                        swap_sent_amount_usd: None,
-                        swap_received_token: None,
-                        swap_received_amount: None,
-                        swap_received_amount_usd: None,
-                        swap_solver_tx: None,
-                    });
-                }
-                if let Some(token_in) = row.token_in.clone() {
-                    legs.push(Self::exchange_summary(row, token_in));
-                }
-                legs
-            }
+            // One row per exchange, carrying the full swap (sent + received)
+            // in SwapInfo — the same single Exchange Fulfillment shape the
+            // confidential side uses. The request side is intentionally not
+            // emitted as its own row.
             "exchange" => row
                 .token_in
                 .clone()
@@ -707,6 +686,7 @@ impl LegRow {
                 .unwrap_or_default(),
             created_at: row.created_at,
             proposal_id: row.proposal_id,
+            quote_deposit_address: row.quote_deposit_address.clone(),
             usd_value: row
                 .amount_out_usd
                 .clone()
@@ -758,6 +738,7 @@ impl LegRow {
             actions: None,
             usd_value: self.usd_value.clone(),
             proposal_id: self.proposal_id,
+            quote_deposit_address: self.quote_deposit_address.clone(),
         }
     }
 
@@ -826,6 +807,7 @@ mod tests {
             proposal_execution_transaction_hash: None,
             status: "success".to_string(),
             quote_metadata: None,
+            quote_deposit_address: None,
             created_at: ts(),
         }
     }
@@ -838,7 +820,7 @@ mod tests {
         row.token_in_balance_before = Some(decimal("2.5"));
         row.token_in_balance_after = Some(decimal("15"));
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdc.near");
@@ -857,7 +839,7 @@ mod tests {
         row.token_out_balance_after = Some(decimal("5"));
         row.recipient = Some("bob.near".to_string());
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdc.near");
@@ -879,7 +861,7 @@ mod tests {
         row.token_out_balance_before = Some(decimal("20"));
         row.token_out_balance_after = Some(decimal("10"));
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdt.near");
@@ -893,7 +875,9 @@ mod tests {
     }
 
     #[test]
-    fn exchange_expands_to_outgoing_and_incoming_legs_for_balance_series() {
+    fn exchange_is_always_a_single_row_regardless_of_read_mode() {
+        // The request side is never emitted as its own row; both legs live in
+        // the one fulfillment row's swap fields, matching confidential.
         let mut row = base_row("exchange");
         row.token_in = Some("nep141:usdt.near".to_string());
         row.token_out = Some("nep141:usdc.near".to_string());
@@ -904,15 +888,13 @@ mod tests {
         row.token_out_balance_before = Some(decimal("20"));
         row.token_out_balance_after = Some(decimal("10"));
 
-        let legs = LegRow::from_gold(row, true);
+        let legs = LegRow::from_gold(row);
 
-        assert_eq!(legs.len(), 2);
-        assert_eq!(legs[0].token_id, "nep141:usdc.near");
-        assert_eq!(legs[0].amount, decimal("-10"));
-        assert_eq!(legs[0].balance_after, decimal("10"));
-        assert_eq!(legs[1].token_id, "nep141:usdt.near");
-        assert_eq!(legs[1].amount, decimal("9.9"));
-        assert_eq!(legs[1].balance_after, decimal("9.9"));
+        assert_eq!(legs.len(), 1);
+        assert_eq!(legs[0].token_id, "nep141:usdt.near");
+        assert_eq!(legs[0].amount, decimal("9.9"));
+        assert_eq!(legs[0].swap_sent_token.as_deref(), Some("nep141:usdc.near"));
+        assert_eq!(legs[0].swap_sent_amount, Some(decimal("10")));
     }
 
     #[test]
@@ -922,7 +904,7 @@ mod tests {
         row.token_out = Some("nep141:usdc.near".to_string());
         row.amount_out = Some(decimal("10"));
 
-        let legs = LegRow::from_gold(row, false);
+        let legs = LegRow::from_gold(row);
 
         assert_eq!(legs.len(), 1);
         assert_eq!(legs[0].token_id, "nep141:usdc.near");

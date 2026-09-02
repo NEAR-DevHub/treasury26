@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
+use axum::http::StatusCode;
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::{Json, extract::State};
 use base64::{Engine, prelude::BASE64_STANDARD};
@@ -8,15 +9,17 @@ use bigdecimal::BigDecimal;
 use futures::stream::Stream;
 use near_api::{Account, AccountId, Contract, NearToken, Tokens};
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 use tokio::sync::mpsc;
 
 use crate::{
     AppState,
+    auth::AuthUser,
     constants::TREASURY_FACTORY_CONTRACT_ID,
     handlers::balance_changes::utils::is_transport_error,
     services::{
-        mark_testing_if_needed, register_new_dao_and_wait, register_or_refresh_monitored_account,
-        should_mark_testing,
+        RegistrationMode, mark_testing_if_needed, register_new_dao_and_wait,
+        register_or_refresh_monitored_account, should_mark_testing,
     },
 };
 
@@ -170,6 +173,13 @@ pub fn build_policy(
     })
 }
 
+/// Whether `account_id` is one of the members of the treasury described by
+/// `payload` (a requestor, governor, or financier). Gate on this before
+/// spending backend-signer NEAR on someone's behalf.
+fn caller_is_member(payload: &CreateTreasuryRequest, account_id: &str) -> bool {
+    collect_payload_members(payload).contains(account_id)
+}
+
 fn collect_payload_members(payload: &CreateTreasuryRequest) -> HashSet<String> {
     payload
         .requestors
@@ -252,8 +262,27 @@ pub async fn send_progress(
 
 pub async fn create_treasury_stream(
     State(state): State<Arc<AppState>>,
+    auth_user: AuthUser,
     Json(payload): Json<CreateTreasuryRequest>,
-) -> Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>> {
+) -> Result<
+    Sse<impl Stream<Item = Result<Event, std::convert::Infallible>>>,
+    (StatusCode, Json<Value>),
+> {
+    // The creation flow spends backend-signer NEAR (the factory `create`
+    // deposit, and for confidential DAOs several signer-approved on-chain
+    // proposals). Only allow a signed-in caller who is actually one of the new
+    // DAO's members to trigger that spend — otherwise the endpoint is an
+    // anonymous drain on the sponsor wallet.
+    if !caller_is_member(&payload, auth_user.account_id.as_str()) {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({
+                "error": "You must be a member of the treasury you are creating",
+                "message": "The authenticated account must appear in the treasury's requestors, governors, or financiers",
+            })),
+        ));
+    }
+
     let (tx, mut rx) = mpsc::channel::<ProgressEvent>(32);
 
     tokio::spawn(async move {
@@ -280,7 +309,7 @@ pub async fn create_treasury_stream(
         }
     };
 
-    Sse::new(stream).keep_alive(KeepAlive::default())
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }
 
 /// Treasury creation is blocked if either the env kill-switch is set, or an
@@ -645,11 +674,13 @@ async fn run_creation_inner(
 
     send_progress(tx, "creating_dao", "completed").await;
 
+    // Creation is the sanctioned entry point, so it may always create the row.
     if let Err(e) = register_or_refresh_monitored_account(
         &state.db_pool,
         state.goldsky_pool.as_ref(),
         &treasury,
         is_confidential,
+        RegistrationMode::RegisterOrRefresh,
     )
     .await
     {
@@ -870,6 +901,30 @@ mod tests {
         assert!(members.contains("alice.near"));
         assert!(members.contains("bob.near"));
         assert!(members.contains("carol.near"));
+    }
+
+    #[test]
+    fn caller_is_member_gates_signer_spend() {
+        let payload = CreateTreasuryRequest {
+            name: "Treasury".to_string(),
+            account_id: "team.sputnik-dao.near".parse().expect("valid account"),
+            payment_threshold: 1,
+            governance_threshold: 1,
+            governors: vec!["alice.near".parse().expect("valid account")],
+            financiers: vec!["bob.near".parse().expect("valid account")],
+            requestors: vec!["carol.near".parse().expect("valid account")],
+            is_confidential: true,
+        };
+
+        // Members of the treasury may trigger the signer-funded creation.
+        assert!(caller_is_member(&payload, "alice.near"));
+        assert!(caller_is_member(&payload, "bob.near"));
+        assert!(caller_is_member(&payload, "carol.near"));
+
+        // A signed-in account that is not part of the new DAO must not be able
+        // to spend the sponsor wallet.
+        assert!(!caller_is_member(&payload, "attacker.near"));
+        assert!(!caller_is_member(&payload, "team.sputnik-dao.near"));
     }
 
     #[test]

@@ -1,5 +1,9 @@
 pub mod bronze;
+pub mod charts;
+pub mod clamp;
 pub mod gold;
+pub mod observations;
 pub mod proposals;
 pub mod quotes;
 pub mod silver;
+pub mod verification;

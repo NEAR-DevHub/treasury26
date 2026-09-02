@@ -152,8 +152,11 @@ impl TokenPriceService {
     pub fn resolve(&self, raw_token_id: &str) -> Option<String> {
         let candidate = canonicalize_token_id(raw_token_id);
         let snapshot = self.snapshot();
-        if snapshot.by_token_id.contains_key(&candidate) {
-            return Some(candidate);
+        for lookup_id in crate::services::oneclick_asset_routing::price_lookup_asset_ids(&candidate)
+        {
+            if snapshot.by_token_id.contains_key(&lookup_id) {
+                return Some(lookup_id);
+            }
         }
         // Bare contract ids that are not NEP-141 on NEAR (e.g. a lowercased
         // EVM address) can still match via the contract-address index.
@@ -173,6 +176,15 @@ impl TokenPriceService {
     pub fn latest_price(&self, raw_token_id: &str) -> Option<(BigDecimal, DateTime<Utc>)> {
         let record = self.token(raw_token_id)?;
         Some((record.price_usd?, record.price_updated_at?))
+    }
+
+    /// Latest cached USD price, but only while the feed itself is fresh. A
+    /// dead feed's last price must not be valued as current; callers leave
+    /// the value unset and let historical repair price it from the series.
+    pub fn fresh_latest_price(&self, raw_token_id: &str) -> Option<BigDecimal> {
+        self.latest_price(raw_token_id)
+            .filter(|(_, updated_at)| Utc::now() - *updated_at <= LATEST_PRICE_FRESH_WINDOW)
+            .map(|(price, _)| price)
     }
 
     /// Latest cached USD price, but only when the event itself is recent
@@ -285,6 +297,26 @@ impl TokenPriceService {
         raw_token_ids: &[String],
         at: &[DateTime<Utc>],
     ) -> Result<HashMap<(String, DateTime<Utc>), BigDecimal>, sqlx::Error> {
+        self.prices_at_grid_inner(raw_token_ids, at, false).await
+    }
+
+    /// Snapshot valuation variant that refuses to carry a minute price from
+    /// a previous UTC day. Missing pairs can then use the explicit EOD
+    /// fallback instead of silently persisting an arbitrarily stale quote.
+    pub async fn prices_at_same_day_grid(
+        &self,
+        raw_token_ids: &[String],
+        at: &[DateTime<Utc>],
+    ) -> Result<HashMap<(String, DateTime<Utc>), BigDecimal>, sqlx::Error> {
+        self.prices_at_grid_inner(raw_token_ids, at, true).await
+    }
+
+    async fn prices_at_grid_inner(
+        &self,
+        raw_token_ids: &[String],
+        at: &[DateTime<Utc>],
+        same_utc_day_only: bool,
+    ) -> Result<HashMap<(String, DateTime<Utc>), BigDecimal>, sqlx::Error> {
         let mut ref_to_raw: HashMap<i32, Vec<&String>> = HashMap::new();
         for raw in raw_token_ids {
             if let Some(record) = self.token(raw) {
@@ -304,7 +336,12 @@ impl TokenPriceService {
             CROSS JOIN LATERAL (
                 SELECT price_usd
                 FROM token_prices
-                WHERE token_ref = tok.token_ref AND minute_at <= t.ts
+                WHERE token_ref = tok.token_ref
+                  AND minute_at <= t.ts
+                  AND (
+                      NOT $3::boolean
+                      OR minute_at >= date_trunc('day', t.ts)
+                  )
                 ORDER BY minute_at DESC
                 LIMIT 1
             ) p
@@ -312,6 +349,7 @@ impl TokenPriceService {
         )
         .bind(&token_refs)
         .bind(at)
+        .bind(same_utc_day_only)
         .fetch_all(&self.pool)
         .await?;
 
@@ -335,6 +373,7 @@ impl TokenPriceService {
 /// - HOT intent aliases (`intents.near:<chain>_<asset>`) become
 ///   `nep245:v2_1.omni.hot.tg:<chain>_<asset>`
 /// - bare multi-token ids (`v2_1.omni.hot.tg:<chain>_<asset>`) gain `nep245:`
+/// - `1cs_v1:` routing ids pass through unchanged (never prefixed with `nep141:`)
 /// - bare NEP-141 contract ids (`wrap.near`, balance_changes) gain `nep141:`
 pub fn canonicalize_token_id(raw: &str) -> String {
     if raw == "near" || raw.starts_with("staking:") {
@@ -346,7 +385,7 @@ pub fn canonicalize_token_id(raw: &str) -> String {
         }
         return canonicalize_token_id(stripped);
     }
-    if raw.starts_with("nep141:") || raw.starts_with("nep245:") {
+    if raw.starts_with("nep141:") || raw.starts_with("nep245:") || raw.starts_with("1cs_v1:") {
         return raw.to_string();
     }
     if raw.starts_with("v2_1.omni.hot.tg:") {
@@ -404,6 +443,14 @@ mod tests {
         assert_eq!(
             canonicalize_token_id("nep245:v2_1.omni.hot.tg:137_abc"),
             "nep245:v2_1.omni.hot.tg:137_abc"
+        );
+        assert_eq!(
+            canonicalize_token_id("1cs_v1:btc:native:coin"),
+            "1cs_v1:btc:native:coin"
+        );
+        assert_eq!(
+            canonicalize_token_id("1cs_v1:near:nep141:zec.omft.near"),
+            "1cs_v1:near:nep141:zec.omft.near"
         );
     }
 

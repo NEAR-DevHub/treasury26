@@ -1,6 +1,7 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { Address } from "@/components/address";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { FormattedDate } from "@/components/formatted-date";
 import { InfoDisplay, type InfoItem } from "@/components/info-display";
 import { Rate } from "@/components/rate";
@@ -8,17 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { WRAP_NEAR_TOKEN_ID } from "@/constants/network-ids";
 import { useQuoteByDepositAddress } from "@/hooks/use-proposals";
 import { useSearchIntentsTokens, useToken } from "@/hooks/use-treasury-queries";
-import Big from "@/lib/big";
+import { decimalFromBaseUnitsOrNull, decimalOrNull } from "@/lib/amount-format";
 import {
     calculateExchangeFeeAmount,
     EXCHANGE_FEE_PERCENTAGE,
 } from "@/lib/exchange-fee";
-import {
-    formatBalance,
-    formatCurrency,
-    formatDurationSeconds,
-    formatTokenDisplayAmount,
-} from "@/lib/utils";
+import { formatDurationSeconds } from "@/lib/utils";
 import type { SwapRequestData } from "../../types/index";
 import { Amount } from "../amount";
 
@@ -77,26 +73,29 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
             ? String(data.amountOutUsd)
             : quoteByDepositAddress?.amountOutUsd;
     const sourceAmountUsdOverride =
-        sourceAmountUsdRaw && !Number.isNaN(Number(sourceAmountUsdRaw))
-            ? formatCurrency(Number(sourceAmountUsdRaw))
-            : null;
+        sourceAmountUsdRaw && !Number.isNaN(Number(sourceAmountUsdRaw)) ? (
+            <FormattedAmount kind="fiat" value={sourceAmountUsdRaw} />
+        ) : null;
     const destinationAmountUsdOverride =
         destinationAmountUsdRaw &&
-        !Number.isNaN(Number(destinationAmountUsdRaw))
-            ? formatCurrency(Number(destinationAmountUsdRaw))
-            : null;
+        !Number.isNaN(Number(destinationAmountUsdRaw)) ? (
+            <FormattedAmount kind="fiat" value={destinationAmountUsdRaw} />
+        ) : null;
     const { data: tokenInData, isLoading: isTokenInLoading } =
         useToken(finalTokenInId);
 
     const minimumReceived = useMemo(() => {
-        return Big(data.amountOut)
-            .mul(Big(100 - Number(data.slippage || 0)))
-            .div(100);
+        const amountOut = decimalOrNull(data.amountOut);
+        const slippage = decimalOrNull(data.slippage ?? "0");
+        if (!amountOut || !slippage) return null;
+        return amountOut.minus(amountOut.mul(slippage).div(100));
     }, [data.amountOut, data.slippage]);
     const exchangeFeeAmount = useMemo(() => {
-        return calculateExchangeFeeAmount(
-            formatBalance(data.amountIn, tokenInData?.decimals || 24),
+        const amountIn = decimalFromBaseUnitsOrNull(
+            data.amountIn,
+            tokenInData?.decimals || 24,
         );
+        return amountIn ? calculateExchangeFeeAmount(amountIn.toFixed()) : null;
     }, [data.amountIn, tokenInData?.decimals]);
 
     const infoItems: InfoItem[] = [
@@ -132,7 +131,7 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
                 <Rate
                     tokenIn={finalTokenInId}
                     tokenOut={finalTokenOutId}
-                    amountIn={Big(data.amountIn)}
+                    amountIn={data.amountIn}
                     amountInUsd={data.amountInUsd}
                     amountOutWithDecimals={data.amountOut}
                 />
@@ -145,7 +144,7 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
     if (data.slippage) {
         expandableItems.push({
             label: t("priceSlippageLimit"),
-            value: <span>{data.slippage}%</span>,
+            value: <FormattedAmount kind="percent" value={data.slippage} />,
             info: t("slippageTooltip"),
         });
     }
@@ -167,9 +166,10 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
         label: t("minReceive"),
         value: (
             <Amount
-                amountWithDecimals={minimumReceived.toString()}
+                amountWithDecimals={minimumReceived?.toString()}
                 showNetworkTooltip
                 tokenId={finalTokenOutId}
+                rounding="down"
             />
         ),
         info: t("minReceiveTooltip"),
@@ -210,9 +210,22 @@ function IntentsSwapExpanded({ data, isExecuted = false }: SwapExpandedProps) {
         value: isTokenInLoading ? (
             <Skeleton className="h-5 w-24" />
         ) : (
-            `${EXCHANGE_FEE_PERCENTAGE}% / ${formatTokenDisplayAmount(
-                exchangeFeeAmount,
-            )} ${tokenInData?.symbol || ""}`.trim()
+            <span>
+                <FormattedAmount
+                    kind="percent"
+                    value={EXCHANGE_FEE_PERCENTAGE}
+                />{" "}
+                /{" "}
+                <FormattedAmount
+                    kind="token"
+                    value={exchangeFeeAmount}
+                    symbol={tokenInData?.symbol || ""}
+                    tokenDecimals={tokenInData?.decimals}
+                    unitPriceUsd={tokenInData?.price}
+                    profile="standard"
+                    rounding="up"
+                />
+            </span>
         ),
         info: tExchange("info.exchangeFeeTooltip"),
     });
@@ -262,7 +275,7 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
     if (data.slippage) {
         expandableItems.push({
             label: t("priceSlippageLimit"),
-            value: <span>{data.slippage}%</span>,
+            value: <FormattedAmount kind="percent" value={data.slippage} />,
             info: t("slippageTooltip"),
         });
     }
@@ -287,6 +300,7 @@ function NearWrapSwapExpanded({ data }: NearWrapSwapExpandedProps) {
                 amountWithDecimals={data.amountOut}
                 showNetworkTooltip
                 tokenId={data.tokenOut}
+                rounding="down"
             />
         ),
         info: t("minReceiveTooltip"),

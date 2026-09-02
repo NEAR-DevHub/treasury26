@@ -21,9 +21,14 @@ import {
     submitPaymentList,
 } from "@/lib/bulk-payment-api";
 import { encodeToMarkdown } from "@/lib/utils";
+import {
+    hasNearComAddressPrefix,
+    stripNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { useNear } from "@/stores/near-store";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
+import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import {
     RecipientNetworkSelect,
     type RecipientNetworkRuleOption,
@@ -75,7 +80,7 @@ export default function BulkPaymentPage() {
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(selectedTreasury);
     const { data: bridgeAssets = [], isLoading: isBridgeAssetsLoading } =
-        useBridgeTokens(true);
+        useTokenCatalog({ kind: "swap" });
 
     const [step, setStep] = useState(0);
     // Empty until the user adds a recipient address and picks a network —
@@ -446,9 +451,15 @@ export default function BulkPaymentPage() {
             const tokenIdForHash = isNEAR ? "native" : selectedToken.address;
             const tokenIdForProposal = selectedToken.address;
 
-            // Convert amounts to smallest units
+            // Convert amounts to smallest units. nearcom: is FE display only —
+            // list / backend get the bare NEAR account (same as single payment).
+            // Persist near.com in the proposal description so request details /
+            // receipts can rehydrate the nearcom: display prefix.
+            const isNearComBulk = paymentData.some((payment) =>
+                hasNearComAddressPrefix(payment.recipient),
+            );
             const payments = paymentData.map((payment) => ({
-                recipient: payment.recipient,
+                recipient: stripNearComAddressPrefix(payment.recipient),
                 amount: Big(payment.amount || "0")
                     .times(Big(10).pow(selectedToken.decimals))
                     .toFixed(0),
@@ -473,6 +484,9 @@ export default function BulkPaymentPage() {
                 contract: selectedToken.symbol,
                 amount: totalAmount.toFixed(),
                 list_id: listId,
+                ...(isNearComBulk
+                    ? { destinationNetwork: NEAR_COM_NETWORK_ID }
+                    : {}),
             });
 
             // Build proposal
@@ -637,6 +651,9 @@ export default function BulkPaymentPage() {
                         destinationNetwork={
                             isConfidential ? destinationNetworkName : undefined
                         }
+                        destinationNetworkId={
+                            isConfidential ? destinationNetworkId : undefined
+                        }
                         onSave={handleSaveEdit}
                         onCancel={handleCancelEdit}
                     />
@@ -661,6 +678,11 @@ export default function BulkPaymentPage() {
                             destinationNetwork={
                                 isConfidential
                                     ? destinationNetworkName
+                                    : undefined
+                            }
+                            destinationNetworkId={
+                                isConfidential
+                                    ? destinationNetworkId
                                     : undefined
                             }
                             destinationAssetId={
@@ -692,10 +714,16 @@ export default function BulkPaymentPage() {
                                             isBridgeAssetsLoading
                                         }
                                         onNetworkChange={(opt) => {
+                                            // near.com → INTENTS (no destination
+                                            // asset). Other networks → 1Click
+                                            // quote id for that receiver chain.
                                             setDestinationAssetId(
                                                 opt.id === NEAR_COM_NETWORK_ID
                                                     ? null
-                                                    : opt.id,
+                                                    : (findQuoteAssetIdForDestination(
+                                                          bridgeAssets,
+                                                          opt.id,
+                                                      ) ?? opt.id),
                                             );
                                             setDestinationNetworkName(
                                                 opt.networkName,

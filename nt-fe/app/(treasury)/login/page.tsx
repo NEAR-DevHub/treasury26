@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo } from "react";
+import { hasChoosePayerParam } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
 import { ConnectWalletSelector } from "@/components/connect-wallet-selector";
 import Logo from "@/components/icons/logo";
 import { PageComponentLayout } from "@/components/page-component-layout";
@@ -44,7 +45,9 @@ export default function LoginPage() {
     const { accountId, connect, isAuthenticating } = useNear();
 
     const returnTo = sanitizeReturnTo(searchParams.get("returnTo"));
-    const shouldShowCreateTreasuryCta = !returnTo || returnTo === "/";
+    // Pay-with-Trezu resume also shows create CTA (users may have no treasury yet).
+    const shouldShowCreateTreasuryCta =
+        !returnTo || returnTo === "/" || hasChoosePayerParam(returnTo);
     const returnToWithUtms = useMemo(
         () =>
             returnTo ? appendUtmParamsToReturnTo(returnTo, searchParams) : null,

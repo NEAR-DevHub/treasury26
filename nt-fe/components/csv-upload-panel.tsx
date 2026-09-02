@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { FileText, Upload, X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useId, useState } from "react";
 import { Button } from "@/components/button";
 import { ScrollContainer } from "@/components/scroll-container";
 import { Textarea } from "@/components/textarea";
-import { Upload, FileText, X } from "lucide-react";
 import {
     Tabs,
+    TabsContent,
     TabsList,
     TabsTrigger,
-    TabsContent,
 } from "@/components/underline-tabs";
 
 interface CsvUploadPanelProps {

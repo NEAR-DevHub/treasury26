@@ -6,28 +6,13 @@ use serde_json::Value;
 
 use super::models::{BronzeProjectionRow, ConfidentialDepositCorrectionIndex, GoldHistoryEvent};
 use crate::handlers::intents::confidential::types::{
-    ConfidentialTxType, DepositType, HistoryApiItem, accounts_equal, bare_account,
+    ConfidentialTxType, DepositType, HistoryApiItem, RecipientAddressType, accounts_equal,
+    bare_account,
 };
 
 enum Classification {
     Project(ConfidentialTxType),
     Skip,
-}
-
-/// True when a row classifies as a deposit (recipient is this DAO, with no
-/// origin asset or the same origin/destination asset) — every deposit shape the
-/// 1Click history API misreports as the ~0.001 quote nominal, and therefore the
-/// shapes we correct.
-pub(crate) fn classify_is_deposit(
-    dao_id: &str,
-    recipient: &str,
-    origin_asset: Option<&str>,
-    destination_asset: &str,
-) -> bool {
-    matches!(
-        classify(dao_id, recipient, origin_asset, destination_asset),
-        Classification::Project(ConfidentialTxType::Deposit)
-    )
 }
 
 /// Rescale the quote's implied per-unit USD price to the corrected quantity:
@@ -123,7 +108,11 @@ fn classify(
     Classification::Project(ConfidentialTxType::Deposit)
 }
 
-fn is_intents_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
+/// Deposit funded from the DAO's own public balance (public intents or the
+/// NEAR chain) into its confidential balance. 1Click reports the executed
+/// amount for these, so `amount_out` is the full credit — unlike
+/// deposit-address quotes, where the nominal is misreported.
+fn is_public_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
     let deposit_type = DepositType::parse(&row.deposit_type);
     let recipient_type = row
         .recipient_type
@@ -131,7 +120,10 @@ fn is_intents_to_confidential_deposit(row: &BronzeProjectionRow) -> bool {
         .map(DepositType::parse)
         .unwrap_or(DepositType::Other);
 
-    deposit_type == DepositType::Intents && recipient_type == DepositType::ConfidentialIntents
+    matches!(
+        deposit_type,
+        DepositType::Intents | DepositType::OriginChain
+    ) && recipient_type == DepositType::ConfidentialIntents
 }
 
 pub(crate) fn project_row(
@@ -206,10 +198,48 @@ pub(crate) fn project_row(
     };
 
     let zero = BigDecimal::zero();
-    let amount_in_usd_for_delta = amount_in_usd.clone().unwrap_or_else(BigDecimal::zero);
     let amount_out_usd_for_delta = amount_out_usd.clone().unwrap_or_else(BigDecimal::zero);
     let intents_to_confidential_deposit =
-        kind == ConfidentialTxType::Deposit && is_intents_to_confidential_deposit(row);
+        kind == ConfidentialTxType::Deposit && is_public_to_confidential_deposit(row);
+
+    // 1Click can refund part (slippage remainder) or most (nominal-executed
+    // quote) of a transfer. When the refund destination is this DAO's
+    // confidential balance, that amount never left / came back — so the
+    // replay must not debit it (sent/exchange origin leg) and must credit it
+    // (same-asset deposit). Refunds to other destinations (origin chain,
+    // public intents) have no confidential balance impact.
+    let refunded = parse_optional_decimal(
+        payload_str(&row.raw_payload, "refundedAmountFormatted"),
+        "refundedAmountFormatted",
+    )?
+    .unwrap_or_else(BigDecimal::zero);
+    let refund_fee = parse_optional_decimal(
+        payload_str(&row.raw_payload, "refundFeeFormatted"),
+        "refundFeeFormatted",
+    )?
+    .unwrap_or_else(BigDecimal::zero);
+    let refund_to = api
+        .as_ref()
+        .and_then(|i| i.refund_to.clone())
+        .or_else(|| payload_str(&row.raw_payload, "refundTo"));
+    let refund_type = api
+        .as_ref()
+        .and_then(|i| i.refund_type.clone())
+        .or_else(|| payload_str(&row.raw_payload, "refundType"));
+    let refund_credit = {
+        let to_confidential = matches!(
+            refund_type.as_deref().map(RecipientAddressType::parse),
+            Some(RecipientAddressType::ConfidentialIntents)
+        ) && refund_to
+            .as_deref()
+            .is_some_and(|to| accounts_equal(to, &dao_id));
+        let net_refund = &refunded - &refund_fee;
+        if to_confidential && net_refund > zero {
+            net_refund
+        } else {
+            BigDecimal::zero()
+        }
+    };
     // Recorded real deposited quantity for this row, if any. Only consumed by
     // the pure-external-deposit arm below (origin-less deposits, the case the
     // 1Click history API misreports). Read-only — does not mutate the ledger.
@@ -230,38 +260,51 @@ pub(crate) fn project_row(
             let origin_asset = origin_asset
                 .as_ref()
                 .ok_or_else(|| "missing originAsset for sent".to_string())?;
-            let amount_in = amount_in
-                .as_ref()
+            let gross_in = amount_in
+                .clone()
                 .ok_or_else(|| "missing amountInFormatted for sent".to_string())?;
+            let mut net_debit = &gross_in - &refund_credit;
+            if net_debit < zero {
+                net_debit = BigDecimal::zero();
+            }
+            if !refund_credit.is_zero() {
+                amount_in_usd =
+                    scale_usd_to_corrected(amount_in_usd.as_ref(), &gross_in, &net_debit);
+                amount_in = Some(net_debit.clone());
+            }
             let before = ledger
                 .get(origin_asset)
                 .cloned()
                 .unwrap_or_else(BigDecimal::zero);
-            let mut after = &before - amount_in;
+            let mut after = &before - &net_debit;
             if after < zero {
                 after = BigDecimal::zero();
             }
             ledger.insert(origin_asset.clone(), after.clone());
-            (
-                Some(before),
-                Some(after),
-                None,
-                None,
-                -amount_in_usd_for_delta,
-            )
+            let usd_change = -amount_in_usd.clone().unwrap_or_else(BigDecimal::zero);
+            (Some(before), Some(after), None, None, usd_change)
         }
         ConfidentialTxType::Exchange => {
             let origin_asset = origin_asset
                 .as_ref()
                 .ok_or_else(|| "missing originAsset for exchange".to_string())?;
-            let amount_in = amount_in
-                .as_ref()
+            let gross_in = amount_in
+                .clone()
                 .ok_or_else(|| "missing amountInFormatted for exchange".to_string())?;
+            let mut net_debit = &gross_in - &refund_credit;
+            if net_debit < zero {
+                net_debit = BigDecimal::zero();
+            }
+            if !refund_credit.is_zero() {
+                amount_in_usd =
+                    scale_usd_to_corrected(amount_in_usd.as_ref(), &gross_in, &net_debit);
+                amount_in = Some(net_debit.clone());
+            }
             let origin_before = ledger
                 .get(origin_asset)
                 .cloned()
                 .unwrap_or_else(BigDecimal::zero);
-            let mut origin_after = &origin_before - amount_in;
+            let mut origin_after = &origin_before - &net_debit;
             if origin_after < zero {
                 origin_after = BigDecimal::zero();
             }
@@ -273,12 +316,14 @@ pub(crate) fn project_row(
                 .unwrap_or_else(BigDecimal::zero);
             let destination_after = &destination_before + &amount_out;
             ledger.insert(destination_asset.clone(), destination_after.clone());
+            let usd_change =
+                amount_out_usd_for_delta - amount_in_usd.clone().unwrap_or_else(BigDecimal::zero);
             (
                 Some(origin_before),
                 Some(origin_after),
                 Some(destination_before),
                 Some(destination_after),
-                amount_out_usd_for_delta - amount_in_usd_for_delta,
+                usd_change,
             )
         }
         ConfidentialTxType::Deposit => {
@@ -287,31 +332,44 @@ pub(crate) fn project_row(
                 .cloned()
                 .unwrap_or_else(BigDecimal::zero);
             // The 1Click history API reports the ~0.001 quote nominal for
-            // deposits (both same-asset `out - in` and origin-less shapes), so
-            // prefer a recorded correction (real deposited quantity) and rescale
-            // the quote-implied USD price to it. Falls back to the raw amount
-            // (or `out - in`) when uncorrected.
-            let net_amount = if let Some(correction) = deposit_correction {
-                amount_out_usd = scale_usd_to_corrected(
-                    amount_out_usd.as_ref(),
-                    &amount_out,
-                    &correction.corrected_net_amount,
-                );
-                correction.corrected_net_amount.clone()
-            } else {
-                match amount_in.as_ref() {
-                    Some(amount_in)
-                        if origin_asset.as_deref() == Some(destination_asset.as_str()) =>
-                    {
-                        if intents_to_confidential_deposit {
-                            amount_out.clone()
-                        } else {
-                            &amount_out - amount_in
-                        }
+            // deposit-address quotes; the real remainder arrives in the
+            // payload's refund fields, so `executed + refund` is the deposited
+            // quantity. Legacy payloads (ingested before 1Click exposed
+            // refunds) carry no refund data — for those, fall back to a
+            // recorded poller correction, then to the raw amount (or
+            // `out - in`).
+            let base = match amount_in.as_ref() {
+                Some(amount_in) if origin_asset.as_deref() == Some(destination_asset.as_str()) => {
+                    if intents_to_confidential_deposit {
+                        amount_out.clone()
+                    } else {
+                        &amount_out - amount_in
                     }
-                    _ => amount_out.clone(),
                 }
+                _ => amount_out.clone(),
             };
+            let refund_candidate = &base + &refund_credit;
+            let correction_amount =
+                deposit_correction.map(|correction| &correction.corrected_net_amount);
+            let net_amount = if correction_amount.is_some_and(|c| c.is_zero()) {
+                // Merge-extra sibling tombstone: its refund belongs to the
+                // primary sibling, so zero stands even with refund data.
+                BigDecimal::zero()
+            } else if let Some(correction) = correction_amount
+                && *correction >= refund_candidate
+            {
+                correction.clone()
+            } else {
+                // Payload truth (executed + refund). Beats absent corrections
+                // and stale smaller ones — a payload reporting more than a
+                // nonzero correction means 1Click has since exposed the real
+                // amount.
+                refund_candidate
+            };
+            if !net_amount.is_zero() && net_amount != amount_out {
+                amount_out_usd =
+                    scale_usd_to_corrected(amount_out_usd.as_ref(), &amount_out, &net_amount);
+            }
             // A zero-net deposit has no balance impact, so it is not a history
             // event — skip it (e.g. a merge-extra sibling credited 0, or an
             // uncorrected same-asset nominal where `out == in`). Returning here
@@ -350,12 +408,8 @@ pub(crate) fn project_row(
         }
     };
 
-    let refund_to_raw = api
-        .as_ref()
-        .and_then(|i| i.refund_to.clone())
-        .or_else(|| payload_str(&row.raw_payload, "refundTo"));
-    let refund_to = match refund_to_raw {
-        Some(raw) => bare_account(&raw),
+    let refund_to_bare = match refund_to.as_deref() {
+        Some(raw) => bare_account(raw),
         None => bare_account(row.account_id.as_str()),
     };
 
@@ -417,7 +471,7 @@ pub(crate) fn project_row(
         destination_balance_before,
         destination_balance_after,
         recipient,
-        refund_to,
+        refund_to: refund_to_bare,
         counterparty,
         deposit_address,
         deposit_memo: row
@@ -429,6 +483,7 @@ pub(crate) fn project_row(
         proposal_execution_transaction_hash: row.proposal_execution_transaction_hash.clone(),
         quote_created_at: row.created_at_external,
         proposal_created_at: row.proposal_created_at,
+        proposal_id: row.proposal_id,
         deposit_tx_hash,
     }))
 }
@@ -467,6 +522,7 @@ mod tests {
             destination_asset: destination_asset.to_string(),
             raw_payload,
             intent_id: None,
+            proposal_id: None,
             proposal_created_at: None,
             proposal_executed_at: None,
             proposal_execution_block_height: None,
@@ -637,6 +693,62 @@ mod tests {
         assert_eq!(
             ledger.get("nep141:usdt.near"),
             Some(&BigDecimal::from_str("0.001").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_project_origin_chain_to_confidential_same_asset_deposit_credits_full_amount() {
+        // Public-to-confidential recovery: NEAR-chain wNEAR sent to a 1Click
+        // deposit address, credited to the DAO's own confidential balance.
+        let raw_payload = payload(&[
+            ("depositType", Value::String("ORIGIN_CHAIN".to_string())),
+            (
+                "recipientType",
+                Value::String("CONFIDENTIAL_INTENTS".to_string()),
+            ),
+            ("refundType", Value::String("ORIGIN_CHAIN".to_string())),
+            (
+                "amountInFormatted",
+                Value::String("0.010670239882819299999997".to_string()),
+            ),
+            (
+                "amountOutFormatted",
+                Value::String("0.010670239882819299999997".to_string()),
+            ),
+            ("amountInUsd", Value::String("0.020593562974".to_string())),
+            ("amountOutUsd", Value::String("0.020593562974".to_string())),
+        ]);
+        let mut row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:wrap.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        row.deposit_type = "ORIGIN_CHAIN".to_string();
+        row.recipient_type = Some("CONFIDENTIAL_INTENTS".to_string());
+        let mut ledger = HashMap::new();
+        ledger.insert(
+            "nep141:wrap.near".to_string(),
+            BigDecimal::from_str("0.2").unwrap(),
+        );
+
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("deposit should project")
+        .expect("deposit should not skip");
+
+        assert_eq!(projected.transaction_type, ConfidentialTxType::Deposit);
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from_str("0.210670239882819299999997").unwrap())
+        );
+        assert_eq!(
+            ledger.get("nep141:wrap.near"),
+            Some(&BigDecimal::from_str("0.210670239882819299999997").unwrap())
         );
     }
 
@@ -875,5 +987,268 @@ mod tests {
             Some(BigDecimal::from(2))
         );
         assert_eq!(ledger.get("nep141:wrap.near"), Some(&BigDecimal::from(2)));
+    }
+
+    fn refund_fields(refunded: &str, refund_type: &str, refund_to: &str) -> Vec<(String, Value)> {
+        vec![
+            (
+                "refundedAmountFormatted".to_string(),
+                Value::String(refunded.to_string()),
+            ),
+            (
+                "refundFeeFormatted".to_string(),
+                Value::String("0.0".to_string()),
+            ),
+            (
+                "refundType".to_string(),
+                Value::String(refund_type.to_string()),
+            ),
+            ("refundTo".to_string(), Value::String(refund_to.to_string())),
+        ]
+    }
+
+    fn payload_with(base: &[(&str, Value)], extra: Vec<(String, Value)>) -> Value {
+        let mut value = payload(base);
+        let map = value.as_object_mut().unwrap();
+        for (key, extra_value) in extra {
+            map.insert(key, extra_value);
+        }
+        value
+    }
+
+    #[test]
+    fn test_confidential_refund_reduces_sent_debit_and_usd() {
+        let raw_payload = payload_with(
+            &[
+                ("recipient", Value::String("external.near".to_string())),
+                ("amountInFormatted", Value::String("2".to_string())),
+                ("amountOutFormatted", Value::String("1.9".to_string())),
+                ("amountInUsd", Value::String("2".to_string())),
+            ],
+            refund_fields("0.5", "CONFIDENTIAL_INTENTS", "dao.near"),
+        );
+        let row = row(
+            "dao.near",
+            Some("external.near"),
+            Some("nep141:usdt.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        let mut ledger = HashMap::from([("nep141:usdt.near".to_string(), BigDecimal::from(10))]);
+
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("sent row should project")
+        .expect("sent row should not skip");
+
+        // Debit is net of the refund that returned to the confidential balance.
+        assert_eq!(
+            projected.origin_balance_after,
+            Some(BigDecimal::from_str("8.5").unwrap())
+        );
+        assert_eq!(
+            projected.amount_in,
+            Some(BigDecimal::from_str("1.5").unwrap())
+        );
+        assert_eq!(
+            projected.amount_in_usd,
+            Some(BigDecimal::from_str("1.5").unwrap())
+        );
+        assert_eq!(projected.usd_change, BigDecimal::from_str("-1.5").unwrap());
+    }
+
+    #[test]
+    fn test_origin_chain_refund_leaves_sent_debit_untouched() {
+        let raw_payload = payload_with(
+            &[
+                ("recipient", Value::String("external.near".to_string())),
+                ("amountInFormatted", Value::String("2".to_string())),
+                ("amountOutFormatted", Value::String("1.9".to_string())),
+            ],
+            refund_fields("0.5", "ORIGIN_CHAIN", "dao.near"),
+        );
+        let row = row(
+            "dao.near",
+            Some("external.near"),
+            Some("nep141:usdt.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        let mut ledger = HashMap::from([("nep141:usdt.near".to_string(), BigDecimal::from(10))]);
+
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("sent row should project")
+        .expect("sent row should not skip");
+
+        assert_eq!(projected.origin_balance_after, Some(BigDecimal::from(8)));
+    }
+
+    #[test]
+    fn test_confidential_refund_reduces_exchange_origin_debit() {
+        let raw_payload = payload_with(
+            &[
+                ("recipient", Value::String("dao.near".to_string())),
+                ("amountInFormatted", Value::String("5".to_string())),
+                ("amountOutFormatted", Value::String("4.9".to_string())),
+            ],
+            refund_fields(
+                "0.000002848231696670696671",
+                "CONFIDENTIAL_INTENTS",
+                "dao.near",
+            ),
+        );
+        let row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:usdt.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        let mut ledger = HashMap::from([("nep141:usdt.near".to_string(), BigDecimal::from(10))]);
+
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("exchange should project")
+        .expect("exchange should not skip");
+
+        assert_eq!(projected.transaction_type, ConfidentialTxType::Exchange);
+        let expected_after = BigDecimal::from(10)
+            - (BigDecimal::from(5) - BigDecimal::from_str("0.000002848231696670696671").unwrap());
+        assert_eq!(projected.origin_balance_after, Some(expected_after));
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from_str("4.9").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_refunded_nominal_deposit_credits_executed_plus_refund() {
+        // The intents->confidential nominal shape: 0.001 executed, the rest
+        // refunded back into the confidential balance. Credit = out + refund,
+        // which is exactly what a poller correction would have recorded.
+        let raw_payload = payload_with(
+            &[
+                ("depositType", Value::String("INTENTS".to_string())),
+                (
+                    "recipientType",
+                    Value::String("CONFIDENTIAL_INTENTS".to_string()),
+                ),
+                ("amountInFormatted", Value::String("0.001".to_string())),
+                ("amountOutFormatted", Value::String("0.001".to_string())),
+                ("amountOutUsd", Value::String("0.001".to_string())),
+            ],
+            refund_fields("0.199", "CONFIDENTIAL_INTENTS", "dao.near"),
+        );
+        let mut row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:usdt.near"),
+            "nep141:usdt.near",
+            raw_payload,
+        );
+        row.deposit_type = "INTENTS".to_string();
+        row.recipient_type = Some("CONFIDENTIAL_INTENTS".to_string());
+        let mut ledger = HashMap::new();
+
+        let projected = project_row(
+            &row,
+            &mut ledger,
+            &ConfidentialDepositCorrectionIndex::empty_disabled(),
+        )
+        .expect("deposit should project")
+        .expect("deposit should not skip");
+
+        assert_eq!(projected.amount_out, BigDecimal::from_str("0.2").unwrap());
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from_str("0.2").unwrap())
+        );
+        // USD rescaled from the nominal to the credited quantity.
+        assert_eq!(
+            projected.amount_out_usd,
+            Some(BigDecimal::from_str("0.2").unwrap())
+        );
+    }
+
+    #[test]
+    fn test_zero_correction_tombstone_beats_refund() {
+        // A merge-extra sibling's refund belongs to the primary sibling; the
+        // zero tombstone must keep the sibling skipped.
+        let raw_payload = payload_with(
+            &[
+                ("depositType", Value::String("INTENTS".to_string())),
+                (
+                    "recipientType",
+                    Value::String("CONFIDENTIAL_INTENTS".to_string()),
+                ),
+                ("amountInFormatted", Value::String("0.0001".to_string())),
+                ("amountOutFormatted", Value::String("0.0001".to_string())),
+            ],
+            refund_fields("0.05", "CONFIDENTIAL_INTENTS", "dao.near"),
+        );
+        let mut row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:wrap.near"),
+            "nep141:wrap.near",
+            raw_payload,
+        );
+        row.deposit_type = "INTENTS".to_string();
+        row.recipient_type = Some("CONFIDENTIAL_INTENTS".to_string());
+        let mut ledger = HashMap::new();
+        let corrections = deposit_correction_index(row.id, "0");
+
+        let projected = project_row(&row, &mut ledger, &corrections)
+            .expect("tombstoned sibling should not error");
+
+        assert!(projected.is_none(), "tombstoned sibling must stay skipped");
+        assert!(ledger.is_empty());
+    }
+
+    #[test]
+    fn test_deposit_correction_takes_precedence_over_refund() {
+        let raw_payload = payload_with(
+            &[
+                ("depositType", Value::String("INTENTS".to_string())),
+                (
+                    "recipientType",
+                    Value::String("CONFIDENTIAL_INTENTS".to_string()),
+                ),
+                ("amountInFormatted", Value::String("0.001".to_string())),
+                ("amountOutFormatted", Value::String("0.001".to_string())),
+            ],
+            refund_fields("0.199", "CONFIDENTIAL_INTENTS", "dao.near"),
+        );
+        let mut row = row(
+            "dao.near",
+            Some("dao.near"),
+            Some("nep141:usdt.near"),
+            "nep141:usdt.near",
+            raw_payload,
+        );
+        row.deposit_type = "INTENTS".to_string();
+        row.recipient_type = Some("CONFIDENTIAL_INTENTS".to_string());
+        let mut ledger = HashMap::new();
+        // Observed balance delta already includes the refund; no double count.
+        let corrections = deposit_correction_index(row.id, "0.2");
+
+        let projected = project_row(&row, &mut ledger, &corrections)
+            .expect("deposit should project")
+            .expect("deposit should not skip");
+
+        assert_eq!(
+            projected.destination_balance_after,
+            Some(BigDecimal::from_str("0.2").unwrap())
+        );
     }
 }

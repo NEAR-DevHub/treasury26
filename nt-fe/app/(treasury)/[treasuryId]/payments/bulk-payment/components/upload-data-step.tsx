@@ -65,6 +65,8 @@ interface UploadDataStepProps {
      * validation falls back to the selected token's own network.
      */
     destinationNetwork?: string;
+    /** Network option id — `near.com` stores recipients with a nearcom: prefix. */
+    destinationNetworkId?: string;
     /**
      * Destination intents asset id (e.g. "nep141:arb-...omft.near") used for
      * fee estimation in confidential bulk where source token chain differs
@@ -80,6 +82,7 @@ export function UploadDataStep({
     isConfidential = false,
     networkSlot,
     destinationNetwork,
+    destinationNetworkId,
     destinationAssetId,
 }: UploadDataStepProps) {
     const t = useTranslations("bulkPayment.upload");
@@ -113,9 +116,7 @@ export function UploadDataStep({
     const activeTab = form.watch("activeTab");
     const uploadedFileName = form.watch("uploadedFileName");
 
-    const { data: bridgeAssets = [] } = useBridgeAssetsForWarnings("payments", {
-        includeNearNetwork: true,
-    });
+    const { data: bridgeAssets = [] } = useBridgeAssetsForWarnings("payments");
     const { blocked: paymentsSlotBlocked, scopedMessage: sendWarningMessage } =
         useBridgeScopedWarning(
             "payments",
@@ -246,6 +247,7 @@ export function UploadDataStep({
                     parsingLabels,
                     selectedToken,
                     destinationNetwork,
+                    destinationNetworkId,
                 );
             } else {
                 result = parseAndValidatePasteData(
@@ -253,6 +255,7 @@ export function UploadDataStep({
                     parsingLabels,
                     selectedToken,
                     destinationNetwork,
+                    destinationNetworkId,
                 );
             }
 
@@ -349,10 +352,10 @@ export function UploadDataStep({
                             {/* Step 1 Skeleton */}
                             <div>
                                 <div className="flex gap-2 mb-4">
-                                    <div className="w-6 h-6 bg-muted-foreground/20 rounded-full animate-pulse" />
+                                    <div className="w-6 h-6 bg-general-unofficial-accent-0 rounded-full animate-pulse" />
                                     <div className="flex-1 space-y-3 min-w-0">
-                                        <div className="h-5 bg-muted-foreground/20 rounded w-32 animate-pulse" />
-                                        <div className="h-12 bg-muted-foreground/20 rounded animate-pulse" />
+                                        <div className="h-5 bg-general-unofficial-accent-0 rounded w-32 animate-pulse" />
+                                        <div className="h-12 bg-general-unofficial-accent-0 rounded animate-pulse" />
                                     </div>
                                 </div>
                             </div>
@@ -360,17 +363,17 @@ export function UploadDataStep({
                             {/* Step 2 Skeleton */}
                             <div>
                                 <div className="flex gap-2 mb-4">
-                                    <div className="w-6 h-6 bg-muted-foreground/20 rounded-full animate-pulse" />
+                                    <div className="w-6 h-6 bg-general-unofficial-accent-0 rounded-full animate-pulse" />
                                     <div className="flex-1 space-y-3 min-w-0">
-                                        <div className="h-5 bg-muted-foreground/20 rounded w-48 animate-pulse" />
-                                        <div className="h-10 bg-muted-foreground/20 rounded animate-pulse" />
-                                        <div className="h-48 md:h-64 bg-muted-foreground/20 rounded animate-pulse" />
+                                        <div className="h-5 bg-general-unofficial-accent-0 rounded w-48 animate-pulse" />
+                                        <div className="h-10 bg-general-unofficial-accent-0 rounded animate-pulse" />
+                                        <div className="h-48 md:h-64 bg-general-unofficial-accent-0 rounded animate-pulse" />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Button Skeleton */}
-                            <div className="h-11 bg-muted-foreground/20 rounded animate-pulse" />
+                            <div className="h-11 bg-general-unofficial-accent-0 rounded animate-pulse" />
                         </div>
                     </PageCard>
                 </div>
@@ -384,10 +387,10 @@ export function UploadDataStep({
                         }}
                         className="gap-2 w-full"
                     >
-                        <div className="h-6 bg-muted-foreground/20 rounded w-48 animate-pulse mb-3" />
+                        <div className="h-6 bg-general-unofficial-accent-0 rounded w-48 animate-pulse mb-3" />
                         <div className="space-y-3">
-                            <div className="h-4 bg-muted-foreground/20 rounded animate-pulse" />
-                            <div className="h-4 bg-muted-foreground/20 rounded animate-pulse" />
+                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
+                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
                         </div>
                     </PageCard>
 
@@ -399,9 +402,9 @@ export function UploadDataStep({
                         className="w-full"
                     >
                         <div className="space-y-3">
-                            <div className="h-6 bg-muted-foreground/20 rounded animate-pulse" />
-                            <div className="h-4 bg-muted-foreground/20 rounded animate-pulse" />
-                            <div className="h-4 bg-muted-foreground/20 rounded animate-pulse" />
+                            <div className="h-6 bg-general-unofficial-accent-0 rounded animate-pulse" />
+                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
+                            <div className="h-4 bg-general-unofficial-accent-0 rounded animate-pulse" />
                         </div>
                     </PageCard>
                 </div>

@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { Database, Shield } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { useAssets } from "@/hooks/use-assets";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "./ui/skeleton";
 
 function normalizeFlagLogoUrl(
@@ -109,7 +110,11 @@ export function TreasuryBalance({
     const totalBalance = data.tokens.reduce((sum, t) => sum + t.balanceUSD, 0);
     return (
         <span className={cn("text-sm text-muted-foreground", className)}>
-            {isConfidential ? "••••••" : formatCurrency(totalBalance)}
+            {isConfidential ? (
+                "••••••"
+            ) : (
+                <FormattedAmount kind="fiat" value={totalBalance} />
+            )}
         </span>
     );
 }

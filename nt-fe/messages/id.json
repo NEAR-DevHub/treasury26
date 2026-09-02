@@ -106,7 +106,8 @@
         "wallet": "Dompet",
         "termsOfService": "Ketentuan Layanan",
         "privacyPolicy": "Kebijakan Privasi",
-        "disconnect": "Putuskan"
+        "disconnect": "Keluar",
+        "myAccount": "Akun Saya"
     },
     "auth": {
         "noWallet": "Hubungkan dompet Anda",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Dompet Trezu",
             "description": "Tandatangani usulan treasury via Trezu"
+        },
+        "account": {
+            "title": "Akun Saya",
+            "description": "Kelola profil dan pengaturan pribadi Anda"
         }
     },
     "depositModal": {
@@ -270,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "Tidak dapat mengambil alamat deposit untuk aset dan jaringan yang dipilih.",
-            "fetchFailed": "Gagal mengambil alamat deposit. Silakan coba lagi."
+            "fetchFailed": "Gagal mengambil alamat deposit. Silakan coba lagi.",
+            "loginRequired": "Masuk untuk membuat alamat deposit sekali pakai."
         },
         "title": "Deposit",
         "subtitle": "Pilih aset dan jaringan untuk melihat alamat deposit",
@@ -283,7 +289,7 @@
         "depositAddressHeading": "Alamat Deposit",
         "depositAddressSubtitle": "Selalu periksa kembali alamat deposit Anda.",
         "depositAddressSubtitleConfidential": "<semibold>Alamat deposit sekali pakai.</semibold> Menggunakan kembali alamat ini atau mengirim dana setelah kedaluwarsa dapat menyebabkan kehilangan dana permanen.",
-        "depositAddressSubtitleConfidentialExpiry": "Valid selama 3 hari sejak waktu pembuatan. Kedaluwarsa dalam: tersisa {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Berlaku 14 hari sejak dibuat. Kedaluwarsa dalam: {expiresIn} tersisa",
         "singleUseAcknowledgement": "Saya akan menggunakan alamat ini hanya sekali",
         "addressLabel": "Alamat",
         "addressCopied": "Alamat disalin ke papan klip",
@@ -306,7 +312,91 @@
             "fiatAnswer": "Untuk saat ini belum, tetapi kami sedang mengupayakan dukungan deposit fiat segera. Nantikan - segera hadir 🚀",
             "arrivalQuestion": "Berapa lama deposit akan masuk?",
             "arrivalAnswer": "Waktu pemrosesan tergantung pada jaringan."
-        }
+        },
+        "back": "Kembali",
+        "publicAddressTitle": "Alamat deposit {symbol} di {network}",
+        "publicAddressSubtitle": "Kirim hanya token ini, di jaringan ini, ke alamat di bawah.",
+        "oneTimeAddressTitle": "Alamat deposit sekali pakai {symbol} di jaringan {network}",
+        "oneTimeAddressSubtitle": "Kirim hanya token ini, di jaringan ini, ke alamat di bawah.",
+        "confidentialTrezuTitle": "Deposit dari Trezu rahasia di jaringan near.com",
+        "confidentialTrezuSubtitle": "Terima aset apa pun dari Trezu rahasia.",
+        "confidentialNearcomTitle": "Deposit dari near.com rahasia di jaringan internal",
+        "confidentialNearcomSubtitle": "Terima aset apa pun dari near.com rahasia.",
+        "oneTimeSectionTitle": "Alamat deposit rahasia sekali pakai",
+        "oneTimeSectionSubtitle": "Gunakan hanya sekali; apa pun setelah deposit pertama akan hilang.",
+        "internalAddressTitle": "Ini adalah alamat rahasia internal Anda",
+        "generateAddress": "Buat alamat",
+        "showAddress": "Tampilkan alamat",
+        "copy": "Salin",
+        "share": "Bagikan",
+        "linkCopied": "Tautan disalin ke papan klip",
+        "minDepositValue": "Deposit minimum <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Jangan</bold> kirim deposit uji coba",
+        "doNotReuseAddress": "<bold>Jangan</bold> gunakan ulang, simpan, whitelist, atau bagikan alamat",
+        "doNotReuseAddressShort": "<bold>Jangan</bold> gunakan ulang, simpan, atau whitelist alamat",
+        "oneTimeAckCheckbox": "Saya memahami ini adalah alamat sekali pakai, dan saya harus mengirim setidaknya {amount} {symbol} dalam satu transfer.",
+        "oneTimeAckCheckboxNoMin": "Saya memahami ini adalah alamat sekali pakai yang harus digunakan dalam satu transfer.",
+        "onlySendAssetNetwork": "Kirim hanya <bold>{symbol}</bold> di jaringan <bold>{network}</bold>. Aset atau jaringan lain akan menyebabkan dana hilang.",
+        "expiresInDays": "Kedaluwarsa dalam <bold>{days} hari</bold> – <bold>meski tidak digunakan</bold>.",
+        "createNewAddressHint": "Butuh detail deposit lain? <link>Buat alamat baru</link>. Membuat alamat lain tidak menonaktifkan yang ini.",
+        "receivesOnlyConfidential": "Hanya menerima dana dari akun Trezu atau near.com rahasia",
+        "receivesOnlyConfidentialSub": "Dapat digunakan ulang. Tidak kedaluwarsa.",
+        "anythingElseLost": "Apa pun yang dikirim dari tempat lain akan hilang",
+        "anythingElseLostSub": "Exchange, dompet publik, jaringan lain – tidak dapat dipulihkan.",
+        "confidentialAckCheckbox": "Saya memahami deposit dari luar Trezu atau near.com rahasia akan hilang.",
+        "onlyFromConfidentialTrezu": "Hanya dari <bold>Trezu</bold> rahasia",
+        "onlyFromConfidentialNearcom": "Hanya dari <bold>near.com</bold> rahasia",
+        "reusableDoesntExpire": "<bold>Dapat digunakan ulang.</bold> Tidak kedaluwarsa",
+        "fundsOutsideTrezuLost": "Dana yang dikirim dari luar Trezu rahasia akan hilang",
+        "fundsOutsideNearcomLost": "Dana yang dikirim dari luar near.com rahasia akan hilang",
+        "publicNetworkRecommendation": "Deposit hanya dari jaringan <bold>{network}</bold>. Mulai dengan transaksi uji kecil sebelum mengirim jumlah penuh.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Dari dompet publik",
+                "subtitle": "Buat alamat deposit sekali pakai"
+            },
+            "confidentialUser": {
+                "title": "Dari pengguna rahasia",
+                "subtitle": "Deposit dari Trezu & near.com rahasia"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Dari Trezu rahasia",
+            "nearcom": "Dari near.com rahasia",
+            "short": "Dari rahasia"
+        },
+        "guestBanner": {
+            "title": "Anda melihat sebagai tamu",
+            "description": "Alamat ini milik treasury orang lain. Periksa ulang sebelum mengirim."
+        },
+        "transfer": {
+            "title": "Transfer ke Treasury",
+            "waitingForPayment": "Menunggu pembayaran",
+            "youSendFromPublic": "Anda mengirim dari dompet publik mana pun",
+            "youSend": "Anda mengirim",
+            "goesTo": "Ke",
+            "assetOnNetwork": "{symbol} di jaringan {network}",
+            "anyAsset": "Aset apa pun",
+            "onNetwork": "di jaringan {network}",
+            "onNearcomNetwork": "di jaringan near.com",
+            "anyAssetOnNearcom": "Aset apa pun di jaringan near.com",
+            "securedOnTrezu": "Diamankan di Trezu",
+            "payWithTrezu": "Bayar dengan Trezu",
+            "payWithNearcom": "Bayar dengan near.com",
+            "payRequiresTreasury": "Masuk dengan treasury Trezu untuk membayar.",
+            "copyLink": "Salin tautan",
+            "titleConfidential": "Transfer ke Treasury rahasia",
+            "chooseTreasuryTitle": "Pilih Treasury",
+            "chooseTreasuryDescription": "Pembayaran ini berasal dari treasury mana?",
+            "noMemberTreasuries": "Anda belum menjadi anggota treasury mana pun.",
+            "createTreasury": "Buat treasury",
+            "expired": "Kedaluwarsa",
+            "used": "Digunakan",
+            "linkInactiveTitle": "Tautan ini tidak lagi aktif",
+            "linkInactiveDescription": "Untuk melakukan pembayaran ini, minta tautan baru dari orang yang mengirimkannya."
+        },
+        "expiresInRemaining": "Kedaluwarsa dalam <time>{duration}</time> – <bold>meski belum digunakan</bold>.",
+        "addressExpired": "Alamat ini telah kedaluwarsa."
     },
     "assetDetails": {
         "coinPrice": "Harga Koin",
@@ -843,7 +933,8 @@
             "yourLink": "Tautan undangan Anda",
             "copyLink": "Salin tautan",
             "linkCopied": "Tautan undangan disalin",
-            "generateNewLink": "Buat tautan baru"
+            "generateNewLink": "Buat tautan baru",
+            "generatingNewLink": "Membuat tautan baru"
         },
         "joinRequests": {
             "title": "Ingin bergabung",
@@ -871,6 +962,9 @@
             "successTitle": "Hampir bergabung",
             "successDescription": "Anda dapat bergabung setelah tim meninjau\npermintaan Anda. Tidak ada yang perlu dilakukan sekarang.",
             "seeTreasury": "Lihat Treasury",
+            "alreadyMemberTitle": "Anda sudah menjadi anggota",
+            "alreadyMemberDescription": "Tidak perlu meminta akses — Anda sudah bagian dari {treasury}.",
+            "goToTreasury": "Buka Treasury",
             "invalidTitle": "Undangan tidak ditemukan",
             "invalidDescription": "Tautan undangan ini tidak valid atau tidak lagi tersedia.",
             "usedTitle": "Undangan sudah digunakan",
@@ -978,7 +1072,11 @@
             "fileReadError": "Kesalahan membaca file. Silakan coba lagi.",
             "primaryColor": "Warna Utama",
             "primaryColorDescription": "Tetapkan warna utama untuk elemen antarmuka treasury Anda. Warna ini akan digunakan dalam mode terang dan gelap, jadi pertimbangkan kontras saat memilih corak netral.",
-            "selectColorLabel": "Pilih warna {color}"
+            "selectColorLabel": "Pilih warna {color}",
+            "saveChanges": "Simpan perubahan",
+            "saving": "Menyimpan...",
+            "savedToast": "Perubahan Anda telah disimpan.",
+            "saveFailed": "Tidak dapat menyimpan perubahan. Coba lagi."
         },
         "voting": {
             "validation": {
@@ -1042,7 +1140,7 @@
         "review": {
             "header": "Tinjau Detail",
             "youAreAdding": "Anda menambahkan",
-            "newRecipients": "{count, plural, other {# penerima baru}}",
+            "newRecipients": "{count, plural, =0 {Tidak ada penerima baru} other {# penerima baru}}",
             "onNetworks": "di {count, plural, other {# jaringan}}",
             "recipients": "Penerima",
             "allDuplicates": "Semua penerima yang diimpor sudah ada di buku alamat Anda. Kembali untuk mengunggah daftar berbeda atau hapus duplikat dari tinjauan ini.",
@@ -1452,44 +1550,49 @@
             "functionCall": "Usulan dari dApp eksternal: {methods} pada {receiverId}",
             "unsupportedAction": "Tipe tindakan tidak didukung \"{type}\". Hanya tindakan Transfer dan FunctionCall yang dapat dikonversi menjadi usulan Trezu."
         },
-        "loading": "Memuat...",
-        "connectPrompt": "Hubungkan dompet NEAR Anda untuk melanjutkan. Anda kemudian akan memilih treasury untuk bertindak atas nama.",
+        "connectPrompt": "Gunakan wallet yang sama dengan yang Anda gunakan saat bergabung dengan Trezu.\nTreasury Anda menunggu begitu Anda masuk.",
         "connectWallet": "Hubungkan Dompet",
-        "cancel": "Batal",
+        "connecting": "Menghubungkan...",
         "connectedAs": "Terhubung sebagai <strong>{account}</strong>",
         "loadingTreasuries": "Memuat treasury...",
-        "selectSignIn": "Pilih treasury untuk masuk sebagai:",
+        "selectSignIn": "{app, select, unknown {Pilih treasury yang ingin Anda gunakan.} other {Pilih treasury yang ingin Anda gunakan di {app}.}}",
         "selectSignTx": "Pilih treasury untuk membuat usulan pada:",
         "notMember": "Anda bukan anggota dari treasury mana pun.",
-        "actingAs": "Bertindak sebagai",
-        "signedBy": "Ditandatangani oleh {account}",
-        "createsNProposals": "Ini akan membuat {count, plural, other {# usulan Trezu}} untuk:",
-        "proposalDescriptionLabel": "Deskripsi usulan (opsional)",
-        "proposalDescriptionPlaceholder": "Jelaskan usulan ini...",
+        "actingAs": "Treasury yang mengeksekusi usulan ini",
+        "signedBy": "Usulan diminta oleh {account}",
+        "createsNProposals": "Membuat usulan",
+        "proposalDescriptionPlaceholder": "Tambahkan komentar pada usulan (opsional)...",
         "createProposal": "Buat Usulan",
         "creatingProposal": "Membuat usulan...",
         "confirmInWallet": "Silakan konfirmasi di dompet Anda",
-        "proposalSubmitted": "Usulan Telah Dikirim",
-        "shareProposal": "Usulan Anda telah dibuat. Bagikan tautan di bawah dengan anggota treasury untuk memilih.",
+        "proposalSubmitted": "Usulan berhasil dibuat!",
+        "shareProposal": "Sekarang buka Trezu dan setujui {count, plural, =1 {permintaannya} =2 {kedua permintaan} other {semua # permintaan}}.",
         "proposalLink": "{daoId} — Usulan #{id}",
-        "checking": "Memeriksa...",
-        "proposalApprovedProceed": "Usulan Disetujui. Lanjutkan",
-        "signedInSuccess": "Berhasil masuk",
+        "walletOpensNotice": "{count, plural, =1 {Wallet NEAR Anda akan terbuka satu kali untuk menandatangani usulan. Selesaikan untuk mengakhiri.} =2 {Wallet NEAR Anda akan terbuka dua kali — satu per usulan. Selesaikan keduanya.} other {Wallet NEAR Anda akan terbuka # kali — satu per usulan. Selesaikan semuanya.}}",
+        "whatToDoNext": "Langkah selanjutnya",
+        "stepApproveTitle": "Buka Trezu dan setujui permintaan",
+        "stepVotesTitle": "Tunggu suara yang cukup",
+        "stepVotesDesc": "Setelah treasury Anda mencapai jumlah persetujuan yang diperlukan sesuai pengaturan, usulan dieksekusi.",
+        "stepExecutedTitle": "Transaksi dieksekusi",
+        "openTrezuApprove": "Buka Trezu untuk menyetujui",
+        "signedInSuccess": "Treasury terhubung",
         "proposalCreatedSuccess": "Usulan berhasil dibuat",
         "closeWindow": "Anda dapat menutup jendela ini.",
         "errorGeneric": "Terjadi kesalahan",
         "tryAgain": "Coba lagi",
+        "errorProposalsNotCreated": "Usulan tidak dibuat",
+        "tryCreateAgain": "Coba buat usulan lagi",
         "errors": {
             "parseTx": "Gagal mengurai permintaan transaksi. Silakan coba lagi.",
             "fetchTreasuries": "Gagal mengambil treasury Anda. Silakan coba lagi.",
             "connectFailed": "Gagal menghubungkan dompet",
             "createProposalFailed": "Gagal membuat usulan",
-            "stillPending": "Usulan masih menunggu persetujuan. Silakan tunggu anggota treasury memilih.",
             "wasStatus": "Usulan #{id} adalah {status}",
             "awaitIndex": "Usulan disetujui tetapi transaksi eksekusi belum terindeks. Silakan coba lagi sebentar lagi.",
             "checkStatusFailed": "Gagal memeriksa status usulan",
             "userCancelled": "Pengguna membatalkan",
-            "proposalWasStatus": "Usulan adalah {status}"
+            "proposalWasStatus": "Usulan adalah {status}",
+            "noProposalIds": "Usulan telah dibuat tetapi id-nya tidak dapat ditentukan. Periksa halaman permintaan treasury."
         }
     },
     "telegram": {
@@ -1785,6 +1888,7 @@
         "Batch Payment Request": "Permintaan Pembayaran Batch",
         "Payment Request": "Permintaan Pembayaran",
         "Confidential Request": "Permintaan Rahasia",
+        "Move to Confidential": "Pindahkan ke Rahasia",
         "Exchange": "Tukar",
         "Function Call": "Panggilan Fungsi",
         "Change Policy": "Ubah Kebijakan",
@@ -1823,7 +1927,8 @@
         "comingSoon": "Segera Hadir",
         "forMembersOnly": "Hanya untuk anggota",
         "nearComDescription": "Jaringan untuk trezu rahasia",
-        "nearDescription": "Jaringan untuk penarikan publik dan dompet near.com"
+        "nearComDescriptionPublic": "Jaringan untuk near.com",
+        "nearDescription": "Jaringan untuk penarikan publik"
     },
     "addressBookTable": {
         "emptyTitle": "Belum ada penerima",
@@ -2060,10 +2165,9 @@
         "exchangeFulfillment": "Pertukaran",
         "stakingRewards": "Imbalan Staking",
         "proposalAction": "Tindakan Usulan",
-        "deposit": "Deposit {symbol}",
-        "paymentSent": "Pembayaran Terkirim",
+        "deposit": "Deposit",
+        "transfer": "Transfer",
         "transaction": "Transaksi",
-        "fallbackToken": "Token",
         "viaIntents": "via NEAR Intents",
         "from": "dari {account}",
         "to": "ke {account}",
@@ -2106,6 +2210,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, other {# penerima ditambahkan}}",
+        "alreadyExistsToast": "Penerima sudah ada di buku alamat",
         "addedSingleToast": "Penerima ditambahkan",
         "addFailedToast": "Gagal menambahkan penerima",
         "addSingleFailedToast": "Gagal menambahkan penerima",
@@ -2299,6 +2404,10 @@
             "title": "Jelajahi Trezu",
             "description": "Buat akun untuk membuka izin ke semua fitur dan manfaat Trezu.",
             "cta": "Buat Treasury"
+        },
+        "pendingJoinBanner": {
+            "title": "Permintaan bergabung Anda sedang menunggu",
+            "description": "Anda sudah dapat melihat treasury ini. Setelah anggota menyetujui Anda, Anda dapat membuat permintaan, memberikan suara, atau mengelola dana sesuai peran Anda."
         },
         "infoBox": {
             "title": "Dapatkan lebih banyak dari Trezu",
@@ -2537,6 +2646,59 @@
             "pattern": "{label} tidak sesuai dengan pola yang diperlukan",
             "min": "{label} minimal harus {min}",
             "max": "{label} maksimal harus {max}"
+        }
+    },
+    "account": {
+        "personalSettings": "Pengaturan pribadi",
+        "uploadAvatar": "Unggah avatar",
+        "removeAvatar": "Hapus avatar",
+        "uploading": "Mengunggah...",
+        "displayName": "Nama tampilan",
+        "displayNamePlaceholder": "Masukkan nama tampilan",
+        "myWallet": "Dompet saya",
+        "saveChanges": "Simpan perubahan",
+        "saving": "Menyimpan...",
+        "saveSuccess": "Perubahan Anda telah disimpan.",
+        "saveError": "Tidak dapat menyimpan perubahan. Coba lagi.",
+        "invalidImage": "Pilih file gambar yang valid.",
+        "imageTooLarge": "Gambar harus 2 MB atau lebih kecil.",
+        "signInRequired": "Hubungkan dompet Anda untuk mengelola akun.",
+        "avatarUploaded": "Avatar berhasil diunggah",
+        "uploadError": "Terjadi kesalahan saat mengunggah gambar, coba lagi."
+    },
+    "moveAssets": {
+        "title": "Pindahkan Aset",
+        "description": "Pindahkan aset dari rantai publik ke treasury Rahasia Anda.",
+        "submitted": "Permintaan pemindahan dikirim",
+        "banner": {
+            "title": "<amount></amount> masuk ke saldo publik Anda",
+            "description": "Seseorang mengirimnya lewat jaringan yang salah. Pindahkan ke sini agar menjadi rahasia.",
+            "moveAssets": "Pindahkan Aset",
+            "viewRequest": "Lihat Permintaan"
+        },
+        "list": {
+            "title": "Dana yang perlu dipindahkan",
+            "token": "Token",
+            "moveAssets": "Pindahkan Aset",
+            "emptyTitle": "Tidak ada yang perlu dipindahkan",
+            "emptyDescription": "Saldo publik Anda kosong. Dana yang dikirim ke akun publik akan muncul di sini.",
+            "viewRequest": "Lihat Permintaan"
+        },
+        "form": {
+            "title": "Ke Rahasia",
+            "review": "Tinjau Pemindahan",
+            "reviewDisabled": "Masukkan jumlah"
+        },
+        "review": {
+            "title": "Tinjau Pemindahan Anda",
+            "youMove": "Anda memindahkan"
+        },
+        "errors": {
+            "invalid": "Masukkan jumlah yang valid",
+            "zero": "Jumlah harus lebih dari nol",
+            "tooManyDecimals": "Terlalu banyak angka desimal untuk token ini",
+            "exceedsBalance": "Jumlah melebihi saldo publik",
+            "failed": "Tidak dapat menyiapkan permintaan pemindahan. Silakan coba lagi."
         }
     }
 }

@@ -106,7 +106,8 @@
         "wallet": "Ví",
         "termsOfService": "Điều khoản dịch vụ",
         "privacyPolicy": "Chính sách bảo mật",
-        "disconnect": "Ngắt kết nối"
+        "disconnect": "Đăng xuất",
+        "myAccount": "Tài khoản của tôi"
     },
     "auth": {
         "noWallet": "Kết nối ví của bạn",
@@ -252,6 +253,10 @@
         "wallet": {
             "title": "Ví Trezu",
             "description": "Ký các đề xuất ngân quỹ thông qua Trezu"
+        },
+        "account": {
+            "title": "Tài khoản của tôi",
+            "description": "Quản lý hồ sơ và cài đặt cá nhân"
         }
     },
     "depositModal": {
@@ -270,7 +275,8 @@
         },
         "errors": {
             "addressUnavailable": "Không thể lấy địa chỉ nạp tiền cho tài sản và mạng đã chọn.",
-            "fetchFailed": "Không thể lấy địa chỉ nạp tiền. Vui lòng thử lại."
+            "fetchFailed": "Không thể lấy địa chỉ nạp tiền. Vui lòng thử lại.",
+            "loginRequired": "Đăng nhập để tạo địa chỉ nạp một lần."
         },
         "title": "Nạp tiền",
         "subtitle": "Chọn tài sản và mạng để xem địa chỉ nạp tiền",
@@ -283,7 +289,7 @@
         "depositAddressHeading": "Địa chỉ nạp tiền",
         "depositAddressSubtitle": "Hãy luôn kiểm tra kỹ địa chỉ nạp tiền của bạn.",
         "depositAddressSubtitleConfidential": "<semibold>Địa chỉ nạp tiền dùng một lần.</semibold> Việc tái sử dụng địa chỉ này hoặc gửi tiền sau khi hết hạn có thể dẫn đến mất tiền vĩnh viễn.",
-        "depositAddressSubtitleConfidentialExpiry": "Có hiệu lực trong 3 ngày kể từ thời điểm tạo. Hết hạn sau: còn {expiresIn}",
+        "depositAddressSubtitleConfidentialExpiry": "Có hiệu lực 14 ngày kể từ khi tạo. Hết hạn sau: còn {expiresIn}",
         "singleUseAcknowledgement": "Tôi sẽ chỉ sử dụng địa chỉ này một lần",
         "addressLabel": "Địa chỉ",
         "addressCopied": "Đã sao chép địa chỉ vào bộ nhớ tạm",
@@ -306,7 +312,91 @@
             "fiatAnswer": "Hiện tại thì chưa, nhưng chúng tôi đang làm việc để sớm hỗ trợ nạp bằng tiền pháp định. Hãy đón chờ - sắp ra mắt 🚀",
             "arrivalQuestion": "Mất bao lâu để khoản nạp được ghi nhận?",
             "arrivalAnswer": "Thời gian xử lý phụ thuộc vào mạng."
-        }
+        },
+        "back": "Quay lại",
+        "publicAddressTitle": "Địa chỉ nạp {symbol} trên {network}",
+        "publicAddressSubtitle": "Chỉ gửi token này, trên mạng này, tới địa chỉ bên dưới.",
+        "oneTimeAddressTitle": "Địa chỉ nạp một lần {symbol} trên mạng {network}",
+        "oneTimeAddressSubtitle": "Chỉ gửi token này, trên mạng này, tới địa chỉ bên dưới.",
+        "confidentialTrezuTitle": "Nạp từ Trezu bảo mật trên mạng near.com",
+        "confidentialTrezuSubtitle": "Nhận bất kỳ tài sản nào từ Trezu bảo mật.",
+        "confidentialNearcomTitle": "Nạp từ near.com bảo mật trên mạng nội bộ",
+        "confidentialNearcomSubtitle": "Nhận bất kỳ tài sản nào từ near.com bảo mật.",
+        "oneTimeSectionTitle": "Địa chỉ nạp bảo mật một lần",
+        "oneTimeSectionSubtitle": "Chỉ dùng một lần; mọi thứ sau lần nạp đầu sẽ bị mất.",
+        "internalAddressTitle": "Đây là địa chỉ bảo mật nội bộ của bạn",
+        "generateAddress": "Tạo địa chỉ",
+        "showAddress": "Hiện địa chỉ",
+        "copy": "Sao chép",
+        "share": "Chia sẻ",
+        "linkCopied": "Đã sao chép liên kết vào clipboard",
+        "minDepositValue": "Số tiền nạp tối thiểu <bold>{amount} {symbol}</bold>",
+        "doNotSendTestDeposit": "<bold>Không</bold> gửi giao dịch nạp thử",
+        "doNotReuseAddress": "<bold>Không</bold> tái sử dụng, lưu, whitelist hoặc chia sẻ địa chỉ",
+        "doNotReuseAddressShort": "<bold>Không</bold> tái sử dụng, lưu hoặc whitelist địa chỉ",
+        "oneTimeAckCheckbox": "Tôi hiểu đây là địa chỉ một lần và tôi phải gửi ít nhất {amount} {symbol} trong một lần chuyển.",
+        "oneTimeAckCheckboxNoMin": "Tôi hiểu đây là địa chỉ một lần chỉ dùng trong một lần chuyển.",
+        "onlySendAssetNetwork": "Chỉ gửi <bold>{symbol}</bold> trên mạng <bold>{network}</bold>. Tài sản hoặc mạng khác sẽ dẫn đến mất tiền.",
+        "expiresInDays": "Hết hạn sau <bold>{days} ngày</bold> – <bold>kể cả khi chưa dùng</bold>.",
+        "createNewAddressHint": "Cần thông tin nạp khác? <link>Tạo địa chỉ mới</link>. Tạo địa chỉ khác sẽ không vô hiệu hóa địa chỉ này.",
+        "receivesOnlyConfidential": "Chỉ nhận tiền từ tài khoản Trezu hoặc near.com bảo mật",
+        "receivesOnlyConfidentialSub": "Dùng lại được. Không hết hạn.",
+        "anythingElseLost": "Mọi thứ gửi từ nơi khác sẽ bị mất",
+        "anythingElseLostSub": "Sàn giao dịch, ví công khai, mạng khác – không thể khôi phục.",
+        "confidentialAckCheckbox": "Tôi hiểu các khoản nạp từ ngoài Trezu hoặc near.com bảo mật sẽ bị mất.",
+        "onlyFromConfidentialTrezu": "Chỉ từ <bold>Trezu</bold> bảo mật",
+        "onlyFromConfidentialNearcom": "Chỉ từ <bold>near.com</bold> bảo mật",
+        "reusableDoesntExpire": "<bold>Dùng lại được.</bold> Không hết hạn",
+        "fundsOutsideTrezuLost": "Tiền gửi từ ngoài Trezu bảo mật sẽ bị mất",
+        "fundsOutsideNearcomLost": "Tiền gửi từ ngoài near.com bảo mật sẽ bị mất",
+        "publicNetworkRecommendation": "Chỉ nạp từ mạng <bold>{network}</bold>. Hãy bắt đầu bằng một giao dịch thử nhỏ trước khi gửi toàn bộ số tiền.",
+        "sourceCards": {
+            "publicWallet": {
+                "title": "Từ ví công khai",
+                "subtitle": "Tạo địa chỉ nạp một lần"
+            },
+            "confidentialUser": {
+                "title": "Từ người dùng bảo mật",
+                "subtitle": "Nạp từ Trezu & near.com bảo mật"
+            }
+        },
+        "confidentialOrigins": {
+            "trezu": "Từ Trezu bảo mật",
+            "nearcom": "Từ near.com bảo mật",
+            "short": "Từ bảo mật"
+        },
+        "guestBanner": {
+            "title": "Bạn đang xem với tư cách khách",
+            "description": "Địa chỉ này thuộc treasury của người khác. Hãy kiểm tra kỹ trước khi gửi."
+        },
+        "transfer": {
+            "title": "Chuyển tới Treasury",
+            "waitingForPayment": "Đang chờ thanh toán",
+            "youSendFromPublic": "Bạn gửi từ bất kỳ ví công khai nào",
+            "youSend": "Bạn gửi",
+            "goesTo": "Đến",
+            "assetOnNetwork": "{symbol} trên mạng {network}",
+            "anyAsset": "Bất kỳ tài sản nào",
+            "onNetwork": "trên mạng {network}",
+            "onNearcomNetwork": "trên mạng near.com",
+            "anyAssetOnNearcom": "Bất kỳ tài sản nào trên mạng near.com",
+            "securedOnTrezu": "Được bảo vệ trên Trezu",
+            "payWithTrezu": "Thanh toán bằng Trezu",
+            "payWithNearcom": "Thanh toán bằng near.com",
+            "payRequiresTreasury": "Đăng nhập bằng treasury Trezu để thanh toán.",
+            "copyLink": "Sao chép liên kết",
+            "titleConfidential": "Chuyển tới Treasury bảo mật",
+            "chooseTreasuryTitle": "Chọn một Treasury",
+            "chooseTreasuryDescription": "Thanh toán này đến từ treasury nào?",
+            "noMemberTreasuries": "Bạn chưa là thành viên của treasury nào.",
+            "createTreasury": "Tạo treasury",
+            "expired": "Đã hết hạn",
+            "used": "Đã sử dụng",
+            "linkInactiveTitle": "Liên kết này không còn hiệu lực",
+            "linkInactiveDescription": "Để thực hiện thanh toán này, hãy yêu cầu người gửi liên kết cung cấp một liên kết mới."
+        },
+        "expiresInRemaining": "Hết hạn sau <time>{duration}</time> – <bold>kể cả khi chưa dùng</bold>.",
+        "addressExpired": "Địa chỉ này đã hết hạn."
     },
     "assetDetails": {
         "coinPrice": "Giá Coin",
@@ -843,7 +933,8 @@
             "yourLink": "Liên kết mời của bạn",
             "copyLink": "Sao chép liên kết",
             "linkCopied": "Đã sao chép liên kết mời",
-            "generateNewLink": "Tạo liên kết mới"
+            "generateNewLink": "Tạo liên kết mới",
+            "generatingNewLink": "Đang tạo liên kết mới"
         },
         "joinRequests": {
             "title": "Muốn tham gia",
@@ -871,6 +962,9 @@
             "successTitle": "Bạn sắp được vào",
             "successDescription": "Bạn sẽ có thể tham gia sau khi nhóm xem xét\nyêu cầu của bạn. Hiện không cần làm gì thêm.",
             "seeTreasury": "Xem Treasury",
+            "alreadyMemberTitle": "Bạn đã là thành viên",
+            "alreadyMemberDescription": "Không cần yêu cầu quyền truy cập — bạn đã là thành viên của {treasury}.",
+            "goToTreasury": "Đến Treasury",
             "invalidTitle": "Không tìm thấy lời mời",
             "invalidDescription": "Liên kết mời này không hợp lệ hoặc không còn khả dụng.",
             "usedTitle": "Lời mời đã được dùng",
@@ -978,7 +1072,11 @@
             "fileReadError": "Lỗi khi đọc tệp. Vui lòng thử lại.",
             "primaryColor": "Màu chính",
             "primaryColorDescription": "Đặt màu chính cho các thành phần giao diện ngân quỹ. Màu này sẽ được dùng ở cả chế độ sáng và tối, nên hãy chú ý đến độ tương phản khi chọn các sắc trung tính.",
-            "selectColorLabel": "Chọn màu {color}"
+            "selectColorLabel": "Chọn màu {color}",
+            "saveChanges": "Lưu thay đổi",
+            "saving": "Đang lưu...",
+            "savedToast": "Các thay đổi của bạn đã được lưu.",
+            "saveFailed": "Không thể lưu thay đổi. Vui lòng thử lại."
         },
         "voting": {
             "validation": {
@@ -1042,7 +1140,7 @@
         "review": {
             "header": "Xem lại chi tiết",
             "youAreAdding": "Bạn đang thêm",
-            "newRecipients": "{count, plural, other {# người nhận mới}}",
+            "newRecipients": "{count, plural, =0 {Không có người nhận mới} other {# người nhận mới}}",
             "onNetworks": "trên {count, plural, other {# mạng}}",
             "recipients": "Người nhận",
             "allDuplicates": "Tất cả người nhận đã nhập đều đã có trong sổ địa chỉ của bạn. Quay lại để tải lên một danh sách khác hoặc xóa các bản trùng lặp khỏi đợt xem lại này.",
@@ -1435,44 +1533,49 @@
             "functionCall": "Đề xuất từ dApp bên ngoài: {methods} trên {receiverId}",
             "unsupportedAction": "Loại hành động không được hỗ trợ \"{type}\". Chỉ có thể chuyển đổi hành động Transfer và FunctionCall thành đề xuất Trezu."
         },
-        "loading": "Đang tải...",
-        "connectPrompt": "Kết nối ví NEAR của bạn để tiếp tục. Sau đó bạn sẽ chọn một ngân quỹ để hành động thay mặt.",
+        "connectPrompt": "Sử dụng ví bạn đã dùng khi tham gia Trezu.\nCác ngân quỹ của bạn đang chờ ngay khi bạn đăng nhập.",
         "connectWallet": "Kết nối ví",
-        "cancel": "Hủy",
+        "connecting": "Đang kết nối...",
         "connectedAs": "Đã kết nối với tư cách <strong>{account}</strong>",
         "loadingTreasuries": "Đang tải các ngân quỹ...",
-        "selectSignIn": "Chọn một ngân quỹ để đăng nhập với:",
+        "selectSignIn": "{app, select, unknown {Chọn ngân quỹ bạn muốn sử dụng.} other {Chọn ngân quỹ bạn muốn sử dụng trong {app}.}}",
         "selectSignTx": "Chọn một ngân quỹ để tạo đề xuất trên:",
         "notMember": "Bạn không phải là thành viên của ngân quỹ nào.",
-        "actingAs": "Đang hành động với tư cách",
-        "signedBy": "Được ký bởi {account}",
-        "createsNProposals": "Việc này sẽ tạo {count, plural, other {# đề xuất Trezu}} cho:",
-        "proposalDescriptionLabel": "Mô tả đề xuất (tùy chọn)",
-        "proposalDescriptionPlaceholder": "Mô tả đề xuất này...",
+        "actingAs": "Ngân quỹ thực hiện đề xuất này",
+        "signedBy": "Đề xuất được yêu cầu bởi {account}",
+        "createsNProposals": "Đang tạo đề xuất",
+        "proposalDescriptionPlaceholder": "Thêm bình luận cho đề xuất (không bắt buộc)...",
         "createProposal": "Tạo đề xuất",
         "creatingProposal": "Đang tạo đề xuất...",
         "confirmInWallet": "Vui lòng xác nhận trong ví của bạn",
-        "proposalSubmitted": "Đã gửi đề xuất",
-        "shareProposal": "Đề xuất của bạn đã được tạo. Chia sẻ liên kết bên dưới với các thành viên ngân quỹ để bỏ phiếu.",
+        "proposalSubmitted": "Đã tạo đề xuất thành công!",
+        "shareProposal": "{count, plural, =1 {Bây giờ hãy mở Trezu và phê duyệt yêu cầu.} other {Bây giờ hãy mở Trezu và phê duyệt cả # yêu cầu.}}",
         "proposalLink": "{daoId} — Đề xuất #{id}",
-        "checking": "Đang kiểm tra...",
-        "proposalApprovedProceed": "Đề xuất đã được phê duyệt. Tiếp tục",
-        "signedInSuccess": "Đăng nhập thành công",
+        "walletOpensNotice": "{count, plural, =1 {Ví NEAR của bạn sẽ mở một lần để ký đề xuất. Hoàn tất để kết thúc.} =2 {Ví NEAR của bạn sẽ mở hai lần — mỗi đề xuất một lần. Hoàn tất cả hai để kết thúc.} other {Ví NEAR của bạn sẽ mở # lần — mỗi đề xuất một lần. Hoàn tất tất cả để kết thúc.}}",
+        "whatToDoNext": "Các bước tiếp theo",
+        "stepApproveTitle": "Mở Trezu và phê duyệt yêu cầu",
+        "stepVotesTitle": "Chờ đủ phiếu bầu",
+        "stepVotesDesc": "Khi ngân quỹ của bạn đạt đủ số phê duyệt cần thiết theo cài đặt, đề xuất sẽ được thực hiện.",
+        "stepExecutedTitle": "Giao dịch đã được thực hiện",
+        "openTrezuApprove": "Mở Trezu để phê duyệt",
+        "signedInSuccess": "Đã kết nối ngân quỹ",
         "proposalCreatedSuccess": "Đã tạo đề xuất thành công",
         "closeWindow": "Bạn có thể đóng cửa sổ này.",
         "errorGeneric": "Đã xảy ra lỗi",
         "tryAgain": "Thử lại",
+        "errorProposalsNotCreated": "Đề xuất chưa được tạo",
+        "tryCreateAgain": "Thử tạo lại đề xuất",
         "errors": {
             "parseTx": "Không thể phân tích yêu cầu giao dịch. Vui lòng thử lại.",
             "fetchTreasuries": "Không thể tải các ngân quỹ của bạn. Vui lòng thử lại.",
             "connectFailed": "Không thể kết nối ví",
             "createProposalFailed": "Không thể tạo đề xuất",
-            "stillPending": "Đề xuất vẫn đang chờ phê duyệt. Vui lòng đợi các thành viên ngân quỹ bỏ phiếu.",
             "wasStatus": "Đề xuất #{id} đã {status}",
             "awaitIndex": "Đề xuất đã được phê duyệt nhưng giao dịch thực thi chưa được lập chỉ mục. Vui lòng thử lại sau giây lát.",
             "checkStatusFailed": "Không thể kiểm tra trạng thái đề xuất",
             "userCancelled": "Người dùng đã hủy",
-            "proposalWasStatus": "Đề xuất đã {status}"
+            "proposalWasStatus": "Đề xuất đã {status}",
+            "noProposalIds": "Đề xuất đã được tạo nhưng không thể xác định id của nó. Kiểm tra trang yêu cầu của ngân quỹ."
         }
     },
     "telegram": {
@@ -1768,6 +1871,7 @@
         "Batch Payment Request": "Yêu cầu thanh toán hàng loạt",
         "Payment Request": "Yêu cầu thanh toán",
         "Confidential Request": "Yêu cầu bảo mật",
+        "Move to Confidential": "Chuyển sang Bảo mật",
         "Exchange": "Trao đổi",
         "Function Call": "Gọi hàm",
         "Change Policy": "Thay đổi chính sách",
@@ -1806,7 +1910,8 @@
         "comingSoon": "Sắp ra mắt",
         "forMembersOnly": "Chỉ dành cho thành viên",
         "nearComDescription": "Mạng cho trezu bí mật",
-        "nearDescription": "Mạng cho rút tiền công khai và ví near.com"
+        "nearComDescriptionPublic": "Mạng cho near.com",
+        "nearDescription": "Mạng cho rút tiền công khai"
     },
     "addressBookTable": {
         "emptyTitle": "Chưa có người nhận nào",
@@ -2043,10 +2148,9 @@
         "exchangeFulfillment": "Trao đổi",
         "stakingRewards": "Phần thưởng Staking",
         "proposalAction": "Hành động đề xuất",
-        "deposit": "Nạp {symbol}",
-        "paymentSent": "Đã gửi thanh toán",
+        "deposit": "Nạp tiền",
+        "transfer": "Chuyển khoản",
         "transaction": "Giao dịch",
-        "fallbackToken": "Token",
         "viaIntents": "thông qua NEAR Intents",
         "from": "từ {account}",
         "to": "đến {account}",
@@ -2089,6 +2193,7 @@
     },
     "addressBookMutations": {
         "addedToast": "{count, plural, one {Đã thêm người nhận} other {Đã thêm # người nhận}}",
+        "alreadyExistsToast": "Người nhận đã có trong sổ địa chỉ",
         "addedSingleToast": "Đã thêm người nhận",
         "addFailedToast": "Không thể thêm người nhận",
         "addSingleFailedToast": "Không thể thêm người nhận",
@@ -2282,6 +2387,10 @@
             "title": "Khám phá Trezu",
             "description": "Tạo một tài khoản để mở khóa quyền truy cập tất cả các tính năng và lợi ích của Trezu.",
             "cta": "Tạo Ngân quỹ"
+        },
+        "pendingJoinBanner": {
+            "title": "Yêu cầu tham gia của bạn đang chờ duyệt",
+            "description": "Bạn có thể xem ngân quỹ này ngay bây giờ. Khi một thành viên phê duyệt bạn, bạn sẽ có thể tạo yêu cầu, bỏ phiếu hoặc quản lý quỹ theo vai trò của mình."
         },
         "infoBox": {
             "title": "Tận dụng Trezu nhiều hơn",
@@ -2538,5 +2647,58 @@
         "errorTitle": "Không thể tải trạng thái kích hoạt",
         "noPermissionNote": "Bạn không có quyền bắt đầu kích hoạt. Hãy nhờ một thành viên kho bạc có quyền đề xuất kích hoạt thanh toán hàng loạt.",
         "awaitingApproverHint": "Các thành viên kho bạc có quyền phê duyệt cần phê duyệt yêu cầu đang chờ để hoàn tất kích hoạt."
+    },
+    "account": {
+        "personalSettings": "Cài đặt cá nhân",
+        "uploadAvatar": "Tải ảnh đại diện lên",
+        "removeAvatar": "Xóa ảnh đại diện",
+        "uploading": "Đang tải lên...",
+        "displayName": "Tên hiển thị",
+        "displayNamePlaceholder": "Nhập tên hiển thị",
+        "myWallet": "Ví của tôi",
+        "saveChanges": "Lưu thay đổi",
+        "saving": "Đang lưu...",
+        "saveSuccess": "Các thay đổi của bạn đã được lưu.",
+        "saveError": "Không thể lưu thay đổi. Vui lòng thử lại.",
+        "invalidImage": "Vui lòng chọn tệp hình ảnh hợp lệ.",
+        "imageTooLarge": "Ảnh phải từ 2 MB trở xuống.",
+        "signInRequired": "Kết nối ví để quản lý tài khoản của bạn.",
+        "avatarUploaded": "Đã tải ảnh đại diện lên thành công",
+        "uploadError": "Đã xảy ra lỗi khi tải ảnh lên, vui lòng thử lại."
+    },
+    "moveAssets": {
+        "title": "Chuyển tài sản",
+        "description": "Chuyển tài sản từ chuỗi công khai sang kho bạc Bảo mật của bạn.",
+        "submitted": "Đã gửi yêu cầu chuyển",
+        "banner": {
+            "title": "<amount></amount> đã vào số dư công khai của bạn",
+            "description": "Ai đó đã gửi qua nhầm mạng. Chuyển vào đây để bảo mật.",
+            "moveAssets": "Chuyển tài sản",
+            "viewRequest": "Xem yêu cầu"
+        },
+        "list": {
+            "title": "Số tiền cần chuyển",
+            "token": "Token",
+            "moveAssets": "Chuyển tài sản",
+            "emptyTitle": "Không có gì để chuyển",
+            "emptyDescription": "Số dư công khai của bạn trống. Tiền gửi vào tài khoản công khai sẽ hiển thị ở đây.",
+            "viewRequest": "Xem yêu cầu"
+        },
+        "form": {
+            "title": "Sang Bảo mật",
+            "review": "Xem lại chuyển",
+            "reviewDisabled": "Nhập số tiền"
+        },
+        "review": {
+            "title": "Xem lại việc chuyển",
+            "youMove": "Bạn chuyển"
+        },
+        "errors": {
+            "invalid": "Nhập số tiền hợp lệ",
+            "zero": "Số tiền phải lớn hơn 0",
+            "tooManyDecimals": "Quá nhiều chữ số thập phân cho token này",
+            "exceedsBalance": "Số tiền vượt quá số dư công khai",
+            "failed": "Không thể chuẩn bị yêu cầu chuyển. Vui lòng thử lại."
+        }
     }
 }

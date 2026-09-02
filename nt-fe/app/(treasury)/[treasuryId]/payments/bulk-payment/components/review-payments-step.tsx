@@ -1,41 +1,48 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { useFormContext } from "react-hook-form";
-import { useTranslations } from "next-intl";
-import { PageCard } from "@/components/card";
-import { Button } from "@/components/button";
-import { Textarea } from "@/components/textarea";
 import { Edit2, Info, Trash2 } from "lucide-react";
-import { StepProps, ReviewStep } from "@/components/step-wizard";
-import { TokenDisplay } from "@/components/token-display-with-network";
-import Big from "@/lib/big";
-import { getPaymentBalanceWarning } from "@/lib/intents-fee";
+import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import { useFormContext } from "react-hook-form";
+import { toast } from "sonner";
+import { Address } from "@/components/address";
+import { AmountSummary } from "@/components/amount-summary";
+import { Button } from "@/components/button";
+import { PageCard } from "@/components/card";
+import { CreateRequestButton } from "@/components/create-request-button";
+import { FormattedAmount } from "@/components/formatted-amount";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
     DialogDescription,
     DialogFooter,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/modal";
 import { NumberBadge } from "@/components/number-badge";
-import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
-import type { QuoteFees } from "../utils/confidential-prepare";
-import { cn, formatBalance, formatTokenDisplayAmount } from "@/lib/utils";
-import { validateAccountsAndStorage } from "../utils";
-import { useBulkParsingLabels } from "../utils/use-parsing-labels";
-import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/hooks/use-treasury";
-import { useBridgeTokens } from "@/hooks/use-bridge-tokens";
-import { useAddressBook } from "@/features/address-book";
-import { AmountSummary } from "@/components/amount-summary";
-import { CreateRequestButton } from "@/components/create-request-button";
-import { trackEvent } from "@/lib/analytics";
+import { ReviewStep, type StepProps } from "@/components/step-wizard";
+import { Textarea } from "@/components/textarea";
+import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
-import { Address } from "@/components/address";
-import { toast } from "sonner";
+import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
+import { decimalFromBaseUnits } from "@/lib/amount-format";
+import { trackEvent } from "@/lib/analytics";
+import Big from "@/lib/big";
+import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import { getNearComChainIcons, isNearComNetwork } from "@/lib/intents-network";
+import {
+    formatRecipientForNearComDestination,
+    hasNearComAddressPrefix,
+} from "@/lib/nearcom-address";
+import { cn } from "@/lib/utils";
+import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import type { BulkPaymentData, BulkPaymentFormValues } from "../schemas";
+import { validateAccountsAndStorage } from "../utils";
+import type { QuoteFees } from "../utils/confidential-prepare";
+import { useBulkParsingLabels } from "../utils/use-parsing-labels";
 
 interface ReviewPaymentsStepProps extends StepProps {
     initialPaymentData: BulkPaymentData[];
@@ -95,6 +102,7 @@ export function ReviewPaymentsStep({
     destinationNetworkName,
     confidentialPrepare,
 }: ReviewPaymentsStepProps) {
+    const locale = useLocale();
     const tPay = useTranslations("payments");
     const tBulk = useTranslations("bulkPayment");
     const tIntents = useTranslations("intentsQuote");
@@ -116,7 +124,7 @@ export function ReviewPaymentsStep({
 
     const { treasuryId } = useTreasury();
     const { data: addressBook = [] } = useAddressBook();
-    const { data: bridgeAssets = [] } = useBridgeTokens(true);
+    const { data: bridgeAssets = [] } = useTokenCatalog({ kind: "swap" });
     const { data: selectedTokenData } = useToken(selectedToken?.address || "");
     const { data: balance } = useTokenBalance(
         treasuryId,
@@ -278,11 +286,10 @@ export function ReviewPaymentsStep({
     if (balance) {
         try {
             const balanceBig = Big(balance);
-            const balanceFormattedString = formatBalance(
-                balanceBig.toString(),
+            const balanceFormattedBig = decimalFromBaseUnits(
+                balanceBig,
                 selectedToken.decimals,
             );
-            const balanceFormattedBig = Big(balanceFormattedString);
 
             // When total already includes fees (header quote or typed+fee),
             // do not pass networkFee again — that double-counts.
@@ -296,12 +303,20 @@ export function ReviewPaymentsStep({
                     : (totalNetworkFee ?? undefined),
                 decimals: selectedToken.decimals,
                 symbol: selectedToken.symbol,
+                locale,
             });
 
-            // Calculate USD value only if price is available
-            if (selectedTokenData?.price && balanceFormattedBig.gt(0)) {
+            // USD follows payment amount × price; do not require a non-zero
+            // treasury balance (that only gates the insufficient-funds warning).
+            if (selectedTokenData?.price && totalAmount.gt(0)) {
                 totalUSDValue = totalAmount.mul(selectedTokenData.price);
             }
+        } catch (error) {
+            console.error("Error calculating total USD value:", error);
+        }
+    } else if (selectedTokenData?.price && totalAmount.gt(0)) {
+        try {
+            totalUSDValue = totalAmount.mul(selectedTokenData.price);
         } catch (error) {
             console.error("Error calculating total USD value:", error);
         }
@@ -357,12 +372,12 @@ export function ReviewPaymentsStep({
                                         <div className="flex-1">
                                             <div className="flex justify-between mb-2">
                                                 <div className="flex flex-col gap-2 justify-between flex-1">
-                                                    <div className="h-5 w-48 bg-muted animate-pulse rounded" />
+                                                    <div className="h-5 w-48 bg-general-unofficial-accent-0 animate-pulse rounded" />
                                                 </div>
                                                 <div>
                                                     <div className="flex flex-col gap-2 items-end">
-                                                        <div className="h-5 w-32 bg-muted animate-pulse rounded" />
-                                                        <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                                                        <div className="h-5 w-32 bg-general-unofficial-accent-0 animate-pulse rounded" />
+                                                        <div className="h-4 w-20 bg-general-unofficial-accent-0 animate-pulse rounded" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -388,27 +403,23 @@ export function ReviewPaymentsStep({
                                           recipientFee,
                                       )
                                     : Big(displayAmount || "0");
-                                let estimatedUSDValue = 0;
-                                if (selectedTokenData?.price && balance) {
+                                let estimatedUSDValue = Big(0);
+                                if (selectedTokenData?.price) {
                                     try {
-                                        const balanceBig = Big(balance);
-                                        const balanceFormatted = Number(
-                                            formatBalance(
-                                                balanceBig.toString(),
-                                                selectedToken.decimals,
-                                            ),
+                                        const amountBig = Big(
+                                            displayAmount || "0",
                                         );
-                                        if (balanceFormatted > 0) {
-                                            estimatedUSDValue =
-                                                Number(displayAmount) *
-                                                selectedTokenData.price;
+                                        if (amountBig.gt(0)) {
+                                            estimatedUSDValue = amountBig.mul(
+                                                selectedTokenData.price,
+                                            );
                                         }
                                     } catch (error) {
                                         console.error(
                                             "Error calculating USD value:",
                                             error,
                                         );
-                                        estimatedUSDValue = 0;
+                                        estimatedUSDValue = Big(0);
                                     }
                                 }
 
@@ -435,10 +446,9 @@ export function ReviewPaymentsStep({
                                                     <div className="flex flex-col gap-0.5 min-w-0 overflow-hidden">
                                                         {(() => {
                                                             const contact =
-                                                                addressBook.find(
-                                                                    (e) =>
-                                                                        e.address.toLowerCase() ===
-                                                                        payment.recipient.toLowerCase(),
+                                                                findAddressBookEntry(
+                                                                    addressBook,
+                                                                    payment.recipient,
                                                                 );
                                                             return (
                                                                 <>
@@ -451,9 +461,16 @@ export function ReviewPaymentsStep({
                                                                     )}
 
                                                                     <Address
-                                                                        address={
-                                                                            payment.recipient
-                                                                        }
+                                                                        address={formatRecipientForNearComDestination(
+                                                                            payment.recipient,
+                                                                            // Public bulk has no network picker —
+                                                                            // keep nearcom: when the user typed it.
+                                                                            hasNearComAddressPrefix(
+                                                                                payment.recipient,
+                                                                            )
+                                                                                ? NEAR_COM_NETWORK_ID
+                                                                                : destinationNetworkId,
+                                                                        )}
                                                                         className={cn(
                                                                             "min-w-0",
                                                                             contact
@@ -484,19 +501,62 @@ export function ReviewPaymentsStep({
                                                         <div className="flex flex-col gap-[3px] items-end">
                                                             <div className="flex items-center gap-1">
                                                                 <p className="text-sm font-semibold whitespace-nowrap leading-5">
-                                                                    {formatTokenDisplayAmount(
-                                                                        rowTotalAmount,
-                                                                    )}{" "}
-                                                                    {
-                                                                        selectedToken.symbol
-                                                                    }
+                                                                    <FormattedAmount
+                                                                        kind="token"
+                                                                        value={
+                                                                            rowTotalAmount
+                                                                        }
+                                                                        symbol={
+                                                                            selectedToken.symbol
+                                                                        }
+                                                                        tokenDecimals={
+                                                                            selectedToken.decimals
+                                                                        }
+                                                                        unitPriceUsd={
+                                                                            selectedTokenData?.price
+                                                                        }
+                                                                        profile="standard"
+                                                                    />
                                                                 </p>
                                                                 {recipientFee && (
                                                                     <Tooltip
                                                                         content={
                                                                             <div className="text-left">
-                                                                                <p>
-                                                                                    {`${formatTokenDisplayAmount(displayAmount)} ${selectedToken.symbol} + ${formatTokenDisplayAmount(recipientFee)}${selectedToken.symbol}`}
+                                                                                <p className="flex items-center gap-1">
+                                                                                    <FormattedAmount
+                                                                                        kind="token"
+                                                                                        value={
+                                                                                            displayAmount
+                                                                                        }
+                                                                                        symbol={
+                                                                                            selectedToken.symbol
+                                                                                        }
+                                                                                        tokenDecimals={
+                                                                                            selectedToken.decimals
+                                                                                        }
+                                                                                        unitPriceUsd={
+                                                                                            selectedTokenData?.price
+                                                                                        }
+                                                                                        profile="standard"
+                                                                                    />
+                                                                                    +
+                                                                                    <FormattedAmount
+                                                                                        kind="token"
+                                                                                        value={
+                                                                                            recipientFee
+                                                                                        }
+                                                                                        symbol={
+                                                                                            selectedToken.symbol
+                                                                                        }
+                                                                                        tokenDecimals={
+                                                                                            selectedToken.decimals
+                                                                                        }
+                                                                                        unitPriceUsd={
+                                                                                            selectedTokenData?.price
+                                                                                        }
+                                                                                        profile="standard"
+                                                                                        rounding="up"
+                                                                                    />
                                                                                 </p>
                                                                                 <p className="lowercase">
                                                                                     {tPay(
@@ -517,10 +577,13 @@ export function ReviewPaymentsStep({
                                                                 )}
                                                             </div>
                                                             <p className="text-xs text-muted-foreground whitespace-nowrap">
-                                                                ≈ $
-                                                                {estimatedUSDValue.toFixed(
-                                                                    2,
-                                                                )}
+                                                                ≈{" "}
+                                                                <FormattedAmount
+                                                                    kind="fiat"
+                                                                    value={
+                                                                        estimatedUSDValue
+                                                                    }
+                                                                />
                                                             </p>
                                                         </div>
                                                     </div>
@@ -590,7 +653,7 @@ export function ReviewPaymentsStep({
                                     />
                                 </Tooltip>
                             </div>
-                            <div className="h-5 w-24 bg-muted animate-pulse rounded" />
+                            <div className="h-5 w-24 bg-general-unofficial-accent-0 animate-pulse rounded" />
                         </div>
                     )}
 
@@ -639,8 +702,15 @@ export function ReviewPaymentsStep({
                             </Tooltip>
                         </div>
                         <p>
-                            {formatTokenDisplayAmount(totalNetworkFee)}{" "}
-                            {selectedToken.symbol}
+                            <FormattedAmount
+                                kind="token"
+                                value={totalNetworkFee}
+                                symbol={selectedToken.symbol}
+                                tokenDecimals={selectedToken.decimals}
+                                unitPriceUsd={selectedTokenData?.price}
+                                profile="standard"
+                                rounding="up"
+                            />
                         </p>
                     </div>
                 )}

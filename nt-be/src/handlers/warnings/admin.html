@@ -1027,7 +1027,7 @@
 
       bridgeTokensPromise = (async () => {
         try {
-          const res = await fetch('/api/intents/bridge-tokens?includeNearNetwork=true', {
+          const res = await fetch('/api/intents/bridge-tokens', {
             credentials: 'omit',
             headers: { 'Accept': 'application/json' },
           });

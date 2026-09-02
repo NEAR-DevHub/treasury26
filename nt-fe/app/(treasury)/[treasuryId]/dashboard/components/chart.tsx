@@ -1,16 +1,16 @@
 "use client";
 
-import { LineChart, Line, XAxis, YAxis, Area, AreaChart } from "recharts";
+import { ChartSpline } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Area, AreaChart, XAxis, YAxis } from "recharts";
+import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
 import {
+    type ChartConfig,
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
-    type ChartConfig,
 } from "@/components/ui/chart";
-import { formatCurrencyWithSubCent } from "@/lib/utils";
-import { ChartSpline } from "lucide-react";
-import { EmptyState } from "@/components/empty-state";
 
 interface ChartDataPoint {
     name: string;
@@ -182,18 +182,24 @@ export default function BalanceChart({
                                 return point?.fullDate ?? point?.name ?? "";
                             }}
                             formatter={(value, name) => {
-                                const num = Number(value);
                                 const color =
                                     name === "usdValue"
                                         ? "var(--color-foreground)"
                                         : "var(--muted-foreground)";
                                 const formatted =
-                                    name === "usdValue"
-                                        ? formatCurrencyWithSubCent(num)
-                                        : `${num.toLocaleString(undefined, {
-                                              minimumFractionDigits: 2,
-                                              maximumFractionDigits: 6,
-                                          })}${symbol ? ` ${symbol.toUpperCase()}` : ""}`;
+                                    name === "usdValue" ? (
+                                        <FormattedAmount
+                                            kind="fiat"
+                                            value={value.toString()}
+                                        />
+                                    ) : (
+                                        <FormattedAmount
+                                            kind="token"
+                                            value={value.toString()}
+                                            symbol={symbol?.toUpperCase() ?? ""}
+                                            profile="compact"
+                                        />
+                                    );
 
                                 return (
                                     <>

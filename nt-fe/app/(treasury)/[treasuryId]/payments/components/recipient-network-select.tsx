@@ -2,7 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
 import { InputBlock } from "@/components/input-block";
@@ -19,9 +19,14 @@ import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { isValidAddress } from "@/lib/address-validation";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import {
+    isNearComRecipientAddress,
+    parseNearComAddress,
+} from "@/lib/nearcom-address";
 import { isValidNearAddressFormat } from "@/lib/near-validation";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
+import { HighlightedText } from "@/components/highlighted-text";
 import { cn } from "@/lib/utils";
 
 export interface RecipientNetworkOption {
@@ -71,25 +76,38 @@ export type RecipientNetworkRuleOption = RecipientNetworkOption & {
 function isAddressCompatibleWithNetwork(
     address: string,
     networkName: string,
+    optionId?: string,
 ): boolean {
     if (!address) return true;
+    const { hasPrefix, accountId } = parseNearComAddress(address);
+
+    // near.com only for nearcom:<validNear>. Never compatible otherwise.
+    if (optionId === NEAR_COM_NETWORK_ID) {
+        return isNearComRecipientAddress(address);
+    }
+
+    // Original per-chain format checks (ignore nearcom: — that route is above).
+    if (hasPrefix) return false;
+
     const blockchain = getBlockchainType(networkName);
     if (blockchain === "unknown") {
         return false;
     }
     if (blockchain === NEAR_NETWORK_ID) {
         // NEAR full check is async; sync format check is enough for sectioning.
-        return isValidNearAddressFormat(address);
+        return isValidNearAddressFormat(accountId);
     }
-    return isValidAddress(address, blockchain);
+    return isValidAddress(accountId, blockchain);
 }
 
 function NetworkRow({
     option,
     disabled,
+    highlightQuery,
 }: {
     option: RecipientNetworkOption;
     disabled?: boolean;
+    highlightQuery?: string;
 }) {
     return (
         <div
@@ -108,18 +126,20 @@ function NetworkRow({
                 )}
             />
             <div className="flex flex-col items-start text-left min-w-0">
-                <span
+                <HighlightedText
+                    text={option.name}
+                    query={highlightQuery}
                     className={cn(
                         "text-sm md:text-base font-semibold truncate max-w-full",
                         getNetworkDisplayCaseClass(option.id),
                     )}
-                >
-                    {option.name}
-                </span>
+                />
                 {option.description && (
-                    <span className="text-xs text-muted-foreground font-normal">
-                        {option.description}
-                    </span>
+                    <HighlightedText
+                        text={option.description}
+                        query={highlightQuery}
+                        className="text-xs text-muted-foreground font-normal"
+                    />
                 )}
             </div>
         </div>
@@ -153,7 +173,9 @@ export function RecipientNetworkSelect({
                 networkLabel: tAddressBookTable("network"),
                 fallbackName: "near.com",
             }),
-            description: isConfidential ? t("nearComDescription") : undefined,
+            description: isConfidential
+                ? t("nearComDescription")
+                : t("nearComDescriptionPublic"),
             icon: NEAR_COM_ICON,
             networkName: NEAR_NETWORK_ID,
         }),
@@ -166,6 +188,23 @@ export function RecipientNetworkSelect({
     );
 
     const tokenNetworkOptions = useMemo((): RecipientNetworkOption[] => {
+        // Native NEAR / NEAR FT: destination id is `near`, not `nep141:wrap.near`.
+        // Check before bridge match — address "near" also resolves a bridge asset.
+        if (
+            token?.residency === "Ft" ||
+            token?.residency === "Near" ||
+            token?.address?.toLowerCase() === NEAR_NETWORK_ID
+        ) {
+            return [
+                {
+                    id: NEAR_NETWORK_ID,
+                    name: getNetworkDisplayName(NEAR_NETWORK_ID),
+                    icon: NEAR_CHAIN_ICONS.icon,
+                    networkName: NEAR_NETWORK_ID,
+                },
+            ];
+        }
+
         if (bridgeAssetMatch) {
             return bridgeAssetMatch.networks.map((network) => {
                 const iconUrl = network.chainIcons
@@ -185,39 +224,37 @@ export function RecipientNetworkSelect({
             });
         }
 
-        // Native NEAR FTs can be transferred on NEAR network
-        if (token?.residency === "Ft") {
-            return [
-                {
-                    id: NEAR_NETWORK_ID,
-                    name: getNetworkDisplayName(NEAR_NETWORK_ID),
-                    icon: NEAR_CHAIN_ICONS.icon,
-                    networkName: NEAR_NETWORK_ID,
-                },
-            ];
-        }
-
         return [];
     }, [bridgeAssetMatch, isConfidential, t, token]);
 
     const availableOptions = useMemo(() => {
-        const options = isConfidential
-            ? [...tokenNetworkOptions, nearComOption]
-            : tokenNetworkOptions;
-        return [...options].sort((a, b) => a.name.localeCompare(b.name));
-    }, [isConfidential, nearComOption, tokenNetworkOptions]);
+        const isNearComRecipient = isNearComRecipientAddress(recipient);
+
+        // nearcom:<validNear> → near.com only (public + confidential).
+        // Never listed as a free option — only when the recipient uses the prefix.
+        if (isNearComRecipient) {
+            return [nearComOption];
+        }
+
+        return [...tokenNetworkOptions].sort((a, b) =>
+            a.name.localeCompare(b.name),
+        );
+    }, [nearComOption, recipient, tokenNetworkOptions]);
 
     const selectedOption = useMemo(() => {
         if (!value) return null;
-        if (value === NEAR_COM_NETWORK_ID) return nearComOption;
         return availableOptions.find((o) => o.id === value) ?? null;
-    }, [availableOptions, nearComOption, value]);
+    }, [availableOptions, value]);
 
     const enrichedOptions = useMemo(() => {
         return availableOptions.map((option) => ({
             ...option,
             isCompatible: requireRecipient
-                ? isAddressCompatibleWithNetwork(recipient, option.networkName)
+                ? isAddressCompatibleWithNetwork(
+                      recipient,
+                      option.networkName,
+                      option.id,
+                  )
                 : true,
         }));
     }, [availableOptions, recipient, requireRecipient]);
@@ -251,26 +288,40 @@ export function RecipientNetworkSelect({
         ? !recipient || isBridgeAssetsLoading || !hasCompatibleNetwork
         : isBridgeAssetsLoading || availableOptions.length === 0;
 
-    // Clear selection when the address is removed or no longer matches the
-    // chosen network (e.g. user edited into a different chain's format).
+    // Clear when the address is wiped, or when the selected network no longer
+    // matches the address format (e.g. Solana → EVM). Depend on `recipient` +
+    // `selectedOption` (not `availableOptions`) so token/list changes still
+    // clear a stale pick without coupling to memo array identity.
+    // Soft destination seed on the payments page only fills an empty field when
+    // the address is empty or nearcom:, so clearing here does not loop.
+    const hadRecipientRef = useRef(false);
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
     useEffect(() => {
         if (!requireRecipient) return;
-        if (!value) return;
+
         if (!recipient) {
-            onChange("");
+            if (hadRecipientRef.current && value) {
+                hadRecipientRef.current = false;
+                onChangeRef.current("");
+            }
             return;
         }
-        if (availableOptions.length === 0) return;
-        if (compatibleOptions.some((o) => o.id === value)) return;
-        onChange("");
-    }, [
-        value,
-        recipient,
-        availableOptions,
-        compatibleOptions,
-        onChange,
-        requireRecipient,
-    ]);
+
+        hadRecipientRef.current = true;
+        if (!value) return;
+
+        if (
+            !selectedOption ||
+            !isAddressCompatibleWithNetwork(
+                recipient,
+                selectedOption.networkName,
+                selectedOption.id,
+            )
+        ) {
+            onChangeRef.current("");
+        }
+    }, [recipient, value, requireRecipient, selectedOption]);
 
     const placeholderText = requireRecipient
         ? !recipient
@@ -333,7 +384,7 @@ export function RecipientNetworkSelect({
                     onNetworkChange?.(rich._option);
                     setOpen(false);
                 }}
-                renderIcon={(option) => {
+                renderIcon={(option, { searchQuery }) => {
                     const rich = option as unknown as {
                         _option: RecipientNetworkOption;
                         _disabled?: boolean;
@@ -342,6 +393,7 @@ export function RecipientNetworkSelect({
                         <NetworkRow
                             option={rich._option}
                             disabled={rich._disabled}
+                            highlightQuery={searchQuery}
                         />
                     );
                 }}

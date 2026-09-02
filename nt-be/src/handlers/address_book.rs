@@ -170,7 +170,7 @@ pub async fn create_address_book_entries(
                 serde_json::json!({
                     "name": e.name,
                     "networks": e.networks,
-                    "address": e.address,
+                    "address": e.address.trim(),
                     "note": e.note,
                 })
             })
@@ -893,6 +893,100 @@ mod tests {
         assert_eq!(
             body, "entries must not be empty",
             "Empty create should return the validation error"
+        );
+    }
+
+    #[sqlx::test]
+    async fn test_create_address_book_trims_address_whitespace(pool: PgPool) {
+        let state = test_state(pool.clone());
+        let app = create_routes(state.clone());
+
+        seed_policy_member(&pool, DAO_ID, USER_ACCOUNT_ID).await;
+        let auth_cookie = issue_auth_cookie(&pool, &state, USER_ACCOUNT_ID).await;
+
+        let padded = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/address-book")
+                    .header("content-type", "application/json")
+                    .header("cookie", &auth_cookie)
+                    .body(Body::from(
+                        json!({
+                            "daoId": DAO_ID,
+                            "entries": [{
+                                "name": "Padded",
+                                "networks": ["ethereum"],
+                                "address": "  0xabc123  ",
+                                "note": null
+                            }]
+                        })
+                        .to_string(),
+                    ))
+                    .expect("Should build padded-address create request"),
+            )
+            .await
+            .expect("Padded create should complete");
+
+        let padded_status = padded.status();
+        let padded_body = response_text(padded).await;
+        assert_eq!(
+            padded_status,
+            StatusCode::OK,
+            "Padded create should succeed. Body: {padded_body}"
+        );
+        let padded_entries: serde_json::Value =
+            serde_json::from_str(&padded_body).expect("Padded create response should be JSON");
+        let padded_entries = padded_entries
+            .as_array()
+            .expect("Padded create response should be an array");
+        assert_eq!(padded_entries.len(), 1, "Should insert the trimmed address");
+        assert_eq!(
+            padded_entries[0].get("address").and_then(|v| v.as_str()),
+            Some("0xabc123"),
+            "Stored address must be trimmed"
+        );
+
+        let duplicate = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/address-book")
+                    .header("content-type", "application/json")
+                    .header("cookie", &auth_cookie)
+                    .body(Body::from(
+                        json!({
+                            "daoId": DAO_ID,
+                            "entries": [{
+                                "name": "Already trimmed",
+                                "networks": ["ethereum"],
+                                "address": "0xabc123",
+                                "note": null
+                            }]
+                        })
+                        .to_string(),
+                    ))
+                    .expect("Should build trimmed duplicate create request"),
+            )
+            .await
+            .expect("Trimmed duplicate create should complete");
+
+        let duplicate_status = duplicate.status();
+        let duplicate_body = response_text(duplicate).await;
+        assert_eq!(
+            duplicate_status,
+            StatusCode::OK,
+            "Trimmed duplicate create should return OK. Body: {duplicate_body}"
+        );
+        let duplicate_entries: serde_json::Value =
+            serde_json::from_str(&duplicate_body).expect("Duplicate response should be JSON");
+        let duplicate_entries = duplicate_entries
+            .as_array()
+            .expect("Duplicate response should be an array");
+        assert!(
+            duplicate_entries.is_empty(),
+            "Trimmed address must conflict with the previously padded insert"
         );
     }
 

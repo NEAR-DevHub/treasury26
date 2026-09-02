@@ -18,6 +18,40 @@ const btcAsset = {
     weight: 0,
 } as unknown as TreasuryAsset;
 
+const usdcFt = {
+    id: "USDC",
+    contractId:
+        "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    residency: "Ft",
+    network: "near",
+    chainName: "NEAR",
+    symbol: "USDC",
+    balance: { Standard: { total: "1000000", locked: "0" } },
+    decimals: 6,
+    price: 1,
+    name: "USD Coin",
+    icon: "",
+    balanceUSD: 1,
+    weight: 0,
+} as unknown as TreasuryAsset;
+
+const usdcIntents = {
+    id: "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    contractId:
+        "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+    residency: "Intents",
+    network: "near",
+    chainName: "NEAR",
+    symbol: "USDC",
+    balance: { Standard: { total: "5000000", locked: "0" } },
+    decimals: 6,
+    price: 1,
+    name: "USD Coin",
+    icon: "",
+    balanceUSD: 5,
+    weight: 0,
+} as unknown as TreasuryAsset;
+
 describe("findMatchingTreasuryAsset", () => {
     it("matches nep141 address to bare contractId", () => {
         const matched = findMatchingTreasuryAsset([btcAsset], {
@@ -44,6 +78,26 @@ describe("findMatchingTreasuryAsset", () => {
         ).toBeNull();
     });
 
+    it("distinguishes Ft vs Intents for the same Near contract", () => {
+        const tokens = [usdcFt, usdcIntents];
+        expect(
+            findMatchingTreasuryAsset(tokens, {
+                address:
+                    "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+                network: "near",
+                residency: "Ft",
+            })?.residency,
+        ).toBe("Ft");
+        expect(
+            findMatchingTreasuryAsset(tokens, {
+                address:
+                    "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1",
+                network: "near",
+                residency: "Intents",
+            })?.residency,
+        ).toBe("Intents");
+    });
+
     it("returns null when tokens or address are missing", () => {
         expect(
             findMatchingTreasuryAsset(undefined, { address: "x" }),
@@ -51,6 +105,65 @@ describe("findMatchingTreasuryAsset", () => {
         expect(findMatchingTreasuryAsset([btcAsset], null)).toBeNull();
         expect(
             findMatchingTreasuryAsset([btcAsset], { address: "" }),
+        ).toBeNull();
+    });
+});
+
+const arbAsset = {
+    id: "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+    contractId: "arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+    residency: "Intents",
+    network: "arb",
+    chainName: "Arbitrum",
+    symbol: "ARB",
+    balance: { Standard: { total: "7000000000000000000", locked: "0" } },
+    decimals: 18,
+    price: 1,
+    name: "Arbitrum",
+    icon: "",
+    balanceUSD: 7,
+    weight: 0,
+} as unknown as TreasuryAsset;
+
+describe("findMatchingTreasuryAsset network aliases", () => {
+    it("matches catalog long name against 1Click short code (dashboard Send)", () => {
+        const matched = findMatchingTreasuryAsset([arbAsset], {
+            address:
+                "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+            network: "arbitrum",
+            residency: "Intents",
+        });
+        expect(matched?.symbol).toBe("ARB");
+    });
+
+    it("still rejects a different chain despite matching id", () => {
+        expect(
+            findMatchingTreasuryAsset([arbAsset], {
+                address:
+                    "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+                network: "ethereum",
+            }),
+        ).toBeNull();
+    });
+
+    it("matches unmapped chain names only exactly", () => {
+        const fogo = {
+            ...(arbAsset as unknown as Record<string, unknown>),
+            network: "fogo",
+        } as unknown as TreasuryAsset;
+        expect(
+            findMatchingTreasuryAsset([fogo], {
+                address:
+                    "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+                network: "fogo",
+            })?.network,
+        ).toBe("fogo");
+        expect(
+            findMatchingTreasuryAsset([fogo], {
+                address:
+                    "nep141:arb-0x912ce59144191c1204e64559fe8253a0e49e6548.omft.near",
+                network: "fog",
+            }),
         ).toBeNull();
     });
 });
