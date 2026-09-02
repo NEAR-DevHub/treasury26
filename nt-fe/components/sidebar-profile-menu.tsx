@@ -32,6 +32,7 @@ import { isStaging } from "@/constants/features";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useProfile } from "@/hooks/use-treasury-queries";
+import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
 
@@ -70,8 +71,6 @@ export function SidebarProfileMenu({
     }, []);
 
     const isDarkTheme = mounted ? resolvedTheme === "dark" : true;
-    const displayName =
-        profile?.name && profile.name !== accountId ? profile.name : accountId;
     const accountHref = treasuryId ? `/${treasuryId}/account` : null;
 
     const close = () => setIsOpen(false);
@@ -84,7 +83,15 @@ export function SidebarProfileMenu({
         );
     }
 
-    const avatar = <ProfileAvatarChip />;
+    const displayName =
+        profile?.name && profile.name !== accountId ? profile.name : accountId;
+
+    const avatar = (
+        <ProfileAvatarChip
+            imageUrl={resolveProfileImageUrl(profile?.image)}
+            name={displayName}
+        />
+    );
 
     const trigger = isReduced ? (
         <button
