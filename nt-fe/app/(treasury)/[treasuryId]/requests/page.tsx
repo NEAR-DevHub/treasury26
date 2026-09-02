@@ -29,15 +29,17 @@ import { ResponsiveInput } from "@/components/input";
 import { NumberBadge } from "@/components/number-badge";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import { ResponsiveTabs, type TabItem } from "@/components/responsive-tabs";
-import { TableSkeleton } from "@/components/table-skeleton";
 import { TabsContent } from "@/components/underline-tabs";
 import { ProposalsTable } from "@/features/proposals";
 import { MobileFilterSheet } from "@/features/proposals/components/mobile-filter-sheet";
-import { ProposalCardSkeleton } from "@/features/proposals/components/proposal-card";
 import {
     type FilterOption,
     ProposalFilters as ProposalFiltersComponent,
 } from "@/features/proposals/components/proposal-filters";
+import {
+    ProposalCardSkeleton,
+    ProposalsTableSkeleton,
+} from "@/features/proposals/components/proposals-skeleton";
 import { hasFilterValue } from "@/features/proposals/types/filter-types";
 import { convertUrlParamsToApiFilters } from "@/features/proposals/utils/filter-params-converter";
 import { useProposals } from "@/hooks/use-proposals";
@@ -203,11 +205,7 @@ function ProposalsList({
                         <ProposalCardSkeleton key={key} />
                     ))}
                 </div>
-                <TableSkeleton
-                    rows={12}
-                    columns={7}
-                    className="hidden rounded-2xl border-general-border lg:block"
-                />
+                <ProposalsTableSkeleton className="hidden lg:block" />
             </>
         );
     }
