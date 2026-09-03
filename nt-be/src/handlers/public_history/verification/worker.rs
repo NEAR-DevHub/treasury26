@@ -36,11 +36,14 @@ pub const FAILED_RETRY_AFTER_HOURS: i64 = 6;
 pub const FAILED_RETRY_MIN_MINUTES: i64 = 15;
 const WATERMARK_MAX_AGE_MINUTES: i64 = 15;
 /// Contract accounts earn 30% of the gas fees burned by calls into them —
-/// balance accretion the receipt feed cannot itemize (~0.0002 NEAR observed
-/// per ledger event). The native drift budget scales with event count at
+/// balance accretion the receipt feed cannot itemize (0.0002-0.00064 NEAR
+/// per inbound receipt observed; near-prime.sputnik-dao.near runs at the
+/// high end). The budget is ~1.5x that high end on purpose: the range comes
+/// from a handful of DAOs, and a gas-heavier workload must still gate on
+/// its first try. The native drift budget scales with event count at
 /// this rate so busy DAOs are not failed on accumulated gas rewards, while
 /// the configured flat tolerance stays the floor for quiet accounts.
-const NATIVE_DUST_PER_EVENT_NEAR: &str = "0.0005";
+const NATIVE_DUST_PER_EVENT_NEAR: &str = "0.001";
 /// Bound on archival head-anchor reads per silver cycle so a mass-dirty
 /// event cannot turn one tick into an unbounded sequential RPC sweep.
 const HEAD_ANCHORS_PER_CYCLE: usize = 25;
