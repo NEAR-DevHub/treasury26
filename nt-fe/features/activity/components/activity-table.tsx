@@ -496,6 +496,7 @@ export function ActivityTable({
                                                 activity.quoteDepositAddress
                                             }
                                             isConfidential={isConfidential}
+                                            isExchange={!!activity.swap}
                                         />
                                     </TableCell>
                                     <TableCell className="w-10 px-0 pr-4 text-right">

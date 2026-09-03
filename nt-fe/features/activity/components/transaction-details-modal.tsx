@@ -522,9 +522,10 @@ function DetailsSection({
     }
 
     if (
-        activity.transactionHashes?.length ||
-        activity.receiptIds?.length ||
-        activity.quoteDepositAddress
+        (activity.transactionHashes?.length ||
+            activity.receiptIds?.length ||
+            activity.quoteDepositAddress) &&
+        !(isConfidential && variant === "exchange")
     ) {
         items.push({
             label: t(TRANSACTION_LABEL_KEYS[variant]),
@@ -535,6 +536,7 @@ function DetailsSection({
                     chainName={activity.tokenMetadata?.chainName}
                     depositAddress={activity.quoteDepositAddress}
                     isConfidential={isConfidential}
+                    isExchange={variant === "exchange"}
                     className="flex items-center gap-2"
                 />
             ),
