@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use serde_json::json;
@@ -5,15 +6,18 @@ use serde_json::json;
 use crate::{
     AppState,
     handlers::status::{
-        config::{self, RECOVER_AFTER_SUCCESSES},
+        config,
         fallbacks::{
             self, POST_TO_APP_CALLBACK_PREFIX, StatusIncident, admin_page_url, oh_dear_status_url,
         },
         notifications,
-        oh_dear::{self, OhDearStatus, SUPPORTED_SERVICES},
+        oh_dear::{self, OhDearCheckResult, OhDearStatus, SUPPORTED_SERVICES},
     },
     handlers::warnings::db,
 };
+
+/// Written before the Telegram send so two overlapping cycles cannot both page.
+const TELEGRAM_CLAIM_SENTINEL: i32 = -1;
 
 const INCIDENT_COLUMNS: &str = r#"
     id, service, check_name, status, first_failed_at, last_failed_at,
@@ -145,6 +149,79 @@ async fn set_incident_telegram_message(
         .execute(pool)
         .await?;
     Ok(())
+}
+
+async fn claim_ops_alert(pool: &sqlx::PgPool, incident_id: i32) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        r#"
+        UPDATE status_incidents
+        SET telegram_message_id = $2
+        WHERE id = $1 AND telegram_message_id IS NULL
+        "#,
+    )
+    .bind(incident_id)
+    .bind(TELEGRAM_CLAIM_SENTINEL)
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected() == 1)
+}
+
+async fn release_ops_alert_claim(pool: &sqlx::PgPool, incident_id: i32) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        r#"
+        UPDATE status_incidents
+        SET telegram_message_id = NULL
+        WHERE id = $1 AND telegram_message_id = $2
+        "#,
+    )
+    .bind(incident_id)
+    .bind(TELEGRAM_CLAIM_SENTINEL)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+async fn release_ops_alert_claim_logged(pool: &sqlx::PgPool, incident_id: i32) {
+    if let Err(release_err) = release_ops_alert_claim(pool, incident_id).await {
+        tracing::error!(
+            "[status-monitor] Failed to release ops alert claim for incident {incident_id}: {release_err}"
+        );
+    }
+}
+
+async fn persist_telegram_message_or_release(
+    pool: &sqlx::PgPool,
+    incident_id: i32,
+    message_id: i32,
+) {
+    if let Err(e) = set_incident_telegram_message(pool, incident_id, message_id).await {
+        tracing::error!(
+            "[status-monitor] Failed to persist telegram message id for incident {incident_id}: {e}"
+        );
+        release_ops_alert_claim_logged(pool, incident_id).await;
+    }
+}
+
+fn had_real_ops_alert(incident: &StatusIncident) -> bool {
+    incident
+        .telegram_message_id
+        .is_some_and(|message_id| message_id > 0)
+}
+
+async fn load_active_incidents_for_service(
+    pool: &sqlx::PgPool,
+    service: &str,
+) -> Result<Vec<StatusIncident>, sqlx::Error> {
+    sqlx::query_as::<_, StatusIncident>(&format!(
+        r#"
+        SELECT {INCIDENT_COLUMNS}
+        FROM status_incidents
+        WHERE service = $1 AND recovered_at IS NULL
+        "#
+    ))
+    .bind(service)
+    .fetch_all(pool)
+    .await
 }
 
 async fn recover_incident(pool: &sqlx::PgPool, incident_id: i32) -> Result<(), sqlx::Error> {
@@ -380,166 +457,243 @@ pub async fn check_linked_posts_resolved(state: &Arc<AppState>) {
 }
 
 async fn process_service(state: &Arc<AppState>, service: &str) {
+    if service == "near-intents" {
+        process_near_intents(state).await;
+        return;
+    }
+
     let check = oh_dear::run_service_check(state, service).await;
     let Some(check) = check else {
         return;
     };
+    apply_check(state, service, &check).await;
+}
 
-    let check_name = check.name.as_str();
-    let unhealthy = oh_dear::is_unhealthy_for_monitor(service, &check.status);
-
-    if unhealthy {
-        let status = incident_status(&check.status);
-        let incident = match load_active_incident(&state.db_pool, service, check_name).await {
-            Ok(incident) => incident,
-            Err(e) => {
-                tracing::error!("[status-monitor] Failed to load incident for {service}: {e}");
-                return;
-            }
-        };
-
-        let incident = match incident {
-            Some(existing) => {
-                match touch_incident_failure(&state.db_pool, existing.id, status).await {
-                    Ok(updated) => updated,
-                    Err(e) => {
-                        tracing::error!(
-                            "[status-monitor] Failed to update incident {}: {e}",
-                            existing.id
-                        );
-                        return;
-                    }
-                }
-            }
-            None => match open_incident(&state.db_pool, service, check_name, status).await {
-                Ok(incident) => incident,
-                Err(e) => {
-                    tracing::error!("[status-monitor] Failed to open incident for {service}: {e}");
-                    return;
-                }
-            },
-        };
-
-        // Wait for consecutive failures before notifying (filters brief blips).
-        let alert_after = config::alert_after_failures(service);
-        if incident.telegram_message_id.is_none() {
-            if incident.consecutive_failures < alert_after {
-                tracing::debug!(
-                    "[status-monitor] {service} unhealthy ({}/{} consecutive); holding ops alert",
-                    incident.consecutive_failures,
-                    alert_after
-                );
-            } else {
-                let text = notifications::format_health_check_alert(
-                    service,
-                    check_name,
-                    status,
-                    &check.notification_message,
-                );
-                let callback_data = fallbacks::supports_fallback_button(service)
-                    .then(|| format!("{POST_TO_APP_CALLBACK_PREFIX}{service}"));
-                let admin_url = admin_page_url();
-                let check_url = oh_dear_status_url(service);
-
-                match state
-                    .telegram_client
-                    .send_ops_alert_with_buttons(
-                        &text,
-                        &admin_url,
-                        Some(&check_url),
-                        callback_data.as_deref(),
-                    )
-                    .await
-                {
-                    Ok(message_id) if message_id > 0 => {
-                        tracing::info!(
-                            "[status-monitor] Sent ops alert for {service} after {} failures (telegram message {message_id})",
-                            incident.consecutive_failures
-                        );
-                        if let Err(e) =
-                            set_incident_telegram_message(&state.db_pool, incident.id, message_id)
-                                .await
-                        {
-                            tracing::error!(
-                                "[status-monitor] Failed to persist telegram message id for incident {}: {e}",
-                                incident.id
-                            );
-                        }
-                    }
-                    Ok(_) => {}
-                    Err(e) => {
-                        tracing::error!(
-                            "[status-monitor] Failed to send ops alert for {service}: {e}"
-                        );
-                    }
-                }
-            }
-        }
-    } else {
-        let incident = match load_active_incident(&state.db_pool, service, check_name).await {
-            Ok(incident) => incident,
-            Err(e) => {
-                tracing::error!("[status-monitor] Failed to load incident for {service}: {e}");
-                return;
-            }
-        };
-
-        let Some(incident) = incident else {
+/// Track each Instatus post as its own incident so zCash and 1Click each page.
+async fn process_near_intents(state: &Arc<AppState>) {
+    let posts = match oh_dear::fetch_intents_posts_with_check(state).await {
+        Ok(posts) => posts,
+        Err(check) => {
+            tracing::error!(
+                "[status-monitor] Failed to fetch intents posts: {}",
+                check.notification_message
+            );
+            apply_check(state, "near-intents", check.as_ref()).await;
             return;
-        };
+        }
+    };
 
-        let incident = match touch_incident_success(&state.db_pool, incident.id).await {
+    let now_ms = chrono::Utc::now().timestamp_millis();
+    let tracked = oh_dear::actionable_intents_posts(posts, now_ms);
+    let active_names: HashSet<&str> = tracked
+        .iter()
+        .map(|(_, check_name)| check_name.as_str())
+        .collect();
+
+    for (post, check_name) in &tracked {
+        let status = if post.post_type == "incident" {
+            "failed"
+        } else {
+            "warning"
+        };
+        let message = oh_dear::intents_post_notification(post, now_ms);
+        apply_unhealthy(state, "near-intents", check_name, status, &message).await;
+    }
+
+    let open = match load_active_incidents_for_service(&state.db_pool, "near-intents").await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to load near-intents incidents: {e}");
+            return;
+        }
+    };
+
+    for incident in open {
+        if active_names.contains(incident.check_name.as_str()) {
+            continue;
+        }
+        // Posts are being tracked individually — close the legacy service-level
+        // row and any post that has left the featured/relevant set.
+        apply_healthy(state, "near-intents", incident).await;
+    }
+}
+
+async fn apply_check(state: &Arc<AppState>, service: &str, check: &OhDearCheckResult) {
+    let check_name = check.name.as_str();
+    if oh_dear::is_unhealthy_for_monitor(service, &check.status) {
+        apply_unhealthy(
+            state,
+            service,
+            check_name,
+            incident_status(&check.status),
+            &check.notification_message,
+        )
+        .await;
+        return;
+    }
+
+    let incident = match load_active_incident(&state.db_pool, service, check_name).await {
+        Ok(incident) => incident,
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to load incident for {service}: {e}");
+            return;
+        }
+    };
+    let Some(incident) = incident else {
+        return;
+    };
+    apply_healthy(state, service, incident).await;
+}
+
+async fn apply_unhealthy(
+    state: &Arc<AppState>,
+    service: &str,
+    check_name: &str,
+    status: &str,
+    notification_message: &str,
+) {
+    let incident = match load_active_incident(&state.db_pool, service, check_name).await {
+        Ok(incident) => incident,
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to load incident for {service}: {e}");
+            return;
+        }
+    };
+
+    let incident = match incident {
+        Some(existing) => match touch_incident_failure(&state.db_pool, existing.id, status).await {
             Ok(updated) => updated,
             Err(e) => {
                 tracing::error!(
-                    "[status-monitor] Failed to record success for incident {}: {e}",
-                    incident.id
+                    "[status-monitor] Failed to update incident {}: {e}",
+                    existing.id
                 );
                 return;
             }
-        };
+        },
+        None => match open_incident(&state.db_pool, service, check_name, status).await {
+            Ok(incident) => incident,
+            Err(e) => {
+                tracing::error!("[status-monitor] Failed to open incident for {service}: {e}");
+                return;
+            }
+        },
+    };
 
-        // Require consecutive successes before recovering (stops alert↔recover flaps).
-        if incident.consecutive_successes < RECOVER_AFTER_SUCCESSES {
-            tracing::debug!(
-                "[status-monitor] {service} healthy ({}/{} consecutive); holding incident open",
-                incident.consecutive_successes,
-                RECOVER_AFTER_SUCCESSES
-            );
-            return;
-        }
+    let alert_after = config::alert_after_failures(service);
+    if incident.telegram_message_id.is_some() {
+        return;
+    }
+    if incident.consecutive_failures < alert_after {
+        tracing::debug!(
+            "[status-monitor] {service} unhealthy ({}/{} consecutive); holding ops alert",
+            incident.consecutive_failures,
+            alert_after
+        );
+        return;
+    }
 
-        if let Err(e) = recover_incident(&state.db_pool, incident.id).await {
+    match claim_ops_alert(&state.db_pool, incident.id).await {
+        Ok(true) => {}
+        Ok(false) => return,
+        Err(e) => {
             tracing::error!(
-                "[status-monitor] Failed to recover incident {}: {e}",
+                "[status-monitor] Failed to claim ops alert for incident {}: {e}",
                 incident.id
             );
             return;
         }
+    }
 
-        delete_linked_warnings(state, service).await;
+    let text =
+        notifications::format_health_check_alert(service, check_name, status, notification_message);
+    let callback_data = fallbacks::supports_fallback_button(service)
+        .then(|| format!("{POST_TO_APP_CALLBACK_PREFIX}{service}"));
+    let admin_url = admin_page_url();
+    let check_url = oh_dear_status_url(service);
 
-        // Only notify recovery when we previously alerted ops about the outage.
-        let had_ops_alert = incident.telegram_message_id.is_some();
+    match state
+        .telegram_client
+        .send_ops_alert_with_buttons(
+            &text,
+            &admin_url,
+            Some(&check_url),
+            callback_data.as_deref(),
+        )
+        .await
+    {
+        Ok(message_id) if message_id > 0 => {
+            tracing::info!(
+                "[status-monitor] Sent ops alert for {service}/{check_name} after {} failures (telegram message {message_id})",
+                incident.consecutive_failures
+            );
+            persist_telegram_message_or_release(&state.db_pool, incident.id, message_id).await;
+        }
+        Ok(message_id) => {
+            tracing::warn!(
+                "[status-monitor] Ops alert for {service}/{check_name} returned message id {message_id}; releasing claim"
+            );
+            release_ops_alert_claim_logged(&state.db_pool, incident.id).await;
+        }
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to send ops alert for {service}: {e}");
+            release_ops_alert_claim_logged(&state.db_pool, incident.id).await;
+        }
+    }
+}
 
-        match fallbacks::delete_fallback(state, service).await {
-            Ok(Some(recovery)) => {
-                tracing::info!(
-                    "[status-monitor] Recovered {service}; deleted linked fallback warning(s)"
-                );
-                send_recovery_telegram(state, &recovery).await;
+async fn apply_healthy(state: &Arc<AppState>, service: &str, incident: StatusIncident) {
+    let check_name = incident.check_name.clone();
+    let incident = match touch_incident_success(&state.db_pool, incident.id).await {
+        Ok(updated) => updated,
+        Err(e) => {
+            tracing::error!(
+                "[status-monitor] Failed to record success for incident {}: {e}",
+                incident.id
+            );
+            return;
+        }
+    };
+
+    let recover_after = config::recover_after_successes(service);
+    if incident.consecutive_successes < recover_after {
+        tracing::debug!(
+            "[status-monitor] {service} healthy ({}/{} consecutive); holding incident open",
+            incident.consecutive_successes,
+            recover_after
+        );
+        return;
+    }
+
+    if let Err(e) = recover_incident(&state.db_pool, incident.id).await {
+        tracing::error!(
+            "[status-monitor] Failed to recover incident {}: {e}",
+            incident.id
+        );
+        return;
+    }
+
+    delete_linked_warnings(state, service).await;
+
+    let had_ops_alert = had_real_ops_alert(&incident);
+
+    match fallbacks::delete_fallback(state, service).await {
+        Ok(Some(recovery)) => {
+            tracing::info!(
+                "[status-monitor] Recovered {service}; deleted linked fallback warning(s)"
+            );
+            send_recovery_telegram(state, &recovery).await;
+        }
+        Ok(None) => {
+            tracing::info!("[status-monitor] Recovered {service}/{check_name}");
+            if had_ops_alert {
+                send_health_recovery_telegram(state, service, &check_name).await;
             }
-            Ok(None) => {
-                tracing::info!("[status-monitor] Recovered {service}");
-                if had_ops_alert {
-                    send_health_recovery_telegram(state, service, check_name).await;
-                }
-            }
-            Err(e) => {
-                tracing::error!("[status-monitor] Failed to delete fallback for {service}: {e}");
-                if had_ops_alert {
-                    send_health_recovery_telegram(state, service, check_name).await;
-                }
+        }
+        Err(e) => {
+            tracing::error!("[status-monitor] Failed to delete fallback for {service}: {e}");
+            if had_ops_alert {
+                send_health_recovery_telegram(state, service, &check_name).await;
             }
         }
     }

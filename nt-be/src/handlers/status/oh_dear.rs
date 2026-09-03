@@ -36,6 +36,7 @@ pub const SUPPORTED_SERVICES: &[&str] = &[
 const NEAR_STATUS_UP: &str = "up";
 const INTENTS_POST_INCIDENT: &str = "incident";
 const INTENTS_POST_MAINTENANCE: &str = "maintenance";
+const NEAR_INTENTS_CHECK_PREFIX: &str = "near-intents.status:";
 
 const BACKEND_DATABASE_CHECK: CheckDefinition = CheckDefinition {
     name: "backend.database",
@@ -968,6 +969,59 @@ pub fn is_relevant_intents_post(ends_at: Option<i64>, now_ms: i64) -> bool {
     }
 }
 
+/// Incident / maintenance posts the status-monitor should track individually,
+/// each paired with its per-post check name (`near-intents.status:<id>`).
+pub fn actionable_intents_posts(
+    posts: impl IntoIterator<Item = IntentsStatusPost>,
+    now_ms: i64,
+) -> Vec<(IntentsStatusPost, String)> {
+    posts
+        .into_iter()
+        .filter_map(|post| {
+            if !is_relevant_intents_post(post.ends_at, now_ms) {
+                return None;
+            }
+            if post.post_type != INTENTS_POST_INCIDENT && post.post_type != INTENTS_POST_MAINTENANCE
+            {
+                return None;
+            }
+            let id = post.id.as_deref()?.trim();
+            if id.is_empty() {
+                return None;
+            }
+            let check_name = intents_post_check_name(id);
+            Some((post, check_name))
+        })
+        .collect()
+}
+
+pub fn intents_post_check_name(post_id: &str) -> String {
+    format!("{NEAR_INTENTS_CHECK_PREFIX}{post_id}")
+}
+
+/// Ops Telegram line for one status post. Always includes the title.
+/// Oh Dear `/api/oh-dear/status/near-intents` stays on the generic copy.
+pub fn intents_post_notification(post: &IntentsStatusPost, now_ms: i64) -> String {
+    let kind = intents_post_kind(post, now_ms);
+    if post.title.trim().is_empty() {
+        format!("NEAR Intents has {kind}")
+    } else {
+        format!("NEAR Intents has {kind}: {}", post.title.trim())
+    }
+}
+
+fn intents_post_kind(post: &IntentsStatusPost, now_ms: i64) -> &'static str {
+    if post.post_type == INTENTS_POST_INCIDENT {
+        return "an active incident";
+    }
+    let upcoming = post.starts_at.is_some_and(|start| now_ms < start);
+    if upcoming {
+        "scheduled maintenance"
+    } else {
+        "active maintenance"
+    }
+}
+
 fn map_near_intents_status(
     status_page: IntentsStatusResponse,
     duration_ms: u128,
@@ -1250,6 +1304,22 @@ pub async fn fetch_intents_posts(state: &AppState) -> Result<Vec<IntentsStatusPo
     match fetch_intents_response(state).await.0 {
         Ok(response) => Ok(response.posts),
         Err(_) => Err("Failed to fetch NEAR Intents status posts".to_string()),
+    }
+}
+
+/// Same fetch as [`fetch_intents_posts`], but the error is the Oh Dear check
+/// the monitor should apply when the status API is down (one HTTP call).
+pub async fn fetch_intents_posts_with_check(
+    state: &AppState,
+) -> Result<Vec<IntentsStatusPost>, Box<OhDearCheckResult>> {
+    let (result, duration_ms) = fetch_intents_response(state).await;
+    match result {
+        Ok(response) => Ok(response.posts),
+        Err(error) => Err(Box::new(NEAR_INTENTS_CHECK.failed_http(
+            error,
+            duration_ms,
+            json!({}),
+        ))),
     }
 }
 
@@ -1627,6 +1697,13 @@ mod tests {
                 .unwrap_or_default()
                 .contains("scheduled maintenance")
         );
+        assert!(
+            !json["checkResults"][0]["notificationMessage"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("zCash"),
+            "Oh Dear copy stays generic; post titles are ops-Telegram only"
+        );
     }
 
     #[tokio::test]
@@ -1684,6 +1761,28 @@ mod tests {
         let json = get_status_json(state, "/api/oh-dear/status/near-intents").await;
 
         assert_check(&json, "near-intents.status", "failed");
+    }
+
+    #[test]
+    fn intents_post_notification_includes_title() {
+        let post = IntentsStatusPost {
+            id: Some("P9D0S3K".to_string()),
+            title: "zCash Bridge Maintenance".to_string(),
+            post_type: "maintenance".to_string(),
+            starts_at: Some(0),
+            ends_at: None,
+        };
+        assert_eq!(
+            intents_post_notification(&post, 1),
+            "NEAR Intents has active maintenance: zCash Bridge Maintenance"
+        );
+        assert_eq!(
+            intents_post_check_name("P9D0S3K"),
+            "near-intents.status:P9D0S3K"
+        );
+        let tracked = actionable_intents_posts([post], 1);
+        assert_eq!(tracked.len(), 1);
+        assert_eq!(tracked[0].1, "near-intents.status:P9D0S3K");
     }
 
     #[test]
