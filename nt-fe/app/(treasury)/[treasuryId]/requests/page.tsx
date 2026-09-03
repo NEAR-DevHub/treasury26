@@ -1,7 +1,7 @@
 "use client";
 
 import {
-    ArrowLeftRightIcon,
+    ArrowDataTransferHorizontalIcon,
     FilterIcon,
     SentIcon,
 } from "@hugeicons/core-free-icons";
@@ -22,7 +22,6 @@ import {
 } from "react";
 import { AuthButton } from "@/components/auth-button";
 import { Button } from "@/components/button";
-import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";
 import { ResponsiveInput } from "@/components/input";
@@ -38,6 +37,7 @@ import {
 } from "@/features/proposals/components/proposal-filters";
 import {
     ProposalCardSkeleton,
+    ProposalsEmptyBackdrop,
     ProposalsTableSkeleton,
 } from "@/features/proposals/components/proposals-skeleton";
 import { hasFilterValue } from "@/features/proposals/types/filter-types";
@@ -247,32 +247,33 @@ function NoRequestsFound() {
     const { treasuryId } = useTreasury();
     const router = useRouter();
     return (
-        <PageCard className="py-[100px] flex flex-col items-center justify-center w-full h-fit gap-4">
-            <EmptyState
-                icon={SentIcon}
-                title={tEmpty("title")}
-                description={tEmpty("description")}
-                className="py-0"
-            />
-            <div className="flex gap-4 w-[300px]">
-                <AuthButton
-                    permissionKind="transfer"
-                    onClick={() => router.push(`/${treasuryId}/payments`)}
-                    permissionAction="AddProposal"
-                    className="gap-1 w-full shrink"
-                >
-                    <Icon icon={SentIcon} /> {tEmpty("send")}
-                </AuthButton>
-                <AuthButton
-                    permissionKind="call"
-                    onClick={() => router.push(`/${treasuryId}/exchange`)}
-                    permissionAction="AddProposal"
-                    className="gap-1 w-full shrink"
-                >
-                    <Icon icon={ArrowLeftRightIcon} /> {tEmpty("exchange")}
-                </AuthButton>
-            </div>
-        </PageCard>
+        <EmptyState
+            title={tEmpty("title")}
+            description={tEmpty("description")}
+            skeleton={<ProposalsEmptyBackdrop />}
+            className="gap-4 py-0"
+            actions={
+                <div className="flex gap-4">
+                    <AuthButton
+                        permissionKind="transfer"
+                        onClick={() => router.push(`/${treasuryId}/payments`)}
+                        permissionAction="AddProposal"
+                        className="gap-1.5"
+                    >
+                        <Icon icon={SentIcon} /> {tEmpty("send")}
+                    </AuthButton>
+                    <AuthButton
+                        permissionKind="call"
+                        onClick={() => router.push(`/${treasuryId}/exchange`)}
+                        permissionAction="AddProposal"
+                        className="gap-1.5"
+                    >
+                        <Icon icon={ArrowDataTransferHorizontalIcon} />
+                        {tEmpty("exchange")}
+                    </AuthButton>
+                </div>
+            }
+        />
     );
 }
 

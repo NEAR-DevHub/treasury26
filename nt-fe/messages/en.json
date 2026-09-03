@@ -70,7 +70,7 @@
         "receiveNetwork": "Receive Network",
         "receiveAmountUsd": "Receive Amount (USD)",
         "paymentConfirmation": "Payment Confirmation",
-        "exchangeConfirmation": "Exchange Confirmation",
+        "exchangeConfirmation": "Swap Confirmation",
         "pdfReceipt": "PDF receipt"
     },
     "languageSwitcher": {
@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "Requests",
-            "detailDescription": "Details for Request",
-            "detailTitle": "Request #{id}"
+            "detailTitle": "{kind} details",
+            "sendDetailTitle": "Send details",
+            "swapDetailTitle": "Swap details",
+            "bulkDetailTitle": "Bulk send details"
         },
         "members": {
             "title": "Members",
@@ -652,7 +654,7 @@
             "title": "Create your first request",
             "description": "Requests for payments, exchanges, and other actions will appear here once created.",
             "send": "Send",
-            "exchange": "Exchange"
+            "exchange": "Swap"
         },
         "actions": {
             "approve": "Approve",
@@ -676,8 +678,8 @@
             "allCaughtUp": "All caught up!",
             "noPending": "There are no pending requests.",
             "send": "Send",
-            "exchange": "Exchange",
-            "requestsSelected": "{count, plural, one {# Request Selected} other {# Requests Selected}}",
+            "exchange": "Swap",
+            "requestsSelected": "{count, plural, one {# request selected} other {# requests selected}}",
             "bulkApproveDisabled": "This request can't be approved because the treasury has insufficient balance."
         },
         "pending": {
@@ -845,7 +847,7 @@
             "toPrefix": "To:",
             "validatorPrefix": "Validator:",
             "validatorSubtitle": "Validator: {address}",
-            "impactTitle": "Impact of Changing Voting Duration",
+            "impactTitle": "Impact of changing voting duration",
             "impactBody": "You are about to update the voting duration. This will affect the following existing requests.",
             "activeRequestsBullet": "{count, plural, one {# request will be active for voting after this change, with updated expiration dates.} other {# requests will be active for voting after this change, with updated expiration dates.}}",
             "expiringRequestsBullet": "{count, plural, one {# request will be marked as \"Expired\" under the new voting duration.} other {# requests will be marked as \"Expired\" under the new voting duration.}}",
@@ -853,7 +855,7 @@
             "willExpireHeading": "Requests that will marked as \"Expire\"",
             "tableRequest": "Request",
             "tableTransaction": "Transaction",
-            "tableNewExpiry": "New Expiry",
+            "tableNewExpiry": "New expiry",
             "expireInDays": "{count, plural, one {Expire in # day} other {Expire in # days}}",
             "today": "Today",
             "uponApproval": "Upon approval",

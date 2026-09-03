@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "リクエスト",
-            "detailDescription": "リクエストの詳細",
-            "detailTitle": "リクエスト #{id}"
+            "detailTitle": "{kind}の詳細",
+            "sendDetailTitle": "送金の詳細",
+            "swapDetailTitle": "スワップの詳細",
+            "bulkDetailTitle": "一括送金の詳細"
         },
         "members": {
             "title": "メンバー",
@@ -652,7 +654,7 @@
             "title": "最初のリクエストを作成しましょう",
             "description": "支払い、交換などのリクエストは作成されるとここに表示されます。",
             "send": "送金",
-            "exchange": "交換"
+            "exchange": "スワップ"
         },
         "actions": {
             "approve": "承認",
@@ -676,7 +678,7 @@
             "allCaughtUp": "すべて対応済みです!",
             "noPending": "保留中のリクエストはありません。",
             "send": "送金",
-            "exchange": "交換",
+            "exchange": "スワップ",
             "requestsSelected": "{count, plural, other {# 件のリクエストを選択}}",
             "bulkApproveDisabled": "トレジャリーの残高が不足しているため、このリクエストは承認できません。"
         },

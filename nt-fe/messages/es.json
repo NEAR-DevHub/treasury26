@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "Solicitudes",
-            "detailDescription": "Detalles de la solicitud",
-            "detailTitle": "Solicitud n.º {id}"
+            "detailTitle": "Detalles de {kind}",
+            "sendDetailTitle": "Detalles del envío",
+            "swapDetailTitle": "Detalles del swap",
+            "bulkDetailTitle": "Detalles del envío masivo"
         },
         "members": {
             "title": "Miembros",

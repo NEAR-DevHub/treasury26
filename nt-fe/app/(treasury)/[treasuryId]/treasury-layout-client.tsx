@@ -28,6 +28,15 @@ function isReceiptPath(pathname: string | null): boolean {
     return /\/requests\/[^/]+\/receipt$/.test(pathname ?? "");
 }
 
+/**
+ * The requests list, or a single request opened full screen. The design gives
+ * both the whole phone viewport — requests are the destination, so the tab bar
+ * steps aside and the header's back control leads out of them.
+ */
+function isRequestsPath(pathname: string | null): boolean {
+    return /\/requests(\/[^/]+)?\/?$/.test(pathname ?? "");
+}
+
 export function TreasuryLayoutClient({
     children,
     treasuryId,
@@ -81,7 +90,7 @@ export function TreasuryLayoutClient({
                         <div className="min-h-0 flex-1 overflow-y-auto bg-general-bg-tertiary lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
                             {children}
                         </div>
-                        <MobileBottomNav />
+                        {!isRequestsPath(pathname) && <MobileBottomNav />}
                         <MobileMenuSheet />
                         <MobileUserSheet />
                         <MobileLanguageSheet />

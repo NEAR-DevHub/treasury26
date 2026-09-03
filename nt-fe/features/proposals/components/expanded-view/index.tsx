@@ -1,39 +1,29 @@
-import { Icon } from "@/components/icon";
-import { Delete01Icon, LinkSquare01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { Proposal } from "@/lib/proposals-api";
-import { TransferExpanded } from "./transfer-expanded";
-import { FunctionCallExpanded } from "./function-call-expanded";
-import { ChangePolicyExpanded } from "./change-policy-expanded";
-import { VestingExpanded } from "./vesting-expanded";
-import { ProposalSidebar } from "./common/proposal-sidebar";
-import { PageCard } from "@/components/card";
-import { Button } from "@/components/button";
-import { CopyButton } from "@/components/copy-button";
-import { Policy } from "@/types/policy";
-import { StakingExpanded } from "./staking-expanded";
-import { ChangeConfigExpanded } from "./change-config-expanded";
-import { SwapExpanded } from "./swap-expanded";
-import { useTreasury } from "@/hooks/use-treasury";
-import Link from "next/link";
-import { extractProposalData } from "../../utils/proposal-extractors";
-import {
-    PaymentRequestData,
-    FunctionCallData,
-    ChangePolicyData,
-    ChangeConfigData,
-    ConfidentialRequestData,
-    StakingData,
-    VestingData,
-    SwapRequestData,
+import type { Proposal } from "@/lib/proposals-api";
+import type {
     BatchPaymentRequestData,
     BountyData,
+    ChangeConfigData,
+    ChangePolicyData,
+    ConfidentialRequestData,
     FactoryInfoUpdateData,
+    FunctionCallData,
     MembersData,
+    PaymentRequestData,
     SetStakingContractData,
+    StakingData,
+    SwapRequestData,
     UpgradeData,
+    VestingData,
     VoteData,
 } from "../../types/index";
+import { extractProposalData } from "../../utils/proposal-extractors";
+import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
+import { ChangeConfigExpanded } from "./change-config-expanded";
+import { ChangePolicyExpanded } from "./change-policy-expanded";
+import { useRequestDisplayContext } from "./common/request-display-context";
+import { ConfidentialRequestExpanded } from "./confidential-request-expanded";
+import { FunctionCallExpanded } from "./function-call-expanded";
 import {
     BountyExpanded,
     FactoryInfoUpdateExpanded,
@@ -42,18 +32,13 @@ import {
     UpgradeExpanded,
     VoteExpanded,
 } from "./governance-expanded";
-import { ConfidentialRequestExpanded } from "./confidential-request-expanded";
-import { BatchPaymentRequestExpanded } from "./batch-payment-expanded";
-import { useNear } from "@/stores/near-store";
-import { getProposalStatus } from "../../utils/proposal-utils";
-import {
-    RequestDisplayProvider,
-    useRequestDisplayContext,
-} from "./common/request-display-context";
+import { StakingExpanded } from "./staking-expanded";
+import { SwapExpanded } from "./swap-expanded";
+import { TransferExpanded } from "./transfer-expanded";
+import { VestingExpanded } from "./vesting-expanded";
 
 interface InternalExpandedViewProps {
     proposal: Proposal;
-    policy: Policy;
     treasuryId?: string;
 }
 
@@ -64,7 +49,6 @@ interface InternalExpandedViewProps {
  */
 export function ExpandedViewInternal({
     proposal,
-    policy,
     treasuryId,
 }: InternalExpandedViewProps) {
     const t = useTranslations("proposals.expanded");
@@ -162,108 +146,4 @@ export function ExpandedViewInternal({
                 </p>
             );
     }
-}
-
-interface ExpandedViewProps {
-    proposal: Proposal;
-    policy: Policy;
-    hideOpenInNewTab?: boolean;
-    onVote: (vote: "Approve" | "Reject" | "Remove") => void;
-    onDeposit: (tokenSymbol?: string, tokenNetwork?: string) => void;
-}
-
-export function ExpandedView({
-    proposal,
-    policy,
-    hideOpenInNewTab = false,
-    onVote,
-    onDeposit,
-}: ExpandedViewProps) {
-    const t = useTranslations("proposals.expanded");
-    const { treasuryId, isConfidential } = useTreasury();
-    const { accountId } = useNear();
-    const proposalStatus = getProposalStatus(proposal, policy);
-    const isPending = proposalStatus === "Pending";
-    const isExecuted = proposalStatus === "Executed";
-    const showUsdValue = isPending;
-
-    const component = (
-        <RequestDisplayProvider
-            value={{
-                showUSDValue: showUsdValue,
-                isConfidential,
-                proposalStatus,
-                isPending,
-                isExecuted,
-            }}
-        >
-            <ExpandedViewInternal
-                proposal={proposal}
-                policy={policy}
-                treasuryId={treasuryId}
-            />
-        </RequestDisplayProvider>
-    );
-    const requestUrl = `${window.location.origin}/${treasuryId}/requests/${proposal.id}`;
-
-    const ownProposal = proposal.proposer === accountId && isPending;
-    const isVoted = !!proposal.votes[accountId ?? ""];
-    return (
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 w-full min-w-0">
-            <PageCard className="w-full min-w-0 h-fit">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">
-                        {t("requestDetails")}
-                    </h3>
-                    <div className="flex items-center gap-2">
-                        <CopyButton
-                            text={requestUrl}
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            tooltipContent={t("copyLink")}
-                            iconClassName="h-4 w-4"
-                        />
-                        {!hideOpenInNewTab && (
-                            <Link
-                                href={requestUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                            >
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    tooltipContent={t("openRequestPage")}
-                                    className="h-8 w-8"
-                                >
-                                    <Icon icon={LinkSquare01Icon} />
-                                </Button>
-                            </Link>
-                        )}
-                        {ownProposal && !isVoted && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                tooltipContent={t("deleteRequest")}
-                                className="h-8 w-8"
-                                onClick={() => onVote("Remove")}
-                            >
-                                <Icon icon={Delete01Icon} />
-                            </Button>
-                        )}
-                    </div>
-                </div>
-                {component}
-            </PageCard>
-
-            <div className="w-full min-w-0">
-                <ProposalSidebar
-                    proposal={proposal}
-                    policy={policy}
-                    onVote={onVote}
-                    onDeposit={onDeposit}
-                />
-            </div>
-        </div>
-    );
 }

@@ -1,34 +1,34 @@
-import { Icon } from "@/components/icon";
 import {
     ArrowDown01Icon,
     ArrowRight01Icon,
     ArrowUpRight01Icon,
 } from "@hugeicons/core-free-icons";
+import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, AlertDescription } from "@/components/alert";
+import { Button } from "@/components/button";
+import { FormattedDate } from "@/components/formatted-date";
+import { Icon } from "@/components/icon";
 import {
     Dialog,
     DialogContent,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogFooter,
 } from "@/components/modal";
-import { Button } from "@/components/button";
-import { useTranslations } from "next-intl";
-import { useState, useMemo, useEffect } from "react";
-import Link from "next/link";
-import { useTreasury } from "@/hooks/use-treasury";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Proposal } from "@/lib/proposals-api";
-import { Policy } from "@/types/policy";
-import { Alert, AlertDescription } from "@/components/alert";
 import { ProposalTypeIcon } from "@/features/proposals/components/proposal-type-icon";
 import { TransactionCell } from "@/features/proposals/components/transaction-cell";
-import {
-    getQuoteDeadlineMs,
-    getProposalUIKind,
-} from "@/features/proposals/utils/proposal-utils";
 import { useProposalKindLabel } from "@/features/proposals/hooks/use-proposal-kind-label";
-import { FormattedDate } from "@/components/formatted-date";
+import {
+    getProposalUIKind,
+    getQuoteDeadlineMs,
+} from "@/features/proposals/utils/proposal-utils";
+import { useTreasury } from "@/hooks/use-treasury";
+import type { Proposal } from "@/lib/proposals-api";
 import { nanosToMs } from "@/lib/utils";
+import type { Policy } from "@/types/policy";
 
 interface VotingDurationImpactModalProps {
     isOpen: boolean;
@@ -63,7 +63,6 @@ export function VotingDurationImpactModal({
     isLoadingProposals = false,
 }: VotingDurationImpactModalProps) {
     const t = useTranslations("proposals.expanded");
-    const getProposalKindLabel = useProposalKindLabel();
     const { treasuryId } = useTreasury();
     const [activeExpanded, setActiveExpanded] = useState(false);
     const [expiringExpanded, setExpiringExpanded] = useState(false);
@@ -144,9 +143,27 @@ export function VotingDurationImpactModal({
     const formatDays = (date: Date) => {
         const now = new Date();
         const diffMs = date.getTime() - now.getTime();
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-        return diffDays;
+        return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     };
+
+    const remainingActive = impactedProposals
+        .filter((p) => p.willReactivate || p.willRemainActive)
+        .map(({ proposal, newExpiryDate }) => {
+            const daysLeft = formatDays(newExpiryDate);
+            return {
+                proposal,
+                newExpiry:
+                    daysLeft > 0
+                        ? t("expireInDays", { count: daysLeft })
+                        : t("today"),
+            };
+        });
+    const newlyExpiring = impactedProposals
+        .filter((p) => p.isNewlyExpiring)
+        .map(({ proposal }) => ({
+            proposal,
+            newExpiry: t("uponApproval"),
+        }));
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -155,44 +172,16 @@ export function VotingDurationImpactModal({
                     <DialogTitle>{t("impactTitle")}</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4">
+                <div className="flex flex-col gap-4">
                     <p className="text-sm text-foreground">{t("impactBody")}</p>
 
-                    {isLoadingProposals && (
-                        <div className="border rounded-lg overflow-hidden">
-                            <div className="grid grid-cols-[1fr_1fr_140px] gap-4 px-4 py-2 bg-general-tertiary border-b">
-                                <Skeleton className="h-3 w-16" />
-                                <Skeleton className="h-3 w-20" />
-                                <Skeleton className="h-3 w-16" />
-                            </div>
-                            {Array.from({ length: 3 }).map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="grid grid-cols-[1fr_1fr_140px] gap-4 px-4 py-3 border-b items-center"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <Skeleton className="h-4 w-6 shrink-0" />
-                                        <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
-                                        <div className="space-y-1.5 flex-1">
-                                            <Skeleton className="h-4 w-24" />
-                                            <Skeleton className="h-3 w-16" />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <Skeleton className="h-4 w-28" />
-                                        <Skeleton className="h-3 w-20" />
-                                    </div>
-                                    <Skeleton className="h-4 w-16" />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {!isLoadingProposals && (
+                    {isLoadingProposals ? (
+                        <ImpactSkeleton />
+                    ) : (
                         <>
                             <Alert variant="info">
                                 <AlertDescription>
-                                    <ul className="list-disc list-outside pl-4 space-y-1">
+                                    <ul className="list-outside list-disc space-y-1 pl-4">
                                         {activeProposalsCount > 0 && (
                                             <li>
                                                 {t("activeRequestsBullet", {
@@ -211,248 +200,30 @@ export function VotingDurationImpactModal({
                                 </AlertDescription>
                             </Alert>
 
-                            {/* Active Requests */}
-                            {activeProposalsCount > 0 && (
-                                <div className="border rounded-lg overflow-hidden">
-                                    <button
-                                        onClick={() =>
-                                            setActiveExpanded(!activeExpanded)
-                                        }
-                                        className="w-full flex items-center p-4 hover:bg-muted/50 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            {activeExpanded ? (
-                                                <Icon icon={ArrowDown01Icon} />
-                                            ) : (
-                                                <Icon icon={ArrowRight01Icon} />
-                                            )}
-                                            <span className="text-sm text-left">
-                                                {t("remainActiveHeading")}
-                                            </span>
-                                        </div>
-                                    </button>
-
-                                    {activeExpanded && (
-                                        <div className="border-t">
-                                            {/* Header */}
-                                            <div className="grid grid-cols-[1fr_1fr_140px] gap-4 px-4 py-2 bg-general-tertiary border-b text-xs font-medium uppercase text-muted-foreground">
-                                                <div>{t("tableRequest")}</div>
-                                                <div>
-                                                    {t("tableTransaction")}
-                                                </div>
-                                                <div>{t("tableNewExpiry")}</div>
-                                            </div>
-
-                                            {/* Rows */}
-                                            {impactedProposals
-                                                .filter(
-                                                    (p) =>
-                                                        p.willReactivate ||
-                                                        p.willRemainActive,
-                                                )
-                                                .map(
-                                                    ({
-                                                        proposal,
-                                                        newExpiryDate,
-                                                    }) => {
-                                                        const daysLeft =
-                                                            formatDays(
-                                                                newExpiryDate,
-                                                            );
-                                                        return (
-                                                            <div
-                                                                key={
-                                                                    proposal.id
-                                                                }
-                                                                className="grid grid-cols-[1fr_1fr_140px] gap-4 px-4 py-3 border-b items-center"
-                                                            >
-                                                                <div className="flex items-center gap-3 min-w-0">
-                                                                    <span className="text-sm font-semibold text-muted-foreground shrink-0">
-                                                                        #
-                                                                        {
-                                                                            proposal.id
-                                                                        }
-                                                                    </span>
-                                                                    <ProposalTypeIcon
-                                                                        proposal={
-                                                                            proposal
-                                                                        }
-                                                                        treasuryId={
-                                                                            treasuryId
-                                                                        }
-                                                                    />
-                                                                    <div className="flex flex-col min-w-0">
-                                                                        <span className="text-sm font-medium truncate">
-                                                                            {getProposalKindLabel(
-                                                                                getProposalUIKind(
-                                                                                    proposal,
-                                                                                ),
-                                                                            )}
-                                                                        </span>
-                                                                        <FormattedDate
-                                                                            proposal={
-                                                                                proposal
-                                                                            }
-                                                                            policy={
-                                                                                currentPolicy
-                                                                            }
-                                                                            relative
-                                                                            className="text-xs text-muted-foreground"
-                                                                        />
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="min-w-0 truncate">
-                                                                    <TransactionCell
-                                                                        proposal={
-                                                                            proposal
-                                                                        }
-                                                                    />
-                                                                </div>
-
-                                                                <Link
-                                                                    href={`/${treasuryId}/requests/${proposal.id}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="flex items-center gap-1.5 text-sm hover:underline"
-                                                                    onClick={(
-                                                                        e,
-                                                                    ) =>
-                                                                        e.stopPropagation()
-                                                                    }
-                                                                >
-                                                                    {daysLeft >
-                                                                    0
-                                                                        ? t(
-                                                                              "expireInDays",
-                                                                              {
-                                                                                  count: daysLeft,
-                                                                              },
-                                                                          )
-                                                                        : t(
-                                                                              "today",
-                                                                          )}
-                                                                    <Icon
-                                                                        icon={
-                                                                            ArrowUpRight01Icon
-                                                                        }
-                                                                        className="shrink-0"
-                                                                    />
-                                                                </Link>
-                                                            </div>
-                                                        );
-                                                    },
-                                                )}
-                                        </div>
-                                    )}
-                                </div>
+                            {remainingActive.length > 0 && (
+                                <ImpactedRequests
+                                    heading={t("remainActiveHeading")}
+                                    rows={remainingActive}
+                                    policy={currentPolicy}
+                                    treasuryId={treasuryId}
+                                    isExpanded={activeExpanded}
+                                    onToggle={() =>
+                                        setActiveExpanded(!activeExpanded)
+                                    }
+                                />
                             )}
 
-                            {/* Expiring Requests */}
-                            {expiringProposalsCount > 0 && (
-                                <div className="border rounded-lg overflow-hidden">
-                                    <button
-                                        onClick={() =>
-                                            setExpiringExpanded(
-                                                !expiringExpanded,
-                                            )
-                                        }
-                                        className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            {expiringExpanded ? (
-                                                <Icon icon={ArrowDown01Icon} />
-                                            ) : (
-                                                <Icon icon={ArrowRight01Icon} />
-                                            )}
-                                            <span className="text-sm text-left">
-                                                {t("willExpireHeading")}
-                                            </span>
-                                        </div>
-                                    </button>
-
-                                    {expiringExpanded && (
-                                        <div className="border-t">
-                                            {/* Header */}
-                                            <div className="grid grid-cols-[1fr_1fr_140px] gap-4 px-4 py-2 bg-general-tertiary border-b text-xs font-medium uppercase text-muted-foreground">
-                                                <div>{t("tableRequest")}</div>
-                                                <div>
-                                                    {t("tableTransaction")}
-                                                </div>
-                                                <div>{t("tableNewExpiry")}</div>
-                                            </div>
-                                            {impactedProposals
-                                                .filter(
-                                                    (p) => p.isNewlyExpiring,
-                                                )
-                                                .map(({ proposal }) => (
-                                                    <div
-                                                        key={proposal.id}
-                                                        className="grid grid-cols-[1fr_1fr_140px] gap-4 px-4 py-3 border-b items-center"
-                                                    >
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <span className="text-sm font-semibold text-muted-foreground shrink-0">
-                                                                #{proposal.id}
-                                                            </span>
-                                                            <ProposalTypeIcon
-                                                                proposal={
-                                                                    proposal
-                                                                }
-                                                                treasuryId={
-                                                                    treasuryId
-                                                                }
-                                                            />
-                                                            <div className="flex flex-col min-w-0">
-                                                                <span className="text-sm font-medium truncate">
-                                                                    {getProposalKindLabel(
-                                                                        getProposalUIKind(
-                                                                            proposal,
-                                                                        ),
-                                                                    )}
-                                                                </span>
-                                                                <FormattedDate
-                                                                    proposal={
-                                                                        proposal
-                                                                    }
-                                                                    policy={
-                                                                        currentPolicy
-                                                                    }
-                                                                    relative
-                                                                    className="text-xs text-muted-foreground"
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="min-w-0 truncate">
-                                                            <TransactionCell
-                                                                proposal={
-                                                                    proposal
-                                                                }
-                                                            />
-                                                        </div>
-
-                                                        <Link
-                                                            href={`/${treasuryId}/requests/${proposal.id}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="flex items-center gap-1.5 text-sm hover:underline"
-                                                            onClick={(e) =>
-                                                                e.stopPropagation()
-                                                            }
-                                                        >
-                                                            {t("uponApproval")}
-                                                            <Icon
-                                                                icon={
-                                                                    ArrowUpRight01Icon
-                                                                }
-                                                                className="shrink-0"
-                                                            />
-                                                        </Link>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    )}
-                                </div>
+                            {newlyExpiring.length > 0 && (
+                                <ImpactedRequests
+                                    heading={t("willExpireHeading")}
+                                    rows={newlyExpiring}
+                                    policy={currentPolicy}
+                                    treasuryId={treasuryId}
+                                    isExpanded={expiringExpanded}
+                                    onToggle={() =>
+                                        setExpiringExpanded(!expiringExpanded)
+                                    }
+                                />
                             )}
                         </>
                     )}
@@ -469,5 +240,209 @@ export function VotingDurationImpactModal({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+/** One affected request, as both layouts describe it. */
+interface ImpactedRow {
+    proposal: Proposal;
+    /** When the request will expire once the new duration applies. */
+    newExpiry: string;
+}
+
+/**
+ * A group of affected requests behind a disclosure: a table on a desktop, the
+ * requests list's own cards on a phone. The row leads out to the request, so
+ * the reader can check one before committing to the change.
+ */
+function ImpactedRequests({
+    heading,
+    rows,
+    policy,
+    treasuryId,
+    isExpanded,
+    onToggle,
+}: {
+    heading: string;
+    rows: ImpactedRow[];
+    policy: Policy;
+    treasuryId?: string;
+    isExpanded: boolean;
+    onToggle: () => void;
+}) {
+    const t = useTranslations("proposals.expanded");
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-general-border">
+            <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={isExpanded}
+                className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-general-bg-secondary/50"
+            >
+                <Icon
+                    icon={isExpanded ? ArrowDown01Icon : ArrowRight01Icon}
+                    className="size-5 shrink-0 text-general-secondary-foreground"
+                />
+                <span className="text-sm font-medium">{heading}</span>
+            </button>
+
+            {isExpanded && (
+                <div className="border-general-border border-t">
+                    {/* Desktop: the three columns the design gives the table. */}
+                    <div className="hidden md:block">
+                        <div className="grid grid-cols-[1fr_1fr_1fr] border-general-border border-b px-3 py-2 text-sm font-semibold text-general-secondary-foreground">
+                            <div>{t("tableRequest")}</div>
+                            <div>{t("tableTransaction")}</div>
+                            <div>{t("tableNewExpiry")}</div>
+                        </div>
+                        {rows.map(({ proposal, newExpiry }) => (
+                            <div
+                                key={proposal.id}
+                                className="grid grid-cols-[1fr_1fr_1fr] items-center gap-4 border-general-border border-b px-3 py-3 last:border-b-0"
+                            >
+                                <ImpactedRequestSummary
+                                    proposal={proposal}
+                                    policy={policy}
+                                    treasuryId={treasuryId}
+                                />
+                                <div className="min-w-0">
+                                    <TransactionCell proposal={proposal} />
+                                </div>
+                                <div className="flex min-w-0 items-center justify-between gap-2">
+                                    <span className="truncate text-sm">
+                                        {newExpiry}
+                                    </span>
+                                    <RequestLink
+                                        treasuryId={treasuryId}
+                                        proposalId={proposal.id}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Phone: one card per request, the way the list shows it. */}
+                    <div className="flex flex-col gap-3 p-3 md:hidden">
+                        {rows.map(({ proposal, newExpiry }) => (
+                            <div
+                                key={proposal.id}
+                                className="flex flex-col gap-3 rounded-xl border border-general-border p-3"
+                            >
+                                <div className="flex items-start justify-between gap-2">
+                                    <ImpactedRequestSummary
+                                        proposal={proposal}
+                                        policy={policy}
+                                        treasuryId={treasuryId}
+                                    />
+                                    <RequestLink
+                                        treasuryId={treasuryId}
+                                        proposalId={proposal.id}
+                                    />
+                                </div>
+                                <TransactionCell proposal={proposal} />
+                                <span className="border-general-border border-t pt-3 text-sm text-general-secondary-foreground">
+                                    {t("tableNewExpiry")}: {newExpiry}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** The request's id, type icon and name — the table's leading column. */
+function ImpactedRequestSummary({
+    proposal,
+    policy,
+    treasuryId,
+}: {
+    proposal: Proposal;
+    policy: Policy;
+    treasuryId?: string;
+}) {
+    const getProposalKindLabel = useProposalKindLabel();
+
+    return (
+        <div className="flex min-w-0 items-center gap-3">
+            <span className="shrink-0 text-sm font-semibold text-general-secondary-foreground">
+                #{proposal.id}
+            </span>
+            <ProposalTypeIcon proposal={proposal} treasuryId={treasuryId} />
+            <div className="flex min-w-0 flex-col">
+                <span className="truncate text-sm font-semibold">
+                    {getProposalKindLabel(getProposalUIKind(proposal))}
+                </span>
+                <FormattedDate
+                    proposal={proposal}
+                    policy={policy}
+                    relative
+                    className="truncate text-sm text-general-secondary-foreground"
+                />
+            </div>
+        </div>
+    );
+}
+
+function RequestLink({
+    treasuryId,
+    proposalId,
+}: {
+    treasuryId?: string;
+    proposalId: number;
+}) {
+    const t = useTranslations("proposals.expanded");
+
+    return (
+        <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            tooltipContent={t("openRequestPage")}
+        >
+            <Link
+                href={`/${treasuryId}/requests/${proposalId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <Icon icon={ArrowUpRight01Icon} />
+            </Link>
+        </Button>
+    );
+}
+
+function ImpactSkeleton() {
+    return (
+        <div className="overflow-hidden rounded-xl border border-general-border">
+            <div className="grid grid-cols-[1fr_1fr_1fr] gap-4 border-general-border border-b px-3 py-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-16" />
+            </div>
+            {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                    // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder list
+                    key={i}
+                    className="grid grid-cols-[1fr_1fr_1fr] items-center gap-4 border-general-border border-b px-3 py-3 last:border-b-0"
+                >
+                    <div className="flex items-center gap-3">
+                        <Skeleton className="h-4 w-6 shrink-0" />
+                        <Skeleton className="size-9 shrink-0 rounded-full" />
+                        <div className="flex flex-1 flex-col gap-1.5">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-3 w-16" />
+                        </div>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                        <Skeleton className="h-4 w-28" />
+                        <Skeleton className="h-3 w-20" />
+                    </div>
+                    <Skeleton className="h-4 w-16" />
+                </div>
+            ))}
+        </div>
     );
 }

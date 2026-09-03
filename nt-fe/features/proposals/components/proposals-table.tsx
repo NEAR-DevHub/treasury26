@@ -1,18 +1,32 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
-    ArrowLeftRightIcon,
+    ArrowDataTransferHorizontalIcon,
     ArrowRight01Icon,
     Cancel01Icon,
-    HelpCircleIcon,
-    SearchMinusIcon,
-    SentIcon,
     CheckIcon,
+    HelpCircleIcon,
+    SentIcon,
 } from "@hugeicons/core-free-icons";
+import {
+    type ColumnDef,
+    createColumnHelper,
+    flexRender,
+    getCoreRowModel,
+    getPaginationRowModel,
+    useReactTable,
+} from "@tanstack/react-table";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Proposal } from "@/lib/proposals-api";
+import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
+import { Address } from "@/components/address";
+import { AuthButton } from "@/components/auth-button";
+import { Button } from "@/components/button";
+import { EmptyState } from "@/components/empty-state";
+import { HighlightedText } from "@/components/highlighted-text";
+import { Icon } from "@/components/icon";
+import { Pagination } from "@/components/pagination";
 import {
     Table,
     TableBody,
@@ -21,52 +35,86 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
-import { Button } from "@/components/button";
-import { TransactionCell } from "./transaction-cell";
-import { RequestDetailsSheet } from "./request-details/request-details-sheet";
-import { ProposalTypeIcon } from "./proposal-type-icon";
-import { VotingIndicator } from "./voting-indicator";
-import { Policy } from "@/types/policy";
-import { TreasuryConfig } from "@/lib/api";
-
-import { TooltipUser } from "@/components/user";
+import { sheetCellClassName, TableSheet } from "@/components/table-sheet";
+import { Tooltip } from "@/components/tooltip";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
-import { useProposalKindLabel } from "../hooks/use-proposal-kind-label";
-import { extractConfidentialRequestData } from "../utils/proposal-extractors";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Pagination } from "@/components/pagination";
-import { TableSheet, sheetCellClassName } from "@/components/table-sheet";
-import { ProposalCard } from "./proposal-card";
-import { ProposalStatusPill } from "./proposal-status-pill";
-import { ProposalTimelineDate } from "./proposal-timeline-date";
-import { useNear } from "@/stores/near-store";
-import { buildDepositDeepLink } from "@/app/(treasury)/[treasuryId]/dashboard/components/deposit/deposit-transfer-url";
+import { TooltipUser } from "@/components/user";
+import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
 import { useTreasury } from "@/hooks/use-treasury";
+import type { TreasuryConfig } from "@/lib/api";
 import {
     getApproversAndThreshold,
     getKindFromProposal,
 } from "@/lib/config-utils";
-
-import {
-    ColumnDef,
-    flexRender,
-    getCoreRowModel,
-    useReactTable,
-    createColumnHelper,
-    getPaginationRowModel,
-} from "@tanstack/react-table";
-import { VoteModal } from "./vote-modal";
-import { Address } from "@/components/address";
-import { EmptyState } from "@/components/empty-state";
-import { AuthButton } from "@/components/auth-button";
-import { useRouter } from "next/navigation";
-import { Tooltip } from "@/components/tooltip";
-import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insufficient-balance";
-import { HighlightedText } from "@/components/highlighted-text";
+import type { Proposal } from "@/lib/proposals-api";
 import { cn } from "@/lib/utils";
-import { useVoteActionSlots } from "@/features/proposals/hooks/use-vote-action-slots";
+import { useNear } from "@/stores/near-store";
+import type { Policy } from "@/types/policy";
+import { useProposalKindLabel } from "../hooks/use-proposal-kind-label";
+import { useProposalsInsufficientBalance } from "../hooks/use-proposals-insufficient-balance";
+import { extractConfidentialRequestData } from "../utils/proposal-extractors";
+import { getProposalStatus, getProposalUIKind } from "../utils/proposal-utils";
+import { ProposalCard } from "./proposal-card";
+import { ProposalStatusPill } from "./proposal-status-pill";
+import { ProposalTimelineDate } from "./proposal-timeline-date";
+import { ProposalTypeIcon } from "./proposal-type-icon";
+import { ProposalsEmptyBackdrop } from "./proposals-skeleton";
 import { COLUMN_CLASS, HEAD_CLASS } from "./proposals-table-layout";
+import { RequestDetailsSheet } from "./request-details/request-details-sheet";
+import { TransactionCell } from "./transaction-cell";
+import { VoteModal } from "./vote-modal";
+import { VotingIndicator } from "./voting-indicator";
+
+/**
+ * Nothing to list. A filtered view says so and stops there; an unfiltered one
+ * is a treasury with no requests at all, so it offers the two that start one.
+ */
+function EmptyRequests({ withFilters }: { withFilters: boolean }) {
+    const tT = useTranslations("requests.table");
+    const { treasuryId } = useTreasury();
+    const router = useRouter();
+
+    if (withFilters) {
+        return (
+            <EmptyState
+                description={tT("noResults")}
+                skeleton={<ProposalsEmptyBackdrop />}
+                className="py-0"
+            />
+        );
+    }
+
+    return (
+        <EmptyState
+            title={tT("allCaughtUp")}
+            description={tT("noPending")}
+            skeleton={<ProposalsEmptyBackdrop />}
+            className="gap-4 py-0"
+            actions={
+                <div className="flex gap-4">
+                    <AuthButton
+                        permissionKind="transfer"
+                        onClick={() => router.push(`/${treasuryId}/payments`)}
+                        permissionAction="AddProposal"
+                        className="gap-1.5"
+                    >
+                        <Icon icon={SentIcon} /> {tT("send")}
+                    </AuthButton>
+                    <AuthButton
+                        permissionKind="call"
+                        onClick={() => router.push(`/${treasuryId}/exchange`)}
+                        permissionAction="AddProposal"
+                        className="gap-1.5"
+                    >
+                        <Icon icon={ArrowDataTransferHorizontalIcon} />
+                        {tT("exchange")}
+                    </AuthButton>
+                </div>
+            }
+        />
+    );
+}
 
 const columnHelper = createColumnHelper<Proposal>();
 
@@ -288,7 +336,7 @@ export function ProposalsTable({
                         <Tooltip content={tT("votingTooltip")}>
                             <Icon
                                 icon={HelpCircleIcon}
-                                className="size-4 text-general-muted-foreground"
+                                className="size-4 text-card [&_circle]:fill-general-muted-foreground [&_circle]:stroke-general-muted-foreground hover:[&_circle]:fill-general-secondary-foreground hover:[&_circle]:stroke-general-secondary-foreground"
                             />
                         </Tooltip>
                     </span>
@@ -392,44 +440,7 @@ export function ProposalsTable({
     );
 
     if ((proposals.length === 0 && pageIndex === 0) || total === 0) {
-        return withFilters ? (
-            <TableSheet>
-                <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-general-border bg-card py-8">
-                    <EmptyState
-                        icon={SearchMinusIcon}
-                        title=""
-                        description={tT("noResults")}
-                    />
-                </div>
-            </TableSheet>
-        ) : (
-            <div className="flex flex-col items-center justify-center py-8 gap-4">
-                <EmptyState
-                    icon={SentIcon}
-                    title={tT("allCaughtUp")}
-                    description={tT("noPending")}
-                    className="pb-0"
-                />
-                <div className="flex gap-4 w-full max-w-[300px] min-w-0 pb-12">
-                    <AuthButton
-                        permissionKind="transfer"
-                        onClick={() => router.push(`/${treasuryId}/payments`)}
-                        permissionAction="AddProposal"
-                        className="gap-1 w-full shrink"
-                    >
-                        <Icon icon={SentIcon} /> {tT("send")}
-                    </AuthButton>
-                    <AuthButton
-                        permissionKind="call"
-                        onClick={() => router.push(`/${treasuryId}/exchange`)}
-                        permissionAction="AddProposal"
-                        className="gap-1 w-full shrink"
-                    >
-                        <Icon icon={ArrowLeftRightIcon} /> {tT("exchange")}
-                    </AuthButton>
-                </div>
-            </div>
-        );
+        return <EmptyRequests withFilters={withFilters} />;
     }
 
     const totalPages = Math.ceil(total / pageSize);
@@ -462,8 +473,8 @@ export function ProposalsTable({
         <>
             <div className="flex flex-col gap-2">
                 {selectedCount > 0 && (
-                    <div className="flex items-center justify-between rounded-xl border border-general-border bg-card px-4 py-3 text-sm md:text-base">
-                        <span className="font-semibold">
+                    <div className="flex items-center justify-between gap-4 py-2 text-sm md:text-base">
+                        <span className="text-xl font-semibold leading-[1.2] text-general-secondary-foreground">
                             {tT("requestsSelected", { count: selectedCount })}
                         </span>
                         <div className="flex items-center gap-2">

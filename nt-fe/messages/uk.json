@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "Запити",
-            "detailDescription": "Деталі запиту",
-            "detailTitle": "Запит №{id}"
+            "detailTitle": "Деталі {kind}",
+            "sendDetailTitle": "Деталі надсилання",
+            "swapDetailTitle": "Деталі обміну",
+            "bulkDetailTitle": "Деталі масового надсилання"
         },
         "members": {
             "title": "Учасники",
