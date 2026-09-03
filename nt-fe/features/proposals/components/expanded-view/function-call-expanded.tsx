@@ -2,9 +2,9 @@ import { Icon } from "@/components/icon";
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { InfoDisplay, InfoItem } from "@/components/info-display";
-import { User } from "@/components/user";
 import { cn, formatGas, formatNearAmount } from "@/lib/utils";
 import { FunctionCallData, FunctionCallAction } from "../../types/index";
+import { RequestParty } from "../request-details/primitives";
 import {
     Collapsible,
     CollapsibleContent,
@@ -112,13 +112,14 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
     const headerItems: InfoItem[] = [
         {
             label: t("contract"),
-            value: <User accountId={data.receiver} preferAddressBook />,
+            value: <RequestParty accountId={data.receiver} />,
         },
     ];
 
     if (isSingle) {
         return (
             <InfoDisplay
+                hideSeparator
                 items={[
                     ...headerItems,
                     ...(() => {
@@ -219,6 +220,9 @@ export function FunctionCallExpanded({ data }: FunctionCallExpandedProps) {
     };
 
     return (
-        <InfoDisplay items={[...headerItems, ...summaryItems, actionsItem]} />
+        <InfoDisplay
+            hideSeparator
+            items={[...headerItems, ...summaryItems, actionsItem]}
+        />
     );
 }

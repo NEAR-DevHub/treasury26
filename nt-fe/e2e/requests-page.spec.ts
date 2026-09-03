@@ -211,7 +211,7 @@ async function setupRequestsPageMocks(page: Page) {
 }
 
 test.describe("Requests page – new treasury with onboarding", () => {
-    test("CTA buttons (Send / Exchange) do not overlap on requests page", async ({
+    test("CTA buttons (Send / Swap) do not overlap on requests page", async ({
         page,
     }) => {
         await setupRequestsPageMocks(page);
@@ -231,9 +231,7 @@ test.describe("Requests page – new treasury with onboarding", () => {
         // Scope to main content to avoid matching sidebar nav buttons
         const main = page.locator("main");
         const sendButton = main.getByRole("button", { name: /send/i });
-        const exchangeButton = main.getByRole("button", {
-            name: /exchange/i,
-        });
+        const exchangeButton = main.getByRole("button", { name: /swap/i });
 
         await expect(sendButton).toBeVisible({ timeout: 15000 });
         await expect(exchangeButton).toBeVisible({ timeout: 15000 });
@@ -261,25 +259,17 @@ test.describe("Requests page – new treasury with onboarding", () => {
 
             const buttonsOverlap = horizontalOverlap && verticalOverlap;
 
-            // Screenshot: zoomed-in on the CTA area
-            const ctaContainer = page.locator(".flex.gap-4.w-\\[300px\\]");
-            if (await ctaContainer.isVisible()) {
-                await ctaContainer.screenshot({
-                    path: "test-results/requests-page-cta-buttons-zoomed.png",
-                });
-            }
-
             expect(
                 buttonsOverlap,
                 `Send button (x:${sendBox.x}, y:${sendBox.y}, w:${sendBox.width}, h:${sendBox.height}) ` +
-                    `overlaps with Exchange button (x:${exchangeBox.x}, y:${exchangeBox.y}, w:${exchangeBox.width}, h:${exchangeBox.height})`,
+                    `overlaps with Swap button (x:${exchangeBox.x}, y:${exchangeBox.y}, w:${exchangeBox.width}, h:${exchangeBox.height})`,
             ).toBe(false);
 
             // Verify there's a visible gap between them (at least 4px)
             const gap = exchangeBox.x - (sendBox.x + sendBox.width);
             expect(
                 gap,
-                `Gap between Send and Exchange buttons should be >= 4px, got ${gap}px`,
+                `Gap between Send and Swap buttons should be >= 4px, got ${gap}px`,
             ).toBeGreaterThanOrEqual(4);
 
             // Buttons with short labels should not stretch excessively wide
@@ -290,7 +280,7 @@ test.describe("Requests page – new treasury with onboarding", () => {
             ).toBeLessThanOrEqual(maxButtonWidth);
             expect(
                 exchangeBox.width,
-                `Exchange button width (${exchangeBox.width}px) should be <= ${maxButtonWidth}px`,
+                `Swap button width (${exchangeBox.width}px) should be <= ${maxButtonWidth}px`,
             ).toBeLessThanOrEqual(maxButtonWidth);
         }
     });
@@ -533,9 +523,7 @@ test.describe("Requests page – new treasury with onboarding", () => {
 
         // CTA buttons should be visible and not overlapping
         const sendButton = main.getByRole("button", { name: /send/i });
-        const exchangeButton = main.getByRole("button", {
-            name: /exchange/i,
-        });
+        const exchangeButton = main.getByRole("button", { name: /swap/i });
 
         await expect(sendButton).toBeVisible();
         await expect(exchangeButton).toBeVisible();
@@ -556,7 +544,7 @@ test.describe("Requests page – new treasury with onboarding", () => {
 
             expect(
                 horizontalOverlap && verticalOverlap,
-                `Send and Exchange CTA buttons should not overlap`,
+                `Send and Swap CTA buttons should not overlap`,
             ).toBe(false);
 
             // Buttons with short labels should not stretch excessively wide
@@ -567,7 +555,7 @@ test.describe("Requests page – new treasury with onboarding", () => {
             ).toBeLessThanOrEqual(maxButtonWidth);
             expect(
                 exchangeBox.width,
-                `Exchange button width (${exchangeBox.width}px) should be <= ${maxButtonWidth}px`,
+                `Swap button width (${exchangeBox.width}px) should be <= ${maxButtonWidth}px`,
             ).toBeLessThanOrEqual(maxButtonWidth);
         }
 

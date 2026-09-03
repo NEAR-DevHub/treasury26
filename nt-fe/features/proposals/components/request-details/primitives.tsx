@@ -3,16 +3,17 @@
 import {
     ArrowDown01Icon,
     ArrowUp01Icon,
-    InformationCircleIcon,
+    HelpCircleIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useState } from "react";
 import { Address } from "@/components/address";
 import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
+import { ProfileAvatarChip } from "@/components/profile-avatar-chip";
 import { Tooltip } from "@/components/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { resolveUserName, TooltipUser, UserAvatar } from "@/components/user";
+import { resolveUserName, TooltipUser } from "@/components/user";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { useProfile } from "@/hooks/use-treasury-queries";
 import { resolveProfileImageUrl } from "@/lib/profile-image";
@@ -70,8 +71,8 @@ export function DetailRow({
                 {info && (
                     <Tooltip content={info}>
                         <Icon
-                            icon={InformationCircleIcon}
-                            className="size-4 text-general-muted-foreground"
+                            icon={HelpCircleIcon}
+                            className="size-4 text-card [&_circle]:fill-general-muted-foreground [&_circle]:stroke-general-muted-foreground hover:[&_circle]:fill-general-secondary-foreground hover:[&_circle]:stroke-general-secondary-foreground"
                         />
                     </Tooltip>
                 )}
@@ -161,11 +162,9 @@ export function RequestParty({
             triggerProps={{ asChild: false }}
         >
             <div className={cn("flex items-center gap-1.5", className)}>
-                <UserAvatar
+                <ProfileAvatarChip
                     name={name}
-                    address={accountId}
                     imageUrl={resolveProfileImageUrl(profile?.image)}
-                    className="size-7 rounded-lg"
                 />
                 <div className="flex min-w-0 flex-col text-left">
                     {!nameIsAddress && (

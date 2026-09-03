@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "בקשות",
-            "detailDescription": "פרטי בקשה",
-            "detailTitle": "בקשה #{id}"
+            "detailTitle": "פרטי {kind}",
+            "sendDetailTitle": "פרטי השליחה",
+            "swapDetailTitle": "פרטי ההחלפה",
+            "bulkDetailTitle": "פרטי השליחה המרוכזת"
         },
         "members": {
             "title": "חברים",
