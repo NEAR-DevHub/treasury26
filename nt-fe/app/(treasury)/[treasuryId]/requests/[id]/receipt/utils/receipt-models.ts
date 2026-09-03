@@ -51,14 +51,14 @@ export function buildReceiptAmountModel({
     sourceToken: {
         amountDecimal: string | null;
         amountDisplay: string;
-        amountUsd?: number | null;
+        amountUsd?: number;
         symbol: string;
         tokenPrice: number | null;
         historicalPriceUsd: number | null;
     };
     destinationToken: {
         amountDecimal?: string | null;
-        amountUsd?: number | null;
+        amountUsd?: number;
         symbol: string;
         tokenPrice: number | null;
         historicalPriceUsd: number | null;
@@ -73,8 +73,9 @@ export function buildReceiptAmountModel({
         decimalOrNull(destinationToken.amountDecimal);
     const quoteSourceAmountUsd = decimalOrNull(quote?.amountInUsd);
     const quoteDestinationAmountUsd = decimalOrNull(quote?.amountOutUsd);
-    // Tri-state: an explicitly provided amountUsd (even null/invalid) must
-    // suppress the quote/historical fallbacks; only an absent prop enables them.
+    // A recorded amountUsd is authoritative and suppresses the quote/historical
+    // fallbacks; only an absent one enables them. Extraction already collapses
+    // an unrecorded figure to absent, so those are the only two states here.
     const hasExplicitSourceUsd = sourceToken.amountUsd !== undefined;
     const hasExplicitDestinationUsd = destinationToken.amountUsd !== undefined;
     const explicitSourceAmountUsd = decimalOrNull(sourceToken.amountUsd);

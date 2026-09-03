@@ -30,8 +30,8 @@ export interface ReceiptProposalData {
     receiverAddress?: string;
     sourceAmountRaw?: string;
     destinationAmountWithDecimals?: string;
-    sourceAmountUsd?: number | null;
-    destinationAmountUsd?: number | null;
+    sourceAmountUsd?: number;
+    destinationAmountUsd?: number;
 }
 
 /** Receipt/batch payment shape — net amount the recipient receives. */
@@ -171,8 +171,8 @@ function toPaymentReceiptData(data: PaymentRequestData): ReceiptProposalData {
         receiverAddress: data.receiver,
         sourceAmountRaw: data.amount,
         destinationAmountWithDecimals: undefined,
-        sourceAmountUsd: data.usdValue,
-        destinationAmountUsd: data.usdValue,
+        sourceAmountUsd: data.usdValue ?? undefined,
+        destinationAmountUsd: data.usdValue ?? undefined,
     };
 }
 
@@ -188,8 +188,8 @@ function toExchangeReceiptData(
         receiverAddress: treasuryId,
         sourceAmountRaw: data.amountIn,
         destinationAmountWithDecimals: data.amountOut,
-        sourceAmountUsd: data.amountInUsd,
-        destinationAmountUsd: data.amountOutUsd,
+        sourceAmountUsd: data.amountInUsd ?? undefined,
+        destinationAmountUsd: data.amountOutUsd ?? undefined,
     };
 }
 
