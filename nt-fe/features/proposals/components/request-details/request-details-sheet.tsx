@@ -128,7 +128,11 @@ function RequestDetails({
                             className={HEADER_ACTION_CLASS}
                             tooltipContent={t("openRequestPage")}
                         >
-                            <Link href={requestUrl}>
+                            <Link
+                                href={requestUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
                                 <Icon icon={ArrowExpandDiagonal01Icon} />
                             </Link>
                         </Button>
