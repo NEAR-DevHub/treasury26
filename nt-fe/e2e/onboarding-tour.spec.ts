@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
     maybeFulfillMockWalletRequest,
     seedMockWalletAccount,
@@ -132,12 +132,27 @@ test.describe.configure({ timeout: 120_000 });
 /**
  * Mocks client-side API calls for a signed-in user on the dashboard.
  */
+function extraMemberTreasuries(count: number) {
+    return Array.from({ length: count }, (_, index) => ({
+        daoId: `onboarding-extra-${index}.sputnik-dao.near`,
+        config: {
+            name: `Extra Treasury ${index + 1}`,
+            purpose: "Testing",
+            metadata: {},
+        },
+        isMember: true,
+        isSaved: true,
+        isHidden: false,
+    }));
+}
+
 async function setupDashboardMocks(
     page: Page,
     options?: {
         assets?: typeof TREASURY_ASSETS;
         proposals?: typeof EMPTY_PROPOSALS;
         policy?: typeof TREASURY_POLICY;
+        extraTreasuryCount?: number;
     },
 ) {
     const assets = options?.assets ?? TREASURY_ASSETS;
@@ -193,6 +208,7 @@ async function setupDashboardMocks(
                         isSaved: true,
                         isHidden: false,
                     },
+                    ...extraMemberTreasuries(options?.extraTreasuryCount ?? 0),
                 ]),
             });
         }
@@ -353,7 +369,7 @@ async function startTourViaWelcome(page: Page) {
 
     // Wait for the first tour step to be visible
     await expect(
-        page.getByText("Add assets to your Treasury", { exact: false }),
+        page.getByText("Add funds to your Treasury", { exact: false }),
     ).toBeVisible({ timeout: 10000 });
 }
 
@@ -361,7 +377,7 @@ async function startTourViaWelcome(page: Page) {
 // Welcome Tooltip Tests
 // ──────────────────────────────────────────────────────────────────────────
 
-test.describe.skip("Onboarding – Welcome Tooltip", () => {
+test.describe("Onboarding – Welcome Tooltip", () => {
     test("Welcome tooltip appears for a new user on the dashboard", async ({
         page,
     }) => {
@@ -436,7 +452,7 @@ test.describe.skip("Onboarding – Welcome Tooltip", () => {
 // Dashboard Tour Tests – highlight & arrow verification
 // ──────────────────────────────────────────────────────────────────────────
 
-test.describe.skip("Onboarding – Dashboard Tour highlights and arrows", () => {
+test.describe("Onboarding – Dashboard Tour highlights and arrows", () => {
     test("Dashboard tour can be started from the Welcome tooltip", async ({
         page,
     }) => {
@@ -450,56 +466,38 @@ test.describe.skip("Onboarding – Dashboard Tour highlights and arrows", () => 
         });
     });
 
-    test("Tour targets are the BalanceWithGraph buttons, not the onboarding progress widget", async ({
+    test("Tour targets Receive on the dashboard, then sidebar Send, Swap, and Members", async ({
         page,
     }) => {
-        // The onboarding progress widget also has Deposit/Send buttons, but the
-        // dashboard tour must highlight #dashboard-step1/2/3 which live inside
-        // the BalanceWithGraph card – NOT the progress widget.
         await setupDashboardMocks(page);
         await gotoDashboardFresh(page);
         await startTourViaWelcome(page);
 
-        // Step 1 targets #dashboard-step1 (Deposit in BalanceWithGraph)
         const step1Target = page.locator("#dashboard-step1");
         await expect(step1Target).toBeVisible();
-        // Verify the button is inside the balance card, not the onboarding progress section
-        const balanceCard = step1Target.locator(
-            "xpath=ancestor::*[contains(@class,'grid-cols-3')]",
-        );
-        await expect(balanceCard).toBeVisible();
 
-        // Advance to step 2
         await page.getByRole("button", { name: "Next", exact: true }).click();
         await expect(
             page.getByText("Make payment requests", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
 
-        // Step 2 targets #dashboard-step2 (Send in BalanceWithGraph)
-        const step2Target = page.locator("#dashboard-step2");
+        const step2Target = page.locator("#dashboard-step2-nav");
         await expect(step2Target).toBeVisible();
 
-        // Advance to step 3
         await page.getByRole("button", { name: "Next", exact: true }).click();
         await expect(
             page.getByText("Swap one asset", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
 
-        // Step 3 targets #dashboard-step3 (Exchange in BalanceWithGraph)
-        const step3Target = page.locator("#dashboard-step3");
+        const step3Target = page.locator("#dashboard-step3-nav");
         await expect(step3Target).toBeVisible();
 
-        // None of these IDs should exist inside the Get started card
-        const progressWidget = page.getByText("Get started").locator("..");
-        expect(await progressWidget.locator("#dashboard-step1").count()).toBe(
-            0,
-        );
-        expect(await progressWidget.locator("#dashboard-step2").count()).toBe(
-            0,
-        );
-        expect(await progressWidget.locator("#dashboard-step3").count()).toBe(
-            0,
-        );
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(
+            page.getByText("Add team members", { exact: false }),
+        ).toBeVisible({ timeout: 10000 });
+
+        await expect(page.locator("#dashboard-step4")).toBeVisible();
     });
 
     test("Tour step 1 highlights the Deposit button with correct positioning", async ({
@@ -589,7 +587,7 @@ test.describe.skip("Onboarding – Dashboard Tour highlights and arrows", () => 
             ".bg-popover-foreground.text-popover",
         );
         await expect(stepFiveCard).toBeVisible({ timeout: 5000 });
-        await stepFiveCard.getByText("Done", { exact: true }).click();
+        await stepFiveCard.getByText("Got It", { exact: true }).click();
 
         // Tour should close
         await expect(
@@ -612,8 +610,88 @@ test.describe.skip("Onboarding – Dashboard Tour highlights and arrows", () => 
 
         // Tour should be dismissed
         await expect(
-            page.getByText("Add assets to your Treasury", { exact: false }),
+            page.getByText("Add funds to your Treasury", { exact: false }),
         ).not.toBeVisible({ timeout: 5000 });
+    });
+
+    test("Create Treasury step stays dismissible with a long treasury list", async ({
+        page,
+    }) => {
+        await setupDashboardMocks(page, { extraTreasuryCount: 20 });
+        await gotoDashboardFresh(page);
+        await startTourViaWelcome(page);
+
+        for (let step = 0; step < 4; step++) {
+            await page
+                .getByRole("button", { name: "Next", exact: true })
+                .click();
+        }
+
+        await expect(
+            page.getByText("Need another treasury", { exact: false }),
+        ).toBeVisible({ timeout: 15000 });
+        await expect(
+            page.locator("#dashboard-step5-create-treasury"),
+        ).toBeVisible();
+
+        await page.keyboard.press("Escape");
+
+        await expect(
+            page.getByText("Need another treasury", { exact: false }),
+        ).not.toBeVisible({ timeout: 5000 });
+    });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// Mobile tour opens the required menus
+// ──────────────────────────────────────────────────────────────────────────
+
+test.describe("Onboarding – Mobile menus", () => {
+    test("opens the menu sheet and treasury sheet for later tour steps", async ({
+        browser,
+    }) => {
+        const context = await browser.newContext({
+            viewport: { width: 375, height: 812 },
+            isMobile: true,
+            hasTouch: true,
+            userAgent:
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+        });
+        const page = await context.newPage();
+
+        await setupDashboardMocks(page);
+        await gotoDashboardFresh(page);
+        await startTourViaWelcome(page);
+
+        await expect(page.locator("#dashboard-step1")).toBeVisible();
+
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(
+            page.getByText("Make payment requests", { exact: false }),
+        ).toBeVisible({ timeout: 10000 });
+        await expect(page.locator("#dashboard-step2-nav")).toBeVisible();
+
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(
+            page.getByText("Swap one asset", { exact: false }),
+        ).toBeVisible({ timeout: 10000 });
+        await expect(page.locator("#dashboard-step3-nav")).toBeVisible();
+
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(
+            page.getByText("Add team members", { exact: false }),
+        ).toBeVisible({ timeout: 10000 });
+        await expect(page.locator("#dashboard-step4")).toBeVisible();
+
+        await page.getByRole("button", { name: "Next", exact: true }).click();
+        await expect(
+            page.getByText("Need another treasury", { exact: false }),
+        ).toBeVisible({ timeout: 15000 });
+        await expect(
+            page.locator("#dashboard-step5-create-treasury"),
+        ).toBeVisible();
+
+        await context.close();
     });
 });
 
@@ -760,7 +838,7 @@ test.describe.skip("Onboarding – Tour resilience to scroll", () => {
 
         // Tour content should still be visible
         await expect(
-            page.getByText("Add assets to your Treasury", { exact: false }),
+            page.getByText("Add funds to your Treasury", { exact: false }),
         ).toBeVisible();
 
         // Scroll back up
@@ -769,7 +847,7 @@ test.describe.skip("Onboarding – Tour resilience to scroll", () => {
 
         // Tour content should still be visible after scrolling back
         await expect(
-            page.getByText("Add assets to your Treasury", { exact: false }),
+            page.getByText("Add funds to your Treasury", { exact: false }),
         ).toBeVisible();
 
         await page.screenshot({
@@ -797,14 +875,14 @@ test.describe.skip("Onboarding – Tour card arrow points toward target", () => 
         const stepsToVerify = [
             {
                 selector: "#dashboard-step1",
-                text: "Add assets to your Treasury",
+                text: "Add funds to your Treasury",
             },
             {
-                selector: "#dashboard-step2",
+                selector: "#dashboard-step2-nav",
                 text: "Make payment requests",
             },
             {
-                selector: "#dashboard-step3",
+                selector: "#dashboard-step3-nav",
                 text: "Swap one asset",
             },
         ];
@@ -1039,7 +1117,7 @@ test.describe.skip("Onboarding – Full flow with scroll prerequisite", () => {
 
         // ── Tour step 1: Deposit ──
         await expect(
-            page.getByText("Add assets to your Treasury", { exact: false }),
+            page.getByText("Add funds to your Treasury", { exact: false }),
         ).toBeVisible({ timeout: 10000 });
         // The balance card should have been scrolled into the viewport
         const depositBtn = page.locator("#dashboard-step1");
@@ -1080,14 +1158,14 @@ test.describe.skip("Onboarding – Full flow with scroll prerequisite", () => {
         ).toBeVisible({ timeout: 15000 });
         expect(await page.getByText("5 of 5").isVisible()).toBe(true);
 
-        // Complete the tour by clicking "Done" inside the tour card.
+        // Complete the tour by clicking "Got It" inside the tour card.
         // Scope to the tour card container to avoid interference from the
         // Radix Select portal opened by the treasury dropdown.
         const stepFiveCard = page.locator(
             ".bg-popover-foreground.text-popover",
         );
         await expect(stepFiveCard).toBeVisible({ timeout: 5000 });
-        await stepFiveCard.getByText("Done", { exact: true }).click();
+        await stepFiveCard.getByText("Got It", { exact: true }).click();
 
         // Tour should close
         await expect(

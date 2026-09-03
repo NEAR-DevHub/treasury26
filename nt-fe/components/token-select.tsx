@@ -32,6 +32,7 @@ import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
 import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { PaymentSelectModalContent } from "./payment-select-modal-content";
+import { PopularTokenTiles } from "./popular-token-tiles";
 import { SelectListIcon } from "./select-list";
 import {
     EmptySelectorIcon,
@@ -311,7 +312,7 @@ export default function TokenSelect({
             const bUSD = b.balanceUSD ?? 0;
             if (aUSD > 0 !== bUSD > 0) return bUSD > 0 ? 1 : -1;
             if (aUSD !== bUSD) return bUSD - aUSD;
-            return a.name.localeCompare(b.name);
+            return 0;
         });
     }, [selectedAsset]);
 
@@ -651,51 +652,25 @@ export default function TokenSelect({
                                 {showPopularAssets &&
                                     popularTokens.length > 0 && (
                                         <div className="mb-3">
-                                            <div className="px-2 py-2 text-xs font-medium text-muted-foreground">
+                                            <div className="px-2 py-2 text-sm text-muted-foreground">
                                                 {tDepositSections(
                                                     "popularAssets",
                                                 )}
                                             </div>
-                                            <div className="flex flex-wrap gap-2 px-2">
-                                                {popularTokens.map((token) => (
-                                                    <Button
-                                                        key={`popular-${token.id}`}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleTokenClick(
-                                                                token,
-                                                            )
-                                                        }
-                                                        variant="secondary"
-                                                        className={cn(
-                                                            "h-7 gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
-                                                            token.networks.some(
-                                                                (network) =>
-                                                                    network.id ===
-                                                                        selectedToken?.address &&
-                                                                    network.name ===
-                                                                        selectedToken?.network,
-                                                            ) && "bg-muted",
-                                                        )}
-                                                    >
-                                                        <SelectListIcon
-                                                            icon={token.icon}
-                                                            alt={
-                                                                token.symbol ||
-                                                                token.name
-                                                            }
-                                                            size="sm"
-                                                        />
-                                                        <HighlightedText
-                                                            text={
-                                                                token.symbol ||
-                                                                token.name
-                                                            }
-                                                            query={search}
-                                                        />
-                                                    </Button>
-                                                ))}
-                                            </div>
+                                            <PopularTokenTiles
+                                                items={popularTokens}
+                                                searchQuery={search}
+                                                onSelect={handleTokenClick}
+                                                isItemSelected={(token) =>
+                                                    token.networks.some(
+                                                        (network) =>
+                                                            network.id ===
+                                                                selectedToken?.address &&
+                                                            network.name ===
+                                                                selectedToken?.network,
+                                                    )
+                                                }
+                                            />
                                         </div>
                                     )}
 

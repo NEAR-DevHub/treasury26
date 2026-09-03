@@ -269,7 +269,7 @@
             "networksWithAssets": "Мережі з активами",
             "yourAssets": "Ваші активи",
             "otherAssets": "Інші активи",
-            "popularAssets": "Популярні активи",
+            "popularAssets": "Найбільш торгувані токени",
             "available": "Доступно",
             "forMembersOnly": "Лише для учасників"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "Мінімальний депозит: <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "З публічного",
-            "fromConfidential": "З конфіденційного"
+            "fromConfidential": "З конфіденційного",
+            "fromNearBusiness": "З near business",
+            "fromConfidentialNearcom": "З конфіденційного near.com",
+            "originLabel": "Джерело депозиту"
         },
         "searchByName": "Шукати за назвою",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "Усе надіслане звідкись ще буде втрачено",
         "anythingElseLostSub": "Біржі, публічні гаманці, інші мережі – відновити неможливо.",
         "confidentialAckCheckbox": "Я розумію, що депозити з-поза near.com або near business буде втрачено.",
-        "onlyFromConfidentialNearcom": "Лише з <bold>near.com або near business</bold>",
+        "onlyFromNearBusiness": "Лише з <bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "Лише з <bold>конфіденційного near.com</bold>",
         "reusableDoesntExpire": "<bold>Багаторазова.</bold> Не закінчується",
-        "fundsOutsideNearcomLost": "Кошти, надіслані з-поза near.com або near business, буде втрачено",
+        "fundsOutsideNearBusinessLost": "Кошти, надіслані з-поза <bold>near business</bold>, буде втрачено",
+        "fundsOutsideNearcomLost": "Кошти, надіслані з-поза <bold>конфіденційного near.com</bold>, буде втрачено",
         "publicNetworkRecommendation": "Вносьте депозит лише з мережі <bold>{network}</bold>. Почніть із невеликої тестової транзакції, перш ніж надсилати повну суму.",
         "sourceCards": {
             "publicWallet": {
@@ -2373,7 +2378,8 @@
             "stepProgress": "{current} з {total}",
             "gotIt": "Зрозуміло",
             "done": "Готово",
-            "next": "Далі"
+            "next": "Далі",
+            "back": "Назад"
         },
         "progress": {
             "title": "Швидкі кроки, щоб ознайомитись зі скарбницею",

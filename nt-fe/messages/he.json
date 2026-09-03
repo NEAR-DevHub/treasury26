@@ -269,7 +269,7 @@
             "networksWithAssets": "רשתות עם נכסים",
             "yourAssets": "הנכסים שלך",
             "otherAssets": "נכסים אחרים",
-            "popularAssets": "נכסים פופולריים",
+            "popularAssets": "הטוקנים הנסחרים ביותר",
             "available": "זמין",
             "forMembersOnly": "לחברים בלבד"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "הפקדה מינימלית היא <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "מציבורי",
-            "fromConfidential": "מחסוי"
+            "fromConfidential": "מחסוי",
+            "fromNearBusiness": "מ-near business",
+            "fromConfidentialNearcom": "מ-near.com חסוי",
+            "originLabel": "מקור ההפקדה"
         },
         "searchByName": "חיפוש לפי שם",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "כל דבר שנשלח ממקום אחר יאבד",
         "anythingElseLostSub": "בורסות, ארנקים ציבוריים, רשתות אחרות – לא ניתן לשחזר.",
         "confidentialAckCheckbox": "אני מבין שהפקדות מחוץ ל-near.com או near business יאבדו.",
-        "onlyFromConfidentialNearcom": "רק מ-<bold>near.com או near business</bold>",
+        "onlyFromNearBusiness": "רק מ-<bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "רק מ-<bold>near.com חסוי</bold>",
         "reusableDoesntExpire": "<bold>ניתן לשימוש חוזר.</bold> לא פג תוקף",
-        "fundsOutsideNearcomLost": "כספים שנשלחו מחוץ ל-near.com או near business יאבדו",
+        "fundsOutsideNearBusinessLost": "כספים שנשלחו מחוץ ל-<bold>near business</bold> יאבדו",
+        "fundsOutsideNearcomLost": "כספים שנשלחו מחוץ ל-<bold>near.com חסוי</bold> יאבדו",
         "publicNetworkRecommendation": "הפקד רק מרשת <bold>{network}</bold>. התחל בעסקה קטנה לבדיקה לפני שליחת הסכום המלא.",
         "sourceCards": {
             "publicWallet": {
@@ -2390,7 +2395,8 @@
             "stepProgress": "{current} מתוך {total}",
             "gotIt": "הבנתי",
             "done": "סיום",
-            "next": "הבא"
+            "next": "הבא",
+            "back": "חזרה"
         },
         "progress": {
             "title": "עקוב אחר שלבים מהירים כדי לחקור את האוצר",

@@ -269,7 +269,7 @@
             "networksWithAssets": "包含资产的网络",
             "yourAssets": "您的资产",
             "otherAssets": "其他资产",
-            "popularAssets": "热门资产",
+            "popularAssets": "交易最多的代币",
             "available": "可用",
             "forMembersOnly": "仅限成员"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "最低存款金额为 <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "从公开",
-            "fromConfidential": "从保密"
+            "fromConfidential": "从保密",
+            "fromNearBusiness": "来自 near business",
+            "fromConfidentialNearcom": "来自机密 near.com",
+            "originLabel": "入金来源"
         },
         "searchByName": "按名称搜索",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "从其他地方发送的资金将丢失",
         "anythingElseLostSub": "交易所、公开钱包、其他网络 – 无法找回。",
         "confidentialAckCheckbox": "我理解从 near.com 或 near business 以外充值将会丢失。",
-        "onlyFromConfidentialNearcom": "仅来自 <bold>near.com 或 near business</bold>",
+        "onlyFromNearBusiness": "仅来自 <bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "仅来自 <bold>机密 near.com</bold>",
         "reusableDoesntExpire": "<bold>可重复使用。</bold>不会过期",
-        "fundsOutsideNearcomLost": "从 near.com 或 near business 以外发送的资金将丢失",
+        "fundsOutsideNearBusinessLost": "从 <bold>near business</bold> 以外发送的资金将丢失",
+        "fundsOutsideNearcomLost": "从 <bold>机密 near.com</bold> 以外发送的资金将丢失",
         "publicNetworkRecommendation": "请仅从 <bold>{network}</bold> 网络充值。建议先进行小额测试交易，再发送全额。",
         "sourceCards": {
             "publicWallet": {
@@ -2373,7 +2378,8 @@
             "stepProgress": "{current} / {total}",
             "gotIt": "知道了",
             "done": "完成",
-            "next": "下一步"
+            "next": "下一步",
+            "back": "返回"
         },
         "progress": {
             "title": "按照以下快捷步骤探索金库",

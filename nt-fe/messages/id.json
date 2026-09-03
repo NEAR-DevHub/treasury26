@@ -269,7 +269,7 @@
             "networksWithAssets": "Jaringan dengan Aset",
             "yourAssets": "Aset Anda",
             "otherAssets": "Aset Lainnya",
-            "popularAssets": "Aset Populer",
+            "popularAssets": "Token paling banyak diperdagangkan",
             "available": "Tersedia",
             "forMembersOnly": "Hanya untuk anggota"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "Deposit minimum adalah <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "Dari publik",
-            "fromConfidential": "Dari rahasia"
+            "fromConfidential": "Dari rahasia",
+            "fromNearBusiness": "Dari near business",
+            "fromConfidentialNearcom": "Dari near.com rahasia",
+            "originLabel": "Sumber deposit"
         },
         "searchByName": "Cari berdasarkan nama",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "Apa pun yang dikirim dari tempat lain akan hilang",
         "anythingElseLostSub": "Exchange, dompet publik, jaringan lain – tidak dapat dipulihkan.",
         "confidentialAckCheckbox": "Saya memahami deposit dari luar near.com atau near business akan hilang.",
-        "onlyFromConfidentialNearcom": "Hanya dari <bold>near.com atau near business</bold>",
+        "onlyFromNearBusiness": "Hanya dari <bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "Hanya dari <bold>near.com rahasia</bold>",
         "reusableDoesntExpire": "<bold>Dapat digunakan ulang.</bold> Tidak kedaluwarsa",
-        "fundsOutsideNearcomLost": "Dana yang dikirim dari luar near.com atau near business akan hilang",
+        "fundsOutsideNearBusinessLost": "Dana yang dikirim dari luar <bold>near business</bold> akan hilang",
+        "fundsOutsideNearcomLost": "Dana yang dikirim dari luar <bold>near.com rahasia</bold> akan hilang",
         "publicNetworkRecommendation": "Deposit hanya dari jaringan <bold>{network}</bold>. Mulai dengan transaksi uji kecil sebelum mengirim jumlah penuh.",
         "sourceCards": {
             "publicWallet": {
@@ -2390,7 +2395,8 @@
             "stepProgress": "{current} dari {total}",
             "gotIt": "Mengerti",
             "done": "Selesai",
-            "next": "Berikutnya"
+            "next": "Berikutnya",
+            "back": "Kembali"
         },
         "progress": {
             "title": "Ikuti Langkah Cepat untuk Menjelajahi Treasury",

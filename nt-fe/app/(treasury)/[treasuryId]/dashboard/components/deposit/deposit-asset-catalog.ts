@@ -254,7 +254,7 @@ export function buildDepositAssetCatalog(params: {
         const bUSD = assetBalancesById.get(b.id)?.balanceUSD || 0;
         return bUSD - aUSD;
     });
-    otherAssets.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    // `otherAssets` keeps catalog order (`tvol` → stablecoin → `mc`).
 
     const formattedAssets: SelectOption[] = [...yourAssets, ...otherAssets];
 

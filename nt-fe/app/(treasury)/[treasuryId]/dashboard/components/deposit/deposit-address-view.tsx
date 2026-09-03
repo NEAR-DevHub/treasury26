@@ -40,6 +40,8 @@ interface DepositAddressViewProps {
     /** Shown above tabs/title (e.g. public slow-network banner). */
     warningSlot?: ReactNode;
     headerSlot?: ReactNode;
+    /** Origin tabs between Back and the title (confidential reusable address). */
+    tabsSlot?: ReactNode;
 }
 
 export function DepositAddressSkeleton({ className }: { className?: string }) {
@@ -95,6 +97,7 @@ export function DepositAddressView({
     className,
     warningSlot,
     headerSlot,
+    tabsSlot,
 }: DepositAddressViewProps) {
     const t = useTranslations("depositModal");
 
@@ -115,6 +118,7 @@ export function DepositAddressView({
                         {t("back")}
                     </Button>
                 )}
+                {tabsSlot && <div className="mb-4">{tabsSlot}</div>}
                 <h2 className="text-xl font-semibold leading-7 tracking-tight text-foreground">
                     {title}
                 </h2>

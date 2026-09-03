@@ -3,11 +3,13 @@
 import { Add01Icon, Settings01Icon } from "@hugeicons/core-free-icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useNextStep } from "nextstepjs";
 import { useMemo } from "react";
 import { Icon } from "@/components/icon";
 import { SheetHandle } from "@/components/mobile-shell/sheet-handle";
 import { Dialog, DialogContent, DialogTitle } from "@/components/modal";
 import { TreasuryBalance, TreasuryLogo } from "@/components/treasury-info";
+import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
 import { useOpenTreasury } from "@/hooks/use-open-treasury";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
@@ -19,8 +21,10 @@ export function MobileTreasurySheet() {
     const pathname = usePathname();
     const { open } = useOpenTreasury();
     const { treasuryId, treasuries } = useTreasury();
+    const { currentTour } = useNextStep();
     const sheet = useMobileShellStore((state) => state.sheet);
     const closeSheet = useMobileShellStore((state) => state.closeSheet);
+    const isDashboardTour = currentTour === TOUR_NAMES.DASHBOARD;
 
     const memberTreasuries = useMemo(
         () => treasuries.filter((treasury) => treasury.isMember),
@@ -35,6 +39,7 @@ export function MobileTreasurySheet() {
     );
 
     const handleSelect = (newTreasuryId: string) => {
+        if (isDashboardTour) return;
         closeSheet();
         open(newTreasuryId);
         const pathAfterTreasury = pathname?.split("/").slice(2).join("/") || "";
@@ -92,11 +97,18 @@ export function MobileTreasurySheet() {
     return (
         <Dialog
             open={sheet === "treasury"}
+            modal={!isDashboardTour}
             onOpenChange={(open) => {
+                if (isDashboardTour) return;
                 if (!open) closeSheet();
             }}
         >
-            <DialogContent className="overflow-hidden">
+            <DialogContent
+                className="overflow-hidden"
+                onOpenAutoFocus={(event) => {
+                    if (isDashboardTour) event.preventDefault();
+                }}
+            >
                 <SheetHandle />
                 <DialogTitle className="sr-only">{t("select")}</DialogTitle>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -123,6 +135,7 @@ export function MobileTreasurySheet() {
                         type="button"
                         className="flex w-full items-center gap-3 rounded-xl py-2.5 text-left font-semibold text-foreground"
                         onClick={() => {
+                            if (isDashboardTour) return;
                             closeSheet();
                             router.push("/app/manage-treasuries");
                         }}
@@ -132,8 +145,10 @@ export function MobileTreasurySheet() {
                     </button>
                     <button
                         type="button"
+                        data-tour-create-treasury=""
                         className="flex w-full items-center gap-3 rounded-xl py-2.5 text-left font-semibold text-foreground"
                         onClick={() => {
+                            if (isDashboardTour) return;
                             closeSheet();
                             router.push(createTreasuryRoute);
                         }}

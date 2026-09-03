@@ -240,9 +240,9 @@ export function RecipientNetworkSelect({
         // would settle on it) before the real destinations arrive.
         if (!token || isBridgeAssetsLoading) return [];
 
-        const others = tokenNetworkOptions
-            .filter((option) => option.id !== NEAR_COM_NETWORK_ID)
-            .sort((a, b) => a.name.localeCompare(b.name));
+        const others = tokenNetworkOptions.filter(
+            (option) => option.id !== NEAR_COM_NETWORK_ID,
+        );
         return [nearComOption, ...others];
     }, [isBridgeAssetsLoading, nearComOption, token, tokenNetworkOptions]);
 

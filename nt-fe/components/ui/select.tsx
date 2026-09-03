@@ -59,11 +59,13 @@ function SelectContent({
     className,
     viewportClassName,
     children,
+    footer,
     position = "popper",
     align = "center",
     ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content> & {
     viewportClassName?: string;
+    footer?: React.ReactNode;
 }) {
     return (
         <SelectPrimitive.Portal>
@@ -75,23 +77,30 @@ function SelectContent({
                     position === "popper" &&
                         "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
                     className,
+                    footer && "flex min-h-0 flex-col overflow-hidden",
                 )}
                 position={position}
                 align={align}
                 {...props}
             >
-                <SelectScrollUpButton />
+                {!footer && <SelectScrollUpButton />}
                 <SelectPrimitive.Viewport
                     className={cn(
                         "p-1",
                         position === "popper" &&
-                            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1",
+                            "w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1",
+                        position === "popper" &&
+                            !footer &&
+                            "h-[var(--radix-select-trigger-height)]",
+                        footer &&
+                            `min-h-0 flex-1 overflow-y-auto ${scrollbarClassName}`,
                         viewportClassName,
                     )}
                 >
                     {children}
                 </SelectPrimitive.Viewport>
-                <SelectScrollDownButton />
+                {!footer && <SelectScrollDownButton />}
+                {footer}
             </SelectPrimitive.Content>
         </SelectPrimitive.Portal>
     );

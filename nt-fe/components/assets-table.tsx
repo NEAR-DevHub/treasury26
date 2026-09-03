@@ -23,12 +23,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { AggregatedAsset } from "@/hooks/use-assets";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useTreasury } from "@/hooks/use-treasury";
-import { buildAssetRowActionHrefs } from "@/lib/asset-row-actions";
 import { decimalFromBaseUnits } from "@/lib/amount-format";
+import { buildAssetRowActionHrefs } from "@/lib/asset-row-actions";
 import { availableBalance } from "@/lib/balance";
 import Big from "@/lib/big";
 import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 import { BalanceCell } from "./token-display";
+import { TokenIconImage } from "./token-icon-image";
 
 type SortDirection = "asc" | "desc";
 type NetworkAsset = AggregatedAsset["networks"][number];
@@ -372,10 +373,10 @@ export function AssetsTable({ aggregatedTokens }: Props) {
                                 >
                                     <TableCell className="overflow-hidden py-3 pr-3 pl-4 sm:pl-5">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <img
-                                                src={asset.icon}
+                                            <TokenIconImage
+                                                icon={asset.icon}
                                                 alt={asset.name}
-                                                className="size-9 shrink-0 rounded-full"
+                                                className="size-9"
                                             />
                                             <div className="min-w-0">
                                                 <p className="truncate font-semibold text-base/5 text-gray-900 dark:text-white">

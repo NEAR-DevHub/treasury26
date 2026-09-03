@@ -269,7 +269,7 @@
             "networksWithAssets": "Networks with assets",
             "yourAssets": "Your tokens",
             "otherAssets": "More tokens",
-            "popularAssets": "Popular tokens",
+            "popularAssets": "Most traded tokens",
             "available": "Available",
             "forMembersOnly": "For members only"
         },
@@ -320,9 +320,11 @@
         "anythingElseLost": "Anything sent from anywhere else is lost",
         "anythingElseLostSub": "Exchanges, public wallets, other networks — can't be recovered.",
         "confidentialAckCheckbox": "I understand deposits from outside near.com or near business will be lost.",
-        "onlyFromConfidentialNearcom": "Only from <bold>near.com or near business</bold>",
+        "onlyFromNearBusiness": "Only from <bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "Only from <bold>confidential near.com</bold>",
         "reusableDoesntExpire": "<bold>Reusable.</bold> Doesn't expire",
-        "fundsOutsideNearcomLost": "Funds sent from outside near.com or near business will be lost",
+        "fundsOutsideNearBusinessLost": "Funds sent from outside <bold>near business</bold> will be lost",
+        "fundsOutsideNearcomLost": "Funds sent from outside <bold>confidential near.com</bold> will be lost",
         "publicNetworkRecommendation": "Only deposit from the <bold>{network}</bold> network. We recommend starting with a small test transaction to ensure everything works correctly before sending the full amount.",
         "depositAddressSubtitleConfidential": "<semibold>Single-use deposit address.</semibold> Reusing this address or sending funds after expiration may result in a permanent loss of funds.",
         "depositAddressSubtitleConfidentialExpiry": "Valid for 14 days from the time of generation. Expires in: {expiresIn} remaining",
@@ -373,7 +375,10 @@
         },
         "tabs": {
             "fromPublic": "From public",
-            "fromConfidential": "From confidential"
+            "fromConfidential": "From confidential",
+            "fromNearBusiness": "From near business",
+            "fromConfidentialNearcom": "From confidential near.com",
+            "originLabel": "Deposit origin"
         },
         "searchByName": "Search tokens",
         "faq": {
@@ -2377,7 +2382,7 @@
     },
     "onboarding": {
         "tour": {
-            "addAssets": "Add assets to your Treasury by depositing any supported asset on any supported network.",
+            "addAssets": "Add funds to your Treasury by depositing any supported asset on any supported network.",
             "makeRequests": "Make payment requests to send assets to anyone.",
             "exchangeAssets": "Swap one asset for another, across networks.",
             "addMembers": "Add team members and set their permissions.",
@@ -2390,7 +2395,8 @@
             "stepProgress": "{current} of {total}",
             "gotIt": "Got It",
             "done": "Done",
-            "next": "Next"
+            "next": "Next",
+            "back": "Back"
         },
         "progress": {
             "title": "Set up your treasury",
@@ -2412,14 +2418,14 @@
         "welcome": {
             "heading": "🎉 Your treasury is ready",
             "subheading": "Take a quick tour?",
-            "body": "Deposit funds, send payments, exchange assets, and manage your team — all from this dashboard.",
+            "body": "Deposit funds, send payments, swap assets, and manage your team — all from this dashboard.",
             "progress": "{current} of {total}",
             "next": "Got it",
             "body2": "We'll walk you through depositing funds, sending payments, swapping assets, and managing your team – about 60 seconds.",
             "noThanks": "No, thanks",
             "letsGo": "Let's go",
             "confidential": {
-                "heading": "🎉 Your Confidential treasury is ready",
+                "heading": "🎉 Your confidential treasury is ready",
                 "body": "Your balances, transactions, and member activity are private – visible only to your team, never on the public blockchain."
             }
         },

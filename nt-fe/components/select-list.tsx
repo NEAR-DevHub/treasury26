@@ -1,11 +1,12 @@
 "use client";
 
-import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { useImageLoadError } from "@/hooks/use-image-load-error";
 import { isIconUrl } from "@/lib/icon-url";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
+import { TokenIconImage } from "./token-icon-image";
 import { ScrollArea } from "./ui/scroll-area";
 
 export interface SelectListItem {
@@ -72,30 +73,26 @@ export function SelectListIcon({
     size?: "sm" | "md" | "lg";
 }) {
     const iconIsUrl = isIconUrl(icon);
-    const { showImage, onError } = useImageLoadError(iconIsUrl ? icon : null);
+    const { showImage } = useImageLoadError(iconIsUrl ? icon : null);
     const containerSizeClass =
         size === "sm" ? "size-6" : size === "lg" ? "size-14" : "size-12";
-    const imagePaddingClass = size === "sm" ? "p-0.5" : "p-2";
-    const fallbackSizeClass =
-        size === "sm" ? "w-3.5 h-3.5 text-[9px]" : "w-8 h-8";
-
-    const fallbackLabel =
-        icon && !iconIsUrl && icon.length <= 2
-            ? icon
-            : (alt || "?").charAt(0).toUpperCase();
+    const imageSizeClass =
+        size === "sm" ? "size-5" : size === "lg" ? "size-10" : "size-8";
+    const fallbackSizeClass = size === "sm" ? "size-3.5 text-[9px]" : "size-8";
 
     if (showImage && icon) {
         return (
-            <div className={containerSizeClass}>
-                <img
-                    key={icon}
-                    src={icon}
+            <div
+                className={cn(
+                    containerSizeClass,
+                    "flex items-center justify-center",
+                )}
+            >
+                <TokenIconImage
+                    icon={icon}
                     alt={alt}
-                    className={cn(
-                        "w-full h-full object-contain rounded-full",
-                        imagePaddingClass,
-                    )}
-                    onError={onError}
+                    className={imageSizeClass}
+                    objectFit="contain"
                 />
             </div>
         );
@@ -108,15 +105,12 @@ export function SelectListIcon({
                 "flex items-center justify-center",
             )}
         >
-            <div
-                className={cn(
-                    "rounded-full flex items-center justify-center text-white font-normal",
-                    fallbackSizeClass,
-                    gradient || "bg-brand-blue",
-                )}
-            >
-                <span>{fallbackLabel}</span>
-            </div>
+            <TokenIconImage
+                icon={icon}
+                alt={alt}
+                gradient={gradient || "bg-brand-blue"}
+                className={fallbackSizeClass}
+            />
         </div>
     );
 }

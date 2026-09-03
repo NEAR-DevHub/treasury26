@@ -9,9 +9,13 @@ import {
 } from "@/features/activity";
 import { PublicBalanceBanner } from "@/features/confidential/components/public-balance-banner";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
-import { GetStartedCard } from "@/features/onboarding/components/sidebar-onboarding";
 import { InfoBox } from "@/features/onboarding/components/info-box";
 import { PendingJoinBanner } from "@/features/onboarding/components/pending-join-banner";
+import { GetStartedCard } from "@/features/onboarding/components/sidebar-onboarding";
+import {
+    CongratsTooltip,
+    WelcomeTooltip,
+} from "@/features/onboarding/steps/dashboard";
 import { PendingRequests } from "@/features/proposals/components/pending-requests";
 import { useAssets } from "@/hooks/use-assets";
 import { useTreasury } from "@/hooks/use-treasury";
@@ -74,6 +78,8 @@ export default function AppPage() {
                 </div>
             </HistoryRefreshIndicatorProvider>
             <BalanceWarningModal />
+            <WelcomeTooltip />
+            <CongratsTooltip />
         </PageComponentLayout>
     );
 }

@@ -65,12 +65,15 @@ import {
     buildPublicTreasuryNotices,
     buildPublicWalletOneTimeNotices,
 } from "./deposit/deposit-notices";
+import { DepositOriginTabs } from "./deposit/deposit-origin-tabs";
 import { DepositSourceCards } from "./deposit/deposit-source-cards";
 import {
+    buildConfidentialDepositShareTarget,
     buildPaySharePath,
     getAbsoluteTransferUrl,
 } from "./deposit/deposit-transfer-url";
 import type {
+    ConfidentialDepositOrigin,
     DepositInfo,
     DepositSource,
     DepositStep,
@@ -204,6 +207,8 @@ export function DepositModal({
     const [step, setStep] = useState<DepositStep>("select");
     const [depositSource, setDepositSource] =
         useState<DepositSource>("public_wallet");
+    const [confidentialOrigin, setConfidentialOrigin] =
+        useState<ConfidentialDepositOrigin>("near_business");
     const [hasAcknowledged, setHasAcknowledged] = useState(false);
     const [modalType, setModalType] = useState<"asset" | "network" | null>(
         null,
@@ -313,6 +318,7 @@ export function DepositModal({
         form.reset({ asset: null, network: null });
         setStep("select");
         setDepositSource("public_wallet");
+        setConfidentialOrigin("near_business");
         setHasAcknowledged(false);
         setModalType(null);
         setDepositInfo(null);
@@ -370,14 +376,13 @@ export function DepositModal({
         withAssets.sort((a, b) => {
             const aUSD = selectedNetworkBalances.get(a.id)?.amountUSD || 0;
             const bUSD = selectedNetworkBalances.get(b.id)?.amountUSD || 0;
-            if (aUSD !== bUSD) return bUSD - aUSD;
-            return a.name.localeCompare(b.name);
+            return bUSD - aUSD;
         });
 
         supportedNetworks.sort((a, b) => {
             if (a.id === NEAR_COM_DIRECT_NETWORK_ID) return -1;
             if (b.id === NEAR_COM_DIRECT_NETWORK_ID) return 1;
-            return a.name.localeCompare(b.name);
+            return 0;
         });
 
         const sections: { title: string; options: SelectOption[] }[] = [];
@@ -718,6 +723,7 @@ export function DepositModal({
     const handleSourceChange = (source: DepositSource) => {
         if (source === depositSource) return;
         setDepositSource(source);
+        setConfidentialOrigin("near_business");
         setHasAcknowledged(false);
         setStep("select");
         setDepositInfo(null);
@@ -787,26 +793,34 @@ export function DepositModal({
         const isConfidentialShare =
             isConfidential && depositSource === "confidential_user";
 
+        if (isConfidentialShare) {
+            const target = buildConfidentialDepositShareTarget(
+                treasuryId,
+                confidentialOrigin,
+            );
+            const href = target.external
+                ? target.href
+                : getAbsoluteTransferUrl(target.href);
+            window.open(href, "_blank", "noopener,noreferrer");
+            return;
+        }
+
         // Confidential one-time: quote id only (asset/expiry from status API).
         // Public treasury: bridge address + token/network for display.
-        const path = isConfidentialShare
-            ? buildPaySharePath(treasuryId, {
-                  kind: "confidential",
-                  source: "nearcom",
-              })
-            : isConfidential && depositInfo.quoteDepositAddress
-              ? buildPaySharePath(treasuryId, {
-                    kind: "public",
-                    id: depositInfo.quoteDepositAddress,
-                })
-              : selectedAsset?.id && selectedNetwork?.id
+        const path =
+            isConfidential && depositInfo.quoteDepositAddress
                 ? buildPaySharePath(treasuryId, {
                       kind: "public",
-                      id: depositInfo.address,
-                      token: selectedAsset.id,
-                      network: selectedNetwork.id,
+                      id: depositInfo.quoteDepositAddress,
                   })
-                : null;
+                : selectedAsset?.id && selectedNetwork?.id
+                  ? buildPaySharePath(treasuryId, {
+                        kind: "public",
+                        id: depositInfo.address,
+                        token: selectedAsset.id,
+                        network: selectedNetwork.id,
+                    })
+                  : null;
 
         if (!path) return;
         window.open(
@@ -868,7 +882,7 @@ export function DepositModal({
         }
 
         if (depositSource === "confidential_user") {
-            return buildConfidentialOriginNotices(t);
+            return buildConfidentialOriginNotices(t, confidentialOrigin);
         }
 
         return buildPublicWalletOneTimeNotices(
@@ -884,6 +898,7 @@ export function DepositModal({
     }, [
         isConfidential,
         depositSource,
+        confidentialOrigin,
         minDepositDisplay,
         assetSymbol,
         networkDisplayName,
@@ -1090,6 +1105,15 @@ export function DepositModal({
                     }
                     createNewAddressDisabled={isLoadingAddress}
                     onBack={handleBackFromAddress}
+                    tabsSlot={
+                        isConfidential &&
+                        depositSource === "confidential_user" ? (
+                            <DepositOriginTabs
+                                value={confidentialOrigin}
+                                onChange={setConfidentialOrigin}
+                            />
+                        ) : undefined
+                    }
                     headerSlot={
                         showAddressWarningBanner ? (
                             <SlotWarning

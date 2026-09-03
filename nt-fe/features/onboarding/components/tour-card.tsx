@@ -1,31 +1,34 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
-import type { CardComponentProps } from "nextstepjs";
-import { useNextStep } from "nextstepjs";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import type { CardComponentProps } from "nextstepjs";
+import { useNextStep } from "nextstepjs";
 import { Button } from "@/components/button";
-import { useTreasury } from "@/hooks/use-treasury";
-import { cn } from "@/lib/utils";
-import { useSidebarStore } from "@/stores/sidebar-store";
+import { Icon } from "@/components/icon";
+import {
+    applyDashboardTourStep,
+    CREATE_TREASURY_TARGET_ID,
+    closeDashboardTourSurfaces,
+    DASHBOARD_TOUR_SURFACE_DELAY_MS,
+    DASHBOARD_TOUR_TREASURY_STEP,
+    isTourMobileViewport,
+    waitForVisibleTourTarget,
+} from "@/features/onboarding/dashboard-tour-targets";
 import {
     refreshFeatureAnnouncements,
     suppressFeatureAnnouncements,
 } from "@/features/onboarding/feature-announcement-queue";
-import { TOUR_NAMES, SELECTOR_IDS } from "../steps/dashboard";
+import { useTreasury } from "@/hooks/use-treasury";
+import { cn } from "@/lib/utils";
+import { useSidebarStore } from "@/stores/sidebar-store";
+import { DASHBOARD_TOUR, TOUR_NAMES } from "../steps/dashboard";
 import { EARN_ANNOUNCEMENT } from "../steps/page-tours";
 
 // Steps that require the sidebar to be open (0-indexed) for different tours
 const SIDEBAR_STEPS_MAP: Record<string, readonly number[]> = {
-    [TOUR_NAMES.DASHBOARD]: [3, 4],
     [TOUR_NAMES.INFO_BOX_DISMISSED]: [0],
-};
-
-// Steps that require clicking the treasury selector (0-indexed) for different tours
-const TREASURY_SELECTOR_MAP: Record<string, readonly number[]> = {
-    [TOUR_NAMES.DASHBOARD]: [4],
 };
 
 const TOUR_ACTIONS = {
@@ -52,46 +55,61 @@ export function TourCard({
     const router = useRouter();
     const { treasuryId } = useTreasury();
     const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
+    const isMobile = isTourMobileViewport();
 
     const isLastStep = currentStep === totalSteps - 1;
+    const isFirstStep = currentStep === 0;
     const tourName = currentTour;
     const hidePrimaryButton = tourName === TOUR_NAMES.INFO_BOX_DISMISSED;
+    const isDashboardTour = tourName === TOUR_NAMES.DASHBOARD;
     const sidebarSteps =
         SIDEBAR_STEPS_MAP[tourName as keyof typeof SIDEBAR_STEPS_MAP] || [];
-    const treasurySelectorSteps =
-        TREASURY_SELECTOR_MAP[tourName as keyof typeof TREASURY_SELECTOR_MAP] ||
-        [];
     const tourAction = TOUR_ACTIONS[tourName as keyof typeof TOUR_ACTIONS];
+    const showBack = isDashboardTour && totalSteps > 1 && !isFirstStep;
+
+    const goToDashboardStep = async (stepIndex: number) => {
+        applyDashboardTourStep(stepIndex, DASHBOARD_TOUR.steps[stepIndex]);
+        if (stepIndex === DASHBOARD_TOUR_TREASURY_STEP) {
+            await waitForVisibleTourTarget(CREATE_TREASURY_TARGET_ID);
+            setCurrentStep(stepIndex);
+            return;
+        }
+        setCurrentStep(stepIndex, DASHBOARD_TOUR_SURFACE_DELAY_MS);
+    };
 
     const handleNext = () => {
         const nextStepIndex = currentStep + 1;
+
+        if (isDashboardTour) {
+            goToDashboardStep(nextStepIndex);
+            return;
+        }
 
         // If next step needs sidebar, open it and delay the step change
         if (sidebarSteps.includes(nextStepIndex)) {
             if (isMobile) {
                 setSidebarOpen(true);
             }
-            // If next step needs treasury selector click, handle it specially
-            if (treasurySelectorSteps.includes(nextStepIndex)) {
-                setTimeout(() => {
-                    const trigger = document.getElementById(
-                        SELECTOR_IDS.DASHBOARD_STEP_5,
-                    );
-                    trigger?.click();
-                    setCurrentStep(nextStepIndex, SIDEBAR_ANIMATION_DELAY);
-                }, SIDEBAR_ANIMATION_DELAY + 200);
-            } else {
-                setCurrentStep(nextStepIndex, SIDEBAR_ANIMATION_DELAY);
-            }
+            setCurrentStep(nextStepIndex, SIDEBAR_ANIMATION_DELAY);
         } else {
             nextStep();
         }
     };
 
+    const handleBack = () => {
+        if (!isDashboardTour || isFirstStep) return;
+        if (currentStep === DASHBOARD_TOUR_TREASURY_STEP) {
+            closeDashboardTourSurfaces();
+        }
+        goToDashboardStep(currentStep - 1);
+    };
+
     const handleSkip = () => {
         if (tourName === TOUR_NAMES.INFO_BOX_DISMISSED) {
             refreshFeatureAnnouncements(2000);
+        }
+        if (isDashboardTour) {
+            closeDashboardTourSurfaces();
         }
         skipTour?.();
         if (isMobile) {
@@ -108,13 +126,6 @@ export function TourCard({
         }
 
         if (isLastStep) {
-            if (tourName === TOUR_NAMES.DASHBOARD) {
-                skipTour?.();
-                if (isMobile) {
-                    setSidebarOpen(false);
-                }
-                return;
-            }
             handleSkip();
             return;
         }
@@ -130,14 +141,19 @@ export function TourCard({
         tourCtaLabel ??
         (isLastStep && step.title
             ? step.title
-            : totalSteps === 1
+            : isDashboardTour && isLastStep
               ? t("gotIt")
-              : isLastStep
-                ? t("done")
-                : t("next"));
+              : totalSteps === 1
+                ? t("gotIt")
+                : isLastStep
+                  ? t("done")
+                  : t("next"));
 
     return (
-        <div className="bg-popover-foreground text-popover rounded-md px-2 py-3 shadow-md min-w-[250px] animate-in fade-in-0 zoom-in-95">
+        <div
+            data-onboarding-tour-card=""
+            className="bg-popover-foreground text-popover rounded-md px-2 py-3 shadow-md min-w-[250px] animate-in fade-in-0 zoom-in-95"
+        >
             <div className="text-popover-foreground">{arrow}</div>
 
             <div
@@ -149,6 +165,7 @@ export function TourCard({
                 <div className="flex justify-between items-start gap-3">
                     <p className="text-xs">{step.content}</p>
                     <button
+                        type="button"
                         onClick={handleSkip}
                         className="rounded-sm opacity-70 transition-opacity hover:opacity-100 shrink-0"
                     >
@@ -173,13 +190,25 @@ export function TourCard({
                             </p>
                         )}
 
-                        <Button
-                            size="sm"
-                            className="h-6 px-2 text-xs bg-popover text-popover-foreground hover:bg-popover/90 hover:text-popover-foreground/90"
-                            onClick={handlePrimaryAction}
-                        >
-                            {buttonText}
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                            {showBack && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 rounded-md px-2 text-xs text-popover hover:text-popover/90 hover:bg-transparent!"
+                                    onClick={handleBack}
+                                >
+                                    {t("back")}
+                                </Button>
+                            )}
+                            <Button
+                                size="sm"
+                                className="h-6 rounded-md px-2 text-xs bg-popover text-popover-foreground hover:bg-popover/90 hover:text-popover-foreground/90"
+                                onClick={handlePrimaryAction}
+                            >
+                                {buttonText}
+                            </Button>
+                        </div>
                     </div>
                 )}
             </div>

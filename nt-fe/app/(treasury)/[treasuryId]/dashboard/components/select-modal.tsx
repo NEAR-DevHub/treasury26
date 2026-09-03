@@ -21,6 +21,7 @@ import {
 } from "@/components/selector-field";
 import { cn } from "@/lib/utils";
 import { HighlightedText } from "@/components/highlighted-text";
+import { PopularTokenTiles } from "@/components/popular-token-tiles";
 
 export interface SelectOption extends SelectListItem {}
 
@@ -260,61 +261,22 @@ export function SelectModal({
                                                     key={section.title}
                                                     className="mb-3"
                                                 >
-                                                    <div className="text-xs font-medium text-muted-foreground px-2 py-2">
+                                                    <div className="px-2 py-2 text-sm text-muted-foreground">
                                                         {section.title}
                                                     </div>
-                                                    <div className="px-1 flex flex-wrap gap-2">
-                                                        {section.options.map(
-                                                            (item) => (
-                                                                <Button
-                                                                    key={
-                                                                        item.id
-                                                                    }
-                                                                    onClick={() =>
-                                                                        handleSelect(
-                                                                            item,
-                                                                        )
-                                                                    }
-                                                                    variant="secondary"
-                                                                    disabled={
-                                                                        item.disabled
-                                                                    }
-                                                                    className={cn(
-                                                                        "h-8 rounded-full px-2.5 py-1 text-sm font-medium gap-1.5",
-                                                                        selectedId ===
-                                                                            item.id &&
-                                                                            "bg-muted",
-                                                                        item.disabled &&
-                                                                            "opacity-60 cursor-not-allowed pointer-events-none",
-                                                                    )}
-                                                                >
-                                                                    <SelectListIcon
-                                                                        icon={
-                                                                            item.icon
-                                                                        }
-                                                                        gradient={
-                                                                            item.gradient
-                                                                        }
-                                                                        alt={
-                                                                            item.symbol ||
-                                                                            item.name
-                                                                        }
-                                                                        size="sm"
-                                                                    />
-                                                                    <HighlightedText
-                                                                        text={
-                                                                            item.symbol ||
-                                                                            item.name ||
-                                                                            ""
-                                                                        }
-                                                                        query={
-                                                                            searchQuery
-                                                                        }
-                                                                    />
-                                                                </Button>
-                                                            ),
-                                                        )}
-                                                    </div>
+                                                    <PopularTokenTiles
+                                                        items={section.options}
+                                                        searchQuery={
+                                                            searchQuery
+                                                        }
+                                                        onSelect={handleSelect}
+                                                        isItemSelected={(
+                                                            item,
+                                                        ) =>
+                                                            selectedId ===
+                                                            item.id
+                                                        }
+                                                    />
                                                 </div>
                                             );
                                         }

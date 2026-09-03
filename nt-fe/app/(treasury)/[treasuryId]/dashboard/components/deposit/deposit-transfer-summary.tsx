@@ -1,8 +1,9 @@
 "use client";
-import { Icon } from "@/components/icon";
 import { Coins01Icon, Shield01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
+import { Icon } from "@/components/icon";
 import { TokenDisplay } from "@/components/token-display-with-network";
+import { TokenIconImage } from "@/components/token-icon-image";
 import { TreasuryLogo } from "@/components/treasury-info";
 import { NEAR_COM_ICON } from "@/constants/token";
 import type { SendTokenMeta } from "./deposit-transfer-resolve";
@@ -52,13 +53,10 @@ export function DepositTransferSummary({
                                     className="text-foreground"
                                 />
                             </span>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src={NEAR_COM_ICON}
+                            <TokenIconImage
+                                icon={NEAR_COM_ICON}
                                 alt=""
-                                width={20}
-                                height={20}
-                                className="absolute -bottom-0.5 -right-0.5 size-5 rounded-full object-cover border-2 border-card"
+                                className="absolute -bottom-0.5 -right-0.5 size-5"
                             />
                         </span>
                     )}

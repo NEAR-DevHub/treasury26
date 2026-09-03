@@ -193,6 +193,7 @@ const navLinks: {
         icon: SentIcon,
         hoverAnimation: "fly",
         roleRequired: true,
+        id: "dashboard-step2-nav",
     },
     {
         path: "exchange",
@@ -200,6 +201,7 @@ const navLinks: {
         icon: ArrowDataTransferHorizontalIcon,
         hoverAnimation: "swap",
         roleRequired: true,
+        id: "dashboard-step3-nav",
     },
     {
         path: "address-book",
@@ -372,7 +374,7 @@ export function Sidebar({ onClose }: SidebarProps) {
 
                             return (
                                 <NavLink
-                                    id={link.id}
+                                    id={!isMobile ? link.id : undefined}
                                     key={link.path}
                                     isActive={isActive}
                                     icon={link.icon}

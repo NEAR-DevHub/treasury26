@@ -256,8 +256,8 @@ fn load_tokens_from_json() -> Result<Vec<UnifiedTokenInfo>, Box<dyn std::error::
             symbol: base.symbol.clone(),
             name: base.name.clone(),
             icon: base.icon.clone(),
+            tags: base.tags.clone(),
             grouped_tokens: vec![base],
-            tags: None,
         };
         result.push(unified);
     }
