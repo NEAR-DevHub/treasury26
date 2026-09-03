@@ -112,7 +112,7 @@ describe("buildReceiptAmountModel", () => {
         expect(result.rateLabel).toContain("1 NEAR");
     });
 
-    it("suppresses fallbacks when an explicit amountUsd is provided", () => {
+    it("prefers a recorded amountUsd over the quote, leg by leg", () => {
         const quote = {
             amountInFormatted: "100",
             amountOutFormatted: "50",
@@ -126,7 +126,6 @@ describe("buildReceiptAmountModel", () => {
             sourceToken: {
                 amountDecimal: "100",
                 amountDisplay: "100",
-                amountUsd: null,
                 symbol: "NEAR",
                 tokenPrice: null,
                 historicalPriceUsd: null,
@@ -140,7 +139,7 @@ describe("buildReceiptAmountModel", () => {
             },
         });
 
-        expect(result.sourceAmountUsd).toBeNull();
+        expect(result.sourceAmountUsd).toBe("$200.00");
         expect(result.destinationAmountUsd).toBe("$201.00");
     });
 });
