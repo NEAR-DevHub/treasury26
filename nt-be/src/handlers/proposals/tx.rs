@@ -39,6 +39,9 @@ struct NearBlocksReceiptBlock {
 #[derive(Deserialize, Debug)]
 struct NearBlocksResponse {
     txns: Vec<NearBlocksTransaction>,
+    /// Opaque continuation for the next (older) page; absent on the last one.
+    #[serde(default)]
+    cursor: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -57,6 +60,12 @@ pub struct TransactionQueryParams {
     pub action: String,
 }
 
+/// Upper bound on NearBlocks v1 pages walked per method (250 receipts at the
+/// default 25/page) so a pathological date window cannot turn one lookup into
+/// unbounded API spend. The v1 receipts endpoint paginates via the response's
+/// `cursor` — `page=`/`per_page=` are silently ignored (verified live).
+const MAX_RECEIPT_PAGES: u32 = 10;
+
 #[tracing::instrument(
     level = "debug",
     skip_all,
@@ -69,11 +78,15 @@ async fn fetch_nearblocks_transactions(
     method: &str,
     after_date: NaiveDate,
     before_date: NaiveDate,
-) -> Result<Vec<NearBlocksTransaction>, (StatusCode, String)> {
-    let url = format!(
-        "https://api.nearblocks.io/v1/account/{}/receipts?method={}&after_date={}&before_date={}&per_page=50",
+    cursor: Option<&str>,
+) -> Result<NearBlocksResponse, (StatusCode, String)> {
+    let mut url = format!(
+        "https://api.nearblocks.io/v1/account/{}/receipts?method={}&after_date={}&before_date={}",
         dao_id, method, after_date, before_date
     );
+    if let Some(cursor) = cursor {
+        url.push_str(&format!("&cursor={}", cursor));
+    }
 
     let response = http_client
         .get(&url)
@@ -95,18 +108,66 @@ async fn fetch_nearblocks_transactions(
             method,
             response.status()
         );
-        return Ok(vec![]);
+        return Ok(NearBlocksResponse {
+            txns: vec![],
+            cursor: None,
+        });
     }
 
-    let data: NearBlocksResponse = response.json().await.map_err(|e| {
+    response.json().await.map_err(|e| {
         tracing::error!("Failed to parse NearBlocks response: {}", e);
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to parse API response".to_string(),
         )
-    })?;
+    })
+}
 
-    Ok(data.txns)
+/// Walk the v1 receipt pages for one method until the proposal's transaction
+/// is found, the last page is reached, or the page cap is hit.
+#[allow(clippy::too_many_arguments)]
+async fn find_matching_transaction_paged(
+    http_client: &reqwest::Client,
+    api_key: &str,
+    dao_id: &AccountId,
+    method: &str,
+    after_date: NaiveDate,
+    before_date: NaiveDate,
+    proposal_id: u64,
+    action_str: &str,
+) -> Result<Option<ProposalTransactionResponse>, (StatusCode, String)> {
+    let mut cursor: Option<String> = None;
+    for page in 1..=MAX_RECEIPT_PAGES {
+        let response = fetch_nearblocks_transactions(
+            http_client,
+            api_key,
+            dao_id,
+            method,
+            after_date,
+            before_date,
+            cursor.as_deref(),
+        )
+        .await?;
+        tracing::info!(
+            "Found {} {} transactions on page {}",
+            response.txns.len(),
+            method,
+            page
+        );
+        if let Some(txn) = find_matching_transaction(&response.txns, proposal_id, action_str) {
+            return Ok(Some(ProposalTransactionResponse {
+                transaction_hash: txn.transaction_hash.clone(),
+                nearblocks_url: format!("https://nearblocks.io/txns/{}", txn.transaction_hash),
+                block_height: txn.block.block_height,
+                timestamp: txn.receipt_block.block_timestamp,
+            }));
+        }
+        cursor = response.cursor.filter(|c| !c.is_empty());
+        if response.txns.is_empty() || cursor.is_none() {
+            break;
+        }
+    }
+    Ok(None)
 }
 
 fn find_matching_transaction<'a>(
@@ -194,59 +255,38 @@ pub async fn find_proposal_execution_transaction_inner(
         .cached(CacheTier::LongTerm, cache_key, async move {
             if action == "VoteApprove" {
                 // Try on_proposal_callback first
-                let callback_txns = fetch_nearblocks_transactions(
+                if let Some(response) = find_matching_transaction_paged(
                     &http_client,
                     &api_key,
                     &dao_id_clone,
                     "on_proposal_callback",
                     after_date,
                     before_date,
+                    proposal_id,
+                    &action,
                 )
-                .await?;
-
-                tracing::info!(
-                    "Found {} on_proposal_callback transactions",
-                    callback_txns.len()
-                );
-
-                if let Some(txn) = find_matching_transaction(&callback_txns, proposal_id, &action) {
-                    tracing::info!("Found execution transaction: {}", txn.transaction_hash);
-                    return Ok(ProposalTransactionResponse {
-                        transaction_hash: txn.transaction_hash.clone(),
-                        nearblocks_url: format!(
-                            "https://nearblocks.io/txns/{}",
-                            txn.transaction_hash
-                        ),
-                        block_height: txn.block.block_height,
-                        timestamp: txn.receipt_block.block_timestamp,
-                    });
+                .await?
+                {
+                    tracing::info!("Found execution transaction: {}", response.transaction_hash);
+                    return Ok(response);
                 }
             }
 
             // Fallback to act_proposal if not found
-            let act_proposal_txns = fetch_nearblocks_transactions(
+            if let Some(response) = find_matching_transaction_paged(
                 &http_client,
                 &api_key,
                 &dao_id_clone,
                 "act_proposal",
                 after_date,
                 before_date,
+                proposal_id,
+                &action,
             )
-            .await?;
-
-            tracing::info!(
-                "Found {} act_proposal transactions",
-                act_proposal_txns.len()
-            );
-
-            if let Some(txn) = find_matching_transaction(&act_proposal_txns, proposal_id, &action) {
-                tracing::info!("Found execution transaction: {}", txn.transaction_hash);
-                return Ok(ProposalTransactionResponse {
-                    transaction_hash: txn.transaction_hash.clone(),
-                    nearblocks_url: format!("https://nearblocks.io/txns/{}", txn.transaction_hash),
-                    block_height: txn.block.block_height,
-                    timestamp: txn.receipt_block.block_timestamp,
-                });
+            .await?
+            {
+                tracing::info!("Found execution transaction: {}", response.transaction_hash);
+                return Ok(response);
             }
 
             tracing::info!(
