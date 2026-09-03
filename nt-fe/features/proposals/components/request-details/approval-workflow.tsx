@@ -226,7 +226,10 @@ export function ApprovalWorkflow({
                 title={t("approvals")}
                 subtitle={t("approvalsReceived", {
                     received: approvalsReceived,
-                    required: requiredVotes,
+                    // No role can vote on this kind, so the threshold is NaN.
+                    required: Number.isFinite(requiredVotes)
+                        ? requiredVotes
+                        : tCommon("notAvailable"),
                 })}
             />
             {votes.map(([voter, vote]) => (
