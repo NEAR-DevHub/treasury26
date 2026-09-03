@@ -8,7 +8,6 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "@/components/alert";
 import { Button } from "@/components/button";
-import { FormattedDate } from "@/components/formatted-date";
 import { Icon } from "@/components/icon";
 import {
     Dialog,
@@ -16,18 +15,24 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
+    mobileInsetSheetClassName,
 } from "@/components/modal";
+import { sheetCellClassName } from "@/components/table-sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProposalCard } from "@/features/proposals/components/proposal-card";
+import { ProposalTimelineDate } from "@/features/proposals/components/proposal-timeline-date";
 import { ProposalTypeIcon } from "@/features/proposals/components/proposal-type-icon";
+import { HEAD_CLASS } from "@/features/proposals/components/proposals-table-layout";
 import { TransactionCell } from "@/features/proposals/components/transaction-cell";
 import { useProposalKindLabel } from "@/features/proposals/hooks/use-proposal-kind-label";
+import { extractConfidentialRequestData } from "@/features/proposals/utils/proposal-extractors";
 import {
     getProposalUIKind,
     getQuoteDeadlineMs,
 } from "@/features/proposals/utils/proposal-utils";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { Proposal } from "@/lib/proposals-api";
-import { nanosToMs } from "@/lib/utils";
+import { cn, nanosToMs } from "@/lib/utils";
 import type { Policy } from "@/types/policy";
 
 interface VotingDurationImpactModalProps {
@@ -167,21 +172,30 @@ export function VotingDurationImpactModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-3xl! max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{t("impactTitle")}</DialogTitle>
+            <DialogContent
+                className={cn(
+                    "gap-3 p-4 sm:max-w-[720px]! sm:gap-4 sm:p-5",
+                    mobileInsetSheetClassName,
+                )}
+            >
+                <DialogHeader className="mx-0 border-0 px-0 pb-0">
+                    <DialogTitle className="text-left text-base leading-[1.2]">
+                        {t("impactTitle")}
+                    </DialogTitle>
                 </DialogHeader>
 
-                <div className="flex flex-col gap-4">
-                    <p className="text-sm text-foreground">{t("impactBody")}</p>
+                <div className="flex flex-col gap-3 sm:gap-4">
+                    <p className="text-sm font-medium text-general-secondary-foreground">
+                        {t("impactBody")}
+                    </p>
 
                     {isLoadingProposals ? (
                         <ImpactSkeleton />
                     ) : (
                         <>
-                            <Alert variant="info">
+                            <Alert variant="info" className="p-3">
                                 <AlertDescription>
-                                    <ul className="list-outside list-disc space-y-1 pl-4">
+                                    <ul className="list-outside list-disc space-y-1 pl-4 font-medium">
                                         {activeProposalsCount > 0 && (
                                             <li>
                                                 {t("activeRequestsBullet", {
@@ -229,11 +243,11 @@ export function VotingDurationImpactModal({
                     )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="mx-0 px-0 pt-0">
                     <Button
-                        variant="default"
                         onClick={onConfirm}
-                        className="w-full"
+                        size="xl"
+                        className="w-full rounded-xl max-sm:h-10 max-sm:rounded-lg max-sm:text-sm"
                     >
                         {t("yesContinue")}
                     </Button>
@@ -273,81 +287,138 @@ function ImpactedRequests({
     const t = useTranslations("proposals.expanded");
 
     return (
-        <div className="overflow-hidden rounded-xl border border-general-border">
+        <div className="overflow-hidden rounded-2xl border border-general-border bg-general-tertiary">
             <button
                 type="button"
                 onClick={onToggle}
                 aria-expanded={isExpanded}
-                className="flex w-full items-center gap-2 p-3 text-left transition-colors hover:bg-general-bg-secondary/50"
+                className={cn(
+                    "flex w-full items-center gap-2 p-3 text-left text-sm font-medium text-general-secondary-foreground transition-colors hover:bg-general-border/40",
+                    isExpanded && "border-general-border border-b",
+                )}
             >
                 <Icon
                     icon={isExpanded ? ArrowDown01Icon : ArrowRight01Icon}
-                    className="size-5 shrink-0 text-general-secondary-foreground"
+                    className="size-5 shrink-0"
                 />
-                <span className="text-sm font-medium">{heading}</span>
+                <span>{heading}</span>
             </button>
 
             {isExpanded && (
-                <div className="border-general-border border-t">
-                    {/* Desktop: the three columns the design gives the table. */}
-                    <div className="hidden md:block">
-                        <div className="grid grid-cols-[1fr_1fr_1fr] border-general-border border-b px-3 py-2 text-sm font-semibold text-general-secondary-foreground">
-                            <div>{t("tableRequest")}</div>
-                            <div>{t("tableTransaction")}</div>
-                            <div>{t("tableNewExpiry")}</div>
-                        </div>
-                        {rows.map(({ proposal, newExpiry }) => (
-                            <div
-                                key={proposal.id}
-                                className="grid grid-cols-[1fr_1fr_1fr] items-center gap-4 border-general-border border-b px-3 py-3 last:border-b-0"
-                            >
-                                <ImpactedRequestSummary
-                                    proposal={proposal}
-                                    policy={policy}
-                                    treasuryId={treasuryId}
-                                />
-                                <div className="min-w-0">
-                                    <TransactionCell proposal={proposal} />
-                                </div>
-                                <div className="flex min-w-0 items-center justify-between gap-2">
-                                    <span className="truncate text-sm">
-                                        {newExpiry}
-                                    </span>
-                                    <RequestLink
-                                        treasuryId={treasuryId}
-                                        proposalId={proposal.id}
-                                    />
-                                </div>
-                            </div>
-                        ))}
+                <>
+                    {/* Desktop: the sheet the requests table floats its rows in. */}
+                    <div className="hidden px-1 pb-1 lg:block">
+                        <table className="w-full table-fixed border-separate border-spacing-0">
+                            <thead>
+                                <tr>
+                                    <th
+                                        className={cn(
+                                            HEAD_CLASS,
+                                            "px-3 text-left",
+                                        )}
+                                    >
+                                        {t("tableRequest")}
+                                    </th>
+                                    <th
+                                        className={cn(
+                                            HEAD_CLASS,
+                                            "px-4 text-left",
+                                        )}
+                                    >
+                                        {t("tableTransaction")}
+                                    </th>
+                                    <th
+                                        className={cn(
+                                            HEAD_CLASS,
+                                            "px-3 text-left",
+                                        )}
+                                    >
+                                        {t("tableNewExpiry")}
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map(({ proposal, newExpiry }, index) => {
+                                    const cellClass = (
+                                        column: number,
+                                        padding: string,
+                                    ) =>
+                                        cn(
+                                            "h-[66px]",
+                                            sheetCellClassName({
+                                                isFirstRow: index === 0,
+                                                isLastRow:
+                                                    index === rows.length - 1,
+                                                isFirstColumn: column === 0,
+                                                isLastColumn: column === 2,
+                                            }),
+                                            padding,
+                                        );
+                                    return (
+                                        <tr key={proposal.id}>
+                                            <td
+                                                className={cellClass(0, "px-3")}
+                                            >
+                                                <ImpactedRequestSummary
+                                                    proposal={proposal}
+                                                    policy={policy}
+                                                    treasuryId={treasuryId}
+                                                />
+                                            </td>
+                                            <td
+                                                className={cellClass(1, "px-4")}
+                                            >
+                                                <TransactionCell
+                                                    proposal={proposal}
+                                                />
+                                            </td>
+                                            <td
+                                                className={cellClass(2, "px-3")}
+                                            >
+                                                <div className="flex min-w-0 items-center justify-between gap-2">
+                                                    <span className="truncate text-sm font-semibold">
+                                                        {newExpiry}
+                                                    </span>
+                                                    <RequestLink
+                                                        treasuryId={treasuryId}
+                                                        proposalId={proposal.id}
+                                                        icon={
+                                                            ArrowUpRight01Icon
+                                                        }
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
 
                     {/* Phone: one card per request, the way the list shows it. */}
-                    <div className="flex flex-col gap-3 p-3 md:hidden">
+                    <div className="flex flex-col gap-2 px-1 pb-1 lg:hidden">
                         {rows.map(({ proposal, newExpiry }) => (
-                            <div
+                            <ProposalCard
                                 key={proposal.id}
-                                className="flex flex-col gap-3 rounded-xl border border-general-border p-3"
-                            >
-                                <div className="flex items-start justify-between gap-2">
-                                    <ImpactedRequestSummary
-                                        proposal={proposal}
-                                        policy={policy}
-                                        treasuryId={treasuryId}
-                                    />
-                                    <RequestLink
-                                        treasuryId={treasuryId}
-                                        proposalId={proposal.id}
-                                    />
-                                </div>
-                                <TransactionCell proposal={proposal} />
-                                <span className="border-general-border border-t pt-3 text-sm text-general-secondary-foreground">
-                                    {t("tableNewExpiry")}: {newExpiry}
-                                </span>
-                            </div>
+                                proposal={proposal}
+                                policy={policy}
+                                className="rounded-xl"
+                                onOpen={() =>
+                                    window.open(
+                                        `/${treasuryId}/requests/${proposal.id}`,
+                                        "_blank",
+                                        "noopener,noreferrer",
+                                    )
+                                }
+                                footer={
+                                    <span className="text-sm text-general-secondary-foreground">
+                                        {t("tableNewExpiry")}: {newExpiry}
+                                    </span>
+                                }
+                            />
                         ))}
                     </div>
-                </div>
+                </>
             )}
         </div>
     );
@@ -364,22 +435,26 @@ function ImpactedRequestSummary({
     treasuryId?: string;
 }) {
     const getProposalKindLabel = useProposalKindLabel();
+    const kind = getProposalUIKind(proposal);
+    const title =
+        kind === "Confidential Request"
+            ? extractConfidentialRequestData(proposal, treasuryId).title
+            : getProposalKindLabel(kind);
 
     return (
-        <div className="flex min-w-0 items-center gap-3">
-            <span className="shrink-0 text-sm font-semibold text-general-secondary-foreground">
+        <div className="flex min-w-0 items-center gap-2">
+            <span className="shrink-0 text-sm font-medium text-general-secondary-foreground">
                 #{proposal.id}
             </span>
             <ProposalTypeIcon proposal={proposal} treasuryId={treasuryId} />
-            <div className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-semibold">
-                    {getProposalKindLabel(getProposalUIKind(proposal))}
+            <div className="flex min-w-0 flex-col items-start">
+                <span className="max-w-full truncate text-sm font-semibold">
+                    {title}
                 </span>
-                <FormattedDate
+                <ProposalTimelineDate
                     proposal={proposal}
                     policy={policy}
-                    relative
-                    className="truncate text-sm text-general-secondary-foreground"
+                    className="truncate text-sm font-medium text-general-secondary-foreground"
                 />
             </div>
         </div>
@@ -389,9 +464,11 @@ function ImpactedRequestSummary({
 function RequestLink({
     treasuryId,
     proposalId,
+    icon,
 }: {
     treasuryId?: string;
     proposalId: number;
+    icon: React.ComponentProps<typeof Icon>["icon"];
 }) {
     const t = useTranslations("proposals.expanded");
 
@@ -400,6 +477,7 @@ function RequestLink({
             asChild
             variant="ghost"
             size="icon"
+            className="size-10 shrink-0 text-general-secondary-foreground"
             tooltipContent={t("openRequestPage")}
         >
             <Link
@@ -408,7 +486,7 @@ function RequestLink({
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
             >
-                <Icon icon={ArrowUpRight01Icon} />
+                <Icon icon={icon} />
             </Link>
         </Button>
     );
@@ -416,33 +494,35 @@ function RequestLink({
 
 function ImpactSkeleton() {
     return (
-        <div className="overflow-hidden rounded-xl border border-general-border">
-            <div className="grid grid-cols-[1fr_1fr_1fr] gap-4 border-general-border border-b px-3 py-2">
+        <div className="rounded-2xl border border-general-border bg-general-tertiary p-1">
+            <div className="grid grid-cols-[1fr_1fr_1fr] gap-4 px-3 py-3">
                 <Skeleton className="h-3 w-16" />
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-3 w-16" />
             </div>
-            {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                    // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder list
-                    key={i}
-                    className="grid grid-cols-[1fr_1fr_1fr] items-center gap-4 border-general-border border-b px-3 py-3 last:border-b-0"
-                >
-                    <div className="flex items-center gap-3">
-                        <Skeleton className="h-4 w-6 shrink-0" />
-                        <Skeleton className="size-9 shrink-0 rounded-full" />
-                        <div className="flex flex-1 flex-col gap-1.5">
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-3 w-16" />
+            <div className="overflow-hidden rounded-xl border border-general-border bg-card">
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                        // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder list
+                        key={i}
+                        className="grid grid-cols-[1fr_1fr_1fr] items-center gap-4 border-general-border border-b px-3 py-3 last:border-b-0"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Skeleton className="h-4 w-6 shrink-0" />
+                            <Skeleton className="size-9 shrink-0 rounded-full" />
+                            <div className="flex flex-1 flex-col gap-1.5">
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-3 w-16" />
+                            </div>
                         </div>
+                        <div className="flex flex-col gap-1.5">
+                            <Skeleton className="h-4 w-28" />
+                            <Skeleton className="h-3 w-20" />
+                        </div>
+                        <Skeleton className="h-4 w-16" />
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                        <Skeleton className="h-4 w-28" />
-                        <Skeleton className="h-3 w-20" />
-                    </div>
-                    <Skeleton className="h-4 w-16" />
-                </div>
-            ))}
+                ))}
+            </div>
         </div>
     );
 }
