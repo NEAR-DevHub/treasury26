@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "请求",
-            "detailDescription": "请求详情",
-            "detailTitle": "请求 #{id}"
+            "detailTitle": "{kind}详情",
+            "sendDetailTitle": "发送详情",
+            "swapDetailTitle": "兑换详情",
+            "bulkDetailTitle": "批量发送详情"
         },
         "members": {
             "title": "成员",

@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "Yêu cầu",
-            "detailDescription": "Chi tiết yêu cầu",
-            "detailTitle": "Yêu cầu #{id}"
+            "detailTitle": "Chi tiết {kind}",
+            "sendDetailTitle": "Chi tiết gửi",
+            "swapDetailTitle": "Chi tiết hoán đổi",
+            "bulkDetailTitle": "Chi tiết gửi hàng loạt"
         },
         "members": {
             "title": "Thành viên",
@@ -657,7 +659,7 @@
             "title": "Tạo yêu cầu đầu tiên của bạn",
             "description": "Yêu cầu thanh toán, trao đổi và các hành động khác sẽ xuất hiện ở đây khi được tạo.",
             "send": "Gửi",
-            "exchange": "Trao đổi"
+            "exchange": "Hoán đổi"
         },
         "actions": {
             "approve": "Phê duyệt",
@@ -681,7 +683,7 @@
             "allCaughtUp": "Đã xử lý hết!",
             "noPending": "Không có yêu cầu đang chờ nào.",
             "send": "Gửi",
-            "exchange": "Trao đổi",
+            "exchange": "Hoán đổi",
             "requestsSelected": "{count, plural, other {# yêu cầu đã chọn}}",
             "bulkApproveDisabled": "Yêu cầu này không thể được phê duyệt vì ngân quỹ không đủ số dư."
         },

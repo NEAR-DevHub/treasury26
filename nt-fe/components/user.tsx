@@ -1,4 +1,4 @@
-import { UserAccountIcon } from "@hugeicons/core-free-icons";
+import { User02Icon, UserAccountIcon } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -66,10 +66,11 @@ export type UserVariant =
     /** Name + address only */
     | "details";
 
-const avatarTextSizeClasses = {
-    sm: "text-[10px]",
-    md: "text-xs",
-    lg: "text-sm",
+/** The glyph inside the default avatar, scaled to the disc it sits in. */
+const avatarGlyphSizeClasses = {
+    sm: "size-3.5",
+    md: "size-4",
+    lg: "size-5",
 } as const;
 
 /** Trim and drop empty / whitespace-only display names. */
@@ -120,50 +121,47 @@ function resolveSelfTreasuryName(
         : undefined;
 }
 
-function isSameAccountLabel(name: string, address: string): boolean {
-    return name.trim().toLowerCase() === address.trim().toLowerCase();
-}
-
-function getUserAvatarInitial(name: string, address: string): string {
-    if (name && !isSameAccountLabel(name, address)) {
-        return name.charAt(0).toUpperCase();
-    }
-    return address.charAt(0).toLowerCase();
-}
-
 interface UserAvatarProps {
     name: string;
-    address: string;
     imageUrl?: string;
     size?: UserSize;
     /** Overrides the avatar geometry (size and roundness) for one call site. */
     className?: string;
 }
 
+function isSameAccountLabel(name: string, address: string): boolean {
+    return name.trim().toLowerCase() === address.trim().toLowerCase();
+}
+
+/**
+ * The default avatar an account gets when it has no picture of its own: the
+ * same brand-green disc with a user glyph the profile menu and the address
+ * tooltip show, rather than an initial.
+ */
 function UserAvatarFallback({
-    name,
-    address,
     size = "sm",
     className,
-}: Omit<UserAvatarProps, "imageUrl">) {
+}: Omit<UserAvatarProps, "imageUrl" | "name">) {
     return (
         <div
             className={cn(
-                "rounded-full shrink-0 flex items-center justify-center bg-accent text-accent-foreground font-medium",
+                "rounded-full shrink-0 flex items-center justify-center bg-green-700 text-white",
                 sizeClasses[size],
-                avatarTextSizeClasses[size],
                 className,
             )}
             aria-hidden
         >
-            {getUserAvatarInitial(name, address)}
+            <Icon
+                icon={User02Icon}
+                fill="white"
+                className={avatarGlyphSizeClasses[size]}
+            />
         </div>
     );
 }
 
 export function UserAvatar({
     name,
-    address,
     imageUrl,
     size = "sm",
     className,
@@ -175,14 +173,7 @@ export function UserAvatar({
     }, [imageUrl]);
 
     if (!imageUrl || hasImageError) {
-        return (
-            <UserAvatarFallback
-                name={name}
-                address={address}
-                size={size}
-                className={className}
-            />
-        );
+        return <UserAvatarFallback size={size} className={className} />;
     }
 
     return (
@@ -322,12 +313,7 @@ export function UserWithData({
     const content = (
         <>
             {showAvatar && (
-                <UserAvatar
-                    name={name}
-                    address={visibleAddress}
-                    imageUrl={imageUrl}
-                    size={size}
-                />
+                <UserAvatar name={name} imageUrl={imageUrl} size={size} />
             )}
             {showDetails && (
                 <div

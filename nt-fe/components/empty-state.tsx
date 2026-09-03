@@ -7,8 +7,10 @@ type EmptyStateIcon = IconSvgElement | React.ReactNode;
 
 interface EmptyStateProps {
     icon?: EmptyStateIcon;
-    title: string;
+    title?: string;
     description: string;
+    /** Calls to action offered under the message, e.g. "Send" / "Swap". */
+    actions?: React.ReactNode;
     className?: string;
     iconWrapperClassName?: string;
     contentClassName?: string;
@@ -41,6 +43,7 @@ export function EmptyState({
     titleClassName,
     descriptionClassName,
     skeleton,
+    actions,
 }: EmptyStateProps) {
     const renderIcon = () => {
         if (isValidElement(icon)) return icon;
@@ -72,14 +75,16 @@ export function EmptyState({
                     contentClassName,
                 )}
             >
-                <p
-                    className={cn(
-                        "text-xl font-semibold leading-[1.2] tracking-[-0.025rem] text-foreground",
-                        titleClassName,
-                    )}
-                >
-                    {title}
-                </p>
+                {title ? (
+                    <p
+                        className={cn(
+                            "text-xl font-semibold leading-[1.2] tracking-[-0.025rem] text-foreground",
+                            titleClassName,
+                        )}
+                    >
+                        {title}
+                    </p>
+                ) : null}
                 <p
                     className={cn(
                         "text-sm font-medium leading-normal text-muted-foreground whitespace-pre-wrap",
@@ -89,6 +94,7 @@ export function EmptyState({
                     {description}
                 </p>
             </div>
+            {actions}
         </div>
     );
 

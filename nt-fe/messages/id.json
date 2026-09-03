@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "Permintaan",
-            "detailDescription": "Detail Permintaan",
-            "detailTitle": "Permintaan #{id}"
+            "detailTitle": "Detail {kind}",
+            "sendDetailTitle": "Detail pengiriman",
+            "swapDetailTitle": "Detail swap",
+            "bulkDetailTitle": "Detail pengiriman massal"
         },
         "members": {
             "title": "Anggota",

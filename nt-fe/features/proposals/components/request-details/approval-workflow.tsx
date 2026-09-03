@@ -12,6 +12,7 @@ import type { Policy } from "@/types/policy";
 import type { useProposalDetails } from "../../hooks/use-proposal-details";
 import { ProposalStatusPill, VoteBadge } from "../proposal-status-pill";
 import { DetailsCard, RequestParty } from "./primitives";
+import { REQUEST_ACTION_ROW_CLASS } from "./request-details-content";
 
 /** How far along the workflow a marker is — the rail is tinted to match. */
 type Tone = "success" | "muted" | "destructive";
@@ -122,6 +123,11 @@ interface ApprovalWorkflowProps {
     proposal: Proposal;
     policy: Policy;
     details: ReturnType<typeof useProposalDetails>;
+    /**
+     * Vote controls seated inside the card. The sheet pins them to its own
+     * footer instead, so it leaves this empty.
+     */
+    footer?: ReactNode;
 }
 
 /**
@@ -133,6 +139,7 @@ export function ApprovalWorkflow({
     proposal,
     policy,
     details,
+    footer,
 }: ApprovalWorkflowProps) {
     const t = useTranslations("proposals.expanded");
     const tStatus = useTranslations("proposals.status");
@@ -239,6 +246,17 @@ export function ApprovalWorkflow({
                 subtitle={outcomeDate}
                 isSubtitleLoading={isDateLoading}
             />
+
+            {footer && (
+                <div
+                    className={cn(
+                        "flex items-center gap-3 p-2 pt-4",
+                        REQUEST_ACTION_ROW_CLASS,
+                    )}
+                >
+                    {footer}
+                </div>
+            )}
         </DetailsCard>
     );
 }

@@ -1,7 +1,14 @@
 "use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { useRef } from "react";
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 import { SheetHandle } from "@/components/mobile-shell/sheet-handle";
 import { Dialog } from "@/components/modal";
 import {
@@ -21,6 +28,29 @@ import { useUiStore } from "@/stores/ui-store";
  */
 const SideSheet = Dialog;
 
+/**
+ * Where the body has been scrolled to. The header and footer sit outside the
+ * scroll container, so content passes *behind* them; a hairline appears on
+ * whichever edge is currently hiding something, the way the token modal on
+ * near.com marks the same overflow.
+ */
+interface SideSheetScrollState {
+    /** Content has moved up behind the header. */
+    hasContentAbove: boolean;
+    /** Content continues below the footer. */
+    hasContentBelow: boolean;
+}
+
+const NOT_SCROLLED: SideSheetScrollState = {
+    hasContentAbove: false,
+    hasContentBelow: false,
+};
+
+const SideSheetScrollContext = createContext<{
+    scroll: SideSheetScrollState;
+    report: (scroll: SideSheetScrollState) => void;
+}>({ scroll: NOT_SCROLLED, report: () => {} });
+
 function SideSheetContent({
     className,
     children,
@@ -30,6 +60,15 @@ function SideSheetContent({
     const popOverlay = useUiStore((s) => s.popOverlay);
     const pushed = useRef(false);
     const contentRef = useRef<HTMLDivElement>(null);
+    const [scroll, setScroll] = useState(NOT_SCROLLED);
+    const report = useCallback((next: SideSheetScrollState) => {
+        setScroll((prev) =>
+            prev.hasContentAbove === next.hasContentAbove &&
+            prev.hasContentBelow === next.hasContentBelow
+                ? prev
+                : next,
+        );
+    }, []);
 
     function handleStateChange(open: boolean) {
         if (open && !pushed.current) {
@@ -85,7 +124,9 @@ function SideSheetContent({
                 <div className="shrink-0 pt-4 lg:hidden">
                     <SheetHandle />
                 </div>
-                {children}
+                <SideSheetScrollContext.Provider value={{ scroll, report }}>
+                    {children}
+                </SideSheetScrollContext.Provider>
             </DialogPrimitive.Content>
         </DialogPortal>
     );
@@ -101,10 +142,12 @@ function SideSheetHeader({
     actions?: React.ReactNode;
     className?: string;
 }) {
+    const { scroll } = useContext(SideSheetScrollContext);
     return (
         <div
             className={cn(
-                "flex shrink-0 items-center justify-between gap-4 px-5 py-4",
+                "flex shrink-0 items-center justify-between gap-4 border-transparent border-b px-5 py-4",
+                scroll.hasContentAbove && "border-general-border",
                 className,
             )}
         >
@@ -126,14 +169,50 @@ function SideSheetBody({
     className?: string;
     children: React.ReactNode;
 }) {
+    const { report } = useContext(SideSheetScrollContext);
+    const viewportRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const viewport = viewportRef.current;
+        const content = contentRef.current;
+        if (!viewport || !content) return;
+
+        const measure = () =>
+            report({
+                hasContentAbove: viewport.scrollTop > 1,
+                hasContentBelow:
+                    viewport.scrollHeight -
+                        viewport.scrollTop -
+                        viewport.clientHeight >
+                    1,
+            });
+
+        measure();
+        viewport.addEventListener("scroll", measure, { passive: true });
+        // The body's own box never changes, so the content is what's watched —
+        // a request that reveals its payload grows it mid-scroll.
+        const observer = new ResizeObserver(measure);
+        observer.observe(viewport);
+        observer.observe(content);
+
+        return () => {
+            viewport.removeEventListener("scroll", measure);
+            observer.disconnect();
+        };
+    }, [report]);
+
     return (
         <div
-            className={cn(
-                "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4",
-                className,
-            )}
+            ref={viewportRef}
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4"
         >
-            {children}
+            <div
+                ref={contentRef}
+                className={cn("flex flex-col gap-3", className)}
+            >
+                {children}
+            </div>
         </div>
     );
 }
@@ -145,10 +224,12 @@ function SideSheetFooter({
     className?: string;
     children: React.ReactNode;
 }) {
+    const { scroll } = useContext(SideSheetScrollContext);
     return (
         <div
             className={cn(
-                "flex shrink-0 items-center gap-4 p-4",
+                "flex shrink-0 items-center gap-4 border-transparent border-t p-4",
+                scroll.hasContentBelow && "border-general-border",
                 // On a phone the sheet reaches the bottom edge, so the footer
                 // owns the home-indicator inset.
                 "pb-[max(1rem,env(safe-area-inset-bottom))] lg:pb-4",

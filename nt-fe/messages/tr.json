@@ -179,8 +179,10 @@
         },
         "requests": {
             "title": "Talepler",
-            "detailDescription": "Talep Ayrıntıları",
-            "detailTitle": "Talep #{id}"
+            "detailTitle": "{kind} ayrıntıları",
+            "sendDetailTitle": "Gönderim ayrıntıları",
+            "swapDetailTitle": "Takas ayrıntıları",
+            "bulkDetailTitle": "Toplu gönderim ayrıntıları"
         },
         "members": {
             "title": "Üyeler",

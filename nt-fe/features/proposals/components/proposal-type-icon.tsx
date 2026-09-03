@@ -92,10 +92,15 @@ export function ProposalTypeIcon({
             return <TreasuryTypeIcon type="confidential" />;
         case "Function Call":
             return (
-                <div className="flex size-9 shrink-0 items-center justify-center rounded-full dark:bg-blue-500/10 bg-blue-100">
+                <div
+                    className={cn(
+                        TYPE_ICON_CLASS,
+                        "border-general-blue-border bg-general-blue-background-faded",
+                    )}
+                >
                     <Icon
                         icon={SourceCodeSquareIcon}
-                        className="shrink-0 dark:text-blue-400 text-blue-800"
+                        className="size-4 shrink-0 text-general-blue-foreground"
                     />
                 </div>
             );

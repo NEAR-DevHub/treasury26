@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { emptyRowFadeMaskStyle } from "@/components/empty-state";
 import {
     Table,
     TableBody,
@@ -66,7 +67,14 @@ function TableCellSkeleton({ columnId }: { columnId: string }) {
  * page arrives, so only the cells are placeheld — and they sit on the real
  * table's grid, so nothing shifts once the rows land.
  */
-export function ProposalsTableSkeleton({ className }: { className?: string }) {
+export function ProposalsTableSkeleton({
+    className,
+    rows = TABLE_ROWS,
+}: {
+    className?: string;
+    /** Fewer rows when the skeleton is backdrop rather than loading state. */
+    rows?: number;
+}) {
     const tT = useTranslations("requests.table");
 
     const headers: Record<string, string> = {
@@ -100,7 +108,7 @@ export function ProposalsTableSkeleton({ className }: { className?: string }) {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {Array.from({ length: TABLE_ROWS }).map((_, rowIndex) => (
+                    {Array.from({ length: rows }).map((_, rowIndex) => (
                         <TableRow
                             // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length placeholder list
                             key={rowIndex}
@@ -113,8 +121,7 @@ export function ProposalsTableSkeleton({ className }: { className?: string }) {
                                         "h-[66px]",
                                         sheetCellClassName({
                                             isFirstRow: rowIndex === 0,
-                                            isLastRow:
-                                                rowIndex === TABLE_ROWS - 1,
+                                            isLastRow: rowIndex === rows - 1,
                                             isFirstColumn: columnIndex === 0,
                                             isLastColumn:
                                                 columnIndex ===
@@ -156,6 +163,23 @@ export function ProposalCardSkeleton() {
                 <Placeholder className="h-6 w-[60px]" />
                 <Placeholder className="h-6 w-[72px]" />
             </div>
+        </div>
+    );
+}
+
+/**
+ * The design fills an empty requests list with its own skeleton, faded out, so
+ * the page keeps the shape it will have once requests arrive. Meant to be
+ * handed to `EmptyState`, which floats the message on top of it.
+ */
+export function ProposalsEmptyBackdrop() {
+    return (
+        <div style={emptyRowFadeMaskStyle}>
+            <div className="flex flex-col gap-3 lg:hidden">
+                <ProposalCardSkeleton />
+                <ProposalCardSkeleton />
+            </div>
+            <ProposalsTableSkeleton className="hidden lg:block" rows={3} />
         </div>
     );
 }
