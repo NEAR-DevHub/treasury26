@@ -2,10 +2,12 @@
 
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { HighlightedText } from "@/components/highlighted-text";
 import { Icon } from "@/components/icon";
 import { useTreasury } from "@/hooks/use-treasury";
 import type { Proposal } from "@/lib/proposals-api";
+import { cn } from "@/lib/utils";
 import type { Policy } from "@/types/policy";
 import { useProposalKindLabel } from "../hooks/use-proposal-kind-label";
 import { extractConfidentialRequestData } from "../utils/proposal-extractors";
@@ -22,6 +24,12 @@ interface ProposalCardProps {
     /** Active requests search query — used to highlight matching text. */
     searchQuery?: string;
     onOpen: (proposal: Proposal) => void;
+    /**
+     * Replaces the approvals/status footer. The voting-duration impact modal
+     * shows the same card, but the line under the summary is the new expiry.
+     */
+    footer?: ReactNode;
+    className?: string;
 }
 
 /**
@@ -35,6 +43,8 @@ export function ProposalCard({
     policy,
     searchQuery = "",
     onOpen,
+    footer,
+    className,
 }: ProposalCardProps) {
     const tActions = useTranslations("requests.actions");
     const { treasuryId } = useTreasury();
@@ -46,7 +56,12 @@ export function ProposalCard({
             : getProposalKindLabel(kind);
 
     return (
-        <div className="relative flex w-full flex-col rounded-3xl border border-general-border bg-card px-3">
+        <div
+            className={cn(
+                "relative flex w-full flex-col rounded-3xl border border-general-border bg-card px-3",
+                className,
+            )}
+        >
             <div className="flex w-full items-start gap-2 py-3">
                 <ProposalTypeIcon proposal={proposal} treasuryId={treasuryId} />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -89,8 +104,15 @@ export function ProposalCard({
                 chevron's overlay so the approvals popover and the status pill
                 take their own taps instead of opening the request. */}
             <div className="relative flex w-full items-center justify-between py-4">
-                <VotingIndicator proposal={proposal} policy={policy} />
-                <ProposalStatusPill proposal={proposal} policy={policy} />
+                {footer ?? (
+                    <>
+                        <VotingIndicator proposal={proposal} policy={policy} />
+                        <ProposalStatusPill
+                            proposal={proposal}
+                            policy={policy}
+                        />
+                    </>
+                )}
             </div>
         </div>
     );
