@@ -424,6 +424,11 @@ async fn apply_ledger_balances(
     .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
     for (token, raw_balance) in tokens.iter_mut() {
+        // FT-lockup session rows share the wallet row's contract id but hold
+        // out-of-account balances the ledger does not track.
+        if token.lockup_instance_id.is_some() {
+            continue;
+        }
         let ledger_value = match token.residency {
             TokenResidency::Near => ledger.get("near"),
             TokenResidency::Ft => token
