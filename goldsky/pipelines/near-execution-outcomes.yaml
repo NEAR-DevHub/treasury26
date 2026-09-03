@@ -139,3 +139,9 @@ sinks:
     schema: public
     secret_name: TREZU_RENDER
     from: dao_outcomes
+  near_business_postgress_render:
+    from: dao_outcomes
+    schema: public
+    secret_name: NEAR_BUSINESS_RENDER
+    table: indexed_dao_outcomes
+    type: postgres
