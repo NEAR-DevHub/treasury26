@@ -1,6 +1,14 @@
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import {
+    buildNearComSendHref,
+    NEAR_COM_SEND_INTERNAL_NETWORK,
+    withNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { normalizeNearAssetId } from "@/lib/utils";
-import type { ConfidentialOrigin } from "./deposit-types";
+import type {
+    ConfidentialDepositOrigin,
+    ConfidentialOrigin,
+} from "./deposit-types";
 
 export type PayShareKind = "public" | "confidential";
 
@@ -43,6 +51,37 @@ export function buildPaySharePath(
 
     const search = params.toString();
     return `/${treasuryId}/pay/${query.kind}${search ? `?${search}` : ""}`;
+}
+
+/**
+ * Where Share / tab navigation goes for a confidential reusable address.
+ * near.com uses the apps/defuse-near send query params (`network`, `recipient`).
+ * near business stays on the in-app pay-share page.
+ */
+export function buildConfidentialDepositShareTarget(
+    treasuryId: string,
+    origin: ConfidentialDepositOrigin,
+): { href: string; external: boolean } {
+    if (origin === "nearcom") {
+        return {
+            href: buildNearComSendHref({
+                network: NEAR_COM_SEND_INTERNAL_NETWORK,
+                recipient: withNearComAddressPrefix(treasuryId),
+            }),
+            external: true,
+        };
+    }
+
+    return {
+        href: buildPaySharePath(treasuryId, {
+            kind: "confidential",
+            // Legacy query value kept for links already in the wild; it is a
+            // pay-share `source`, unrelated to ConfidentialDepositOrigin's
+            // same-named member.
+            source: "nearcom",
+        }),
+        external: false,
+    };
 }
 
 export function getAbsoluteTransferUrl(path: string): string {

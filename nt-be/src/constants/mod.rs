@@ -5,6 +5,7 @@ pub mod external_apis;
 pub mod intents_chains;
 pub mod intents_tokens;
 pub mod near_ft_whitelist;
+pub mod nearcom_ranking;
 
 pub const REF_FINANCE_CONTRACT_ID: &AccountIdRef =
     AccountIdRef::new_or_panic("v2.ref-finance.near");

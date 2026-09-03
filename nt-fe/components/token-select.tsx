@@ -32,6 +32,7 @@ import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
 import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { PaymentSelectModalContent } from "./payment-select-modal-content";
+import { PopularTokenTiles } from "./popular-token-tiles";
 import { SelectListIcon } from "./select-list";
 import {
     EmptySelectorIcon,
@@ -197,19 +198,10 @@ export default function TokenSelect({
         filterTokens,
     ]);
 
-    // Source-agnostic list for rendering/selecting.
-    const filteredTokens = useMemo(() => {
-        const searchLower = search.toLowerCase();
-
-        const matchesSearch = (t: MergedToken) =>
-            !searchLower ||
-            t.id.includes(searchLower) ||
-            t.name.toLowerCase().includes(searchLower) ||
-            t.symbol.toLowerCase().includes(searchLower) ||
-            t.networks.some((n) =>
-                n.symbol.toLowerCase().includes(searchLower),
-            );
-
+    // Source-agnostic list for rendering/selecting. The network filter runs
+    // Big.js math per network, so it is kept out of the search memo — otherwise
+    // every keystroke re-totals the whole bridge catalog.
+    const selectableTokens = useMemo(() => {
         const applyNetworkFilter = (t: MergedToken): MergedToken | null => {
             if (!filterTokens) return t;
             const filtered = t.networks.filter((n) =>
@@ -241,17 +233,37 @@ export default function TokenSelect({
             };
         };
 
-        const filteredTokensList: MergedToken[] = [];
+        const selectable: { token: MergedToken; haystack: string }[] = [];
 
         for (const token of tokens) {
-            if (!matchesSearch(token)) continue;
             const filtered = applyNetworkFilter(token);
             if (!filtered) continue;
-            filteredTokensList.push(filtered);
+            // Built from the unfiltered token, matching the original search
+            // behaviour. The NUL separator stops a query from matching across
+            // two adjacent fields.
+            selectable.push({
+                token: filtered,
+                haystack: [
+                    token.id,
+                    token.name,
+                    token.symbol,
+                    ...token.networks.map((n) => n.symbol),
+                ]
+                    .join("\u0000")
+                    .toLowerCase(),
+            });
         }
 
-        return filteredTokensList;
-    }, [tokens, search, filterTokens]);
+        return selectable;
+    }, [tokens, filterTokens]);
+
+    const filteredTokens = useMemo(() => {
+        const searchLower = search.toLowerCase();
+
+        return selectableTokens
+            .filter(({ haystack }) => haystack.includes(searchLower))
+            .map(({ token }) => token);
+    }, [selectableTokens, search]);
 
     const { yourAssets, otherAssets } = useMemo(() => {
         const yourAssetsFiltered = filteredTokens.filter(
@@ -310,8 +322,7 @@ export default function TokenSelect({
             const aUSD = a.balanceUSD ?? 0;
             const bUSD = b.balanceUSD ?? 0;
             if (aUSD > 0 !== bUSD > 0) return bUSD > 0 ? 1 : -1;
-            if (aUSD !== bUSD) return bUSD - aUSD;
-            return a.name.localeCompare(b.name);
+            return bUSD - aUSD;
         });
     }, [selectedAsset]);
 
@@ -651,51 +662,25 @@ export default function TokenSelect({
                                 {showPopularAssets &&
                                     popularTokens.length > 0 && (
                                         <div className="mb-3">
-                                            <div className="px-2 py-2 text-xs font-medium text-muted-foreground">
+                                            <div className="px-2 py-2 text-sm text-muted-foreground">
                                                 {tDepositSections(
                                                     "popularAssets",
                                                 )}
                                             </div>
-                                            <div className="flex flex-wrap gap-2 px-2">
-                                                {popularTokens.map((token) => (
-                                                    <Button
-                                                        key={`popular-${token.id}`}
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleTokenClick(
-                                                                token,
-                                                            )
-                                                        }
-                                                        variant="secondary"
-                                                        className={cn(
-                                                            "h-7 gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
-                                                            token.networks.some(
-                                                                (network) =>
-                                                                    network.id ===
-                                                                        selectedToken?.address &&
-                                                                    network.name ===
-                                                                        selectedToken?.network,
-                                                            ) && "bg-muted",
-                                                        )}
-                                                    >
-                                                        <SelectListIcon
-                                                            icon={token.icon}
-                                                            alt={
-                                                                token.symbol ||
-                                                                token.name
-                                                            }
-                                                            size="sm"
-                                                        />
-                                                        <HighlightedText
-                                                            text={
-                                                                token.symbol ||
-                                                                token.name
-                                                            }
-                                                            query={search}
-                                                        />
-                                                    </Button>
-                                                ))}
-                                            </div>
+                                            <PopularTokenTiles
+                                                items={popularTokens}
+                                                searchQuery={search}
+                                                onSelect={handleTokenClick}
+                                                isItemSelected={(token) =>
+                                                    token.networks.some(
+                                                        (network) =>
+                                                            network.id ===
+                                                                selectedToken?.address &&
+                                                            network.name ===
+                                                                selectedToken?.network,
+                                                    )
+                                                }
+                                            />
                                         </div>
                                     )}
 

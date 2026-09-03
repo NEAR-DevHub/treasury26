@@ -269,7 +269,7 @@
             "networksWithAssets": "자산이 있는 네트워크",
             "yourAssets": "내 자산",
             "otherAssets": "기타 자산",
-            "popularAssets": "인기 자산",
+            "popularAssets": "가장 많이 거래된 토큰",
             "available": "사용 가능",
             "forMembersOnly": "회원 전용"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "최소 입금액은 <amountTag>{amount} {symbol}</amountTag>입니다",
         "tabs": {
             "fromPublic": "공개에서",
-            "fromConfidential": "기밀에서"
+            "fromConfidential": "기밀에서",
+            "fromNearBusiness": "near business에서",
+            "fromConfidentialNearcom": "기밀 near.com에서",
+            "originLabel": "입금 출처"
         },
         "searchByName": "이름으로 검색",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "다른 곳에서 보낸 것은 모두 손실됩니다",
         "anythingElseLostSub": "거래소, 공개 지갑, 다른 네트워크 – 복구할 수 없습니다.",
         "confidentialAckCheckbox": "near.com 또는 near business 외부에서의 입금은 손실됨을 이해합니다.",
-        "onlyFromConfidentialNearcom": "<bold>near.com 또는 near business</bold>에서만",
+        "onlyFromNearBusiness": "<bold>near business</bold>에서만",
+        "onlyFromConfidentialNearcom": "<bold>기밀 near.com</bold>에서만",
         "reusableDoesntExpire": "<bold>재사용 가능.</bold> 만료되지 않음",
-        "fundsOutsideNearcomLost": "near.com 또는 near business 외부에서 보낸 자금은 손실됩니다",
+        "fundsOutsideNearBusinessLost": "<bold>near business</bold> 외부에서 보낸 자금은 손실됩니다",
+        "fundsOutsideNearcomLost": "<bold>기밀 near.com</bold> 외부에서 보낸 자금은 손실됩니다",
         "publicNetworkRecommendation": "<bold>{network}</bold> 네트워크에서만 입금하세요. 전액을 보내기 전에 소액 테스트 거래로 시작하세요.",
         "sourceCards": {
             "publicWallet": {
@@ -2390,7 +2395,8 @@
             "stepProgress": "{total} 중 {current}",
             "gotIt": "확인",
             "done": "완료",
-            "next": "다음"
+            "next": "다음",
+            "back": "뒤로"
         },
         "progress": {
             "title": "빠른 단계를 따라 트레저리 살펴보기",

@@ -269,7 +269,7 @@
             "networksWithAssets": "Redes con activos",
             "yourAssets": "Tus activos",
             "otherAssets": "Otros activos",
-            "popularAssets": "Activos populares",
+            "popularAssets": "Tokens más negociados",
             "available": "Disponible",
             "forMembersOnly": "Solo para miembros"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "Depósito mínimo: <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "Desde pública",
-            "fromConfidential": "Desde confidencial"
+            "fromConfidential": "Desde confidencial",
+            "fromNearBusiness": "Desde near business",
+            "fromConfidentialNearcom": "Desde near.com confidencial",
+            "originLabel": "Origen del depósito"
         },
         "searchByName": "Buscar por nombre",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "Todo lo enviado desde otro lugar se pierde",
         "anythingElseLostSub": "Exchanges, carteras públicas, otras redes: no se puede recuperar.",
         "confidentialAckCheckbox": "Entiendo que los depósitos desde fuera de near.com o near business se perderán.",
-        "onlyFromConfidentialNearcom": "Solo desde <bold>near.com o near business</bold>",
+        "onlyFromNearBusiness": "Solo desde <bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "Solo desde <bold>near.com confidencial</bold>",
         "reusableDoesntExpire": "<bold>Reutilizable.</bold> No caduca",
-        "fundsOutsideNearcomLost": "Los fondos enviados desde fuera de near.com o near business se perderán",
+        "fundsOutsideNearBusinessLost": "Los fondos enviados desde fuera de <bold>near business</bold> se perderán",
+        "fundsOutsideNearcomLost": "Los fondos enviados desde fuera de <bold>near.com confidencial</bold> se perderán",
         "publicNetworkRecommendation": "Deposita solo desde la red <bold>{network}</bold>. Empieza con una transacción de prueba pequeña antes de enviar el importe completo.",
         "sourceCards": {
             "publicWallet": {
@@ -2390,7 +2395,8 @@
             "stepProgress": "{current} de {total}",
             "gotIt": "Entendido",
             "done": "Listo",
-            "next": "Siguiente"
+            "next": "Siguiente",
+            "back": "Atrás"
         },
         "progress": {
             "title": "Sigue los pasos rápidos para explorar la tesorería",

@@ -682,6 +682,13 @@ input[type="number"] {
     }
 }
 
+/* Dashboard tour owns the dimming while a mobile sheet is open, so hide the
+   sheet overlay and let nextstepjs spotlight the target. */
+body[data-onboarding-tour="dashboard"] [data-slot="dialog-overlay"] {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 /* Help & Support tour: the anchor is now the profile button at the foot of the
    rail, so pin the tooltip to the bottom of the viewport rather than 30% down. */
 body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {

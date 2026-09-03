@@ -170,6 +170,13 @@ export function PaymentFormSection<
     const { data: addressBook = [] } = useAddressBook();
     const { data: chains = [] } = useChains();
 
+    // Stable identity: TokenSelect memoizes its list on this callback.
+    const filterIntentsOnly = useCallback(
+        (tok: { residency?: string | null }) =>
+            (tok.residency || "").toLowerCase() === "intents",
+        [],
+    );
+
     const chainMap = useMemo(() => {
         const map = new Map<string, ChainInfo>();
         for (const chain of chains) map.set(chain.key, chain);
@@ -492,10 +499,7 @@ export function PaymentFormSection<
                             autoSelect={tokenAutoSelect}
                             filterTokens={
                                 isConfidential && !tokenLocked
-                                    ? (tok) =>
-                                          (
-                                              tok.residency || ""
-                                          ).toLowerCase() === "intents"
+                                    ? filterIntentsOnly
                                     : undefined
                             }
                             balanceLayout="usdPrimary"

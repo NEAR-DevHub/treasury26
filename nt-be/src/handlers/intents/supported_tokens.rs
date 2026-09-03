@@ -6,25 +6,23 @@ use crate::AppState;
 use crate::utils::cache::CacheTier;
 use crate::utils::jsonrpc::{JsonRpcRequest, JsonRpcResponse};
 
-/// Fetch supported tokens
+/// Fetch POA Bridge `supportedTokensFetchAll` (mins, chain ids). Cached.
+/// Used to enrich the near.com catalog — never to add tokens.
 pub async fn fetch_supported_tokens_data(
     state: &Arc<AppState>,
 ) -> Result<Value, (StatusCode, String)> {
-    // Check cache first
     let cache_key = "bridge:supported-tokens".to_string();
     let state_clone = state.clone();
 
     state
         .cache
         .cached(CacheTier::LongTerm, cache_key, async move {
-            // Prepare JSON-RPC request
             let rpc_request = JsonRpcRequest::new(
                 "supportedTokensFetchAll",
                 "supported_tokens",
                 vec![serde_json::json!({})],
             );
 
-            // Make request to bridge RPC
             let response = state_clone
                 .http_client
                 .post(&state_clone.env_vars.bridge_rpc_url)

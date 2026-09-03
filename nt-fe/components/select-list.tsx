@@ -1,11 +1,11 @@
 "use client";
 
-import { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { useImageLoadError } from "@/hooks/use-image-load-error";
+import type { ReactNode } from "react";
 import { isIconUrl } from "@/lib/icon-url";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
+import { TokenIconImage } from "./token-icon-image";
 import { ScrollArea } from "./ui/scroll-area";
 
 export interface SelectListItem {
@@ -71,35 +71,13 @@ export function SelectListIcon({
     alt: string;
     size?: "sm" | "md" | "lg";
 }) {
-    const iconIsUrl = isIconUrl(icon);
-    const { showImage, onError } = useImageLoadError(iconIsUrl ? icon : null);
     const containerSizeClass =
         size === "sm" ? "size-6" : size === "lg" ? "size-14" : "size-12";
-    const imagePaddingClass = size === "sm" ? "p-0.5" : "p-2";
-    const fallbackSizeClass =
-        size === "sm" ? "w-3.5 h-3.5 text-[9px]" : "w-8 h-8";
-
-    const fallbackLabel =
-        icon && !iconIsUrl && icon.length <= 2
-            ? icon
-            : (alt || "?").charAt(0).toUpperCase();
-
-    if (showImage && icon) {
-        return (
-            <div className={containerSizeClass}>
-                <img
-                    key={icon}
-                    src={icon}
-                    alt={alt}
-                    className={cn(
-                        "w-full h-full object-contain rounded-full",
-                        imagePaddingClass,
-                    )}
-                    onError={onError}
-                />
-            </div>
-        );
-    }
+    // Remote artwork fills more of the container than a one- or two-character
+    // glyph does, so the two kinds of icon are sized differently.
+    const imageSizeClass =
+        size === "sm" ? "size-5" : size === "lg" ? "size-10" : "size-8";
+    const glyphSizeClass = size === "sm" ? "size-3.5 text-[9px]" : "size-8";
 
     return (
         <div
@@ -108,15 +86,13 @@ export function SelectListIcon({
                 "flex items-center justify-center",
             )}
         >
-            <div
-                className={cn(
-                    "rounded-full flex items-center justify-center text-white font-normal",
-                    fallbackSizeClass,
-                    gradient || "bg-brand-blue",
-                )}
-            >
-                <span>{fallbackLabel}</span>
-            </div>
+            <TokenIconImage
+                icon={icon}
+                alt={alt}
+                gradient={gradient || "bg-brand-blue"}
+                className={isIconUrl(icon) ? imageSizeClass : glyphSizeClass}
+                objectFit="contain"
+            />
         </div>
     );
 }

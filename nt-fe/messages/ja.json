@@ -269,7 +269,7 @@
             "networksWithAssets": "資産のあるネットワーク",
             "yourAssets": "あなたの資産",
             "otherAssets": "その他の資産",
-            "popularAssets": "人気の資産",
+            "popularAssets": "最も取引されたトークン",
             "available": "利用可能",
             "forMembersOnly": "メンバー限定"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "最小入金額は<amountTag>{amount} {symbol}</amountTag>です",
         "tabs": {
             "fromPublic": "公開から",
-            "fromConfidential": "機密から"
+            "fromConfidential": "機密から",
+            "fromNearBusiness": "near business から",
+            "fromConfidentialNearcom": "機密 near.com から",
+            "originLabel": "入金元"
         },
         "searchByName": "名前で検索",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "他から送られたものは失われます",
         "anythingElseLostSub": "取引所、公開ウォレット、他のネットワーク – 復元できません。",
         "confidentialAckCheckbox": "near.com または near business 以外からの入金は失われることを理解しています。",
-        "onlyFromConfidentialNearcom": "<bold>near.com または near business</bold> からのみ",
+        "onlyFromNearBusiness": "<bold>near business</bold> からのみ",
+        "onlyFromConfidentialNearcom": "<bold>機密 near.com</bold> からのみ",
         "reusableDoesntExpire": "<bold>再利用可能。</bold>期限なし",
-        "fundsOutsideNearcomLost": "near.com または near business 以外から送られた資金は失われます",
+        "fundsOutsideNearBusinessLost": "<bold>near business</bold> 以外から送られた資金は失われます",
+        "fundsOutsideNearcomLost": "<bold>機密 near.com</bold> 以外から送られた資金は失われます",
         "publicNetworkRecommendation": "<bold>{network}</bold> ネットワークからのみ入金してください。全額を送る前に少額のテスト取引から始めることをおすすめします。",
         "sourceCards": {
             "publicWallet": {
@@ -2390,7 +2395,8 @@
             "stepProgress": "{current} / {total}",
             "gotIt": "了解",
             "done": "完了",
-            "next": "次へ"
+            "next": "次へ",
+            "back": "戻る"
         },
         "progress": {
             "title": "クイックステップに従ってトレジャリーを探索",

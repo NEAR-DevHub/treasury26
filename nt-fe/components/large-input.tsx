@@ -207,7 +207,7 @@ export function LargeInput({
                     "transition-[font-size] duration-200 ease-in-out",
                     search && "pl-10",
                     borderless &&
-                        "border-none focus-visible:ring-0 focus-visible:ring-offset-0",
+                        "border-none bg-transparent shadow-none dark:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0",
                     isHero &&
                         "w-auto min-w-[1ch] max-w-full field-sizing-content",
                     fontSize,

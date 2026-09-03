@@ -1,10 +1,10 @@
 "use client";
-import { Icon } from "@/components/icon";
 import { Add01Icon, Settings01Icon } from "@hugeicons/core-free-icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 import { useMemo } from "react";
+import { Icon } from "@/components/icon";
 import {
     Select,
     SelectContent,
@@ -246,6 +246,38 @@ export function TreasurySelector({
                     sideOffset={8}
                     className="dark w-(--radix-select-trigger-width) min-w-56 rounded-2xl border-white/10 bg-gray-950 text-white shadow-xl"
                     viewportClassName="min-w-0 p-1.5"
+                    footer={
+                        <div className="shrink-0 border-t border-white/10 bg-gray-950 p-1.5 pt-1">
+                            <Button
+                                variant="unstyled"
+                                type="button"
+                                className={actionRowClass}
+                                onClick={() =>
+                                    router.push("/app/manage-treasuries")
+                                }
+                            >
+                                <Icon
+                                    icon={Settings01Icon}
+                                    className="shrink-0"
+                                />
+                                <span className="truncate">
+                                    {t("manageTreasuries")}
+                                </span>
+                            </Button>
+                            <Button
+                                data-tour-create-treasury=""
+                                variant="unstyled"
+                                type="button"
+                                className={actionRowClass}
+                                onClick={() => router.push(createTreasuryRoute)}
+                            >
+                                <Icon icon={Add01Icon} className="shrink-0" />
+                                <span className="truncate">
+                                    {t("createTreasury")}
+                                </span>
+                            </Button>
+                        </div>
+                    }
                 >
                     {memberTreasuries.length > 0 && (
                         <SelectGroup>
@@ -289,28 +321,6 @@ export function TreasurySelector({
                             </SelectGroup>
                         </>
                     )}
-                    <SelectSeparator className="-mx-1.5 my-1.5 bg-gray-300 dark:bg-white/10" />
-                    <Button
-                        variant="unstyled"
-                        type="button"
-                        className={actionRowClass}
-                        onClick={() => router.push("/app/manage-treasuries")}
-                    >
-                        <Icon icon={Settings01Icon} className="shrink-0" />
-                        <span className="truncate">
-                            {t("manageTreasuries")}
-                        </span>
-                    </Button>
-                    <Button
-                        id="dashboard-step5-create-treasury"
-                        variant="unstyled"
-                        type="button"
-                        className={actionRowClass}
-                        onClick={() => router.push(createTreasuryRoute)}
-                    >
-                        <Icon icon={Add01Icon} className="shrink-0" />
-                        <span className="truncate">{t("createTreasury")}</span>
-                    </Button>
                 </SelectContent>
             </Select>
         </>

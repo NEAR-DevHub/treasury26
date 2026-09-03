@@ -269,7 +269,7 @@
             "networksWithAssets": "Mạng có tài sản",
             "yourAssets": "Tài sản của bạn",
             "otherAssets": "Tài sản khác",
-            "popularAssets": "Tài sản phổ biến",
+            "popularAssets": "Token được giao dịch nhiều nhất",
             "available": "Có sẵn",
             "forMembersOnly": "Chỉ dành cho thành viên"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "Số tiền nạp tối thiểu là <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "Từ công khai",
-            "fromConfidential": "Từ bảo mật"
+            "fromConfidential": "Từ bảo mật",
+            "fromNearBusiness": "Từ near business",
+            "fromConfidentialNearcom": "Từ near.com bảo mật",
+            "originLabel": "Nguồn nạp"
         },
         "searchByName": "Tìm theo tên",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "Mọi thứ gửi từ nơi khác sẽ bị mất",
         "anythingElseLostSub": "Sàn giao dịch, ví công khai, mạng khác – không thể khôi phục.",
         "confidentialAckCheckbox": "Tôi hiểu các khoản nạp từ ngoài near.com hoặc near business sẽ bị mất.",
-        "onlyFromConfidentialNearcom": "Chỉ từ <bold>near.com hoặc near business</bold>",
+        "onlyFromNearBusiness": "Chỉ từ <bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "Chỉ từ <bold>near.com bảo mật</bold>",
         "reusableDoesntExpire": "<bold>Dùng lại được.</bold> Không hết hạn",
-        "fundsOutsideNearcomLost": "Tiền gửi từ ngoài near.com hoặc near business sẽ bị mất",
+        "fundsOutsideNearBusinessLost": "Tiền gửi từ ngoài <bold>near business</bold> sẽ bị mất",
+        "fundsOutsideNearcomLost": "Tiền gửi từ ngoài <bold>near.com bảo mật</bold> sẽ bị mất",
         "publicNetworkRecommendation": "Chỉ nạp từ mạng <bold>{network}</bold>. Hãy bắt đầu bằng một giao dịch thử nhỏ trước khi gửi toàn bộ số tiền.",
         "sourceCards": {
             "publicWallet": {
@@ -2373,7 +2378,8 @@
             "stepProgress": "{current} trên {total}",
             "gotIt": "Đã hiểu",
             "done": "Xong",
-            "next": "Tiếp"
+            "next": "Tiếp",
+            "back": "Quay lại"
         },
         "progress": {
             "title": "Làm theo các bước nhanh để khám phá Ngân quỹ",

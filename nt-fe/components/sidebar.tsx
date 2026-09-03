@@ -3,27 +3,25 @@ import {
     ArrowDataTransferHorizontalIcon,
     ArrowDown01Icon,
     Bookmark01Icon,
+    CircleQuestionMarkIcon,
     Home04Icon,
     InboxIcon,
-    CircleQuestionMarkIcon,
     SentIcon,
     Setting07Icon,
     SourceCodeIcon,
     UserAccountIcon,
     UserMultiple02Icon,
 } from "@hugeicons/core-free-icons";
-import { type IconSvgElement } from "@hugeicons/react";
-import { Icon } from "@/components/icon";
+import type { IconSvgElement } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useNextStep } from "nextstepjs";
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/icon";
 import { SlotWarning } from "@/components/warning-message";
 import { CreateBanner } from "@/features/onboarding/components/create-banner";
 import { SidebarOnboarding } from "@/features/onboarding/components/sidebar-onboarding";
-import { TOUR_NAMES } from "@/features/onboarding/steps/dashboard";
 import { useCustomRequestsEnabled } from "@/features/proposal-templates/hooks/use-custom-requests-enabled";
 import { useProposalTemplates } from "@/features/proposal-templates/hooks/use-proposal-templates";
 import { manifestIdOf } from "@/features/proposal-templates/manifest";
@@ -33,6 +31,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
 import { ApprovalInfo } from "./approval-info";
 import { Button } from "./button";
@@ -193,6 +192,7 @@ const navLinks: {
         icon: SentIcon,
         hoverAnimation: "fly",
         roleRequired: true,
+        id: "dashboard-step2-nav",
     },
     {
         path: "exchange",
@@ -200,6 +200,7 @@ const navLinks: {
         icon: ArrowDataTransferHorizontalIcon,
         hoverAnimation: "swap",
         roleRequired: true,
+        id: "dashboard-step3-nav",
     },
     {
         path: "address-book",
@@ -230,14 +231,18 @@ interface SidebarProps {
 export function Sidebar({ onClose }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
-    const [dropdownOpen, setDropdownOpen] = useState(false);
+    const dropdownOpen = useOnboardingStore(
+        (state) => state.treasurySelectorOpen,
+    );
+    const setDropdownOpen = useOnboardingStore(
+        (state) => state.setTreasurySelectorOpen,
+    );
     const [hasInitialized, setHasInitialized] = useState(false);
     const [supportModalOpen, setSupportModalOpen] = useState(false);
     const [templatesExpanded, setTemplatesExpanded] = useState(true);
     const { accountId } = useNear();
     const tNav = useTranslations("nav");
     const tCustom = useTranslations("customTemplates");
-    const { currentTour } = useNextStep();
 
     const { isGuestTreasury, treasuryId } = useTreasury();
     const { data: proposals } = useProposals(treasuryId, {
@@ -262,14 +267,6 @@ export function Sidebar({ onClose }: SidebarProps) {
             template.pinned &&
             manifestIdOf(template.manifest),
     );
-
-    // Dashboard tour step 5 opens treasury selector; close it once that tour ends
-    // so follow-up tours (e.g. Earn announcement) are not hidden behind dropdown.
-    useEffect(() => {
-        if (currentTour !== TOUR_NAMES.DASHBOARD) {
-            setDropdownOpen(false);
-        }
-    }, [currentTour]);
 
     // Mark as initialized after first render with mounted state
     useEffect(() => {
@@ -372,7 +369,7 @@ export function Sidebar({ onClose }: SidebarProps) {
 
                             return (
                                 <NavLink
-                                    id={link.id}
+                                    id={!isMobile ? link.id : undefined}
                                     key={link.path}
                                     isActive={isActive}
                                     icon={link.icon}

@@ -1,19 +1,19 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useImageLoadError } from "@/hooks/use-image-load-error";
-import { ChainIcons, TreasuryAsset } from "@/lib/api";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import type { ChainIcons, TreasuryAsset } from "@/lib/api";
+import type Big from "@/lib/big";
 import {
-    getNetworkDisplayCaseClass,
     getLocalizedNetworkDisplayName,
+    getNetworkDisplayCaseClass,
     getNetworkDisplayName,
     networksMatchAliased,
 } from "@/lib/intents-network";
-import Big from "@/lib/big";
 import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { MaskedBalance } from "./balance-mask";
 import { TokenDisplay as TokenWithNetworkDisplay } from "./token-display-with-network";
+import { TokenIconImage } from "./token-icon-image";
 
 // Re-export network label helpers so existing `@/components/token-display` imports keep working.
 export { getNetworkDisplayName, networksMatchAliased };
@@ -59,8 +59,6 @@ export const NetworkIconDisplay = ({
 }: NetworkIconDisplayProps) => {
     const getResidencyLabel = useResidencyLabel();
     const tAddressBookTable = useTranslations("addressBookTable");
-    const iconUrl = chainIcons?.icon ?? null;
-    const { showImage, onError } = useImageLoadError(iconUrl);
 
     const isNEAR = networkName.toLowerCase() === NEAR_NETWORK_ID;
     const displayName = getLocalizedNetworkDisplayName({
@@ -72,27 +70,12 @@ export const NetworkIconDisplay = ({
 
     return (
         <div className={cn("flex items-center gap-3", className)}>
-            {showImage && iconUrl ? (
-                <img
-                    key={iconUrl}
-                    src={iconUrl}
-                    alt={`${networkName} network`}
-                    className={cn(
-                        "size-6 rounded-full object-cover",
-                        iconClassName,
-                    )}
-                    onError={onError}
-                />
-            ) : (
-                <div
-                    className={cn(
-                        "size-6 rounded-full bg-brand-blue flex items-center justify-center text-white text-xs font-normal",
-                        iconClassName,
-                    )}
-                >
-                    {networkName.charAt(0).toUpperCase()}
-                </div>
-            )}
+            <TokenIconImage
+                icon={chainIcons?.icon}
+                alt={`${networkName} network`}
+                className={cn("size-6", iconClassName)}
+                gradient="bg-brand-blue"
+            />
             <div className="flex flex-col gap-0 items-baseline text-left">
                 <span
                     className={cn(
@@ -150,10 +133,10 @@ export const NetworkDisplay = ({
 
     return (
         <div className="flex items-center gap-3 min-w-0">
-            <img
-                src={image}
+            <TokenIconImage
+                icon={image}
                 alt={`${asset.chainName} network`}
-                className="size-6 shrink-0"
+                className="size-6"
             />
             <div className="flex min-w-0 flex-col text-left">
                 <span className="truncate font-semibold capitalize">

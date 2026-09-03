@@ -1,19 +1,19 @@
 import { useMemo } from "react";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import {
-    useAggregatedTokens,
-    DEFAULT_ASSETS_QUERY,
-    useAssets,
     type AggregatedAsset,
+    DEFAULT_ASSETS_QUERY,
+    useAggregatedTokens,
+    useAssets,
 } from "@/hooks/use-assets";
 import {
-    useTokenCatalog,
     type BridgeAsset,
     type BridgeNetwork,
+    useTokenCatalog,
 } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
-import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import type { ChainIcons } from "@/lib/api";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { normalizeNearAssetId } from "@/lib/utils";
 
 export interface MergedNetwork {
@@ -291,15 +291,15 @@ const buildBridgeOnlyTokens = (
                     }),
                 ),
             }),
-        )
-        .sort((a, b) => a.symbol.localeCompare(b.symbol));
+        );
 };
 
 /**
  * Fetches treasury assets and bridge tokens, returning a single merged array.
  *
  * - Owned tokens come first, sorted by USD value descending.
- * - Bridge-only tokens (not held in treasury) follow, sorted alphabetically.
+ * - Bridge-only tokens (not held in treasury) follow in catalog order
+ *   (near.com `tvol` → stablecoin → `mc`).
  * - All bridge networks carry residency: "Intents".
  * - When a token is in both treasury and bridge, networks are merged: treasury
  *   networks retain their original residency, while bridge-only networks on that
@@ -352,7 +352,7 @@ export function useMergedTokens({
                 isConfidential,
             ),
         ];
-    }, [aggregatedTokens, bridgeAssets, showOnlyOwned]);
+    }, [aggregatedTokens, bridgeAssets, showOnlyOwned, isConfidential]);
 
     return {
         tokens,

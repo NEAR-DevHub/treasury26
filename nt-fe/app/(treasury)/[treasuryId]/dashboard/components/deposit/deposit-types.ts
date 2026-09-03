@@ -8,6 +8,9 @@ export type DepositSource = "public_wallet" | "confidential_user";
  */
 export type ConfidentialOrigin = "trezu" | "nearcom";
 
+/** Confidential reusable-address origin tabs (near business vs near.com). */
+export type ConfidentialDepositOrigin = "near_business" | "nearcom";
+
 export interface DepositInfo {
     address: string;
     memo: string | null;

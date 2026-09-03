@@ -269,7 +269,7 @@
             "networksWithAssets": "Netzwerke mit Vermögenswerten",
             "yourAssets": "Ihre Vermögenswerte",
             "otherAssets": "Andere Vermögenswerte",
-            "popularAssets": "Beliebte Vermögenswerte",
+            "popularAssets": "Meistgehandelte Token",
             "available": "Verfügbar",
             "forMembersOnly": "Nur für Mitglieder"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "Mindesteinzahlung: <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "Aus öffentlichem",
-            "fromConfidential": "Aus vertraulichem"
+            "fromConfidential": "Aus vertraulichem",
+            "fromNearBusiness": "Von near business",
+            "fromConfidentialNearcom": "Von vertraulichem near.com",
+            "originLabel": "Einzahlungsquelle"
         },
         "searchByName": "Nach Namen suchen",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "Alles von woanders Gesendete geht verloren",
         "anythingElseLostSub": "Börsen, öffentliche Wallets, andere Netzwerke – nicht wiederherstellbar.",
         "confidentialAckCheckbox": "Ich verstehe, dass Einzahlungen von außerhalb von near.com oder near business verloren gehen.",
-        "onlyFromConfidentialNearcom": "Nur von <bold>near.com oder near business</bold>",
+        "onlyFromNearBusiness": "Nur von <bold>near business</bold>",
+        "onlyFromConfidentialNearcom": "Nur von <bold>vertraulichem near.com</bold>",
         "reusableDoesntExpire": "<bold>Wiederverwendbar.</bold> Läuft nicht ab",
-        "fundsOutsideNearcomLost": "Mittel von außerhalb von near.com oder near business gehen verloren",
+        "fundsOutsideNearBusinessLost": "Mittel von außerhalb von <bold>near business</bold> gehen verloren",
+        "fundsOutsideNearcomLost": "Mittel von außerhalb von <bold>vertraulichem near.com</bold> gehen verloren",
         "publicNetworkRecommendation": "Zahle nur aus dem <bold>{network}</bold>-Netzwerk ein. Beginne mit einer kleinen Testtransaktion, bevor du den vollen Betrag sendest.",
         "sourceCards": {
             "publicWallet": {
@@ -2390,7 +2395,8 @@
             "stepProgress": "{current} von {total}",
             "gotIt": "Verstanden",
             "done": "Fertig",
-            "next": "Weiter"
+            "next": "Weiter",
+            "back": "Zurück"
         },
         "progress": {
             "title": "Folgen Sie schnellen Schritten zur Erkundung der Treasury",

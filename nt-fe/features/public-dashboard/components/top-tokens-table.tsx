@@ -1,12 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
 import { Coins01Icon } from "@hugeicons/core-free-icons";
-import { formatCurrency } from "@/lib/utils";
+import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StepperHeader } from "@/components/step-wizard";
 import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { StepperHeader } from "@/components/step-wizard";
 import {
     Table,
     TableBody,
@@ -15,7 +14,9 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/table";
-import Big from "@/lib/big";
+import { TokenIconImage } from "@/components/token-icon-image";
+import { Skeleton } from "@/components/ui/skeleton";
+import { decimalOrNull } from "@/lib/amount-format";
 import type { PublicDashboardToken } from "../api";
 
 interface TopTokensTableProps {
@@ -23,35 +24,14 @@ interface TopTokensTableProps {
 }
 
 function TokenIcon({ icon, symbol }: { icon: string | null; symbol: string }) {
-    const isImage =
-        icon &&
-        (icon.startsWith("data:image") ||
-            icon.startsWith("http") ||
-            icon.startsWith("/"));
-
-    if (isImage) {
-        return (
-            <img
-                src={icon}
-                alt={symbol}
-                className="h-10 w-10 rounded-full shrink-0"
-            />
-        );
-    }
-
     return (
-        <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-xl shrink-0 text-white font-semibold">
-            {symbol.charAt(0).toUpperCase()}
-        </div>
+        <TokenIconImage
+            icon={icon}
+            alt={symbol}
+            className="size-10 text-xl font-semibold"
+            gradient="bg-blue-600"
+        />
     );
-}
-
-function formatTokenUsd(usd: string): string {
-    try {
-        return formatCurrency(new Big(usd || "0"));
-    } catch {
-        return "$0.00";
-    }
 }
 
 export function TopTokensTable({ tokens }: TopTokensTableProps) {
@@ -108,7 +88,10 @@ export function TopTokensTable({ tokens }: TopTokensTableProps) {
                                 </TableCell>
 
                                 <TableCell className="pr-4 text-right font-semibold tabular-nums">
-                                    {formatTokenUsd(token.totalUsd)}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={decimalOrNull(token.totalUsd)}
+                                    />
                                 </TableCell>
                             </TableRow>
                         ))}

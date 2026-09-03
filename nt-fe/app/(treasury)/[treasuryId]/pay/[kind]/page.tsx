@@ -195,7 +195,7 @@ export default function PaySharePage() {
 
     const notices = useMemo(() => {
         if (kind === "confidential") {
-            return buildConfidentialOriginNotices(t);
+            return buildConfidentialOriginNotices(t, "near_business");
         }
 
         const symbol = sendTokenMeta?.symbol || tokenId;

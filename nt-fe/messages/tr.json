@@ -269,7 +269,7 @@
             "networksWithAssets": "Varlıkları Olan Ağlar",
             "yourAssets": "Varlıklarınız",
             "otherAssets": "Diğer Varlıklar",
-            "popularAssets": "Popüler Varlıklar",
+            "popularAssets": "En çok işlem gören tokenlar",
             "available": "Mevcut",
             "forMembersOnly": "Yalnızca Üyelere Özel"
         },
@@ -302,7 +302,10 @@
         "minimumDeposit": "Minimum para yatırma <amountTag>{amount} {symbol}</amountTag>",
         "tabs": {
             "fromPublic": "Genelden",
-            "fromConfidential": "Gizliden"
+            "fromConfidential": "Gizliden",
+            "fromNearBusiness": "near business’tan",
+            "fromConfidentialNearcom": "gizli near.com’dan",
+            "originLabel": "Yatırma kaynağı"
         },
         "searchByName": "İsme göre ara",
         "faq": {
@@ -343,9 +346,11 @@
         "anythingElseLost": "Başka yerden gönderilen her şey kaybolur",
         "anythingElseLostSub": "Borsalar, genel cüzdanlar, diğer ağlar – kurtarılamaz.",
         "confidentialAckCheckbox": "near.com veya near business dışından yapılan yatırmaların kaybolacağını anlıyorum.",
-        "onlyFromConfidentialNearcom": "Yalnızca <bold>near.com veya near business</bold>’dan",
+        "onlyFromNearBusiness": "Yalnızca <bold>near business</bold>’tan",
+        "onlyFromConfidentialNearcom": "Yalnızca <bold>gizli near.com</bold>’dan",
         "reusableDoesntExpire": "<bold>Yeniden kullanılabilir.</bold> Süresi dolmaz",
-        "fundsOutsideNearcomLost": "near.com veya near business dışından gönderilen fonlar kaybolur",
+        "fundsOutsideNearBusinessLost": "<bold>near business</bold> dışından gönderilen fonlar kaybolur",
+        "fundsOutsideNearcomLost": "<bold>gizli near.com</bold> dışından gönderilen fonlar kaybolur",
         "publicNetworkRecommendation": "Yalnızca <bold>{network}</bold> ağından yatırın. Tam tutarı göndermeden önce küçük bir test işlemiyle başlayın.",
         "sourceCards": {
             "publicWallet": {
@@ -2390,7 +2395,8 @@
             "stepProgress": "{total} adımdan {current}",
             "gotIt": "Anladım",
             "done": "Tamam",
-            "next": "İleri"
+            "next": "İleri",
+            "back": "Geri"
         },
         "progress": {
             "title": "Hazineyi Keşfetmek İçin Hızlı Adımları İzleyin",

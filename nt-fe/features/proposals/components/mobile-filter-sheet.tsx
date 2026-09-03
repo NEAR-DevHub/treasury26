@@ -16,6 +16,7 @@ import { Input } from "@/components/input";
 import { SheetHandle } from "@/components/mobile-shell/sheet-handle";
 import { Dialog, DialogContent, DialogTitle } from "@/components/modal";
 import { useOperationLabel } from "@/components/operation-select";
+import { TokenIconImage } from "@/components/token-icon-image";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DateTimePicker, useDatePresets } from "@/components/ui/datepicker";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -837,19 +838,14 @@ function TokenRow({
 }
 
 function TokenAvatar({ token }: { token: TokenOption }) {
-    const isImage =
-        token.icon?.startsWith("http") || token.icon?.startsWith("data:");
-
-    return isImage ? (
-        <img
-            src={token.icon}
+    return (
+        <TokenIconImage
+            icon={token.icon}
             alt={token.name}
-            className="size-10 shrink-0 rounded-full border border-general-border object-contain"
+            className="size-10"
+            gradient="bg-brand-blue"
+            objectFit="contain"
         />
-    ) : (
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-blue font-normal text-sm text-white">
-            {token.icon}
-        </span>
     );
 }
 
