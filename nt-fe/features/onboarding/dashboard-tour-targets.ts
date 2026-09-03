@@ -2,15 +2,11 @@ import { useMobileShellStore } from "@/stores/mobile-shell-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
 
-const TREASURY_SELECTOR_TRIGGER_ID = "dashboard-step5";
-
 /** 0-indexed dashboard tour steps that live in the mobile Menu sheet. */
 export const DASHBOARD_TOUR_MENU_STEPS = [1, 2, 3] as const;
 
 /** 0-indexed dashboard tour step that lives in the treasury selector / sheet. */
 export const DASHBOARD_TOUR_TREASURY_STEP = 4;
-
-export const DASHBOARD_TOUR_SURFACE_DELAY_MS = 400;
 
 export type DashboardTourSurface = "page" | "menu" | "treasury";
 
@@ -24,18 +20,19 @@ export function dashboardTourSurface(stepIndex: number): DashboardTourSurface {
 
 export type DashboardTourSide = "bottom" | "right" | "top-left" | "top-right";
 
-/** On small screens, pin Send to the tile's left and Swap to the tile's right. */
+/**
+ * Create Treasury sits at the bottom of the dropdown/sheet on every screen, so
+ * its card always goes above it. On small screens the nav tiles pin Send to the
+ * left edge and Swap to the right edge so neither card is cut off.
+ */
 export function dashboardTourStepSide(
     stepIndex: number,
     mobile = isTourMobileViewport(),
 ): DashboardTourSide {
     if (stepIndex === 0) return "bottom";
-    if (!mobile)
-        return stepIndex === DASHBOARD_TOUR_TREASURY_STEP
-            ? "top-left"
-            : "right";
-    if (stepIndex === 2) return "top-right";
-    return "top-left";
+    if (stepIndex === DASHBOARD_TOUR_TREASURY_STEP) return "top-left";
+    if (!mobile) return "right";
+    return stepIndex === 2 ? "top-right" : "top-left";
 }
 
 export const DASHBOARD_TOUR_SELECTOR_RETRY = {
@@ -47,79 +44,64 @@ export function isTourMobileViewport() {
     return typeof window !== "undefined" && window.innerWidth < 1024;
 }
 
-export const CREATE_TREASURY_TARGET_ID = "dashboard-step5-create-treasury";
-export const CREATE_TREASURY_TARGET_ATTR = "data-tour-create-treasury";
+const CREATE_TREASURY_TARGET_ID = "dashboard-step5-create-treasury";
+const CREATE_TREASURY_TARGET_ATTR = "data-tour-create-treasury";
 
-/** Keep a single tour ID on the Create button that is actually on screen. */
-export function markVisibleCreateTreasuryTarget() {
-    if (typeof document === "undefined") return false;
-
-    const nodes = document.querySelectorAll(`[${CREATE_TREASURY_TARGET_ATTR}]`);
-    const visible = Array.from(nodes).filter((node) =>
-        isElementVisibleInViewport(node, 8),
-    );
-    for (const node of nodes) {
-        node.removeAttribute("id");
+/**
+ * The desktop dropdown and the mobile sheet each render a Create Treasury row,
+ * so the tour ID is moved onto whichever one is currently rendered — a
+ * duplicated ID would leave `querySelector` pointing at the hidden copy.
+ */
+function markVisibleCreateTreasuryTarget() {
+    const rows = document.querySelectorAll(`[${CREATE_TREASURY_TARGET_ATTR}]`);
+    for (const row of rows) {
+        row.removeAttribute("id");
     }
-    // The open sheet/dropdown portal is last in the DOM when both exist.
-    const target = visible.at(-1);
+    // The open portal is last in the DOM when both surfaces are mounted.
+    const target = Array.from(rows)
+        .filter((row) => row.getClientRects().length > 0)
+        .at(-1);
     target?.setAttribute("id", CREATE_TREASURY_TARGET_ID);
-    return !!target;
 }
 
-export function isRectVisibleInViewport(
-    rect: {
-        top: number;
-        bottom: number;
-        left: number;
-        right: number;
-        width: number;
-        height: number;
-    },
-    viewport: { width: number; height: number },
-    minVisiblePx = 1,
-) {
-    if (rect.width <= 0 || rect.height <= 0) return false;
-    const visibleTop = Math.max(rect.top, 0);
-    const visibleBottom = Math.min(rect.bottom, viewport.height);
-    const visibleLeft = Math.max(rect.left, 0);
-    const visibleRight = Math.min(rect.right, viewport.width);
-    return (
-        visibleBottom - visibleTop >= minVisiblePx &&
-        visibleRight - visibleLeft > 0
-    );
+/** Rounded rect signature, or "" when the target is missing or unrendered. */
+function targetGeometry(selector: string) {
+    const rect = document.querySelector(selector)?.getBoundingClientRect();
+    if (!rect?.width || !rect.height) return "";
+    return [rect.top, rect.left, rect.width, rect.height]
+        .map(Math.round)
+        .join(":");
 }
 
-export function isElementVisibleInViewport(
-    el: Element,
-    minVisiblePx = 1,
-): boolean {
-    return isRectVisibleInViewport(
-        el.getBoundingClientRect(),
-        { width: window.innerWidth, height: window.innerHeight },
-        minVisiblePx,
-    );
-}
+const SETTLED_FRAMES = 3;
+const SETTLE_TIMEOUT_MS = 1500;
 
-export function waitForVisibleTourTarget(
-    id: string,
-    timeoutMs = 2000,
-): Promise<boolean> {
-    if (typeof document === "undefined") return Promise.resolve(false);
+/**
+ * Resolves once the step's target has been laid out and stopped moving.
+ *
+ * nextstepjs measures the target exactly once per step change, and both tour
+ * surfaces animate in (the dropdown zooms, the sheets slide). Measuring
+ * mid-animation reads a transformed rect, which is what left the Create
+ * Treasury highlight and card floating away from the button.
+ */
+export function waitForSettledTourTarget(selector?: string) {
+    if (typeof document === "undefined" || !selector) return Promise.resolve();
 
-    return new Promise((resolve) => {
-        const started = Date.now();
+    return new Promise<void>((resolve) => {
+        const deadline = Date.now() + SETTLE_TIMEOUT_MS;
+        let previous = "";
+        let settledFrames = 0;
+
         const tick = () => {
-            if (id === CREATE_TREASURY_TARGET_ID) {
-                markVisibleCreateTreasuryTarget();
-            }
-            const el = document.getElementById(id);
-            if (el && isElementVisibleInViewport(el)) {
-                resolve(true);
-                return;
-            }
-            if (Date.now() - started >= timeoutMs) {
-                resolve(false);
+            markVisibleCreateTreasuryTarget();
+
+            const geometry = targetGeometry(selector);
+            settledFrames =
+                geometry && geometry === previous ? settledFrames + 1 : 0;
+            previous = geometry;
+
+            if (settledFrames >= SETTLED_FRAMES || Date.now() >= deadline) {
+                resolve();
                 return;
             }
             requestAnimationFrame(tick);
@@ -128,99 +110,29 @@ export function waitForVisibleTourTarget(
     });
 }
 
-function scrollableAncestor(el: HTMLElement): HTMLElement | null {
-    let node: HTMLElement | null = el.parentElement;
-    while (
-        node &&
-        node !== document.body &&
-        node !== document.documentElement
-    ) {
-        const style = window.getComputedStyle(node);
-        const canScrollY =
-            (style.overflowY === "auto" || style.overflowY === "scroll") &&
-            node.scrollHeight > node.clientHeight + 1;
-        if (canScrollY) return node;
-        node = node.parentElement;
-    }
-    return null;
-}
-
-function scrollCreateTreasuryIntoView() {
-    const el = document.getElementById(CREATE_TREASURY_TARGET_ID);
-    if (!el || isElementVisibleInViewport(el)) return;
-
-    const scroller = scrollableAncestor(el);
-    if (scroller) {
-        el.scrollIntoView({ block: "nearest", inline: "nearest" });
-    }
-}
-
-function revealCreateTreasuryTarget() {
-    markVisibleCreateTreasuryTarget();
-    scrollCreateTreasuryIntoView();
-}
-
-function scheduleCreateTreasuryReveal() {
-    setTimeout(revealCreateTreasuryTarget, 50);
-    setTimeout(revealCreateTreasuryTarget, 200);
-}
-
-function setTreasurySelectorOpen(open: boolean) {
-    const trigger = document.getElementById(TREASURY_SELECTOR_TRIGGER_ID);
-    if (!trigger) return;
-
-    const isOpen = trigger.getAttribute("data-state") === "open";
-    if (isOpen === open) return;
-
-    // Closing is blocked while the tour locks outside clicks, so lift the lock
-    // for this controlled toggle.
-    const { lockSelectOutside, setLockSelectOutside } =
-        useOnboardingStore.getState();
-    if (!open && lockSelectOutside) {
-        setLockSelectOutside(false);
-        trigger.click();
-        // Re-lock after Radix applies the close; doing it in the same tick
-        // lets onOpenChange see the lock and keep the dropdown open.
-        requestAnimationFrame(() => setLockSelectOutside(true));
-        return;
-    }
-
-    trigger.click();
-}
-
 /**
- * Opens the surface the given dashboard tour step needs (mobile menu, treasury
- * sheet, or desktop treasury dropdown) so nextstepjs can find its selector.
+ * Opens the one surface the given step needs (mobile Menu sheet, mobile
+ * treasury sheet, or desktop treasury dropdown) and closes the others, so
+ * stepping backwards reveals the previous target instead of leaving the
+ * dropdown covering it.
  */
-export function prepareDashboardTourStep(stepIndex: number) {
+function prepareDashboardTourStep(stepIndex: number) {
     const { openSheet, closeSheet } = useMobileShellStore.getState();
-
+    const { setTreasurySelectorOpen } = useOnboardingStore.getState();
     const surface = dashboardTourSurface(stepIndex);
 
-    if (!isTourMobileViewport()) {
-        closeSheet();
-        if (surface !== "page") {
-            useSidebarStore.getState().setSidebarOpen(true);
-        }
-        setTreasurySelectorOpen(surface === "treasury");
-        if (surface === "treasury") {
-            scheduleCreateTreasuryReveal();
-        }
-        return;
-    }
-
-    if (surface === "menu") {
-        openSheet("menu");
-        return;
-    }
-
-    if (surface === "treasury") {
-        openSheet("treasury");
-        scheduleCreateTreasuryReveal();
+    if (isTourMobileViewport()) {
+        setTreasurySelectorOpen(false);
+        if (surface === "page") closeSheet();
+        else openSheet(surface);
         return;
     }
 
     closeSheet();
+    if (surface !== "page") {
+        useSidebarStore.getState().setSidebarOpen(true);
+    }
+    setTreasurySelectorOpen(surface === "treasury");
 }
 
 export function applyDashboardTourStep(
@@ -235,7 +147,5 @@ export function applyDashboardTourStep(
 
 export function closeDashboardTourSurfaces() {
     useMobileShellStore.getState().closeSheet();
-    if (!isTourMobileViewport()) {
-        setTreasurySelectorOpen(false);
-    }
+    useOnboardingStore.getState().setTreasurySelectorOpen(false);
 }

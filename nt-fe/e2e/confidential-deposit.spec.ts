@@ -13,13 +13,13 @@
  * route level since the sandbox doesn't include a bridge RPC mock.
  * All other backend calls go to the real sandbox.
  */
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { ensureTreasury } from "./helpers/create-treasury";
 import {
     registerMockWalletRoutes,
     seedMockWalletAccount,
 } from "./helpers/mock-wallet";
 import { createAccount, transferNear } from "./helpers/sandbox-rpc";
-import { ensureTreasury } from "./helpers/create-treasury";
 
 const DAO_ID = "confdeposit.sputnik-dao.near";
 const ACCOUNT_ID = "confdeposit.near";
@@ -334,14 +334,14 @@ test("Confidential deposit — dashboard deposit page flow", async ({
     const nearComTab = page.getByTestId("deposit-origin-tab-nearcom");
     await expect(nearBusinessTab).toBeVisible();
     await expect(nearComTab).toBeVisible();
-    await expect(nearBusinessTab).toHaveAttribute("aria-selected", "true");
+    await expect(nearBusinessTab).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByText("Only from near business")).toBeVisible();
     await expect(
         page.getByText("Funds sent from outside near business will be lost"),
     ).toBeVisible();
 
     await nearComTab.click();
-    await expect(nearComTab).toHaveAttribute("aria-selected", "true");
+    await expect(nearComTab).toHaveAttribute("aria-pressed", "true");
     await expect(
         page.getByText("Only from confidential near.com"),
     ).toBeVisible();

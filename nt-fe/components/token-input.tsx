@@ -501,7 +501,7 @@ export function TokenInput<
                                         symbol={token.symbol}
                                         icon={token.icon}
                                         chainIcons={token.chainIcons}
-                                        iconSize="2xl"
+                                        iconSize="xl"
                                     />
                                 ) : null}
                                 <div className="flex flex-col min-w-0 text-left">

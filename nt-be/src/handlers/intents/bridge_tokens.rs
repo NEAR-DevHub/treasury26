@@ -15,8 +15,8 @@ use crate::{
             BaseTokenInfo, TokenDeployment, UnifiedTokenInfo, find_unified_asset_id, get_tokens_map,
         },
         nearcom_ranking::{
-            compare_catalog_networks, compare_catalog_tokens, is_hidden_catalog_token,
-            is_swap_excluded_symbol,
+            is_hidden_catalog_token, is_near_network, is_swap_excluded_symbol, network_volume_rank,
+            token_sort_key,
         },
     },
     utils::cache::CacheTier,
@@ -24,7 +24,7 @@ use crate::{
 use axum::{Json, extract::State, http::StatusCode};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::{
     AppState,
@@ -146,19 +146,8 @@ fn network_name_for_base(base: &BaseTokenInfo) -> String {
         .unwrap_or_else(|| base.origin_chain_name.to_lowercase())
 }
 
-/// Best-effort UI chain name from a Defuse/POA chain id (`eth:1` → `eth`).
-#[cfg(test)]
-fn chain_name_from_chain_id(chain_id: &str) -> String {
-    chain_id
-        .split(':')
-        .next()
-        .unwrap_or(chain_id)
-        .to_lowercase()
-}
-
-/// near.com lists one deployment per chain in catalog order. When our build
-/// produces multiple rows for the same intents balance or POA `chain_id`, keep
-/// the first (catalog `groupedTokens` order).
+/// When our build produces multiple rows for the same intents balance or POA
+/// `chain_id`, keep the first row we already pushed for that asset.
 fn dedupe_asset_networks(networks: &mut Vec<NetworkOption>) {
     let mut seen_balance = HashSet::new();
     let mut seen_chain = HashSet::new();
@@ -190,24 +179,23 @@ fn collected_catalog_tags(unified: &UnifiedTokenInfo) -> Vec<String> {
     tags
 }
 
+#[cfg(test)]
 fn is_hidden_unified_token(unified: &UnifiedTokenInfo) -> bool {
     is_hidden_catalog_token(&collected_catalog_tags(unified))
 }
 
-fn catalog_tags_for_asset(asset_id: &str) -> Vec<String> {
+static CATALOG_TAGS: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(|| {
     get_tokens_map()
-        .get(&asset_id.to_lowercase())
-        .map(collected_catalog_tags)
-        .unwrap_or_default()
-}
+        .iter()
+        .map(|(id, unified)| (id.clone(), collected_catalog_tags(unified)))
+        .collect()
+});
 
-/// Catalog tokens use near.com `unifiedAssetId`. Unused in catalog build after
-/// Bridge-only rows were dropped; kept for grouping-key tests.
-#[cfg(test)]
-fn bridge_only_group_key(intents_id: &str, symbol: &str) -> String {
-    find_unified_asset_id(intents_id)
-        .map(String::from)
-        .unwrap_or_else(|| symbol.to_lowercase())
+fn catalog_tags_for_asset(asset_id: &str) -> &[String] {
+    CATALOG_TAGS
+        .get(&asset_id.to_lowercase())
+        .map(Vec::as_slice)
+        .unwrap_or(&[])
 }
 
 fn catalog_token_in_oneclick(balance_id: &str, oneclick_ids: &HashSet<String>) -> bool {
@@ -277,10 +265,6 @@ struct BridgeLookup {
 }
 
 impl BridgeLookup {
-    fn is_empty(&self) -> bool {
-        self.by_intents.is_empty()
-    }
-
     fn from_supported_tokens(supported: &Value) -> Self {
         let mut lookup = Self::default();
         let Some(tokens) = supported.get("tokens").and_then(|t| t.as_array()) else {
@@ -345,10 +329,24 @@ pub async fn get_deposit_tokens(
 pub async fn get_swap_tokens(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<DepositAssetsResponse>, (StatusCode, String)> {
-    let deposit = load_deposit_catalog(state.clone()).await?;
-    let oneclick_tokens = fetch_oneclick_tokens(&state).await.unwrap_or_default();
-    let oneclick_ids: HashSet<String> = oneclick_tokens.into_iter().map(|t| t.asset_id).collect();
-    Ok(Json(filter_catalog_for_swap(deposit, &oneclick_ids)))
+    let state_clone = state.clone();
+    state
+        .cache
+        .cached::<_, DepositAssetsResponse, (StatusCode, String)>(
+            CacheTier::LongTerm,
+            "swap-tokens".to_string(),
+            async move {
+                let deposit = load_deposit_catalog(state_clone.clone()).await?;
+                let oneclick_tokens = fetch_oneclick_tokens(&state_clone)
+                    .await
+                    .unwrap_or_default();
+                let oneclick_ids: HashSet<String> =
+                    oneclick_tokens.into_iter().map(|t| t.asset_id).collect();
+                Ok(filter_catalog_for_swap(deposit, &oneclick_ids))
+            },
+        )
+        .await
+        .map(Json)
 }
 
 /// Backward-compatible alias of [`get_deposit_tokens`].
@@ -368,11 +366,10 @@ async fn load_deposit_catalog(
             CacheTier::LongTerm,
             "deposit-tokens".to_string(),
             async move {
-                let bridge = match fetch_supported_tokens_data(&state_clone).await {
-                    Ok(supported) => BridgeLookup::from_supported_tokens(&supported),
-                    Err(_) => BridgeLookup::default(),
-                };
-                Ok(build_deposit_catalog(&bridge))
+                let supported = fetch_supported_tokens_data(&state_clone).await?;
+                Ok(build_deposit_catalog(&BridgeLookup::from_supported_tokens(
+                    &supported,
+                )))
             },
         )
         .await
@@ -385,10 +382,9 @@ fn filter_catalog_for_oneclick(
 ) -> DepositAssetsResponse {
     let mut assets = Vec::with_capacity(deposit.assets.len());
     for mut asset in deposit.assets {
-        asset.networks.retain(|network| {
-            catalog_token_in_oneclick(&network.balance_asset_id, oneclick_ids)
-                || catalog_token_in_oneclick(&network.quote_asset_id, oneclick_ids)
-        });
+        asset
+            .networks
+            .retain(|network| catalog_token_in_oneclick(&network.balance_asset_id, oneclick_ids));
         if !asset.networks.is_empty() {
             assets.push(asset);
         }
@@ -421,7 +417,7 @@ fn build_deposit_catalog(bridge: &BridgeLookup) -> DepositAssetsResponse {
     let mut asset_map: HashMap<String, AssetOption> = HashMap::new();
 
     for (unified_id, unified) in get_tokens_map().iter() {
-        if is_hidden_unified_token(unified) {
+        if is_hidden_catalog_token(unified.tags.as_deref().unwrap_or(&[])) {
             continue;
         }
         // near.com `swap:input-only` (e.g. BTC Legacy) — not a deposit target.
@@ -431,6 +427,9 @@ fn build_deposit_catalog(bridge: &BridgeLookup) -> DepositAssetsResponse {
         for base in &unified.grouped_tokens {
             let balance_id = base.defuse_asset_id.as_str();
             if DEPRECATED_BALANCE_ASSET_IDS.contains(&balance_id) {
+                continue;
+            }
+            if is_hidden_catalog_token(base.tags.as_deref().unwrap_or(&[])) {
                 continue;
             }
             if has_tag(&base.tags, "swap:input-only") {
@@ -457,8 +456,7 @@ fn build_deposit_catalog(bridge: &BridgeLookup) -> DepositAssetsResponse {
             let chain_id = extras
                 .map(|e| e.chain_id.clone())
                 .unwrap_or(preferred_chain);
-            let public_deposit_supported =
-                bridge.is_empty() || bridge.supported_chains.contains(&chain_id);
+            let public_deposit_supported = bridge.supported_chains.contains(&chain_id);
 
             let asset = asset_map
                 .entry(group_key.clone())
@@ -508,16 +506,16 @@ fn build_deposit_catalog(bridge: &BridgeLookup) -> DepositAssetsResponse {
         let existing_near_network = asset
             .networks
             .iter()
-            .find(|network| network.name.eq_ignore_ascii_case("near"))
+            .find(|network| {
+                is_near_network(&network.name) || network.chain_id == NEAR_MAINNET_NETWORK_ID
+            })
             .cloned();
         let Some(existing_near_network) = existing_near_network else {
             continue;
         };
 
         asset.networks.retain(|network| {
-            !network.name.eq_ignore_ascii_case("near")
-                && network.id != NEAR_MAINNET_NETWORK_ID
-                && network.chain_id != NEAR_MAINNET_NETWORK_ID
+            !is_near_network(&network.name) && network.chain_id != NEAR_MAINNET_NETWORK_ID
         });
 
         asset.networks.push(NetworkOption {
@@ -539,17 +537,20 @@ fn build_deposit_catalog(bridge: &BridgeLookup) -> DepositAssetsResponse {
         dedupe_asset_networks(&mut asset.networks);
     }
 
-    assets.sort_by(|a, b| {
-        compare_catalog_tokens(
-            &catalog_tags_for_asset(&a.id),
-            &catalog_tags_for_asset(&b.id),
+    assets.sort_by_cached_key(|asset| {
+        (
+            token_sort_key(catalog_tags_for_asset(&asset.id)),
+            asset.id.clone(),
         )
-        .then_with(|| a.id.cmp(&b.id))
     });
     for asset in &mut assets {
-        asset
-            .networks
-            .sort_by(|a, b| compare_catalog_networks(&a.name, &b.name));
+        asset.networks.sort_by_cached_key(|network| {
+            (
+                !is_near_network(&network.name) && network.chain_id != NEAR_MAINNET_NETWORK_ID,
+                network_volume_rank(&network.name),
+                network.name.to_ascii_lowercase(),
+            )
+        });
     }
 
     DepositAssetsResponse { assets }
@@ -595,13 +596,6 @@ mod tests {
     }
 
     #[test]
-    fn chain_name_from_poa_chain_id() {
-        assert_eq!(chain_name_from_chain_id("eth:1"), "eth");
-        assert_eq!(chain_name_from_chain_id("aptos:mainnet"), "aptos");
-        assert_eq!(chain_name_from_chain_id("near:mainnet"), "near");
-    }
-
-    #[test]
     fn dedupe_keeps_first_catalog_row_per_chain_and_balance() {
         // Catalog order: native arb.omft before WETH wrap — first wins.
         let mut networks = vec![
@@ -637,24 +631,6 @@ mod tests {
         dedupe_asset_networks(&mut networks);
         assert_eq!(networks.len(), 1);
         assert_eq!(networks[0].balance_asset_id, "nep141:arb.omft.near");
-    }
-
-    #[test]
-    fn bridge_only_groups_unknown_tokens_by_symbol() {
-        let eth_weth = "nep141:eth-0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2.omft.near";
-        let base_weth = "nep141:base-0x4200000000000000000000000000000000000006.omft.near";
-        let pol_coca = "nep141:pol-0x7b12598e3616261df1c05ec28de0d2fb10c1f206.omdep.near";
-        let base_coca = "nep141:base-0x959fc04dbf97a27073f89237cd62605f4d1b906d.omft.near";
-
-        assert_eq!(
-            bridge_only_group_key(eth_weth, "WETH"),
-            find_unified_asset_id(eth_weth)
-                .map(String::from)
-                .unwrap_or_else(|| "weth".into())
-        );
-        assert_eq!(bridge_only_group_key(base_weth, "WETH"), "weth");
-        assert_eq!(bridge_only_group_key(pol_coca, "COCA"), "coca");
-        assert_eq!(bridge_only_group_key(base_coca, "COCA"), "coca");
     }
 
     #[test]
@@ -776,23 +752,116 @@ mod tests {
 
     #[test]
     fn vendored_catalog_sorts_like_nearcom_picker() {
-        let mut tokens: Vec<_> = get_tokens_map()
-            .values()
-            .filter(|token| !is_hidden_unified_token(token))
-            .collect();
-        tokens.sort_by(|a, b| {
-            compare_catalog_tokens(&collected_catalog_tags(a), &collected_catalog_tags(b))
-                .then_with(|| a.unified_asset_id.cmp(&b.unified_asset_id))
-        });
-
-        let top: Vec<_> = tokens
+        let catalog = build_deposit_catalog(&BridgeLookup::default());
+        let top: Vec<_> = catalog
+            .assets
             .iter()
             .take(5)
-            .map(|token| token.symbol.as_str())
+            .map(|asset| asset.asset_name.as_str())
             .collect();
-        assert_eq!(top, ["ZEC", "NEAR", "USDT", "USDC", "SOL"]);
-        assert!(tokens.iter().all(|token| !token.symbol.contains("(omni)")
-            && !matches!(token.symbol.as_str(), "steakUSDC" | "gtUSDCp" | "TLO")));
+        assert_eq!(
+            top,
+            ["ZEC", "NEAR", "USDT", "USDC", "SOL"],
+            "built catalog must match the near.com picker order"
+        );
+        assert!(
+            catalog.assets.iter().all(|asset| {
+                !asset.asset_name.contains("(omni)")
+                    && !matches!(asset.asset_name.as_str(), "steakUSDC" | "gtUSDCp" | "TLO")
+            }),
+            "hidden tokens must not appear in the built catalog"
+        );
+    }
+
+    #[test]
+    fn empty_bridge_lookup_marks_public_deposit_unsupported() {
+        let catalog = build_deposit_catalog(&BridgeLookup::default());
+        let unsupported = catalog
+            .assets
+            .iter()
+            .flat_map(|asset| asset.networks.iter())
+            .filter(|network| !network.public_deposit_supported)
+            .count();
+        assert!(
+            unsupported > 0,
+            "a missing Bridge RPC must fail closed, not advertise public deposit on every chain"
+        );
+        assert!(
+            catalog
+                .assets
+                .iter()
+                .flat_map(|asset| asset.networks.iter())
+                .all(|network| !network.public_deposit_supported),
+            "every network must be unsupported when the lookup has no supported_chains"
+        );
+    }
+
+    #[test]
+    fn near_networks_collapse_to_one_mainnet_row() {
+        let catalog = build_deposit_catalog(&BridgeLookup::default());
+        let near = catalog
+            .assets
+            .iter()
+            .find(|asset| asset.asset_name == "NEAR")
+            .expect("NEAR stays in the catalog");
+        let near_rows: Vec<_> = near
+            .networks
+            .iter()
+            .filter(|network| {
+                is_near_network(&network.name) || network.chain_id == NEAR_MAINNET_NETWORK_ID
+            })
+            .collect();
+        assert_eq!(near_rows.len(), 1, "exactly one NEAR network must survive");
+        assert_eq!(near_rows[0].chain_id, NEAR_MAINNET_NETWORK_ID);
+        assert!(
+            near_rows[0].balance_asset_id.starts_with("nep141:"),
+            "NEAR must keep its intents balance id, got {}",
+            near_rows[0].balance_asset_id
+        );
+        assert_eq!(
+            near.networks[0].chain_id, NEAR_MAINNET_NETWORK_ID,
+            "NEAR must be pinned first in the network list"
+        );
+    }
+
+    #[test]
+    fn usdc_networks_put_near_first_then_volume() {
+        let catalog = build_deposit_catalog(&BridgeLookup::default());
+        let usdc = catalog
+            .assets
+            .iter()
+            .find(|asset| asset.asset_name == "USDC")
+            .expect("USDC stays in the catalog");
+        assert!(
+            is_near_network(&usdc.networks[0].name)
+                || usdc.networks[0].chain_id == NEAR_MAINNET_NETWORK_ID,
+            "NEAR must be first, got {}",
+            usdc.networks[0].name
+        );
+        let non_near: Vec<_> = usdc
+            .networks
+            .iter()
+            .skip(1)
+            .map(|network| network_volume_rank(&network.name))
+            .collect();
+        let mut sorted = non_near.clone();
+        sorted.sort();
+        assert_eq!(
+            non_near, sorted,
+            "USDC non-NEAR networks must be in ascending vol: rank"
+        );
+    }
+
+    #[test]
+    fn every_catalog_chain_has_a_volume_rank() {
+        for base in get_defuse_tokens_map().values() {
+            let name = network_name_for_base(base);
+            assert_ne!(
+                network_volume_rank(&name),
+                999,
+                "no vol: rank for chain {name}"
+            );
+        }
     }
 
     #[test]
@@ -842,8 +911,7 @@ mod tests {
 
     #[test]
     fn bridge_lookup_fills_mins_without_adding_tokens() {
-        const USDC_ETH: &str =
-            "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near";
+        const USDC_ETH: &str = "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near";
         let extras = BridgeTokenExtras {
             chain_id: "eth:1".into(),
             min_deposit_amount: Some("1000".into()),
@@ -883,11 +951,8 @@ mod tests {
                 .assets
                 .iter()
                 .all(|asset| !asset.asset_name.eq_ignore_ascii_case("laUSDC")
-                    && asset
-                        .networks
-                        .iter()
-                        .all(|network| network.balance_asset_id
-                            != "nep141:la-usdc-bridge-only.omft.near")),
+                    && asset.networks.iter().all(|network| network.balance_asset_id
+                        != "nep141:la-usdc-bridge-only.omft.near")),
             "Bridge-only tokens must not be added from the mins lookup"
         );
     }

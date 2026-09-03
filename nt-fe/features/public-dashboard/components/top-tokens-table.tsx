@@ -4,6 +4,7 @@ import { Coins01Icon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { PageCard } from "@/components/card";
 import { EmptyState } from "@/components/empty-state";
+import { FormattedAmount } from "@/components/formatted-amount";
 import { StepperHeader } from "@/components/step-wizard";
 import {
     Table,
@@ -15,8 +16,7 @@ import {
 } from "@/components/table";
 import { TokenIconImage } from "@/components/token-icon-image";
 import { Skeleton } from "@/components/ui/skeleton";
-import Big from "@/lib/big";
-import { formatCurrency } from "@/lib/utils";
+import { decimalOrNull } from "@/lib/amount-format";
 import type { PublicDashboardToken } from "../api";
 
 interface TopTokensTableProps {
@@ -32,14 +32,6 @@ function TokenIcon({ icon, symbol }: { icon: string | null; symbol: string }) {
             gradient="bg-blue-600"
         />
     );
-}
-
-function formatTokenUsd(usd: string): string {
-    try {
-        return formatCurrency(new Big(usd || "0"));
-    } catch {
-        return "$0.00";
-    }
 }
 
 export function TopTokensTable({ tokens }: TopTokensTableProps) {
@@ -96,7 +88,10 @@ export function TopTokensTable({ tokens }: TopTokensTableProps) {
                                 </TableCell>
 
                                 <TableCell className="pr-4 text-right font-semibold tabular-nums">
-                                    {formatTokenUsd(token.totalUsd)}
+                                    <FormattedAmount
+                                        kind="fiat"
+                                        value={decimalOrNull(token.totalUsd)}
+                                    />
                                 </TableCell>
                             </TableRow>
                         ))}

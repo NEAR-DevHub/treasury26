@@ -9,12 +9,9 @@ import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
 import {
     applyDashboardTourStep,
-    CREATE_TREASURY_TARGET_ID,
     closeDashboardTourSurfaces,
-    DASHBOARD_TOUR_SURFACE_DELAY_MS,
-    DASHBOARD_TOUR_TREASURY_STEP,
     isTourMobileViewport,
-    waitForVisibleTourTarget,
+    waitForSettledTourTarget,
 } from "@/features/onboarding/dashboard-tour-targets";
 import {
     refreshFeatureAnnouncements,
@@ -68,13 +65,10 @@ export function TourCard({
     const showBack = isDashboardTour && totalSteps > 1 && !isFirstStep;
 
     const goToDashboardStep = async (stepIndex: number) => {
-        applyDashboardTourStep(stepIndex, DASHBOARD_TOUR.steps[stepIndex]);
-        if (stepIndex === DASHBOARD_TOUR_TREASURY_STEP) {
-            await waitForVisibleTourTarget(CREATE_TREASURY_TARGET_ID);
-            setCurrentStep(stepIndex);
-            return;
-        }
-        setCurrentStep(stepIndex, DASHBOARD_TOUR_SURFACE_DELAY_MS);
+        const nextStepDef = DASHBOARD_TOUR.steps[stepIndex];
+        applyDashboardTourStep(stepIndex, nextStepDef);
+        await waitForSettledTourTarget(nextStepDef?.selector);
+        setCurrentStep(stepIndex);
     };
 
     const handleNext = () => {
@@ -98,9 +92,6 @@ export function TourCard({
 
     const handleBack = () => {
         if (!isDashboardTour || isFirstStep) return;
-        if (currentStep === DASHBOARD_TOUR_TREASURY_STEP) {
-            closeDashboardTourSurfaces();
-        }
         goToDashboardStep(currentStep - 1);
     };
 

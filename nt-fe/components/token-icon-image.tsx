@@ -35,7 +35,9 @@ const networkBadgeClassName =
 
 function iconFallbackLabel(icon: string | null | undefined, alt: string) {
     if (icon && !isIconUrl(icon) && icon.length <= 2) return icon;
-    return (alt || icon || "?").charAt(0).toUpperCase();
+    // Never fall back to `icon` here: a decorative icon passes a URL and an
+    // empty alt, which would paint a path character in the disc.
+    return alt.charAt(0).toUpperCase();
 }
 
 export function TokenIconImage({
@@ -86,16 +88,23 @@ export function TokenIconImage({
         return (
             // biome-ignore lint/performance/noImgElement: remote token icons need onError fallback
             <img
+                // Remount on src change so the previous icon's pixels cannot
+                // linger under the loading ring.
                 key={iconUrl}
                 src={iconUrl}
                 alt={alt}
                 className={cn(
                     discClassName,
                     sizeClass,
-                    className,
                     objectFit === "contain" ? "object-contain" : "object-cover",
                     image.isLoading && loadingDiscClassName,
+                    className,
                 )}
+                // An icon cached before hydration never fires `onLoad`, which
+                // would leave the loading ring on for good.
+                ref={(el) => {
+                    if (el?.complete) image.onLoad();
+                }}
                 onLoad={image.onLoad}
                 onError={image.onError}
             />
@@ -104,12 +113,13 @@ export function TokenIconImage({
 
     return (
         <div
+            aria-hidden="true"
             className={cn(
                 discClassName,
                 sizeClass,
-                className,
                 "flex items-center justify-center text-xs font-normal text-white",
                 gradient || "bg-brand-blue",
+                className,
             )}
         >
             {label}

@@ -198,19 +198,10 @@ export default function TokenSelect({
         filterTokens,
     ]);
 
-    // Source-agnostic list for rendering/selecting.
-    const filteredTokens = useMemo(() => {
-        const searchLower = search.toLowerCase();
-
-        const matchesSearch = (t: MergedToken) =>
-            !searchLower ||
-            t.id.includes(searchLower) ||
-            t.name.toLowerCase().includes(searchLower) ||
-            t.symbol.toLowerCase().includes(searchLower) ||
-            t.networks.some((n) =>
-                n.symbol.toLowerCase().includes(searchLower),
-            );
-
+    // Source-agnostic list for rendering/selecting. The network filter runs
+    // Big.js math per network, so it is kept out of the search memo — otherwise
+    // every keystroke re-totals the whole bridge catalog.
+    const selectableTokens = useMemo(() => {
         const applyNetworkFilter = (t: MergedToken): MergedToken | null => {
             if (!filterTokens) return t;
             const filtered = t.networks.filter((n) =>
@@ -242,17 +233,37 @@ export default function TokenSelect({
             };
         };
 
-        const filteredTokensList: MergedToken[] = [];
+        const selectable: { token: MergedToken; haystack: string }[] = [];
 
         for (const token of tokens) {
-            if (!matchesSearch(token)) continue;
             const filtered = applyNetworkFilter(token);
             if (!filtered) continue;
-            filteredTokensList.push(filtered);
+            // Built from the unfiltered token, matching the original search
+            // behaviour. The NUL separator stops a query from matching across
+            // two adjacent fields.
+            selectable.push({
+                token: filtered,
+                haystack: [
+                    token.id,
+                    token.name,
+                    token.symbol,
+                    ...token.networks.map((n) => n.symbol),
+                ]
+                    .join("\u0000")
+                    .toLowerCase(),
+            });
         }
 
-        return filteredTokensList;
-    }, [tokens, search, filterTokens]);
+        return selectable;
+    }, [tokens, filterTokens]);
+
+    const filteredTokens = useMemo(() => {
+        const searchLower = search.toLowerCase();
+
+        return selectableTokens
+            .filter(({ haystack }) => haystack.includes(searchLower))
+            .map(({ token }) => token);
+    }, [selectableTokens, search]);
 
     const { yourAssets, otherAssets } = useMemo(() => {
         const yourAssetsFiltered = filteredTokens.filter(
@@ -311,8 +322,7 @@ export default function TokenSelect({
             const aUSD = a.balanceUSD ?? 0;
             const bUSD = b.balanceUSD ?? 0;
             if (aUSD > 0 !== bUSD > 0) return bUSD > 0 ? 1 : -1;
-            if (aUSD !== bUSD) return bUSD - aUSD;
-            return 0;
+            return bUSD - aUSD;
         });
     }, [selectedAsset]);
 

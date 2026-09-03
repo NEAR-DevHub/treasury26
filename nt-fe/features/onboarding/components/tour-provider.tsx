@@ -5,6 +5,7 @@ import { useNextAdapter } from "nextstepjs/adapters/next";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useUiStore } from "@/stores/ui-store";
 import { TOURS } from "../steps";
+import { TOUR_NAMES } from "../steps/dashboard";
 import { TourCard } from "./tour-card";
 import { TourSafetyNet } from "./tour-safety-net";
 import { setActiveOnboardingTour, useTourSessionCleanup } from "./tour-session";
@@ -25,7 +26,9 @@ function TourSession({ children }: { children: React.ReactNode }) {
             noInViewScroll
             onStart={(tourName) => {
                 setActiveOnboardingTour(tourName);
-                setLockSelectOutside(true);
+                // Only the dashboard tour steps into the treasury selector, so
+                // only it needs the selector held open against outside clicks.
+                setLockSelectOutside(tourName === TOUR_NAMES.DASHBOARD);
                 pushOverlay();
             }}
             onComplete={cleanup}

@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
-import { useImageLoadError } from "@/hooks/use-image-load-error";
 import { isIconUrl } from "@/lib/icon-url";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
@@ -72,31 +71,13 @@ export function SelectListIcon({
     alt: string;
     size?: "sm" | "md" | "lg";
 }) {
-    const iconIsUrl = isIconUrl(icon);
-    const { showImage } = useImageLoadError(iconIsUrl ? icon : null);
     const containerSizeClass =
         size === "sm" ? "size-6" : size === "lg" ? "size-14" : "size-12";
+    // Remote artwork fills more of the container than a one- or two-character
+    // glyph does, so the two kinds of icon are sized differently.
     const imageSizeClass =
         size === "sm" ? "size-5" : size === "lg" ? "size-10" : "size-8";
-    const fallbackSizeClass = size === "sm" ? "size-3.5 text-[9px]" : "size-8";
-
-    if (showImage && icon) {
-        return (
-            <div
-                className={cn(
-                    containerSizeClass,
-                    "flex items-center justify-center",
-                )}
-            >
-                <TokenIconImage
-                    icon={icon}
-                    alt={alt}
-                    className={imageSizeClass}
-                    objectFit="contain"
-                />
-            </div>
-        );
-    }
+    const glyphSizeClass = size === "sm" ? "size-3.5 text-[9px]" : "size-8";
 
     return (
         <div
@@ -109,7 +90,8 @@ export function SelectListIcon({
                 icon={icon}
                 alt={alt}
                 gradient={gradient || "bg-brand-blue"}
-                className={fallbackSizeClass}
+                className={isIconUrl(icon) ? imageSizeClass : glyphSizeClass}
+                objectFit="contain"
             />
         </div>
     );

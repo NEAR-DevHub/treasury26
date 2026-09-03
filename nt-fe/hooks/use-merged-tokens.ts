@@ -1,19 +1,19 @@
 import { useMemo } from "react";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import {
-    useAggregatedTokens,
-    DEFAULT_ASSETS_QUERY,
-    useAssets,
     type AggregatedAsset,
+    DEFAULT_ASSETS_QUERY,
+    useAggregatedTokens,
+    useAssets,
 } from "@/hooks/use-assets";
 import {
-    useTokenCatalog,
     type BridgeAsset,
     type BridgeNetwork,
+    useTokenCatalog,
 } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
-import { NEAR_CHAIN_ICONS } from "@/constants/token";
 import type { ChainIcons } from "@/lib/api";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { normalizeNearAssetId } from "@/lib/utils";
 
 export interface MergedNetwork {
@@ -352,7 +352,7 @@ export function useMergedTokens({
                 isConfidential,
             ),
         ];
-    }, [aggregatedTokens, bridgeAssets, showOnlyOwned]);
+    }, [aggregatedTokens, bridgeAssets, showOnlyOwned, isConfidential]);
 
     return {
         tokens,

@@ -1,27 +1,27 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { ArrowLeft01Icon, CheckIcon } from "@hugeicons/core-free-icons";
-import { useState, useMemo, useCallback, ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { Button } from "@/components/button";
+import { HighlightedText } from "@/components/highlighted-text";
+import { Icon } from "@/components/icon";
 import { Input } from "@/components/input";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/modal";
-import { Button } from "@/components/button";
 import { PaymentSelectModalContent } from "@/components/payment-select-modal-content";
+import { PopularTokenTiles } from "@/components/popular-token-tiles";
 import {
     getSelectOptionLabels,
     SelectListIcon,
-    SelectListItem,
+    type SelectListItem,
     SelectListSkeleton,
 } from "@/components/select-list";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     paymentSelectModalListClassName,
     paymentSelectModalSearchInputClassName,
 } from "@/components/selector-field";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { HighlightedText } from "@/components/highlighted-text";
-import { PopularTokenTiles } from "@/components/popular-token-tiles";
 
 export interface SelectOption extends SelectListItem {}
 
@@ -137,81 +137,69 @@ export function SelectModal({
         onClose();
     }, [onClose]);
 
-    const resolvedRenderRight = useCallback(
-        (item: SelectOption) => {
-            if (renderRight) return renderRight(item);
-            if (!multiSelect) return null;
-            return selectedIds?.includes(item.id) ? (
-                <Icon icon={CheckIcon} className="text-primary shrink-0" />
-            ) : null;
-        },
-        [renderRight, multiSelect, selectedIds],
-    );
+    const resolvedRenderRight = (item: SelectOption) => {
+        if (renderRight) return renderRight(item);
+        if (!multiSelect) return null;
+        return selectedIds?.includes(item.id) ? (
+            <Icon icon={CheckIcon} className="text-primary shrink-0" />
+        ) : null;
+    };
 
-    const renderContext = useMemo(() => ({ searchQuery }), [searchQuery]);
+    const renderContext = { searchQuery };
 
-    const renderOptionRow = useCallback(
-        (item: SelectOption) => {
-            const { primary, secondary } = getSelectOptionLabels(item);
+    // Not memoized: the rows are consumed by `.map()` in this same render, so
+    // there is no memoized child for a stable identity to help.
+    const renderOptionRow = (item: SelectOption) => {
+        const { primary, secondary } = getSelectOptionLabels(item);
 
-            return (
-                <Button
-                    key={item.id}
-                    onClick={() => handleSelect(item)}
-                    variant="ghost"
-                    disabled={item.disabled}
-                    className={cn(
-                        "w-full flex items-center gap-1 py-2.5 rounded-xl h-auto justify-start pl-1.5! mx-1 my-0.5",
-                        selectedId === item.id
-                            ? "bg-muted hover:bg-muted focus-visible:bg-muted"
-                            : "hover:bg-muted-foreground/5 focus-visible:bg-muted-foreground/5",
-                        item.disabled &&
-                            "opacity-60 cursor-not-allowed pointer-events-none",
-                    )}
-                >
-                    {renderIcon ? (
-                        renderIcon(item, renderContext)
-                    ) : (
-                        <SelectListIcon
-                            icon={item.icon}
-                            gradient={item.gradient}
-                            alt={item.symbol || item.name}
-                        />
-                    )}
-                    {renderContent ? (
-                        renderContent(item, renderContext)
-                    ) : (
-                        <div className="flex-1 text-left">
-                            <div className="font-semibold">
+        return (
+            <Button
+                key={item.id}
+                onClick={() => handleSelect(item)}
+                variant="ghost"
+                disabled={item.disabled}
+                className={cn(
+                    "w-full flex items-center gap-1 py-2.5 rounded-xl h-auto justify-start pl-1.5! mx-1 my-0.5",
+                    selectedId === item.id
+                        ? "bg-muted hover:bg-muted focus-visible:bg-muted"
+                        : "hover:bg-muted-foreground/5 focus-visible:bg-muted-foreground/5",
+                    item.disabled &&
+                        "opacity-60 cursor-not-allowed pointer-events-none",
+                )}
+            >
+                {renderIcon ? (
+                    renderIcon(item, renderContext)
+                ) : (
+                    <SelectListIcon
+                        icon={item.icon}
+                        gradient={item.gradient}
+                        alt={item.symbol || item.name}
+                    />
+                )}
+                {renderContent ? (
+                    renderContent(item, renderContext)
+                ) : (
+                    <div className="flex-1 text-left">
+                        <div className="font-semibold">
+                            <HighlightedText
+                                text={primary}
+                                query={searchQuery}
+                            />
+                        </div>
+                        {secondary && (
+                            <div className="text-sm text-muted-foreground">
                                 <HighlightedText
-                                    text={primary}
+                                    text={secondary}
                                     query={searchQuery}
                                 />
                             </div>
-                            {secondary && (
-                                <div className="text-sm text-muted-foreground">
-                                    <HighlightedText
-                                        text={secondary}
-                                        query={searchQuery}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {resolvedRenderRight(item)}
-                </Button>
-            );
-        },
-        [
-            handleSelect,
-            renderContent,
-            renderContext,
-            renderIcon,
-            resolvedRenderRight,
-            searchQuery,
-            selectedId,
-        ],
-    );
+                        )}
+                    </div>
+                )}
+                {resolvedRenderRight(item)}
+            </Button>
+        );
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>

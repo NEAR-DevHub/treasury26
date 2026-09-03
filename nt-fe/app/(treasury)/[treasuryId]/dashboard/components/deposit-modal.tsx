@@ -12,7 +12,9 @@ import {
 } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { NetworkSelectModal } from "@/components/network-select-modal";
 import { getNetworkDisplayName } from "@/components/token-display";
+import { TokenSelectModal } from "@/components/token-select-modal";
 import {
     parseWarningCopy,
     SlotWarning,
@@ -42,8 +44,6 @@ import { fetchDepositAddress } from "@/lib/bridge-api";
 import { withNearComAddressPrefix } from "@/lib/nearcom-address";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
-import { NetworkSelectModal } from "@/components/network-select-modal";
-import { TokenSelectModal } from "@/components/token-select-modal";
 import { DepositAckPanel } from "./deposit/deposit-ack-panel";
 import {
     DepositAddressSkeleton,
@@ -706,11 +706,13 @@ export function DepositModal({
                 depositInfo?.minDepositAmount ??
                     selectedBridgeNetwork?.minDepositAmount,
                 selectedBridgeNetwork?.decimals ?? 0,
+                locale,
             ),
         [
             depositInfo?.minDepositAmount,
             selectedBridgeNetwork?.minDepositAmount,
             selectedBridgeNetwork?.decimals,
+            locale,
         ],
     );
 

@@ -26,22 +26,23 @@ export function DepositOriginTabs({
     const t = useTranslations("depositModal.tabs");
 
     return (
-        <div
-            role="tablist"
-            aria-label={t("originLabel")}
+        // A pair of mutually exclusive choices rather than real tabs: the
+        // content they switch lives in a sibling component, so `tablist`
+        // would promise a tabpanel and arrow-key navigation that don't exist.
+        <fieldset
             className={cn(
-                "grid grid-cols-2 gap-0.5 rounded-full border border-general-border bg-general-bg-secondary p-0.5 sm:gap-1 sm:p-1",
+                "m-0 grid min-w-0 grid-cols-2 gap-0.5 rounded-full border border-general-border bg-general-bg-secondary p-0.5 sm:gap-1 sm:p-1",
                 className,
             )}
         >
+            <legend className="sr-only">{t("originLabel")}</legend>
             {TABS.map((tab) => {
                 const selected = value === tab.id;
                 return (
                     <button
                         key={tab.id}
                         type="button"
-                        role="tab"
-                        aria-selected={selected}
+                        aria-pressed={selected}
                         data-testid={`deposit-origin-tab-${tab.id}`}
                         onClick={() => onChange(tab.id)}
                         className={cn(
@@ -55,6 +56,6 @@ export function DepositOriginTabs({
                     </button>
                 );
             })}
-        </div>
+        </fieldset>
     );
 }

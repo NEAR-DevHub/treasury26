@@ -4,97 +4,95 @@
 //! `type:stablecoin`, then `mc:`. Network order (`blockchains.tsx` `vol:`),
 //! with NEAR pinned first (`prioritizeNearNetwork`).
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
 
 pub fn is_hidden_catalog_tag(tag: &str) -> bool {
     let tag = tag.trim();
     tag.eq_ignore_ascii_case("category:earn-vault")
         || tag
-            .get(..8)
-            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("feature:"))
+            .split_once(':')
+            .is_some_and(|(ns, _)| ns.eq_ignore_ascii_case("feature"))
 }
 
 pub fn is_hidden_catalog_token(tags: &[String]) -> bool {
     tags.iter().any(|tag| is_hidden_catalog_tag(tag))
 }
 
+/// REF / BRRR stay out of the swap catalog. Matched on symbol because that is
+/// what `/swap-tokens` has at filter time; a rename would silently lift this.
 pub fn is_swap_excluded_symbol(symbol: &str) -> bool {
-    matches!(symbol.trim().to_ascii_uppercase().as_str(), "REF" | "BRRR")
+    let symbol = symbol.trim();
+    symbol.eq_ignore_ascii_case("REF") || symbol.eq_ignore_ascii_case("BRRR")
 }
 
-fn tagged_rank(tags: &[String], prefix: &str) -> Option<i32> {
+fn tagged_rank(tags: &[String], prefix: &str) -> Option<u32> {
     tags.iter().find_map(|tag| {
         let tag = tag.trim();
-        let rest = tag.strip_prefix(prefix)?;
+        let rest = tag
+            .get(..prefix.len())
+            .filter(|head| head.eq_ignore_ascii_case(prefix))
+            .and_then(|_| tag.get(prefix.len()..))?;
         rest.parse().ok()
     })
 }
 
-pub fn compare_catalog_tokens(a_tags: &[String], b_tags: &[String]) -> Ordering {
-    let a_vol = tagged_rank(a_tags, "tvol:");
-    let b_vol = tagged_rank(b_tags, "tvol:");
-    match (a_vol, b_vol) {
-        (Some(a), Some(b)) if a != b => return a.cmp(&b),
-        (Some(_), None) => return Ordering::Less,
-        (None, Some(_)) => return Ordering::Greater,
-        _ => {}
-    }
-
-    let a_stable = a_tags
-        .iter()
-        .any(|tag| tag.eq_ignore_ascii_case("type:stablecoin"));
-    let b_stable = b_tags
-        .iter()
-        .any(|tag| tag.eq_ignore_ascii_case("type:stablecoin"));
-    match (a_stable, b_stable) {
-        (true, false) => return Ordering::Less,
-        (false, true) => return Ordering::Greater,
-        _ => {}
-    }
-
-    match (tagged_rank(a_tags, "mc:"), tagged_rank(b_tags, "mc:")) {
-        (Some(a), Some(b)) if a != b => a.cmp(&b),
-        (Some(_), None) => Ordering::Less,
-        (None, Some(_)) => Ordering::Greater,
-        _ => Ordering::Equal,
-    }
+fn is_stablecoin(tags: &[String]) -> bool {
+    tags.iter()
+        .any(|tag| tag.eq_ignore_ascii_case("type:stablecoin"))
 }
 
-fn canonical_network_key(name: &str) -> String {
-    match name.trim().to_ascii_lowercase().as_str() {
-        "eth" | "ethereum" => "eth".to_string(),
-        "sol" | "solana" => "solana".to_string(),
-        "btc" | "bitcoin" => "bitcoin".to_string(),
-        "doge" | "dogecoin" => "dogecoin".to_string(),
-        "arb" | "arbitrum" => "arbitrum".to_string(),
-        "zec" | "zcash" => "zcash".to_string(),
-        "xrp" | "xrpledger" | "xrp ledger" => "xrpledger".to_string(),
-        "pol" | "matic" | "polygon" => "polygon".to_string(),
-        "bnb" | "bsc" | "bnb smart chain" => "bsc".to_string(),
-        "op" | "optimism" => "optimism".to_string(),
-        "avax" | "avalanche" => "avalanche".to_string(),
-        "bera" | "berachain" => "berachain".to_string(),
-        "hypercore" | "hyperliquid" => "hyperliquid".to_string(),
-        "ltc" | "litecoin" => "litecoin".to_string(),
-        "bch" | "bitcoincash" | "bitcoin cash" => "bitcoincash".to_string(),
-        "near.com" | "nearcom" | "near_intents" => "near_intents".to_string(),
-        "layerx" | "x layer" | "xlayer" => "layerx".to_string(),
-        other => other.to_string(),
+/// `None` ranks map to `u32::MAX` so untagged tokens sort after tagged ones
+/// (Rust's `Option` would put `None` first).
+pub fn token_sort_key(tags: &[String]) -> (u32, bool, u32) {
+    (
+        tagged_rank(tags, "tvol:").unwrap_or(u32::MAX),
+        !is_stablecoin(tags),
+        tagged_rank(tags, "mc:").unwrap_or(u32::MAX),
+    )
+}
+
+pub fn compare_catalog_tokens(a_tags: &[String], b_tags: &[String]) -> Ordering {
+    token_sort_key(a_tags).cmp(&token_sort_key(b_tags))
+}
+
+fn canonical_network_key(name: &str) -> Cow<'static, str> {
+    let lowered = name.trim().to_ascii_lowercase();
+    match lowered.as_str() {
+        "eth" | "ethereum" => Cow::Borrowed("eth"),
+        "sol" | "solana" => Cow::Borrowed("solana"),
+        "btc" | "bitcoin" => Cow::Borrowed("bitcoin"),
+        "doge" | "dogecoin" => Cow::Borrowed("dogecoin"),
+        "arb" | "arbitrum" => Cow::Borrowed("arbitrum"),
+        "zec" | "zcash" => Cow::Borrowed("zcash"),
+        "xrp" | "xrpledger" | "xrp ledger" => Cow::Borrowed("xrpledger"),
+        "pol" | "matic" | "polygon" => Cow::Borrowed("polygon"),
+        "bnb" | "bsc" | "bnb smart chain" => Cow::Borrowed("bsc"),
+        "op" | "optimism" => Cow::Borrowed("optimism"),
+        "avax" | "avalanche" => Cow::Borrowed("avalanche"),
+        "bera" | "berachain" => Cow::Borrowed("berachain"),
+        "hypercore" | "hyperliquid" => Cow::Borrowed("hyperliquid"),
+        "ltc" | "litecoin" => Cow::Borrowed("litecoin"),
+        "bch" | "bitcoincash" | "bitcoin cash" => Cow::Borrowed("bitcoincash"),
+        "near.com" | "nearcom" | "near_intents" => Cow::Borrowed("near_intents"),
+        "layerx" | "x layer" | "xlayer" => Cow::Borrowed("layerx"),
+        _ => Cow::Owned(lowered),
     }
 }
 
 /// near.com `vol:` ranks. Lower is shown first. Unknown chains go last.
 pub fn network_volume_rank(name: &str) -> u32 {
-    match canonical_network_key(name).as_str() {
+    match canonical_network_key(name).as_ref() {
         "zcash" => 1,
         "tron" => 2,
         "solana" => 3,
-        "near" => 4,
+        "near" | "near_intents" => 4,
         "gnosis" => 5,
         "eth" => 6,
         "dogecoin" => 7,
         "bitcoin" => 8,
         "base" => 9,
+        // Same upstream `vol:` bucket; relative order is the name tie-break.
         "arbitrum" | "xrpledger" => 10,
         "berachain" => 11,
         "polygon" => 12,
@@ -157,11 +155,20 @@ mod tests {
     fn hides_earn_vaults_and_feature_gated_tokens() {
         assert!(is_hidden_catalog_token(&tags(&["category:earn-vault"])));
         assert!(is_hidden_catalog_token(&tags(&["feature:omni", "mc:1"])));
+        assert!(is_hidden_catalog_token(&tags(&["FEATURE:omni"])));
         assert!(!is_hidden_catalog_token(&tags(&[
             "mc:7",
             "type:stablecoin",
             "tvol:4"
         ])));
+    }
+
+    #[test]
+    fn ranking_prefixes_are_case_insensitive() {
+        assert_eq!(
+            token_sort_key(&tags(&["TVOL:1", "MC:3"])),
+            token_sort_key(&tags(&["tvol:1", "mc:3"]))
+        );
     }
 
     #[test]

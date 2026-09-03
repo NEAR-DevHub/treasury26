@@ -36,12 +36,12 @@ export function PopularTokenTiles<T extends PopularTokenTileItem>({
                         type="button"
                         variant="unstyled"
                         disabled={item.disabled}
+                        aria-pressed={selected}
                         onClick={() => onSelect(item)}
                         className={cn(
                             "flex h-auto w-full min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-general-border bg-card p-2 text-foreground hover:bg-card hover:opacity-90",
                             selected && "bg-muted",
-                            item.disabled &&
-                                "pointer-events-none cursor-not-allowed opacity-60",
+                            item.disabled && "opacity-60",
                         )}
                     >
                         <TokenIconImage

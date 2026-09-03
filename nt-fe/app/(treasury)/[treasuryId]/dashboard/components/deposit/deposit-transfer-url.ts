@@ -75,6 +75,9 @@ export function buildConfidentialDepositShareTarget(
     return {
         href: buildPaySharePath(treasuryId, {
             kind: "confidential",
+            // Legacy query value kept for links already in the wild; it is a
+            // pay-share `source`, unrelated to ConfidentialDepositOrigin's
+            // same-named member.
             source: "nearcom",
         }),
         external: false,
