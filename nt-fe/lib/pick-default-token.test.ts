@@ -105,7 +105,7 @@ describe("pickDefaultSwapPair", () => {
 
     it("keeps ETH as receive when the owned token is not ETH", () => {
         const picked = pickDefaultSwapPair([nearUsdc], fallback);
-        expect(picked.sellToken.symbol).toBe("USDC");
+        expect(picked.sellToken.address).toBe(nearUsdc.networks[0].id);
         expect(picked.receiveToken).toEqual(eth);
     });
 
