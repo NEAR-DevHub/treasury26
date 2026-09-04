@@ -20,7 +20,7 @@ const fallback: NearStoreMessages = {
     transactionNotApproved: "Transaction wasn't approved in your wallet.",
     failedSubmitVote: "Failed to submit vote",
     failedSubmitVotes: "Failed to submit votes",
-    viewRequest: "View Request",
+    viewRequest: "View request",
     proposalRemoved: "Your proposal has been removed",
     voteSubmitted: "Your vote has been submitted",
     votesSubmitted: "Your votes have been submitted",
