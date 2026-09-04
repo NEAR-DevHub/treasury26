@@ -14,7 +14,6 @@ import { Dialog, DialogHeader, DialogTitle } from "@/components/modal";
 import { NetworkList } from "@/components/network-list";
 import { PaymentSelectModalContent } from "@/components/payment-select-modal-content";
 import { paymentSelectModalListClassName } from "@/components/selector-field";
-import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import type { AddressBookEntry } from "@/features/address-book";
 import {
     formatAddressBookDisplayAddress,
@@ -24,12 +23,9 @@ import type { ChainInfo } from "@/features/address-book/chains";
 import { getBlockchainType } from "@/lib/blockchain-utils";
 import { formatShortAddress } from "@/lib/format-short-address";
 import { isNearComNetwork } from "@/lib/intents-network";
-import { validateNearAddress } from "@/lib/near-validation";
-import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import {
     checkRecipientAddressFormat,
     isRecognizedRecipientAddress,
-    resolveRecipientBlockchain,
 } from "@/lib/recipient-address-rules";
 import { cn } from "@/lib/utils";
 import { useWalletAddressAutofillGuard } from "@/lib/wallet-address-input-props";
@@ -80,11 +76,6 @@ export function RecipientSelectModal({
     const [showInvalid, setShowInvalid] = useState(false);
     const validationSeq = useRef(0);
 
-    const blockchain = useMemo(
-        () => resolveRecipientBlockchain(networkName),
-        [networkName],
-    );
-
     useEffect(() => {
         if (!isOpen) {
             setDraft("");
@@ -112,10 +103,8 @@ export function RecipientSelectModal({
                 network: networkName,
             });
 
-            // No destination yet — accept any recognized chain format so
-            // the dest picker can show which networks that address supports.
-            // Existence checks wait until a destination is selected
-            // (`AccountInput` validateOnMount on the page form).
+            // Format only. 1Click rejects a NEAR account that does not exist,
+            // so the modal does not RPC `checkAccountExists` on each keystroke.
             if (issue === "unknownDestination") {
                 const recognized = isRecognizedRecipientAddress(trimmed);
                 setIsValid(recognized);
@@ -124,32 +113,13 @@ export function RecipientSelectModal({
                 return;
             }
 
-            if (issue) {
-                setIsValid(false);
-                setShowInvalid(true);
-                setIsValidating(false);
-                return;
-            }
-
-            if (blockchain === NEAR_NETWORK_ID) {
-                setIsValidating(true);
-                const result = await validateNearAddress(
-                    stripNearComAddressPrefix(trimmed),
-                );
-                if (seq !== validationSeq.current) return;
-                const ok = result === null;
-                setIsValidating(false);
-                setIsValid(ok);
-                setShowInvalid(!ok);
-                return;
-            }
-
             if (seq !== validationSeq.current) return;
-            setIsValid(true);
-            setShowInvalid(false);
+            const ok = !issue;
+            setIsValid(ok);
+            setShowInvalid(!ok);
             setIsValidating(false);
         },
-        [blockchain, networkName],
+        [networkName],
     );
 
     useEffect(() => {

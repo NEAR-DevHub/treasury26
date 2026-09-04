@@ -12,6 +12,7 @@ import {
     formatTokenQuantity,
     formatUnitPrice,
     legacyGroupedDecimalOrNull,
+    quantizeFiatAmount,
     quantizeTokenAmount,
 } from "./amount-format";
 
@@ -195,6 +196,20 @@ describe("quantizeTokenAmount", () => {
         expect(quantizeTokenAmount(null)).toBeNull();
         expect(quantizeTokenAmount("not-a-number")).toBeNull();
         expect(quantizeTokenAmount(0)).toBe("0");
+    });
+});
+
+describe("quantizeFiatAmount", () => {
+    it("rounds USD drafts to 2 fraction digits", () => {
+        expect(quantizeFiatAmount("100")).toBe("100.00");
+        expect(quantizeFiatAmount("6.005")).toBe("6.01");
+        expect(quantizeFiatAmount("1.234", { rounding: "down" })).toBe("1.23");
+    });
+
+    it("returns null for missing or invalid values", () => {
+        expect(quantizeFiatAmount(null)).toBeNull();
+        expect(quantizeFiatAmount("not-a-number")).toBeNull();
+        expect(quantizeFiatAmount(0)).toBe("0");
     });
 });
 

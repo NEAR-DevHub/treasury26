@@ -13,6 +13,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useFormContext } from "react-hook-form";
+import { BulkPaymentFormSkeleton } from "@/components/bulk-payment-form-skeleton";
 import { Button } from "@/components/button";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { Textarea } from "@/components/textarea";
@@ -315,22 +316,8 @@ export function UploadDataStep({
         }
     };
 
-    // Show full page skeleton while loading
     if (isLoading) {
-        return (
-            <div className="flex w-full min-w-0 flex-col items-start justify-center gap-5 lg:flex-row">
-                <div className="mx-auto flex w-full min-w-0 max-w-lg flex-col gap-2 lg:mx-0">
-                    <div className="h-18 animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
-                    <div className="h-12 animate-pulse rounded-2xl bg-general-unofficial-accent-0" />
-                    <div className="h-44 animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
-                    <div className="h-7 w-72 animate-pulse rounded-lg bg-general-unofficial-accent-0" />
-                    <div className="h-18 animate-pulse rounded-3xl bg-general-unofficial-accent-0" />
-                    <div className="h-16 animate-pulse rounded-xl bg-general-unofficial-accent-0" />
-                    <div className="h-11 animate-pulse rounded-2xl bg-general-unofficial-accent-0" />
-                </div>
-                <div className="h-30 w-full shrink-0 animate-pulse rounded-3xl bg-general-unofficial-accent-0 lg:max-w-72" />
-            </div>
-        );
+        return <BulkPaymentFormSkeleton />;
     }
 
     return (

@@ -267,6 +267,26 @@ export function quantizeTokenAmount(
     return canonicalDecimal(rounded);
 }
 
+/**
+ * Round a fiat amount to the 2 fraction digits the USD input shows.
+ * Sub-cent dust stays canonical so a non-zero value is never written as 0.
+ */
+export function quantizeFiatAmount(
+    value: AmountValue | null | undefined,
+    options: Pick<FiatValueOptions, "rounding"> = {},
+): string | null {
+    const parsed = decimalOrNull(value);
+    if (!parsed) return null;
+    if (parsed.eq(0)) return "0";
+
+    const { rounding = "half-up" } = options;
+    const rounded = parsed.round(FIAT_FRACTION_DIGITS, roundingMode(rounding));
+    if (parsed.abs().gt(0) && rounded.eq(0)) {
+        return canonicalDecimal(parsed);
+    }
+    return rounded.toFixed(FIAT_FRACTION_DIGITS);
+}
+
 function thresholdDisplay(
     fractionDigits: number,
     locale: string,

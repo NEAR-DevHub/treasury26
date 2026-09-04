@@ -1,7 +1,6 @@
 import { parseCsv } from "@/lib/csv-utils";
 import { MAX_RECIPIENTS_PER_BULK_PAYMENT } from "@/lib/bulk-payment-api";
 import {
-    validateNearAddress,
     isValidNearAddressFormat,
     type NearValidationErrorCode,
 } from "@/lib/near-validation";
@@ -719,69 +718,27 @@ export function needsStorageDepositCheck(token: {
  * Validate accounts and check storage deposits
  *
  * `destinationNetwork` overrides the token's own network when deciding
- * whether recipients are on NEAR (existence + storage checks). Used by
- * confidential bulk where receive chain can differ from the source token.
+ * whether recipients are on NEAR (storage checks). Used by confidential
+ * bulk where receive chain can differ from the source token.
  */
 export async function validateAccountsAndStorage(
     payments: BulkPaymentData[],
     selectedToken: { address: string; residency?: string; network?: string },
-    labels: Pick<
-        BulkParsingLabels,
-        "failedToValidateAccount" | "nearValidationError"
-    >,
     destinationNetwork?: string,
 ): Promise<BulkPaymentData[]> {
     const networkForNearCheck = destinationNetwork ?? selectedToken.network;
     const isNear = isNearToken(networkForNearCheck, selectedToken.residency);
 
-    // Step 1: Validate account existence (only for NEAR)
-    if (isNear) {
-        const accountValidatedPayments = await Promise.all(
-            payments.map(async (payment) => {
-                // Skip if already has validation error
-                if (payment.validationError) {
-                    return payment;
-                }
-
-                try {
-                    const bareRecipient = stripNearComAddressPrefix(
-                        payment.recipient,
-                    );
-                    const validationErrorCode =
-                        await validateNearAddress(bareRecipient);
-                    const validationError = validationErrorCode
-                        ? labels.nearValidationError(validationErrorCode)
-                        : null;
-
-                    return {
-                        ...payment,
-                        validationError: validationError || undefined,
-                    };
-                } catch (error) {
-                    console.error(
-                        `Error validating ${payment.recipient}:`,
-                        error,
-                    );
-                    return {
-                        ...payment,
-                        validationError: labels.failedToValidateAccount,
-                    };
-                }
-            }),
-        );
-
-        // Step 2: Check storage registration for FT tokens (only for valid accounts)
-        if (!needsStorageDepositCheck(selectedToken)) {
-            return accountValidatedPayments;
-        }
-
-        // Filter only valid accounts
-        const validAccounts = accountValidatedPayments.filter(
+    // Format is already checked at parse time. Existence is left to 1Click
+    // (it errors if the NEAR account is missing). Only storage registration
+    // still needs an RPC for NEAR FT.
+    if (isNear && needsStorageDepositCheck(selectedToken)) {
+        const validAccounts = payments.filter(
             (payment) => !payment.validationError,
         );
 
         if (validAccounts.length === 0) {
-            return accountValidatedPayments;
+            return payments;
         }
 
         const tokenId = selectedToken.address;
@@ -802,7 +759,7 @@ export async function validateAccountsAndStorage(
             );
         });
 
-        return accountValidatedPayments.map((payment) => {
+        return payments.map((payment) => {
             if (payment.validationError) {
                 return payment;
             }

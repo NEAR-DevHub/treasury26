@@ -4,13 +4,13 @@ import { Icon } from "@/components/icon";
 import {
     Alert01Icon,
     CircleCheckIcon,
-    LoaderCircleIcon,
     Shield01Icon,
     UserGroupIcon,
 } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { BulkPaymentFormSkeleton } from "@/components/bulk-payment-form-skeleton";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -65,18 +65,9 @@ export function BulkActivationCard() {
     }
 
     // Still loading (or the query is briefly disabled while `treasuryId`
-    // settles): show a spinner rather than an empty page.
+    // settles): form-step skeleton — activation sits in front of step 1.
     if (isLoading || (!status && !isError)) {
-        return (
-            <Card className="mx-auto w-full max-w-[600px] min-w-0">
-                <CardContent className="text-muted-foreground flex items-center justify-center p-4 sm:p-8">
-                    <Icon
-                        icon={LoaderCircleIcon}
-                        className="size-6 animate-spin"
-                    />
-                </CardContent>
-            </Card>
-        );
+        return <BulkPaymentFormSkeleton />;
     }
 
     // Status query errored and we have nothing to show: surface the error with
