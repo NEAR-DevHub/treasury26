@@ -224,8 +224,10 @@ export function getAddressPattern(blockchain: BlockchainType): RegExp | null {
  * regex catalog (EVM, Solana, Bitcoin, …). Unknown / missing patterns are
  * excluded so a contact name cannot sneak through.
  *
- * Several chains share the `0x…` shape; the catalog order decides, so an
- * EVM-length address resolves to Ethereum rather than Starknet / Aptos.
+ * Several chains share the `0x…` shape; the catalog order decides the first
+ * match. A 40-hex (EVM-length) address hits Ethereum before the broader
+ * Starknet pattern. A 64-hex `0x` address skips Ethereum (exactly 40 hex)
+ * and matches Starknet before Sui / Aptos.
  */
 export function findMatchingBlockchainType(
     address: string,

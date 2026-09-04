@@ -24,7 +24,6 @@ import type { ChainInfo } from "@/features/address-book/chains";
 import { getBlockchainType } from "@/lib/blockchain-utils";
 import { formatShortAddress } from "@/lib/format-short-address";
 import { isNearComNetwork } from "@/lib/intents-network";
-import { isValidNearAddressFormat } from "@/lib/near-address-format";
 import { validateNearAddress } from "@/lib/near-validation";
 import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import {
@@ -115,26 +114,12 @@ export function RecipientSelectModal({
 
             // No destination yet — accept any recognized chain format so
             // the dest picker can show which networks that address supports.
+            // Existence checks wait until a destination is selected
+            // (`AccountInput` validateOnMount on the page form).
             if (issue === "unknownDestination") {
-                if (!isRecognizedRecipientAddress(trimmed)) {
-                    setIsValid(false);
-                    setShowInvalid(true);
-                    setIsValidating(false);
-                    return;
-                }
-                const accountId = stripNearComAddressPrefix(trimmed);
-                if (isValidNearAddressFormat(accountId)) {
-                    setIsValidating(true);
-                    const result = await validateNearAddress(accountId);
-                    if (seq !== validationSeq.current) return;
-                    const ok = result === null;
-                    setIsValidating(false);
-                    setIsValid(ok);
-                    setShowInvalid(!ok);
-                    return;
-                }
-                setIsValid(true);
-                setShowInvalid(false);
+                const recognized = isRecognizedRecipientAddress(trimmed);
+                setIsValid(recognized);
+                setShowInvalid(!recognized);
                 setIsValidating(false);
                 return;
             }

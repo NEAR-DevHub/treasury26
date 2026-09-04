@@ -37,7 +37,6 @@ import {
     NEAR_NETWORK_ID,
 } from "@/constants/network-ids";
 import { default_near_token, default_usdc_near_token } from "@/constants/token";
-import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import {
     PAGE_TOUR_NAMES,
     PAGE_TOUR_STORAGE_KEYS,
@@ -304,7 +303,7 @@ function Step2({
         name: ["token", "amount", "address", "destinationNetwork"],
     }) as [PaymentFormValues["token"], string, string, string];
     const { data: tokenData } = useToken(token?.address);
-    // Chain icons for the destination network (for the review token icon overlay)
+    // Chain icons for the destination-network row under the summary.
     const destinationChainIcons = useMemo(() => {
         if (!destinationNetwork) {
             return undefined;
@@ -320,9 +319,6 @@ function Step2({
         }
         return undefined;
     }, [bridgeAssets, destinationNetwork]);
-    const { data: addressBook = [] } = useAddressBook();
-    const contactName = findAddressBookEntry(addressBook, address)?.name;
-
     const { recipientAmount, displayNetworkFee, recipientEstimatedUSDValue } =
         useMemo(() => {
             if (!token) {
@@ -401,16 +397,10 @@ function Step2({
                     token={token}
                     title=""
                     showNetworkIcon={true}
-                    chainIcons={destinationChainIcons ?? token.chainIcons}
                 />
                 <div className="flex w-full flex-col gap-4 mt-2">
                     <div className="flex w-full items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-col gap-0.5">
-                            {contactName && (
-                                <p className="text-sm font-semibold leading-normal text-general-foreground">
-                                    {contactName}
-                                </p>
-                            )}
                             <Address
                                 address={address}
                                 prefixLength={SHORT_ADDRESS_PREFIX_LENGTH}
@@ -1193,6 +1183,9 @@ export default function PaymentsPage() {
         form.setValue("amount", "", { shouldDirty: true });
         form.setValue("destinationNetwork", "", { shouldDirty: true });
         form.setValue("destinationNetworkName", "", { shouldDirty: true });
+        // Destination seed is one-shot per token. Reset so a new compatible
+        // route can fill after this wipe (deep-link + token change).
+        didSeedDestinationRef.current = false;
         form.clearErrors(["address", "amount", "destinationNetwork"]);
         setIsAddressBookRecipientSelected(false);
         setIntentsAmountMode("recipient");

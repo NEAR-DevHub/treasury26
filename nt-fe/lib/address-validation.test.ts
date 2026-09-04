@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { isValidAddress } from "./address-validation";
+import {
+    findMatchingBlockchainType,
+    isValidAddress,
+} from "./address-validation";
 import type { BlockchainType } from "./blockchain-utils";
 
 /**
@@ -267,6 +270,24 @@ describe("isValidAddress agrees with 1click", () => {
             expect(isValidAddress(address, chain)).toBe(accepted);
         });
     }
+});
+
+describe("findMatchingBlockchainType 0x first-match order", () => {
+    it("resolves a 40-hex address to Ethereum, not Starknet", () => {
+        expect(
+            findMatchingBlockchainType(
+                "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+            ),
+        ).toBe("ethereum");
+    });
+
+    it("resolves a 64-hex address to Starknet, not Sui or Aptos", () => {
+        expect(
+            findMatchingBlockchainType(
+                "0x0b9d5a2f04d2b0d8d8e42f2b7f4f0e0b06b2c9b7e2c9c0f1a2b3c4d5e6f70819",
+            ),
+        ).toBe("starknet");
+    });
 });
 
 describe("isValidAddress rejects addresses from the wrong chain", () => {

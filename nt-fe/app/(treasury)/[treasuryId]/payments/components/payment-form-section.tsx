@@ -500,24 +500,10 @@ export function PaymentFormSection<
     const shortRecipient = recipient ? formatShortAddress(recipient) : "";
     const recipientRow = (
         <span className="flex min-w-0 flex-1 flex-col items-start gap-px">
-            <span
-                className={
-                    selectedContact
-                        ? "max-w-full truncate text-base font-medium leading-tight text-foreground"
-                        : "text-sm font-medium leading-normal text-muted-foreground"
-                }
-            >
-                {selectedContact
-                    ? selectedContact.name
-                    : tPay("recipientLabel")}
+            <span className="text-sm font-medium leading-normal text-muted-foreground">
+                {tPay("recipientLabel")}
             </span>
-            <span
-                className={
-                    selectedContact
-                        ? "max-w-full truncate text-sm font-medium leading-normal text-general-secondary-foreground"
-                        : "max-w-full truncate text-base font-medium leading-tight text-foreground"
-                }
-            >
+            <span className="max-w-full truncate text-base font-medium leading-tight text-foreground">
                 {shortRecipient || tPay("selectRecipientPlaceholder")}
             </span>
         </span>

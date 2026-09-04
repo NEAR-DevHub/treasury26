@@ -105,8 +105,12 @@ export function SelectorOptionRow({
             variant="ghost"
             disabled={disabled}
             className={cn(
-                "mx-1 my-0.5 h-14 w-full items-center justify-start gap-3 rounded-lg px-3!",
-                selected && "bg-muted hover:bg-muted focus-visible:bg-muted",
+                // Ghost buttons inherit the mint `--ring` focus ring. Opening
+                // the picker focuses the first row, which drew that outline
+                // around the first token. Keep a muted fill so
+                // keyboard focus is still visible.
+                "mx-1 my-0.5 h-14 w-full items-center justify-start gap-3 rounded-lg px-3! outline-none focus-visible:border-transparent focus-visible:ring-0 focus-visible:bg-muted",
+                selected && "bg-muted hover:bg-muted",
                 className,
             )}
             {...props}

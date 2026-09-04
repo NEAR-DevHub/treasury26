@@ -69,7 +69,7 @@ export function MobileTreasurySheet() {
             type="button"
             onClick={() => handleSelect(daoId)}
             className={cn(
-                "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left -mx-2",
+                "flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-left -mx-2",
                 daoId === treasuryId && "bg-muted/70",
             )}
         >

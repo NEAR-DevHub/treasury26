@@ -31,7 +31,6 @@ import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
-import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
 import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
 import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
@@ -220,7 +219,6 @@ export function ReviewPaymentsStep({
     } | null>(null);
 
     const { treasuryId } = useTreasury();
-    const { data: addressBook = [] } = useAddressBook();
     const { data: bridgeAssets = [] } = useTokenCatalog({ kind: "swap" });
     const { data: selectedTokenData } = useToken(selectedToken?.address || "");
     const { data: balance } = useTokenBalance(
@@ -460,9 +458,6 @@ export function ReviewPaymentsStep({
                     token={selectedToken}
                     title=""
                     showNetworkIcon={true}
-                    chainIcons={
-                        destinationChainIcons ?? selectedToken.chainIcons
-                    }
                 />
                 {balanceWarning && (
                     <p className="text-sm font-normal text-general-info-foreground">
@@ -536,43 +531,25 @@ export function ReviewPaymentsStep({
                                     </div>
                                 </div>
                                 <div className="flex w-full items-start justify-between gap-2">
-                                    {(() => {
-                                        const contact = findAddressBookEntry(
-                                            addressBook,
-                                            payment.recipient,
-                                        );
-                                        return (
-                                            <div className="flex min-w-0 flex-col gap-0.5">
-                                                {contact ? (
-                                                    <span className="truncate text-sm font-semibold leading-normal text-general-foreground">
-                                                        {contact.name}
-                                                    </span>
-                                                ) : null}
-                                                <Address
-                                                    address={formatRecipientForNearComDestination(
-                                                        payment.recipient,
-                                                        hasNearComAddressPrefix(
-                                                            payment.recipient,
-                                                        )
-                                                            ? NEAR_COM_NETWORK_ID
-                                                            : destinationNetworkId,
-                                                    )}
-                                                    prefixLength={
-                                                        SHORT_ADDRESS_PREFIX_LENGTH
-                                                    }
-                                                    suffixLength={
-                                                        SHORT_ADDRESS_SUFFIX_LENGTH
-                                                    }
-                                                    className={cn(
-                                                        "min-w-0 text-sm font-semibold leading-normal",
-                                                        contact
-                                                            ? "text-general-secondary-foreground"
-                                                            : "text-general-foreground",
-                                                    )}
-                                                />
-                                            </div>
-                                        );
-                                    })()}
+                                    <div className="flex min-w-0 flex-col gap-0.5">
+                                        <Address
+                                            address={formatRecipientForNearComDestination(
+                                                payment.recipient,
+                                                hasNearComAddressPrefix(
+                                                    payment.recipient,
+                                                )
+                                                    ? NEAR_COM_NETWORK_ID
+                                                    : destinationNetworkId,
+                                            )}
+                                            prefixLength={
+                                                SHORT_ADDRESS_PREFIX_LENGTH
+                                            }
+                                            suffixLength={
+                                                SHORT_ADDRESS_SUFFIX_LENGTH
+                                            }
+                                            className="min-w-0 text-sm font-semibold leading-normal text-general-foreground"
+                                        />
+                                    </div>
                                     <div className="flex shrink-0 items-center gap-1.5">
                                         <TokenDisplay
                                             symbol={selectedToken.symbol}

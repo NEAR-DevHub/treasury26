@@ -241,6 +241,9 @@ function tokenDisplayFractionDigits(
  * Round a token amount to the same fraction digits the UI shows, for inputs
  * (MAX, quoted receive/sell). Default `down` so spendable/received values
  * never exceed the real amount.
+ *
+ * Dust that would round to 0 is returned as the unrounded canonical decimal
+ * instead — callers must not assume the result always fits `fractionDigits`.
  */
 export function quantizeTokenAmount(
     value: AmountValue | null | undefined,
@@ -255,6 +258,9 @@ export function quantizeTokenAmount(
 
     const fractionDigits = tokenDisplayFractionDigits(parsed, options);
     const rounded = parsed.round(fractionDigits, roundingMode(rounding));
+    // Rounding down a positive dust amount to the display digit count would
+    // collapse it to 0. Keep the canonical decimal so MAX/quote never report
+    // a zero spendable/received value that still exists on-chain.
     if (parsed.abs().gt(0) && rounded.eq(0)) {
         return canonicalDecimal(parsed);
     }
