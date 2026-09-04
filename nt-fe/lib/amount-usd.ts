@@ -1,4 +1,8 @@
-import Big from "@/lib/big";
+import {
+    decimalOrNull,
+    quantizeFiatAmount,
+    quantizeTokenAmount,
+} from "@/lib/amount-format";
 
 /** Convert a USD draft to a token amount string using oracle/market price. */
 export function usdToTokenAmount(
@@ -6,12 +10,18 @@ export function usdToTokenAmount(
     tokenPrice: number,
     decimals: number,
 ): string {
-    if (!usd || !tokenPrice) return usd ? "0" : "";
-    try {
-        return Big(usd).div(tokenPrice).toFixed(decimals);
-    } catch {
-        return "";
-    }
+    if (!usd) return "";
+    const price = decimalOrNull(tokenPrice);
+    if (!price || price.lte(0)) return "0";
+    const usdAmount = decimalOrNull(usd);
+    if (!usdAmount) return "";
+    return (
+        quantizeTokenAmount(usdAmount.div(price), {
+            tokenDecimals: decimals,
+            unitPriceUsd: price,
+            rounding: "down",
+        }) ?? ""
+    );
 }
 
 /** Convert a token amount to a USD draft (2 dp) using oracle/market price. */
@@ -19,14 +29,10 @@ export function tokenToUsdDraft(
     amount: string | number | null | undefined,
     tokenPrice: number,
 ): string {
-    if (amount == null || amount === "" || !tokenPrice) return "";
-    try {
-        const n = typeof amount === "number" ? amount : Number(amount);
-        if (!Number.isFinite(n) || n <= 0) return "";
-        return Big(amount).mul(tokenPrice).toFixed(2);
-    } catch {
-        return "";
-    }
+    const parsed = decimalOrNull(amount);
+    const price = decimalOrNull(tokenPrice);
+    if (!parsed || !price || parsed.lte(0) || price.lte(0)) return "";
+    return quantizeFiatAmount(parsed.mul(price)) ?? "";
 }
 
 /** Parse a quote/oracle USD override into a positive finite number. */

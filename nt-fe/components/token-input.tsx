@@ -28,6 +28,7 @@ import {
     decimalFromBaseUnits,
     decimalFromBaseUnitsOrNull,
     decimalOrNull,
+    quantizeFiatAmount,
     quantizeTokenAmount,
 } from "@/lib/amount-format";
 import {
@@ -441,7 +442,7 @@ export function TokenInput<
                         const quoteUsd = parseUsdOverride(usdValueOverride);
                         setUsdDraft(
                             quoteUsd != null
-                                ? quoteUsd.toFixed(2)
+                                ? (quantizeFiatAmount(quoteUsd) ?? "")
                                 : tokenToUsdDraft(amount, tokenPrice),
                         );
                         claimUsdDerived(amount == null ? "" : String(amount));
@@ -467,7 +468,12 @@ export function TokenInput<
                     inputMode === "usd" &&
                     token &&
                     field.value
-                        ? `${field.value} ${token.symbol}`
+                        ? `${
+                              amountFormat.token(field.value, {
+                                  tokenDecimals: token.decimals,
+                                  unitPriceUsd: tokenPrice,
+                              }).display
+                          } ${token.symbol}`
                         : null;
 
                 const primarySuffix =
