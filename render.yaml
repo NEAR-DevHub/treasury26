@@ -168,27 +168,6 @@ services:
         sync: false
     healthCheckPath: /
 
-  - type: web
-    name: near-treasury-frontend-staging-redesign
-    runtime: node
-    plan: starter
-    rootDir: nt-fe
-    branch: nearcom_redesign
-    buildCommand: bun install && node ./node_modules/geoip-lite/scripts/updatedb.js license_key=$MAXMIND_LICENSE_KEY && bun run build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
-    startCommand: node .next/standalone/server.js
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NODE_VERSION
-        value: 24.19.0
-      - key: NEXT_PUBLIC_SENTRY_ENVIRONMENT
-        value: staging-redesign
-      - key: MAXMIND_LICENSE_KEY
-        sync: false
-      - key: NEXT_PUBLIC_BACKEND_API_BASE
-        sync: false
-    healthCheckPath: /
-
 databases:
   - name: database
     plan: basic-1gb
