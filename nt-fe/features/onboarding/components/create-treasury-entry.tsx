@@ -7,7 +7,6 @@ import {
     LoaderCircleIcon,
     LogoutSquare01Icon,
     CheckIcon,
-    User03Icon,
 } from "@hugeicons/core-free-icons";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,6 +28,7 @@ import { LargeInput } from "@/components/large-input";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PageCard } from "@/components/card";
 import { PageComponentLayout } from "@/components/page-component-layout";
+import { ProfileAvatarChip } from "@/components/profile-avatar-chip";
 import Logo from "@/components/icons/logo";
 import { NearBusinessLogo } from "@/components/icons/near-business-logo";
 import { Form, FormField, FormMessage } from "@/components/ui/form";
@@ -43,6 +43,7 @@ import {
 } from "@/lib/api";
 import { trackEvent } from "@/lib/analytics";
 import { sanitizeReturnTo } from "@/lib/auth-redirect";
+import { resolveProfileImageUrl } from "@/lib/profile-image";
 import { resolvePreferredMemberTreasuryId } from "@/lib/treasury-home";
 import { cn } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
@@ -105,13 +106,10 @@ function ConnectedAccountCard({ accountId }: { accountId: string }) {
     return (
         <div className="flex items-center gap-2 rounded-2xl border border-general-border bg-card px-4 py-3">
             <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-green-700">
-                    <Icon
-                        icon={User03Icon}
-                        className="size-4.5 text-white"
-                        fill="currentColor"
-                    />
-                </span>
+                <ProfileAvatarChip
+                    imageUrl={resolveProfileImageUrl(profile?.image)}
+                    name={displayName ?? shortAccountId}
+                />
                 <div className="flex min-w-0 flex-col text-sm leading-normal">
                     <span className="truncate font-semibold text-general-foreground">
                         {displayName ?? shortAccountId}
