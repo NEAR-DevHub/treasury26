@@ -42,6 +42,11 @@ interface AccountInputProps {
     validateOnMount?: boolean; // Force validation on mount (for edit screens)
     /** When true, require `nearcom:` plus a valid NEAR account. */
     requireNearComPrefix?: boolean;
+    /**
+     * When false, NEAR is format-only (no `checkAccountExists` RPC).
+     * Payments skip existence — 1Click already errors if the account is missing.
+     */
+    checkAccountExists?: boolean;
 }
 
 const AccountInput = ({
@@ -54,6 +59,7 @@ const AccountInput = ({
     borderless = false,
     validateOnMount = false,
     requireNearComPrefix = false,
+    checkAccountExists = true,
 }: AccountInputProps) => {
     const t = useTranslations("accountInput");
     const walletAutofillGuard = useWalletAddressAutofillGuard();
@@ -180,6 +186,14 @@ const AccountInput = ({
                 return;
             }
 
+            if (!checkAccountExists) {
+                setValidationError(undefined);
+                setIsValid(true);
+                setHasValidated(true);
+                updateValidationState(false);
+                return;
+            }
+
             const timeoutId = setTimeout(
                 () => {
                     validateNearFull(value);
@@ -217,6 +231,7 @@ const AccountInput = ({
         isNear,
         config.regex,
         validateOnMount,
+        checkAccountExists,
         prefixErrorMessage,
         setIsValid,
         validateNearFull,
@@ -259,7 +274,12 @@ const AccountInput = ({
                 updateValidationState(false);
             } else {
                 setValidationError(undefined);
-                setIsValid(false); // Wait for blockchain check
+                if (checkAccountExists) {
+                    setIsValid(false); // Wait for blockchain check
+                } else {
+                    setIsValid(true);
+                    setHasValidated(true);
+                }
             }
             return;
         }

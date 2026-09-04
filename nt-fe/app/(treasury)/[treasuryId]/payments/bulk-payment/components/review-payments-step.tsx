@@ -25,6 +25,7 @@ import {
     DialogTitle,
     mobileInsetSheetClassName,
 } from "@/components/modal";
+import { ReviewPaymentsSkeleton } from "@/components/review-payments-skeleton";
 import { ReviewStep, type StepProps } from "@/components/step-wizard";
 import { getNetworkDisplayName } from "@/components/token-display";
 import { TokenDisplay } from "@/components/token-display-with-network";
@@ -56,64 +57,9 @@ import { cn } from "@/lib/utils";
 import type { BulkPaymentData, BulkPaymentFormValues } from "../schemas";
 import { validateAccountsAndStorage } from "../utils";
 import type { QuoteFees } from "../utils/confidential-prepare";
-import { useBulkParsingLabels } from "../utils/use-parsing-labels";
-
-const REVIEW_SKELETON_ROW_KEYS = [
-    "one",
-    "two",
-    "three",
-    "four",
-    "five",
-] as const;
 
 const helpTooltipTriggerClass =
     "inline-flex text-card [&_circle]:fill-general-muted-foreground [&_circle]:stroke-general-muted-foreground hover:[&_circle]:fill-general-secondary-foreground hover:[&_circle]:stroke-general-secondary-foreground";
-
-function ReviewPaymentsSkeleton({
-    recipientCount,
-}: {
-    recipientCount: number;
-}) {
-    const rowCount = Math.min(Math.max(recipientCount, 1), 5);
-
-    return (
-        <>
-            <Skeleton className="mx-auto h-44 w-full max-w-lg rounded-3xl" />
-            <div className="mt-2 flex w-full flex-col gap-4">
-                {REVIEW_SKELETON_ROW_KEYS.slice(0, rowCount).map((rowId) => (
-                    <div
-                        key={rowId}
-                        className="flex flex-col gap-2 border-b border-general-border pb-4"
-                    >
-                        <div className="flex items-center justify-between gap-2">
-                            <Skeleton className="h-5 w-24" />
-                            <div className="flex items-center gap-3">
-                                <Skeleton className="size-3.5" />
-                                <Skeleton className="size-3.5" />
-                            </div>
-                        </div>
-                        <div className="flex justify-between gap-2">
-                            <Skeleton className="h-5 w-36" />
-                            <div className="flex flex-col items-end gap-1">
-                                <Skeleton className="h-5 w-28" />
-                                <Skeleton className="h-4 w-16" />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-                <div className="flex items-center justify-between gap-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-5 w-24" />
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                    <Skeleton className="h-5 w-24" />
-                    <Skeleton className="h-5 w-20" />
-                </div>
-                <Skeleton className="h-11 w-full rounded-xl" />
-            </div>
-        </>
-    );
-}
 
 function HelpTooltip({
     content,
@@ -201,7 +147,6 @@ export function ReviewPaymentsStep({
     const tBulk = useTranslations("bulkPayment");
     const tIntents = useTranslations("intentsQuote");
     const tCommon = useTranslations("common");
-    const parsingLabels = useBulkParsingLabels();
     const form = useFormContext<BulkPaymentFormValues>();
     const selectedToken = form.watch("selectedToken");
     const comment = form.watch("comment");
@@ -258,7 +203,6 @@ export function ReviewPaymentsStep({
                 const validatedPayments = await validateAccountsAndStorage(
                     paymentData,
                     selectedToken,
-                    parsingLabels,
                     destinationNetworkName,
                 );
                 setPaymentData(validatedPayments);

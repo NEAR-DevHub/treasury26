@@ -613,6 +613,7 @@ export function PaymentFormSection<
                         borderless
                         validateOnMount={!!recipient}
                         requireNearComPrefix={requireNearComPrefix}
+                        checkAccountExists={false}
                     />
                 </div>
             ) : null}
