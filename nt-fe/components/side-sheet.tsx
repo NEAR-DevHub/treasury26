@@ -73,10 +73,10 @@ function SideSheetContent({
     function handleStateChange(open: boolean) {
         if (open && !pushed.current) {
             pushed.current = true;
-            pushOverlay();
+            pushOverlay("side-sheet");
         } else if (!open && pushed.current) {
             pushed.current = false;
-            popOverlay();
+            popOverlay("side-sheet");
         }
     }
 
