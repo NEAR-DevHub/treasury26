@@ -159,12 +159,6 @@ function RequestDetail({
             backButton={`/${treasuryId}/requests`}
             headerActions={
                 <>
-                    <CopyButton
-                        variant="ghost"
-                        size="icon"
-                        text={`${window.location.origin}/${treasuryId}/requests/${proposal.id}`}
-                        tooltipContent={tExpanded("copyLink")}
-                    />
                     {isOwnPendingProposal && !hasVoted && (
                         <Button
                             variant="ghost"
@@ -175,6 +169,12 @@ function RequestDetail({
                             <Icon icon={Delete01Icon} />
                         </Button>
                     )}
+                    <CopyButton
+                        variant="ghost"
+                        size="icon"
+                        text={`${window.location.origin}/${treasuryId}/requests/${proposal.id}`}
+                        tooltipContent={tExpanded("copyLink")}
+                    />
                 </>
             }
         >
