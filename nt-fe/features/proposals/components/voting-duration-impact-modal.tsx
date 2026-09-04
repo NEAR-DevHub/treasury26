@@ -174,17 +174,17 @@ export function VotingDurationImpactModal({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent
                 className={cn(
-                    "gap-3 p-4 sm:max-w-[720px]! sm:gap-4 sm:p-5",
+                    "gap-3 overflow-y-hidden p-4 sm:max-w-[720px]! sm:gap-4 sm:p-5",
                     mobileInsetSheetClassName,
                 )}
             >
-                <DialogHeader className="mx-0 border-0 px-0 pb-0">
+                <DialogHeader className="mx-0 shrink-0 border-0 px-0 pb-0">
                     <DialogTitle className="text-left text-base leading-[1.2]">
                         {t("impactTitle")}
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 scrollbar-hide sm:-mx-5 sm:gap-4 sm:px-5">
                     <p className="text-sm font-medium text-general-secondary-foreground">
                         {t("impactBody")}
                     </p>
@@ -243,7 +243,7 @@ export function VotingDurationImpactModal({
                     )}
                 </div>
 
-                <DialogFooter className="mx-0 px-0 pt-0">
+                <DialogFooter className="-mx-4 border-general-border border-t px-4 pt-3 sm:-mx-5 sm:px-5">
                     <Button
                         onClick={onConfirm}
                         size="xl"
@@ -292,10 +292,7 @@ function ImpactedRequests({
                 type="button"
                 onClick={onToggle}
                 aria-expanded={isExpanded}
-                className={cn(
-                    "flex w-full items-center gap-2 p-3 text-left text-sm font-medium text-general-secondary-foreground transition-colors hover:bg-general-border/40",
-                    isExpanded && "border-general-border border-b",
-                )}
+                className="flex w-full items-center gap-2 p-3 text-left text-sm font-medium text-general-secondary-foreground transition-colors hover:bg-general-border/40"
             >
                 <Icon
                     icon={isExpanded ? ArrowDown01Icon : ArrowRight01Icon}
