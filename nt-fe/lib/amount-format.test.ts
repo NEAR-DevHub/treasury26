@@ -12,6 +12,7 @@ import {
     formatTokenQuantity,
     formatUnitPrice,
     legacyGroupedDecimalOrNull,
+    quantizeTokenAmount,
 } from "./amount-format";
 
 /** Same ICU call `formatCanonicalWithIntl` uses — expected glyphs vary by OS/Bun. */
@@ -140,6 +141,60 @@ describe("token display precision", () => {
                 rounding: "up",
             }).display,
         ).toBe("1.24");
+    });
+});
+
+describe("quantizeTokenAmount", () => {
+    it("floors spendable amounts to the same digits as standard display", () => {
+        expect(
+            quantizeTokenAmount("0.04198551025413694610759", {
+                tokenDecimals: 24,
+                unitPriceUsd: "1.051121798043976",
+                rounding: "down",
+            }),
+        ).toBe("0.0419855");
+        expect(
+            quantizeTokenAmount("1234.56789", {
+                tokenDecimals: 6,
+                unitPriceUsd: 1,
+                rounding: "down",
+            }),
+        ).toBe("1234.56");
+    });
+
+    it("never returns more than the original amount when rounding down", () => {
+        const original = "1.239999999";
+        const quantized = quantizeTokenAmount(original, {
+            tokenDecimals: 24,
+            rounding: "down",
+        });
+        expect(quantized).not.toBeNull();
+        expect(Big(quantized!).lte(original)).toBe(true);
+    });
+
+    it("rounds costs up so the quoted spend is never understated", () => {
+        expect(
+            quantizeTokenAmount("1.231", {
+                profile: "compact",
+                tokenDecimals: 2,
+                rounding: "up",
+            }),
+        ).toBe("1.24");
+    });
+
+    it("keeps dust exact instead of collapsing it to 0", () => {
+        expect(
+            quantizeTokenAmount("0.000000001", {
+                tokenDecimals: 8,
+                rounding: "down",
+            }),
+        ).toBe("0.000000001");
+    });
+
+    it("returns null for missing or invalid values", () => {
+        expect(quantizeTokenAmount(null)).toBeNull();
+        expect(quantizeTokenAmount("not-a-number")).toBeNull();
+        expect(quantizeTokenAmount(0)).toBe("0");
     });
 });
 

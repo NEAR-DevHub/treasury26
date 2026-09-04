@@ -15,6 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    mobileInsetSheetClassName,
 } from "@/components/modal";
 import { Form, FormField } from "@/components/ui/form";
 import { decimalOrNull } from "@/lib/amount-format";
@@ -137,7 +138,12 @@ export function ExchangeSettingsModal({
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent
+                className={cn(
+                    mobileInsetSheetClassName,
+                    "gap-2 max-sm:gap-2 sm:max-w-md!",
+                )}
+            >
                 <DialogHeader className="border-0">
                     <DialogTitle className="text-left">
                         {t("title")}

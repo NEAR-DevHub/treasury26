@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useDebounce } from "use-debounce";
 import { useTreasuryPolicy } from "@/hooks/use-treasury-queries";
-import { decimalOrNull } from "@/lib/amount-format";
+import { decimalOrNull, quantizeTokenAmount } from "@/lib/amount-format";
 import type { ExchangeFormValues } from "../exchange-form";
 import { type ExchangeSwapType, useExchangeQuote } from "./use-exchange-quote";
 import { useQuoteDecimalAmount } from "./use-format-quote-amount";
@@ -137,7 +137,16 @@ export function useExchangeAmountQuote({
         if (!quoteData?.quote) return;
 
         if (isDryRun) {
-            const derivedValue = derivedAmount ?? "";
+            const derivedToken =
+                amountMode === "EXACT_INPUT" ? receiveToken : sellToken;
+            const derivedValue =
+                quantizeTokenAmount(derivedAmount, {
+                    tokenDecimals: derivedToken.decimals,
+                    unitPriceUsd: derivedToken.price,
+                    rounding: amountMode === "EXACT_INPUT" ? "down" : "up",
+                }) ??
+                derivedAmount ??
+                "";
             const derivedField =
                 amountMode === "EXACT_INPUT" ? "receiveAmount" : "sellAmount";
             // Skip no-op writes — setValue resets caret/selection.
@@ -159,6 +168,8 @@ export function useExchangeAmountQuote({
         isDryRun,
         amountMode,
         derivedAmount,
+        receiveToken,
+        sellToken,
         form,
         clearDerivedAmount,
     ]);

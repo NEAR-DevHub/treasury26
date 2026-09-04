@@ -20,6 +20,7 @@ export function MobileBottomNav() {
     const router = useRouter();
     const { treasuryId } = useTreasury();
     const sheet = useMobileShellStore((state) => state.sheet);
+    const hideBottomNav = useMobileShellStore((state) => state.hideBottomNav);
     const openSheet = useMobileShellStore((state) => state.openSheet);
     const closeSheet = useMobileShellStore((state) => state.closeSheet);
 
@@ -57,6 +58,10 @@ export function MobileBottomNav() {
         pathname?.startsWith(`/${treasuryId}/members`) === true ||
         pathname?.startsWith(`/${treasuryId}/settings`) === true;
     const isMenuActive = sheet === "menu" || isMenuRoute;
+
+    if (hideBottomNav) {
+        return null;
+    }
 
     return (
         <nav

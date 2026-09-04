@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef } from "react";
-import { useTranslations } from "next-intl";
+import { formatShortAddress } from "@/lib/format-short-address";
 import { cn } from "@/lib/utils";
 import { CopyButton } from "./copy-button";
 
@@ -24,13 +24,11 @@ export const Address = forwardRef<HTMLDivElement, AddressProps>(
         },
         ref,
     ) {
-        const t = useTranslations("address");
-        const prefix = address.slice(0, prefixLength);
-        const suffix = address.slice(address.length - suffixLength);
-        const displayedAddress =
-            address.length > prefixLength + suffixLength
-                ? `${prefix}...${suffix}`
-                : address;
+        const displayedAddress = formatShortAddress(
+            address,
+            prefixLength,
+            suffixLength,
+        );
         return (
             <div
                 ref={ref}

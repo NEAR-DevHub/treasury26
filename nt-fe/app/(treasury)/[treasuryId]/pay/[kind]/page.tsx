@@ -20,7 +20,11 @@ import { PageComponentLayout } from "@/components/page-component-layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
 import { buildLoginHref } from "@/lib/auth-redirect";
-import { withNearComAddressPrefix } from "@/lib/nearcom-address";
+import {
+    buildNearComSendHref,
+    NEAR_COM_SEND_INTERNAL_NETWORK,
+    withNearComAddressPrefix,
+} from "@/lib/nearcom-address";
 import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import { useConfidentialBridgeAddress } from "@/hooks/use-confidential-bridge-address";
 import { useDepositAddressStatus } from "@/hooks/use-deposit-address-status";
@@ -195,7 +199,7 @@ export default function PaySharePage() {
 
     const notices = useMemo(() => {
         if (kind === "confidential") {
-            return buildConfidentialOriginNotices(t, "near_business");
+            return buildConfidentialOriginNotices(t);
         }
 
         const symbol = sendTokenMeta?.symbol || tokenId;
@@ -365,6 +369,18 @@ export default function PaySharePage() {
         continuePayWithTrezu();
     };
 
+    const handlePayWithNearcom = () => {
+        if (!recipientDaoId) return;
+        window.open(
+            buildNearComSendHref({
+                network: NEAR_COM_SEND_INTERNAL_NETWORK,
+                recipient: withNearComAddressPrefix(recipientDaoId),
+            }),
+            "_blank",
+            "noopener,noreferrer",
+        );
+    };
+
     const handlePickerOpenChange = (open: boolean) => {
         setPickerOpen(open);
         if (!open) stripChoosePayerParam();
@@ -466,17 +482,37 @@ export default function PaySharePage() {
                                     type="button"
                                     onClick={handlePayCta}
                                     disabled={!paymentPrefill}
-                                    className="h-11 w-full gap-2 rounded-2xl text-base font-bold leading-4 text-primary-foreground"
+                                    className="h-11 w-full gap-2 rounded-2xl text-base font-bold leading-4 normal-case text-primary-foreground"
                                     data-testid={
-                                        isConfidential
+                                        isConfidentialShare
                                             ? "deposit-pay-with-near-business"
                                             : "deposit-pay-with-trezu"
                                     }
                                 >
-                                    {isConfidential
-                                        ? t("transfer.payWithNearcom")
-                                        : t("transfer.payWithTrezu")}
+                                    {isConfidentialShare ? (
+                                        <img
+                                            src="/icons/near.svg"
+                                            alt=""
+                                            className="size-5 rounded-full invert"
+                                        />
+                                    ) : null}
+                                    {t("transfer.payWithTrezu")}
                                 </Button>
+                                {isConfidentialShare ? (
+                                    <Button
+                                        type="button"
+                                        onClick={handlePayWithNearcom}
+                                        className="h-11 w-full gap-2 rounded-2xl text-base font-bold leading-4 normal-case text-primary-foreground"
+                                        data-testid="deposit-pay-with-nearcom"
+                                    >
+                                        <img
+                                            src="/near.com.svg"
+                                            alt=""
+                                            className="size-5 rounded-full"
+                                        />
+                                        {t("transfer.payWithNearcom")}
+                                    </Button>
+                                ) : null}
                                 {isMember ? (
                                     <CopyButton
                                         text={getAbsoluteTransferUrl(

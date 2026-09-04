@@ -1,47 +1,48 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import {
     Delete01Icon,
     Edit03Icon,
     HelpCircleIcon,
 } from "@hugeicons/core-free-icons";
-import { type ReactNode, useState, useEffect, useMemo } from "react";
-import { useFormContext } from "react-hook-form";
 import { useTranslations } from "next-intl";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useFormContext } from "react-hook-form";
+import { toast } from "sonner";
+import { Address } from "@/components/address";
+import { AmountSummary } from "@/components/amount-summary";
 import { Button } from "@/components/button";
+import { CreateRequestButton } from "@/components/create-request-button";
+import { FormattedAmount } from "@/components/formatted-amount";
+import { Icon } from "@/components/icon";
 import { Input } from "@/components/input";
-import { StepProps, ReviewStep } from "@/components/step-wizard";
-import { getNetworkDisplayName } from "@/components/token-display";
-import { TokenDisplay } from "@/components/token-display-with-network";
-import Big from "@/lib/big";
-import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import {
     Dialog,
     DialogContent,
-    DialogHeader,
-    DialogTitle,
     DialogDescription,
     DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    mobileInsetSheetClassName,
 } from "@/components/modal";
-import type { BulkPaymentFormValues, BulkPaymentData } from "../schemas";
-import type { QuoteFees } from "../utils/confidential-prepare";
-import { decimalFromBaseUnits, decimalOrNull } from "@/lib/amount-format";
-import { cn } from "@/lib/utils";
-import { validateAccountsAndStorage } from "../utils";
-import { useBulkParsingLabels } from "../utils/use-parsing-labels";
-import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
-import { useTreasury } from "@/hooks/use-treasury";
-import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
-import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
-import { AmountSummary } from "@/components/amount-summary";
-import { FormattedAmount } from "@/components/formatted-amount";
-import { CreateRequestButton } from "@/components/create-request-button";
-import { trackEvent } from "@/lib/analytics";
+import { ReviewStep, type StepProps } from "@/components/step-wizard";
+import { getNetworkDisplayName } from "@/components/token-display";
+import { TokenDisplay } from "@/components/token-display-with-network";
 import { Tooltip } from "@/components/tooltip";
-import { Address } from "@/components/address";
-import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { NEAR_COM_NETWORK_ID } from "@/constants/network-ids";
+import { useTokenCatalog } from "@/hooks/use-bridge-tokens";
+import { useTreasury } from "@/hooks/use-treasury";
+import { useToken, useTokenBalance } from "@/hooks/use-treasury-queries";
+import { decimalFromBaseUnits, decimalOrNull } from "@/lib/amount-format";
+import { trackEvent } from "@/lib/analytics";
+import Big from "@/lib/big";
+import {
+    formatShortAddress,
+    SHORT_ADDRESS_PREFIX_LENGTH,
+    SHORT_ADDRESS_SUFFIX_LENGTH,
+} from "@/lib/format-short-address";
+import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import {
     getNearComChainIcons,
     getNetworkDisplayCaseClass,
@@ -51,9 +52,68 @@ import {
     formatRecipientForNearComDestination,
     hasNearComAddressPrefix,
 } from "@/lib/nearcom-address";
+import { cn } from "@/lib/utils";
+import type { BulkPaymentData, BulkPaymentFormValues } from "../schemas";
+import { validateAccountsAndStorage } from "../utils";
+import type { QuoteFees } from "../utils/confidential-prepare";
+import { useBulkParsingLabels } from "../utils/use-parsing-labels";
+
+const REVIEW_SKELETON_ROW_KEYS = [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+] as const;
 
 const helpTooltipTriggerClass =
     "inline-flex text-card [&_circle]:fill-general-muted-foreground [&_circle]:stroke-general-muted-foreground hover:[&_circle]:fill-general-secondary-foreground hover:[&_circle]:stroke-general-secondary-foreground";
+
+function ReviewPaymentsSkeleton({
+    recipientCount,
+}: {
+    recipientCount: number;
+}) {
+    const rowCount = Math.min(Math.max(recipientCount, 1), 5);
+
+    return (
+        <>
+            <Skeleton className="mx-auto h-44 w-full max-w-lg rounded-3xl" />
+            <div className="mt-2 flex w-full flex-col gap-4">
+                {REVIEW_SKELETON_ROW_KEYS.slice(0, rowCount).map((rowId) => (
+                    <div
+                        key={rowId}
+                        className="flex flex-col gap-2 border-b border-general-border pb-4"
+                    >
+                        <div className="flex items-center justify-between gap-2">
+                            <Skeleton className="h-5 w-24" />
+                            <div className="flex items-center gap-3">
+                                <Skeleton className="size-3.5" />
+                                <Skeleton className="size-3.5" />
+                            </div>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                            <Skeleton className="h-5 w-36" />
+                            <div className="flex flex-col items-end gap-1">
+                                <Skeleton className="h-5 w-28" />
+                                <Skeleton className="h-4 w-16" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+                <div className="flex items-center justify-between gap-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-24" />
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                    <Skeleton className="h-5 w-24" />
+                    <Skeleton className="h-5 w-20" />
+                </div>
+                <Skeleton className="h-11 w-full rounded-xl" />
+            </div>
+        </>
+    );
+}
 
 function HelpTooltip({
     content,
@@ -148,7 +208,9 @@ export function ReviewPaymentsStep({
 
     const [paymentData, setPaymentData] =
         useState<BulkPaymentData[]>(initialPaymentData);
-    const [isValidatingAccounts, setIsValidatingAccounts] = useState(false);
+    const [isValidatingAccounts, setIsValidatingAccounts] = useState(
+        initialPaymentData.length > 0,
+    );
     const [validationComplete, setValidationComplete] = useState(false);
     const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
     const [recipientToRemove, setRecipientToRemove] = useState<{
@@ -157,7 +219,6 @@ export function ReviewPaymentsStep({
     } | null>(null);
 
     const { treasuryId } = useTreasury();
-    const { data: addressBook = [] } = useAddressBook();
     const { data: bridgeAssets = [] } = useTokenCatalog({ kind: "swap" });
     const { data: selectedTokenData } = useToken(selectedToken?.address || "");
     const { data: balance } = useTokenBalance(
@@ -248,6 +309,33 @@ export function ReviewPaymentsStep({
 
     if (!selectedToken) {
         return null;
+    }
+
+    const isReviewLoading =
+        isValidatingAccounts ||
+        (confidentialPrepare !== undefined &&
+            !confidentialPrepare.outOfCredits &&
+            (confidentialPrepare.status === "loading" ||
+                confidentialPrepare.status === "idle"));
+
+    if (isReviewLoading) {
+        return (
+            <div
+                className="flex w-full min-w-0 max-w-lg mx-auto flex-col gap-6"
+                aria-busy="true"
+            >
+                <ReviewStep
+                    reviewingTitle={tPay("reviewYourPayment")}
+                    handleBack={handleBack}
+                    backDisabled={isSubmitting}
+                >
+                    <ReviewPaymentsSkeleton
+                        recipientCount={paymentData.length}
+                    />
+                </ReviewStep>
+                <Skeleton className="h-11 w-full rounded-2xl" />
+            </div>
+        );
     }
 
     const recipientsTotal = paymentData.reduce(
@@ -370,9 +458,6 @@ export function ReviewPaymentsStep({
                     token={selectedToken}
                     title=""
                     showNetworkIcon={true}
-                    chainIcons={
-                        destinationChainIcons ?? selectedToken.chainIcons
-                    }
                 />
                 {balanceWarning && (
                     <p className="text-sm font-normal text-general-info-foreground">
@@ -386,227 +471,187 @@ export function ReviewPaymentsStep({
                 )}
 
                 <div className="flex w-full flex-col gap-4 mt-2">
-                    {isValidatingAccounts
-                        ? paymentData.map((_, index) => (
-                              <div
-                                  key={index}
-                                  className="flex flex-col gap-2 border-b border-general-border pb-4"
-                              >
-                                  <div className="h-5 w-24 bg-general-unofficial-accent-0 animate-pulse rounded" />
-                                  <div className="flex justify-between gap-2">
-                                      <div className="h-5 w-36 bg-general-unofficial-accent-0 animate-pulse rounded" />
-                                      <div className="flex flex-col items-end gap-1">
-                                          <div className="h-5 w-28 bg-general-unofficial-accent-0 animate-pulse rounded" />
-                                          <div className="h-4 w-16 bg-general-unofficial-accent-0 animate-pulse rounded" />
-                                      </div>
-                                  </div>
-                              </div>
-                          ))
-                        : paymentData.map((payment, index) => {
-                              const recipientFee = getRecipientFee(index);
-                              const displayAmount = getRecipientDisplayAmount(
-                                  index,
-                                  payment.amount,
-                              );
-                              const recipientAmount =
-                                  decimalOrNull(displayAmount);
-                              const estimatedUSDValue =
-                                  selectedTokenData?.price &&
-                                  recipientAmount?.gt(0)
-                                      ? recipientAmount.mul(
-                                            selectedTokenData.price,
-                                        )
-                                      : null;
+                    {paymentData.map((payment, index) => {
+                        const recipientFee = getRecipientFee(index);
+                        const displayAmount = getRecipientDisplayAmount(
+                            index,
+                            payment.amount,
+                        );
+                        const recipientAmount = decimalOrNull(displayAmount);
+                        const estimatedUSDValue =
+                            selectedTokenData?.price && recipientAmount?.gt(0)
+                                ? recipientAmount.mul(selectedTokenData.price)
+                                : null;
 
-                              return (
-                                  <div
-                                      key={index}
-                                      className="flex flex-col gap-2 border-b border-general-border pb-4"
-                                  >
-                                      <div className="flex items-center justify-between gap-2">
-                                          <p className="text-sm font-medium leading-normal text-general-secondary-foreground">
-                                              {tPay("recipientLabel")}{" "}
-                                              {index + 1}
-                                          </p>
-                                          <div className="flex items-center gap-3">
-                                              <Button
-                                                  type="button"
-                                                  variant="unstyled"
-                                                  size="icon-sm"
-                                                  className="size-auto text-general-secondary-foreground hover:text-general-foreground"
-                                                  onClick={() =>
-                                                      handleEditClick(index)
-                                                  }
-                                                  disabled={isSubmitting}
-                                                  aria-label={tBulk("edit")}
-                                              >
-                                                  <Icon
-                                                      icon={Edit03Icon}
-                                                      className="size-[0.82813rem] shrink-0"
-                                                  />
-                                              </Button>
-                                              <Button
-                                                  type="button"
-                                                  variant="unstyled"
-                                                  size="icon-sm"
-                                                  className="size-auto text-general-secondary-foreground hover:text-general-foreground"
-                                                  onClick={() =>
-                                                      handleRemoveClick(
-                                                          index,
-                                                          payment.recipient,
-                                                      )
-                                                  }
-                                                  disabled={isSubmitting}
-                                                  aria-label={tBulk("remove")}
-                                              >
-                                                  <Icon
-                                                      icon={Delete01Icon}
-                                                      className="size-[0.82813rem] shrink-0"
-                                                  />
-                                              </Button>
-                                          </div>
-                                      </div>
-                                      <div className="flex w-full items-start justify-between gap-2">
-                                          {(() => {
-                                              const contact =
-                                                  findAddressBookEntry(
-                                                      addressBook,
-                                                      payment.recipient,
-                                                  );
-                                              return (
-                                                  <div className="flex min-w-0 flex-col gap-0.5">
-                                                      {contact ? (
-                                                          <span className="truncate text-sm font-semibold leading-normal text-general-foreground">
-                                                              {contact.name}
-                                                          </span>
-                                                      ) : null}
-                                                      <Address
-                                                          address={formatRecipientForNearComDestination(
-                                                              payment.recipient,
-                                                              hasNearComAddressPrefix(
-                                                                  payment.recipient,
-                                                              )
-                                                                  ? NEAR_COM_NETWORK_ID
-                                                                  : destinationNetworkId,
-                                                          )}
-                                                          prefixLength={6}
-                                                          suffixLength={6}
-                                                          className={cn(
-                                                              "min-w-0 text-sm font-semibold leading-normal",
-                                                              contact
-                                                                  ? "text-general-secondary-foreground"
-                                                                  : "text-general-foreground",
-                                                          )}
-                                                      />
-                                                  </div>
-                                              );
-                                          })()}
-                                          <div className="flex shrink-0 items-center gap-1.5">
-                                              <TokenDisplay
-                                                  symbol={selectedToken.symbol}
-                                                  icon={
-                                                      selectedToken.icon || ""
-                                                  }
-                                                  iconSize="lg"
-                                                  className="shrink-0"
-                                              />
-                                              <div className="flex flex-col items-end gap-0.5 text-right">
-                                                  <span className="inline-flex items-center gap-1.5 text-sm font-semibold leading-normal text-general-foreground">
-                                                      {recipientAmount ? (
-                                                          <FormattedAmount
-                                                              kind="token"
-                                                              value={
-                                                                  recipientAmount
-                                                              }
-                                                              symbol={
-                                                                  selectedToken.symbol
-                                                              }
-                                                              tokenDecimals={
-                                                                  selectedToken.decimals
-                                                              }
-                                                              unitPriceUsd={
-                                                                  selectedTokenData?.price
-                                                              }
-                                                              profile="standard"
-                                                          />
-                                                      ) : (
-                                                          "—"
-                                                      )}
-                                                      {recipientFee ? (
-                                                          <HelpTooltip
-                                                              label={tPay(
-                                                                  "networkFeeInfo",
-                                                              )}
-                                                              content={
-                                                                  <div className="text-left">
-                                                                      <p>
-                                                                          <FormattedAmount
-                                                                              kind="token"
-                                                                              value={
-                                                                                  recipientAmount
-                                                                              }
-                                                                              symbol={
-                                                                                  selectedToken.symbol
-                                                                              }
-                                                                              tokenDecimals={
-                                                                                  selectedToken.decimals
-                                                                              }
-                                                                              unitPriceUsd={
-                                                                                  selectedTokenData?.price
-                                                                              }
-                                                                              profile="standard"
-                                                                          />{" "}
-                                                                          +{" "}
-                                                                          <FormattedAmount
-                                                                              kind="token"
-                                                                              value={
-                                                                                  recipientFee
-                                                                              }
-                                                                              symbol={
-                                                                                  selectedToken.symbol
-                                                                              }
-                                                                              tokenDecimals={
-                                                                                  selectedToken.decimals
-                                                                              }
-                                                                              unitPriceUsd={
-                                                                                  selectedTokenData?.price
-                                                                              }
-                                                                              profile="standard"
-                                                                              rounding="up"
-                                                                          />
-                                                                      </p>
-                                                                      <p className="lowercase">
-                                                                          {tPay(
-                                                                              "networkFee",
-                                                                          )}
-                                                                      </p>
-                                                                  </div>
-                                                              }
-                                                          />
-                                                      ) : null}
-                                                  </span>
-                                                  {estimatedUSDValue ? (
-                                                      <p className="whitespace-nowrap text-xs font-normal leading-4 tracking-[0.01125rem] text-general-secondary-foreground">
-                                                          ≈{" "}
-                                                          <FormattedAmount
-                                                              kind="fiat"
-                                                              value={
-                                                                  estimatedUSDValue
-                                                              }
-                                                          />
-                                                      </p>
-                                                  ) : null}
-                                              </div>
-                                          </div>
-                                      </div>
-                                      {payment.validationError ? (
-                                          <div className="text-xs text-red-600 dark:text-red-400">
-                                              {payment.validationError}
-                                          </div>
-                                      ) : null}
-                                  </div>
-                              );
-                          })}
+                        return (
+                            <div
+                                key={index}
+                                className="flex flex-col gap-2 border-b border-general-border pb-4"
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-medium leading-normal text-general-secondary-foreground">
+                                        {tPay("recipientLabel")} {index + 1}
+                                    </p>
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            type="button"
+                                            variant="unstyled"
+                                            size="icon-sm"
+                                            className="size-auto text-general-secondary-foreground hover:text-general-foreground"
+                                            onClick={() =>
+                                                handleEditClick(index)
+                                            }
+                                            disabled={isSubmitting}
+                                            aria-label={tBulk("edit")}
+                                        >
+                                            <Icon
+                                                icon={Edit03Icon}
+                                                className="size-[0.82813rem] shrink-0"
+                                            />
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="unstyled"
+                                            size="icon-sm"
+                                            className="size-auto text-general-secondary-foreground hover:text-general-foreground"
+                                            onClick={() =>
+                                                handleRemoveClick(
+                                                    index,
+                                                    payment.recipient,
+                                                )
+                                            }
+                                            disabled={isSubmitting}
+                                            aria-label={tBulk("remove")}
+                                        >
+                                            <Icon
+                                                icon={Delete01Icon}
+                                                className="size-[0.82813rem] shrink-0"
+                                            />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="flex w-full items-start justify-between gap-2">
+                                    <div className="flex min-w-0 flex-col gap-0.5">
+                                        <Address
+                                            address={formatRecipientForNearComDestination(
+                                                payment.recipient,
+                                                hasNearComAddressPrefix(
+                                                    payment.recipient,
+                                                )
+                                                    ? NEAR_COM_NETWORK_ID
+                                                    : destinationNetworkId,
+                                            )}
+                                            prefixLength={
+                                                SHORT_ADDRESS_PREFIX_LENGTH
+                                            }
+                                            suffixLength={
+                                                SHORT_ADDRESS_SUFFIX_LENGTH
+                                            }
+                                            className="min-w-0 text-sm font-semibold leading-normal text-general-foreground"
+                                        />
+                                    </div>
+                                    <div className="flex shrink-0 items-center gap-1.5">
+                                        <TokenDisplay
+                                            symbol={selectedToken.symbol}
+                                            icon={selectedToken.icon || ""}
+                                            iconSize="lg"
+                                            className="shrink-0"
+                                        />
+                                        <div className="flex flex-col items-end gap-0.5 text-right">
+                                            <span className="inline-flex items-center gap-1.5 text-sm font-semibold leading-normal text-general-foreground">
+                                                {recipientAmount ? (
+                                                    <FormattedAmount
+                                                        kind="token"
+                                                        value={recipientAmount}
+                                                        symbol={
+                                                            selectedToken.symbol
+                                                        }
+                                                        tokenDecimals={
+                                                            selectedToken.decimals
+                                                        }
+                                                        unitPriceUsd={
+                                                            selectedTokenData?.price
+                                                        }
+                                                        profile="standard"
+                                                    />
+                                                ) : (
+                                                    "—"
+                                                )}
+                                                {recipientFee ? (
+                                                    <HelpTooltip
+                                                        label={tPay(
+                                                            "networkFeeInfo",
+                                                        )}
+                                                        content={
+                                                            <div className="text-left">
+                                                                <p>
+                                                                    <FormattedAmount
+                                                                        kind="token"
+                                                                        value={
+                                                                            recipientAmount
+                                                                        }
+                                                                        symbol={
+                                                                            selectedToken.symbol
+                                                                        }
+                                                                        tokenDecimals={
+                                                                            selectedToken.decimals
+                                                                        }
+                                                                        unitPriceUsd={
+                                                                            selectedTokenData?.price
+                                                                        }
+                                                                        profile="standard"
+                                                                    />{" "}
+                                                                    +{" "}
+                                                                    <FormattedAmount
+                                                                        kind="token"
+                                                                        value={
+                                                                            recipientFee
+                                                                        }
+                                                                        symbol={
+                                                                            selectedToken.symbol
+                                                                        }
+                                                                        tokenDecimals={
+                                                                            selectedToken.decimals
+                                                                        }
+                                                                        unitPriceUsd={
+                                                                            selectedTokenData?.price
+                                                                        }
+                                                                        profile="standard"
+                                                                        rounding="up"
+                                                                    />
+                                                                </p>
+                                                                <p className="lowercase">
+                                                                    {tPay(
+                                                                        "networkFee",
+                                                                    )}
+                                                                </p>
+                                                            </div>
+                                                        }
+                                                    />
+                                                ) : null}
+                                            </span>
+                                            {estimatedUSDValue ? (
+                                                <p className="whitespace-nowrap text-xs font-normal leading-4 tracking-[0.01125rem] text-general-secondary-foreground">
+                                                    ≈{" "}
+                                                    <FormattedAmount
+                                                        kind="fiat"
+                                                        value={
+                                                            estimatedUSDValue
+                                                        }
+                                                    />
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                </div>
+                                {payment.validationError ? (
+                                    <div className="text-xs text-red-600 dark:text-red-400">
+                                        {payment.validationError}
+                                    </div>
+                                ) : null}
+                            </div>
+                        );
+                    })}
 
                     {destinationNetworkLabel ? (
                         <div className="flex items-center justify-between gap-2">
@@ -635,31 +680,15 @@ export function ReviewPaymentsStep({
                         </div>
                     ) : null}
 
-                    {!isValidatingAccounts &&
-                        confidentialPrepare?.status === "loading" && (
-                            <div className="flex items-center justify-between gap-2 text-sm">
-                                <span className="inline-flex items-center gap-1 text-sm font-medium leading-[1.3125rem] text-general-secondary-foreground">
-                                    {tPay("networkFee")}
-                                    <HelpTooltip
-                                        content={tIntents("networkFeeTooltip")}
-                                        label={tPay("networkFeeInfo")}
-                                    />
-                                </span>
-                                <div className="h-5 w-24 bg-general-unofficial-accent-0 animate-pulse rounded" />
-                            </div>
-                        )}
+                    {confidentialPrepare?.outOfCredits && (
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                            <p className="text-red-600 dark:text-red-400">
+                                {tBulk("upload.bulkPaymentsUsed")}
+                            </p>
+                        </div>
+                    )}
 
-                    {!isValidatingAccounts &&
-                        confidentialPrepare?.outOfCredits && (
-                            <div className="flex items-center justify-between gap-2 text-sm">
-                                <p className="text-red-600 dark:text-red-400">
-                                    {tBulk("upload.bulkPaymentsUsed")}
-                                </p>
-                            </div>
-                        )}
-
-                    {!isValidatingAccounts &&
-                        !confidentialPrepare?.outOfCredits &&
+                    {!confidentialPrepare?.outOfCredits &&
                         confidentialPrepare?.status === "error" && (
                             <div className="flex items-center justify-between gap-2 text-sm">
                                 <p className="text-red-600 dark:text-red-400">
@@ -677,7 +706,7 @@ export function ReviewPaymentsStep({
                             </div>
                         )}
 
-                    {!isValidatingAccounts && totalNetworkFee && (
+                    {totalNetworkFee && (
                         <div className="flex items-center justify-between gap-2 text-sm">
                             <span className="inline-flex items-center gap-1 text-sm font-medium leading-[1.3125rem] text-general-secondary-foreground">
                                 {tPay("networkFee")}
@@ -700,42 +729,38 @@ export function ReviewPaymentsStep({
                         </div>
                     )}
 
-                    {!isValidatingAccounts && (
-                        <Input
-                            value={comment}
-                            onChange={(e) =>
-                                form.setValue("comment", e.target.value)
-                            }
-                            placeholder={tPay("commentPlaceholder")}
-                            inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary! focus-visible:border-general-border focus-visible:ring-0"
-                            disabled={isSubmitting}
-                        />
-                    )}
+                    <Input
+                        value={comment}
+                        onChange={(e) =>
+                            form.setValue("comment", e.target.value)
+                        }
+                        placeholder={tPay("commentPlaceholder")}
+                        inputClassName="h-11 rounded-xl border border-general-border bg-general-bg-tertiary! hover:bg-general-bg-tertiary! focus-visible:border-general-border focus-visible:ring-0"
+                        disabled={isSubmitting}
+                    />
                 </div>
             </ReviewStep>
 
-            {!isValidatingAccounts && (
-                <CreateRequestButton
-                    type="button"
-                    className="w-full h-11 rounded-2xl"
-                    onClick={handleProceedClick}
-                    disabled={
-                        hasValidationErrors ||
-                        isSubmitting ||
-                        paymentData.length === 0 ||
-                        (confidentialPrepare !== undefined &&
-                            confidentialPrepare.status !== "success")
-                    }
-                    isSubmitting={isSubmitting || isFetchingNetworkFees}
-                    permissions={[{ kind: "call", action: "AddProposal" }]}
-                    idleMessage={tPay("confirmSubmit")}
-                    loadingMessage={
-                        isFetchingNetworkFees
-                            ? tBulk("fetchingNetworkFees")
-                            : tBulk("submittingProposal")
-                    }
-                />
-            )}
+            <CreateRequestButton
+                type="button"
+                className="w-full h-11 rounded-2xl"
+                onClick={handleProceedClick}
+                disabled={
+                    hasValidationErrors ||
+                    isSubmitting ||
+                    paymentData.length === 0 ||
+                    (confidentialPrepare !== undefined &&
+                        confidentialPrepare.status !== "success")
+                }
+                isSubmitting={isSubmitting || isFetchingNetworkFees}
+                permissions={[{ kind: "call", action: "AddProposal" }]}
+                idleMessage={tPay("confirmSubmit")}
+                loadingMessage={
+                    isFetchingNetworkFees
+                        ? tBulk("fetchingNetworkFees")
+                        : tBulk("submittingProposal")
+                }
+            />
 
             <Dialog
                 open={removeDialogOpen && !isSubmitting}
@@ -744,28 +769,34 @@ export function ReviewPaymentsStep({
                     setRemoveDialogOpen(open);
                 }}
             >
-                <DialogContent className="max-w-md gap-4">
-                    <DialogHeader>
-                        <DialogTitle className="text-left">
-                            {tBulk("removeRecipient")}
+                <DialogContent
+                    className={cn(
+                        mobileInsetSheetClassName,
+                        "gap-2 max-sm:gap-4 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md!",
+                    )}
+                >
+                    <DialogHeader className="mx-0 border-0 px-0 pb-0 [&>div]:min-w-0 [&>div]:flex-1">
+                        <DialogTitle className="min-w-0 text-left text-xl font-bold leading-[1.2] tracking-[-0.4px]">
+                            {recipientToRemove
+                                ? tBulk("removeRecipient", {
+                                      recipient: formatShortAddress(
+                                          formatRecipientForNearComDestination(
+                                              recipientToRemove.recipient,
+                                              hasNearComAddressPrefix(
+                                                  recipientToRemove.recipient,
+                                              )
+                                                  ? NEAR_COM_NETWORK_ID
+                                                  : destinationNetworkId,
+                                          ),
+                                      ),
+                                  })
+                                : null}
                         </DialogTitle>
                     </DialogHeader>
-
-                    <DialogDescription>
-                        {recipientToRemove && (
-                            <p className="text-base">
-                                {tBulk.rich("removeRecipientConfirm", {
-                                    recipient: recipientToRemove.recipient,
-                                    strong: (chunks) => (
-                                        <span className="font-semibold">
-                                            {chunks}
-                                        </span>
-                                    ),
-                                })}
-                            </p>
-                        )}
+                    <DialogDescription className="text-sm font-medium text-general-secondary-foreground">
+                        {tBulk("removeRecipientConfirm")}
                     </DialogDescription>
-                    <DialogFooter>
+                    <DialogFooter className="mx-0 px-0 pt-0">
                         <Button
                             type="button"
                             variant="destructive"

@@ -328,26 +328,16 @@ test("Confidential deposit — dashboard deposit page flow", async ({
 
     await expect(page.locator("svg").first()).toBeVisible();
 
-    const nearBusinessTab = page.getByTestId(
-        "deposit-origin-tab-near_business",
-    );
-    const nearComTab = page.getByTestId("deposit-origin-tab-nearcom");
-    await expect(nearBusinessTab).toBeVisible();
-    await expect(nearComTab).toBeVisible();
-    await expect(nearBusinessTab).toHaveAttribute("aria-pressed", "true");
-    await expect(page.getByText("Only from near business")).toBeVisible();
     await expect(
-        page.getByText("Funds sent from outside near business will be lost"),
-    ).toBeVisible();
-
-    await nearComTab.click();
-    await expect(nearComTab).toHaveAttribute("aria-pressed", "true");
+        page.getByTestId("deposit-origin-tab-near_business"),
+    ).toHaveCount(0);
+    await expect(page.getByTestId("deposit-origin-tab-nearcom")).toHaveCount(0);
     await expect(
-        page.getByText("Only from confidential near.com"),
+        page.getByText("Only from near business or near.com"),
     ).toBeVisible();
     await expect(
         page.getByText(
-            "Funds sent from outside confidential near.com will be lost",
+            "Funds sent from outside near business or near.com will be lost",
         ),
     ).toBeVisible();
 

@@ -22,20 +22,18 @@ import {
 } from "@/features/address-book";
 import type { ChainInfo } from "@/features/address-book/chains";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import { formatShortAddress } from "@/lib/format-short-address";
 import { isNearComNetwork } from "@/lib/intents-network";
 import { validateNearAddress } from "@/lib/near-validation";
 import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import {
     checkRecipientAddressFormat,
+    isRecognizedRecipientAddress,
     resolveRecipientBlockchain,
 } from "@/lib/recipient-address-rules";
 import { cn } from "@/lib/utils";
+import { useWalletAddressAutofillGuard } from "@/lib/wallet-address-input-props";
 import { RecipientQrScanner } from "./recipient-qr-scanner";
-
-function shortAddress(address: string, prefix = 6, suffix = 6): string {
-    if (address.length <= prefix + suffix) return address;
-    return `${address.slice(0, prefix)}...${address.slice(-suffix)}`;
-}
 
 function ContactAvatar() {
     return (
@@ -74,6 +72,7 @@ export function RecipientSelectModal({
     restrictedAlert,
 }: RecipientSelectModalProps) {
     const t = useTranslations("paymentFormSection");
+    const walletAutofillGuard = useWalletAddressAutofillGuard();
     const [draft, setDraft] = useState("");
     const [view, setView] = useState<"list" | "scan">("list");
     const [isValidating, setIsValidating] = useState(false);
@@ -113,11 +112,14 @@ export function RecipientSelectModal({
                 network: networkName,
             });
 
-            // No destination network yet — don't claim the string is a valid
-            // chain address (length>=2 was incorrectly accepting contact names).
+            // No destination yet — accept any recognized chain format so
+            // the dest picker can show which networks that address supports.
+            // Existence checks wait until a destination is selected
+            // (`AccountInput` validateOnMount on the page form).
             if (issue === "unknownDestination") {
-                setIsValid(false);
-                setShowInvalid(false);
+                const recognized = isRecognizedRecipientAddress(trimmed);
+                setIsValid(recognized);
+                setShowInvalid(!recognized);
                 setIsValidating(false);
                 return;
             }
@@ -187,18 +189,10 @@ export function RecipientSelectModal({
     const hasMatchingContacts = searchedContacts.length > 0;
     // Address errors only when the query isn't matching contacts (name search).
     const showInvalidError =
-        !!draft.trim() &&
-        showInvalid &&
-        !isValidating &&
-        !hasMatchingContacts &&
-        blockchain !== "unknown";
+        !!draft.trim() && showInvalid && !isValidating && !hasMatchingContacts;
 
     const showTypedAddressRow =
-        !!draft.trim() &&
-        isValid &&
-        !isValidating &&
-        !showInvalid &&
-        blockchain !== "unknown";
+        !!draft.trim() && isValid && !isValidating && !showInvalid;
 
     const handlePickAddress = (address: string, contact?: AddressBookEntry) => {
         onSelect({ address, contact: contact ?? null });
@@ -248,9 +242,11 @@ export function RecipientSelectModal({
                                 }
                                 placeholder={t("searchByNameOrAddress")}
                                 autoFocus
-                                autoComplete="off"
-                                autoCorrect="off"
-                                className="h-full min-w-0 flex-1 border-0 bg-transparent text-sm font-medium leading-normal text-muted-foreground outline-none placeholder:text-muted-foreground"
+                                {...walletAutofillGuard}
+                                data-1p-ignore="true"
+                                data-lpignore="true"
+                                data-form-type="other"
+                                className="h-full min-w-0 flex-1 border-0 bg-transparent text-base font-medium leading-normal text-muted-foreground outline-none placeholder:text-muted-foreground md:text-sm"
                                 onKeyDown={(e) => {
                                     if (
                                         e.key === "Enter" &&
@@ -335,7 +331,7 @@ export function RecipientSelectModal({
                                 >
                                     <ContactAvatar />
                                     <span className="truncate text-base font-semibold leading-tight text-foreground">
-                                        {shortAddress(draft.trim())}
+                                        {formatShortAddress(draft.trim())}
                                     </span>
                                 </button>
                             ) : null}
@@ -375,7 +371,7 @@ export function RecipientSelectModal({
                                                                 {entry.name}
                                                             </span>
                                                             <span className="truncate text-sm font-medium leading-normal text-general-secondary-foreground">
-                                                                {shortAddress(
+                                                                {formatShortAddress(
                                                                     entry.address,
                                                                 )}
                                                             </span>

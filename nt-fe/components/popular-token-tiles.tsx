@@ -39,7 +39,7 @@ export function PopularTokenTiles<T extends PopularTokenTileItem>({
                         aria-pressed={selected}
                         onClick={() => onSelect(item)}
                         className={cn(
-                            "flex h-auto w-full min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-general-border bg-card p-2 text-foreground hover:bg-card hover:opacity-90",
+                            "flex h-auto w-full min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-general-border bg-card p-2 text-foreground hover:bg-card hover:opacity-90 outline-none focus-visible:border-general-border focus-visible:ring-0",
                             selected && "bg-muted",
                             item.disabled && "opacity-60",
                         )}

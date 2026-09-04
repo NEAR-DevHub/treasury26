@@ -345,6 +345,9 @@ async function gotoDashboardFresh(page: Page) {
         localStorage.removeItem("dashboard-tour-completed");
         localStorage.removeItem("info-box-tour-dismissed");
         localStorage.removeItem("members-pending-tour-shown");
+        localStorage.removeItem("members-pending-tour-shown:v1");
+        localStorage.removeItem("payments-bulk-tour-shown");
+        localStorage.removeItem("payments-bulk-tour-shown:v1");
         localStorage.removeItem("guest-save-tour-shown");
         localStorage.removeItem("new-feature-tour-shown");
     });
@@ -1197,6 +1200,191 @@ test.describe.skip("Onboarding – Full flow with scroll prerequisite", () => {
         expect(storage.tourCompleted).toBe("true");
 
         await context.close();
+    });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// Info box → Help & Support tooltip
+// ──────────────────────────────────────────────────────────────────────────
+
+const HELP_SUPPORT_TOOLTIP_TEXT = "Find docs, guides, and support";
+
+async function dismissInfoBox(page: Page) {
+    const heading = page.getByRole("heading", {
+        name: /Get more from near business/i,
+    });
+    await heading.scrollIntoViewIfNeeded();
+    await expect(heading).toBeVisible({ timeout: 15_000 });
+    await heading.locator("..").getByRole("button", { name: "Close" }).click();
+}
+
+test.describe("Onboarding – Info box Help & Support tooltip", () => {
+    test("closing the info box shows the Help & Support tooltip", async ({
+        page,
+    }) => {
+        await setupDashboardMocks(page);
+        await gotoDashboardWithStorage(page, {
+            "welcome-dismissed": "true",
+        });
+
+        await dismissInfoBox(page);
+
+        const tooltip = page.getByText(HELP_SUPPORT_TOOLTIP_TEXT, {
+            exact: false,
+        });
+        await expect(tooltip).toBeVisible({ timeout: 10_000 });
+        await expect(tooltip).toBeInViewport();
+
+        const target = page.locator("#help-support-link");
+        await expect(target).toBeVisible();
+        const card = page.locator("[data-onboarding-tour-card]");
+        const cardBox = await card.boundingBox();
+        const targetBox = await target.boundingBox();
+        expect(cardBox).not.toBeNull();
+        expect(targetBox).not.toBeNull();
+        if (cardBox && targetBox) {
+            expect(
+                cardBox.x,
+                "Desktop card should sit to the right of the sidebar account row",
+            ).toBeGreaterThan(targetBox.x);
+        }
+    });
+
+    test("closing the info box on mobile points at the header avatar", async ({
+        browser,
+    }) => {
+        const context = await browser.newContext({
+            viewport: { width: 375, height: 812 },
+            isMobile: true,
+            hasTouch: true,
+            userAgent:
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",
+        });
+        const page = await context.newPage();
+
+        await setupDashboardMocks(page);
+        await gotoDashboardWithStorage(page, {
+            "welcome-dismissed": "true",
+        });
+
+        await dismissInfoBox(page);
+
+        const tooltip = page.getByText(HELP_SUPPORT_TOOLTIP_TEXT, {
+            exact: false,
+        });
+        await expect(tooltip).toBeVisible({ timeout: 10_000 });
+        await expect(tooltip).toBeInViewport();
+
+        const avatar = page.getByTestId("mobile-user-trigger");
+        await expect(avatar).toBeVisible();
+        const card = page.locator("[data-onboarding-tour-card]");
+        const cardBox = await card.boundingBox();
+        const avatarBox = await avatar.boundingBox();
+        expect(cardBox).not.toBeNull();
+        expect(avatarBox).not.toBeNull();
+        if (cardBox && avatarBox) {
+            expect(
+                cardBox.y,
+                "Mobile card should hang below the header avatar, not clip above it",
+            ).toBeGreaterThan(avatarBox.y + avatarBox.height - 8);
+            expect(
+                cardBox.x,
+                "Mobile card should stay on screen",
+            ).toBeGreaterThanOrEqual(0);
+        }
+
+        await context.close();
+    });
+});
+
+// ──────────────────────────────────────────────────────────────────────────
+// Bulk send one-time tooltip
+// ──────────────────────────────────────────────────────────────────────────
+
+const BULK_SEND_TOOLTIP_TEXT = "Send multiple payments in one request";
+
+async function gotoPaymentsWithStorage(
+    page: Page,
+    storageEntries: Record<string, string>,
+) {
+    await page.addInitScript((entries) => {
+        for (const [key, value] of Object.entries(entries)) {
+            localStorage.setItem(key, value);
+        }
+    }, storageEntries);
+
+    await page.goto(`/${TREASURY_ID}/payments`, {
+        waitUntil: "domcontentloaded",
+        timeout: 90_000,
+    });
+    await expect(page.locator("main").first()).toBeVisible({ timeout: 30_000 });
+}
+
+test.describe("Onboarding – Bulk send tooltip", () => {
+    test("one-time tooltip appears on the payments page and points at Bulk send", async ({
+        page,
+    }) => {
+        await setupDashboardMocks(page);
+        await gotoPaymentsWithStorage(page, {
+            "welcome-dismissed": "true",
+            "dashboard-tour-completed": "true",
+        });
+
+        const tooltip = page.getByText(BULK_SEND_TOOLTIP_TEXT, {
+            exact: false,
+        });
+        await expect(tooltip).toBeVisible({ timeout: 15_000 });
+        await expect(page.locator("#payments-bulk-btn")).toBeVisible();
+
+        const shown = await page.evaluate(() =>
+            localStorage.getItem("payments-bulk-tour-shown:v1"),
+        );
+        expect(shown).toBe("true");
+    });
+
+    test("tooltip can be dismissed and does not come back on hover or reload", async ({
+        page,
+    }) => {
+        await setupDashboardMocks(page);
+        await gotoPaymentsWithStorage(page, {
+            "welcome-dismissed": "true",
+            "dashboard-tour-completed": "true",
+        });
+
+        const tooltip = page.getByText(BULK_SEND_TOOLTIP_TEXT, {
+            exact: false,
+        });
+        await expect(tooltip).toBeVisible({ timeout: 15_000 });
+
+        await page.getByRole("button", { name: "Close", exact: true }).click();
+        await expect(tooltip).not.toBeVisible({ timeout: 5_000 });
+
+        await page.locator("#payments-bulk-btn").hover();
+        await page.waitForTimeout(500);
+        await expect(tooltip).not.toBeVisible();
+
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await expect(page.locator("main").first()).toBeVisible({
+            timeout: 30_000,
+        });
+        await page.waitForTimeout(2_000);
+        await expect(tooltip).not.toBeVisible();
+    });
+
+    test("tooltip does not appear after it has already been shown", async ({
+        page,
+    }) => {
+        await setupDashboardMocks(page);
+        await gotoPaymentsWithStorage(page, {
+            "welcome-dismissed": "true",
+            "dashboard-tour-completed": "true",
+            "payments-bulk-tour-shown:v1": "true",
+        });
+
+        await page.waitForTimeout(2_000);
+        await expect(
+            page.getByText(BULK_SEND_TOOLTIP_TEXT, { exact: false }),
+        ).not.toBeVisible();
     });
 });
 

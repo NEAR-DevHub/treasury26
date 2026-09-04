@@ -1,11 +1,10 @@
 "use client";
 
-import { Icon } from "@/components/icon";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
     InformationCircleIcon,
     UserGroup03Icon,
 } from "@hugeicons/core-free-icons";
-import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -18,6 +17,7 @@ import { AmountSummary } from "@/components/amount-summary";
 import { Button } from "@/components/button";
 import { CreateRequestButton } from "@/components/create-request-button";
 import { FormattedAmount } from "@/components/formatted-amount";
+import { Icon } from "@/components/icon";
 import { Input } from "@/components/input";
 import { PageComponentLayout } from "@/components/page-component-layout";
 import {
@@ -37,7 +37,11 @@ import {
     NEAR_NETWORK_ID,
 } from "@/constants/network-ids";
 import { default_near_token, default_usdc_near_token } from "@/constants/token";
-import { findAddressBookEntry, useAddressBook } from "@/features/address-book";
+import {
+    PAGE_TOUR_NAMES,
+    PAGE_TOUR_STORAGE_KEYS,
+    usePageTour,
+} from "@/features/onboarding/steps/page-tours";
 import { type BridgeAsset, useTokenCatalog } from "@/hooks/use-bridge-tokens";
 import {
     buildIntentsQuoteRequest,
@@ -59,6 +63,10 @@ import Big from "@/lib/big";
 import { getBlockchainType } from "@/lib/blockchain-utils";
 import { findBridgeAssetForToken } from "@/lib/bridge-asset-resolver";
 import {
+    SHORT_ADDRESS_PREFIX_LENGTH,
+    SHORT_ADDRESS_SUFFIX_LENGTH,
+} from "@/lib/format-short-address";
+import {
     computeQuoteNetworkFee,
     isIntentsCrossChainToken,
     isIntentsToken,
@@ -68,13 +76,11 @@ import {
     getNetworkDisplayCaseClass,
     isNearComNetwork,
 } from "@/lib/intents-network";
-import { reportError } from "@/lib/report-error";
 import {
     buildIntentsTransferProposal,
     buildNativeNearIntentsKind,
     buildNearFtIntentsKind,
 } from "@/lib/near-proposal-builders";
-import { isNearComRecipientAddress } from "@/lib/nearcom-address";
 import { findQuoteAssetIdForDestination } from "@/lib/oneclick-asset-routing";
 import {
     classifyPaymentToken,
@@ -82,6 +88,11 @@ import {
     shouldUseDirectPaymentTransfer,
 } from "@/lib/payment-route";
 import type { FunctionCallKind, TransferKind } from "@/lib/proposals-api";
+import {
+    canAddressUseDestination,
+    checkRecipientAddressFormat,
+} from "@/lib/recipient-address-rules";
+import { reportError } from "@/lib/report-error";
 import { parseTokenQueryParam } from "@/lib/token-query-param";
 import { cn, encodeToMarkdown } from "@/lib/utils";
 import { useNear } from "@/stores/near-store";
@@ -108,6 +119,7 @@ function buildPaymentFormSchema(messages: {
     amountGreaterThanZero: string;
     recipientSameAsToken: string;
     selectToken: string;
+    selectDestination: string;
     invalidAddress: string;
 }) {
     return z
@@ -116,7 +128,7 @@ function buildPaymentFormSchema(messages: {
                 .string()
                 .min(2, messages.recipientMin)
                 .max(128, messages.recipientMax),
-            destinationNetwork: z.string(),
+            destinationNetwork: z.string().min(1, messages.selectDestination),
             destinationNetworkName: z.string(),
             amount: z
                 .string()
@@ -143,10 +155,12 @@ function buildPaymentFormSchema(messages: {
                     message: messages.recipientSameAsToken,
                 });
             }
-            if (
-                isNearComNetwork(data.destinationNetwork) &&
-                !isNearComRecipientAddress(data.address)
-            ) {
+            const addressIssue = checkRecipientAddressFormat({
+                address: data.address,
+                network: data.destinationNetworkName || data.destinationNetwork,
+                isNearComDestination: isNearComNetwork(data.destinationNetwork),
+            });
+            if (addressIssue && addressIssue !== "unknownDestination") {
                 ctx.addIssue({
                     code: "custom",
                     path: ["address"],
@@ -203,6 +217,7 @@ function Step1({
     const form = useFormContext<PaymentFormValues>();
     const address = form.watch("address");
     const amount = form.watch("amount");
+    const destinationNetwork = form.watch("destinationNetwork");
 
     const handleSave = async () => {
         // Validate and proceed to next step
@@ -219,15 +234,18 @@ function Step1({
 
     const hasAmount = !!amount && Number(amount) > 0;
     const hasRecipient = !!address?.trim();
+    const hasDestination = !!destinationNetwork?.trim();
     const saveButtonText = paymentsSlotBlocked
         ? tCreate("brieflyUnavailable")
         : hasRestrictedRecipientError
           ? tPay("useDifferentAddress")
-          : hasAmount && hasRecipient
+          : hasAmount && hasRecipient && hasDestination
             ? tPay("reviewButton")
-            : hasAmount
+            : !hasRecipient
               ? tPay("reviewButtonEnterRecipient")
-              : tPay("reviewButtonDisabled");
+              : !hasDestination
+                ? tPay("reviewButtonEnterNetwork")
+                : tPay("reviewButtonDisabled");
 
     return (
         <>
@@ -285,7 +303,7 @@ function Step2({
         name: ["token", "amount", "address", "destinationNetwork"],
     }) as [PaymentFormValues["token"], string, string, string];
     const { data: tokenData } = useToken(token?.address);
-    // Chain icons for the destination network (for the review token icon overlay)
+    // Chain icons for the destination-network row under the summary.
     const destinationChainIcons = useMemo(() => {
         if (!destinationNetwork) {
             return undefined;
@@ -301,9 +319,6 @@ function Step2({
         }
         return undefined;
     }, [bridgeAssets, destinationNetwork]);
-    const { data: addressBook = [] } = useAddressBook();
-    const contactName = findAddressBookEntry(addressBook, address)?.name;
-
     const { recipientAmount, displayNetworkFee, recipientEstimatedUSDValue } =
         useMemo(() => {
             if (!token) {
@@ -382,20 +397,14 @@ function Step2({
                     token={token}
                     title=""
                     showNetworkIcon={true}
-                    chainIcons={destinationChainIcons ?? token.chainIcons}
                 />
                 <div className="flex w-full flex-col gap-4 mt-2">
                     <div className="flex w-full items-start justify-between gap-2">
                         <div className="flex min-w-0 flex-col gap-0.5">
-                            {contactName && (
-                                <p className="text-sm font-semibold leading-normal text-general-foreground">
-                                    {contactName}
-                                </p>
-                            )}
                             <Address
                                 address={address}
-                                prefixLength={6}
-                                suffixLength={6}
+                                prefixLength={SHORT_ADDRESS_PREFIX_LENGTH}
+                                suffixLength={SHORT_ADDRESS_SUFFIX_LENGTH}
                                 className="text-sm font-semibold leading-normal text-general-foreground"
                             />
                         </div>
@@ -601,6 +610,7 @@ export default function PaymentsPage() {
                 amountGreaterThanZero: tValidation("amountGreaterThanZero"),
                 recipientSameAsToken: tValidation("recipientSameAsToken"),
                 selectToken: tValidation("selectToken"),
+                selectDestination: tValidation("selectDestination"),
                 invalidAddress: tFormSection("invalidAddress"),
             }),
         [tValidation, tFormSection],
@@ -610,6 +620,11 @@ export default function PaymentsPage() {
     const { createProposal } = useNear();
     const { data: policy } = useTreasuryPolicy(treasuryId);
     const [step, setStep] = useState(0);
+    usePageTour(
+        PAGE_TOUR_NAMES.PAYMENTS_BULK,
+        PAGE_TOUR_STORAGE_KEYS.PAYMENTS_BULK_SHOWN,
+        { enabled: step === 0 },
+    );
     const searchParams = useSearchParams();
     // Cached quote + context key — avoids re-fetching while preventing stale reuse.
     const cachedQuoteRef = useRef<CachedQuote | null>(null);
@@ -978,18 +993,22 @@ export default function PaymentsPage() {
         if (!watchedToken) return null;
 
         const rawAddress = (watchedAddress ?? "").trim();
+        // Recipient-first: never seed a destination before an address.
+        if (!rawAddress) return null;
 
-        // Soft Ft / native NEAR → NEAR destination when recipient is empty.
+        // Soft Ft / native NEAR → NEAR destination when the address can use it.
         if (isFtNetworkPrefill || isNativeNearPrefill) {
-            if (rawAddress) return null;
-            return nearChainDestination();
+            const near = nearChainDestination();
+            return canAddressUseDestination({
+                address: rawAddress,
+                network: near.networkName,
+            })
+                ? near
+                : null;
         }
 
         // Multiple soft chain prefs (address book) — leave destination empty.
         if (hasAmbiguousSoftNetworks) return null;
-
-        // Soft prefs only fill an empty destination.
-        if (rawAddress) return null;
 
         if (preferredNetworks.length === 0) return null;
 
@@ -997,10 +1016,17 @@ export default function PaymentsPage() {
             (network) => network.trim().toLowerCase() === NEAR_COM_NETWORK_ID,
         );
         if (preferredNearCom) {
-            return {
+            const dest = {
                 id: NEAR_COM_NETWORK_ID,
                 networkName: NEAR_NETWORK_ID,
             };
+            return canAddressUseDestination({
+                address: rawAddress,
+                network: dest.networkName,
+                isNearComDestination: true,
+            })
+                ? dest
+                : null;
         }
 
         if (bridgeAssets.length === 0) return null;
@@ -1008,11 +1034,19 @@ export default function PaymentsPage() {
         const bridgeAsset = findBridgeAssetForToken(bridgeAssets, watchedToken);
         if (!bridgeAsset) return null;
 
-        return resolvePreferredDestinationNetwork(
+        const preferred = resolvePreferredDestinationNetwork(
             bridgeAsset,
             preferredNetworks,
             preferredBlockchainTypes,
         );
+        if (!preferred) return null;
+        return canAddressUseDestination({
+            address: rawAddress,
+            network: preferred.networkName,
+            isNearComDestination: isNearComNetwork(preferred.id),
+        })
+            ? preferred
+            : null;
     }, [
         bridgeAssets,
         preferredNetworks,
@@ -1105,8 +1139,15 @@ export default function PaymentsPage() {
         }
     }, [urlOverrideToken, form, tokenParam, preferredNetworks.length]);
 
+    // Deep-link destination applies once. After that the destination is the
+    // user's to pick: re-seeding would fight the clear that follows every
+    // recipient edit and silently re-fill a field they were asked to choose.
+    const didSeedDestinationRef = useRef(false);
     useEffect(() => {
+        if (didSeedDestinationRef.current) return;
         if (!compatibleDestinationId || !compatibleDestinationName) return;
+
+        didSeedDestinationRef.current = true;
         if (watchedDestinationNetwork) return;
 
         form.setValue("destinationNetwork", compatibleDestinationId, {
@@ -1122,51 +1163,33 @@ export default function PaymentsPage() {
         watchedDestinationNetwork,
     ]);
 
-    // One snapshot for token + destination so the two clears cannot race.
-    // Token change always wipes; a follow-up auto-seed (`"" → dest`) does not.
-    const prevClearSnapshotRef = useRef<{
-        tokenKey: string;
-        destination: string;
-    } | null>(null);
+    // Token is the top of the chain, so changing it invalidates everything
+    // below: the recipient, the destinations that recipient could reach, and
+    // the amount its balance allowed. Changing the destination clears nothing
+    // — it sits below the recipient and above the amount, which the quote
+    // re-checks against the new route.
+    const prevTokenKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
         const tokenKey = watchedToken
             ? `${watchedToken.address}:${watchedToken.residency ?? ""}:${watchedToken.network ?? ""}`
             : "";
-        const destination = watchedDestinationNetwork || "";
 
-        if (prevClearSnapshotRef.current === null) {
-            prevClearSnapshotRef.current = { tokenKey, destination };
-            return;
-        }
-
-        const previous = prevClearSnapshotRef.current;
-        const tokenChanged = previous.tokenKey !== tokenKey;
-        const destChanged = previous.destination !== destination;
-        if (!tokenChanged && !destChanged) return;
-
-        if (tokenChanged) {
-            form.setValue("address", "", { shouldDirty: true });
-            form.setValue("amount", "", { shouldDirty: true });
-            form.clearErrors(["address", "amount", "destinationNetwork"]);
-            setIsAddressBookRecipientSelected(false);
-            setIntentsAmountMode("recipient");
-            // Treat the next dest write as a seed, not a user pick.
-            prevClearSnapshotRef.current = { tokenKey, destination: "" };
-            return;
-        }
-
-        prevClearSnapshotRef.current = { tokenKey, destination };
-
-        // Initial / post-token auto-seed: "" → first destination.
-        if (!previous.destination && destination) return;
+        const previous = prevTokenKeyRef.current;
+        prevTokenKeyRef.current = tokenKey;
+        if (previous === null || previous === tokenKey) return;
 
         form.setValue("address", "", { shouldDirty: true });
         form.setValue("amount", "", { shouldDirty: true });
-        form.clearErrors(["address", "amount"]);
+        form.setValue("destinationNetwork", "", { shouldDirty: true });
+        form.setValue("destinationNetworkName", "", { shouldDirty: true });
+        // Destination seed is one-shot per token. Reset so a new compatible
+        // route can fill after this wipe (deep-link + token change).
+        didSeedDestinationRef.current = false;
+        form.clearErrors(["address", "amount", "destinationNetwork"]);
         setIsAddressBookRecipientSelected(false);
         setIntentsAmountMode("recipient");
-    }, [watchedToken, watchedDestinationNetwork, form]);
+    }, [watchedToken, form]);
 
     // Prefill from ?address= once. Re-applying on every empty value fought the
     // recipient wipe clearer and bounced destination seed.
@@ -1446,26 +1469,22 @@ export default function PaymentsPage() {
 
     const bulkPaymentsButton = (
         <Link href={`/${treasuryId}/payments/bulk-payment`}>
-            <Tooltip content={tPay("bulkPaymentsTooltip")}>
-                <Button
-                    variant="secondary"
-                    size="icon"
-                    className="size-10 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:h-9 lg:w-auto lg:rounded-md lg:bg-muted-foreground/10 lg:px-3 lg:text-sm lg:font-bold lg:leading-3.5 lg:text-general-secondary-foreground lg:hover:bg-muted-foreground/20"
-                    id="payments-bulk-btn"
-                    aria-label={tPay("bulkPayments")}
-                    onClick={() => {
-                        trackEvent("bulk-payments-click", {
-                            source: "payments_page",
-                            treasury_id: treasuryId ?? "",
-                        });
-                    }}
-                >
-                    <Icon icon={UserGroup03Icon} />
-                    <span className="hidden lg:inline">
-                        {tPay("bulkPayments")}
-                    </span>
-                </Button>
-            </Tooltip>
+            <Button
+                variant="secondary"
+                size="icon"
+                className="size-10 rounded-xl bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:h-9 lg:w-auto lg:rounded-md lg:bg-muted-foreground/10 lg:px-3 lg:text-sm lg:font-bold lg:leading-3.5 lg:text-general-secondary-foreground lg:hover:bg-muted-foreground/20"
+                id="payments-bulk-btn"
+                aria-label={tPay("bulkPayments")}
+                onClick={() => {
+                    trackEvent("bulk-payments-click", {
+                        source: "payments_page",
+                        treasury_id: treasuryId ?? "",
+                    });
+                }}
+            >
+                <Icon icon={UserGroup03Icon} />
+                <span className="hidden lg:inline">{tPay("bulkPayments")}</span>
+            </Button>
         </Link>
     );
 
@@ -1481,6 +1500,7 @@ export default function PaymentsPage() {
             <Form {...form}>
                 <form
                     onSubmit={form.handleSubmit(onSubmit)}
+                    autoComplete="off"
                     className="mx-auto flex max-w-lg flex-col gap-4"
                 >
                     <StepWizard

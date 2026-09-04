@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 import {
     SelectModal,
     type SelectOption,
 } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { SelectListIcon } from "@/components/select-list";
+import { SelectorOptionBalance } from "@/components/selector-option-row";
 import { formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 
 type TokenOptionSection = {
@@ -41,12 +42,10 @@ function TokenBalanceRight({
     if (!(numeric > 0)) return null;
 
     return (
-        <div className="flex flex-col items-end">
-            <span className="font-semibold">{formatSmartAmount(balance)}</span>
-            <span className="text-sm text-muted-foreground">
-                ≈{formatCurrencyWithSubCent(balanceUSD)}
-            </span>
-        </div>
+        <SelectorOptionBalance
+            primary={formatSmartAmount(balance)}
+            secondary={`≈${formatCurrencyWithSubCent(balanceUSD)}`}
+        />
     );
 }
 

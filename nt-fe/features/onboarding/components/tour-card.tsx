@@ -10,7 +10,6 @@ import { Icon } from "@/components/icon";
 import {
     applyDashboardTourStep,
     closeDashboardTourSurfaces,
-    isTourMobileViewport,
     waitForSettledTourTarget,
 } from "@/features/onboarding/dashboard-tour-targets";
 import {
@@ -19,14 +18,8 @@ import {
 } from "@/features/onboarding/feature-announcement-queue";
 import { useTreasury } from "@/hooks/use-treasury";
 import { cn } from "@/lib/utils";
-import { useSidebarStore } from "@/stores/sidebar-store";
 import { DASHBOARD_TOUR, TOUR_NAMES } from "../steps/dashboard";
-import { EARN_ANNOUNCEMENT } from "../steps/page-tours";
-
-// Steps that require the sidebar to be open (0-indexed) for different tours
-const SIDEBAR_STEPS_MAP: Record<string, readonly number[]> = {
-    [TOUR_NAMES.INFO_BOX_DISMISSED]: [0],
-};
+import { EARN_ANNOUNCEMENT, PAGE_TOUR_NAMES } from "../steps/page-tours";
 
 const TOUR_ACTIONS = {
     [EARN_ANNOUNCEMENT.tourName]: {
@@ -35,8 +28,6 @@ const TOUR_ACTIONS = {
         ctaKey: EARN_ANNOUNCEMENT.ctaLabelKey,
     },
 } as const;
-
-export const SIDEBAR_ANIMATION_DELAY = 350;
 
 export function TourCard({
     step,
@@ -51,16 +42,13 @@ export function TourCard({
     const { setCurrentStep, currentTour } = useNextStep();
     const router = useRouter();
     const { treasuryId } = useTreasury();
-    const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
-    const isMobile = isTourMobileViewport();
-
     const isLastStep = currentStep === totalSteps - 1;
     const isFirstStep = currentStep === 0;
     const tourName = currentTour;
-    const hidePrimaryButton = tourName === TOUR_NAMES.INFO_BOX_DISMISSED;
+    const hidePrimaryButton =
+        tourName === TOUR_NAMES.INFO_BOX_DISMISSED ||
+        tourName === PAGE_TOUR_NAMES.PAYMENTS_BULK;
     const isDashboardTour = tourName === TOUR_NAMES.DASHBOARD;
-    const sidebarSteps =
-        SIDEBAR_STEPS_MAP[tourName as keyof typeof SIDEBAR_STEPS_MAP] || [];
     const tourAction = TOUR_ACTIONS[tourName as keyof typeof TOUR_ACTIONS];
     const showBack = isDashboardTour && totalSteps > 1 && !isFirstStep;
 
@@ -79,15 +67,7 @@ export function TourCard({
             return;
         }
 
-        // If next step needs sidebar, open it and delay the step change
-        if (sidebarSteps.includes(nextStepIndex)) {
-            if (isMobile) {
-                setSidebarOpen(true);
-            }
-            setCurrentStep(nextStepIndex, SIDEBAR_ANIMATION_DELAY);
-        } else {
-            nextStep();
-        }
+        nextStep();
     };
 
     const handleBack = () => {
@@ -103,9 +83,6 @@ export function TourCard({
             closeDashboardTourSurfaces();
         }
         skipTour?.();
-        if (isMobile) {
-            setSidebarOpen(false);
-        }
     };
 
     const handlePrimaryAction = () => {

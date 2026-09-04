@@ -3,6 +3,7 @@ import type { MergedToken } from "@/hooks/use-merged-tokens";
 import {
     pickDefaultDepositAsset,
     pickDefaultSelectedToken,
+    pickDefaultSwapPair,
     pickHighestUsdOwnedToken,
 } from "./pick-default-token";
 
@@ -88,6 +89,30 @@ describe("pickDefaultSelectedToken", () => {
         });
         expect(picked.symbol).toBe("USDC");
         expect(picked.network).toBe("near");
+    });
+});
+
+describe("pickDefaultSwapPair", () => {
+    const btc = { address: "nep141:nbtc.bridge.near", network: "bitcoin" };
+    const eth = { address: "nep141:eth.omft.near", network: "eth" };
+    const fallback = { sell: btc, receive: eth, receiveIfSellMatches: btc };
+
+    it("uses the highest-USD owned token as sell and switches receive to BTC when that token is ETH", () => {
+        const picked = pickDefaultSwapPair([nearUsdc, ethWeth], fallback);
+        expect(picked.sellToken.address).toBe(ethWeth.networks[0].id);
+        expect(picked.receiveToken).toEqual(btc);
+    });
+
+    it("keeps ETH as receive when the owned token is not ETH", () => {
+        const picked = pickDefaultSwapPair([nearUsdc], fallback);
+        expect(picked.sellToken.symbol).toBe("USDC");
+        expect(picked.receiveToken).toEqual(eth);
+    });
+
+    it("falls back to BTC → ETH when nothing is owned", () => {
+        const picked = pickDefaultSwapPair([], fallback);
+        expect(picked.sellToken).toEqual(btc);
+        expect(picked.receiveToken).toEqual(eth);
     });
 });
 

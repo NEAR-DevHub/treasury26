@@ -12,6 +12,11 @@ import {
     DASHBOARD_TOUR_TREASURY_STEP,
     dashboardTourStepSide,
     dashboardTourSurface,
+    HELP_SUPPORT_DESKTOP_SELECTOR,
+    HELP_SUPPORT_MOBILE_SELECTOR,
+    helpSupportTourCardOffset,
+    helpSupportTourSelector,
+    helpSupportTourStepSide,
 } from "./dashboard-tour-targets";
 
 describe("dashboardTourSurface", () => {
@@ -56,5 +61,42 @@ describe("dashboardTourStepSide", () => {
         expect(dashboardTourStepSide(DASHBOARD_TOUR_TREASURY_STEP, true)).toBe(
             "top-left",
         );
+    });
+});
+
+describe("helpSupportTourSelector", () => {
+    it("targets the sidebar account row on large screens", () => {
+        expect(helpSupportTourSelector(false)).toBe(
+            HELP_SUPPORT_DESKTOP_SELECTOR,
+        );
+    });
+
+    it("targets the header avatar on small screens, not the hidden sidebar", () => {
+        expect(helpSupportTourSelector(true)).toBe(
+            HELP_SUPPORT_MOBILE_SELECTOR,
+        );
+        expect(helpSupportTourSelector(true)).not.toBe(
+            HELP_SUPPORT_DESKTOP_SELECTOR,
+        );
+    });
+});
+
+describe("helpSupportTourStepSide", () => {
+    it("sits beside the sidebar account row on large screens", () => {
+        expect(helpSupportTourStepSide(false)).toBe("right");
+    });
+
+    it("hangs below the header avatar, right-aligned, on small screens", () => {
+        expect(helpSupportTourStepSide(true)).toBe("bottom-right");
+    });
+});
+
+describe("helpSupportTourCardOffset", () => {
+    it("keeps the default gap beside the sidebar on large screens", () => {
+        expect(helpSupportTourCardOffset(false)).toBe(25);
+    });
+
+    it("sits tight under the header avatar on small screens", () => {
+        expect(helpSupportTourCardOffset(true)).toBe(6);
     });
 });

@@ -444,7 +444,7 @@ export default function ActivityPage() {
                 title={t("title")}
                 description={tActivity("recentSubtitle")}
                 backButton={`/${treasuryId}`}
-                backKind="section"
+                backKind="nested"
                 hideMobileShellControls
                 headerActions={
                     <HistoryRefreshButton className={ICON_BUTTON_CLASS} />

@@ -19,15 +19,17 @@ export function trackInAppPath(
     storage.setItem(PATH_KEY, pathname);
 }
 
-/** Nested pages always show back; section pages only after an in-app hop. */
+/**
+ * Header back is only for second-level screens (Receive, Bulk send, request
+ * details) and their inner steps. Top-level destinations (Send, Swap, Settings)
+ * use the sidebar / tab bar instead.
+ */
 export function shouldShowPageBack(options: {
     hasBackButton: boolean;
     backKind: "section" | "nested";
-    cameFromApp: boolean;
 }): boolean {
     if (!options.hasBackButton) return false;
-    if (options.backKind === "nested") return true;
-    return options.cameFromApp;
+    return options.backKind === "nested";
 }
 
 /**

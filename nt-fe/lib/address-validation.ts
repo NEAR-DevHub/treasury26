@@ -5,8 +5,8 @@
  * across multiple blockchains. All validation is regex-based for format checking.
  */
 
-import { BlockchainType } from "./blockchain-utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import type { BlockchainType } from "./blockchain-utils";
 
 /**
  * Validation result with optional error message
@@ -26,24 +26,37 @@ const ADDRESS_PATTERNS: Record<BlockchainType, RegExp | null> = {
     // all-uppercase form is matched as a separate alternative.
     bitcoin:
         /^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[ac-hj-np-z02-9]{39,59}|BC1[AC-HJ-NP-Z02-9]{39,59})$/,
+    // The CashAddr prefix is optional in the spec and wallets copy the address
+    // both ways; 1click accepts the bare q…/p… form as well as the prefixed one.
     bitcoincash:
-        /^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bitcoincash:[qp][a-z0-9]{41})$/,
-    litecoin: /^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/,
-    dash: /^X[1-9A-HJ-NP-Za-km-z]{33}$/,
+        /^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|(bitcoincash:)?[qp][a-z0-9]{41})$/,
+    // Legacy L / M / 3 plus bech32 `ltc1`, which is the default in Litecoin
+    // Core. 1click takes segwit v0 and taproot but rejects the uppercase
+    // bech32 form, so only lowercase is matched.
+    litecoin:
+        /^([LM3][a-km-zA-HJ-NP-Z1-9]{26,33}|ltc1[ac-hj-np-z02-9]{39,59})$/,
+    // X = P2PKH, 7 = P2SH.
+    dash: /^[X7][1-9A-HJ-NP-Za-km-z]{33}$/,
     ethereum: /^0x[a-fA-F0-9]{40}$/,
     starknet: /^0x[a-fA-F0-9]{1,64}$/,
     aleo: /^aleo1[a-z0-9]{58}$/,
     solana: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
     tron: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
-    ton: /^[UE][Qq][a-zA-Z0-9_-]{46}$/,
+    // Friendly base64url (EQ bounceable / UQ non-bounceable) and the raw
+    // `workchain:hex` form, which 1click accepts for workchain 0 and -1.
+    ton: /^([UE][Qq][a-zA-Z0-9_-]{46}|-?\d+:[0-9a-fA-F]{64})$/,
     // 1click /v0/quote accepts t1/t3/tex1/u1; rejects standalone zs1 and zc Sprout.
     zcash: /^(t1|t3|tm1|tm3)[a-km-zA-HJ-NP-Z1-9]{33}$|^(tex1|textest1)[ac-hj-np-z02-9]{38}$|^u1[ac-hj-np-z02-9]{100,250}$/i,
+    // D = P2PKH, A = P2SH. 1click rejects the other P2SH rendering (leading 9).
     dogecoin: /^[DA][a-km-zA-HJ-NP-Z1-9]{33}$/,
     xrp: /^r[1-9A-HJ-NP-Za-km-z]{25,34}$/,
     stellar: /^G[A-Z2-7]{55}$/,
     sui: /^0x[a-fA-F0-9]{64}$/,
-    aptos: /^0x[a-fA-F0-9]{1,64}$/,
-    cardano: /^(addr1|stake1)[a-z0-9]{53,103}$/i,
+    // Full 32 bytes only — 1click rejects zero-trimmed short forms like `0x1`.
+    aptos: /^0x[a-fA-F0-9]{64}$/,
+    // Shelley payment addresses only: 1click rejects `stake1` reward addresses
+    // and Byron `Ddz…` legacy addresses.
+    cardano: /^addr1[a-z0-9]{53,103}$/i,
     unknown: null,
 };
 
@@ -79,14 +92,14 @@ export const ADDRESS_EXAMPLES: Record<BlockchainType, string> = {
     near: "alice.near, 0x..., or 64-char hex",
     bitcoin: "bc1...",
     bitcoincash: "1... or bitcoincash:q...",
-    litecoin: "L... or M...",
+    litecoin: "ltc1..., L... or M...",
     dash: "X...",
     ethereum: "0x...",
     starknet: "0x...",
     aleo: "aleo1...",
     solana: "7xKXtg...",
     tron: "T...",
-    ton: "UQ... or EQ...",
+    ton: "UQ..., EQ... or 0:...",
     zcash: "t1..., tex1..., or u1...",
     dogecoin: "D...",
     xrp: "r...",
@@ -203,6 +216,32 @@ export function validateAddress(
  */
 export function getAddressPattern(blockchain: BlockchainType): RegExp | null {
     return ADDRESS_PATTERNS[blockchain];
+}
+
+/**
+ * First known non-NEAR chain whose pattern matches, or null when nothing does.
+ * NEAR named / implicit accounts are checked separately — this is only the
+ * regex catalog (EVM, Solana, Bitcoin, …). Unknown / missing patterns are
+ * excluded so a contact name cannot sneak through.
+ *
+ * Several chains share the `0x…` shape; the catalog order decides the first
+ * match. A 40-hex (EVM-length) address hits Ethereum before the broader
+ * Starknet pattern. A 64-hex `0x` address skips Ethereum (exactly 40 hex)
+ * and matches Starknet before Sui / Aptos.
+ */
+export function findMatchingBlockchainType(
+    address: string,
+): BlockchainType | null {
+    const trimmed = address.trim();
+    if (!trimmed) return null;
+
+    for (const [type, pattern] of Object.entries(ADDRESS_PATTERNS)) {
+        if (type === NEAR_NETWORK_ID || type === "unknown" || !pattern) {
+            continue;
+        }
+        if (pattern.test(trimmed)) return type as BlockchainType;
+    }
+    return null;
 }
 
 /**

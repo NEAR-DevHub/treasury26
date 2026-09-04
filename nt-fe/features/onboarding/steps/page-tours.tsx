@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import type { Tour } from "nextstepjs";
 import { useNextStep } from "nextstepjs";
 import { useCallback, useEffect, useRef } from "react";
+import { DASHBOARD_TOUR_SELECTOR_RETRY } from "@/features/onboarding/dashboard-tour-targets";
 import {
     EARN_ANNOUNCEMENT_TOUR_NAME,
     FEATURE_DEFINITIONS,
@@ -13,7 +14,7 @@ import {
 } from "@/features/onboarding/feature-announcement-queue";
 import { useTreasury } from "@/hooks/use-treasury";
 
-type PageTourKey = "membersPending" | "requestTemplates";
+type PageTourKey = "membersPending" | "requestTemplates" | "paymentsBulk";
 
 function PageTourContent({ k }: { k: PageTourKey }) {
     const t = useTranslations("pageTours");
@@ -30,6 +31,7 @@ export const PAGE_TOUR_NAMES = {
     MEMBERS_PENDING: "members-pending",
     EARN_ANNOUNCEMENT: EARN_ANNOUNCEMENT_TOUR_NAME,
     REQUEST_TEMPLATES: "request-templates",
+    PAYMENTS_BULK: "payments-bulk",
 } as const;
 
 // Fired right after a DAO enables Custom Requests in Settings → Developer, to point at the
@@ -40,12 +42,14 @@ export const REQUEST_TEMPLATES_TOUR_NAME = PAGE_TOUR_NAMES.REQUEST_TEMPLATES;
 export const PAGE_TOUR_STORAGE_KEYS = {
     MEMBERS_PENDING_SHOWN: "members-pending-tour-shown",
     REQUEST_TEMPLATES_SHOWN: "request-templates-tour-shown",
+    PAYMENTS_BULK_SHOWN: "payments-bulk-tour-shown",
 } as const;
 
 // Selector IDs
 export const PAGE_TOUR_SELECTORS = {
     MEMBERS_PENDING_BTN: "#members-pending-btn",
     REQUEST_TEMPLATES_NAV: "#request-templates-nav",
+    PAYMENTS_BULK_BTN: "#payments-bulk-btn",
 } as const;
 
 export const EARN_ANNOUNCEMENT = {
@@ -99,6 +103,21 @@ export const REQUEST_TEMPLATES_TOUR: Tour = {
             content: <PageTourContent k="requestTemplates" />,
             selector: PAGE_TOUR_SELECTORS.REQUEST_TEMPLATES_NAV,
             side: "right",
+        },
+    ],
+};
+
+export const PAYMENTS_BULK_TOUR: Tour = {
+    tour: PAGE_TOUR_NAMES.PAYMENTS_BULK,
+    steps: [
+        {
+            ...defaultStepProps,
+            content: <PageTourContent k="paymentsBulk" />,
+            selector: PAGE_TOUR_SELECTORS.PAYMENTS_BULK_BTN,
+            side: "bottom-right",
+            pointerPadding: 0,
+            pointerRadius: 12,
+            ...DASHBOARD_TOUR_SELECTOR_RETRY,
         },
     ],
 };

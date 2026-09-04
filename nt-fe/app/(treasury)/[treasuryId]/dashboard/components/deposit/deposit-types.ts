@@ -2,15 +2,6 @@ export type DepositStep = "select" | "address";
 
 export type DepositSource = "public_wallet" | "confidential_user";
 
-/**
- * Legacy pay-share `source` query values. UI always uses near.com now; `trezu`
- * remains so old shared links still parse.
- */
-export type ConfidentialOrigin = "trezu" | "nearcom";
-
-/** Confidential reusable-address origin tabs (near business vs near.com). */
-export type ConfidentialDepositOrigin = "near_business" | "nearcom";
-
 export interface DepositInfo {
     address: string;
     memo: string | null;

@@ -7,6 +7,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icon";
+import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import {
     iconTintVars,
     useIconAccentColor,
@@ -19,6 +20,11 @@ import {
 import { usePopularAssetsByActivity } from "@/hooks/use-treasury-queries";
 import type { ChainIcons } from "@/lib/api";
 import Big from "@/lib/big";
+import {
+    getLocalizedNetworkDisplayName,
+    getNetworkDisplayCaseClass,
+    getNetworkDisplayName,
+} from "@/lib/intents-network";
 import { pickDefaultSelectedToken } from "@/lib/pick-default-token";
 import {
     canonicalizeTokenIdForMatch,
@@ -28,7 +34,6 @@ import {
     formatSmartAmount,
 } from "@/lib/utils";
 import { Button } from "./button";
-import { HighlightedText } from "./highlighted-text";
 import { Input } from "./input";
 import { Dialog, DialogHeader, DialogTitle, DialogTrigger } from "./modal";
 import { PaymentSelectModalContent } from "./payment-select-modal-content";
@@ -40,13 +45,35 @@ import {
     paymentSelectModalSearchInputClassName,
     selectorTriggerClassName,
 } from "./selector-field";
-import { NetworkIconDisplay } from "./token-display";
+import {
+    SelectorOptionBalance,
+    SelectorOptionRow,
+} from "./selector-option-row";
 import { TokenDisplay } from "./token-display-with-network";
 import { Tooltip } from "./tooltip";
 import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
 
 const TOKEN_SKELETON_IDS = ["one", "two", "three", "four"] as const;
+
+function residencyDescription(
+    residency: string | undefined,
+    tResidency: (key: string) => string,
+): string | null {
+    if (!residency) return null;
+    switch (residency) {
+        case "Lockup":
+            return tResidency("vestedToken");
+        case "Staked":
+            return tResidency("staked");
+        case "Ft":
+            return tResidency("fungibleToken");
+        case "Near":
+            return tResidency("nativeToken");
+        default:
+            return tResidency("intentsToken");
+    }
+}
 
 // Selected token (asset + specific network)
 export interface SelectedTokenData {
@@ -151,6 +178,8 @@ export default function TokenSelect({
 }: TokenSelectProps) {
     const t = useTranslations("tokenSelectDialog");
     const tDepositSections = useTranslations("depositModal.sections");
+    const tResidency = useTranslations("residency");
+    const tAddressBookTable = useTranslations("addressBookTable");
     const iconAccent = useIconAccentColor(
         tintTriggerFromIcon ? selectedToken?.icon : null,
     );
@@ -405,63 +434,45 @@ export default function TokenSelect({
                 network.name === selectedToken?.network,
         );
         return (
-            <Button
+            <SelectorOptionRow
                 key={token.id}
+                selected={isSelectedAsset}
                 onClick={() => handleTokenClick(token)}
-                variant="ghost"
-                type="button"
-                className={cn(
-                    "w-full flex items-center gap-1 py-2 rounded-lg h-auto justify-start pl-0! my-0.5",
-                    isSelectedAsset &&
-                        "bg-muted hover:bg-muted focus-visible:bg-muted",
-                )}
-            >
-                <SelectListIcon
-                    icon={token.icon}
-                    alt={token.symbol || token.name}
-                />
-                <div className="flex-1 text-left">
-                    <div className="font-semibold">
-                        <HighlightedText
-                            text={token.symbol || token.name}
-                            query={search}
+                icon={
+                    <SelectListIcon
+                        icon={token.icon}
+                        alt={token.symbol || token.name}
+                    />
+                }
+                primary={token.symbol || token.name}
+                secondary={
+                    token.name && token.name !== token.symbol
+                        ? token.name
+                        : null
+                }
+                highlightQuery={search}
+                trailing={
+                    token.totalBalance !== undefined &&
+                    token.totalBalance > 0 ? (
+                        <SelectorOptionBalance
+                            primary={
+                                balanceLayout === "usdPrimary"
+                                    ? formatCurrencyWithSubCent(
+                                          token.totalBalanceUSD || 0,
+                                      )
+                                    : formatSmartAmount(token.totalBalance)
+                            }
+                            secondary={
+                                balanceLayout === "usdPrimary"
+                                    ? formatSmartAmount(token.totalBalance)
+                                    : `≈${formatCurrencyWithSubCent(
+                                          token.totalBalanceUSD || 0,
+                                      )}`
+                            }
                         />
-                    </div>
-                    {token.name && token.name !== token.symbol ? (
-                        <div className="text-sm text-muted-foreground font-medium">
-                            <HighlightedText text={token.name} query={search} />
-                        </div>
-                    ) : null}
-                </div>
-                {token.totalBalance !== undefined && token.totalBalance > 0 && (
-                    <div className="flex flex-col items-end">
-                        {balanceLayout === "usdPrimary" ? (
-                            <>
-                                <span className="font-semibold">
-                                    {formatCurrencyWithSubCent(
-                                        token.totalBalanceUSD || 0,
-                                    )}
-                                </span>
-                                <span className="text-sm text-muted-foreground font-medium">
-                                    {formatSmartAmount(token.totalBalance)}
-                                </span>
-                            </>
-                        ) : (
-                            <>
-                                <span className="font-semibold">
-                                    {formatSmartAmount(token.totalBalance)}
-                                </span>
-                                <span className="text-sm text-muted-foreground font-medium">
-                                    ≈
-                                    {formatCurrencyWithSubCent(
-                                        token.totalBalanceUSD || 0,
-                                    )}
-                                </span>
-                            </>
-                        )}
-                    </div>
-                )}
-            </Button>
+                    ) : undefined
+                }
+            />
         );
     };
 
@@ -779,55 +790,64 @@ export default function TokenSelect({
                                         network: item.name,
                                         residency: item.residency,
                                     });
+                                    const networkDescription =
+                                        item.name.toLowerCase() ===
+                                        NEAR_NETWORK_ID
+                                            ? residencyDescription(
+                                                  item.residency,
+                                                  tResidency,
+                                              )
+                                            : null;
                                     return (
-                                        <Button
+                                        <SelectorOptionRow
                                             key={`${item.id}-${idx}`}
+                                            selected={isSelectedNetwork}
+                                            disabled={isDisabled}
                                             onClick={() =>
                                                 handleNetworkClick(item)
                                             }
-                                            variant="ghost"
-                                            type="button"
-                                            disabled={isDisabled}
-                                            className={cn(
-                                                "w-full flex items-center gap-1 py-2.5 rounded-lg h-auto justify-start pl-1.5! mx-1 my-0.5",
-                                                isSelectedNetwork &&
-                                                    "bg-muted hover:bg-muted focus-visible:bg-muted",
+                                            icon={
+                                                <SelectListIcon
+                                                    icon={item.chainIcons?.icon}
+                                                    alt={item.name}
+                                                />
+                                            }
+                                            primary={getLocalizedNetworkDisplayName(
+                                                {
+                                                    networkName: item.name,
+                                                    networkLabel:
+                                                        tAddressBookTable(
+                                                            "network",
+                                                        ),
+                                                    fallbackName:
+                                                        getNetworkDisplayName(
+                                                            item.name,
+                                                        ),
+                                                },
                                             )}
-                                        >
-                                            <div className="pl-3 w-full">
-                                                <div className="flex items-center gap-3">
-                                                    <NetworkIconDisplay
-                                                        chainIcons={
-                                                            item.chainIcons
-                                                        }
-                                                        networkName={item.name}
-                                                        residency={
-                                                            item.residency
-                                                        }
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex-1" />
-                                            {hasBalance(item) && (
-                                                <div className="flex flex-col items-end">
-                                                    <span className="font-semibold">
-                                                        {formatSmartAmount(
+                                            secondary={networkDescription}
+                                            primaryClassName={getNetworkDisplayCaseClass(
+                                                item.name,
+                                            )}
+                                            trailing={
+                                                hasBalance(item) ? (
+                                                    <SelectorOptionBalance
+                                                        primary={formatSmartAmount(
                                                             formatBalance(
-                                                                item.balance!,
-                                                                item.decimals!,
+                                                                item.balance ??
+                                                                    "0",
+                                                                item.decimals ??
+                                                                    0,
                                                             ),
                                                         )}
-                                                    </span>
-                                                    <span className="text-sm text-muted-foreground">
-                                                        ≈
-                                                        {formatCurrencyWithSubCent(
+                                                        secondary={`≈${formatCurrencyWithSubCent(
                                                             item.balanceUSD ||
                                                                 0,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </Button>
+                                                        )}`}
+                                                    />
+                                                ) : undefined
+                                            }
+                                        />
                                     );
                                 };
 

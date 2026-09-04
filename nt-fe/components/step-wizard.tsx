@@ -2,6 +2,7 @@ import { Icon } from "@/components/icon";
 import { ArrowLeft01Icon, LoaderCircleIcon } from "@hugeicons/core-free-icons";
 import { useRef } from "react";
 import type { ReactNode } from "react";
+import { useHideMobileBottomNav } from "@/hooks/use-hide-mobile-bottom-nav";
 import { Button } from "./button";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
@@ -253,6 +254,8 @@ export function ReviewStep({
     handleBack,
     backDisabled = false,
 }: ReviewStepProps) {
+    useHideMobileBottomNav();
+
     return (
         <div className="flex flex-col gap-2 sm:gap-4">
             <StepperHeader
