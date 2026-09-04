@@ -18,6 +18,7 @@ import { useTreasury } from "@/hooks/use-treasury";
 import { trackInAppPath } from "@/lib/in-app-navigation";
 import { cn } from "@/lib/utils";
 import { useResponsiveSidebar } from "@/stores/sidebar-store";
+import { useUiStore } from "@/stores/ui-store";
 import { AppEventsProvider } from "./app-events-provider";
 
 function isPaySharePath(pathname: string | null): boolean {
@@ -29,12 +30,12 @@ function isReceiptPath(pathname: string | null): boolean {
 }
 
 /**
- * The requests list, or a single request opened full screen. The design gives
- * both the whole phone viewport — requests are the destination, so the tab bar
- * steps aside and the header's back control leads out of them.
+ * A single request opened full screen. The design gives it the whole phone
+ * viewport — its own header's back control leads out of it — while the list it
+ * came from keeps the tab bar, requests being a destination of its own.
  */
-function isRequestsPath(pathname: string | null): boolean {
-    return /\/requests(\/[^/]+)?\/?$/.test(pathname ?? "");
+function isRequestDetailPath(pathname: string | null): boolean {
+    return /\/requests\/[^/]+\/?$/.test(pathname ?? "");
 }
 
 export function TreasuryLayoutClient({
@@ -50,6 +51,9 @@ export function TreasuryLayoutClient({
     useLayoutEffect(() => {
         if (pathname) trackInAppPath(pathname);
     }, [pathname]);
+    // A side sheet rises over the whole phone viewport, so the tab bar behind
+    // it steps aside for as long as it is open.
+    const isSideSheetOpen = useUiStore((s) => s.sideSheetCount > 0);
     const isPayShare = isPaySharePath(pathname);
     // Standalone chrome (no sidebar): pay share + receipts. Access control is
     // separate — only pay share skips auth/membership below.
@@ -90,7 +94,9 @@ export function TreasuryLayoutClient({
                         <div className="min-h-0 flex-1 overflow-y-auto bg-general-bg-tertiary lg:rounded-3xl lg:border lg:border-gray-300 dark:lg:border-gray-700">
                             {children}
                         </div>
-                        {!isRequestsPath(pathname) && <MobileBottomNav />}
+                        {!isRequestDetailPath(pathname) && !isSideSheetOpen && (
+                            <MobileBottomNav />
+                        )}
                         <MobileMenuSheet />
                         <MobileUserSheet />
                         <MobileLanguageSheet />
