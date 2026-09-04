@@ -689,22 +689,30 @@ body[data-onboarding-tour="dashboard"] [data-slot="dialog-overlay"] {
     pointer-events: none !important;
 }
 
-/* Help & Support tour: the anchor is now the profile button at the foot of the
-   rail, so pin the tooltip to the bottom of the viewport rather than 30% down. */
+/* nextstepjs sets the card wrapper to max-width: 100% of the spotlight. The
+   mobile header avatar is 36px, so without this the tooltip is clipped to a
+   sliver beside the chip. */
 body[data-onboarding-tour="info-box-dismissed"] [data-name="nextstep-card"] {
-    top: auto !important;
-    bottom: 1.5rem !important;
-    transform: none !important;
+    max-width: none !important;
 }
 
 @media (max-width: 1023px) {
-    /* On small screens, keep Help & Support tooltip inside viewport */
+    /* Hang the card below the top-right header avatar. The old bottom-pin
+       assumed a sidebar footer target and clipped the card off the top. */
     body[data-onboarding-tour="info-box-dismissed"]
-    [data-name="nextstep-card"] {
-        top: auto !important;
-        bottom: 1.5rem !important;
-        left: 60% !important;
-        transform: translate(-50%, 0) !important;
+    [data-name="nextstep-overlay"] {
+        overflow: visible !important;
+    }
+
+    body[data-onboarding-tour="info-box-dismissed"]
+        [data-name="nextstep-card"] {
+        top: 100% !important;
+        right: 0 !important;
+        bottom: auto !important;
+        left: auto !important;
+        margin-top: 6px !important;
+        transform: none !important;
+        max-width: min(280px, calc(100vw - 1rem)) !important;
     }
 
     /* Gleap's launcher and AI chatbar sit at the viewport bottom by default

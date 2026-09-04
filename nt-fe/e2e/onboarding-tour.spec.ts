@@ -1234,7 +1234,20 @@ test.describe("Onboarding – Info box Help & Support tooltip", () => {
         });
         await expect(tooltip).toBeVisible({ timeout: 10_000 });
         await expect(tooltip).toBeInViewport();
-        await expect(page.locator("#help-support-link")).toBeVisible();
+
+        const target = page.locator("#help-support-link");
+        await expect(target).toBeVisible();
+        const card = page.locator("[data-onboarding-tour-card]");
+        const cardBox = await card.boundingBox();
+        const targetBox = await target.boundingBox();
+        expect(cardBox).not.toBeNull();
+        expect(targetBox).not.toBeNull();
+        if (cardBox && targetBox) {
+            expect(
+                cardBox.x,
+                "Desktop card should sit to the right of the sidebar account row",
+            ).toBeGreaterThan(targetBox.x);
+        }
     });
 
     test("closing the info box on mobile points at the header avatar", async ({
@@ -1262,7 +1275,23 @@ test.describe("Onboarding – Info box Help & Support tooltip", () => {
         await expect(tooltip).toBeVisible({ timeout: 10_000 });
         await expect(tooltip).toBeInViewport();
 
-        await expect(page.getByTestId("mobile-user-trigger")).toBeVisible();
+        const avatar = page.getByTestId("mobile-user-trigger");
+        await expect(avatar).toBeVisible();
+        const card = page.locator("[data-onboarding-tour-card]");
+        const cardBox = await card.boundingBox();
+        const avatarBox = await avatar.boundingBox();
+        expect(cardBox).not.toBeNull();
+        expect(avatarBox).not.toBeNull();
+        if (cardBox && avatarBox) {
+            expect(
+                cardBox.y,
+                "Mobile card should hang below the header avatar, not clip above it",
+            ).toBeGreaterThan(avatarBox.y + avatarBox.height - 8);
+            expect(
+                cardBox.x,
+                "Mobile card should stay on screen",
+            ).toBeGreaterThanOrEqual(0);
+        }
 
         await context.close();
     });

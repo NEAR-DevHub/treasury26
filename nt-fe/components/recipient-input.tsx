@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { WALLET_ADDRESS_INPUT_PROPS } from "@/lib/wallet-address-input-props";
 import { InputBlock } from "./input-block";
 import { LargeInput } from "./large-input";
 import { FormField, FormMessage } from "./ui/form";
@@ -26,6 +27,7 @@ export function RecipientInput<TFieldValues extends FieldValues = FieldValues>({
                         type="text"
                         borderless
                         {...field}
+                        {...WALLET_ADDRESS_INPUT_PROPS}
                         placeholder={t("placeholder")}
                     />
                     {fieldState.error ? (

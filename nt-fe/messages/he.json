@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "יצירת אוצר"
+            "title": "יצירת אוצר חסוי"
         },
         "manageTreasuries": {
             "title": "ניהול אוצרות",
@@ -1543,7 +1543,7 @@
             "provisioningBulkPayment": "מגדיר שליחה מרובה",
             "finalizingSetup": "משלים הגדרה"
         },
-        "subtitle": "היצירה חינם. לחיצה אחת והאוצר שלך פעיל.",
+        "subtitle": "היצירה חינם. הכספים שלך נשארים פרטיים - גלויים רק לחברי האוצר שלך.",
         "namePlaceholder": "שם האוצר",
         "clearName": "נקה את שם האוצר",
         "createCta": "צור אוצר"

@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "Tạo Ngân quỹ"
+            "title": "Tạo ngân quỹ bảo mật"
         },
         "manageTreasuries": {
             "title": "Quản lý Ngân quỹ",
@@ -1526,7 +1526,7 @@
             "provisioningBulkPayment": "Đang thiết lập gửi hàng loạt",
             "finalizingSetup": "Đang hoàn tất thiết lập"
         },
-        "subtitle": "Tạo miễn phí. Một cú nhấp và ngân quỹ của bạn hoạt động.",
+        "subtitle": "Tạo miễn phí. Tiền của bạn được giữ riêng tư - chỉ thành viên ngân quỹ mới thấy.",
         "namePlaceholder": "Tên ngân quỹ",
         "clearName": "Xoá tên ngân quỹ",
         "createCta": "Tạo ngân quỹ"

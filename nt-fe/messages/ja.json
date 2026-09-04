@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "トレジャリーを作成"
+            "title": "機密トレジャリーを作成"
         },
         "manageTreasuries": {
             "title": "トレジャリーの管理",
@@ -1543,7 +1543,7 @@
             "provisioningBulkPayment": "一括送金を設定中",
             "finalizingSetup": "セットアップを完了中"
         },
-        "subtitle": "作成は無料。ワンクリックでトレジャリーが稼働します。",
+        "subtitle": "作成は無料。資金は非公開のまま、トレジャリーのメンバーにのみ表示されます。",
         "namePlaceholder": "トレジャリー名",
         "clearName": "トレジャリー名をクリア",
         "createCta": "トレジャリーを作成"

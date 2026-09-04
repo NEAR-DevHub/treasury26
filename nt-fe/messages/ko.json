@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "트레저리 생성"
+            "title": "기밀 트레저리 생성"
         },
         "manageTreasuries": {
             "title": "트레저리 관리",
@@ -1543,7 +1543,7 @@
             "provisioningBulkPayment": "일괄 전송 설정 중",
             "finalizingSetup": "설정 완료 중"
         },
-        "subtitle": "생성은 무료입니다. 클릭 한 번으로 트레저리가 시작됩니다.",
+        "subtitle": "생성은 무료입니다. 자금은 비공개로 유지되며 트레저리 멤버에게만 표시됩니다.",
         "namePlaceholder": "트레저리 이름",
         "clearName": "트레저리 이름 지우기",
         "createCta": "트레저리 생성"

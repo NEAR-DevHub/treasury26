@@ -75,8 +75,12 @@ export function AccountIdInput<
                 <LargeInput
                     disabled={disabled}
                     borderless
-                    placeholder="address"
+                    placeholder="example.near"
                     autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    name="wallet-recipient"
                     value={field.value}
                     onChange={(e) => {
                         const input = e.target.value

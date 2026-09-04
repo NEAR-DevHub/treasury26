@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "Treasury erstellen"
+            "title": "Vertrauliche Treasury erstellen"
         },
         "manageTreasuries": {
             "title": "Treasuries verwalten",
@@ -1543,7 +1543,7 @@
             "provisioningBulkPayment": "Sammelsendungen werden eingerichtet",
             "finalizingSetup": "Einrichtung wird abgeschlossen"
         },
-        "subtitle": "Kostenlos. Ein Klick und deine Treasury ist live.",
+        "subtitle": "Kostenlos. Deine Mittel bleiben privat - nur für Mitglieder deiner Treasury sichtbar.",
         "namePlaceholder": "Treasury-Name",
         "clearName": "Treasury-Namen löschen",
         "createCta": "Treasury erstellen"

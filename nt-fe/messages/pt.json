@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "Criar tesouraria"
+            "title": "Criar tesouraria confidencial"
         },
         "manageTreasuries": {
             "title": "Gerenciar tesourarias",
@@ -1543,7 +1543,7 @@
             "provisioningBulkPayment": "Configurando envio em massa",
             "finalizingSetup": "Finalizando configuração"
         },
-        "subtitle": "Criar é grátis. Um clique e a sua tesouraria fica ativa.",
+        "subtitle": "Criar é grátis. Os seus fundos permanecem privados - visíveis apenas para os membros da tesouraria.",
         "namePlaceholder": "Nome da tesouraria",
         "clearName": "Limpar o nome da tesouraria",
         "createCta": "Criar uma tesouraria"

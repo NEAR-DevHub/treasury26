@@ -240,7 +240,7 @@
             }
         },
         "createTreasury": {
-            "title": "Create Treasury"
+            "title": "Create confidential treasury"
         },
         "manageTreasuries": {
             "title": "Manage Treasuries",
@@ -1541,7 +1541,7 @@
             "provisioningBulkPayment": "Setting up bulk send",
             "finalizingSetup": "Finalizing setup"
         },
-        "subtitle": "Free to create. One click and your treasury is live.",
+        "subtitle": "Free to create. Your funds stay private - visible only to your treasury members.",
         "namePlaceholder": "Treasury name",
         "clearName": "Clear treasury name",
         "createCta": "Create a treasury"

@@ -20,7 +20,7 @@ export function dashboardTourSurface(stepIndex: number): DashboardTourSurface {
 
 export type DashboardTourSide = "bottom" | "right" | "top-left" | "top-right";
 
-export type HelpSupportTourSide = "bottom" | "right";
+export type HelpSupportTourSide = "bottom-right" | "right";
 
 export const HELP_SUPPORT_DESKTOP_SELECTOR = "#help-support-link";
 export const HELP_SUPPORT_MOBILE_SELECTOR =
@@ -35,10 +35,23 @@ export function helpSupportTourSelector(
         : HELP_SUPPORT_DESKTOP_SELECTOR;
 }
 
+/**
+ * Desktop: sit to the right of the sidebar account row.
+ * Mobile: hang below the top-right header avatar, right-aligned so the card
+ * grows left into the screen instead of clipping off the edge or flipping
+ * above the header.
+ */
 export function helpSupportTourStepSide(
     mobile = isTourMobileViewport(),
 ): HelpSupportTourSide {
-    return mobile ? "bottom" : "right";
+    return mobile ? "bottom-right" : "right";
+}
+
+/** Tight to the header avatar on phones; keep the default rail gap on desktop. */
+export function helpSupportTourCardOffset(
+    mobile = isTourMobileViewport(),
+): number {
+    return mobile ? 6 : 25;
 }
 
 /**

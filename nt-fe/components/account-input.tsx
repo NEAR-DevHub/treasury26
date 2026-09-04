@@ -16,6 +16,7 @@ import {
 import { translateNearValidationError } from "@/lib/near-validation-i18n";
 import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import { nearComPrefixIssue } from "@/lib/recipient-address-rules";
+import { useWalletAddressAutofillGuard } from "@/lib/wallet-address-input-props";
 import { LargeInput } from "./large-input";
 
 /**
@@ -55,6 +56,7 @@ const AccountInput = ({
     requireNearComPrefix = false,
 }: AccountInputProps) => {
     const t = useTranslations("accountInput");
+    const walletAutofillGuard = useWalletAddressAutofillGuard();
     const [isValidating, setIsValidating] = useState(false);
     const [validationError, setValidationError] = useState<
         string | undefined
@@ -326,6 +328,10 @@ const AccountInput = ({
                 onChange={handleChange}
                 disabled={disabled || isValidating}
                 borderless={borderless}
+                {...walletAutofillGuard}
+                data-1p-ignore="true"
+                data-lpignore="true"
+                data-form-type="other"
             />
             {/* Show validation error or status */}
             {value && validationError && !isValidating && (

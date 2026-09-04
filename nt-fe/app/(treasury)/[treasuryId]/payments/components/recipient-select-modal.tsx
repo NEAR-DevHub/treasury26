@@ -33,6 +33,7 @@ import {
     resolveRecipientBlockchain,
 } from "@/lib/recipient-address-rules";
 import { cn } from "@/lib/utils";
+import { useWalletAddressAutofillGuard } from "@/lib/wallet-address-input-props";
 import { RecipientQrScanner } from "./recipient-qr-scanner";
 
 function ContactAvatar() {
@@ -72,6 +73,7 @@ export function RecipientSelectModal({
     restrictedAlert,
 }: RecipientSelectModalProps) {
     const t = useTranslations("paymentFormSection");
+    const walletAutofillGuard = useWalletAddressAutofillGuard();
     const [draft, setDraft] = useState("");
     const [view, setView] = useState<"list" | "scan">("list");
     const [isValidating, setIsValidating] = useState(false);
@@ -255,8 +257,10 @@ export function RecipientSelectModal({
                                 }
                                 placeholder={t("searchByNameOrAddress")}
                                 autoFocus
-                                autoComplete="off"
-                                autoCorrect="off"
+                                {...walletAutofillGuard}
+                                data-1p-ignore="true"
+                                data-lpignore="true"
+                                data-form-type="other"
                                 className="h-full min-w-0 flex-1 border-0 bg-transparent text-base font-medium leading-normal text-muted-foreground outline-none placeholder:text-muted-foreground md:text-sm"
                                 onKeyDown={(e) => {
                                     if (

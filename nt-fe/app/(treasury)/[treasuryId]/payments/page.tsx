@@ -1507,6 +1507,7 @@ export default function PaymentsPage() {
             <Form {...form}>
                 <form
                     onSubmit={form.handleSubmit(onSubmit)}
+                    autoComplete="off"
                     className="mx-auto flex max-w-lg flex-col gap-4"
                 >
                     <StepWizard

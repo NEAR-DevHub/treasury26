@@ -14,6 +14,7 @@ import {
     dashboardTourSurface,
     HELP_SUPPORT_DESKTOP_SELECTOR,
     HELP_SUPPORT_MOBILE_SELECTOR,
+    helpSupportTourCardOffset,
     helpSupportTourSelector,
     helpSupportTourStepSide,
 } from "./dashboard-tour-targets";
@@ -85,7 +86,17 @@ describe("helpSupportTourStepSide", () => {
         expect(helpSupportTourStepSide(false)).toBe("right");
     });
 
-    it("drops below the header avatar on small screens", () => {
-        expect(helpSupportTourStepSide(true)).toBe("bottom");
+    it("hangs below the header avatar, right-aligned, on small screens", () => {
+        expect(helpSupportTourStepSide(true)).toBe("bottom-right");
+    });
+});
+
+describe("helpSupportTourCardOffset", () => {
+    it("keeps the default gap beside the sidebar on large screens", () => {
+        expect(helpSupportTourCardOffset(false)).toBe(25);
+    });
+
+    it("sits tight under the header avatar on small screens", () => {
+        expect(helpSupportTourCardOffset(true)).toBe(6);
     });
 });

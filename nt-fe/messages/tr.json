@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "Hazine Oluştur"
+            "title": "Gizli hazine oluştur"
         },
         "manageTreasuries": {
             "title": "Hazineleri Yönet",
@@ -1543,7 +1543,7 @@
             "provisioningBulkPayment": "Toplu gönderim ayarlanıyor",
             "finalizingSetup": "Kurulum tamamlanıyor"
         },
-        "subtitle": "Oluşturmak ücretsiz. Tek tıkla hazineniz yayında.",
+        "subtitle": "Oluşturmak ücretsiz. Fonlarınız gizli kalır - yalnızca hazine üyeleriniz tarafından görülür.",
         "namePlaceholder": "Hazine adı",
         "clearName": "Hazine adını temizle",
         "createCta": "Hazine oluştur"

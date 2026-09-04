@@ -11,8 +11,10 @@ import { Icon } from "@/components/icon";
 import { features } from "@/constants/features";
 import {
     DASHBOARD_TOUR_SELECTOR_RETRY,
+    helpSupportTourCardOffset,
     helpSupportTourSelector,
     helpSupportTourStepSide,
+    isTourMobileViewport,
     waitForSettledTourTarget,
 } from "@/features/onboarding/dashboard-tour-targets";
 import {
@@ -145,8 +147,8 @@ export const INFO_BOX_TOUR: Tour = {
             disableInteraction: true,
             showControls: false,
             showSkip: false,
-            pointerPadding: 8,
-            pointerRadius: 8,
+            pointerPadding: 0,
+            pointerRadius: 16,
             ...DASHBOARD_TOUR_SELECTOR_RETRY,
         },
     ],
@@ -245,10 +247,23 @@ export function scheduleHelpSupportTour(
         return;
     }
 
+    const mobile = isTourMobileViewport();
     const step = INFO_BOX_TOUR.steps[0];
     if (step) {
-        step.side = helpSupportTourStepSide();
-        step.selector = helpSupportTourSelector();
+        step.side = helpSupportTourStepSide(mobile);
+        step.selector = helpSupportTourSelector(mobile);
+        step.cardOffset = helpSupportTourCardOffset(mobile);
+    }
+
+    // The info box sits below the fold on phones. Bring the header avatar
+    // back into view first, otherwise nextstepjs measures a scrolled
+    // document Y and flips `bottom-right` to `top-right` — the card then
+    // clips against the top of the screen.
+    if (mobile && step?.selector) {
+        document.querySelector(step.selector)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
     }
 
     void waitForSettledTourTarget(step?.selector).then(() => {

@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "创建金库"
+            "title": "创建机密金库"
         },
         "manageTreasuries": {
             "title": "管理金库",
@@ -1526,7 +1526,7 @@
             "provisioningBulkPayment": "正在设置批量发送",
             "finalizingSetup": "正在完成设置"
         },
-        "subtitle": "创建免费。一键即可启用你的金库。",
+        "subtitle": "创建免费。资金保持私密，仅对金库成员可见。",
         "namePlaceholder": "金库名称",
         "clearName": "清除金库名称",
         "createCta": "创建金库"

@@ -236,7 +236,7 @@
             }
         },
         "createTreasury": {
-            "title": "Buat Treasury"
+            "title": "Buat treasury rahasia"
         },
         "manageTreasuries": {
             "title": "Kelola Treasury",
@@ -1543,7 +1543,7 @@
             "provisioningBulkPayment": "Menyiapkan kiriman massal",
             "finalizingSetup": "Menyelesaikan pengaturan"
         },
-        "subtitle": "Gratis dibuat. Satu klik dan treasury Anda aktif.",
+        "subtitle": "Gratis dibuat. Dana Anda tetap pribadi - hanya terlihat oleh anggota treasury Anda.",
         "namePlaceholder": "Nama treasury",
         "clearName": "Hapus nama treasury",
         "createCta": "Buat treasury"
