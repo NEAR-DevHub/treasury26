@@ -37,10 +37,19 @@ interface RequestPageProps {
 /**
  * The design centres the request between two columns rather than letting it
  * spread: what it does on the left, how it is being decided on the right.
+ * Stacked on a phone the cards are a single 20px-spaced run under the heading,
+ * which the header already leaves room for — hence no top padding until `lg`.
  */
 const COLUMNS_CLASS =
-    "mx-auto flex w-full max-w-[880px] flex-col gap-4 pt-4 lg:flex-row lg:items-start";
+    "mx-auto flex w-full max-w-[880px] flex-col gap-5 lg:flex-row lg:items-start lg:gap-4 lg:pt-4";
 const SIDE_COLUMN_CLASS = "w-full min-w-0 lg:w-[360px] lg:shrink-0";
+/**
+ * On a phone the cards line up with the back button in the header rather than
+ * with the wider gutter the shell gives scrolling lists.
+ */
+const MAIN_CLASS = "px-3 md:px-6";
+/** The 40px, 12px-radius square the design gives the header's controls. */
+const HEADER_ICON_BUTTON_CLASS = "size-10 rounded-lg lg:size-9 lg:rounded-md";
 
 function RequestPageSkeleton() {
     return (
@@ -89,6 +98,8 @@ export default function RequestPage({ params }: RequestPageProps) {
             <PageComponentLayout
                 title=""
                 backButton={`/${treasuryId}/requests`}
+                hideMobileShellControls
+                mainClassName={MAIN_CLASS}
             >
                 <RequestPageSkeleton />
             </PageComponentLayout>
@@ -157,12 +168,15 @@ function RequestDetail({
         <PageComponentLayout
             title={title}
             backButton={`/${treasuryId}/requests`}
+            hideMobileShellControls
+            mainClassName={MAIN_CLASS}
             headerActions={
                 <>
                     {isOwnPendingProposal && !hasVoted && (
                         <Button
                             variant="ghost"
                             size="icon"
+                            className={HEADER_ICON_BUTTON_CLASS}
                             tooltipContent={tExpanded("deleteRequest")}
                             onClick={() => onVote("Remove")}
                         >
@@ -172,6 +186,7 @@ function RequestDetail({
                     <CopyButton
                         variant="ghost"
                         size="icon"
+                        className={HEADER_ICON_BUTTON_CLASS}
                         text={`${window.location.origin}/${treasuryId}/requests/${proposal.id}`}
                         tooltipContent={tExpanded("copyLink")}
                     />

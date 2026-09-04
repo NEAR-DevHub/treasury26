@@ -145,7 +145,7 @@ export function PageComponentLayout({
             aria-label={tCommon("back")}
             className={cn(
                 hideMobileShellControls &&
-                    "size-10 rounded-md bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:size-9 lg:rounded-md lg:bg-transparent",
+                    "size-10 rounded-lg bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:size-9 lg:rounded-md lg:bg-transparent",
                 backKind === "section" && "lg:hidden",
             )}
         >
