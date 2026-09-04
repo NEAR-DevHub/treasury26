@@ -1262,12 +1262,7 @@ test.describe("Onboarding – Info box Help & Support tooltip", () => {
         await expect(tooltip).toBeVisible({ timeout: 10_000 });
         await expect(tooltip).toBeInViewport();
 
-        const target = page.locator("#help-support-link");
-        await expect(target).toBeVisible();
-        await expect(page.getByTestId("mobile-user-trigger")).toHaveAttribute(
-            "id",
-            "help-support-link",
-        );
+        await expect(page.getByTestId("mobile-user-trigger")).toBeVisible();
 
         await context.close();
     });

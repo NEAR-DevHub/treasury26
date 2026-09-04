@@ -96,7 +96,7 @@ export function SidebarProfileMenu({
     const trigger = isReduced ? (
         <button
             type="button"
-            data-tour-help-support=""
+            id="help-support-link"
             aria-label={accountId}
             className={cn(
                 "mx-auto flex size-11 cursor-pointer items-center justify-center rounded-2xl border border-transparent bg-gray-900 transition-colors duration-200 hover:bg-gray-950",
@@ -108,7 +108,7 @@ export function SidebarProfileMenu({
     ) : (
         <button
             type="button"
-            data-tour-help-support=""
+            id="help-support-link"
             className={cn(
                 "group flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-transparent bg-gray-900 p-3.5 transition-colors duration-200 hover:bg-gray-950",
                 isOpen && "bg-gray-950",

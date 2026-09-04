@@ -1,6 +1,5 @@
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { normalizeNearAssetId } from "@/lib/utils";
-import type { ConfidentialOrigin } from "./deposit-types";
 
 export type PayShareKind = "public" | "confidential";
 
@@ -10,8 +9,7 @@ export type PayShareKind = "public" | "confidential";
  * Confidential one-time: only `id` (quote deposit address). Asset, expiry, and
  * used/expired come from the status API; bridge address is re-derived.
  * Public treasury: `id` is the bridge address plus token/network for display.
- * Confidential reusable: dao from path; `source` (`ConfidentialOrigin`) is kept
- * for backward-compatible old pay-share links.
+ * Confidential reusable: dao from path; no query params.
  */
 export type PayShareQuery =
     | {
@@ -24,7 +22,6 @@ export type PayShareQuery =
       }
     | {
           kind: "confidential";
-          source: ConfidentialOrigin;
       };
 
 export function buildPaySharePath(
@@ -37,8 +34,6 @@ export function buildPaySharePath(
         params.set("id", query.id);
         if (query.token) params.set("token", query.token);
         if (query.network) params.set("network", query.network);
-    } else {
-        params.set("source", query.source);
     }
 
     const search = params.toString();
@@ -49,8 +44,6 @@ export function buildPaySharePath(
 export function buildConfidentialDepositSharePath(treasuryId: string): string {
     return buildPaySharePath(treasuryId, {
         kind: "confidential",
-        // Legacy query value kept for links already in the wild.
-        source: "nearcom",
     });
 }
 

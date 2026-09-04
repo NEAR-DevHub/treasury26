@@ -22,7 +22,19 @@ export type DashboardTourSide = "bottom" | "right" | "top-left" | "top-right";
 
 export type HelpSupportTourSide = "bottom" | "right";
 
+export const HELP_SUPPORT_DESKTOP_SELECTOR = "#help-support-link";
+export const HELP_SUPPORT_MOBILE_SELECTOR =
+    "[data-testid='mobile-user-trigger']";
+
 /** Profile control: sidebar account row on desktop, header avatar on phones. */
+export function helpSupportTourSelector(
+    mobile = isTourMobileViewport(),
+): string {
+    return mobile
+        ? HELP_SUPPORT_MOBILE_SELECTOR
+        : HELP_SUPPORT_DESKTOP_SELECTOR;
+}
+
 export function helpSupportTourStepSide(
     mobile = isTourMobileViewport(),
 ): HelpSupportTourSide {
@@ -55,38 +67,22 @@ export function isTourMobileViewport() {
 
 const CREATE_TREASURY_TARGET_ID = "dashboard-step5-create-treasury";
 const CREATE_TREASURY_TARGET_ATTR = "data-tour-create-treasury";
-const HELP_SUPPORT_TARGET_ID = "help-support-link";
-const HELP_SUPPORT_TARGET_ATTR = "data-tour-help-support";
 
 /**
- * Several tour targets exist on both the desktop rail and a mobile surface.
- * The ID is moved onto whichever copy currently has a painted box — a
- * duplicated or hidden ID would leave `querySelector` pointing at the
- * `display: none` sidebar.
+ * The desktop dropdown and the mobile sheet each render a Create Treasury row,
+ * so the tour ID is moved onto whichever one is currently rendered — a
+ * duplicated ID would leave `querySelector` pointing at the hidden copy.
  */
-function markVisibleTourTarget(attr: string, id: string) {
-    if (typeof document === "undefined") return;
-
-    const nodes = document.querySelectorAll(`[${attr}]`);
-    for (const node of nodes) {
-        node.removeAttribute("id");
+function markVisibleCreateTreasuryTarget() {
+    const rows = document.querySelectorAll(`[${CREATE_TREASURY_TARGET_ATTR}]`);
+    for (const row of rows) {
+        row.removeAttribute("id");
     }
     // The open portal is last in the DOM when both surfaces are mounted.
-    const target = Array.from(nodes)
-        .filter((node) => node.getClientRects().length > 0)
+    const target = Array.from(rows)
+        .filter((row) => row.getClientRects().length > 0)
         .at(-1);
-    target?.setAttribute("id", id);
-}
-
-function markVisibleCreateTreasuryTarget() {
-    markVisibleTourTarget(
-        CREATE_TREASURY_TARGET_ATTR,
-        CREATE_TREASURY_TARGET_ID,
-    );
-}
-
-function markVisibleHelpSupportTarget() {
-    markVisibleTourTarget(HELP_SUPPORT_TARGET_ATTR, HELP_SUPPORT_TARGET_ID);
+    target?.setAttribute("id", CREATE_TREASURY_TARGET_ID);
 }
 
 /** Rounded rect signature, or "" when the target is missing or unrendered. */
@@ -119,7 +115,6 @@ export function waitForSettledTourTarget(selector?: string) {
 
         const tick = () => {
             markVisibleCreateTreasuryTarget();
-            markVisibleHelpSupportTarget();
 
             const geometry = targetGeometry(selector);
             settledFrames =

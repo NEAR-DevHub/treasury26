@@ -11,6 +11,7 @@ import { Icon } from "@/components/icon";
 import { features } from "@/constants/features";
 import {
     DASHBOARD_TOUR_SELECTOR_RETRY,
+    helpSupportTourSelector,
     helpSupportTourStepSide,
     waitForSettledTourTarget,
 } from "@/features/onboarding/dashboard-tour-targets";
@@ -247,9 +248,10 @@ export function scheduleHelpSupportTour(
     const step = INFO_BOX_TOUR.steps[0];
     if (step) {
         step.side = helpSupportTourStepSide();
+        step.selector = helpSupportTourSelector();
     }
 
-    void waitForSettledTourTarget(SELECTOR_IDS.HELP_SUPPORT_LINK).then(() => {
+    void waitForSettledTourTarget(step?.selector).then(() => {
         startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
     });
 }

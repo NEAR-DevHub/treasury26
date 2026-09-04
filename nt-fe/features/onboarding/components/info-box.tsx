@@ -1,11 +1,11 @@
 "use client";
 
-import { Icon } from "@/components/icon";
 import { Cancel01Icon, File01Icon, PlayIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
-import { useMemo, useState, useEffect } from "react";
 import { useNextStep } from "nextstepjs";
+import { useEffect, useMemo, useState } from "react";
 import { PageCard } from "@/components/card";
+import { Icon } from "@/components/icon";
 import {
     LOCAL_STORAGE_KEYS,
     scheduleHelpSupportTour,

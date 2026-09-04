@@ -12,6 +12,9 @@ import {
     DASHBOARD_TOUR_TREASURY_STEP,
     dashboardTourStepSide,
     dashboardTourSurface,
+    HELP_SUPPORT_DESKTOP_SELECTOR,
+    HELP_SUPPORT_MOBILE_SELECTOR,
+    helpSupportTourSelector,
     helpSupportTourStepSide,
 } from "./dashboard-tour-targets";
 
@@ -56,6 +59,23 @@ describe("dashboardTourStepSide", () => {
         );
         expect(dashboardTourStepSide(DASHBOARD_TOUR_TREASURY_STEP, true)).toBe(
             "top-left",
+        );
+    });
+});
+
+describe("helpSupportTourSelector", () => {
+    it("targets the sidebar account row on large screens", () => {
+        expect(helpSupportTourSelector(false)).toBe(
+            HELP_SUPPORT_DESKTOP_SELECTOR,
+        );
+    });
+
+    it("targets the header avatar on small screens, not the hidden sidebar", () => {
+        expect(helpSupportTourSelector(true)).toBe(
+            HELP_SUPPORT_MOBILE_SELECTOR,
+        );
+        expect(helpSupportTourSelector(true)).not.toBe(
+            HELP_SUPPORT_DESKTOP_SELECTOR,
         );
     });
 });
