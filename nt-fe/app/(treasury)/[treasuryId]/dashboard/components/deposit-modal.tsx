@@ -65,15 +65,13 @@ import {
     buildPublicTreasuryNotices,
     buildPublicWalletOneTimeNotices,
 } from "./deposit/deposit-notices";
-import { DepositOriginTabs } from "./deposit/deposit-origin-tabs";
 import { DepositSourceCards } from "./deposit/deposit-source-cards";
 import {
-    buildConfidentialDepositShareTarget,
+    buildConfidentialDepositSharePath,
     buildPaySharePath,
     getAbsoluteTransferUrl,
 } from "./deposit/deposit-transfer-url";
 import type {
-    ConfidentialDepositOrigin,
     DepositInfo,
     DepositSource,
     DepositStep,
@@ -207,8 +205,6 @@ export function DepositModal({
     const [step, setStep] = useState<DepositStep>("select");
     const [depositSource, setDepositSource] =
         useState<DepositSource>("public_wallet");
-    const [confidentialOrigin, setConfidentialOrigin] =
-        useState<ConfidentialDepositOrigin>("near_business");
     const [hasAcknowledged, setHasAcknowledged] = useState(false);
     const [modalType, setModalType] = useState<"asset" | "network" | null>(
         null,
@@ -318,7 +314,6 @@ export function DepositModal({
         form.reset({ asset: null, network: null });
         setStep("select");
         setDepositSource("public_wallet");
-        setConfidentialOrigin("near_business");
         setHasAcknowledged(false);
         setModalType(null);
         setDepositInfo(null);
@@ -725,7 +720,6 @@ export function DepositModal({
     const handleSourceChange = (source: DepositSource) => {
         if (source === depositSource) return;
         setDepositSource(source);
-        setConfidentialOrigin("near_business");
         setHasAcknowledged(false);
         setStep("select");
         setDepositInfo(null);
@@ -796,14 +790,13 @@ export function DepositModal({
             isConfidential && depositSource === "confidential_user";
 
         if (isConfidentialShare) {
-            const target = buildConfidentialDepositShareTarget(
-                treasuryId,
-                confidentialOrigin,
+            window.open(
+                getAbsoluteTransferUrl(
+                    buildConfidentialDepositSharePath(treasuryId),
+                ),
+                "_blank",
+                "noopener,noreferrer",
             );
-            const href = target.external
-                ? target.href
-                : getAbsoluteTransferUrl(target.href);
-            window.open(href, "_blank", "noopener,noreferrer");
             return;
         }
 
@@ -884,7 +877,7 @@ export function DepositModal({
         }
 
         if (depositSource === "confidential_user") {
-            return buildConfidentialOriginNotices(t, confidentialOrigin);
+            return buildConfidentialOriginNotices(t);
         }
 
         return buildPublicWalletOneTimeNotices(
@@ -900,7 +893,6 @@ export function DepositModal({
     }, [
         isConfidential,
         depositSource,
-        confidentialOrigin,
         minDepositDisplay,
         assetSymbol,
         networkDisplayName,
@@ -1107,15 +1099,6 @@ export function DepositModal({
                     }
                     createNewAddressDisabled={isLoadingAddress}
                     onBack={handleBackFromAddress}
-                    tabsSlot={
-                        isConfidential &&
-                        depositSource === "confidential_user" ? (
-                            <DepositOriginTabs
-                                value={confidentialOrigin}
-                                onChange={setConfidentialOrigin}
-                            />
-                        ) : undefined
-                    }
                     headerSlot={
                         showAddressWarningBanner ? (
                             <SlotWarning

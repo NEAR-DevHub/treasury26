@@ -32,9 +32,10 @@ interface PageComponentLayoutProps {
     /** `true` = router.back(); string = push path; function = custom handler. */
     backButton?: boolean | string | (() => void);
     /**
-     * `section` — one-level pages (Send, Deposit, Swap). Back is hidden on
-     * large screens and only shown on small screens after an in-app navigation.
-     * `nested` — second-level pages (Bulk send). Back is always shown.
+     * `section` — top-level destinations (Send, Swap, Settings). No header back;
+     * leave via the sidebar or tab bar.
+     * `nested` — second-level screens (Receive, Bulk send) and their inner pages.
+     * Header back is always shown.
      */
     backKind?: "section" | "nested";
     hideLogin?: boolean;
@@ -116,10 +117,12 @@ export function PageComponentLayout({
     const showBack = shouldShowPageBack({
         hasBackButton: !!backButton,
         backKind,
-        cameFromApp,
     });
+    // On small screens, keep the back slot when the control is hidden so the
+    // stacked title does not jump. Large screens leave the title flush left.
+    const reserveBackSlot = Boolean(backButton);
     const showMobileChromeRow =
-        stackedInnerHeader && (showBack || !!headerActions);
+        stackedInnerHeader && (showBack || !!headerActions || reserveBackSlot);
 
     const handleBack = () => {
         if (typeof backButton === "function") {
@@ -137,20 +140,22 @@ export function PageComponentLayout({
         router.back();
     };
 
+    const backControlClassName = cn(
+        hideMobileShellControls &&
+            "size-10 rounded-lg bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:size-9 lg:rounded-md lg:bg-transparent",
+    );
     const backControl = showBack ? (
         <Button
             variant="ghost"
             size="icon"
             onClick={handleBack}
             aria-label={tCommon("back")}
-            className={cn(
-                hideMobileShellControls &&
-                    "size-10 rounded-lg bg-muted text-muted-foreground hover:bg-muted hover:text-foreground lg:size-9 lg:rounded-md lg:bg-transparent",
-                backKind === "section" && "lg:hidden",
-            )}
+            className={backControlClassName}
         >
             <Icon icon={ArrowLeft01Icon} className="stroke-2" />
         </Button>
+    ) : reserveBackSlot ? (
+        <div aria-hidden className="size-10 shrink-0 lg:hidden" />
     ) : null;
 
     const titleBlock = !hideHeaderContent
@@ -181,7 +186,8 @@ export function PageComponentLayout({
         <div
             className={cn(
                 "flex h-full flex-col sm:gap-0",
-                hideMobileShellControls && "gap-6 px-2",
+                hideMobileShellControls &&
+                    (hideTitle ? "gap-3 px-2 lg:gap-6" : "gap-6 px-2"),
                 fitViewport && "h-dvh overflow-y-auto",
                 hideHeaderContent && "bg-general-bg-tertiary",
             )}
@@ -215,7 +221,8 @@ export function PageComponentLayout({
                     <div
                         className={cn(
                             "flex items-center gap-2 md:gap-4",
-                            stackedInnerHeader && "justify-between",
+                            stackedInnerHeader &&
+                                "w-full justify-between lg:flex-1",
                             stackedInnerHeader &&
                                 !showMobileChromeRow &&
                                 "hidden lg:flex",
@@ -246,9 +253,7 @@ export function PageComponentLayout({
                                 {titleBlock}
                             </div>
                         </div>
-                        {stackedInnerHeader && headerActions ? (
-                            <div className="lg:hidden">{headerActions}</div>
-                        ) : null}
+                        {stackedInnerHeader ? headerActions : null}
                     </div>
 
                     {stackedInnerHeader &&
@@ -273,7 +278,7 @@ export function PageComponentLayout({
                             stackedInnerHeader && "hidden lg:flex",
                         )}
                     >
-                        {headerActions}
+                        {stackedInnerHeader ? null : headerActions}
                         {hasSidebarRail && !hideMobileShellControls && (
                             <div className="lg:hidden">
                                 <MobileUserHeaderButton />

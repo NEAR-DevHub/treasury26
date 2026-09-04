@@ -4,7 +4,8 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { isIconUrl } from "@/lib/icon-url";
 import { cn } from "@/lib/utils";
-import { Button } from "./button";
+import { EmptySelectorIcon } from "./selector-field";
+import { SelectorOptionRow } from "./selector-option-row";
 import { TokenIconImage } from "./token-icon-image";
 import { ScrollArea } from "./ui/scroll-area";
 
@@ -41,12 +42,23 @@ interface SelectListProps<T extends SelectListItem> {
     renderRight?: (item: T) => ReactNode;
 }
 
+const SELECT_LIST_SKELETON_IDS = [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+] as const;
+
 export function SelectListSkeleton() {
     return (
         <div className="space-y-1 animate-pulse">
-            {[...Array(8)].map((_, i) => (
+            {SELECT_LIST_SKELETON_IDS.map((skeletonId) => (
                 <div
-                    key={i}
+                    key={skeletonId}
                     className="w-full flex items-center gap-3 py-3 rounded-lg"
                 >
                     <div className="w-10 h-10 rounded-full bg-general-unofficial-accent-0 shrink-0" />
@@ -72,12 +84,20 @@ export function SelectListIcon({
     size?: "sm" | "md" | "lg";
 }) {
     const containerSizeClass =
-        size === "sm" ? "size-6" : size === "lg" ? "size-14" : "size-12";
+        size === "sm"
+            ? "size-6"
+            : size === "lg"
+              ? "size-14"
+              : "size-10 aspect-square";
     // Remote artwork fills more of the container than a one- or two-character
     // glyph does, so the two kinds of icon are sized differently.
     const imageSizeClass =
-        size === "sm" ? "size-5" : size === "lg" ? "size-10" : "size-8";
-    const glyphSizeClass = size === "sm" ? "size-3.5 text-[9px]" : "size-8";
+        size === "sm" ? "size-5" : size === "lg" ? "size-10" : "size-10";
+    const emptyIcon = <EmptySelectorIcon className={containerSizeClass} />;
+
+    if (!isIconUrl(icon)) {
+        return emptyIcon;
+    }
 
     return (
         <div
@@ -90,8 +110,9 @@ export function SelectListIcon({
                 icon={icon}
                 alt={alt}
                 gradient={gradient || "bg-brand-blue"}
-                className={isIconUrl(icon) ? imageSizeClass : glyphSizeClass}
+                className={imageSizeClass}
                 objectFit="contain"
+                fallback={emptyIcon}
             />
         </div>
     );
@@ -118,38 +139,26 @@ export function SelectList<T extends SelectListItem>({
             {items.map((item) => {
                 const { primary, secondary } = getSelectOptionLabels(item);
                 return (
-                    <Button
+                    <SelectorOptionRow
                         key={item.id}
+                        selected={selectedId === item.id}
                         onClick={() => onSelect(item)}
-                        variant="ghost"
-                        className={cn(
-                            "w-full flex items-center gap-1 py-3 rounded-lg h-auto justify-start pl-1!",
-                            selectedId === item.id && "bg-muted",
-                        )}
-                    >
-                        {renderIcon ? (
-                            renderIcon(item)
-                        ) : (
-                            <SelectListIcon
-                                icon={item.icon}
-                                gradient={item.gradient}
-                                alt={item.symbol || item.name}
-                            />
-                        )}
-                        {renderContent ? (
-                            renderContent(item)
-                        ) : (
-                            <div className="flex-1 text-left">
-                                <div className="font-semibold">{primary}</div>
-                                {secondary && (
-                                    <div className="text-sm text-muted-foreground">
-                                        {secondary}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        {renderRight?.(item)}
-                    </Button>
+                        icon={
+                            renderIcon ? (
+                                renderIcon(item)
+                            ) : (
+                                <SelectListIcon
+                                    icon={item.icon}
+                                    gradient={item.gradient}
+                                    alt={item.symbol || item.name}
+                                />
+                            )
+                        }
+                        trailing={renderRight?.(item)}
+                        {...(renderContent
+                            ? { children: renderContent(item) }
+                            : { primary, secondary })}
+                    />
                 );
             })}
             {items.length === 0 && (

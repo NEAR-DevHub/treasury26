@@ -6,7 +6,6 @@ import { useTranslations } from "next-intl";
 import { useMemo, useState, useEffect } from "react";
 import { useNextStep } from "nextstepjs";
 import { PageCard } from "@/components/card";
-import { useSidebarStore } from "@/stores/sidebar-store";
 import {
     LOCAL_STORAGE_KEYS,
     scheduleHelpSupportTour,
@@ -42,7 +41,6 @@ export function InfoBox() {
     const t = useTranslations("onboarding.infoBox");
     const [isClosed, setIsClosed] = useState(true);
     const { startNextStep } = useNextStep();
-    const setSidebarOpen = useSidebarStore((state) => state.setSidebarOpen);
     const infoItems = useMemo<InfoItemProps[]>(
         () => [
             {
@@ -66,7 +64,7 @@ export function InfoBox() {
     const handleInfoBoxClick = () => {
         localStorage.setItem(INFO_BOX_CLOSED_KEY, "true");
         setIsClosed(true);
-        scheduleHelpSupportTour(startNextStep, setSidebarOpen);
+        scheduleHelpSupportTour(startNextStep);
     };
 
     if (isClosed) {

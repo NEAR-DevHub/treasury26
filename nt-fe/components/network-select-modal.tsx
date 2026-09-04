@@ -5,11 +5,14 @@ import {
     SelectModal,
     type SelectOption,
 } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
-import { HighlightedText } from "@/components/highlighted-text";
 import { SelectListIcon } from "@/components/select-list";
+import {
+    SelectorOptionBalance,
+    SelectorOptionLabels,
+} from "@/components/selector-option-row";
 import { getNetworkDisplayName } from "@/components/token-display";
 import { getNetworkDisplayCaseClass } from "@/lib/intents-network";
-import { cn, formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
+import { formatCurrencyWithSubCent, formatSmartAmount } from "@/lib/utils";
 
 type NetworkBalanceDisplay = {
     amount: string | number;
@@ -50,15 +53,14 @@ function DefaultNetworkBalance({
     if (isZero) return null;
 
     return (
-        <div className="flex flex-col items-end">
-            <span className="font-semibold">{formatSmartAmount(amount)}</span>
-            <span className="text-sm text-muted-foreground">
-                ≈
-                {Number.isFinite(balance.amountUSD)
+        <SelectorOptionBalance
+            primary={formatSmartAmount(amount)}
+            secondary={`≈${
+                Number.isFinite(balance.amountUSD)
                     ? formatCurrencyWithSubCent(balance.amountUSD)
-                    : formatCurrencyWithSubCent(0)}
-            </span>
-        </div>
+                    : formatCurrencyWithSubCent(0)
+            }`}
+        />
     );
 }
 
@@ -103,29 +105,14 @@ export function NetworkSelectModal({
                     item as SelectOption & { description?: string }
                 ).description;
                 return (
-                    <div className="flex-1 text-left">
-                        <div
-                            className={cn(
-                                "font-semibold",
-                                getNetworkDisplayCaseClass(item.name),
-                            )}
-                        >
-                            <HighlightedText
-                                text={getNetworkDisplayName(
-                                    item.name || item.symbol || "",
-                                )}
-                                query={searchQuery}
-                            />
-                        </div>
-                        {description ? (
-                            <div className="text-xs text-muted-foreground font-normal">
-                                <HighlightedText
-                                    text={description}
-                                    query={searchQuery}
-                                />
-                            </div>
-                        ) : null}
-                    </div>
+                    <SelectorOptionLabels
+                        primary={getNetworkDisplayName(
+                            item.name || item.symbol || "",
+                        )}
+                        secondary={description}
+                        highlightQuery={searchQuery}
+                        primaryClassName={getNetworkDisplayCaseClass(item.name)}
+                    />
                 );
             }}
             renderRight={

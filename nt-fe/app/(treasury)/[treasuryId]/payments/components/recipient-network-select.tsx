@@ -4,29 +4,26 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SelectModal } from "@/app/(treasury)/[treasuryId]/dashboard/components/select-modal";
 import { Button } from "@/components/button";
-import { HighlightedText } from "@/components/highlighted-text";
 import { Icon } from "@/components/icon";
 import { InputBlock } from "@/components/input-block";
+import { SelectListIcon } from "@/components/select-list";
 import {
     EmptySelectorIcon,
     selectorTriggerClassName,
 } from "@/components/selector-field";
+import { SelectorOptionLabels } from "@/components/selector-option-row";
 import { getNetworkDisplayName } from "@/components/token-display";
 import type { Token } from "@/components/token-input";
 import { WarningMessage } from "@/components/warning-message";
 import { NEAR_COM_NETWORK_ID, NEAR_NETWORK_ID } from "@/constants/network-ids";
 import { NEAR_CHAIN_ICONS, NEAR_COM_ICON } from "@/constants/token";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
-import { useMergedTokens } from "@/hooks/use-merged-tokens";
-import { useTreasury } from "@/hooks/use-treasury";
-import { getBlockchainType } from "@/lib/blockchain-utils";
 import { findBridgeAssetForTokenMatch } from "@/lib/bridge-asset-resolver";
 import {
     getLocalizedNetworkDisplayName,
     getNetworkDisplayCaseClass,
     isNearComNetwork,
 } from "@/lib/intents-network";
-import { pickDefaultDestinationNetwork } from "@/lib/pick-default-destination-network";
 import { canAddressUseDestination } from "@/lib/recipient-address-rules";
 import { buildSectionedOptions, type SectionRule } from "@/lib/section-rules";
 import { cn } from "@/lib/utils";
@@ -76,11 +73,6 @@ interface RecipientNetworkSelectProps {
     placeholder?: string;
     recipientRequiredPlaceholder?: string;
     modalTitle?: string;
-    /**
-     * Single send only. When a token is chosen, pick the destination with
-     * the highest USD holding, else the only chain, else the first option.
-     */
-    autoSelect?: boolean;
     /** Display-only: selection cannot change (bulk edit). */
     locked?: boolean;
 }
@@ -114,32 +106,20 @@ function NetworkRow({
     return (
         <div
             className={cn(
-                "flex items-center gap-2 md:gap-3 w-full min-w-0",
+                "flex w-full min-w-0 items-center gap-3",
                 disabled && "opacity-50",
             )}
         >
-            <img
-                src={option.icon}
-                alt={`${option.name} network`}
-                className="size-6 md:size-8 shrink-0 overflow-hidden rounded-full object-cover"
-            />
-            <div className="flex flex-col items-start text-left min-w-0">
-                <HighlightedText
-                    text={option.name}
-                    query={highlightQuery}
-                    className={cn(
-                        "text-sm md:text-base font-semibold truncate max-w-full",
-                        getNetworkDisplayCaseClass(option.id),
-                    )}
-                />
-                {option.description && (
-                    <HighlightedText
-                        text={option.description}
-                        query={highlightQuery}
-                        className="text-xs text-muted-foreground font-normal"
-                    />
+            <SelectListIcon icon={option.icon} alt={`${option.name} network`} />
+            <SelectorOptionLabels
+                primary={option.name}
+                secondary={option.description}
+                highlightQuery={highlightQuery}
+                primaryClassName={cn(
+                    "max-w-full truncate",
+                    getNetworkDisplayCaseClass(option.id),
                 )}
-            </div>
+            />
         </div>
     );
 }
@@ -162,15 +142,10 @@ export function RecipientNetworkSelect({
     placeholder,
     recipientRequiredPlaceholder,
     modalTitle,
-    autoSelect = false,
     locked = false,
 }: RecipientNetworkSelectProps) {
     const t = useTranslations("recipientNetworkSelect");
     const tAddressBookTable = useTranslations("addressBookTable");
-    const { isConfidential } = useTreasury();
-    const { tokens: mergedTokens } = useMergedTokens({
-        enabled: autoSelect,
-    });
     const [open, setOpen] = useState(false);
 
     const nearComOption: RecipientNetworkOption = useMemo(
@@ -219,11 +194,6 @@ export function RecipientNetworkSelect({
                 return {
                     id: network.id,
                     name: getNetworkDisplayName(network.name),
-                    description:
-                        isConfidential &&
-                        getBlockchainType(network.name) === NEAR_NETWORK_ID
-                            ? t("nearDescription")
-                            : undefined,
                     icon: iconUrl,
                     networkName: network.name,
                 };
@@ -231,7 +201,7 @@ export function RecipientNetworkSelect({
         }
 
         return [];
-    }, [bridgeAssetMatch, isConfidential, t, token]);
+    }, [bridgeAssetMatch, token]);
 
     const availableOptions = useMemo(() => {
         // Stay empty until the token and its destinations are known. near.com
@@ -245,26 +215,6 @@ export function RecipientNetworkSelect({
         );
         return [nearComOption, ...others];
     }, [isBridgeAssetsLoading, nearComOption, token, tokenNetworkOptions]);
-
-    const tokenHoldings = useMemo(() => {
-        if (!token) return [];
-        const tokenAddress = token.address?.trim().toLowerCase();
-        const tokenNetwork = token.network?.trim().toLowerCase();
-        const tokenSymbol = token.symbol?.trim().toLowerCase();
-        const asset = mergedTokens.find(
-            (merged) =>
-                merged.networks.some(
-                    (network) =>
-                        network.id.trim().toLowerCase() === tokenAddress &&
-                        network.name.trim().toLowerCase() === tokenNetwork,
-                ) || merged.symbol.trim().toLowerCase() === tokenSymbol,
-        );
-        return (asset?.networks ?? []).map((network) => ({
-            id: network.id,
-            name: network.name,
-            balanceUSD: network.balanceUSD,
-        }));
-    }, [mergedTokens, token]);
 
     const selectedOption = useMemo(() => {
         if (!value) return null;
@@ -317,108 +267,32 @@ export function RecipientNetworkSelect({
 
     const prevRecipientRef = useRef<string | null>(null);
     const onChangeRef = useRef(onChange);
-    const onNetworkChangeRef = useRef(onNetworkChange);
     onChangeRef.current = onChange;
-    onNetworkChangeRef.current = onNetworkChange;
 
-    const tokenKey = token
-        ? `${token.address ?? ""}:${token.network ?? ""}:${token.residency ?? ""}`
-        : "";
-    const prevTokenKeyRef = useRef<string | null>(null);
-    const autoPickedRef = useRef(false);
-    const userPickedRef = useRef(false);
-
-    useEffect(() => {
-        if (!autoSelect || locked || !token || availableOptions.length === 0)
-            return;
-
-        const tokenChanged = prevTokenKeyRef.current !== tokenKey;
-        const hasUsdHoldings = tokenHoldings.some(
-            (holding) => (holding.balanceUSD ?? 0) > 0,
-        );
-
-        if (tokenChanged) {
-            const isFirstToken = prevTokenKeyRef.current === null;
-            prevTokenKeyRef.current = tokenKey;
-            userPickedRef.current = false;
-
-            // Keep a dest already set for this token (URL / parent seed).
-            if (
-                isFirstToken &&
-                value &&
-                availableOptions.some((option) => option.id === value)
-            ) {
-                autoPickedRef.current = false;
-                return;
-            }
-        } else if (userPickedRef.current || !autoPickedRef.current) {
-            return;
-        } else if (!hasUsdHoldings) {
-            return;
-        }
-
-        const picked = pickDefaultDestinationNetwork(
-            availableOptions,
-            tokenHoldings,
-        );
-        if (!picked) return;
-        autoPickedRef.current = true;
-        if (picked.id === value) return;
-        onChangeRef.current(picked.id);
-        onNetworkChangeRef.current?.(picked);
-    }, [
-        autoSelect,
-        availableOptions,
-        locked,
-        token,
-        tokenHoldings,
-        tokenKey,
-        value,
-    ]);
-
-    // Drop the selected network when the *address* changes into a format it
-    // can't take. Picking a network is the user's own choice, so it stands:
-    // the form clears the recipient in response, and clearing the network here
-    // as well would race that reset and leave both fields empty.
+    // Recipient is upstream of destination: any edit to the address drops the
+    // selection so the user re-picks from the networks that address actually
+    // supports. The first run only records the value, so a recipient restored
+    // with the form (step back from review, deep link) keeps its destination.
     useEffect(() => {
         if (locked) return;
-        if (!recipient) {
-            prevRecipientRef.current = "";
-            return;
-        }
 
-        const recipientChanged = prevRecipientRef.current !== recipient;
+        const previous = prevRecipientRef.current;
         prevRecipientRef.current = recipient;
+        if (previous === null || previous === recipient) return;
         if (!value) return;
-        // Options aren't loaded yet — an unresolved selection means nothing.
+
+        onChangeRef.current("");
+    }, [locked, recipient, value]);
+
+    // A selection that is not among the loaded options is stale (e.g. the
+    // token changed under it) and cannot be shown or submitted.
+    useEffect(() => {
+        if (locked || !value) return;
         if (availableOptions.length === 0) return;
+        if (selectedOption) return;
 
-        if (!selectedOption) {
-            onChangeRef.current("");
-            return;
-        }
-
-        // Without the address gate every option is offered, so there is no
-        // compatibility to enforce.
-        if (!requireRecipient || !recipientChanged) return;
-
-        if (
-            !isAddressCompatibleWithNetwork(
-                recipient,
-                selectedOption.networkName,
-                selectedOption.id,
-            )
-        ) {
-            onChangeRef.current("");
-        }
-    }, [
-        availableOptions.length,
-        locked,
-        recipient,
-        requireRecipient,
-        selectedOption,
-        value,
-    ]);
+        onChangeRef.current("");
+    }, [availableOptions.length, locked, selectedOption, value]);
 
     const placeholderText = requireRecipient
         ? !recipient
@@ -444,10 +318,9 @@ export function RecipientNetworkSelect({
                 )}
             >
                 {selectedOption ? (
-                    <img
-                        src={selectedOption.icon}
-                        alt=""
-                        className="size-10 shrink-0 overflow-hidden rounded-full object-cover"
+                    <SelectListIcon
+                        icon={selectedOption.icon}
+                        alt={selectedOption.name}
                     />
                 ) : (
                     <EmptySelectorIcon />
@@ -525,6 +398,13 @@ export function RecipientNetworkSelect({
     return (
         <>
             {selectorButton}
+            {appearance === "card" && warningMessage ? (
+                <WarningMessage
+                    variant="inline"
+                    message={warningMessage}
+                    className="text-sm"
+                />
+            ) : null}
             {errorMessage && (
                 <p className="text-sm text-destructive mt-1">{errorMessage}</p>
             )}
@@ -542,26 +422,36 @@ export function RecipientNetworkSelect({
                         _disabled?: boolean;
                     };
                     if (rich._disabled) return;
-                    userPickedRef.current = true;
-                    autoPickedRef.current = false;
                     onChange(rich._option.id);
                     onNetworkChange?.(rich._option);
                     setOpen(false);
                 }}
-                renderIcon={(option, { searchQuery }) => {
+                renderIcon={(option) => {
                     const rich = option as unknown as {
                         _option: RecipientNetworkOption;
-                        _disabled?: boolean;
                     };
                     return (
-                        <NetworkRow
-                            option={rich._option}
-                            disabled={rich._disabled}
-                            highlightQuery={searchQuery}
+                        <SelectListIcon
+                            icon={rich._option.icon}
+                            alt={`${rich._option.name} network`}
                         />
                     );
                 }}
-                renderContent={() => null}
+                renderContent={(option, { searchQuery }) => {
+                    const rich = option as unknown as {
+                        _option: RecipientNetworkOption;
+                    };
+                    return (
+                        <SelectorOptionLabels
+                            primary={rich._option.name}
+                            secondary={rich._option.description}
+                            highlightQuery={searchQuery}
+                            primaryClassName={getNetworkDisplayCaseClass(
+                                rich._option.id,
+                            )}
+                        />
+                    );
+                }}
             />
         </>
     );

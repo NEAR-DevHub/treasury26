@@ -3,7 +3,6 @@ import {
     ArrowDataTransferHorizontalIcon,
     ArrowDown01Icon,
     Bookmark01Icon,
-    CircleQuestionMarkIcon,
     Home04Icon,
     InboxIcon,
     SentIcon,
@@ -568,23 +567,7 @@ export function Sidebar({ onClose }: SidebarProps) {
                         live in here now — see `sidebar-profile-menu.tsx`. */}
                     <SidebarProfileMenu
                         isReduced={isReduced}
-                        onOpenSupport={() => {
-                            return (
-                                <NavLink
-                                    id="help-support-link"
-                                    isActive={false}
-                                    icon={CircleQuestionMarkIcon}
-                                    hoverAnimation="wiggle"
-                                    label={tNav("helpSupport")}
-                                    showLabels={!isReduced}
-                                    onClick={() => {
-                                        // close if mobile
-                                        if (isMobile) onClose();
-                                        setSupportModalOpen(true);
-                                    }}
-                                />
-                            );
-                        }}
+                        onOpenSupport={() => setSupportModalOpen(true)}
                     />
                 </div>
             </div>

@@ -72,6 +72,7 @@ export function MobileUserHeaderButton() {
     return (
         <button
             type="button"
+            data-tour-help-support=""
             onClick={() => openSheet("user")}
             aria-label={accountId}
             className="flex size-9 items-center justify-center"

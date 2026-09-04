@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useImageLoadError } from "@/hooks/use-image-load-error";
 import { isIconUrl } from "@/lib/icon-url";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ export function TokenIconImage({
     gradient,
     badge = false,
     objectFit = "cover",
+    fallback,
 }: {
     icon?: string | null;
     alt: string;
@@ -58,6 +60,8 @@ export function TokenIconImage({
     /** Sit as the network overlay: card ring, shadow, bottom-right. */
     badge?: boolean;
     objectFit?: "cover" | "contain";
+    /** Replaces the letter disc when the icon is missing or fails to load. */
+    fallback?: ReactNode;
 }) {
     const iconUrl = isIconUrl(icon) ? icon : null;
     const image = useImageLoadError(iconUrl);
@@ -110,6 +114,8 @@ export function TokenIconImage({
             />
         );
     }
+
+    if (fallback) return fallback;
 
     return (
         <div

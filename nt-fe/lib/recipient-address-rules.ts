@@ -8,7 +8,10 @@
  *   so the option does not vanish while the user types.
  */
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
-import { isValidAddress } from "@/lib/address-validation";
+import {
+    findMatchingBlockchainType,
+    isValidAddress,
+} from "@/lib/address-validation";
 import { type BlockchainType, getBlockchainType } from "@/lib/blockchain-utils";
 import { isNearComNetwork } from "@/lib/intents-network";
 import { isValidNearAddressFormat } from "@/lib/near-address-format";
@@ -88,22 +91,63 @@ export function checkRecipientAddressFormat({
     if (!trimmed) return "invalidFormat";
 
     const nearComDestination = isNearCom(destination);
+    const blockchain = nearComDestination
+        ? NEAR_NETWORK_ID
+        : resolveRecipientBlockchain(destination.network);
+    // Whether the prefix belongs is a statement about the destination, so it
+    // can only be made once one is known. Judging it first read "no
+    // destination" as "not near.com" and rejected every `nearcom:` address
+    // typed before a network was picked.
+    if (blockchain === "unknown") return "unknownDestination";
+
     const prefixIssue = nearComPrefixIssue({
         address: trimmed,
         isNearComDestination: nearComDestination,
     });
     if (prefixIssue) return prefixIssue;
 
-    const blockchain = nearComDestination
-        ? NEAR_NETWORK_ID
-        : resolveRecipientBlockchain(destination.network);
-    if (blockchain === "unknown") return "unknownDestination";
-
     const { accountId } = parseNearComAddress(trimmed);
     if (blockchain === NEAR_NETWORK_ID) {
         return isValidNearAddressFormat(accountId) ? null : "invalidFormat";
     }
     return isValidAddress(accountId, blockchain) ? null : "invalidFormat";
+}
+
+/**
+ * The chain an address belongs to, judged from the address alone. `null` when
+ * it matches nothing we support — a contact name or other free text.
+ *
+ * This is what lets the recipient be entered before a destination exists: the
+ * address is validated on its own chain instead of against whatever network
+ * happens to be selected, so switching to another chain's address is never
+ * blocked. `nearcom:` names the near.com route, and is only an address when a
+ * valid NEAR account follows it.
+ */
+export function inferRecipientBlockchain(
+    address: string,
+): BlockchainType | null {
+    const trimmed = address.trim();
+    if (!trimmed) return null;
+
+    const { hasPrefix, accountId } = parseNearComAddress(trimmed);
+    if (hasPrefix) {
+        return isValidNearAddressFormat(accountId) ? NEAR_NETWORK_ID : null;
+    }
+    // `0x…` and 64-char hex are valid NEAR implicit accounts as well as EVM
+    // addresses; NEAR wins here because it accepts both and the destination
+    // picker still offers every chain the format fits.
+    if (isValidNearAddressFormat(trimmed)) return NEAR_NETWORK_ID;
+    return findMatchingBlockchainType(trimmed);
+}
+
+/**
+ * Whether a typed string looks like a real wallet address before a
+ * destination is chosen. Used by the recipient modal so contact names
+ * (and other free text) are rejected, while any chain the token might
+ * later route to can still be entered.
+ */
+export function isRecognizedRecipientAddress(address: string): boolean {
+    return inferRecipientBlockchain(address) !== null;
 }
 
 /**

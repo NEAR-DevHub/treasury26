@@ -12,6 +12,7 @@ import {
     DASHBOARD_TOUR_TREASURY_STEP,
     dashboardTourStepSide,
     dashboardTourSurface,
+    helpSupportTourStepSide,
 } from "./dashboard-tour-targets";
 
 describe("dashboardTourSurface", () => {
@@ -56,5 +57,15 @@ describe("dashboardTourStepSide", () => {
         expect(dashboardTourStepSide(DASHBOARD_TOUR_TREASURY_STEP, true)).toBe(
             "top-left",
         );
+    });
+});
+
+describe("helpSupportTourStepSide", () => {
+    it("sits beside the sidebar account row on large screens", () => {
+        expect(helpSupportTourStepSide(false)).toBe("right");
+    });
+
+    it("drops below the header avatar on small screens", () => {
+        expect(helpSupportTourStepSide(true)).toBe("bottom");
     });
 });

@@ -2,6 +2,7 @@ import { DASHBOARD_TOUR, INFO_BOX_TOUR } from "./dashboard";
 import {
     MEMBERS_PENDING_TOUR,
     NEW_FEATURE_TOUR,
+    PAYMENTS_BULK_TOUR,
     REQUEST_TEMPLATES_TOUR,
 } from "./page-tours";
 
@@ -10,5 +11,6 @@ export const TOURS = [
     INFO_BOX_TOUR,
     MEMBERS_PENDING_TOUR,
     NEW_FEATURE_TOUR,
+    PAYMENTS_BULK_TOUR,
     REQUEST_TEMPLATES_TOUR,
 ];

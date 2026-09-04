@@ -28,6 +28,7 @@ import {
     decimalFromBaseUnits,
     decimalFromBaseUnitsOrNull,
     decimalOrNull,
+    quantizeTokenAmount,
 } from "@/lib/amount-format";
 import {
     parseUsdOverride,
@@ -37,6 +38,7 @@ import {
 import { availableBalance } from "@/lib/balance";
 import { getPaymentBalanceWarning } from "@/lib/intents-fee";
 import { findMatchingTreasuryAsset } from "@/lib/match-treasury-asset";
+import { sanitizeAmountInput } from "@/lib/sanitize-amount-input";
 import { cn } from "@/lib/utils";
 import { Button } from "./button";
 import { FormattedAmount } from "./formatted-amount";
@@ -47,10 +49,6 @@ import { TokenDisplay } from "./token-display-with-network";
 import TokenSelect, { type SelectedTokenData } from "./token-select";
 import { FormField } from "./ui/form";
 import { WarningMessage } from "./warning-message";
-
-function sanitizeAmountInput(value: string): string {
-    return value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
-}
 
 function focusCardAmountInput(
     event: MouseEvent<HTMLElement>,
@@ -352,10 +350,16 @@ export function TokenInput<
                     if (!decimals) return;
                     let maxAmount: string;
                     try {
-                        maxAmount = decimalFromBaseUnits(
+                        const exact = decimalFromBaseUnits(
                             tokenBalance,
                             decimals,
-                        ).toFixed();
+                        );
+                        maxAmount =
+                            quantizeTokenAmount(exact, {
+                                tokenDecimals: decimals,
+                                unitPriceUsd: tokenPrice,
+                                rounding: "down",
+                            }) ?? exact.toFixed();
                     } catch {
                         return;
                     }
@@ -387,8 +391,9 @@ export function TokenInput<
                     }
                     if (!isEntireInputSelected(e.currentTarget)) return;
 
-                    const nextValue = e.key.replace(/[^0-9.]/g, "");
-                    if (nextValue === "" && e.key !== ".") return;
+                    const nextValue = sanitizeAmountInput(e.key);
+                    if (nextValue === "" && e.key !== "." && e.key !== ",")
+                        return;
 
                     e.preventDefault();
                     onAmountInput?.();

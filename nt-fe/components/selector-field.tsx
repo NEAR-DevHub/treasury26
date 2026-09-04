@@ -38,7 +38,7 @@ export const selectorTriggerClassName =
 
 /** Scrollable list inside payment select modals. Fills the sheet on mobile. */
 export const paymentSelectModalListClassName =
-    "min-h-0 flex-1 touch-pan-y overscroll-contain sm:h-140 sm:max-h-[90vh] [&>[data-slot=scroll-area-viewport]]:overflow-y-auto";
+    "min-h-0 flex-1 touch-pan-y overscroll-contain sm:h-140 sm:max-h-[90vh] [&>[data-slot=scroll-area-viewport]]:overflow-y-auto [&>[data-slot=scroll-area-viewport]]:pr-1";
 
 /** Search field in token / network select modals. */
 export const paymentSelectModalSearchInputClassName =

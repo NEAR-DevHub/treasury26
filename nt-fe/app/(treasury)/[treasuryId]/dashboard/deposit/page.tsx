@@ -20,7 +20,7 @@ export default function DepositPage() {
         <PageComponentLayout
             title={t("title")}
             backButton={treasuryId ? `/${treasuryId}/dashboard` : true}
-            backKind="section"
+            backKind="nested"
             hideMobileShellControls
         >
             <div className="flex justify-center w-full">

@@ -110,6 +110,41 @@ export function pickUsdcNearFromTokens(
     return null;
 }
 
+function isSameSwapToken(
+    a: { address: string; network: string },
+    b: { address: string; network: string },
+): boolean {
+    return a.address === b.address && a.network === b.network;
+}
+
+/**
+ * Default swap pair:
+ * 1) sell = highest-USD owned network (same as Payments)
+ * 2) receive = `defaultReceive`, or `receiveIfSellMatches` when sell is that token
+ * 3) no holdings → `fallbackSell` / `defaultReceive` (BTC → ETH today)
+ */
+export function pickDefaultSwapPair<
+    T extends { address: string; network: string },
+>(
+    tokens: MergedToken[],
+    fallback: {
+        sell: T;
+        receive: T;
+        receiveIfSellMatches: T;
+    },
+    options?: {
+        disableTokens?: DefaultTokenFilter;
+    },
+): { sellToken: SelectedTokenData | T; receiveToken: T } {
+    const sellToken =
+        pickHighestUsdOwnedToken(tokens, options?.disableTokens) ??
+        fallback.sell;
+    const receiveToken = isSameSwapToken(sellToken, fallback.receive)
+        ? fallback.receiveIfSellMatches
+        : fallback.receive;
+    return { sellToken, receiveToken };
+}
+
 /**
  * Default token for Payments / Bulk / TokenSelect (not Exchange, not Deposit):
  * 1) most USD-valuable owned network from cached assets

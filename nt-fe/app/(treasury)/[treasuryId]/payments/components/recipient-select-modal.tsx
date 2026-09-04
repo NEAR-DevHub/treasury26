@@ -22,20 +22,18 @@ import {
 } from "@/features/address-book";
 import type { ChainInfo } from "@/features/address-book/chains";
 import { getBlockchainType } from "@/lib/blockchain-utils";
+import { formatShortAddress } from "@/lib/format-short-address";
 import { isNearComNetwork } from "@/lib/intents-network";
+import { isValidNearAddressFormat } from "@/lib/near-address-format";
 import { validateNearAddress } from "@/lib/near-validation";
 import { stripNearComAddressPrefix } from "@/lib/nearcom-address";
 import {
     checkRecipientAddressFormat,
+    isRecognizedRecipientAddress,
     resolveRecipientBlockchain,
 } from "@/lib/recipient-address-rules";
 import { cn } from "@/lib/utils";
 import { RecipientQrScanner } from "./recipient-qr-scanner";
-
-function shortAddress(address: string, prefix = 6, suffix = 6): string {
-    if (address.length <= prefix + suffix) return address;
-    return `${address.slice(0, prefix)}...${address.slice(-suffix)}`;
-}
 
 function ContactAvatar() {
     return (
@@ -113,10 +111,27 @@ export function RecipientSelectModal({
                 network: networkName,
             });
 
-            // No destination network yet — don't claim the string is a valid
-            // chain address (length>=2 was incorrectly accepting contact names).
+            // No destination yet — accept any recognized chain format so
+            // the dest picker can show which networks that address supports.
             if (issue === "unknownDestination") {
-                setIsValid(false);
+                if (!isRecognizedRecipientAddress(trimmed)) {
+                    setIsValid(false);
+                    setShowInvalid(true);
+                    setIsValidating(false);
+                    return;
+                }
+                const accountId = stripNearComAddressPrefix(trimmed);
+                if (isValidNearAddressFormat(accountId)) {
+                    setIsValidating(true);
+                    const result = await validateNearAddress(accountId);
+                    if (seq !== validationSeq.current) return;
+                    const ok = result === null;
+                    setIsValidating(false);
+                    setIsValid(ok);
+                    setShowInvalid(!ok);
+                    return;
+                }
+                setIsValid(true);
                 setShowInvalid(false);
                 setIsValidating(false);
                 return;
@@ -187,18 +202,10 @@ export function RecipientSelectModal({
     const hasMatchingContacts = searchedContacts.length > 0;
     // Address errors only when the query isn't matching contacts (name search).
     const showInvalidError =
-        !!draft.trim() &&
-        showInvalid &&
-        !isValidating &&
-        !hasMatchingContacts &&
-        blockchain !== "unknown";
+        !!draft.trim() && showInvalid && !isValidating && !hasMatchingContacts;
 
     const showTypedAddressRow =
-        !!draft.trim() &&
-        isValid &&
-        !isValidating &&
-        !showInvalid &&
-        blockchain !== "unknown";
+        !!draft.trim() && isValid && !isValidating && !showInvalid;
 
     const handlePickAddress = (address: string, contact?: AddressBookEntry) => {
         onSelect({ address, contact: contact ?? null });
@@ -250,7 +257,7 @@ export function RecipientSelectModal({
                                 autoFocus
                                 autoComplete="off"
                                 autoCorrect="off"
-                                className="h-full min-w-0 flex-1 border-0 bg-transparent text-sm font-medium leading-normal text-muted-foreground outline-none placeholder:text-muted-foreground"
+                                className="h-full min-w-0 flex-1 border-0 bg-transparent text-base font-medium leading-normal text-muted-foreground outline-none placeholder:text-muted-foreground md:text-sm"
                                 onKeyDown={(e) => {
                                     if (
                                         e.key === "Enter" &&
@@ -335,7 +342,7 @@ export function RecipientSelectModal({
                                 >
                                     <ContactAvatar />
                                     <span className="truncate text-base font-semibold leading-tight text-foreground">
-                                        {shortAddress(draft.trim())}
+                                        {formatShortAddress(draft.trim())}
                                     </span>
                                 </button>
                             ) : null}
@@ -375,7 +382,7 @@ export function RecipientSelectModal({
                                                                 {entry.name}
                                                             </span>
                                                             <span className="truncate text-sm font-medium leading-normal text-general-secondary-foreground">
-                                                                {shortAddress(
+                                                                {formatShortAddress(
                                                                     entry.address,
                                                                 )}
                                                             </span>

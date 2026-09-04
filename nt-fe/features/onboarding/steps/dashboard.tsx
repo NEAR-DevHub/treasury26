@@ -9,7 +9,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/button";
 import { Icon } from "@/components/icon";
 import { features } from "@/constants/features";
-import { DASHBOARD_TOUR_SELECTOR_RETRY } from "@/features/onboarding/dashboard-tour-targets";
+import {
+    DASHBOARD_TOUR_SELECTOR_RETRY,
+    helpSupportTourStepSide,
+    waitForSettledTourTarget,
+} from "@/features/onboarding/dashboard-tour-targets";
 import {
     hasSeenFeature,
     markFeatureSeen,
@@ -142,6 +146,7 @@ export const INFO_BOX_TOUR: Tour = {
             showSkip: false,
             pointerPadding: 8,
             pointerRadius: 8,
+            ...DASHBOARD_TOUR_SELECTOR_RETRY,
         },
     ],
 };
@@ -223,25 +228,30 @@ function FloatingTooltip({
     );
 }
 
-const HELP_SUPPORT_TOUR_SIDEBAR_DELAY_MS = 350;
-
+/**
+ * Starts the Help & Support spotlight after the dashboard info box is closed.
+ *
+ * The target is the visible profile control: the sidebar account row on large
+ * screens, the header avatar on small ones. The desktop sidebar is
+ * `display: none` below `lg`, so opening it on a phone would start the tour
+ * overlay against a hidden node — the card never appears and the screen
+ * stays blocked.
+ */
 export function scheduleHelpSupportTour(
     startNextStep: (tourName: string) => void,
-    setSidebarOpen: (open: boolean) => void,
 ) {
     if (typeof window === "undefined") {
         return;
     }
 
-    const isMobile = window.innerWidth < 1024;
-    const start = () => startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
-
-    if (isMobile) {
-        setSidebarOpen(true);
-        setTimeout(start, HELP_SUPPORT_TOUR_SIDEBAR_DELAY_MS + 100);
-    } else {
-        setTimeout(start, 300);
+    const step = INFO_BOX_TOUR.steps[0];
+    if (step) {
+        step.side = helpSupportTourStepSide();
     }
+
+    void waitForSettledTourTarget(SELECTOR_IDS.HELP_SUPPORT_LINK).then(() => {
+        startNextStep(TOUR_NAMES.INFO_BOX_DISMISSED);
+    });
 }
 
 export function WelcomeTooltip() {

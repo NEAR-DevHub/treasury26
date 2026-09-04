@@ -5,8 +5,8 @@
  * across multiple blockchains. All validation is regex-based for format checking.
  */
 
-import { BlockchainType } from "./blockchain-utils";
 import { NEAR_NETWORK_ID } from "@/constants/network-ids";
+import type { BlockchainType } from "./blockchain-utils";
 
 /**
  * Validation result with optional error message
@@ -203,6 +203,30 @@ export function validateAddress(
  */
 export function getAddressPattern(blockchain: BlockchainType): RegExp | null {
     return ADDRESS_PATTERNS[blockchain];
+}
+
+/**
+ * First known non-NEAR chain whose pattern matches, or null when nothing does.
+ * NEAR named / implicit accounts are checked separately — this is only the
+ * regex catalog (EVM, Solana, Bitcoin, …). Unknown / missing patterns are
+ * excluded so a contact name cannot sneak through.
+ *
+ * Several chains share the `0x…` shape; the catalog order decides, so an
+ * EVM-length address resolves to Ethereum rather than Starknet / Aptos.
+ */
+export function findMatchingBlockchainType(
+    address: string,
+): BlockchainType | null {
+    const trimmed = address.trim();
+    if (!trimmed) return null;
+
+    for (const [type, pattern] of Object.entries(ADDRESS_PATTERNS)) {
+        if (type === NEAR_NETWORK_ID || type === "unknown" || !pattern) {
+            continue;
+        }
+        if (pattern.test(trimmed)) return type as BlockchainType;
+    }
+    return null;
 }
 
 /**

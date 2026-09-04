@@ -4,7 +4,6 @@ import { ArrowLeft01Icon, CheckIcon } from "@hugeicons/core-free-icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/button";
-import { HighlightedText } from "@/components/highlighted-text";
 import { Icon } from "@/components/icon";
 import { Input } from "@/components/input";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/modal";
@@ -20,8 +19,8 @@ import {
     paymentSelectModalListClassName,
     paymentSelectModalSearchInputClassName,
 } from "@/components/selector-field";
+import { SelectorOptionRow } from "@/components/selector-option-row";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 
 export interface SelectOption extends SelectListItem {}
 
@@ -153,51 +152,31 @@ export function SelectModal({
         const { primary, secondary } = getSelectOptionLabels(item);
 
         return (
-            <Button
+            <SelectorOptionRow
                 key={item.id}
-                onClick={() => handleSelect(item)}
-                variant="ghost"
+                selected={selectedId === item.id}
                 disabled={item.disabled}
-                className={cn(
-                    "w-full flex items-center gap-1 py-2.5 rounded-xl h-auto justify-start pl-1.5! mx-1 my-0.5",
-                    selectedId === item.id
-                        ? "bg-muted hover:bg-muted focus-visible:bg-muted"
-                        : "hover:bg-muted-foreground/5 focus-visible:bg-muted-foreground/5",
-                    item.disabled &&
-                        "opacity-60 cursor-not-allowed pointer-events-none",
-                )}
-            >
-                {renderIcon ? (
-                    renderIcon(item, renderContext)
-                ) : (
-                    <SelectListIcon
-                        icon={item.icon}
-                        gradient={item.gradient}
-                        alt={item.symbol || item.name}
-                    />
-                )}
-                {renderContent ? (
-                    renderContent(item, renderContext)
-                ) : (
-                    <div className="flex-1 text-left">
-                        <div className="font-semibold">
-                            <HighlightedText
-                                text={primary}
-                                query={searchQuery}
-                            />
-                        </div>
-                        {secondary && (
-                            <div className="text-sm text-muted-foreground">
-                                <HighlightedText
-                                    text={secondary}
-                                    query={searchQuery}
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
-                {resolvedRenderRight(item)}
-            </Button>
+                onClick={() => handleSelect(item)}
+                icon={
+                    renderIcon ? (
+                        renderIcon(item, renderContext)
+                    ) : (
+                        <SelectListIcon
+                            icon={item.icon}
+                            gradient={item.gradient}
+                            alt={item.symbol || item.name}
+                        />
+                    )
+                }
+                trailing={resolvedRenderRight(item)}
+                {...(renderContent
+                    ? { children: renderContent(item, renderContext) }
+                    : {
+                          primary,
+                          secondary,
+                          highlightQuery: searchQuery,
+                      })}
+            />
         );
     };
 

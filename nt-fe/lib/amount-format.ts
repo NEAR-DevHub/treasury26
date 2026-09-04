@@ -215,6 +215,52 @@ function displayFractionCap(tokenDecimals?: number): number {
     return Math.min(tokenDecimals, DISPLAY_FRACTION_CAP);
 }
 
+function tokenDisplayFractionDigits(
+    parsed: Big,
+    options: Pick<
+        TokenQuantityOptions,
+        "profile" | "tokenDecimals" | "unitPriceUsd"
+    >,
+): number {
+    const profile = options.profile ?? "standard";
+    const cap = displayFractionCap(options.tokenDecimals);
+    if (profile === "exact") {
+        return canonicalFractionDigits(canonicalDecimal(parsed));
+    }
+    const price = decimalOrNull(options.unitPriceUsd);
+    return Math.min(
+        cap,
+        Math.max(
+            decimalsForSignificantDigits(parsed, SIGNIFICANT_DIGITS[profile]),
+            decimalsForCentAccuracy(price),
+        ),
+    );
+}
+
+/**
+ * Round a token amount to the same fraction digits the UI shows, for inputs
+ * (MAX, quoted receive/sell). Default `down` so spendable/received values
+ * never exceed the real amount.
+ */
+export function quantizeTokenAmount(
+    value: AmountValue | null | undefined,
+    options: TokenQuantityOptions = {},
+): string | null {
+    const parsed = decimalOrNull(value);
+    if (!parsed) return null;
+    if (parsed.eq(0)) return "0";
+
+    const { profile = "standard", rounding = "down" } = options;
+    if (profile === "exact") return canonicalDecimal(parsed);
+
+    const fractionDigits = tokenDisplayFractionDigits(parsed, options);
+    const rounded = parsed.round(fractionDigits, roundingMode(rounding));
+    if (parsed.abs().gt(0) && rounded.eq(0)) {
+        return canonicalDecimal(parsed);
+    }
+    return canonicalDecimal(rounded);
+}
+
 function thresholdDisplay(
     fractionDigits: number,
     locale: string,
@@ -279,14 +325,7 @@ export function formatTokenQuantity(
         };
     }
 
-    const price = decimalOrNull(options.unitPriceUsd);
-    const fractionDigits = Math.min(
-        cap,
-        Math.max(
-            decimalsForSignificantDigits(parsed, SIGNIFICANT_DIGITS[profile]),
-            decimalsForCentAccuracy(price),
-        ),
-    );
+    const fractionDigits = tokenDisplayFractionDigits(parsed, options);
     const rounded = parsed.round(fractionDigits, roundingMode(rounding));
     const roundedCanonical = canonicalDecimal(rounded);
 

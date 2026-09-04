@@ -67,31 +67,22 @@ describe("in-app navigation", () => {
         ).toBe(false);
     });
 
-    it("shows nested back even without in-app history", () => {
+    it("shows nested back on second-level screens", () => {
         expect(
             shouldShowPageBack({
                 hasBackButton: true,
                 backKind: "nested",
-                cameFromApp: false,
             }),
         ).toBe(true);
     });
 
-    it("hides section back until the user arrives from inside the app", () => {
+    it("never shows section back on top-level destinations", () => {
         expect(
             shouldShowPageBack({
                 hasBackButton: true,
                 backKind: "section",
-                cameFromApp: false,
             }),
         ).toBe(false);
-        expect(
-            shouldShowPageBack({
-                hasBackButton: true,
-                backKind: "section",
-                cameFromApp: true,
-            }),
-        ).toBe(true);
     });
 
     it("ignores an external referrer with no prior path", () => {

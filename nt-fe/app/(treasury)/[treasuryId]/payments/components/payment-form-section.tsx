@@ -36,8 +36,13 @@ import {
 import { type ChainInfo, useChains } from "@/features/address-book/chains";
 import type { BridgeAsset } from "@/hooks/use-bridge-tokens";
 import { useTreasury } from "@/hooks/use-treasury";
+import { formatShortAddress } from "@/lib/format-short-address";
 import { isNearComNetwork } from "@/lib/intents-network";
-import { resolveRecipientBlockchain } from "@/lib/recipient-address-rules";
+import { hasNearComAddressPrefix } from "@/lib/nearcom-address";
+import {
+    inferRecipientBlockchain,
+    resolveRecipientBlockchain,
+} from "@/lib/recipient-address-rules";
 import type { SectionRule } from "@/lib/section-rules";
 import {
     type RecipientNetworkRuleOption,
@@ -209,8 +214,16 @@ export function PaymentFormSection<
         : (watched[2] ?? "")) ||
         recipientNetworkOverride ||
         "") as string;
-    const requireNearComPrefix =
-        requireNearComPrefixProp || isNearComNetwork(destinationNetworkId);
+    // Bulk and locked-destination flows fix the network upstream, so there the
+    // address is judged against it. When the user picks the destination
+    // themselves the address comes first and is judged on its own chain.
+    const validateAgainstDestination =
+        hideRecipientNetwork || destinationLocked;
+    const requireNearComPrefix = validateAgainstDestination
+        ? requireNearComPrefixProp || isNearComNetwork(destinationNetworkId)
+        : // Address-led: the prefix picks near.com, so it is always allowed
+          // and never demanded by the current selection.
+          hasNearComAddressPrefix(recipient);
     // Picker stores the chain name (`near`) separately from the option id
     // (`near.com`). Address-book matching must use the option id or near.com
     // contacts are filtered as bare NEAR.
@@ -271,17 +284,27 @@ export function PaymentFormSection<
         ];
     }, [selectedContact, tRecipientNetwork]);
 
-    // For bulk (hideRecipientNetwork=true) validate against the receive
-    // network (override or form field), falling back to NEAR. When the
-    // network selector is shown, the recipient input runs in "unknown" mode
-    // and compatibility is surfaced through the network selector sections.
+    const inferredRecipientChain = useMemo(
+        () => inferRecipientBlockchain(recipient),
+        [recipient],
+    );
+
+    // Bulk validates against the receive network (override or form field),
+    // falling back to NEAR. Elsewhere the address names its own chain, so a
+    // recipient on another network is never rejected by the current pick.
     const blockchainType = useMemo(() => {
+        if (!validateAgainstDestination) {
+            return inferredRecipientChain ?? "unknown";
+        }
         if (selectedNetworkName) {
             return resolveRecipientBlockchain(selectedNetworkName);
         }
-        if (!hideRecipientNetwork) return "unknown";
         return NEAR_NETWORK_ID;
-    }, [hideRecipientNetwork, selectedNetworkName]);
+    }, [
+        inferredRecipientChain,
+        selectedNetworkName,
+        validateAgainstDestination,
+    ]);
 
     const hasSelectedNetwork = !!selectedNetworkName;
     const hasValidAmount = useMemo(() => {
@@ -379,11 +402,17 @@ export function PaymentFormSection<
         ? getNetworkDisplayName(selectedNetworkName)
         : null;
 
+    // `unknown` makes AccountInput accept any non-empty string, so an address
+    // that matches no supported chain is rejected here instead.
+    const isRecipientUnrecognized =
+        !validateAgainstDestination && !!recipient && !inferredRecipientChain;
+
     const isSaveDisabled =
         slotBlocked ||
         !hasValidAmount ||
         !recipient ||
-        (hideRecipientNetwork && !recipientLocked && !isRecipientValid) ||
+        (!recipientLocked && !isRecipientValid) ||
+        isRecipientUnrecognized ||
         (!hideRecipientNetwork && !hasSelectedNetwork) ||
         showRestrictedRecipientAlert ||
         isValidatingRecipient ||
@@ -431,8 +460,6 @@ export function PaymentFormSection<
                         recipient={recipient}
                         sectionRules={networkSectionRules}
                         appearance="card"
-                        requireRecipient={false}
-                        autoSelect={!destinationLocked}
                         locked={destinationLocked}
                         label={tRecipientNetwork("label")}
                         placeholder={tRecipientNetwork("placeholder")}
@@ -470,13 +497,28 @@ export function PaymentFormSection<
             />
         ) : null;
 
+    const shortRecipient = recipient ? formatShortAddress(recipient) : "";
     const recipientRow = (
         <span className="flex min-w-0 flex-1 flex-col items-start gap-px">
-            <span className="text-sm font-medium leading-normal text-muted-foreground">
-                {tPay("recipientLabel")}
+            <span
+                className={
+                    selectedContact
+                        ? "max-w-full truncate text-base font-medium leading-tight text-foreground"
+                        : "text-sm font-medium leading-normal text-muted-foreground"
+                }
+            >
+                {selectedContact
+                    ? selectedContact.name
+                    : tPay("recipientLabel")}
             </span>
-            <span className="max-w-full truncate text-base font-medium leading-tight text-foreground">
-                {recipient || tPay("selectRecipientPlaceholder")}
+            <span
+                className={
+                    selectedContact
+                        ? "max-w-full truncate text-sm font-medium leading-normal text-general-secondary-foreground"
+                        : "max-w-full truncate text-base font-medium leading-tight text-foreground"
+                }
+            >
+                {shortRecipient || tPay("selectRecipientPlaceholder")}
             </span>
         </span>
     );
@@ -509,8 +551,6 @@ export function PaymentFormSection<
                     )}
                 />
 
-                {destinationNetworkField}
-
                 {recipientLocked ? (
                     <div className={selectorTriggerClassName}>
                         <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-general-border bg-muted">
@@ -541,6 +581,8 @@ export function PaymentFormSection<
                         />
                     </Button>
                 )}
+
+                {destinationNetworkField}
             </div>
 
             <TokenInput
@@ -596,11 +638,17 @@ export function PaymentFormSection<
                     contacts={addressBook}
                     chainMap={chainMap}
                     networkName={
-                        isNearComNetwork(destinationNetworkId)
-                            ? destinationNetworkId
-                            : selectedNetworkName || null
+                        destinationLocked || hideRecipientNetwork
+                            ? isNearComNetwork(destinationNetworkId)
+                                ? destinationNetworkId
+                                : selectedNetworkName || null
+                            : null
                     }
-                    networkDisplayName={networkDisplayName}
+                    networkDisplayName={
+                        destinationLocked || hideRecipientNetwork
+                            ? networkDisplayName
+                            : null
+                    }
                     onSelect={({ address, contact }) => {
                         setSelectedContact(contact ?? null);
                         setRecipientValue(
