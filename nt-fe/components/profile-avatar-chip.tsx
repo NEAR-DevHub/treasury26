@@ -5,23 +5,35 @@ import { useState } from "react";
 import { Icon } from "@/components/icon";
 import { cn } from "@/lib/utils";
 
+/** Chip geometry: the box and the glyph scale together, so they live as one entry. */
+const variantClasses = {
+    medium: { container: "size-7", glyph: "size-4.5" },
+    large: { container: "size-9", glyph: "size-5.5" },
+} as const;
+
+type ProfileAvatarChipVariant = keyof typeof variantClasses;
+
 interface ProfileAvatarChipProps {
     /** The account's own picture. Falls back to the icon when absent/broken. */
     imageUrl?: string;
     /** Alt text for the picture. */
     name?: string;
+    /** 28px by default; `large` is the 36px header size. */
+    variant?: ProfileAvatarChipVariant;
     className?: string;
 }
 
 /**
- * The 28px account chip used by the sidebar's profile-menu trigger and the
- * address tooltip: the account's picture when it has one, otherwise a user
- * glyph on brand green. `rounded-sm` is the design's 8px — this project rebases
- * the radius scale on `--radius: 0.75rem`, so `rounded-lg` would be 12px.
+ * The account chip used by the sidebar's profile-menu trigger, the address
+ * tooltip and the mobile header: the account's picture when it has one,
+ * otherwise a user glyph on brand green. `rounded-sm` is the design's 8px —
+ * this project rebases the radius scale on `--radius: 0.75rem`, so
+ * `rounded-lg` would be 12px.
  */
 export function ProfileAvatarChip({
     imageUrl,
     name,
+    variant = "medium",
     className,
 }: ProfileAvatarChipProps) {
     // Keyed by URL rather than a boolean so a changed picture gets a fresh try.
@@ -30,7 +42,8 @@ export function ProfileAvatarChip({
     // until the chip remounts.
     const [brokenImageUrl, setBrokenImageUrl] = useState<string>();
 
-    const containerClass = cn("size-7 shrink-0 rounded-sm", className);
+    const { container, glyph } = variantClasses[variant];
+    const containerClass = cn(container, "shrink-0 rounded-sm", className);
 
     if (imageUrl && imageUrl !== brokenImageUrl) {
         return (
@@ -51,7 +64,7 @@ export function ProfileAvatarChip({
                 "flex items-center justify-center bg-green-700 text-white",
             )}
         >
-            <Icon icon={User02Icon} fill="white" />
+            <Icon icon={User02Icon} className={glyph} fill="white" />
         </span>
     );
 }
