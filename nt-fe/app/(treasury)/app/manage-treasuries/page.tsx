@@ -1,10 +1,9 @@
 "use client";
-import { Icon } from "@/components/icon";
 import {
     ArrowUpRight01Icon,
     Delete01Icon,
     ViewIcon,
-    ViewOffIcon,
+    ViewOffSlashIcon,
 } from "@hugeicons/core-free-icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,9 +12,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/button";
 import { PageCard } from "@/components/card";
 import { GuestBadge } from "@/components/guest-badge";
-import { PageComponentLayout } from "@/components/page-component-layout";
-import { Skeleton } from "@/components/ui/skeleton";
-import { resolveTreasuryHomeHref } from "@/lib/treasury-home";
+import { Icon } from "@/components/icon";
 import {
     Dialog,
     DialogContent,
@@ -24,27 +21,69 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/modal";
+import { PageComponentLayout } from "@/components/page-component-layout";
 import { TreasuryBalance, TreasuryLogo } from "@/components/treasury-info";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTreasury } from "@/hooks/use-treasury";
 import {
     useHideTreasuryMutation,
     useRemoveSavedTreasuryMutation,
     useUnhideTreasuryMutation,
 } from "@/hooks/use-treasury-mutations";
 import { useUserTreasuriesWithOptions } from "@/hooks/use-treasury-queries";
-import { useNear } from "@/stores/near-store";
 import type { Treasury } from "@/lib/api";
-import { StepperHeader } from "@/components/step-wizard";
-import { useTreasury } from "@/hooks/use-treasury";
+import { resolveTreasuryHomeHref } from "@/lib/treasury-home";
+import { useNear } from "@/stores/near-store";
+
+/**
+ * The design gives each list its own narrow card, centred rather than spread
+ * across the page, and lines the cards up with the back button on a phone.
+ * The stacked mobile header already leaves a gap above the first card, so the
+ * 20px the design puts under the header only kicks in from `lg`.
+ */
+const COLUMN_CLASS = "mx-auto flex w-full max-w-[464px] flex-col gap-5 lg:pt-5";
+const MAIN_CLASS = "px-3 md:px-6";
+/**
+ * The 28px, 8px-radius square the design gives each row's controls. The theme
+ * scales `rounded-lg` to 12px, so 8px is `rounded-sm`.
+ */
+const ROW_ICON_BUTTON_CLASS =
+    "size-7 rounded-sm text-general-secondary-foreground";
+
+function TreasurySection({
+    title,
+    description,
+    children,
+}: {
+    title: string;
+    description: React.ReactNode;
+    children: React.ReactNode;
+}) {
+    return (
+        <PageCard className="gap-3 rounded-3xl p-5">
+            <div className="flex flex-col gap-[5px]">
+                <h2 className="font-semibold text-base leading-[1.2]">
+                    {title}
+                </h2>
+                <div className="text-sm text-general-secondary-foreground">
+                    {description}
+                </div>
+            </div>
+            <div className="flex flex-col">{children}</div>
+        </PageCard>
+    );
+}
 
 function TreasuryRowSkeleton() {
     return (
-        <div className="flex gap-2 items-center bg-tertiary rounded-md px-2 py-1.5">
-            <Skeleton className="size-7 rounded-md shrink-0" />
-            <div className="flex flex-col flex-1 gap-1">
+        <div className="flex items-center gap-2 py-2">
+            <Skeleton className="size-9 shrink-0 rounded-full" />
+            <div className="flex flex-1 flex-col gap-1">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-4 w-20" />
             </div>
-            <Skeleton className="size-6 rounded" />
+            <Skeleton className="size-7 rounded-sm" />
+            <Skeleton className="size-7 rounded-sm" />
         </div>
     );
 }
@@ -75,20 +114,25 @@ function TreasuryRow({
     const availabilityHint = tM("warningOne");
 
     return (
-        <div className="flex gap-2 items-center bg-general-tertiary rounded-md px-2 py-1.5">
-            <TreasuryLogo logo={treasury.config?.metadata?.flagLogo} />
-            <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-sm font-medium truncate">
+        <div className="flex items-center gap-2 py-2">
+            <TreasuryLogo
+                logo={treasury.config?.metadata?.flagLogo}
+                imageClassName="size-9 rounded-full"
+                fallbackClassName="size-9 rounded-full bg-green-700"
+                fallbackIconClassName="size-4 text-white"
+            />
+            <div className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate font-semibold text-sm leading-[1.5]">
                     {treasury.config?.name ?? treasury.daoId}
                 </span>
-                <TreasuryBalance daoId={treasury.daoId} />
+                <TreasuryBalance daoId={treasury.daoId} className="text-xs" />
             </div>
             {isGuest && <GuestBadge />}
             {isGuest && onRemove && (
                 <Button
-                    variant="ghost"
+                    variant="neutral"
                     size="icon-sm"
-                    className="p-px!"
+                    className={ROW_ICON_BUTTON_CLASS}
                     tooltipContent={
                         disableAvailabilityActions
                             ? availabilityHint
@@ -97,25 +141,25 @@ function TreasuryRow({
                     onClick={onRemove}
                     disabled={isRemovePending || disableAvailabilityActions}
                 >
-                    <Icon icon={Delete01Icon} />
+                    <Icon icon={Delete01Icon} className="size-3.5" />
                 </Button>
             )}
             <Button
-                variant="ghost"
+                variant="neutral"
                 size="icon-sm"
-                className="p-px!"
+                className={ROW_ICON_BUTTON_CLASS}
                 tooltipContent={tM("tooltips.viewTreasury")}
                 asChild
             >
                 <Link href={`/${treasury.daoId}`}>
-                    <Icon icon={ArrowUpRight01Icon} />
+                    <Icon icon={ArrowUpRight01Icon} className="size-3.5" />
                 </Link>
             </Button>
             {variant === "active" && onHide && (
                 <Button
-                    variant="ghost"
+                    variant="neutral"
                     size="icon-sm"
-                    className="p-px!"
+                    className={ROW_ICON_BUTTON_CLASS}
                     tooltipContent={
                         disableAvailabilityActions
                             ? availabilityHint
@@ -124,19 +168,19 @@ function TreasuryRow({
                     onClick={onHide}
                     disabled={isHidePending || disableAvailabilityActions}
                 >
-                    <Icon icon={ViewIcon} />
+                    <Icon icon={ViewOffSlashIcon} className="size-3.5" />
                 </Button>
             )}
             {variant === "hidden" && onUnhide && (
                 <Button
-                    variant="ghost"
-                    className="p-px!"
-                    tooltipContent={tM("tooltips.showInList")}
+                    variant="neutral"
                     size="icon-sm"
+                    className={ROW_ICON_BUTTON_CLASS}
+                    tooltipContent={tM("tooltips.showInList")}
                     onClick={onUnhide}
                     disabled={isUnhidePending}
                 >
-                    <Icon icon={ViewOffIcon} />
+                    <Icon icon={ViewIcon} className="size-3.5" />
                 </Button>
             )}
         </div>
@@ -185,110 +229,94 @@ export default function ManageTreasuriesPage() {
     return (
         <PageComponentLayout
             title={t("title")}
-            description={t("description")}
             backButton={resolveTreasuryHomeHref(
                 memberTreasuries,
                 lastTreasuryId,
             )}
             hideCollapseButton
+            hideHeaderControls
+            transparentHeader
+            hideHeaderBottomBorder
+            hideMobileShellControls
+            hideTitle
+            mainClassName={MAIN_CLASS}
         >
-            <div className="max-w-[720px] mx-auto">
-                <PageCard>
-                    {/* Active Treasuries */}
-                    <div className="flex flex-col gap-1">
-                        <StepperHeader title={tM("activeHeading")} />
-                        <p className="text-sm text-muted-foreground">
-                            {tM("activeDescription")}
-                        </p>
-                        {mustKeepOneActive && activeTreasuries.length > 0 && (
-                            <p className="text-sm text-warning">
-                                {tM("warningOnePeriod")}
-                            </p>
-                        )}
-                    </div>
-                    <div className="flex flex-col gap-3">
-                        {isLoading ? (
-                            <>
-                                <TreasuryRowSkeleton />
-                                <TreasuryRowSkeleton />
-                                <TreasuryRowSkeleton />
-                            </>
-                        ) : activeTreasuries.length === 0 ? (
-                            <p className="text-sm text-muted-foreground">
-                                {tM("activeEmpty")}
-                            </p>
-                        ) : (
-                            activeTreasuries.map((treasury) => (
-                                <TreasuryRow
-                                    key={treasury.daoId}
-                                    treasury={treasury}
-                                    variant="active"
-                                    onHide={() =>
-                                        hideTreasuryMutation.mutate(
-                                            treasury.daoId,
-                                        )
-                                    }
-                                    onRemove={
-                                        treasury.isSaved && !treasury.isMember
-                                            ? () =>
-                                                  setTreasuryToRemove(treasury)
-                                            : undefined
-                                    }
-                                    isHidePending={
-                                        hideTreasuryMutation.isPending
-                                    }
-                                    isRemovePending={
-                                        removeSavedMutation.isPending
-                                    }
-                                    disableAvailabilityActions={
-                                        mustKeepOneActive
-                                    }
-                                />
-                            ))
-                        )}
-                    </div>
-
-                    {/* Hidden Treasuries - only show when there are hidden items */}
-                    {hiddenTreasuries.length > 0 && (
+            <div className={COLUMN_CLASS}>
+                <TreasurySection
+                    title={tM("activeHeading")}
+                    description={
                         <>
-                            <div className="flex flex-col gap-1">
-                                <StepperHeader title={tM("hiddenHeading")} />
-                                <p className="text-sm text-muted-foreground">
-                                    {tM("hiddenDescription")}
-                                </p>
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                {hiddenTreasuries.map((treasury) => (
-                                    <TreasuryRow
-                                        key={treasury.daoId}
-                                        treasury={treasury}
-                                        variant="hidden"
-                                        onUnhide={() =>
-                                            unhideTreasuryMutation.mutate(
-                                                treasury.daoId,
-                                            )
-                                        }
-                                        onRemove={
-                                            treasury.isSaved &&
-                                            !treasury.isMember
-                                                ? () =>
-                                                      setTreasuryToRemove(
-                                                          treasury,
-                                                      )
-                                                : undefined
-                                        }
-                                        isUnhidePending={
-                                            unhideTreasuryMutation.isPending
-                                        }
-                                        isRemovePending={
-                                            removeSavedMutation.isPending
-                                        }
-                                    />
-                                ))}
-                            </div>
+                            {tM("activeDescription")}
+                            {mustKeepOneActive &&
+                                activeTreasuries.length > 0 && (
+                                    <span className="block text-warning">
+                                        {tM("warningOnePeriod")}
+                                    </span>
+                                )}
                         </>
+                    }
+                >
+                    {isLoading ? (
+                        <>
+                            <TreasuryRowSkeleton />
+                            <TreasuryRowSkeleton />
+                            <TreasuryRowSkeleton />
+                        </>
+                    ) : activeTreasuries.length === 0 ? (
+                        <p className="py-2 text-sm text-general-secondary-foreground">
+                            {tM("activeEmpty")}
+                        </p>
+                    ) : (
+                        activeTreasuries.map((treasury) => (
+                            <TreasuryRow
+                                key={treasury.daoId}
+                                treasury={treasury}
+                                variant="active"
+                                onHide={() =>
+                                    hideTreasuryMutation.mutate(treasury.daoId)
+                                }
+                                onRemove={
+                                    treasury.isSaved && !treasury.isMember
+                                        ? () => setTreasuryToRemove(treasury)
+                                        : undefined
+                                }
+                                isHidePending={hideTreasuryMutation.isPending}
+                                isRemovePending={removeSavedMutation.isPending}
+                                disableAvailabilityActions={mustKeepOneActive}
+                            />
+                        ))
                     )}
-                </PageCard>
+                </TreasurySection>
+
+                {/* Hidden Treasuries - only show when there are hidden items */}
+                {hiddenTreasuries.length > 0 && (
+                    <TreasurySection
+                        title={tM("hiddenHeading")}
+                        description={tM("hiddenDescription")}
+                    >
+                        {hiddenTreasuries.map((treasury) => (
+                            <TreasuryRow
+                                key={treasury.daoId}
+                                treasury={treasury}
+                                variant="hidden"
+                                onUnhide={() =>
+                                    unhideTreasuryMutation.mutate(
+                                        treasury.daoId,
+                                    )
+                                }
+                                onRemove={
+                                    treasury.isSaved && !treasury.isMember
+                                        ? () => setTreasuryToRemove(treasury)
+                                        : undefined
+                                }
+                                isUnhidePending={
+                                    unhideTreasuryMutation.isPending
+                                }
+                                isRemovePending={removeSavedMutation.isPending}
+                            />
+                        ))}
+                    </TreasurySection>
+                )}
             </div>
 
             <Dialog
