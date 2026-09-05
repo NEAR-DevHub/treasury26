@@ -175,6 +175,7 @@ export function VotingDurationImpactModal({
             <DialogContent
                 className={cn(
                     "gap-3 overflow-y-hidden p-4 sm:max-w-[720px]! sm:gap-4 sm:p-5",
+                    "max-sm:max-h-[min(75vh,600px)]",
                     mobileInsetSheetClassName,
                 )}
             >
@@ -184,7 +185,7 @@ export function VotingDurationImpactModal({
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 scrollbar-hide sm:-mx-5 sm:gap-4 sm:px-5">
+                <div className="-mx-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 scrollbar-hide [&>*]:shrink-0 sm:-mx-5 sm:gap-4 sm:px-5">
                     <p className="text-sm font-medium text-general-secondary-foreground">
                         {t("impactBody")}
                     </p>
@@ -243,7 +244,7 @@ export function VotingDurationImpactModal({
                     )}
                 </div>
 
-                <DialogFooter className="-mx-4 border-general-border border-t px-4 pt-3 sm:-mx-5 sm:px-5">
+                <DialogFooter className="-mx-4 border-general-border border-t px-4 pt-3 max-sm:mt-2 sm:-mx-5 sm:px-5">
                     <Button
                         onClick={onConfirm}
                         size="xl"
