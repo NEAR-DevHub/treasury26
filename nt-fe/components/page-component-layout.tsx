@@ -1,19 +1,18 @@
 "use client";
-import { Icon } from "@/components/icon";
 import {
     ArrowLeft01Icon,
+    ArrowLeft02Icon,
     MoonIcon,
     PanelLeftIcon,
     Sun01Icon,
 } from "@hugeicons/core-free-icons";
-import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import { type ReactNode, useEffect, useState } from "react";
 import { useHasSidebarRail } from "@/components/app-shell-context";
-import { useInAppHistory } from "@/hooks/use-in-app-history";
-import { shouldShowPageBack } from "@/lib/in-app-navigation";
 import { Button } from "@/components/button";
+import { Icon } from "@/components/icon";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import {
     MobileTreasuryHeaderButton,
@@ -23,6 +22,8 @@ import { Pill } from "@/components/pill";
 import { SignIn } from "@/components/sign-in";
 import { SlotWarning } from "@/components/warning-message";
 import { isStaging } from "@/constants/features";
+import { useInAppHistory } from "@/hooks/use-in-app-history";
+import { shouldShowPageBack } from "@/lib/in-app-navigation";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebar-store";
 
@@ -44,6 +45,11 @@ interface PageComponentLayoutProps {
     hideHeaderBottomBorder?: boolean;
     /** Renders an empty header: no logo/title, staging pill, language or theme controls. */
     hideHeaderContent?: boolean;
+    /**
+     * Drops the staging pill, language and theme switchers and the sign-in
+     * control, leaving the header as just the back control and the title.
+     */
+    hideHeaderControls?: boolean;
     /**
      * Hides the mobile treasury selector + profile controls. Use with
      * `backButton` for inner pages (Send, Bulk send, Deposit): on small
@@ -86,6 +92,7 @@ export function PageComponentLayout({
     transparentHeader = false,
     hideHeaderBottomBorder = false,
     hideHeaderContent = false,
+    hideHeaderControls = false,
     hideMobileShellControls = false,
     headerActions,
     hideHeader = false,
@@ -149,7 +156,8 @@ export function PageComponentLayout({
                 backKind === "section" && "lg:hidden",
             )}
         >
-            <Icon icon={ArrowLeft01Icon} className="stroke-2" />
+            <Icon icon={ArrowLeft01Icon} className="stroke-2 lg:hidden" />
+            <Icon icon={ArrowLeft02Icon} className="hidden stroke-2 lg:block" />
         </Button>
     ) : null;
 
@@ -183,7 +191,10 @@ export function PageComponentLayout({
                 "flex h-full flex-col sm:gap-0",
                 hideMobileShellControls && "gap-6 px-2",
                 fitViewport && "h-dvh overflow-y-auto",
-                hideHeaderContent && "bg-general-bg-tertiary",
+                // A see-through header would otherwise expose the body colour
+                // as a band above the page surface.
+                (hideHeaderContent || transparentHeader) &&
+                    "bg-general-bg-tertiary",
             )}
         >
             {!hideHeader && (
@@ -279,44 +290,51 @@ export function PageComponentLayout({
                                 <MobileUserHeaderButton />
                             </div>
                         )}
-                        {!hasSidebarRail && !hideHeaderContent && isStaging && (
-                            <>
-                                <span
-                                    className="size-2 rounded-full bg-general-orange-foreground md:hidden"
-                                    title="Staging"
-                                    aria-label="Staging"
-                                />
-                                <Pill
-                                    title="Staging"
-                                    icon={
-                                        <span className="size-1.5 rounded-full bg-general-orange-foreground" />
-                                    }
-                                    className="hidden md:flex bg-general-orange-background-faded text-general-orange-foreground"
-                                />
-                            </>
-                        )}
-                        {!hasSidebarRail && !hideHeaderContent && (
-                            <>
-                                <LanguageSwitcher />
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() =>
-                                        setTheme(isDarkTheme ? "light" : "dark")
-                                    }
-                                    aria-label={tHeader("toggleTheme")}
-                                    className="text-muted-foreground hover:bg-muted hover:text-foreground"
-                                >
-                                    {isDarkTheme ? (
-                                        <Icon icon={Sun01Icon} />
-                                    ) : (
-                                        <Icon icon={MoonIcon} />
-                                    )}
-                                </Button>
+                        {!hasSidebarRail &&
+                            !hideHeaderContent &&
+                            !hideHeaderControls &&
+                            isStaging && (
+                                <>
+                                    <span
+                                        className="size-2 rounded-full bg-general-orange-foreground md:hidden"
+                                        title="Staging"
+                                        aria-label="Staging"
+                                    />
+                                    <Pill
+                                        title="Staging"
+                                        icon={
+                                            <span className="size-1.5 rounded-full bg-general-orange-foreground" />
+                                        }
+                                        className="hidden md:flex bg-general-orange-background-faded text-general-orange-foreground"
+                                    />
+                                </>
+                            )}
+                        {!hasSidebarRail &&
+                            !hideHeaderContent &&
+                            !hideHeaderControls && (
+                                <>
+                                    <LanguageSwitcher />
+                                    <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        onClick={() =>
+                                            setTheme(
+                                                isDarkTheme ? "light" : "dark",
+                                            )
+                                        }
+                                        aria-label={tHeader("toggleTheme")}
+                                        className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    >
+                                        {isDarkTheme ? (
+                                            <Icon icon={Sun01Icon} />
+                                        ) : (
+                                            <Icon icon={MoonIcon} />
+                                        )}
+                                    </Button>
 
-                                {!hideLogin && <SignIn />}
-                            </>
-                        )}
+                                    {!hideLogin && <SignIn />}
+                                </>
+                            )}
                     </div>
                 </header>
             )}
