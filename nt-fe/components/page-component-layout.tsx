@@ -194,6 +194,7 @@ export function PageComponentLayout({
         <div
             className={cn(
                 "flex h-full flex-col sm:gap-0",
+                !hasSidebarRail && !fitViewport && "min-h-dvh",
                 hideMobileShellControls &&
                     (hideTitle ? "gap-3 px-2 lg:gap-6" : "gap-6 px-2"),
                 fitViewport && "h-dvh overflow-y-auto",
